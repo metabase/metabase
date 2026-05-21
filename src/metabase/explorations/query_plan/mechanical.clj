@@ -37,54 +37,50 @@
 
 (defn- time-facet-eligible?
   "Eligibility for the `time-facet` variant on this (metric, dim) pair:
-   1. Dim is non-temporal AND non-numeric (no default bucket/binning fires).
+   1. Dim is non-temporal (temporal dims belong to the `temporal-pattern-*`
+      variants, not stacked-by-category line series).
    2. Metric Card carries a temporal breakout in its dataset_query
       (`metric :default-temporal-breakout` set by `metric-and-dim-context`).
-   3. Dim's fingerprint distinct-count is known and ≤ `time-facet-max-cardinality`.
+   3. The dim's *effective* cardinality — bin count for auto-binned numerics,
+      raw distinct-count otherwise — is known and ≤ `time-facet-max-cardinality`.
+      Using effective cardinality matters here: a numeric dim like `Subtotal`
+      has thousands of distinct values but renders as ~8 bars after default
+      binning, so it's a perfectly fine series-count for a per-bin line chart.
   Missing fingerprints fail closed — same conservative rule the pre-LLM code used."
   [metric dim]
-  (let [bucket   (qp.mbql/default-bucket-for-dim dim)
-        distinct (get-in dim [:fingerprint :global :distinct-count])]
-    (and (nil? bucket)
+  (let [eff (qp.mbql/effective-cardinality dim)]
+    (and (not (qp.mbql/dim-type-isa? dim :type/Temporal))
          (:default-temporal-breakout metric)
-         (some? distinct)
-         (<= distinct time-facet-max-cardinality))))
+         (some? eff)
+         (<= eff time-facet-max-cardinality))))
 
 (defn- items-for-pair
   "Emit the baseline `default` plan item for one applicable (metric, dim)
   pair, plus any eligible temporal-pattern / time-facet variants. All items
   share the same `(metric_id, dimension_id)` so the auto-groups sidebar
-  collapses them under one leaf, matching the pre-LLM grouping behavior."
+  collapses them under one leaf, matching the pre-LLM grouping behavior.
+
+  No `:rationale` is emitted: every mechanical item's rationale is a direct
+  consequence of its (variant, dim-type) pair — a per-item explanation adds
+  noise without adding signal. Rationales are valuable on LLM items, where
+  the model made a judgement that isn't otherwise visible."
   [metric dim]
   (let [metric-id (:metric-id metric)
         dim-id    (:dimension_id dim)
-        base      [{:metric_id    metric-id
-                    :dimension_id dim-id
-                    :variant      "default"
-                    :params       {}
-                    :rationale    "Default single-breakout chart for this metric × dimension pair."}]
-        patterns  (mapv (fn [variant]
-                          {:metric_id    metric-id
-                           :dimension_id dim-id
-                           :variant      variant
-                           :params       {}
-                           :rationale    (case variant
-                                           "temporal-pattern-day"  "Day-of-week pattern surfaces weekly seasonality."
-                                           "temporal-pattern-hour" "Hour-of-day pattern surfaces intra-day rhythm.")})
-                        (temporal-pattern-variants dim))
-        facet     (when (time-facet-eligible? metric dim)
-                    [{:metric_id    metric-id
-                      :dimension_id dim-id
-                      :variant      "time-facet"
-                      :params       {}
-                      :rationale    "Stacked line over the metric's temporal axis, faceted by this low-cardinality dim."}])]
+        item      (fn [variant]
+                    {:metric_id    metric-id
+                     :dimension_id dim-id
+                     :variant      variant
+                     :params       {}})
+        base      [(item "default")]
+        patterns  (mapv item (temporal-pattern-variants dim))
+        facet     (when (time-facet-eligible? metric dim) [(item "time-facet")])]
     (vec (concat base patterns facet))))
 
 (defn- run-plan!
   "Walk the metric × dim matrix and emit plan items per `items-for-pair`.
   Wrapped by `MechanicalPlanner` below — only consults `:metric-dim-ctx`;
-  the thread prompt and timeline section are ignored because the strategy
-  is purely structural."
+  the thread prompt is ignored because the strategy is purely structural."
   [{:keys [metric-dim-ctx]}]
   (let [{:keys [metrics]} metric-dim-ctx
         items (vec
@@ -96,15 +92,12 @@
                 metrics))]
     (if (empty? items)
       {:outcome    :skip-not-applicable
-       :transcript {:reason     "no applicable (metric, dimension) pairs"
-                    :n-metrics  (count metrics)}}
+       :transcript {:reason    "no applicable (metric, dimension) pairs"
+                    :n-metrics (count metrics)}}
       {:outcome    :ok
        :plan       items
-       :rationale  (str "Deterministic plan: one `default` chart per applicable (metric, dimension) pair "
-                        "plus temporal-pattern and time-facet variants where eligible. "
-                        (count items) " items across " (count metrics) " metric(s).")
-       :transcript {:strategy "mechanical"
-                    :n-items  (count items)
+       :transcript {:strategy  "mechanical"
+                    :n-items   (count items)
                     :n-metrics (count metrics)}})))
 
 (defrecord MechanicalPlanner []

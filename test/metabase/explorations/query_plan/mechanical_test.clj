@@ -5,7 +5,8 @@
   time-facet variant gates on metric temporal breakout + dim fingerprint."
   (:require
    [clojure.test :refer :all]
-   [metabase.explorations.query-plan.mechanical :as qp.mech]))
+   [metabase.explorations.query-plan.mechanical :as qp.mech]
+   [metabase.explorations.query-plan.planner :as planner]))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture helpers
@@ -38,9 +39,10 @@
                                      dim-map)}))
 
 (defn- plan!
-  "Convenience: run `plan!` on a single-metric context."
+  "Convenience: dispatch the mechanical planner through its protocol on a
+  single-metric context."
   [metric]
-  (qp.mech/plan! {:metric-dim-ctx {:metrics [metric]}}))
+  (planner/plan! qp.mech/planner {:metric-dim-ctx {:metrics [metric]}}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Tests
@@ -91,16 +93,24 @@
     (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d" 100)} true))]
       (is (not (contains? (set (map :variant (:plan r))) "time-facet")))))
 
-  (testing "time-facet skipped on numeric dims (they get the default-binning bucket)"
+  (testing "time-facet ENABLED on auto-binned numeric dims (effective cardinality is bin count)"
+    ;; A numeric dim like `Subtotal` has thousands of distinct values but
+    ;; renders as ~8 bars after default binning, so per-bin lines stacked
+    ;; over the metric's temporal axis is a perfectly reasonable chart.
     (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")} true))]
-      (is (not (contains? (set (map :variant (:plan r))) "time-facet"))))))
+      (is (contains? (set (map :variant (:plan r))) "time-facet")))))
 
-(deftest rationale-and-transcript-test
-  (testing "Every emitted item carries a rationale string"
+(deftest no-rationale-noise-test
+  (testing "Mechanical items don't carry rationale strings — the variant + dim type
+            already explains the choice, and a per-item rationale would be filler"
     (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
-      (is (every? (comp string? :rationale) (:plan r)))))
+      (is (every? #(not (contains? % :rationale)) (:plan r)))))
 
-  (testing "Transcript records strategy + counts"
+  (testing "Top-level rationale is also omitted"
+    (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
+      (is (not (contains? r :rationale)))))
+
+  (testing "Transcript still records strategy + counts"
     (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a") "b" (text-dim "b")}))]
       (is (= "mechanical" (-> r :transcript :strategy)))
       (is (= 2 (-> r :transcript :n-items))))))

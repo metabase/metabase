@@ -117,16 +117,20 @@
                           (fn [m d] (tru "{0} by {1} (hour of day)" m d))))
 
 (defn- build-time-facet
-  [{:keys [mp card target dim-label]}]
-  (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-        ref-clause (qp.mbql/normalize-target-ref target)]
+  [{:keys [mp card target dim dim-label]}]
+  (let [base-query   (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+        ref-clause   (qp.mbql/normalize-target-ref target)
+        ;; Apply the dim's default bucket/binning so numerics render as a
+        ;; per-bin line series (e.g. 8 lines for an auto-binned `Subtotal`)
+        ;; rather than one line per raw value.
+        dim-breakout (qp.mbql/apply-default-bucket base-query ref-clause dim)]
     (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
                                         mp (:dataset_query card))]
       [{:query_type    "time-facet"
         :name          (tru "{0} by {1} over time" (:name card) dim-label)
         :display       "line"
         :dataset_query (-> base-query
-                           (lib/breakout ref-clause)
+                           (lib/breakout dim-breakout)
                            (lib/breakout (lib/with-temporal-bucket
                                            temporal-col (or raw-unit :month))))
         ;; time-facet never combines with segments — the per-category line series is already busy.

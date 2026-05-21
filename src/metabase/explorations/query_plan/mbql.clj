@@ -50,6 +50,37 @@
     (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
     :else                                nil))
 
+(def default-binning-max-bins
+  "Upper bound on how many bars Metabase's `:default` binning strategy
+  produces on the chart. The actual number depends on the column's min/max
+  fingerprint and database-specific bin-width logic in
+  `metabase.query-processor.middleware.binning`, but it never exceeds this
+  cap. Using the cap (rather than a per-dim estimate) lets the planner
+  short-circuit cardinality checks for auto-binned dims: any variant whose
+  bar/series budget is `>=` this value is satisfied by construction."
+  20)
+
+(defn effective-cardinality
+  "Number of x-axis cells the dim will produce on a chart *after* the default
+  bucket/binning fires:
+
+  - Numeric dims with default binning → `default-binning-max-bins`. The real
+    count is usually lower, but the upper bound is what gates eligibility
+    decisions (chart-width, series-count budgets).
+  - Numeric dims with explicit `:num-bins` → that exact bin count.
+  - Temporal dims → `nil`. Cardinality isn't the right axis to reason about
+    them on; callers should use the temporal unit.
+  - All other dims → raw `:fingerprint.global.distinct-count`, or `nil` if
+    the fingerprint is missing."
+  [dim]
+  (let [[kind v] (default-bucket-for-dim dim)]
+    (case kind
+      :temporal nil
+      :binning  (or (when (and (map? v) (= :num-bins (:strategy v)))
+                      (:num-bins v))
+                    default-binning-max-bins)
+      nil       (get-in dim [:fingerprint :global :distinct-count]))))
+
 (defn numeric-fingerprint-bounded?
   "True if `ref-clause` resolves to a column whose `:type/Number` fingerprint has
   both `:min` and `:max`. False for refs that don't resolve to a real Field

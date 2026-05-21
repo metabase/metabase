@@ -86,10 +86,11 @@
   "One markdown block for the LLM's DIMENSIONS section. Same id-prefix rule
   as `format-metric-block`: raw values only, no `D`/`M` prefixes."
   [{:keys [dimension-id display-name group-label effective-type semantic-type
-           distinct-count numeric-min numeric-max applicable-to]}]
+           distinct-count auto-binned? numeric-min numeric-max applicable-to]}]
   (let [type-line  (str "  type:        effective=" (or effective-type "?")
                         ", semantic="                (or semantic-type "?"))
-        card-line  (str "  cardinality: " (or distinct-count "unknown"))
+        card-line  (str "  cardinality: " (or distinct-count "unknown")
+                        (when auto-binned? " (max bars after auto-binning)"))
         range-line (when (and numeric-min numeric-max)
                      (str "  numeric_range: " numeric-min ".." numeric-max))
         apply-line (str "  applicable_to_metric_ids: ["
@@ -191,15 +192,21 @@
         enriched-by-id (or (some :enriched-thread-dims metrics) dim-by-id)
         dimensions    (vec
                        (for [td thread-dims
-                             :let [dim-id (:dimension_id td)
-                                   dim    (get enriched-by-id dim-id td)]]
+                             :let [dim-id   (:dimension_id td)
+                                   dim      (get enriched-by-id dim-id td)
+                                   [k _]    (qp.mbql/default-bucket-for-dim dim)
+                                   binned?  (= k :binning)]]
                          {:dimension-id   dim-id
                           :dim            dim
                           :display-name   (or (:display_name dim) dim-id)
                           :group-label    (some-> dim :group :display_name)
                           :effective-type (:effective_type dim)
                           :semantic-type  (:semantic_type dim)
-                          :distinct-count (get-in dim [:fingerprint :global :distinct-count])
+                          ;; effective-cardinality returns the bin count for auto-binned
+                          ;; numerics (so the LLM sees the chart-width number, not the
+                          ;; raw fingerprint distinct-count which can be huge).
+                          :distinct-count (qp.mbql/effective-cardinality dim)
+                          :auto-binned?   binned?
                           :numeric-min    (get-in dim [:fingerprint :type :type/Number :min])
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
