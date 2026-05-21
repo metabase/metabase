@@ -182,7 +182,7 @@ jobs:
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
         run: >-
-          clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
+          clojure -X:dev:ci:test:drivers:drivers-dev:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
         # Trunk Quarantine controls the final state of the run in the CI!
