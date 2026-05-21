@@ -22,14 +22,21 @@
   - Visited card ids are tracked to break cycles."
   (:require
    [clojure.set :as set]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(defn- record-extraction-warning!
+  "Increment the used-tables-extraction-warnings prometheus counter."
+  [reason]
+  (analytics/inc! :metabase-metabot/used-tables-extraction-warnings {:reason reason}))
 
 (def ^:private notebook-tool-name "construct_notebook_query")
 (def ^:private transform-sql-tool-name "write_transform_sql")
@@ -66,6 +73,7 @@
   (try
     (lib/query metadata-providerable raw-query)
     (catch Exception e
+      (record-extraction-warning! :query-build)
       (log/warn e "Failed to convert query to MBQL 5")
       nil)))
 
@@ -76,10 +84,12 @@
     (try
       (let [result (nqa/tables-for-native query)]
         (if (:error result)
-          (do (log/warnf "tables-for-native error: %s" (:error result))
+          (do (record-extraction-warning! :native-parse)
+              (log/warnf "tables-for-native error: %s" (:error result))
               #{})
           (into #{} (keep :table-id) (:tables result))))
       (catch Exception e
+        (record-extraction-warning! :native-parse)
         (log/warn e "Failed to extract tables from native SQL")
         #{}))
     #{}))
@@ -98,6 +108,7 @@
                           (native-tables query))
        :cards  (set/union (:card ids) (:metric ids))})
     (catch Exception e
+      (record-extraction-warning! :query-walk)
       (log/warn e "Failed to walk query for used-table extraction")
       {:tables #{} :cards #{}})))
 
@@ -108,9 +119,11 @@
   (try
     (if-let [card (lib.metadata/card metadata-providerable card-id)]
       (lib/card->underlying-query metadata-providerable card)
-      (do (log/warnf "Card %s referenced by Metabot query was not found" card-id)
+      (do (record-extraction-warning! :card-missing)
+          (log/warnf "Card %s referenced by Metabot query was not found" card-id)
           nil))
     (catch Exception e
+      (record-extraction-warning! :card-lookup)
       (log/warnf e "Failed to look up card %s for used-table extraction" card-id)
       nil)))
 
@@ -164,6 +177,7 @@
             (try
               (lib/native-query (lib.metadata/->metadata-provider metadata-providerable db-id) sql)
               (catch Exception e
+                (record-extraction-warning! :native-build)
                 (log/warn e "Failed to build native query from raw SQL")
                 nil)))))))
 
@@ -251,3 +265,17 @@
                  pairs)
          all-tables (into tables (collect-tables queries))]
      (->rows message-id all-tables))))
+
+(defn extract-used-tables-with-timing
+  "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics."
+  [message-id parts]
+  (let [start (u/start-timer)]
+    (analytics/inc! :metabase-metabot/used-tables-extraction-total)
+    (try
+      (let [result (extract-used-tables message-id parts)]
+        (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
+        result)
+      (catch Throwable t
+        (analytics/inc! :metabase-metabot/used-tables-extraction-errors)
+        (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
+        (throw t)))))

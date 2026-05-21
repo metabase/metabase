@@ -240,7 +240,7 @@
         pre-strip  (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
                         (filter streaming/persistable-data-part?))
-        used-rows  (used-tables/extract-used-tables assistant-msg-id pre-strip)
+        used-rows  (used-tables/extract-used-tables-with-timing assistant-msg-id pre-strip)
         content    (mapv strip-tool-output-bloat pre-strip)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
