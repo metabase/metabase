@@ -1,11 +1,12 @@
 import { renderHook } from "@testing-library/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
 
-import { skipToken, useListCommentsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 
 import { useBlockMenus } from "./use-block-menus";
 
 const mockUseNodeInViewport = jest.fn();
+const mockUseListCommentsQuery = jest.fn();
 
 jest.mock("metabase/documents/hooks/use-node-in-viewport", () => ({
   useNodeInViewport: () => mockUseNodeInViewport(),
@@ -13,10 +14,11 @@ jest.mock("metabase/documents/hooks/use-node-in-viewport", () => ({
 
 jest.mock("metabase/api", () => ({
   skipToken: Symbol("skipToken"),
-  useListCommentsQuery: jest.fn().mockReturnValue({
-    data: undefined,
-    unresolvedCommentsCount: 0,
-  }),
+  // Wrapped in an arrow so the `mockUseListCommentsQuery` reference is
+  // resolved lazily — the hoisted factory runs before the `const` is
+  // initialized.
+  useListCommentsQuery: (...args: unknown[]) =>
+    mockUseListCommentsQuery(...args),
 }));
 
 jest.mock("metabase/comments/utils", () => ({
@@ -75,7 +77,7 @@ const mockGetPos = jest.fn().mockReturnValue(0);
 describe("useBlockMenus", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useListCommentsQuery as jest.Mock).mockReturnValue({
+    mockUseListCommentsQuery.mockReturnValue({
       unresolvedCommentsCount: 0,
     });
   });
@@ -94,7 +96,7 @@ describe("useBlockMenus", () => {
       }),
     );
 
-    expect(useListCommentsQuery).toHaveBeenCalledWith(
+    expect(mockUseListCommentsQuery).toHaveBeenCalledWith(
       skipToken,
       expect.any(Object),
     );
@@ -114,7 +116,7 @@ describe("useBlockMenus", () => {
       }),
     );
 
-    expect(useListCommentsQuery).toHaveBeenCalledWith(
+    expect(mockUseListCommentsQuery).toHaveBeenCalledWith(
       { document_id: 1 },
       expect.any(Object),
     );

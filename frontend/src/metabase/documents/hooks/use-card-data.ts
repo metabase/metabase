@@ -169,6 +169,13 @@ export function useCardData({
   const prevIsLoading = useRef(false);
   useEffect(() => {
     if (skip) {
+      // If the card was mid-load when it got skipped (e.g. scrolled out of
+      // the buffer before its query resolved), flush the finished signal so
+      // it doesn't leak a stale entry in `loadingCardIds`.
+      if (prevIsLoading.current) {
+        dispatch(documentCardLoadingFinished(id));
+        prevIsLoading.current = false;
+      }
       return;
     }
     if (isLoading && !prevIsLoading.current) {

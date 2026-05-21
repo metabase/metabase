@@ -41,7 +41,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -138,7 +137,7 @@ export const DocumentPage = ({
     );
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
-      if (!getAreDocumentCardsLoading(store.getState() as State)) {
+      if (!getAreDocumentCardsLoading(store.getState())) {
         break;
       }
       await new Promise((resolve) => setTimeout(resolve, 100));

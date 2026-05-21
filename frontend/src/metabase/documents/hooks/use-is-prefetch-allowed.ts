@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
 
-type NetworkInformation = {
-  saveData?: boolean;
-  addEventListener?: (type: "change", cb: () => void) => void;
-  removeEventListener?: (type: "change", cb: () => void) => void;
-};
-
 /**
  * Returns false when the user has explicitly opted into Data Saver mode
  * (`navigator.connection.saveData`). Prefetching off-screen content
@@ -16,8 +10,7 @@ export function useIsPrefetchAllowed(): boolean {
   const [allowed, setAllowed] = useState(true);
 
   useEffect(() => {
-    const conn = (navigator as Navigator & { connection?: NetworkInformation })
-      .connection;
+    const conn = navigator.connection;
     if (!conn) {
       return;
     }
