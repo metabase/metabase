@@ -14,19 +14,29 @@ import { useDispatch } from "metabase/redux";
 import { Button } from "metabase/ui";
 
 import { trackQueryFixClicked } from "../../analytics";
+import { getMetabotNotConfiguredToastProps } from "../AIProviderConfigurationNotice";
 
 export function FixSqlQueryButton() {
   const dispatch = useDispatch();
-  const { canUseSqlGeneration } = useUserMetabotPermissions();
+  const { hasSqlGenerationAccess, canUseSqlGeneration } =
+    useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
-  if (!canUseSqlGeneration) {
+  if (!hasSqlGenerationAccess) {
     return null;
   }
 
   const handleClick = async () => {
+    if (!canUseSqlGeneration) {
+      sendToast(
+        getMetabotNotConfiguredToastProps({
+          featureName: metabotName,
+        }),
+      );
+      return;
+    }
     trackQueryFixClicked();
     await dispatch(setIsNativeEditorOpen(true));
     // SQL and error message are included in the context.

@@ -32,7 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? some]])
   (:import
-   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement)
+   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -124,8 +124,8 @@
                                         bad-markers))]
     (pred s)))
 
-(defmethod driver/can-connect? :h2
-  [driver {:keys [db] :as details}]
+(defmethod driver/validate-db-details! :h2
+  [_driver {:keys [db]}]
   (when-not driver.settings/*allow-testing-h2-connections*
     (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
@@ -141,7 +141,11 @@
       ;; keys are uppercased by h2 when parsed:
       ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
       (when (contains? properties "INIT")
-        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]}))))))
+
+(defmethod driver/can-connect? :h2
+  [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/db-start-of-week :h2
@@ -580,13 +584,19 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (some-> (.getColumnClassName rsmeta i)
-                          (Class/forName true (driver-api/the-classloader)))]
-    (if (isa? classname Clob)
-      (fn []
-        (driver-api/clob->str (.getObject rs i)))
-      (fn []
-        (.getObject rs i)))))
+  (let [col-type (.getColumnType rsmeta i)]
+    (when (= col-type Types/JAVA_OBJECT)
+      (throw (ex-info "Unable to parse jdbc type"
+                      {:column-index i
+                       :column-name  (.getColumnName rsmeta i)
+                       :column-type  col-type})))
+    (let [classname (some-> (.getColumnClassName rsmeta i)
+                            (Class/forName true (driver-api/the-classloader)))]
+      (if (isa? classname Clob)
+        (fn []
+          (driver-api/clob->str (.getObject rs i)))
+        (fn []
+          (.getObject rs i))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

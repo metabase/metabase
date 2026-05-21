@@ -79,9 +79,9 @@
       (nil? env-var-value)
       default-retention-days
 
-      ;; Treat 0 as an alias for infinity
+      ;; Treat 0 as an alias for infinite retention
       (zero? env-var-value)
-      ##Inf
+      nil
 
       (< env-var-value min-retention-days)
       (do
@@ -93,10 +93,12 @@
 
 (defsetting ai-usage-max-retention-days
   (deferred-tru "Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.")
-  :visibility :internal
+  :type       :integer
+  :visibility :admin
   :setter     :none
   :audit      :never
-  :export?    false
+  :export?    true
+  :encryption :no
   :getter     #'-ai-usage-max-retention-days
   :doc "Sets the maximum number of days Metabase preserves rows in the `ai_usage_log` table.
 
