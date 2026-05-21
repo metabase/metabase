@@ -316,23 +316,23 @@ export class ApiClient extends EventEmitter<EventMap> {
       const body = await getResponseBody(response);
       const status = getResponseStatus(response, body);
 
-      if (status >= 200 && status <= 299) {
-        // If a transformer is given its return value IS `T`. Otherwise the raw
-        // body is `unknown`; we trust the caller's `T` annotation.
-        return options.transformResponse
-          ? options.transformResponse({ response: unreadResponse })
-          : (body as T);
-      } else {
-        if (this.onResponseError) {
-          this.onResponseError({
-            body,
-            status,
-            metabaseVersion: response.headers.get("X-Metabase-Version"),
-          });
-        }
+      if (status < 200 || status > 299) {
+        this.onResponseError?.({
+          body,
+          status,
+          metabaseVersion: response.headers.get("X-Metabase-Version"),
+        });
 
         throw { status, data: body };
       }
+
+      // If a transformer is given its return value IS `T`. Otherwise the raw
+      // body is `unknown`; we trust the caller's `T` annotation.
+      if (options.transformResponse) {
+        return options.transformResponse({ response: unreadResponse });
+      }
+
+      return body as T;
     } catch (error: unknown) {
       if (options.signal?.aborted) {
         throw { isCancelled: true };
