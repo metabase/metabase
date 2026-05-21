@@ -4,7 +4,6 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
-  PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
@@ -20,6 +19,7 @@ import { LicenseSettingsPage } from "./settings/components/SettingsPages/License
 import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
+import { RemoteSyncSettingsPage } from "./settings/components/SettingsPages/RemoteSyncSettingsPage";
 import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
@@ -65,10 +65,7 @@ export const getSettingsRoutes = () => (
       path="authentication/oidc"
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
     />
-    <Route
-      path="remote-sync"
-      component={() => <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />}
-    />
+    <Route path="remote-sync" component={RemoteSyncSettingsPage} />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />
