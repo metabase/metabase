@@ -6,6 +6,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
+import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
@@ -27,6 +28,8 @@ export function GeneralSettingsPage() {
   const hasHostingFeature = useHasTokenFeature("hosting");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const enableAnonymousTracking = !hasHostingFeature;
+  const { value: cspImgEnabled } = useAdminSetting("csp-img-enabled");
+  const { value: customVizEnabled } = useAdminSetting("custom-viz-enabled");
 
   return (
     <SettingsPageWrapper title={t`General`}>
@@ -90,14 +93,27 @@ export function GeneralSettingsPage() {
         />
 
         <AdminSettingInput
-          name="allowed-img-hosts"
+          name="csp-img-enabled"
+          title={t`Restrict image domains`}
+          description={
+            customVizEnabled
+              ? t`Required by Custom Visualizations. Turn off Custom Visualizations before disabling this setting.`
+              : jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+          }
+          inputType="boolean"
+          disabled={Boolean(customVizEnabled)}
+        />
+
+        <AdminSettingInput
+          name="csp-img-allowed-hosts"
           title={t`Allowed domains for images`}
           description={
-            <>
-              {jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`}
-            </>
+            cspImgEnabled
+              ? jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+              : t`Turn on the "Restrict image domains" setting above to enforce this allowlist.`
           }
           inputType="textarea"
+          disabled={!cspImgEnabled}
         />
       </SettingsSection>
 

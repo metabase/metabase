@@ -122,14 +122,23 @@ x.com`
 
 Allowed iframe hosts.
 
-### `MB_ALLOWED_IMG_HOSTS`
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be on to enable [Custom Visualizations](../visualizations/custom-visualizations.md).
+
+### `MB_CSP_IMG_ALLOWED_HOSTS`
 
 - Type: string
 - Default: `""`
-- [Exported as](../installation-and-operation/serialization.md): `allowed-img-hosts`.
-- [Configuration file name](./config-file.md): `allowed-img-hosts`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
 
-Domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations. Empty by default, which restricts images to those hosted by your Metabase. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
+Comma-separated list of domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations when `MB_CSP_IMG_ENABLED` is on. Empty by default, which restricts images to those hosted by your Metabase instance. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
 
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 

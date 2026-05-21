@@ -122,7 +122,8 @@
             :etl_connections_pg             false
             :dependencies                   false
             :writable_connection            true}
-           (mt/with-temporary-setting-values [custom-viz-enabled true]
+           (mt/with-temporary-setting-values [csp-img-enabled true
+                                              custom-viz-enabled true]
              (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))
 
 (deftest security-center-token-feature-test

@@ -549,14 +549,21 @@
               "Cross-Origin-Embedder-Policy should be in the response"))))))
 
 (deftest csp-header-img-src-tests
-  (testing "img-src is restricted to 'self' and data: by default (no wildcard)"
-    (mt/with-temporary-setting-values [allowed-img-hosts ""]
+  (testing "img-src defaults to wildcard when csp-img-enabled is false (master-compatible behavior)"
+    (mt/with-temporary-setting-values [csp-img-enabled false
+                                       csp-img-allowed-hosts "example.com"]
+      (is (= "img-src *" (csp-directive "img-src")))))
+  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
       (is (= "img-src 'self' data:" (csp-directive "img-src")))))
-  (testing "nil allowed-img-hosts behaves like empty input"
-    (mt/with-temporary-setting-values [allowed-img-hosts nil]
+  (testing "nil csp-img-allowed-hosts behaves like empty input"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts nil]
       (is (= "img-src 'self' data:" (csp-directive "img-src")))))
-  (testing "allowed-img-hosts widens img-src (with wildcard expansion)"
-    (mt/with-temporary-setting-values [allowed-img-hosts "example.com, https://cdn.foo.com/"]
+  (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
       (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
              (csp-directive "img-src"))))))
 
@@ -589,13 +596,15 @@
 
 (deftest csp-header-dev-asset-host-tests
   (testing "in dev, the webpack dev server origin is allowed for img-src and font-src (assets like logos load from there)"
-    (with-redefs [config/is-dev? true]
-      (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
-      (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address))))
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? true]
+        (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
+        (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
   (testing "in prod the dev server origin is not added"
-    (with-redefs [config/is-dev? false]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))
-      (is (= "font-src 'self' data:" (csp-directive "font-src"))))))
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? false]
+        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
 
 (deftest ^:parallel parse-allowed-resource-hosts-test
   (testing "parses like the iframe parser but with no always-allowed seed hosts"
@@ -607,3 +616,11 @@
     (is (= [] (mw.security/parse-allowed-resource-hosts "   "))))
   (testing "invalid hosts are dropped"
     (is (= [] (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
+
+(deftest csp-img-enabled-setter-oss-test
+  (testing "csp-img-enabled can be turned on/off freely when no enterprise custom-viz setter is loaded"
+    (mt/with-temporary-setting-values [csp-img-enabled false]
+      (server.settings/csp-img-enabled! true)
+      (is (true? (server.settings/csp-img-enabled)))
+      (server.settings/csp-img-enabled! false)
+      (is (false? (server.settings/csp-img-enabled))))))

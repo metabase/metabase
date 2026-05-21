@@ -76,12 +76,16 @@ Metabase would only allow iframes from `data.example.com` and `docs.example.com`
 
 See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
 
+## Restrict image domains
+
+Off by default. When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
+
+This setting must be on before you can enable [Custom Visualizations](../visualizations/custom-visualizations.md), because custom viz plugins run third-party code in your Metabase origin and an unrestricted `img-src` policy could allow a malicious plugin to exfiltrate data through image URLs. Once Custom Visualizations are enabled, this setting cannot be turned off until you disable them.
+
 ## Allowed domains for images
 
+Domains that images can load from in dashboard text cards, entity descriptions (like question and dashboard descriptions), and custom visualizations, when the [Restrict image domains](#restrict-image-domains) setting is on. If that setting is off, this allowlist is not enforced and images from any domain are allowed.
 
-Domains that images can load from in dashboard text cards, entity descriptions (like question and dashboard descriptions), and custom visualizations.
-Leave this empty (the default) to only allow images hosted by your Metabase instance. Restricting image domains stops a malicious image URL from sending data to an external server.
+Leave this empty (the default) to only allow images hosted by your Metabase instance.
 
 Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.
-
-> Note: Upgrading from a version before this setting existed: Metabase previously allowed images from any domain. After upgrading, images served from other domains (for example, in Markdown dashboard text or entity descriptions) won't load until you add those domains here.

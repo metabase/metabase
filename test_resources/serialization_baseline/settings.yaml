@@ -2,7 +2,6 @@ agent-api-enabled?: null
 aggregated-query-row-limit: null
 ai-features-enabled?: null
 allowed-iframe-hosts: null
-allowed-img-hosts: null
 analytics-pii-retention-enabled: null
 application-colors: null
 application-favicon-url: null
@@ -14,6 +13,8 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
+csp-img-allowed-hosts: null
+csp-img-enabled: null
 csv-field-separator: nil
 custom-formatting: null
 custom-geojson: null

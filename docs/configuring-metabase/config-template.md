@@ -94,7 +94,6 @@ config:
       linkedin.com,
       twitter.com,
       x.com
-    allowed-img-hosts: ''
     analytics-pii-retention-enabled: false
     anon-tracking-enabled: true
     api-key: null
@@ -113,6 +112,8 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csp-img-allowed-hosts: ''
+    csp-img-enabled: false
     csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null

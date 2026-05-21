@@ -1,8 +1,9 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { useAdminSetting } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -17,6 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 export function CustomVisualizationsManagePage() {
   const customVizLoaded = useHasTokenFeature("custom-viz");
@@ -80,9 +82,11 @@ export function CustomVisualizationsDevelopmentPage() {
 }
 
 const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
+const CSP_IMG_ENABLED_SETTING = "csp-img-enabled";
 
 function CustomVizEmptyState() {
   const { updateSetting } = useAdminSetting(CUSTOM_VIZ_ENABLED_SETTING);
+  const { value: cspImgEnabled } = useAdminSetting(CSP_IMG_ENABLED_SETTING);
   const { sendErrorToast } = useMetadataToasts();
 
   const handleEnable = async () => {
@@ -113,11 +117,28 @@ function CustomVizEmptyState() {
                 {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
               </Text>
             </Stack>
-            <Group gap="sm">
-              <Button variant="filled" onClick={handleEnable}>
+            <Stack gap="xs" align="flex-start">
+              <Button
+                variant="filled"
+                onClick={handleEnable}
+                disabled={!cspImgEnabled}
+              >
                 {t`Enable custom visualizations`}
               </Button>
-            </Group>
+              {!cspImgEnabled && (
+                <Text c="text-tertiary" size="sm">
+                  {jt`Turn on "Restrict image domains" in ${(
+                    <Link
+                      key="link"
+                      to={Urls.generalSettings()}
+                      variant="brand"
+                    >
+                      {t`General settings`}
+                    </Link>
+                  )} before enabling custom visualizations.`}
+                </Text>
+              )}
+            </Stack>
           </Stack>
           <SimpleGrid cols={2} spacing="sm">
             <FeatureCard

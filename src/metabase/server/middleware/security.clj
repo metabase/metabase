@@ -216,9 +216,11 @@
                   :font-src     (into (cond-> ["'self'" "data:"]
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (into (cond-> ["'self'" "data:"]
-                                        config/is-dev? (conj frontend-address))
-                                      (parse-allowed-resource-hosts (server.settings/allowed-img-hosts)))
+                  :img-src      (if (server.settings/csp-img-enabled)
+                                  (into (cond-> ["'self'" "data:"]
+                                          config/is-dev? (conj frontend-address))
+                                        (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts)))
+                                  ["*"])
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
