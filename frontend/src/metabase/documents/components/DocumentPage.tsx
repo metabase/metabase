@@ -70,6 +70,7 @@ import {
   setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
+import { usePrintContextValue } from "../hooks/use-print-context-value";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
@@ -108,41 +109,12 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const store = useStore();
 
-  // --- Print preparation ---
-  // Cards skip data fetches while off-screen (see useNodeInViewport / useCardData).
-  // `isPrinting` forces every card into viewport so their queries fire.
-  // `prepareForPrint` is called by DocumentHeader before window.print():
-  //   1. sets isPrinting=true
-  //   2. waits two frames for React to commit and off-screen card queries to start
-  //   3. polls the Redux store until all card queries finish (or 15 s timeout)
-  // Browser-initiated Cmd+P fires `beforeprint`, which also sets isPrinting=true
-  // (print preview on Chrome/Safari updates live as card data arrives).
-  const [isPrinting, setIsPrinting] = useState(false);
-
-  useEffect(() => {
-    const handleBeforePrint = () => setIsPrinting(true);
-    const handleAfterPrint = () => setIsPrinting(false);
-    window.addEventListener("beforeprint", handleBeforePrint);
-    window.addEventListener("afterprint", handleAfterPrint);
-    return () => {
-      window.removeEventListener("beforeprint", handleBeforePrint);
-      window.removeEventListener("afterprint", handleAfterPrint);
-    };
-  }, []);
-
-  const prepareForPrint = useCallback(async () => {
-    setIsPrinting(true);
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    );
-    const deadline = Date.now() + 15_000;
-    while (Date.now() < deadline) {
-      if (!getAreDocumentCardsLoading(store.getState())) {
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+  const areDocumentCardsReadyForPrint = useCallback(() => {
+    return !getAreDocumentCardsLoading(store.getState());
   }, [store]);
+  const printContextValue = usePrintContextValue({
+    isReady: areDocumentCardsReadyForPrint,
+  });
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
@@ -516,7 +488,7 @@ export const DocumentPage = ({
   }, [isLeaveConfirmModalOpen, documentData]);
 
   return (
-    <PrintContext.Provider value={{ isPrinting, prepareForPrint }}>
+    <PrintContext.Provider value={printContextValue}>
       <PrefetchQueueProvider>
         <Box className={styles.documentPage}>
           {documentData?.archived && <DocumentArchivedEntityBanner />}

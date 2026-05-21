@@ -9,6 +9,8 @@ import { useAsync, useMount } from "react-use";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { ExternalCardDataProvider } from "metabase/documents/contexts/ExternalCardDataContext";
+import { PrintContext } from "metabase/documents/contexts/PrintContext";
+import { usePrintContextValue } from "metabase/documents/hooks/use-print-context-value";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -46,6 +48,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );
+  const printContextValue = usePrintContextValue();
 
   const {
     value: document,
@@ -151,17 +154,19 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
           }}
         >
           {document && editor && (
-            <ExternalCardDataProvider value={externalCardDataValue}>
-              <Box maw={900} mx="auto" p="xl" w="100%">
-                <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-                <div className={S.editorContent}>
-                  <EditorContent
-                    data-testid="document-content"
-                    editor={editor}
-                  />
-                </div>
-              </Box>
-            </ExternalCardDataProvider>
+            <PrintContext.Provider value={printContextValue}>
+              <ExternalCardDataProvider value={externalCardDataValue}>
+                <Box maw={900} mx="auto" p="xl" w="100%">
+                  <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
+                  <div className={S.editorContent}>
+                    <EditorContent
+                      data-testid="document-content"
+                      editor={editor}
+                    />
+                  </div>
+                </Box>
+              </ExternalCardDataProvider>
+            </PrintContext.Provider>
           )}
         </LoadingAndErrorWrapper>
       </EmbedFrame>

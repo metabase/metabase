@@ -1,0 +1,125 @@
+import { act, renderHook } from "@testing-library/react";
+
+import { usePrintContextValue } from "./use-print-context-value";
+
+describe("usePrintContextValue", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.spyOn(global, "requestAnimationFrame").mockImplementation((cb) => {
+      return setTimeout(() => cb(0), 0) as unknown as number;
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  async function flushNextFrame() {
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+  }
+
+  async function flushPrintFrames() {
+    await flushNextFrame();
+    await flushNextFrame();
+  }
+
+  it("sets and clears printing state from browser print events", () => {
+    const { result } = renderHook(() => usePrintContextValue());
+
+    expect(result.current.isPrinting).toBe(false);
+
+    act(() => window.dispatchEvent(new Event("beforeprint")));
+    expect(result.current.isPrinting).toBe(true);
+
+    act(() => window.dispatchEvent(new Event("afterprint")));
+    expect(result.current.isPrinting).toBe(false);
+  });
+
+  it("sets printing state and waits two animation frames before resolving", async () => {
+    const { result } = renderHook(() => usePrintContextValue());
+    let resolved = false;
+    let promise: Promise<void>;
+
+    act(() => {
+      promise = result.current.prepareForPrint().then(() => {
+        resolved = true;
+      });
+    });
+
+    expect(result.current.isPrinting).toBe(true);
+    expect(resolved).toBe(false);
+
+    await flushNextFrame();
+    expect(resolved).toBe(false);
+
+    await flushNextFrame();
+    await promise!;
+    expect(resolved).toBe(true);
+  });
+
+  it("waits until the optional readiness predicate passes", async () => {
+    let ready = false;
+    const isReady = jest.fn(() => ready);
+    const { result } = renderHook(() =>
+      usePrintContextValue({
+        isReady,
+        pollIntervalMs: 100,
+        timeoutMs: 1_000,
+      }),
+    );
+    let resolved = false;
+    let promise: Promise<void>;
+
+    act(() => {
+      promise = result.current.prepareForPrint().then(() => {
+        resolved = true;
+      });
+    });
+
+    await flushPrintFrames();
+
+    expect(isReady).toHaveBeenCalled();
+    expect(resolved).toBe(false);
+
+    ready = true;
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+      await promise!;
+    });
+
+    expect(resolved).toBe(true);
+  });
+
+  it("stops waiting when the readiness timeout expires", async () => {
+    const isReady = jest.fn(() => false);
+    const { result } = renderHook(() =>
+      usePrintContextValue({
+        isReady,
+        pollIntervalMs: 100,
+        timeoutMs: 250,
+      }),
+    );
+    let resolved = false;
+    let promise: Promise<void>;
+
+    act(() => {
+      promise = result.current.prepareForPrint().then(() => {
+        resolved = true;
+      });
+    });
+
+    await flushPrintFrames();
+    expect(resolved).toBe(false);
+
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+      await promise!;
+    });
+
+    expect(resolved).toBe(true);
+  });
+});
