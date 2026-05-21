@@ -314,7 +314,6 @@ export class ApiClient extends EventEmitter {
       const unreadResponse = response.clone();
       const body = await getResponseBody(response);
       const status = getResponseStatus(response, body);
-      const metabaseVersion = response.headers.get("X-Metabase-Version");
 
       if (!options.noEvent) {
         // Strip basename so listeners (app-main.js) see the relative path.
@@ -329,7 +328,11 @@ export class ApiClient extends EventEmitter {
           : (body as T);
       } else {
         if (this.onResponseError) {
-          this.onResponseError({ body, status, metabaseVersion });
+          this.onResponseError({
+            body,
+            status,
+            metabaseVersion: response.headers.get("X-Metabase-Version"),
+          });
         }
 
         throw { status: status, data: body };
