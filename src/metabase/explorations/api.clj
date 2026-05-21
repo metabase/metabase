@@ -14,14 +14,10 @@
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-query-result :as eqr]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -89,13 +85,6 @@
                   :archived_directly     false
                   {:archived false}))))
 
-(defn- find-dimension-target
-  "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted dimension_mappings."
-  [dimension-id dimension-mappings]
-  (some #(when (= (:dimension_id %) dimension-id)
-           (:target %))
-        dimension-mappings))
-
 (defn- exploration-query-dim-label
   "Display label for a dimension inside an ExplorationQuery `name`. When `ambiguous?` and the dim
   has a known group, prefixes with the group's display name and the canonical ` → ` separator
@@ -148,274 +137,6 @@
                   [:threads [:metrics :card] :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))
       (update :threads #(some->> % (mapv attach-query-dimension-labels)))))
-
-(defn- dim-type-isa?
-  "True if the dim's snapshot effective_type or semantic_type derives from `parent`. Snapshot
-  columns arrive as strings (e.g. `\"type/DateTime\"`), so coerce to keywords before `isa?`."
-  [dim parent]
-  (boolean
-   (some (fn [t]
-           (when (some? t)
-             (isa? (keyword t) parent)))
-         [(:effective_type dim) (:semantic_type dim)])))
-
-(defn- default-bucket-for-dim
-  "Pick a default temporal bucket or numeric binning for a dimension based on its snapshot type.
-  Returns one of:
-    `[:temporal unit]`  — apply via `lib/with-temporal-bucket`
-    `[:binning binning]` — apply via `lib/with-binning`
-    `nil`               — no bucket; use a bare breakout (current behavior).
-
-  Resolution order matters: DateTime first (it derives from both HasDate and HasTime), then Date,
-  then Time. Coordinates come before generic numbers because Coordinate also derives from Number."
-  [dim]
-  (cond
-    (dim-type-isa? dim :type/DateTime)   [:temporal :month]
-    (dim-type-isa? dim :type/Date)       [:temporal :day]
-    (dim-type-isa? dim :type/Time)       [:temporal :hour]
-    (dim-type-isa? dim :type/Coordinate) [:binning {:strategy :default}]
-    (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
-    :else                                nil))
-
-(defn- numeric-fingerprint-bounded?
-  "True if `ref-clause` resolves to a column whose `:type/Number` fingerprint has both `:min` and
-  `:max`. False for refs that don't resolve to a real Field (native result columns, expressions),
-  or whose fingerprint is missing/incomplete — those would crash the QP's binning middleware
-  (`metabase.query-processor.middleware.binning/extract-bounds`)."
-  [query ref-clause]
-  (when-let [col (lib/find-matching-column query -1 ref-clause
-                                           (lib/breakoutable-columns query))]
-    (let [{mn :min mx :max} (get-in col [:fingerprint :type :type/Number])]
-      (and (some? mn) (some? mx)))))
-
-(defn- apply-default-bucket
-  "Apply a default temporal bucket / numeric binning to the breakout `ref-clause`, chosen from the
-  dim's snapshot effective/semantic type. Numeric binning is gated on the underlying column having
-  a usable `:min`/`:max` fingerprint — without it the QP throws at preprocess time. Returns the
-  (possibly unchanged) ref."
-  [query ref-clause dim]
-  (let [[kind v] (default-bucket-for-dim dim)]
-    (case kind
-      :temporal (lib/with-temporal-bucket ref-clause v)
-      :binning  (cond-> ref-clause
-                  (numeric-fingerprint-bounded? query ref-clause) (lib/with-binning v))
-      nil       ref-clause)))
-
-(defn- normalize-target-ref
-  "Coerce a JSON-decoded legacy ref (string operator + string-typed option values) into a
-  well-formed MBQL 5 ref via the ref schema. Reused across every candidate variant."
-  [target]
-  (lib/normalize :metabase.lib.schema.ref/ref target))
-
-(defn- extract-default-temporal-breakout-col
-  "If the metric Card's `dataset_query` carries a temporal breakout (its default temporal
-  dimension, e.g. `created_at` bucketed by `:month`), resolve the breakout against the query's
-  visible columns and return `[col raw-unit]`. Returns `nil` if no temporal breakout exists,
-  the column can't be resolved, or column resolution throws (e.g. synthetic test refs whose
-  source table the metadata provider can't load). The raw unit may be `nil` if the metric
-  breakout was unbucketed."
-  [mp card-dataset-query]
-  (try
-    (let [base-query (lib/query mp card-dataset-query)
-          cols       (lib/visible-columns base-query)]
-      (some (fn [bo]
-              (when-let [col (lib/find-matching-column bo cols)]
-                (when (lib.types.isa/temporal? col)
-                  [col (lib/raw-temporal-bucket bo)])))
-            (lib/breakouts base-query)))
-    (catch Exception _ nil)))
-
-(defn- dim-fingerprint-distinct-count
-  "Read `:fingerprint.global.distinct-count` for the column referenced by `ref-clause`, if any.
-  Returns `nil` when the ref doesn't resolve to a real column, the fingerprint is missing, or
-  column resolution throws (e.g. for synthetic refs whose source table the metadata provider
-  can't load)."
-  [query ref-clause]
-  (try
-    (when-let [col (lib/find-matching-column query -1 ref-clause
-                                             (lib/breakoutable-columns query))]
-      (get-in col [:fingerprint :global :distinct-count]))
-    (catch Exception _ nil)))
-
-(defn- build-snapshot-mbql
-  "Wrap the metric Card's `:dataset_query` in a Lib query, drop any breakout the metric carries
-  (its default temporal dimension, e.g. `created_at`), and add a single breakout for the chosen
-  dimension's target. Cards may store their query in legacy MBQL 4 or MBQL 5; `lib/query`
-  normalizes both into MBQL 5 so the QP receives a single, well-formed shape. A default temporal
-  bucket / numeric binning is applied to the ref based on the dim's snapshot type so date/numeric
-  breakouts produce a useful chart out of the box rather than a group-by-every-distinct-value."
-  [mp card-dataset-query target dim]
-  (let [base-query (-> (lib/query mp card-dataset-query) lib/remove-all-breakouts)
-        ref-clause (normalize-target-ref target)]
-    (lib/breakout base-query (apply-default-bucket base-query ref-clause dim))))
-
-(def ^:private time-facet-max-cardinality
-  "Maximum distinct-count for a categorical dim to qualify for a time-faceted variant. Above this,
-  a per-category line series would be unreadable, so we skip the variant."
-  20)
-
-(defn- default-candidate
-  "The existing single-breakout variant: drop the metric's default breakout, add one breakout for
-  the chosen dim with a default bucket/binning. Emits a line for temporal dims, bar for
-  categorical, default-binned bar for numeric."
-  [mp card target dim dim-label]
-  {:query_type    "default"
-   :name          (tru "{0} by {1}" (:name card) dim-label)
-   :display       nil
-   :dataset_query (build-snapshot-mbql mp (:dataset_query card) target dim)})
-
-(defn- temporal-pattern-name
-  "Localized name for a temporal-pattern variant. Each unit gets its own message so translators
-  can reorder the parenthetical."
-  [card dim-label query-type]
-  (case query-type
-    "day-of-week"   (tru "{0} by {1} (day of week)"   (:name card) dim-label)
-    "hour-of-day"   (tru "{0} by {1} (hour of day)"   (:name card) dim-label)))
-
-(defn- temporal-pattern-candidate
-  "Build a single-breakout query bucketing the temporal dim by `unit` (e.g. `:day-of-week`)
-  rather than the dim's default temporal grain. Used to expose seasonality/weekly patterns
-  alongside the trend."
-  [mp card target query-type unit pattern-name]
-  (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-        ref-clause (normalize-target-ref target)]
-    {:query_type    query-type
-     :name          pattern-name
-     :display       nil
-     :dataset_query (lib/breakout base-query (lib/with-temporal-bucket ref-clause unit))}))
-
-(defn- temporal-pattern-candidates
-  "Vector of temporal-pattern variants applicable to `dim`. Day-of-Week applies
-  to any temporal dim (date or datetime). Hour-of-Day applies only to datetime — pure dates have
-  no time-of-day component."
-  [mp card target dim dim-label]
-  (let [pairs (cond-> []
-                (or (dim-type-isa? dim :type/DateTime)
-                    (dim-type-isa? dim :type/Date))
-                (conj ["day-of-week"   :day-of-week])
-                (dim-type-isa? dim :type/DateTime)
-                (conj ["hour-of-day"   :hour-of-day]))]
-    (for [[query-type unit] pairs]
-      (temporal-pattern-candidate mp card target query-type unit
-                                  (temporal-pattern-name card dim-label query-type)))))
-
-(defn- time-facet-candidate
-  "Time-faceted categorical variant: `metric × dim × <metric's default temporal breakout>`,
-  rendered as a line chart with one series per categorical value. Eligibility:
-
-    1. Dim is non-temporal AND non-numeric (no bucket/binning fires today).
-    2. Metric Card carries a temporal breakout in its `dataset_query`.
-    3. Dim's fingerprint distinct-count is <= `time-facet-max-cardinality` (default 20) — above
-       this a per-category line series is unreadable. Missing fingerprints fail closed.
-
-  Returns nil when any condition is unmet."
-  [mp card target dim dim-label]
-  (when (nil? (default-bucket-for-dim dim))
-    (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-          ref-clause (normalize-target-ref target)
-          distinct-n (dim-fingerprint-distinct-count base-query ref-clause)]
-      (when (and (some? distinct-n) (<= distinct-n time-facet-max-cardinality))
-        (when-let [[temporal-col raw-unit] (extract-default-temporal-breakout-col
-                                            mp (:dataset_query card))]
-          {:query_type    "time-facet"
-           :name          (tru "{0} by {1} over time" (:name card) dim-label)
-           :display       "line"
-           :dataset_query (-> base-query
-                              (lib/breakout ref-clause)
-                              (lib/breakout (lib/with-temporal-bucket
-                                              temporal-col (or raw-unit :month))))})))))
-
-(defn- candidates-for-pair
-  "Build every applicable generated-query candidate for one `(metric, dim)` pair. The baseline
-  default candidate is always first; temporal-pattern and time-facet variants are appended only
-  when their eligibility predicates fire. All variants share `(card_id, dimension_id)`, so
-  `auto-groups` collapses them under a single sidebar leaf."
-  [mp card target dim dim-label]
-  (let [base     (default-candidate mp card target dim dim-label)
-        patterns (temporal-pattern-candidates mp card target dim dim-label)
-        facet    (time-facet-candidate mp card target dim dim-label)]
-    (cond-> (into [base] patterns)
-      facet (conj facet))))
-
-(defn- check-no-routed-databases!
-  "Throw a 400 if any metric Card lives in a router database. The worker-cached result blob
-  reflects whichever destination the creator routed to, so different viewers — who would
-  normally route to different destinations — can't safely share it."
-  [cards]
-  (when-let [routed (seq (explorations/routed-database-ids
-                          (into #{} (keep :database_id) (vals cards))))]
-    (let [routed-set (set routed)
-          offenders  (->> (vals cards)
-                          (filter (comp routed-set :database_id))
-                          (map :name))]
-      (throw (ex-info (tru "Cannot create an exploration for metrics on a routed database: {0}"
-                           (str/join ", " offenders))
-                      {:status-code      400
-                       :metric-names     offenders
-                       :routed-databases routed})))))
-
-(defn- generate-queries!
-  "Materialize `exploration_query` rows for each (metric, dimension) pair where the dimension is
-  applicable to the metric — i.e., the metric's snapshotted `dimension_mappings` resolves a
-  target for that dimension. Pairs with no mapping are dropped before enqueue, so the worker
-  never executes a no-breakout duplicate of the metric's own query.
-
-  For each surviving pair, also fans out one additional row per Segment whose `:table-id`
-  matches the metric Card's source table. The unsegmented base row carries `segment_id = nil`;
-  segmented rows snapshot the segment as a `:segment` filter clause inside `dataset_query`."
-  [thread-id metrics dimensions]
-  (when (and (seq metrics) (seq dimensions))
-    (let [cards    (t2/select-pk->fn identity
-                                     [:model/Card :id :name :database_id :dataset_query
-                                      :card_schema :dimensions]
-                                     :id [:in (distinct (map :card_id metrics))])
-          ;; TODO: we should probably check this earlier - i.e. you shouldn't be able to pick dimensions/metrics from
-          ;; routed DBs.
-          _        (check-no-routed-databases! cards)
-          card-ctx (into {} (for [[id card] cards
-                                  :let [mp (lib-be/application-database-metadata-provider (:database_id card))]]
-                              [id {:mp       mp
-                                   :segments (lib/available-segments (lib/query mp (:dataset_query card)))}]))
-          rows     (for [metric metrics
-                         :let  [card (get cards (:card_id metric))]
-                         :when card
-                         :let  [{:keys [mp segments]} (get card-ctx (:card_id metric))
-                                dim-by-id  (into {} (map (juxt :id identity)) (:dimensions card))
-                                applicable (for [dim dimensions
-                                                 :let [dim-id (:dimension_id dim)
-                                                       target (find-dimension-target
-                                                               dim-id (:dimension_mappings metric))
-                                                       group  (:group (get dim-by-id dim-id))]
-                                                 :when target]
-                                             {:dim    (cond-> dim group (assoc :group group))
-                                              :target target})
-                                name-counts (frequencies (keep #(get-in % [:dim :display_name])
-                                                               applicable))]
-                         {:keys [dim target]} applicable
-                         :let  [ambiguous? (> (get name-counts (:display_name dim) 0) 1)
-                                dim-label  (exploration-query-dim-label dim ambiguous?)
-                                candidates (candidates-for-pair mp card target dim dim-label)]
-                         candidate candidates
-                         seg       (if (= "time-facet" (:query_type candidate))
-                                     [nil]
-                                     (cons nil segments))]
-                     {:exploration_thread_id thread-id
-                      :card_id               (:card_id metric)
-                      :segment_id            (:id seg)
-                      :dimension_id          (:dimension_id dim)
-                      :query_type            (:query_type candidate)
-                      :display               (:display candidate)
-                      :name                  (if seg
-                                               (tru "{0} ({1})"
-                                                    (:name candidate)
-                                                    (:name seg))
-                                               (:name candidate))
-                      :dataset_query         (cond-> (:dataset_query candidate)
-                                               seg (lib/filter seg))
-                      :status                "pending"})]
-      (when (seq rows)
-        (t2/insert! :model/ExplorationQuery
-                    (map-indexed (fn [i r] (assoc r :position i)) rows))))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
@@ -598,9 +319,10 @@
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and materialize one `exploration_query` per (metric, dimension) pair. The query
-  rows are inserted with status='pending' for the worker to execute. This is the single
-  \"Start exploration\" call from the UI."
+  and timelines, and stamp the thread as started. The background planning worker (see
+  `metabase.explorations.query-plan`) picks the thread up, calls an LLM to decide which charts
+  to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
+  with an empty queries list; clients should poll `GET /:id/queries` until rows appear."
   [_route-params
    _query-params
    {:keys [name description prompt metrics dimensions timeline_ids]} :- CreateExploration]
@@ -623,15 +345,14 @@
                                    :collection_id         coll-id
                                    :exploration_thread_id tid})
           _           (when (ai-summary/ai-summary-available?)
-                        (ai-summary/create-placeholder-doc! tid api/*current-user-id* coll-id))
-          metric-rows (when (seq metrics)
-                        (t2/insert-returning-instances!
-                         :model/ExplorationThreadMetric
-                         (map-indexed (fn [i m]
-                                        (assoc m
-                                               :exploration_thread_id tid
-                                               :position i))
-                                      metrics)))]
+                        (auto-insights/create-placeholder-doc! tid api/*current-user-id* coll-id))]
+      (when (seq metrics)
+        (t2/insert! :model/ExplorationThreadMetric
+                    (map-indexed (fn [i m]
+                                   (assoc m
+                                          :exploration_thread_id tid
+                                          :position i))
+                                 metrics)))
       (when (seq dimensions)
         (t2/insert! :model/ExplorationThreadDimension
                     (map-indexed (fn [i d]
@@ -646,7 +367,9 @@
                                     :timeline_id           tl-id
                                     :position              i})
                                  timeline_ids)))
-      (generate-queries! tid metric-rows dimensions)
+      ;; Setting `started_at` is the signal to the background planning worker that this
+      ;; thread is ready to plan + execute. The worker's claim predicate matches threads
+      ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
       (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
       (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
         (events/publish-event! :event/exploration-create

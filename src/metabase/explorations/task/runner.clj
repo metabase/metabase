@@ -24,6 +24,7 @@
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.ai-summary :as explorations.ai-summary]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
@@ -412,11 +413,53 @@
                      :id exploration_query_id)))
     :worked))
 
-(defn- run-one-iteration!
-  "Do one unit of work: prefer pending queries, fall back to pending timeline scoring.
-  Returns truthy when something was processed."
+(defn- claim-unplanned-thread!
+  "CAS-claim the next thread that has been started but never planned:
+  `started_at IS NOT NULL`, `query_plan_started_at IS NULL`, and no
+  `exploration_query` rows yet. Returns the claimed thread id, or nil when
+  there's no work or we lost the race. The CAS makes this safe under multiple
+  workers: only one update will affect a given row."
   []
-  (or (run-one-query-iteration!)
+  (let [thread-id (t2/select-one-fn
+                   :id :model/ExplorationThread
+                   {:where    [:and
+                               [:not= :started_at nil]
+                               [:= :query_plan_started_at nil]
+                               [:not-exists {:select [1]
+                                             :from   [:exploration_query]
+                                             :where  [:= :exploration_query.exploration_thread_id
+                                                      :exploration_thread.id]}]]
+                    :order-by [[:id :asc]]
+                    :limit    1})]
+    (when thread-id
+      (when (pos? (t2/update! :model/ExplorationThread
+                              :id                    thread-id
+                              :query_plan_started_at nil
+                              {:query_plan_started_at (OffsetDateTime/now)}))
+        thread-id))))
+
+(defn- run-one-plan-iteration!
+  "Try to claim one unplanned thread and run the LLM planner against it. Returns
+  truthy when work was done so the worker loop knows whether to sleep."
+  []
+  (when-let [thread-id (claim-unplanned-thread!)]
+    (try
+      (explorations.query-plan/generate-query-plan! thread-id)
+      (catch Throwable e
+        (log/errorf e "Exploration thread %d: query plan iteration crashed" thread-id)))
+    ;; A successful plan inserts ExplorationQuery rows; downstream iterations
+    ;; will execute them. A failed plan terminally stamps the thread, so the
+    ;; completion-check we run below is also the right thing — no queries, but
+    ;; `analysis_started_at` is already set so it short-circuits.
+    (maybe-complete-thread! thread-id)
+    :worked))
+
+(defn- run-one-iteration!
+  "Do one unit of work: plan any unplanned threads first, then queries, then
+  timeline scoring. Returns truthy when something was processed."
+  []
+  (or (run-one-plan-iteration!)
+      (run-one-query-iteration!)
       (run-one-timeline-iteration!)))
 
 (defn- worker-loop
