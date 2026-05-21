@@ -506,14 +506,16 @@
   500)
 
 (defn- extract-error-message
-  "Human-readable error string from a JSON envelope map, or nil."
+  "Human-readable error string from a JSON envelope map, or nil.
+  Only accepts string fields; a structured `:error` map without `:message`, or a vector/map
+  under `:detail`/`:message`, returns nil rather than being coerced into the user-facing text."
   [m]
-  (some-> (or (get-in m [:error :message])
+  (let [s (or (get-in m [:error :message])
               (:error m)
               (:detail m)
-              (:message m))
-          str
-          not-empty))
+              (:message m))]
+    (when (string? s)
+      (not-empty s))))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.

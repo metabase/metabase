@@ -895,6 +895,11 @@
     (testing "maps and arrays without a recognised error field → nil (no leak to users)"
       (is (every? nil? (map body-preview [{} {:request-id "abc" :trace ["frame1"]}
                                           [] [42 :kw] [{:request-id "abc"}]]))))
+    (testing "structured values under :error/:detail/:message don't get coerced via str"
+      (is (every? nil? (map body-preview [{:error  {:code 42 :type "x"}}
+                                          {:detail [{:loc ["body" "prompt"]}]}
+                                          {:message {:code "missing"}}
+                                          {:error  42}]))))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))
