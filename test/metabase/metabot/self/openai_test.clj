@@ -186,7 +186,7 @@
                           debug/capture-stream    (fn [r _] r)
                           http/request            (fn [req] {:body req})]
               (is (=? {:method  :post
-                       :url     "https://proxy.example/openai/v1/responses"
+                       :url     "https://proxy.example/llm/openai/v1/responses"
                        :headers {"x-metabase-instance-token" "proxy-token"}
                        :body    string?}
                       (openai/openai-raw {:input [{:role :user :content "hi"}]

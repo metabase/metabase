@@ -249,7 +249,7 @@
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
-                     :url     "https://proxy.example/anthropic/v1/messages"
+                     :url     "https://proxy.example/llm/anthropic/v1/messages"
                      :headers {"x-metabase-instance-token" "proxy-token"}
                      :body    string?}
                     (claude/claude-raw {:input [{:role :user :content "hi"}]
@@ -389,7 +389,7 @@
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
                                       http/request                        (fn [req]
                                                                             (is (=? {:method  :get
-                                                                                     :url     "https://proxy.example/anthropic/v1/models"
+                                                                                     :url     "https://proxy.example/llm/anthropic/v1/models"
                                                                                      :headers {"anthropic-version"         "2023-06-01"
                                                                                                "x-metabase-instance-token" "proxy-token"}}
                                                                                     req))

@@ -55,7 +55,8 @@
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
       (mt/with-premium-features #{:metabase-ai-managed}
-        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+        (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")
+                                    http/request (fn [opts]
                                                    (when (:body opts)
                                                      (reset! captured (json/decode+kw (:body opts))))
                                                    (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
