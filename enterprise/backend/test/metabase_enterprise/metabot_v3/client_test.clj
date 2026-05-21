@@ -161,26 +161,30 @@
 
 (deftest ^:parallel body-preview-test
   (let [body-preview #'metabot-v3.client/body-preview]
-    (testing "nil, unexpected scalars, and unrecognised collections → nil (warn fires for non-nil shapes)"
-      (is (every? nil? (map body-preview [nil 500 :error true [] [42 :kw]]))))
-    (testing "plain strings pass through trimmed"
+    (testing "nil, blanks, bare non-collection scalars, and empty maps/arrays return nil (no preview)"
+      (is (every? nil? (map body-preview [nil "" "   " 500 :error true [] {}]))))
+    (testing "strings pass through trimmed"
       (is (= "Internal Server Error" (body-preview "  Internal Server Error  "))))
-    (testing "JSON envelopes prefer [:error :message] over :error/:detail/:message"
+    (testing "JSON envelopes prefer [:error :message] over top-level :error/:detail/:message"
       (is (= "model decommissioned" (body-preview {:error {:message "model decommissioned" :type "x"}})))
       (is (= "invalid metric"       (body-preview {:error  "invalid metric" :request-id "abc"})))
       (is (= "missing prompt"       (body-preview {:detail "missing prompt"})))
       (is (= "bad request"          (body-preview {:message "bad request"}))))
-    (testing "non-scalar values under :error/:detail/:message don't get str-coerced"
-      (is (every? nil? (map body-preview [{}
-                                          {:request-id "abc" :trace ["frame1"]}
-                                          {:error  {:code 42 :type "x"}}
-                                          {:detail [{:loc ["body" "prompt"]}]}
-                                          {:message {:code "missing"}}
-                                          {:error  {:message {:code 500}}}]))))
     (testing "non-string, blank, or whitespace-only at one key falls through to a later key"
       (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
       (is (= "real error" (body-preview {:error "" :detail "real error"})))
       (is (= "real error" (body-preview {:error "   " :detail "real error"}))))
+    (testing "JSON arrays probe their first element"
+      (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
+      (is (= "first message" (body-preview ["first message" "ignored"]))))
+    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview"
+      (doseq [body [{:request-id "abc" :trace ["frame1"]}
+                    [42 :kw]
+                    [{:request-id "abc"}]
+                    {:error {:code 42 :type "x"}}
+                    {:error {:message {:code 500}}}]]
+        (is (= (pr-str body) (body-preview body))
+            (str "pr-str fallback for " (pr-str body)))))
     (testing "long bodies are truncated to 500 chars with an ellipsis"
       (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))
@@ -206,13 +210,15 @@
                  :response   {:status 500 :body "Internal Server Error"}}
                 data))
         (assert-no-headers! data)))
-    (testing "bodies without an extractable preview yield the canonical message; full body still in ex-data"
+    (testing "bodies without a recognised error field pr-str into the exception message"
       (let [body {:request-id "abc" :trace ["frame1" "frame2"]}
             {:keys [response request]} (check-response!-input {:status        500
                                                                :reason-phrase "Internal Server Error"
                                                                :body          body})
             ex   (is (thrown? Exception (check! response request)))]
-        (is (= "AI service request failed: HTTP 500 Internal Server Error" (ex-message ex)))
+        (is (str/includes? (ex-message ex) "AI service request failed: HTTP 500 Internal Server Error"))
+        (is (str/includes? (ex-message ex) ":request-id")
+            "the unrecognised envelope's pr-str is appended so operators see what we got")
         (is (= body (get-in (ex-data ex) [:response :body])))
         (assert-no-headers! (ex-data ex))))
     (testing "stream bodies get slurped — preview surfaces in the message and the full body survives in ex-data"

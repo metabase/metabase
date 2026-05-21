@@ -95,32 +95,41 @@
       body)
     (catch Throwable _ nil)))
 
+(defn- extract-error-message
+  "Pull a human-readable error string out of a JSON envelope map — `{:error {:message ...}}` or top-level
+  `:error`/`:detail`/`:message`.
+  Only accepts scalars (numbers/keywords/booleans are stringified, but maps/vectors fall through) — a raw
+  envelope under one of these keys would otherwise leak into the user-facing message. Per-lookup filtering
+  also means a non-string/blank value at one key falls through to the next, e.g.
+  `{:error \"\" :detail \"real msg\"}` → \"real msg\"."
+  [m]
+  (let [scalar (fn [v] (when-not (coll? v) (not-empty (str/trim (str v)))))]
+    (or (scalar (get-in m [:error :message]))
+        (scalar (get m :error))
+        (scalar (get m :detail))
+        (scalar (get m :message)))))
+
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
-  Pulls the upstream error string out of JSON envelopes — both `{:error {:message ...}}` and top-level
-  `:error`/`:detail`/`:message`.
-  Returns nil for shapes with no recognised human-readable field — the full body still lives in the log line
-  and `ex-data`, so users don't see raw `{:request-id ...}` blobs."
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn —
+  better some context than none, and the warn tells operators to add the envelope shape to
+  [[extract-error-message]]. Nil/empty bodies return nil."
   [body]
-  (let [s (cond
-            (nil? body)    nil
-            (string? body) body
-            (map? body)    (let [scalar (fn [v] (when-not (coll? v) (not-empty (str/trim (str v)))))]
-                             ;; Only accept scalars under :error/:detail/:message (and the nested
-                             ;; [:error :message]) — `{:error {:code 500}}` or `{:detail [{:loc ...}]}`
-                             ;; (FastAPI-style validation errors) would otherwise be `str`-coerced and
-                             ;; leak the raw envelope into the user message. Per-lookup filtering also
-                             ;; means a non-string or blank value at one key falls through to the next,
-                             ;; e.g. `{:error "" :detail "real msg"}` → "real msg".
-                             (or (scalar (get-in body [:error :message]))
-                                 (scalar (get body :error))
-                                 (scalar (get body :detail))
-                                 (scalar (get body :message))))
-            :else          (do (log/warnf (str "body-preview: unexpected body shape (type=%s), falling back to nil "
-                                               "preview — the full body is still in ex-data and the "
-                                               "failure-boundary warn log")
-                                          (some-> body class .getName))
-                               nil))]
+  (let [extracted (cond
+                    (nil? body)        nil
+                    (string? body)     body
+                    (map? body)        (extract-error-message body)
+                    (sequential? body) (let [head (first body)]
+                                         (cond
+                                           (map? head)    (extract-error-message head)
+                                           (string? head) head
+                                           :else          nil))
+                    :else              nil)
+        s         (or extracted
+                      (when (and (or (map? body) (sequential? body)) (seq body))
+                        (let [printed (pr-str body)]
+                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" printed)
+                          printed)))]
     (when-let [trimmed (some-> s str/trim not-empty)]
       (if (<= (count trimmed) max-body-preview-chars)
         trimmed
