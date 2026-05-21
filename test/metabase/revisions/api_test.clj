@@ -355,7 +355,7 @@
       (t2/update! :model/Card :id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
 
-;; 5. change collection
+      ;; 5. change collection
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
 
@@ -405,7 +405,7 @@
       (t2/update! :model/Card :id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
 
-;; 4. change collection
+      ;; 4. change collection
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
 
@@ -452,7 +452,7 @@
                                                :name        "New name"})
           (create-card-revision! card-id false :crowberto)
 
-;; 2. revert to an earlier revision
+          ;; 2. revert to an earlier revision
           (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
             (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 

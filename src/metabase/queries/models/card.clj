@@ -135,10 +135,10 @@
    ;; Cards in audit collection should not be writable.
    (and
     (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+          ;; We want to make sure there's an existing audit collection before doing the equality check below.
+          ;; If there is no audit collection, this will be nil:
           (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+          ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -390,8 +390,8 @@
                                  :text    :string/=
                                  :number  :number/=
                                  :boolean :boolean/=
-                                ;; fallback; should be unreachable since :when filters
-                                ;; to raw-value-template-tag-types
+                                 ;; fallback; should be unreachable since :when filters
+                                 ;; to raw-value-template-tag-types
                                  :string/=))
      :target   (if (= tag-type :dimension)
                  [:dimension [:template-tag (:name tag)]]
@@ -789,8 +789,8 @@
         (assoc :metabase_version config/mb-version-string
                :card_schema current-schema-version)
         queries.schema/normalize-card
-      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-      ;; since we're removing `:ident`s; we can probably remove this now.
+        ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
+        ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert

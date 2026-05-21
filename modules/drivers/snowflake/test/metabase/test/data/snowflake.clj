@@ -212,9 +212,9 @@
             (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
                                    dataset-name))
-           ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-           ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-           ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
             (catch Throwable e
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))

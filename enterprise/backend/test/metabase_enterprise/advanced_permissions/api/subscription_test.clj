@@ -89,8 +89,8 @@
             (mt/with-temp [:model/User                       {sub-creator-id :id} {:email "drift@example.com"}
                            :model/PermissionsGroup           {group-id :id}       {}
                            :model/PermissionsGroupMembership _                    {:user_id sub-creator-id :group_id group-id}]
-            ;; Subscription creator initially has full download perms on the products table.
-            ;; The card is authored by crowberto (admin) — never the subscription creator.
+              ;; Subscription creator initially has full download perms on the products table.
+              ;; The card is authored by crowberto (admin) — never the subscription creator.
               (perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
               (perms/set-table-permission! group-id (mt/id :products) :perms/create-queries :query-builder)
               (perms/set-table-permission! group-id (mt/id :products) :perms/download-results :one-million-rows)
@@ -124,8 +124,8 @@
                       (is (seq (csv-attachments-of captured))
                           "expected at least one CSV attachment when subscription creator has full perms")))
                   (testing "after subscription creator's perms drift to :no → CSV attachment is dropped"
-                  ;; Must revoke from BOTH the user's group AND the All Users group, since the user
-                  ;; is implicitly in All Users and download-perms-level takes the max across groups.
+                    ;; Must revoke from BOTH the user's group AND the All Users group, since the user
+                    ;; is implicitly in All Users and download-perms-level takes the max across groups.
                     (perms/set-table-permission! group-id (mt/id :products) :perms/download-results :no)
                     (perms/set-table-permission! (perms/all-users-group) (mt/id :products) :perms/download-results :no)
                     (let [captured (notification.tu/with-captured-channel-send!

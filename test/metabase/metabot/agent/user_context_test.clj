@@ -331,7 +331,7 @@
   (testing "table viewing context includes measures and segments when present"
     (mt/with-dynamic-fn-redefs [entity-details/get-table-details
                                 (fn [{:keys [table-id with-measures? with-segments?]}]
-                    ;; Verify that with-measures? and with-segments? are requested
+                                  ;; Verify that with-measures? and with-segments? are requested
                                   (is (true? with-measures?) "should request measures")
                                   (is (true? with-segments?) "should request segments")
                                   {:structured-output

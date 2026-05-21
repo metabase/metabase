@@ -148,7 +148,7 @@
       {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
       "<script>alert(1)</script>"
 
-        ;; Characters in the original text are not escaped
+      ;; Characters in the original text are not escaped
       "_*{{foo}}*_"
       {"foo" {:type :string/= :value "*bar*"}}
       "_**bar**_")))
@@ -401,7 +401,7 @@
                      :default "Q1-2021"
                      :type "date/quarter-year",
                      :sectionId "date"}
-    ;; Filter without default, should not be included in subscription
+                    ;; Filter without default, should not be included in subscription
                     {:name "Product title contains",
                      :slug "product_title_contains",
                      :id "acd0dfab",
