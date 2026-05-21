@@ -116,6 +116,7 @@
      enterprise/transforms-inspector
      events
      formatter
+     global-system
      initialization-status
      interestingness
      internal-stats
@@ -131,7 +132,6 @@
      pulse
      remote-sync
      request
-     root
      search
      secrets
      server
