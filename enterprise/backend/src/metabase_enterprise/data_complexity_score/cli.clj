@@ -29,7 +29,6 @@
   and the same bootstrap-dispatched [[entrypoint]] hook."
   (:require
    [clojure.java.io :as io]
-   [clojure.pprint :as pprint]
    [clojure.tools.cli :as cli]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
@@ -37,7 +36,8 @@
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
-   [metabase.app-db.core :as mdb]))
+   [metabase.app-db.core :as mdb]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,7 +84,7 @@
     :default unset
     :parse-fn #(case % "true" true "false" false ::invalid)
     :validate [#(not= % ::invalid) "--write-to-appdb must be 'true' or 'false'."]]
-   ["-o" "--output PATH"             "Write EDN result to this file instead of stdout."]
+   ["-o" "--output PATH"             "Write pretty JSON to a file instead of single-line JSON on stdout."]
    ;; Consumed by `metabase.core.bootstrap` when invoked as `java -jar metabase.jar --mode …`. Declared
    ;; here so tools.cli accepts it and `parse-opts` doesn't report it as an unknown flag.
    [nil  "--mode MODE"               "(JAR invocation only; handled by bootstrap before reaching this CLI.)"]
@@ -96,17 +96,11 @@
        "  java -jar metabase.jar --mode complexity-score [options]\n\n"
        "Options:\n" summary))
 
-(defn- pretty [result]
-  (with-out-str
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (pprint/pprint result)))
-
 (defn- write-result! [result output-path]
   (if output-path
-    (spit output-path (pretty result))
+    (spit output-path (json/encode result {:pretty true}))
     (do
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (print (pretty result))
+      (output! (json/encode result))
       (flush))))
 
 (defn- resolve-write?
