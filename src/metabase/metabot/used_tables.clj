@@ -29,7 +29,10 @@
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Callable Executors ExecutorService ThreadFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -231,7 +234,7 @@
   (mapv (fn [id] {:message_id message-id :table_id id})
         table-ids))
 
-(defn extract-used-tables
+(defn- extract-used-tables
   "Walk the `parts` vector and return rows for `metabot_used_table`.
 
   One row per distinct `(message-id, table-id)` pair. Returns `[]` when nothing was referenced.
@@ -266,7 +269,7 @@
          all-tables (into tables (collect-tables queries))]
      (->rows message-id all-tables))))
 
-(defn extract-used-tables-with-timing
+(defn- extract-used-tables-with-timing
   "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics."
   [message-id parts]
   (let [start (u/start-timer)]
@@ -279,3 +282,49 @@
         (analytics/inc! :metabase-metabot/used-tables-extraction-errors)
         (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
         (throw t)))))
+
+(def ^:dynamic *run-synchronously?*
+  "When true, [[record-used-tables!]] extracts and inserts on the calling thread instead of the
+  background executor. Bound to true in tests so assertions can read `metabot_used_table` rows
+  immediately after a turn is finalized, and so the work participates in the test's rollback transaction."
+  false)
+
+(defonce ^:private executor
+  ;; Small fixed pool of daemon threads, isolated from `metabase.util.quick-task` so a slow
+  ;; extraction can't queue behind table syncs/fingerprinting (or vice versa). Two threads give
+  ;; some headroom for the multi-second BFS+macaw walk when several turns finalize at once; rows
+  ;; are keyed by distinct `message_id`, so concurrent inserts don't contend.
+  (delay (Executors/newFixedThreadPool
+          2
+          (reify ThreadFactory
+            (newThread [_ r]
+              (doto (Thread. r)
+                (.setName "metabot-used-tables-worker")
+                (.setDaemon true)))))))
+
+(defn- extract-and-insert!
+  "Extract used tables from `parts` and insert `metabot_used_table` rows for `message-id`.
+  Best-effort: any failure (extraction *or* insert) is logged and swallowed, since this runs
+  off the turn-finalization path and must never surface to the user. For example, a table
+  deleted between query generation and now would make the row's `table_id` FK invalid."
+  [message-id parts]
+  (try
+    (let [rows (extract-used-tables-with-timing message-id parts)]
+      (when (seq rows)
+        (t2/insert! :model/MetabotUsedTable rows)))
+    (catch Throwable e
+      (log/warn e "Failed to record metabot used tables for message" message-id))))
+
+(defn record-used-tables!
+  "Extract used tables from `parts` and persist `metabot_used_table` rows for `message-id`.
+
+  The extraction can be slow for large native queries, so by default this is handed off to a background [[executor]]
+  and returns immediately. Callers must already have committed the message row so the `message_id` FK is
+  valid.
+
+  Binding [[*run-synchronously?*]] true runs the work inline on the calling thread instead (used in tests)."
+  [message-id parts]
+  (if *run-synchronously?*
+    (extract-and-insert! message-id parts)
+    (.submit ^ExecutorService @executor
+             ^Callable (bound-fn* #(extract-and-insert! message-id parts)))))

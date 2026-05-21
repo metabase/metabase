@@ -235,12 +235,11 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ;; `extract-used-tables` needs the value before `strip-tool-output-bloat` so it can see keys that strip
+        ;; used-table extraction needs the value before `strip-tool-output-bloat` so it can see keys that strip
         ;; discards, e.g. `:transform`
         pre-strip  (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
                         (filter streaming/persistable-data-part?))
-        used-rows  (used-tables/extract-used-tables-with-timing assistant-msg-id pre-strip)
         content    (mapv strip-tool-output-bloat pre-strip)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
@@ -259,14 +258,10 @@
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
                     channel-id   (assoc :channel_id channel-id))))
-    ;; Runs *after* the message-UPDATE transaction commits so this write cannot fail the turn. For example, in case a
-    ;; table is deleted between the time the query was generated and now, resulting in an invalid table_id FK.
-    (when (seq used-rows)
-      (try
-        (t2/insert! :model/MetabotUsedTable used-rows)
-        (catch Exception e
-          (log/warn e "Failed to record metabot used tables for message"
-                    assistant-msg-id))))))
+    ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
+    ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
+    ;; `message_id` FK is valid even before the UPDATE completes.
+    (used-tables/record-used-tables! assistant-msg-id pre-strip)))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."

@@ -102,7 +102,7 @@
 ;;; ---------------------------------------- empty/no-op (no DB) ----------------------------------------
 
 (deftest ^:parallel empty-parts-returns-nothing-test
-  (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 []))))
+  (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 1 []))))
 
 (deftest ^:parallel non-query-tool-skipped-test
   (testing "tool calls outside `query-generation-tool-names` produce no rows"
@@ -114,14 +114,14 @@
                   :id     "n1"
                   :result {:output            "ok"
                            :structured-output {:query-id "ignored"}}}]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 (deftest ^:parallel errored-tool-output-skipped-test
   (testing "tool outputs with :error are dropped even with structured-output"
     (let [parts [(notebook-input "c1")
                  (-> (notebook-output "c1" (table-query (meta/id :orders)))
                      (assoc :error "exploded"))]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 (deftest ^:parallel missing-structured-output-skipped-test
   (testing "tool outputs without :structured-output are dropped"
@@ -129,12 +129,12 @@
                  {:type   :tool-output
                   :id     "c1"
                   :result {:output "<result>failed</result>"}}]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 (deftest ^:parallel orphan-tool-input-skipped-test
   (testing "tool-inputs without a matching tool-output yield no rows"
     (let [parts [(notebook-input "c1")]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 1 parts))))))
 
 ;;; ---------------------------------------- notebook ----------------------------------------
 
@@ -142,7 +142,7 @@
   (testing "construct_notebook_query with :source-table yields one table row"
     (let [parts [(notebook-input "c1")
                  (notebook-output "c1" (table-query (meta/id :orders)))]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -153,7 +153,7 @@
           mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)) :question)])
           parts   [(notebook-input "c1")
                    (notebook-output "c1" (card-query mp card-id))]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -164,7 +164,7 @@
           mp      (mp+cards [(mock-card card-id (table-query (meta/id :orders)) :model)])
           parts   [(notebook-input "c1")
                    (notebook-output "c1" (card-query mp card-id))]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -178,7 +178,7 @@
                                         :metric)])
           parts   [(notebook-input "c1")
                    (notebook-output "c1" (card-query mp card-id))]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -191,7 +191,7 @@
                            (mock-card a-id (card-query mp-b 2))])
           parts [(notebook-input "c1")
                  (notebook-output "c1" (card-query mp a-id))]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -207,7 +207,7 @@
           parts     [(notebook-input "c1")
                      (notebook-output "c1" (card-query mp card-id))]]
       (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
-        (let [rows (used-tables/extract-used-tables mp 99 parts)]
+        (let [rows (#'used-tables/extract-used-tables mp 99 parts)]
           (is (= [] rows))
           (is (some #(re-find (re-pattern (str absent-id)) (:message %)) (logs))
               "warn line mentions the missing card id"))))))
@@ -225,7 +225,7 @@
                            (mock-card a-id (card-query mp-b 2))])
           parts [(notebook-input "c1")
                  (notebook-output "c1" (card-query mp a-id))]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders)}
              (table-ids rows))))))
 
@@ -237,7 +237,7 @@
                            (mock-card m-id (card-query mp-q 2) :model)])
           parts [(notebook-input "c1")
                  (notebook-output "c1" (card-query mp m-id))]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders)}
              (table-ids rows))))))
 
@@ -249,7 +249,7 @@
                            (mock-card q-id (card-query mp-m 2))])
           parts [(notebook-input "c1")
                  (notebook-output "c1" (card-query mp q-id))]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders)}
              (table-ids rows))))))
 
@@ -260,7 +260,7 @@
                     lib/append-stage)
           parts [(notebook-input "c1")
                  (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{(meta/id :orders)}
              (table-ids rows))))))
 
@@ -273,7 +273,7 @@
                     (lib/join (lib.metadata/table mp (meta/id :people))))
           parts [(notebook-input "c1")
                  (notebook-output "c1" query)]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
@@ -285,7 +285,7 @@
                       (lib/join (lib.metadata/card mp card-id)))
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
@@ -297,7 +297,7 @@
                        (lib/join (lib.metadata/card mp model-id)))
           parts    [(notebook-input "c1")
                     (notebook-output "c1" query)]
-          rows     (used-tables/extract-used-tables mp 99 parts)]
+          rows     (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
@@ -309,7 +309,7 @@
           mp                   (mp+cards [(mock-card card-id card-query-with-join)])
           parts                [(notebook-input "c1")
                                 (notebook-output "c1" (card-query mp card-id))]
-          rows                 (used-tables/extract-used-tables mp 99 parts)]
+          rows                 (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
@@ -323,7 +323,7 @@
                       (lib/join (lib.metadata/card mp mid-id)))
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :people)}
              (table-ids rows))))))
 
@@ -338,7 +338,7 @@
           query   (lib/breakout base cat-col)
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows    (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :products)}
              (table-ids rows))))))
 
@@ -350,7 +350,7 @@
           query   (lib/filter base (lib/= cat-col "Widget"))
           parts   [(notebook-input "c1")
                    (notebook-output "c1" query)]
-          rows    (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows    (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :products)}
              (table-ids rows))))))
 
@@ -365,7 +365,7 @@
           mp      (mp+cards [(mock-card card-id inner)])
           parts   [(notebook-input "c1")
                    (notebook-output "c1" (card-query mp card-id))]
-          rows    (used-tables/extract-used-tables mp 99 parts)]
+          rows    (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(meta/id :orders) (meta/id :products)}
              (table-ids rows))))))
 
@@ -379,7 +379,7 @@
                                                           {:tables [{:table-id order-id}]})]
         (let [parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                      (sql-output "s1" sql (meta/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+              rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= [{:message_id 99
                    :table_id   order-id}]
                  rows)))))))
@@ -393,7 +393,7 @@
               sql   (format "SELECT * FROM {{#%s}}" card-id)
               parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                      (sql-output "s1" sql (meta/id) (native-query mp sql))]
-              rows  (used-tables/extract-used-tables mp 99 parts)]
+              rows  (#'used-tables/extract-used-tables mp 99 parts)]
           (is (some #(= % {:message_id 99
                            :table_id   (meta/id :orders)})
                     rows)))))))
@@ -422,7 +422,7 @@
         (let [parts [(sql-input "s1" "create_sql_query"
                                 {:database_id (meta/id) :sql_query outer-sql})
                      (sql-output "s1" outer-sql (meta/id) (native-query mp outer-sql))]
-              rows  (used-tables/extract-used-tables mp 99 parts)]
+              rows  (#'used-tables/extract-used-tables mp 99 parts)]
           (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
           (is (= #{orders-id people-id}
                  (table-ids rows))
@@ -436,7 +436,7 @@
             parts [(sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                    (sql-output "s1" sql (meta/id) (native-query sql))]]
         (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
-          (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts)))
+          (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)))
           (is (some #(re-find #"tables-for-native error" (:message %)) (logs))))))))
 
 ;;; ---------------------------------------- native (SQL) — real macaw ----------------------------------------
@@ -451,7 +451,7 @@
           mp    (mt/metadata-provider)
           parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
                  (sql-output "s1" sql (mt/id) (lib/native-query mp sql))]
-          rows  (used-tables/extract-used-tables mp 99 parts)]
+          rows  (#'used-tables/extract-used-tables mp 99 parts)]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (table-ids rows))))))
 
@@ -467,7 +467,7 @@
             mp       (mt/metadata-provider)
             parts    [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
                       (sql-output "s1" sql (mt/id) (lib/native-query mp sql))]
-            rows     (used-tables/extract-used-tables mp 99 parts)]
+            rows     (#'used-tables/extract-used-tables mp 99 parts)]
         (is (= #{(mt/id :orders) (mt/id :products)}
                (table-ids rows)))))))
 
@@ -530,7 +530,7 @@
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
         (let [parts [(transform-sql-input "t1")
                      (transform-sql-output "t1" (meta/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+              rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= [{:message_id 99 :table_id orders-id}]
                  rows)))))))
 
@@ -546,7 +546,7 @@
                                                            {:alias "p" :table_id people-id
                                                             :schema "PUBLIC" :database_id (meta/id)}]})
                      (transform-sql-output "t1" (meta/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+              rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= #{orders-id people-id}
                  (table-ids rows))
               "macaw-derived `orders` and arg-declared `people` both surface, deduped")
@@ -558,7 +558,7 @@
       (let [parts [(transform-sql-input "t1")
                    (-> (transform-sql-output "t1" (meta/id) (native-query "SELECT 1"))
                        (assoc :error "boom"))]]
-        (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts)))))))
+        (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)))))))
 
 (deftest ^:parallel transform-sql-without-query-source-yields-nothing-test
   (testing "no rows if the suggested transform has no [:source :query] or :source_tables"
@@ -569,7 +569,7 @@
                            :structured-output {:transform {:source {:type "query"}}
                                                :thinking  "x"
                                                :message   "ok"}}}]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 (deftest ^:parallel transform-python-extracts-declared-source-tables-test
   (testing "write_transform_python yields one row per declared `:source_tables` entry"
@@ -580,7 +580,7 @@
                   [{:alias "o" :table_id orders-id :schema "PUBLIC" :database_id (meta/id)}
                    {:alias "p" :table_id people-id :schema "PUBLIC" :database_id (meta/id)}])
                  (transform-python-output "t1")]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= #{orders-id people-id}
              (table-ids rows)))
       (is (= 2 (count rows))))))
@@ -589,7 +589,7 @@
   (testing "write_transform_python with an empty source_tables list yields no rows"
     (let [parts [(transform-python-input "t1" [])
                  (transform-python-output "t1")]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 (deftest ^:parallel transform-python-errored-output-skipped-test
   (testing "an errored write_transform_python output yields no rows, even if arguments declare tables"
@@ -598,14 +598,14 @@
                   [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])
                  (-> (transform-python-output "t1")
                      (assoc :error "boom"))]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 (deftest ^:parallel transform-python-orphan-input-yields-nothing-test
   (testing "a write_transform_python tool-input without a matching tool-output yields no rows"
     (let [parts [(transform-python-input
                   "t1"
                   [{:alias "o" :table_id (meta/id :orders) :schema "PUBLIC" :database_id (meta/id)}])]]
-      (is (= [] (used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
+      (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts))))))
 
 ;;; ---------------------------------------- combined tool calls ----------------------------------------
 
@@ -620,7 +620,7 @@
                      (notebook-output "n1" (table-query orders-id))
                      (sql-input "s1" "create_sql_query" {:database_id (meta/id) :sql_query sql})
                      (sql-output "s1" sql (meta/id) (native-query sql))]
-              rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+              rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= #{orders-id people-id}
                  (table-ids rows))))))))
 
@@ -639,7 +639,7 @@
       (mt/with-dynamic-fn-redefs [used-tables/card-query (fn [m cid]
                                                            (swap! calls conj cid)
                                                            (orig m cid))]
-        (let [rows (used-tables/extract-used-tables mp 99 parts)]
+        (let [rows (#'used-tables/extract-used-tables mp 99 parts)]
           (is (= [{:message_id 99
                    :table_id   (meta/id :orders)}]
                  rows))
@@ -653,7 +653,7 @@
                  (notebook-output "c1" (table-query (meta/id :orders)))
                  (notebook-input "c2")
                  (notebook-output "c2" (table-query (meta/id :orders)))]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 99 parts)]
+          rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
       (is (= [{:message_id 99
                :table_id   (meta/id :orders)}]
              rows)))))
@@ -664,7 +664,7 @@
                  (notebook-output "c1" (table-query (meta/id :orders)))
                  (notebook-input "c2")
                  (notebook-output "c2" (table-query (meta/id :people)))]
-          rows  (used-tables/extract-used-tables meta/metadata-provider 42 parts)]
+          rows  (#'used-tables/extract-used-tables meta/metadata-provider 42 parts)]
       (is (every? #(= 42 (:message_id %)) rows))
       (is (= 2 (count rows))))))
 
@@ -685,20 +685,20 @@
     (let [reset! #(run! prometheus/clear! extraction-metrics)]
       (testing "extract-used-tables-with-timing increments the total counter, leaves errors at 0, and returns the body"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] [::row])]
-          (is (= [::row] (used-tables/extract-used-tables-with-timing 1 [])))
+          (is (= [::row] (#'used-tables/extract-used-tables-with-timing 1 [])))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-total)))
           (is (= 0.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))))
       (reset!)
       (testing "extract-used-tables-with-timing increments the errors counter and rethrows when extraction throws"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] (throw (ex-info "boom" {})))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                                (used-tables/extract-used-tables-with-timing 1 [])))
+                                (#'used-tables/extract-used-tables-with-timing 1 [])))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-total)))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))))
       (reset!)
       (testing "extract-used-tables-with-timing observes the duration histogram"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] (Thread/sleep 1) [])]
-          (used-tables/extract-used-tables-with-timing 1 [])
+          (#'used-tables/extract-used-tables-with-timing 1 [])
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/used-tables-extraction-duration-ms))))))
       (reset!)
       (testing "caught exception increments the warnings counter (by :reason) without touching errors"
@@ -708,7 +708,7 @@
               mp    (mp+cards [(mock-card 1 (card-query mp0 2))])
               parts [(notebook-input "c1")
                      (notebook-output "c1" (card-query mp 1))]]
-          (is (= [] (used-tables/extract-used-tables mp 99 parts)))
+          (is (= [] (#'used-tables/extract-used-tables mp 99 parts)))
           (is (= 0.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-warnings
                                       {:reason :card-missing}))))))))

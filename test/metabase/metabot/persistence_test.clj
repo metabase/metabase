@@ -8,6 +8,7 @@
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
@@ -659,13 +660,39 @@
                                           conversation-id
                                           "internal"
                                           {:role "user" :content "go"})]
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id))))
+          (is (=? [{:message_id assistant-msg-id
+                    :table_id table-id}]
+                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+
+(deftest finalize-records-used-tables-in-background-test
+  (testing "with the default (non-synchronous) path, finalize-assistant-turn! eventually records used tables on the background worker"
+    ;; No rollback transaction and no `*run-synchronously?*` binding: the extraction + insert run on
+    ;; the background executor (its own connection), so we commit real rows and clean up in `finally`.
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [table-id                   (mt/id :orders)
+            conversation-id            (str (random-uuid))
+            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                        conversation-id
+                                        "internal"
+                                        {:role "user" :content "go"})]
+        (try
           (metabot-persistence/finalize-assistant-turn!
            conversation-id
            assistant-msg-id
            (into [{:type :text :text "ok"}] (->notebook-parts "c1" table-id)))
           (is (=? [{:message_id assistant-msg-id
-                    :table_id table-id}]
-                  (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
+                    :table_id   table-id}]
+                  (tu/poll-until 5000
+                                 (seq (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))
+          (finally
+            ;; CASCADE from metabot_message cleans up the used-table row.
+            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
 (defn- ->transform-python-parts
   "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table.
@@ -722,10 +749,11 @@
                                           conversation-id
                                           "transforms_codegen"
                                           {:role "user" :content "make a transform"})]
-          (metabot-persistence/finalize-assistant-turn!
-           conversation-id
-           assistant-msg-id
-           (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id)))
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id))))
           (is (=? [{:message_id assistant-msg-id
                     :table_id   table-id}]
                   (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
@@ -740,12 +768,13 @@
                                           conversation-id
                                           "transforms_codegen"
                                           {:role "user" :content "make a SQL transform"})]
-          (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
-            (metabot-persistence/finalize-assistant-turn!
-             conversation-id
-             assistant-msg-id
-             (into [{:type :text :text "ok"}]
-                   (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders"))))
+          (binding [used-tables/*run-synchronously?* true]
+            (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id
+               assistant-msg-id
+               (into [{:type :text :text "ok"}]
+                     (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders")))))
           (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
                   (t2/select :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
@@ -758,18 +787,19 @@
                                           conversation-id
                                           "internal"
                                           {:role "user" :content "go"})]
-          (metabot-persistence/finalize-assistant-turn!
-           conversation-id
-           assistant-msg-id
-           [{:type      :text
-             :text      "just text"}
-            {:type      :tool-input
-             :id        "n1"
-             :function  "navigate_user"
-             :arguments {}}
-            {:type      :tool-output
-             :id        "n1"
-             :result    {:output "ok"}}])
+          (binding [used-tables/*run-synchronously?* true]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id
+             assistant-msg-id
+             [{:type      :text
+               :text      "just text"}
+              {:type      :tool-input
+               :id        "n1"
+               :function  "navigate_user"
+               :arguments {}}
+              {:type      :tool-output
+               :id        "n1"
+               :result    {:output "ok"}}]))
           (is (zero? (t2/count :model/MetabotUsedTable :message_id assistant-msg-id))))))))
 
 (deftest insert-failure-does-not-fail-finalize-test
@@ -781,15 +811,16 @@
                                           conversation-id
                                           "internal"
                                           {:role "user" :content "go"})]
-          (with-redefs [used-tables/extract-used-tables (fn [_ _]
-                                                          [{:message_id assistant-msg-id :table_id 1}])
+          (with-redefs [used-tables/extract-used-tables-with-timing (fn [_ _]
+                                                                      [{:message_id assistant-msg-id :table_id 1}])
                         t2/insert! (fn [& _]
                                      (throw (ex-info "boom" {})))]
-            (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
-              (metabot-persistence/finalize-assistant-turn!
-               conversation-id
-               assistant-msg-id
-               [{:type :text :text "ok"}])
+            (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]
+              (binding [used-tables/*run-synchronously?* true]
+                (metabot-persistence/finalize-assistant-turn!
+                 conversation-id
+                 assistant-msg-id
+                 [{:type :text :text "ok"}]))
               (is (=? {:finished true
                        :data     [{:type "text" :text "ok"}]}
                       (t2/select-one :model/MetabotMessage assistant-msg-id))
