@@ -25,6 +25,7 @@ import {
 } from "metabase/redux/query-builder";
 import type {
   DashboardSidebarName,
+  DashboardState,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -305,10 +306,15 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast away the Immer draft type to avoid a `possibly infinite` type
+          // instantiation error when comparing the deep StoreDashboard type.
+          const dashboards = state as unknown as DashboardState["dashboards"];
+          return {
+            ...dashboards,
+            [id]: newDashboard(dashboards[id], attributes, isDirty),
+          };
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         state[dashcard.dashboard_id].dashcards.push(dashcard.id);
