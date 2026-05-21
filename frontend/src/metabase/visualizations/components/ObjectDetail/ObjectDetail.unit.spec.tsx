@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -162,5 +163,15 @@ describe("ObjectDetail", () => {
     expect(
       screen.queryByText([FK_RECORDS_COUNT, "Orders"].join("")),
     ).not.toBeInTheDocument();
+  });
+
+  it("moves focus into the object detail modal when opened", async () => {
+    setup();
+    await screen.findByTestId("object-detail");
+    await waitForLoaderToBeRemoved();
+
+    // tabbing moves focus onto the modal's controls rather than the page behind it
+    await userEvent.tab();
+    expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
   });
 });

@@ -1,13 +1,17 @@
 import { useCallback, useMemo } from "react";
-import { noop } from "underscore";
 
+import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
+import { DetailViewSidesheet } from "metabase/detail-view/components";
+import { filterByPk } from "metabase/detail-view/utils";
 import { useDispatch, useSelector } from "metabase/redux";
-import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import {
+  getApiTable,
   getIdValue,
+  getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   closeObjectDetail,
@@ -27,9 +31,9 @@ import {
 import { getIsObjectDetail } from "../selectors/mode";
 
 /**
- * The interactive object-detail modal shown in the query builder. It owns all
- * the query-builder wiring (zoom navigation, refresh-after-action) and renders
- * the presentational `ObjectDetailWrapper` from the visualizations module.
+ * The interactive object-detail sidesheet shown in the query builder. It owns
+ * all of the query-builder wiring (zoom navigation, refresh-after-action) and
+ * renders the presentational `DetailViewSidesheet` directly.
  *
  * Dashboards/public/embedding render object detail statically through the
  * registered "object" visualization instead; this component is QB-only.
@@ -57,18 +61,38 @@ function ObjectDetailModalInner() {
   const canZoomPreviousRow = useSelector(getCanZoomPreviousRow);
   const canZoomNextRow = useSelector(getCanZoomNextRow);
 
-  const objectDetailSeries = useMemo(() => {
-    if (!rawSeries?.[0]) {
+  const { data: tableForeignKeys } = useListTableForeignKeysQuery(
+    table ? table.id : skipToken,
+  );
+
+  const data = useMemo(() => {
+    const first = rawSeries?.[0];
+    if (!first) {
       return undefined;
     }
-    const [first] = rawSeries;
-    return [{ ...first, card: { ...first.card, display: "object" as const } }];
+    // Reuse the row data but force the "object" display so settings resolve the
+    // object-detail column config (`table.columns`, `column_settings`).
+    const series = [
+      { ...first, card: { ...first.card, display: "object" as const } },
+    ];
+    return { series, settings: getComputedSettingsForSeries(series) };
   }, [rawSeries]);
 
-  const settings = useMemo(
-    () => getComputedSettingsForSeries(objectDetailSeries),
-    [objectDetailSeries],
-  );
+  const datasetData = data?.series[0].data;
+  const columns = datasetData?.cols;
+  const isZooming = zoomedObjectId != null;
+  const zoomedRowID = isZooming
+    ? zoomedObjectId
+    : datasetData
+      ? getIdValue({ data: datasetData, tableId: table?.id })
+      : null;
+
+  const filteredQuery = useMemo(() => {
+    if (columns == null || zoomedRowID == null || question == null) {
+      return undefined;
+    }
+    return filterByPk(question.query(), columns, zoomedRowID);
+  }, [columns, zoomedRowID, question]);
 
   const onViewPrevious = useCallback(
     () => dispatch(viewPreviousObjectDetail()),
@@ -84,42 +108,46 @@ function ObjectDetailModalInner() {
     [dispatch],
   );
 
-  if (!objectDetailSeries) {
+  if (
+    data == null ||
+    datasetData == null ||
+    columns == null ||
+    zoomedRowID == null ||
+    question == null
+  ) {
     return null;
   }
 
-  const data = objectDetailSeries[0].data;
-  const isZooming = zoomedObjectId != null;
-  const zoomedRowID = isZooming
-    ? zoomedObjectId
-    : getIdValue({ data, tableId: table?.id });
-  const zoomedRow = isZooming ? zoomRow : getSingleResultsRow(data);
+  const { settings } = data;
+  const zoomedRow = isZooming ? zoomRow : getSingleResultsRow(datasetData);
   const canZoom = isZooming && !!zoomedRow;
+  const apiTable = getApiTable(table);
+  const columnsSettings = columns.map(
+    (column) => settings?.column_settings?.[getColumnKey(column)],
+  );
+  const showImplicitActions = Boolean(
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
+  );
 
   return (
-    <ObjectDetailWrapper
-      isObjectDetail
-      data={data}
-      settings={settings}
-      question={question}
-      table={table}
-      zoomedRow={zoomedRow}
-      zoomedRowID={zoomedRowID ?? undefined}
-      canZoom={canZoom}
-      canZoomPreviousRow={isZooming && !!canZoomPreviousRow}
-      canZoomNextRow={isZooming && !!canZoomNextRow}
-      viewPreviousObjectDetail={onViewPrevious}
-      viewNextObjectDetail={onViewNext}
-      closeObjectDetail={onClose}
+    <DetailViewSidesheet
+      columnSettings={settings?.["table.columns"]}
+      columns={columns}
+      columnsSettings={columnsSettings}
+      query={filteredQuery}
+      row={zoomedRow}
+      rowId={zoomedRowID}
+      showImplicitActions={showImplicitActions}
+      showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
+      table={apiTable}
+      tableForeignKeys={tableForeignKeys}
+      url={getRowUrl(question, columns, apiTable, zoomedRowID)}
       onActionSuccess={onActionSuccess}
-      // FK navigation in the modal is handled by DetailViewSidesheet via RTK
-      // Query; these presentational props are only used by the static path.
-      fetchTableFks={noop}
-      loadObjectDetailFKReferences={noop}
-      followForeignKey={noop}
-      onVisualizationClick={noop}
-      visualizationIsClickable={() => false}
-      isDashboard={false}
+      onClose={onClose}
+      onNextClick={canZoomNextRow ? onViewNext : undefined}
+      onPreviousClick={canZoomPreviousRow ? onViewPrevious : undefined}
     />
   );
 }

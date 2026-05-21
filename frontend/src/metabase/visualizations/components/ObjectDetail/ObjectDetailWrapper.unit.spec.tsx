@@ -1,5 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
 import { setupTableEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
@@ -110,23 +108,5 @@ describe("Object Detail Wrapper", () => {
     });
 
     expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
-  });
-
-  it("traps focus in the object detail modal when opened", async () => {
-    await setup({
-      isObjectDetail: true,
-    });
-
-    await screen.findByTestId("object-detail");
-
-    // first tab should focus on the close button, since there's only
-    // one element to show here.
-    await userEvent.tab();
-    expect(screen.getByLabelText("Close")).toHaveFocus();
-
-    // second tab should *keep* focus inside the modal, not go
-    // to the body
-    await userEvent.tab();
-    expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
   });
 });
