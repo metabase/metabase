@@ -934,14 +934,16 @@
 (deftest ^:parallel datetime-diff-with-datetime-offset-test
   (mt/test-driver :sqlserver
     (mt/dataset datetime-offset
-      (let [mp        (mt/metadata-provider)
+      (let [mp (mt/metadata-provider)
+            datetime-table (lib.metadata/table mp (mt/id :datetime-offset))
             start-col (lib.metadata/field mp (mt/id :datetime-offset :start))
-            end-col   (lib.metadata/field mp (mt/id :datetime-offset :end))
+            end-col (lib.metadata/field mp (mt/id :datetime-offset :end))
             diff-minutes (lib/expression-clause :datetime-diff
                                                 [start-col end-col :minute]
-                                                nil)
-            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :datetime-offset)))
-                          (lib/expression "diff-minutes" diff-minutes))]
+                                                nil)]
         (is (= [[1 "2025-10-10T07:00:00Z" "2025-10-10T08:00:00Z" 60]
                 [2 "2025-10-11T07:15:00Z" "2025-10-11T07:30:00Z" 15]]
-               (mt/rows (qp/process-query query))))))))
+               (-> (lib/query mp datetime-table)
+                   (lib/expression "diff-minutes" diff-minutes)
+                   (qp/process-query)
+                   (mt/rows))))))))
