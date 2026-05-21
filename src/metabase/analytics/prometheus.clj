@@ -684,7 +684,12 @@
                         :labels [:experiment]})
    (prometheus/counter :experiment/candidate-error-duration-ms
                        {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
-                        :labels [:experiment]})])
+                        :labels [:experiment]})
+
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})])
 
 (defn- quartz-collectors
   []

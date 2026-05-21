@@ -13,6 +13,7 @@
    [clj-http.conn-mgr :as conn-mgr]
    [clojure.core.async :as a]
    [clojure.walk :as walk]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -99,6 +100,7 @@
                 :throw-exceptions   false
                 :connection-manager connection-manager})
     (catch Throwable e
+      (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
       (log/warn e "Connection failure sending Metaplow event")
       {:status -1})))
 
@@ -120,14 +122,15 @@
       (send-event! payload))
     :sent
     (catch Throwable e
+      (analytics/inc! :metabase-metaplow/errors {:stage :send-event-with-retries!})
       (log/warn e "Error sending Metaplow event")
       :error)))
 
 (defonce ^:private
-  ^{:doc "Individual payloads queued by `track-event!` land here. Dropping buffer of `queue-size` events; the newest
-         are dropped when full."}
+  ^{:doc "Individual payloads queued by `track-event!` land here. Bounded chan of size `queue-size`; new events are
+         rejected when full."}
   source-chan
-  (a/chan (a/dropping-buffer queue-size)))
+  (a/chan queue-size))
 
 (defonce ^:private
   ^{:doc "Black-hole sink for `pipeline-blocking` worker output. Sliding-buffer with no consumer, so workers' puts
@@ -148,13 +151,15 @@
    source-chan))
 
 (defn- enqueue!
-  "Push a payload onto the async send queue."
+  "Push a payload onto the async send queue. Returns true on success, false when the queue is full."
   [payload]
-  (a/offer! source-chan payload))
+  (or (a/offer! source-chan payload)
+      (do (analytics/inc! :metabase-metaplow/errors {:stage :enqueue!})
+          false)))
 
 (mu/defn track-event! :- :boolean
   "Send a single analytics event to the Metaplow collector. Returns true when the event was enqueued, false when
-  Metaplow tracking is disabled."
+  Metaplow tracking is disabled or the queue is full."
   ([schema data]
    (track-event! schema data nil))
   ([schema :- :keyword data _user-id]
@@ -163,6 +168,7 @@
       (try
         (enqueue! (build-payload schema data))
         (catch Throwable e
+          (analytics/inc! :metabase-metaplow/errors {:stage :track-event!})
           (log/warn e "Error queueing Metaplow event")
           false))))))
 
