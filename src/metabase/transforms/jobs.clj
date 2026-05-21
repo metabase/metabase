@@ -121,16 +121,26 @@
    ^BlockingQueue completions
    run-id run-method user-id transform]
   (let [task (bound-fn []
-               (let [tid        (:id transform)
-                     completion (try
-                                  (run-transform! run-id run-method user-id transform)
-                                  {::status :succeeded}
-                                  (catch Throwable t
-                                    (log/errorf t "Transform %s in run %s failed"
-                                                (pr-str tid) (pr-str run-id))
-                                    {::status  :failed
-                                     ::message (or (ex-message t) (str t))}))]
-                 (.put completions (assoc completion ::transform transform))))]
+               (let [tid (:id transform)]
+                 (try
+                   (run-transform! run-id run-method user-id transform)
+                   (.put completions {::status :succeeded ::transform transform})
+                   (catch Throwable t
+                     (log/errorf t "Transform %s in run %s failed" (pr-str tid) (pr-str run-id))
+                     ;; Record the failure (with as much debugging context as we can) before doing
+                     ;; anything else, so the coordinator always sees the completion and can unwind.
+                     (.put completions {::status    :failed
+                                        ::transform transform
+                                        ::message   (or (ex-message t) (str t))
+                                        ::ex-data   (ex-data t)
+                                        ::throwable t
+                                        ::fatal     (not (instance? Exception t))})
+                     ;; A non-Exception Error (OutOfMemoryError, StackOverflowError, …) leaves the
+                     ;; JVM in an unknown state. Rethrow so this worker thread dies and the error
+                     ;; surfaces via the thread's uncaught-exception handler, instead of being
+                     ;; quietly downgraded to an ordinary transform failure.
+                     (when-not (instance? Exception t)
+                       (throw t))))))]
     (.submit executor ^Runnable task)))
 
 (defn run-transforms!
