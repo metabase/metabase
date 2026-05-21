@@ -54,6 +54,38 @@
          (some? eff)
          (<= eff time-facet-max-cardinality))))
 
+(def ^:private top-n-other-min-cardinality
+  "Raw distinct-count above which a categorical dim is a candidate for the
+  `top-n-other` variant. At or below this, the `default` variant already
+  renders cleanly; above, the top-K + Other rollup is the readable form.
+  Same 20-bar line as `time-facet-max-cardinality`."
+  20)
+
+(def ^:private top-n-other-default-k
+  "Default `k` for mechanically-emitted `top-n-other` items. Mid-range of the
+  LLM's allowed 3–50 — broad enough to expose the head of the distribution,
+  narrow enough to fit on a small chart."
+  10)
+
+(defn- top-n-other-eligible?
+  "Eligibility for the `top-n-other` variant on this (metric, dim) pair:
+   1. Dim is non-temporal — temporal dims belong to the `temporal-pattern-*`
+      variants, not categorical rollups.
+   2. Dim has no default bucket/binning — auto-binned numerics are already
+      capped at `default-binning-max-bins` by `default`, so a top-K rollup
+      would be redundant. Mechanical stays conservative here: the LLM
+      planner allows numerics via `semantic_type`, but mechanical has no
+      semantic signal to lean on.
+   3. Dim's raw distinct-count is known and > `top-n-other-min-cardinality`.
+      Missing fingerprints fail closed — same conservative rule the other
+      variants use."
+  [dim]
+  (let [eff (qp.mbql/effective-cardinality dim)]
+    (and (not (qp.mbql/dim-type-isa? dim :type/Temporal))
+         (nil? (qp.mbql/default-bucket-for-dim dim))
+         (some? eff)
+         (> eff top-n-other-min-cardinality))))
+
 (defn- items-for-pair
   "Emit the baseline `default` plan item for one applicable (metric, dim)
   pair, plus any eligible temporal-pattern / time-facet variants. All items
@@ -65,17 +97,20 @@
   noise without adding signal. Rationales are valuable on LLM items, where
   the model made a judgement that isn't otherwise visible."
   [metric dim]
-  (let [metric-id (:metric-id metric)
-        dim-id    (:dimension_id dim)
-        item      (fn [variant]
-                    {:metric_id    metric-id
-                     :dimension_id dim-id
-                     :variant      variant
-                     :params       {}})
-        base      [(item "default")]
-        patterns  (mapv item (temporal-pattern-variants dim))
-        facet     (when (time-facet-eligible? metric dim) [(item "time-facet")])]
-    (vec (concat base patterns facet))))
+  (let [metric-id   (:metric-id metric)
+        dim-id      (:dimension_id dim)
+        item        (fn [variant]
+                      {:metric_id    metric-id
+                       :dimension_id dim-id
+                       :variant      variant
+                       :params       {}})
+        base        [(item "default")]
+        patterns    (mapv item (temporal-pattern-variants dim))
+        facet       (when (time-facet-eligible? metric dim) [(item "time-facet")])
+        top-n-other (when (top-n-other-eligible? dim)
+                      [(assoc (item "top-n-other")
+                              :params {:k top-n-other-default-k})])]
+    (vec (concat base patterns facet top-n-other))))
 
 (defn- run-plan!
   "Walk the metric × dim matrix and emit plan items per `items-for-pair`.

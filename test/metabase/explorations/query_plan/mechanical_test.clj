@@ -100,6 +100,29 @@
     (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")} true))]
       (is (contains? (set (map :variant (:plan r))) "time-facet")))))
 
+(deftest top-n-other-eligibility-test
+  (testing "top-n-other emitted for a non-temporal dim with known cardinality above the threshold"
+    (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d" 100)}))
+          items (filter #(= "top-n-other" (:variant %)) (:plan r))]
+      (is (= 1 (count items)))
+      (is (= {:k 10} (:params (first items))))))
+
+  (testing "top-n-other skipped when dim is temporal"
+    (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
+      (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))
+
+  (testing "top-n-other skipped when dim cardinality unknown"
+    (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d")}))]
+      (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))
+
+  (testing "top-n-other skipped when cardinality at or below the threshold (default already fits)"
+    (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d" 20)}))]
+      (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))
+
+  (testing "top-n-other skipped for auto-binned numeric dim (default already caps at bin count)"
+    (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")}))]
+      (is (not (contains? (set (map :variant (:plan r))) "top-n-other"))))))
+
 (deftest no-rationale-noise-test
   (testing "Mechanical items don't carry rationale strings — the variant + dim type
             already explains the choice, and a per-item rationale would be filler"
