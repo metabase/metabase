@@ -135,6 +135,67 @@ export const getPageBreaks = (
   return result;
 };
 
+interface LinkBox {
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const SUPPORTED_LINK_PROTOCOL = /^(https?:|mailto:|tel:)/i;
+
+// Coordinates are relative to gridNode; the rendered canvas shifts them down by verticalOffset.
+export const collectClickableLinks = (gridNode: HTMLElement): LinkBox[] => {
+  const gridRect = gridNode.getBoundingClientRect();
+  return Array.from(gridNode.querySelectorAll<HTMLAnchorElement>("a[href]"))
+    .map((anchor) => {
+      const url = anchor.href;
+      if (!url || !SUPPORTED_LINK_PROTOCOL.test(url)) {
+        return null;
+      }
+      const rect = anchor.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return null;
+      }
+      return {
+        url,
+        x: rect.left - gridRect.left,
+        y: rect.top - gridRect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    })
+    .filter((link): link is LinkBox => link !== null);
+};
+
+export const getLinkAnnotationsForPage = (
+  links: LinkBox[],
+  pageStartCanvasY: number,
+  pageHeightCanvasY: number,
+  verticalOffset: number,
+  pagePadding: number,
+): LinkBox[] => {
+  const pageEnd = pageStartCanvasY + pageHeightCanvasY;
+  return links.flatMap((link) => {
+    const canvasTop = link.y + verticalOffset;
+    const canvasBottom = canvasTop + link.height;
+    // Skip links that straddle a page break — we don't split annotations.
+    if (canvasTop < pageStartCanvasY || canvasBottom > pageEnd) {
+      return [];
+    }
+    return [
+      {
+        url: link.url,
+        x: pagePadding + link.x,
+        y: pagePadding + (canvasTop - pageStartCanvasY),
+        width: link.width,
+        height: link.height,
+      },
+    ];
+  });
+};
+
 const createHeaderElement = (dashboardName: string, marginBottom: number) => {
   const header = document.createElement("div");
   header.style.cssText = `
@@ -189,6 +250,7 @@ export const saveDashboardPdf = async ({
     return;
   }
   const cardsBounds = getSortedDashCardBounds(gridNode);
+  const clickableLinks = collectClickableLinks(gridNode);
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
@@ -368,6 +430,19 @@ export const saveDashboardPdf = async ({
         pdf.link(PAGE_PADDING, PAGE_PADDING, contentWidth, brandingHeight, {
           url,
         });
+      }
+
+      // Re-add clickable links that were flattened into the page image so
+      // anchors in markdown text / link cards stay clickable in the PDF.
+      const pageLinks = getLinkAnnotationsForPage(
+        clickableLinks,
+        sourceY,
+        sourceHeight,
+        verticalOffset,
+        PAGE_PADDING,
+      );
+      for (const link of pageLinks) {
+        pdf.link(link.x, link.y, link.width, link.height, { url: link.url });
       }
     }
 
