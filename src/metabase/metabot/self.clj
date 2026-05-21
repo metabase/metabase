@@ -19,6 +19,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -302,6 +303,38 @@
   (when-not (:required-permission opts)
     (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
                fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
+(defn llm-call-unavailable-reason
+  "Single pre-flight gate for callers that want to *skip* an LLM call cleanly instead of
+  attempting one and catching the failure it would throw. Bundles every check that decides
+  whether a structured LLM call requiring `required-permission` can run right now. The first
+  two are instance-level prerequisites the call paths assume are on; the usage/permission
+  checks are the same ones (in the same order) that [[call-llm]] /
+  [[call-llm-structured-with-trace]] enforce before opening the provider stream:
+
+    :metabot-disabled  — Metabot (or AI features) is turned off
+    :no-llm            — no provider API key is configured
+    :usage-limit       — the instance / tenant / user is over its AI usage limit
+                         (see [[metabase.metabot.usage/check-usage-limits!]])
+    :permission-denied — the current user lacks the base `:permission/metabot` or
+                         `required-permission`
+
+  Returns nil when the call would be allowed. The instance-level switches need no user; the
+  usage/permission checks resolve against the *current user*, so establish the intended
+  binding (e.g. `request/with-current-user`) before calling."
+  [required-permission]
+  (cond
+    (not (metabot.settings/metabot-enabled?))                 :metabot-disabled
+    (not (metabot.settings/llm-metabot-configured?))          :no-llm
+    (some? (usage/check-usage-limits!))                       :usage-limit
+    (some? (missing-required-permission required-permission)) :permission-denied))
+
+(defn llm-call-available?
+  "Boolean convenience over [[llm-call-unavailable-reason]]: true when a structured LLM call
+  requiring `required-permission` would be permitted for the current user right now (Metabot
+  enabled, provider configured, under usage limits, and the user holds the needed permissions)."
+  [required-permission]
+  (nil? (llm-call-unavailable-reason required-permission)))
 
 (defn call-llm
   "Call an LLM and stream processed parts.

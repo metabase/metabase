@@ -41,6 +41,7 @@
    [metabase.explorations.ai-summary.phase1 :as phase1]
    [metabase.explorations.ai-summary.phase2 :as phase2]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
@@ -583,15 +584,30 @@
                    :content_type prose-mirror/prose-mirror-content-type})
       {:document-id (:id doc) :rendered-pm-doc pm-doc})))
 
+(defn- gate-closed-skip!
+  "Persist and return the `:skip-*` outcome for a closed pre-flight gate `reason`."
+  [thread-id preamble reason]
+  (let [outcome (case reason
+                  :metabot-disabled  :skip-metabot-disabled
+                  :no-llm            :skip-no-llm
+                  :usage-limit       :skip-usage-limit
+                  :permission-denied :skip-no-permission)]
+    (log/infof "Skipping AI Summary for thread %d: pre-flight gate closed (%s)"
+               thread-id (name reason))
+    (save-transcript! thread-id (assoc preamble :outcome outcome))
+    outcome))
+
 (defn- run-phases!
   "Inner body of [[generate-ai-summary!]]: runs Phase 1 + Phase 2 inside a
   `with-current-user creator-id` binding so the LLM calls see the creator's
   metabot permissions / usage limits.
 
-  Catches `ex-info`s thrown by `metabase.metabot.self/call-llm-structured-with-trace`
-  for the `:metabot/permission-denied` and `:metabot/usage-limit-reached` cases
-  and returns matching skip outcomes; any other exception bubbles to the outer
-  `try` in [[generate-ai-summary!]]."
+  The `ExceptionInfo` catch is the mid-run safety net: a usage limit crossed (or perms
+  revoked) *between* the pre-flight gate and a phase's actual LLM call still makes
+  `metabase.metabot.self/call-llm-structured-with-trace` throw
+  `:metabot/permission-denied` / `:metabot/usage-limit-reached`, which we map to the
+  matching skip outcomes; any other exception bubbles to the outer `try` in
+  [[generate-ai-summary!]]."
   [{:keys [thread-id thread creator-id coll-id done-queries prepped prepped-by-id
            pool-ids selections timelines preamble]}]
   (request/with-current-user creator-id
@@ -744,85 +760,76 @@
   development — failures are surfaced so they can be fixed.
 
   Returns `:ok` on success, a keyword reason on graceful skip
-  (`:skip-metabot-disabled`, `:skip-no-llm`, `:skip-no-charts`), `:phase-1-failed` /
-  `:phase-2-failed` when the corresponding phase couldn't be repaired, or
-  `nil` on an uncaught throwable (logged but never thrown)."
+  (`:skip-metabot-disabled`, `:skip-no-llm`, `:skip-usage-limit`, `:skip-no-permission`,
+  `:skip-no-charts`), `:phase-1-failed` / `:phase-2-failed` when the corresponding phase
+  couldn't be repaired, or `nil` on an uncaught throwable (logged but never thrown)."
   [thread-id]
   (try
-    (cond
-      (not (metabot.settings/metabot-enabled?))
-      (do (log/infof "Skipping AI Summary for thread %d: Metabot is disabled" thread-id)
-          (save-transcript! thread-id (assoc (base-transcript thread-id) :outcome :skip-metabot-disabled))
-          :skip-metabot-disabled)
+    (let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
+                                :id thread-id)]
+      (if (nil? thread)
+        (do (log/warnf "Thread %d not found" thread-id) nil)
+        (let [exploration (t2/select-one [:model/Exploration :creator_id :collection_id]
+                                         :id (:exploration_id thread))
+              creator-id  (:creator_id exploration)]
+          (if-let [reason (request/with-current-user creator-id
+                            (metabot/llm-call-unavailable-reason :permission/metabot-other-tools))]
+            (gate-closed-skip! thread-id (base-transcript thread-id) reason)
+            (let [done-queries (->> (t2/hydrate
+                                     (t2/select :model/ExplorationQuery
+                                                :exploration_thread_id thread-id
+                                                :status "done")
+                                     :interestingness_score
+                                     :contextual_interestingness_score)
+                                    (sort-by common/chart-rank-score >))
+                  pool-queries (vec (take max-charts-in-pool done-queries))
+                  result-rows  (load-result-rows (map :id pool-queries))
+                  prepped      (vec (keep (fn [q]
+                                            (let [{:keys [result_data chart_stats stored_result_id
+                                                          metric_description chart_description]}
+                                                  (get result-rows (:id q))]
+                                              (common/prep-chart q
+                                                                 {:result-data        result_data
+                                                                  :chart-stats        chart_stats
+                                                                  :stored-result-id   stored_result_id
+                                                                  :metric-description metric_description
+                                                                  :chart-description  chart_description})))
+                                          pool-queries))
+                  prepped-by-id (into {} (map (juxt :exploration-query-id identity)) prepped)
+                  pool-ids     (mapv :exploration-query-id prepped)
+                  selections   (selection-context thread-id)
+                  timelines    (load-timeline-events thread-id)
+                  preamble     (assoc (base-transcript thread-id)
+                                      :thread-prompt       (:prompt thread)
+                                      :total-chart-count   (count done-queries)
+                                      :charts-in-pool      (count prepped)
+                                      :pool-chart-ids      pool-ids
+                                      :timelines           timelines)]
+              (cond
+                (empty? prepped)
+                (do (log/infof "No usable chart blocks for thread %d; skipping AI Summary" thread-id)
+                    (save-transcript! thread-id (assoc preamble :outcome :skip-no-charts))
+                    :skip-no-charts)
 
-      (not (metabot.settings/llm-metabot-configured?))
-      (do (log/infof "Skipping AI Summary for thread %d: LLM not configured" thread-id)
-          (save-transcript! thread-id (assoc (base-transcript thread-id) :outcome :skip-no-llm))
-          :skip-no-llm)
-
-      :else
-      (let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
-                                  :id thread-id)]
-        (if (nil? thread)
-          (do (log/warnf "Thread %d not found" thread-id) nil)
-          (let [exploration  (t2/select-one [:model/Exploration :creator_id :collection_id]
-                                            :id (:exploration_id thread))
-                done-queries (->> (t2/hydrate
-                                   (t2/select :model/ExplorationQuery
-                                              :exploration_thread_id thread-id
-                                              :status "done")
-                                   :interestingness_score
-                                   :contextual_interestingness_score)
-                                  (sort-by common/chart-rank-score >))
-                pool-queries (vec (take max-charts-in-pool done-queries))
-                result-rows  (load-result-rows (map :id pool-queries))
-                prepped      (vec (keep (fn [q]
-                                          (let [{:keys [result_data chart_stats stored_result_id
-                                                        metric_description chart_description]}
-                                                (get result-rows (:id q))]
-                                            (common/prep-chart q
-                                                               {:result-data        result_data
-                                                                :chart-stats        chart_stats
-                                                                :stored-result-id   stored_result_id
-                                                                :metric-description metric_description
-                                                                :chart-description  chart_description})))
-                                        pool-queries))
-                prepped-by-id (into {} (map (juxt :exploration-query-id identity)) prepped)
-                pool-ids     (mapv :exploration-query-id prepped)
-                selections   (selection-context thread-id)
-                timelines    (load-timeline-events thread-id)
-                preamble     (assoc (base-transcript thread-id)
-                                    :thread-prompt       (:prompt thread)
-                                    :total-chart-count   (count done-queries)
-                                    :charts-in-pool      (count prepped)
-                                    :pool-chart-ids      pool-ids
-                                    :timelines           timelines)]
-            (cond
-              (empty? prepped)
-              (do (log/infof "No usable chart blocks for thread %d; skipping AI Summary" thread-id)
-                  (save-transcript! thread-id (assoc preamble :outcome :skip-no-charts))
-                  :skip-no-charts)
-
-              :else
-              ;; -------- The placeholder doc was created up-front by the
-              ;; exploration POST endpoint so the FE sidebar shows it the
-              ;; moment the exploration is created. Every branch in
-              ;; [[run-phases!]] (phase-1-failed, phase-2-failed, ok, skip)
-              ;; swaps this doc's body in place — we never insert a second
-              ;; doc. For threads created before the endpoint started
-              ;; pre-creating it, [[run-phases!]] falls back to creating one
-              ;; so old data still works.
-              (run-phases! {:thread-id     thread-id
-                            :thread        thread
-                            :creator-id    (:creator_id exploration)
-                            :coll-id       (:collection_id exploration)
-                            :done-queries  done-queries
-                            :prepped       prepped
-                            :prepped-by-id prepped-by-id
-                            :pool-ids      pool-ids
-                            :selections    selections
-                            :timelines     timelines
-                            :preamble      preamble}))))))
+                :else
+                ;; -------- The placeholder doc was created up-front by the
+                ;; exploration POST endpoint so the FE sidebar shows it the
+                ;; moment the exploration is created. Every branch in
+                ;; [[run-phases!]] (phase-1-failed, phase-2-failed, ok) swaps
+                ;; this doc's body in place — we never insert a second doc. For
+                ;; threads created before the endpoint started pre-creating it,
+                ;; [[run-phases!]] falls back to creating one so old data works.
+                (run-phases! {:thread-id     thread-id
+                              :thread        thread
+                              :creator-id    creator-id
+                              :coll-id       (:collection_id exploration)
+                              :done-queries  done-queries
+                              :prepped       prepped
+                              :prepped-by-id prepped-by-id
+                              :pool-ids      pool-ids
+                              :selections    selections
+                              :timelines     timelines
+                              :preamble      preamble})))))))
     (catch Throwable e
       (log/errorf e "generate-ai-summary! failed for thread %d" thread-id)
       (save-transcript! thread-id (assoc (base-transcript thread-id)

@@ -30,8 +30,8 @@
    [clojure.string :as str]
    [metabase.contextual-interestingness.sql :as contextual-sql]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]))
 
 (def dataset-query->sql
@@ -176,8 +176,10 @@ Always return a single object matching the supplied schema. Do not respond with 
 
       {:score :chart-description :metric-description}
 
-  or nil on any failure (blank context, nil chart-config, LLM unconfigured, malformed
-  response, network error). Never throws.
+  or nil when the call can't or shouldn't run (blank context, nil chart-config, or the shared
+  [[metabase.metabot.core/llm-call-available?]] gate is closed — Metabot disabled, provider
+  unconfigured, over usage limits, or the current user lacks permission) and on any failure
+  (malformed response, network error). Never throws.
 
   Inputs:
     `:chart-config`     — same shape as `chart-interestingness` consumes. Required.
@@ -188,9 +190,15 @@ Always return a single object matching the supplied schema. Do not respond with 
     `:sql`              — optional compiled SQL string for the underlying query. Used as
                           extra semantic context for description generation. Nil-safe."
   [{:keys [chart-config context-string] :as inputs}]
-  (cond
-    (nil? chart-config)                              nil
-    (or (nil? context-string)
-        (str/blank? context-string))                 nil
-    (not (metabot.settings/llm-metabot-configured?)) nil
-    :else                                            (llm-call! inputs)))
+  (try
+    (cond
+      (nil? chart-config)              nil
+      (or (nil? context-string)
+          (str/blank? context-string)) nil
+      ;; `llm-call-available?` reaches `check-usage-limits!` / `resolve-user-permissions`, which
+      ;; hit the DB and can throw; keep the whole body inside the try so we honor "Never throws".
+      (not (metabot/llm-call-available? :permission/metabot-other-tools)) nil
+      :else                            (llm-call! inputs))
+    (catch Throwable e
+      (log/warn e "Contextual interestingness: scoring failed")
+      nil)))

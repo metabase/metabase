@@ -2,22 +2,46 @@
   (:require
    [clojure.test :refer :all]
    [metabase.explorations.timeline-interestingness :as ti]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as usage]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- count-query
+  "Schema-valid legacy MBQL `count` over venues for fixture cards / queries."
+  []
+  (lib/->legacy-MBQL
+   (let [mp (mt/metadata-provider)]
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+         (lib/aggregate (lib/count))))))
+
+(defn- count-by-category-query
+  "Schema-valid legacy MBQL `count` broken out by category for fixture queries."
+  []
+  (lib/->legacy-MBQL
+   (let [mp (mt/metadata-provider)]
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+         (lib/aggregate (lib/count))
+         (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
+
 (defn- store-fake-result!
-  "Mirror the worker's serialization format for a fixture qp-result."
+  "Mirror the worker's storage: serialize the fixture qp-result onto a StoredResult and
+  link it from the ExplorationQueryResult via `stored_result_id` (the result bytes live on
+  `stored_result`, not on `exploration_query_result`)."
   [query-id qp-result]
   (let [bytes (cache.impl/do-with-serialization
                (fn [in result-fn]
                  (in qp-result)
-                 (result-fn)))]
+                 (result-fn)))
+        sr-id (first (t2/insert-returning-pks! :model/StoredResult {:result_data bytes}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
-                 :result_data          bytes})))
+                 :stored_result_id     sr-id})))
 
 (defn- fixture-qp-result
   "Two-column time-series result the chart-config builder can score."
@@ -54,9 +78,7 @@
                                                  {:exploration_thread_id thread-id
                                                   :card_id               card-id
                                                   :dimension_id          "d1"
-                                                  :dataset_query         (mt/mbql-query venues
-                                                                           {:aggregation [[:count]]
-                                                                            :breakout    [$category_id]})
+                                                  :dataset_query         (count-by-category-query)
                                                   :status                "done"
                                                   :position              0}))]
     (store-fake-result! (:id q) (fixture-qp-result))
@@ -65,17 +87,45 @@
 (deftest score-returns-nil-when-llm-not-configured-test
   (mt/with-temp [:model/User u {:email "ti-noconfig@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
     (let [thread (temp-thread! (:id u))
           q      (done-query! (:id thread) (:id card))]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
         (is (nil? (ti/score-query-timeline (:id q) (:id tl))))))))
 
+(deftest score-returns-nil-when-gate-closed-test
+  (testing "returns nil and never invokes the LLM when the shared metabot.core pre-flight gate is closed"
+    (mt/with-temp [:model/User u {:email "ti-gate@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (count-query)}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query! (:id thread) (:id card))]
+        (doseq [[label redefs]
+                [["Metabot disabled"   {#'metabot.settings/metabot-enabled? (constantly false)}]
+                 ["no provider"        {#'metabot.settings/llm-metabot-configured? (constantly false)}]
+                 ["over usage limit"   {#'usage/check-usage-limits! (constantly "You've used all your tokens")}]
+                 ["missing permission" {#'scope/resolve-user-permissions
+                                        (constantly (assoc scope/all-yes-permissions
+                                                           :permission/metabot-other-tools :no))}]]]
+          (testing label
+            (let [calls (atom 0)]
+              (with-redefs-fn (merge {#'metabot.settings/metabot-enabled?        (constantly true)
+                                      #'metabot.settings/llm-metabot-configured? (constantly true)
+                                      #'usage/check-usage-limits!                (constantly nil)
+                                      #'scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
+                                      #'metabot.self/call-llm-structured
+                                      (fn [& _] (swap! calls inc) {:score 0.5 :reasoning "x"})}
+                                     redefs)
+                (fn []
+                  (is (nil? (ti/score-query-timeline (:id q) (:id tl))))
+                  (is (zero? @calls) "the LLM must not be called when the gate is closed"))))))))))
+
 (deftest score-returns-nil-when-query-not-done-test
   (mt/with-temp [:model/User u {:email "ti-pending@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
     (let [thread (temp-thread! (:id u))
           q      (first (t2/insert-returning-instances!
@@ -83,7 +133,7 @@
                          {:exploration_thread_id (:id thread)
                           :card_id               (:id card)
                           :dimension_id          "d1"
-                          :dataset_query         (mt/mbql-query venues {:aggregation [[:count]]})
+                          :dataset_query         (count-query)
                           :status                "pending"
                           :position              0}))]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
@@ -93,7 +143,7 @@
 (deftest score-returns-clamped-double-on-valid-llm-response-test
   (mt/with-temp [:model/User u {:email "ti-ok@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "Promotions" :creator_id (:id u)}
                  :model/TimelineEvent _e {:timeline_id  (:id tl)
                                           :name         "Big sale"
@@ -115,7 +165,7 @@
 (deftest score-clamps-out-of-range-llm-response-test
   (mt/with-temp [:model/User u {:email "ti-clamp@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "x" :creator_id (:id u)}]
     (let [thread (temp-thread! (:id u))
           q      (done-query! (:id thread) (:id card))]
@@ -129,7 +179,7 @@
 (deftest score-returns-nil-on-malformed-llm-response-test
   (mt/with-temp [:model/User u {:email "ti-malformed@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "x" :creator_id (:id u)}]
     (let [thread (temp-thread! (:id u))
           q      (done-query! (:id thread) (:id card))]
@@ -140,7 +190,7 @@
 (deftest score-returns-nil-when-llm-throws-test
   (mt/with-temp [:model/User u {:email "ti-throw@example.com"}
                  :model/Card card {:type :metric :creator_id (:id u)
-                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                   :dataset_query (count-query)}
                  :model/Timeline tl {:name "x" :creator_id (:id u)}]
     (let [thread (temp-thread! (:id u))
           q      (done-query! (:id thread) (:id card))]

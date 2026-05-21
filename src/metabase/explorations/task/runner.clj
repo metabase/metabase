@@ -393,23 +393,29 @@
   [[explorations.timeline-interestingness/score-query-timeline]]) already returns nil on failure
   paths, but we wrap the call here too so a poison input that escapes still produces a sentinel
   row with `score=NULL, scored_at=NOW()` instead of leaving the claim row stuck. Returns truthy
-  when work was done."
+  when work was done.
+
+  Runs the scorer inside a `request/with-current-user creator-id` binding (same as the contextual
+  scorer in [[safe-score+describe]]) so the scorer's metabot permission / usage-limit gate resolves
+  against the exploration's creator. A nil creator (deleted exploration) leaves the score nil."
   []
   (when-let [{:keys [id exploration_query_id timeline_id]} (claim-pending-timeline-pair!)]
-    (let [score (try
-                  (explorations.timeline-interestingness/score-query-timeline
-                   exploration_query_id timeline_id)
-                  (catch Throwable e
-                    (log/warnf e "Timeline scoring failed for query=%s timeline=%s"
-                               exploration_query_id timeline_id)
-                    nil))]
+    (let [eq         (t2/select-one [:model/ExplorationQuery :exploration_thread_id]
+                                    :id exploration_query_id)
+          creator-id (when eq (exploration-creator-id eq))
+          score      (try
+                       (when creator-id
+                         (request/with-current-user creator-id
+                           (explorations.timeline-interestingness/score-query-timeline
+                            exploration_query_id timeline_id)))
+                       (catch Throwable e
+                         (log/warnf e "Timeline scoring failed for query=%s timeline=%s"
+                                    exploration_query_id timeline_id)
+                         nil))]
       (t2/update! :model/ExplorationQueryTimelineInterestingness id
                   {:interestingness_score score
-                   :scored_at             (OffsetDateTime/now)}))
-    (maybe-complete-thread!
-     (:exploration_thread_id
-      (t2/select-one [:model/ExplorationQuery :exploration_thread_id]
-                     :id exploration_query_id)))
+                   :scored_at             (OffsetDateTime/now)})
+      (maybe-complete-thread! (:exploration_thread_id eq)))
     :worked))
 
 (defn- run-one-iteration!

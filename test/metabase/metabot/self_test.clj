@@ -11,6 +11,7 @@
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
@@ -1023,3 +1024,43 @@
           (is (= :error (:type (first parts))))
           (is (= "permission_denied" (:error-code (:error (first parts)))))
           (is (zero? @adapter-calls)))))))
+
+;;; shared pre-flight gate ([[llm-call-unavailable-reason]] / [[llm-call-available?]])
+
+(deftest llm-call-unavailable-reason-test
+  (let [perm :permission/metabot-other-tools]
+    (testing "nil (and llm-call-available? true) when every check passes"
+      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
+                    metabot.settings/llm-metabot-configured? (constantly true)
+                    usage/check-usage-limits!                (constantly nil)
+                    scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
+        (is (nil? (self/llm-call-unavailable-reason perm)))
+        (is (true? (self/llm-call-available? perm)))))
+    (testing ":metabot-disabled when Metabot is off"
+      (with-redefs [metabot.settings/metabot-enabled? (constantly false)]
+        (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))
+        (is (false? (self/llm-call-available? perm)))))
+    (testing ":no-llm when no provider is configured"
+      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
+                    metabot.settings/llm-metabot-configured? (constantly false)]
+        (is (= :no-llm (self/llm-call-unavailable-reason perm)))))
+    (testing ":usage-limit when over the AI usage limit"
+      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
+                    metabot.settings/llm-metabot-configured? (constantly true)
+                    usage/check-usage-limits!                (constantly "You've used all your tokens")]
+        (is (= :usage-limit (self/llm-call-unavailable-reason perm)))))
+    (testing ":permission-denied when the current user lacks the required permission"
+      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
+                    metabot.settings/llm-metabot-configured? (constantly true)
+                    usage/check-usage-limits!                (constantly nil)
+                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                                perm :no))]
+        (is (= :permission-denied (self/llm-call-unavailable-reason perm)))
+        (is (false? (self/llm-call-available? perm)))))
+    (testing "checks short-circuit in order: disabled before usage/permission"
+      (with-redefs [metabot.settings/metabot-enabled?        (constantly false)
+                    metabot.settings/llm-metabot-configured? (constantly false)
+                    usage/check-usage-limits!                (constantly "limit")
+                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                                perm :no))]
+        (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))))))

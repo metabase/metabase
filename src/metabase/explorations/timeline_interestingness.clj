@@ -4,8 +4,9 @@
   Given a thread-selected timeline and one of the thread's charts, ask the
   LLM how relevant the timeline's events are to explaining notable moments
   in that specific chart. Returns a `double` in `[0.0, 1.0]` or `nil` on
-  any failure path (LLM unconfigured, malformed response, transport error,
-  query not yet executed). Never throws.
+  any failure path (the shared `metabase.metabot.core/llm-call-available?` gate
+  is closed, malformed response, transport error, query not yet executed).
+  Never throws.
 
   The score is per-chart on purpose: a timeline can be highly relevant to
   one chart in a thread and irrelevant to another."
@@ -14,8 +15,8 @@
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.timeline.core :as timeline]
    [metabase.util.log :as log]
@@ -147,12 +148,16 @@ Always return a single object matching the supplied schema. Do not respond with 
 
 (defn score-query-timeline
   "Compute the LLM-driven interestingness score for the given
-  `(exploration-query-id, timeline-id)` pair. Returns a `double` in
-  `[0.0, 1.0]` or `nil` on any failure (query not done, no result, LLM
-  unconfigured, malformed response, transport error). Never throws."
+  `(exploration-query-id, timeline-id)` pair. Returns a `double` in `[0.0, 1.0]` or `nil` when
+  the call can't or shouldn't run (query not done, no result, or the shared
+  [[metabase.metabot.core/llm-call-available?]] gate is closed — Metabot disabled, provider
+  unconfigured, over usage limits, or the current user lacks permission) and on any failure
+  (malformed response, transport error). Never throws. The caller must establish the current-user
+  binding (the runner stamps the exploration creator) so the permission/usage checks resolve
+  against the right user."
   [exploration-query-id timeline-id]
   (try
-    (when (metabot.settings/llm-metabot-configured?)
+    (when (metabot/llm-call-available? :permission/metabot-other-tools)
       (when-let [{:keys [query result-bytes timeline prompt]}
                  (load-context exploration-query-id timeline-id)]
         (let [qp-result   (deserialize-result result-bytes)

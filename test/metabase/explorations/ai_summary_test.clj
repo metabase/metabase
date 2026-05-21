@@ -257,10 +257,12 @@
 
 ;; ----- skip-no-permission / skip-usage-limit (UXW-4126) -----
 ;;
-;; The permission and usage-limit gates live in
-;; `metabase.metabot.self/call-llm-structured-with-trace`. To exercise them
-;; we need at least one prepped chart on the thread (otherwise the orchestrator
-;; short-circuits with :skip-no-charts before any LLM call would happen).
+;; `generate-ai-summary!` consults the shared pre-flight gate
+;; `metabase.metabot.core/llm-call-unavailable-reason` (UXW-4120, bound to the creator) before
+;; any chart loading or LLM work and maps a closed gate to the matching `:skip-*` outcome;
+;; `call-llm-structured-with-trace` still enforces the same permission/usage gates inside
+;; `run-phases!` as a mid-run safety net. These threads have a prepped chart, but the gate now
+;; fires before that even matters.
 
 (defn- seed-one-prepped-chart!
   "Insert a Card + ExplorationQuery + StoredResult + ExplorationQueryResult so
@@ -307,8 +309,8 @@
     {:card-id (:id card) :query-id (:id eq)}))
 
 (deftest ^:integration generate-ai-summary-skips-without-other-tools-permission-test
-  (testing "Creator lacking :permission/metabot-other-tools → metabot.self throws
-            :metabot/permission-denied, orchestrator catches → :skip-no-permission (UXW-4126)"
+  (testing "Creator lacking :permission/metabot-other-tools → pre-flight gate returns
+            :permission-denied, orchestrator skips → :skip-no-permission (UXW-4126/UXW-4120)"
     (mt/with-temp [:model/User u {:email "ai-noperm@example.com"}
                    :model/Exploration e {:name "x" :creator_id (:id u)}
                    :model/ExplorationThread t {:exploration_id (:id e)
@@ -339,8 +341,8 @@
                     "transcript records the skip outcome")))))))))
 
 (deftest ^:integration generate-ai-summary-skips-when-usage-limit-reached-test
-  (testing "check-usage-limits! returning a message → metabot.self throws
-            :metabot/usage-limit-reached, orchestrator catches → :skip-usage-limit (UXW-4126)"
+  (testing "check-usage-limits! returning a message → pre-flight gate returns
+            :usage-limit, orchestrator skips → :skip-usage-limit (UXW-4126/UXW-4120)"
     (mt/with-temp [:model/User u {:email "ai-limit@example.com"}
                    :model/Exploration e {:name "x" :creator_id (:id u)}
                    :model/ExplorationThread t {:exploration_id (:id e)

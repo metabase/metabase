@@ -3,8 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]))
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as usage]))
 
 (def ^:private chart-config
   "A minimal but well-formed time-series chart-config the lego will accept."
@@ -18,7 +20,8 @@
                    :display_name "Revenue"}}})
 
 (defn- with-llm-configured! [thunk]
-  (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
+  (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
+                metabot.settings/llm-metabot-configured? (constantly true)]
     (thunk)))
 
 (defn- call
@@ -59,6 +62,46 @@
                     (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (is (nil? (call {})))
         (is (zero? @calls))))))
+
+(deftest score-and-describe-gate-closed-test
+  (testing "returns nil and never invokes the LLM when the shared metabot.core pre-flight gate is closed"
+    (doseq [[label redefs]
+            [["Metabot disabled"   {#'metabot.settings/metabot-enabled? (constantly false)}]
+             ["no provider"        {#'metabot.settings/llm-metabot-configured? (constantly false)}]
+             ["over usage limit"   {#'usage/check-usage-limits! (constantly "You've used all your tokens")}]
+             ["missing permission" {#'scope/resolve-user-permissions
+                                    (constantly (assoc scope/all-yes-permissions
+                                                       :permission/metabot-other-tools :no))}]]]
+      (testing label
+        (let [calls (atom 0)]
+          (with-redefs-fn (merge {#'metabot.settings/metabot-enabled?        (constantly true)
+                                  #'metabot.settings/llm-metabot-configured? (constantly true)
+                                  #'usage/check-usage-limits!                (constantly nil)
+                                  #'scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
+                                  #'metabot.self/call-llm-structured
+                                  (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})}
+                                 redefs)
+            (fn []
+              (is (nil? (call {})))
+              (is (zero? @calls) "the LLM must not be called when the gate is closed"))))))))
+
+(deftest score-and-describe-gate-throws-test
+  (testing "returns nil (never throws) when a pre-flight gate dependency itself throws"
+    (doseq [[label redefs]
+            [["check-usage-limits! throws"     {#'usage/check-usage-limits!
+                                                (fn [] (throw (ex-info "boom in usage check" {})))}]
+             ["resolve-user-permissions throws" {#'scope/resolve-user-permissions
+                                                 (fn [_] (throw (ex-info "boom in perms" {})))}]]]
+      (testing label
+        (with-redefs-fn (merge {#'metabot.settings/metabot-enabled?        (constantly true)
+                                #'metabot.settings/llm-metabot-configured? (constantly true)
+                                #'usage/check-usage-limits!                (constantly nil)
+                                #'scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
+                                #'metabot.self/call-llm-structured
+                                (fn [& _] {:score 1.0 :chart_description "c" :reasoning "x"})}
+                               redefs)
+          (fn []
+            (is (nil? (call {})) "must swallow the exception and return nil per its \"Never throws\" contract")))))))
 
 (deftest score-and-describe-happy-path-test
   (testing "valid LLM response returns score + descriptions; metric description is generated when card-description is blank"
