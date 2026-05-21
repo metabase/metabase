@@ -87,6 +87,16 @@
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
+  io.zonky.test/embedded-postgres           {:mvn/version "2.2.2"}              ; In-process Postgres that hosts the bundled Sample Database
+  ;; Native Postgres binaries for every OS/arch we ship Metabase on. Without
+  ;; these Zonky falls back to x86_64 under Rosetta on Apple Silicon and
+  ;; prints a warning; on other platforms it would fail outright. Versions
+  ;; should be pinned to the latest available from Zonky.
+  io.zonky.test.postgres/embedded-postgres-binaries-darwin-amd64   {:mvn/version "18.3.0"} ; macOS Intel
+  io.zonky.test.postgres/embedded-postgres-binaries-darwin-arm64v8 {:mvn/version "18.3.0"} ; macOS Apple Silicon
+  io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64
+  io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
+  io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -267,16 +277,6 @@
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
     io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; pinned to match the resolved OTel SDK version
-    io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
-    ;; Native postgres binaries for every OS/arch we're likely to run on in
-    ;; dev or CI. Without these Zonky falls back to x86_64 under Rosetta on
-    ;; Apple Silicon and prints a warning. Versions should be pinned to the
-    ;; latest version shipped by Zonky.
-    io.zonky.test.postgres/embedded-postgres-binaries-darwin-amd64   {:mvn/version "18.3.0"} ; macOS Intel
-    io.zonky.test.postgres/embedded-postgres-binaries-darwin-arm64v8 {:mvn/version "18.3.0"} ; macOS Apple Silicon
-    io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64 (covers ubuntu-latest GH Actions runner)
-    io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
-    io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
