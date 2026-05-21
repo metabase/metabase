@@ -623,17 +623,18 @@
                     result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (if (:api-error (ex-data e))
-                    (if (:status (ex-data e))
-                      (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
-                                  (ex-message e)
-                                  (:status (ex-data e))
-                                  (:provider (ex-data e))
-                                  (pr-str (:body (ex-data e))))
-                      (log/errorf e "Agent loop API error: %s provider=%s"
-                                  (ex-message e)
-                                  (:provider (ex-data e))))
-                    (log/error e "Agent loop error"))
+                  (let [data (ex-data e)]
+                    (if (:api-error data)
+                      (if (:status data)
+                        (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
+                                    (ex-message e)
+                                    (:status data)
+                                    (:provider data)
+                                    (pr-str (:body data)))
+                        (log/errorf e "Agent loop API error: %s provider=%s"
+                                    (ex-message e)
+                                    (:provider data)))
+                      (log/error e "Agent loop error")))
                   (rf init (error-part e)))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
