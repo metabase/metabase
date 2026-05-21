@@ -226,7 +226,6 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
-    // eslint-disable-next-line complexity -- large tiptap NodeView
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id as number | null;
@@ -246,7 +245,7 @@ export const CardEmbedComponent = memo(
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = useCommentUrl({ childTargetId: _id });
     const dispatch = useDispatch();
-    const canWrite = editor.options.editable && !isStatic;
+    const canWrite = editor.options.editable;
 
     const {
       isBeingDragged,
@@ -258,7 +257,7 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    const isExternalDocument = !isStatic && externalCardData != null;
+    const isExternalDocument = externalCardData != null;
     const regularCardData = useCardData({
       id,
       ...(isStatic && storedResultId != null
@@ -560,16 +559,11 @@ export const CardEmbedComponent = memo(
           data-type="cardEmbed"
           data-id={id}
           data-testid="document-card-embed"
-          {...(isStatic
-            ? null
-            : {
-                "data-drag-handle": true,
-                onDragOver: handleDragOver,
-                onDrop: () =>
-                  setDragState({ isDraggedOver: false, side: null }),
-              })}
+          data-drag-handle
+          onDragOver={handleDragOver}
+          onDrop={() => setDragState({ isDraggedOver: false, side: null })}
         >
-          {!isStatic && canWrite && id && (
+          {canWrite && id && (
             <>
               <DropZone
                 isOver={dragState.isDraggedOver && dragState.side === "left"}
@@ -584,12 +578,12 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={isStatic ? undefined : cardEmbedRef}
+            ref={cardEmbedRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
           >
-            {!isStatic && card && (
+            {card && (
               <Box className={styles.questionHeader}>
                 <Flex align="center" justify="space-between" gap="0.5rem">
                   {isEditingTitle ? (
@@ -704,6 +698,7 @@ export const CardEmbedComponent = memo(
                             menuView={menuView}
                             setMenuView={setMenuView}
                             canWrite={canWrite}
+                            isStatic={isStatic}
                             dataset={dataset}
                             question={question}
                             isNativeQuestion={isNativeQuestion}
@@ -749,7 +744,7 @@ export const CardEmbedComponent = memo(
                           : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
-                        isStatic || isExternalDocument
+                        isExternalDocument
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
@@ -772,8 +767,7 @@ export const CardEmbedComponent = memo(
               </Box>
             )}
           </Box>
-          {!isStatic &&
-            isModifyModalOpen &&
+          {isModifyModalOpen &&
             card &&
             (isNativeQuestion ? (
               <NativeQueryModal
@@ -801,7 +795,7 @@ export const CardEmbedComponent = memo(
                 }}
               />
             ))}
-          {!isStatic && isReplaceModalOpen && (
+          {isReplaceModalOpen && (
             <QuestionPickerModal
               onChange={handleReplaceModalSelect}
               onClose={() => setIsReplaceModalOpen(false)}

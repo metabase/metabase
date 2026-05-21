@@ -17,6 +17,7 @@ export interface CardEmbedMenuContext {
   hasUnsavedChanges: boolean;
   unresolvedCommentsCount: number;
   shouldShowTimelineEventsMenu: boolean;
+  isStatic: boolean;
 }
 
 export interface CardEmbedMenuActions {
@@ -52,6 +53,7 @@ export const CardEmbedMenuDropdown = ({
   hasUnsavedChanges,
   unresolvedCommentsCount,
   shouldShowTimelineEventsMenu,
+  isStatic,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
@@ -114,15 +116,17 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Edit Visualization`}
       </Menu.Item>
-      <Menu.Item
-        onClick={() => setIsModifyModalOpen(true)}
-        leftSection={
-          <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
-        }
-        disabled={!canWrite}
-      >
-        {t`Edit Query`}
-      </Menu.Item>
+      {!isStatic && (
+        <Menu.Item
+          onClick={() => setIsModifyModalOpen(true)}
+          leftSection={
+            <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+          }
+          disabled={!canWrite}
+        >
+          {t`Edit Query`}
+        </Menu.Item>
+      )}
       {shouldShowTimelineEventsMenu && (
         <Menu.Item
           leftSection={<Icon name="calendar" size={14} />}
@@ -132,13 +136,15 @@ export const CardEmbedMenuDropdown = ({
           {t`Events`}
         </Menu.Item>
       )}
-      <Menu.Item
-        onClick={handleReplaceQuestion}
-        leftSection={<Icon name="refresh" size={14} />}
-        disabled={!canWrite}
-      >
-        {t`Replace`}
-      </Menu.Item>
+      {!isStatic && (
+        <Menu.Item
+          onClick={handleReplaceQuestion}
+          leftSection={<Icon name="refresh" size={14} />}
+          disabled={!canWrite}
+        >
+          {t`Replace`}
+        </Menu.Item>
+      )}
       {canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
