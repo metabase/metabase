@@ -923,3 +923,25 @@
             :sqlserver (mt/id) nil
             (fn [conn]
               (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))
+
+(mt/defdataset ^:private datetime-offset
+  [["datetime-offset"
+    [{:field-name "start", :base-type {:native "DATETIMEOFFSET"}}
+     {:field-name "end", :base-type {:native "DATETIMEOFFSET"}}]
+    [["2025-10-10 09:00:00 +02:00" "2025-10-10 10:00:00 +02:00"]
+     ["2025-10-11 09:15:00 +02:00" "2025-10-11 09:30:00 +02:00"]]]])
+
+(deftest ^:parallel datetime-diff-with-datetime-offset-test
+  (mt/test-driver :sqlserver
+    (mt/dataset datetime-offset
+      (let [mp        (mt/metadata-provider)
+            start-col (lib.metadata/field mp (mt/id :datetime-offset :start))
+            end-col   (lib.metadata/field mp (mt/id :datetime-offset :end))
+            diff-minutes (lib/expression-clause :datetime-diff
+                                                [start-col end-col :minute]
+                                                nil)
+            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :datetime-offset)))
+                          (lib/expression "diff-minutes" diff-minutes))]
+        (is (= [[1 "2025-10-10T07:00:00Z" "2025-10-10T08:00:00Z" 60]
+                [2 "2025-10-11T07:15:00Z" "2025-10-11T07:30:00Z" 15]]
+               (mt/rows (qp/process-query query))))))))
