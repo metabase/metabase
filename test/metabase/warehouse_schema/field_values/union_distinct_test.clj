@@ -10,6 +10,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- sql-test-drivers
+  "Normal drivers that generate SQL. `union-distinct-values` builds and runs a SQL query, so it
+   only applies to SQL drivers — non-SQL drivers (e.g. Mongo) go through the per-field fallback
+   in `sync-fields-grouped-by-table!` and aren't exercised by these direct-call tests."
+  []
+  (into #{}
+        (filter #(isa? driver/hierarchy % :sql))
+        (mt/normal-drivers-with-feature :basic-aggregations)))
+
 ;;; ---------------------------------- decode-value ----------------------------------
 
 (deftest decode-value-test
@@ -35,44 +44,45 @@
     (is (= "raw" (#'union-distinct/decode-value :type/Float "raw")))
     (is (= "anything" (#'union-distinct/decode-value :type/SomeMadeUpType "anything")))))
 
-;;; ---------------------------------- end-to-end against H2 -------------------------
+;;; ---------------------------------- end-to-end -----------------------------------
 
-(deftest union-distinct-values-h2-integration-test
+(deftest ^:sync union-distinct-values-integration-test
   (testing "UNION path returns correct distinct values for each field"
-    (mt/dataset test-data
-      (let [fields  [(t2/select-one :model/Field :id (mt/id :people :state))
-                     (t2/select-one :model/Field :id (mt/id :people :source))]
-            results (union-distinct/union-distinct-values (mt/id :people) fields)]
-        (is (map? results) "Returns a map keyed by field-id")
-        (is (= (set (map :id fields)) (set (keys results))))
-        (testing "people.state distinct values match the per-field path"
-          (let [{:keys [values raw-count]} (get results (mt/id :people :state))]
-            (is (pos? raw-count))
-            (is (every? string? values))
-            (is (every? #(= 2 (count %)) values) "US state abbreviations are 2-char")))
-        (testing "people.source distinct values match the per-field path"
-          (let [{:keys [values]} (get results (mt/id :people :source))]
-            (is (set? (set values)))
-            (is (seq values))
-            (is (every? string? values))))))))
+    (mt/test-drivers (sql-test-drivers)
+      (mt/dataset test-data
+        (let [fields  [(t2/select-one :model/Field :id (mt/id :people :state))
+                       (t2/select-one :model/Field :id (mt/id :people :source))]
+              results (union-distinct/union-distinct-values (mt/id :people) fields)]
+          (is (map? results) "Returns a map keyed by field-id")
+          (is (= (set (map :id fields)) (set (keys results))))
+          (testing "people.state distinct values"
+            (let [{:keys [values raw-count]} (get results (mt/id :people :state))]
+              (is (pos? raw-count))
+              (is (every? string? values))
+              (is (every? #(= 2 (count %)) values) "US state abbreviations are 2-char")))
+          (testing "people.source distinct values"
+            (let [{:keys [values]} (get results (mt/id :people :source))]
+              (is (seq values))
+              (is (every? string? values)))))))))
 
 (deftest union-distinct-empty-fields-returns-nil-test
   (testing "Empty fields seq → nil"
     (is (nil? (union-distinct/union-distinct-values 1 [])))
     (is (nil? (union-distinct/union-distinct-values 1 nil)))))
 
-(deftest union-distinct-batches-large-field-set-test
+(deftest ^:sync union-distinct-batches-large-field-set-test
   (testing "Field count > *batch-size* is broken into multiple queries"
-    (mt/dataset test-data
-      (binding [union-distinct/*batch-size* 2]
-        (let [fields  (vec (t2/select :model/Field
-                                      :table_id (mt/id :people)
-                                      :active true
-                                      :visibility_type "normal"
-                                      {:order-by [[:name :asc]]}))
-              results (union-distinct/union-distinct-values (mt/id :people) fields)]
-          (is (= (count fields) (count results))
-              "Every field appears in the result map even though queries were batched"))))))
+    (mt/test-drivers (sql-test-drivers)
+      (mt/dataset test-data
+        (binding [union-distinct/*batch-size* 2]
+          (let [fields  (vec (t2/select :model/Field
+                                        :table_id (mt/id :people)
+                                        :active true
+                                        :visibility_type "normal"
+                                        {:order-by [[:name :asc]]}))
+                results (union-distinct/union-distinct-values (mt/id :people) fields)]
+            (is (= (count fields) (count results))
+                "Every field appears in the result map even though queries were batched")))))))
 
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------
 
@@ -110,7 +120,7 @@
     ;; Only check fields whose distinct count is below the per-column LIMIT. For columns that hit
     ;; the cap, both paths return a valid subset but the warehouse is free to pick *which* 1000
     ;; — the subsets may differ across paths/engines without either being wrong.
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
         (let [fields (mapv #(t2/select-one :model/Field :id (mt/id :people %))
                            [:state :source])
@@ -133,7 +143,7 @@
 
 (deftest ^:sync union-distinct-values-cross-driver-test
   (testing "UNION ALL distinct-values fetcher produces correct results on every supported SQL driver"
-    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
         (let [state-field  (t2/select-one :model/Field :id (mt/id :people :state))
               source-field (t2/select-one :model/Field :id (mt/id :people :source))
