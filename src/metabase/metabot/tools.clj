@@ -126,8 +126,13 @@
   `metabase.metabot.tools.entity-usage/validate-result`. Phase 3 sub-phases
   of `notes/bot-1569/impl-plan-v2.md` extend this set per tool category;
   Phase 3e removes the gate entirely so the assertion applies to every
-  registered tool."
-  #{})
+  registered tool.
+
+  Note: all four search vars (`search-tool`, `sql-search-tool`,
+  `nlq-search-tool`, `transform-search-tool`) share `:tool-name \"search\"`,
+  so a single entry covers them all — profiles register exactly one of the
+  four under that name."
+  #{"search"})
 
 (defn- wrap-with-entity-usage-validation
   "Wrap a tool fn so its returned `:entity-usage` is validated against the

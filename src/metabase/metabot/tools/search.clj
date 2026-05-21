@@ -253,6 +253,33 @@
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
 
+(defn- hit->entity-usage-output
+  "Project one post-processed search hit into an `:entity-usage` `:output` entry.
+  `:metadata.rank` is the hit's 0-based position in the final result list (the
+  same order `search-results->xml` renders), so a downstream consumer can join
+  ranks back to the LLM-visible XML positions. `:verified` and `:database_id`
+  are only included when the source schema for the entity carries them — keeps
+  the JSON compact for database/table/transform hits that don't have either."
+  [rank {:keys [type id verified database_id]}]
+  {:type     type
+   :id       id
+   :metadata (cond-> {:rank rank
+                      :uri  (llm-rep/metabase-uri type id)}
+               (some? verified)    (assoc :verified verified)
+               (some? database_id) (assoc :database_id database_id))})
+
+(defn- search-entity-usage
+  "Build the `:entity-usage` map persisted as part of a search tool result's
+  `:structured-output`. `:input` is always empty — search tools take query
+  strings, not entity refs. `:output` mirrors `results` in order so ranks
+  align with the LLM-facing XML."
+  [results]
+  {:input  []
+   :output (vec (map-indexed hit->entity-usage-output results))})
+
+(def ^:private empty-entity-usage
+  {:input [] :output []})
+
 (defn- invalid-entity-types
   [entity-types allowed]
   (when (seq entity-types)
@@ -264,8 +291,9 @@
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
-    {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " allowed-types) ".")}
+    {:output            (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
+                             ". Allowed types: " (str/join ", " allowed-types) ".")
+     :structured-output {:entity-usage empty-entity-usage}}
     (try
       (let [results (search (merge {:semantic-queries semantic_queries
                                     :term-queries    keyword_queries
@@ -274,13 +302,15 @@
                                     :limit           (min max-search-limit
                                                           (or limit default-search-limit))}
                                    search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}})
+        {:output            (format-search-output results)
+         :structured-output {:result-type  :search
+                             :data         results
+                             :total_count  (count results)
+                             :entity-usage (search-entity-usage results)}})
       (catch Exception e
         (log/error e (str "Error in " label))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+        {:output            (str "Search failed: " (or (ex-message e) "Unknown error"))
+         :structured-output {:entity-usage empty-entity-usage}}))))
 
 (def ^:private search-schema
   [:map {:closed true}
@@ -291,6 +321,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :scope     scope/agent-search}
   search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
@@ -307,6 +338,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :prompt    "sql_search.md"
            :scope     scope/agent-search}
   sql-search-tool
@@ -323,6 +355,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :prompt    "nlq_search.md"
            :scope     scope/agent-search}
   nlq-search-tool
@@ -340,6 +373,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :prompt    "transform_search"
            :scope     scope/agent-search}
   transform-search-tool
