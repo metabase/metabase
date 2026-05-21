@@ -218,6 +218,7 @@ export const NotificationsAdminPage = ({
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
+      size: "md",
       onConfirm: () => deleteNotifications(Array.from(selectedIds)),
     });
   }, [deleteNotifications, selectedIds, showConfirm]);

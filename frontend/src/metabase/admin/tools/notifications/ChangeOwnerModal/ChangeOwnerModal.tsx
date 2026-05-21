@@ -38,20 +38,16 @@ export const ChangeOwnerModal = ({
 
   const title =
     count === 1
-      ? t`Change owner of 1 alert`
-      : t`Change owner of ${count} alerts`;
+      ? t`Select new owner of 1 alert`
+      : t`Select new owner of ${count} alerts`;
 
   return (
     <Modal opened={opened} onClose={handleClose} title={title} size="md">
       <Flex direction="column" gap="md">
-        <UserPicker
-          label={t`New owner`}
-          value={selectedCreator}
-          onChange={setSelectedCreator}
-        />
+        <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
 
         <Flex justify="flex-end" gap="sm">
-          <Button variant="subtle" onClick={handleClose}>
+          <Button variant="default" onClick={handleClose}>
             {t`Cancel`}
           </Button>
           <Button

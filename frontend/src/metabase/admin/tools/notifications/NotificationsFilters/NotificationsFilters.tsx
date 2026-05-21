@@ -104,7 +104,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
       onChange={setOpened}
     >
       <Popover.Target>
-        <Indicator disabled={!hasActive} size={8} offset={4}>
+        <Indicator disabled={!hasActive} size={8} offset={8}>
           <Button
             variant="default"
             leftSection={<Icon name="filter" />}
@@ -168,12 +168,13 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
               w="100%"
               placeholder={t`recipient@metabase.com`}
               value={draft.recipient_email}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setDraft((prev) => ({
                   ...prev,
-                  recipient_email: event.currentTarget.value,
-                }))
-              }
+                  recipient_email: value,
+                }));
+              }}
             />
           </FilterSection>
 

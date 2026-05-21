@@ -87,10 +87,9 @@ export const getRoutes = (
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
-  const hasSimpleEmbedding = getTokenFeature(
-    store.getState(),
-    "embedding_simple",
-  );
+  const state = store.getState();
+  const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
+  const hasAuditApp = getTokenFeature(state, "audit_app");
 
   return (
     <Route path="/admin" component={CanAccessSettings}>
@@ -326,7 +325,9 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications">{getNotificationsRoutes()}</Route>
+            {hasAuditApp && (
+              <Route path="notifications">{getNotificationsRoutes()}</Route>
+            )}
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

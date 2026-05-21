@@ -47,7 +47,7 @@ export const UserPicker = ({
     <Select
       flex={flex}
       label={label}
-      placeholder={placeholder ?? t`Search for a user`}
+      placeholder={placeholder ?? t`Select a user`}
       data={options}
       value={value === null ? null : String(value.id)}
       onChange={handleChange}

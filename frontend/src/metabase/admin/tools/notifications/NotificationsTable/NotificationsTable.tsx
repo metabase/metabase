@@ -151,7 +151,7 @@ export const NotificationsTable = ({
       {
         id: "card_name",
         header: t`Question`,
-        width: 280,
+        minWidth: 200,
         enableSorting: true,
         accessorFn: (notification) => notification.payload?.card?.name ?? "",
         cell: ({ row }) => {
@@ -164,7 +164,9 @@ export const NotificationsTable = ({
       {
         id: "creator_name",
         header: t`Owner`,
-        width: 200,
+        width: "auto",
+        minWidth: 140,
+        maxAutoWidth: 320,
         enableSorting: true,
         accessorFn: (notification) =>
           notification.creator?.common_name ??
@@ -189,7 +191,7 @@ export const NotificationsTable = ({
       {
         id: "channel",
         header: t`Channel`,
-        width: 172,
+        width: 120,
         enableSorting: false,
         cell: ({ row }) => {
           const summaries = summarizeChannels(row.original);
