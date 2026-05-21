@@ -899,7 +899,10 @@
       (is (every? nil? (map body-preview [{:error  {:code 42 :type "x"}}
                                           {:detail [{:loc ["body" "prompt"]}]}
                                           {:message {:code "missing"}}
+                                          {:error  {:message {:code 500}}}
                                           {:error  42}]))))
+    (testing "a non-string at one key falls through to a later key with a real message"
+      (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"}))))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))

@@ -507,15 +507,17 @@
 
 (defn- extract-error-message
   "Human-readable error string from a JSON envelope map, or nil.
-  Only accepts string fields; a structured `:error` map without `:message`, or a vector/map
-  under `:detail`/`:message`, returns nil rather than being coerced into the user-facing text."
+  Only accepts string fields under `:error`/`:detail`/`:message` (and the nested
+  `[:error :message]`) — structured values would otherwise be `str`-coerced and leak the
+  raw envelope into the user-facing message. Filtering per-lookup means a non-string at
+  one key falls through to the next, e.g. `{:error {:code 500} :detail \"real msg\"}`."
   [m]
-  (let [s (or (get-in m [:error :message])
-              (:error m)
-              (:detail m)
-              (:message m))]
-    (when (string? s)
-      (not-empty s))))
+  (let [s? (fn [v] (when (string? v) v))]
+    (some-> (or (s? (get-in m [:error :message]))
+                (s? (:error m))
+                (s? (:detail m))
+                (s? (:message m)))
+            not-empty)))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
