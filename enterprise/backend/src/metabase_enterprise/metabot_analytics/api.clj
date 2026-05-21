@@ -49,7 +49,7 @@
 
 (def ^:private SortColumn
   "Allow-list of columns the list endpoint can sort by."
-  [:enum "created_at" "message_count" "total_tokens"])
+  [:enum "created_at" "message_count" "total_tokens" "user" "profile_id" "ip_address"])
 
 (def ^:private SortDirection
   [:enum "asc" "desc"])

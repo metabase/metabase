@@ -2,14 +2,14 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
+import { fieldApi } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { type DispatchFn, connect } from "metabase/redux";
-import { fetchField } from "metabase/redux/metadata";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
@@ -25,6 +25,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
+  EmbeddingParameterVisibility,
   FieldId,
   Parameter,
   ParameterValuesConfig,
@@ -99,8 +100,22 @@ const mapDispatchToProps = (
   props: OwnProps,
 ): DispatchProps => {
   return {
-    fetchField(fieldId, force) {
-      dispatch(fetchField(fieldId, force));
+    async fetchField(fieldId, force) {
+      const field = await entityCompatibleQuery(
+        { id: fieldId },
+        dispatch,
+        fieldApi.endpoints.getField,
+        { forceRefetch: force ?? false },
+      );
+      const remapId = field?.dimensions?.[0]?.human_readable_field_id;
+      if (remapId != null) {
+        await entityCompatibleQuery(
+          { id: remapId },
+          dispatch,
+          fieldApi.endpoints.getField,
+          { forceRefetch: force ?? false },
+        );
+      }
     },
     setTemplateTagConfig(tag, config) {
       if (props.setTemplateTagConfig) {

@@ -11,6 +11,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -90,6 +91,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const canManageWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaces,
+  );
+  const hasActiveWorkspace = useSelector(PLUGIN_WORKSPACES.hasActiveWorkspace);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -194,6 +199,24 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isSelected={currentTab === "git-sync"}
               showLabel={isNavbarOpened}
               isGated
+            />
+          )}
+          {hasActiveWorkspace && (
+            <DataStudioTab
+              label={t`Workspace`}
+              icon="folder"
+              to={Urls.workspaceInstance()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {!hasActiveWorkspace && canManageWorkspaces && (
+            <DataStudioTab
+              label={t`Workspaces`}
+              icon="folder"
+              to={Urls.workspaceList()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
             />
           )}
           {canAccessTransforms && (

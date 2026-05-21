@@ -202,7 +202,9 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    ;; Prevent changing data_source to/from metabase-transform
+    ;; Prevent changing data_source to/from metabase-transform.
+    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+    ;; can be migrated to a transform-managed table via serdes.
     (when (contains? changes :data_source)
       (let [original-data-source (some-> (:data_source original-table) keyword)
             new-data-source      (some-> (:data_source changes) keyword)]
@@ -210,7 +212,8 @@
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
-        (when (and (not= original-data-source :metabase-transform)
+        (when (and (not mi/*deserializing?*)
+                   (not= original-data-source :metabase-transform)
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
@@ -260,6 +263,24 @@
       (perms/set-default-table-permissions!
        table
        (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
+
+(defn set-new-tables-permissions!
+  "Batch variant of [[set-new-table-permissions!]] for many newly-inserted
+  tables on the same database. Acquires the cluster lock once and delegates
+  to [[perms/set-default-table-permissions-bulk!]]. All `tables` must share
+  `db-id`."
+  [db-id tables]
+  (when (seq tables)
+    (perms/with-db-scoped-permissions-lock db-id
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)
+            tables+defaults  (mapv (fn [t]
+                                     [t (group-perm-defaults t all-users-group
+                                                             non-magic-groups
+                                                             non-admin-groups)])
+                                   tables)]
+        (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -562,9 +583,10 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
+(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id transform_id]}]
   (cond-> [[{:model "Database" :id db_id}]]
-    collection_id (conj [{:model "Collection" :id collection_id}])))
+    collection_id (conj [{:model "Collection" :id collection_id}])
+    transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
@@ -658,15 +680,19 @@
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
-                  :archived      false
+                  :archived        false
                   ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id true
-                  :creator-id    false
-                  :database-id   :db_id
-                  :view-count    true
-                  :created-at    true
-                  :updated-at    true
-                  :is-published  :is_published}
+                  :collection-id   true
+                  :creator-id      false
+                  :database-id     :db_id
+                  :view-count      true
+                  :created-at      true
+                  :updated-at      true
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :data-layer          :data_layer}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -677,14 +703,12 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] [:inline "Our analytics"]
-                                                :else nil]]
-                  :collection-type            :collection.type}
+                                                :else nil]]}
    :where        [:and
                   :active
                   [:= :visibility_type nil]

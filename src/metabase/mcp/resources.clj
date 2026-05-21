@@ -10,12 +10,19 @@
    nil scope is treated as internal-only."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [stencil.core :as stencil]))
+   [metabase.util.malli.schema :as ms]
+   [stencil.core :as stencil])
+  (:import
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -80,11 +87,56 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
-(defn- ui-csp-meta []
-  (let [url (system/site-url)]
-    {:ui {:csp {:connectDomains  [url]
-                :resourceDomains [url]
-                :frameDomains    [url]}}}))
+(defn- chatgpt-client?
+  "True when the in-flight request's User-Agent identifies the ChatGPT MCP/Apps
+   client. ChatGPT empirically sends `openai-mcp/...`; Claude rejects
+   `_meta.ui.domain` unless it's a Claude-issued subdomain, so we gate the field
+   on this check."
+  []
+  (boolean (some-> (request/current-request)
+                   (get-in [:headers "user-agent"])
+                   (str/includes? "openai-mcp"))))
+
+(defn- site-origin
+  "Origin (scheme://host[:port]) extracted from `site-url`, dropping any path segment.
+   ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
+   hosted under a subpath would otherwise leak the path and fail validation. Returns nil when
+   `site-url` is unset — callers degrade gracefully rather than NPE on a misconfigured instance."
+  []
+  (when-let [url (system/site-url)]
+    (let [^URI uri (URI. url)
+          scheme   (.getScheme uri)
+          host     (.getHost uri)
+          port     (.getPort uri)]
+      (cond-> (str scheme "://" host)
+        (not (neg? port)) (str ":" port)))))
+
+(defn- ui-meta
+  "MCP `_meta.ui` block returned alongside UI resources.
+   Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this
+   to pick a sandbox configuration:
+
+   - `prefersBorder`    — presentation hint asking the host to draw a frame border
+   - `domain`           — origin the iframe content is anchored at. ChatGPT-only:
+                          Claude validates this against its own namespace
+                          (`*.claudemcpcontent.com`) and rejects anything else,
+                          so we emit it only for ChatGPT (gated by [[chatgpt-client?]]).
+   - `csp.connectDomains`  — hosts the iframe may XHR/fetch/WebSocket to
+                              (the embedded SDK calls back to this Metabase instance)
+   - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
+                              (the SDK bundle is served from this Metabase instance)
+
+   `frameDomains` is intentionally omitted — we don't nest iframes inside the visualization, and leaving
+   it out narrows the CSP for security review."
+  [resource]
+  (let [url (site-origin)]
+    {:ui (cond-> {:csp {:connectDomains  [url]
+                        :resourceDomains [url]}}
+           (contains? resource :prefersBorder)
+           (assoc :prefersBorder (:prefersBorder resource))
+
+           (chatgpt-client?)
+           (assoc :domain url))}))
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
@@ -106,7 +158,8 @@
    resource :- [:map
                 [:name :string]
                 [:description :string]
-                [:render-fn fn?]]]
+                [:render-fn fn?]
+                [:prefersBorder {:optional true} :boolean]]]
   (let [resource (-> (assoc resource :uri uri :scope scope :ui? true)
                      (update :mimeType #(or % "text/html;profile=mcp-app")))]
     (swap! registry #(-> %
@@ -114,16 +167,33 @@
                          (assoc-in [:uri->resource uri] resource)))
     resource))
 
+(defn- malli->ui-input-schema
+  "Convert a Malli schema for a UI-tool input into the published JSON Schema."
+  [schema]
+  (-> schema tools-manifest/malli->json-schema tools-manifest/strict-tool-input-schema))
+
+(defn- malli->ui-output-schema
+  "Convert a Malli schema for a UI-tool output into the published JSON Schema.
+   No strict transform — outputs aren't constrained by OpenAI's strict-tool rules."
+  [schema]
+  (tools-manifest/malli->json-schema schema))
+
 (mu/defn- register-ui-tool!
+  "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas (not JSON Schema)."
   [resource-key :- :keyword
    tool         :- [:map
                     [:name :string]
                     [:description :string]
-                    [:inputSchema :map]
+                    [:inputSchema  :any]
+                    [:outputSchema {:optional true} :any]
+                    [:annotations  {:optional true} :map]
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
-          tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
+          tool  (-> tool
+                    (update :inputSchema  malli->ui-input-schema)
+                    (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
+                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -145,7 +215,7 @@
                     (comp (filter #(mcp.scope/public-or-matches? token-scopes (:scope %)))
                           (map (fn [resource]
                                  (cond-> (select-keys resource [:uri :name :description :mimeType])
-                                   (:ui? resource) (assoc :_meta (ui-csp-meta))))))
+                                   (:ui? resource) (assoc :_meta (ui-meta resource))))))
                     (vals (:uri->resource @registry)))})
 
 (defn check-resource-access
@@ -169,7 +239,7 @@
       {:status   :ok
        :contents [(cond-> (select-keys resource [:uri :mimeType])
                     true (assoc :text (render-fn opts))
-                    ui?  (assoc :_meta (ui-csp-meta)))]}
+                    ui?  (assoc :_meta (ui-meta resource)))]}
       {:status :scope-denied})
     {:status :not-found}))
 
@@ -206,6 +276,7 @@
  "agent:visualize"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
+  :prefersBorder true
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
                        session-key (:session-key opts)
@@ -229,17 +300,32 @@
   ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
   ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
   ;; The response-fn enforces the at-least-one contract at runtime.
-  :inputSchema {:type       "object"
-                :properties {:query        {:type "string" :minLength 1
-                                            :description "Base64-encoded MBQL query (use query_handle instead when available)"}
-                             :query_handle {:type "string" :format "uuid"
-                                            :description "Handle returned by construct_query; preferred over raw query"}}}
+  :inputSchema
+  [:map
+   [:query        {:optional true
+                   :description "Base64-encoded MBQL query (use query_handle instead when available)"}
+    [:maybe ms/NonBlankString]]
+   [:query_handle {:optional true
+                   :description "Handle returned by construct_query; preferred over raw query"}
+    [:maybe ms/UUIDString]]]
+  :outputSchema
+  [:map
+   [:query  {:description "Base64-encoded MBQL query that the visualization is rendering."}
+    :string]
+   [:prompt {:optional true
+             :description "User's original request, when stored alongside the handle."}
+    [:maybe :string]]]
+  :annotations {:readOnlyHint    true
+                :destructiveHint false
+                :idempotentHint  true
+                :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
-                 (let [query   (:query arguments)
-                       handle  (:query_handle arguments)
-                       resolved (some->> handle (mcp.session/resolve-query-handle session-id))
-                       encoded (or query (:encoded_query resolved))
-                       prompt  (:prompt resolved)]
+                 (let [query    (:query arguments)
+                       handle   (:query_handle arguments)
+                       resolved (some->> handle (mcp.session/resolve-query-handle
+                                                 session-id api/*current-user-id*))
+                       encoded  (or query (:encoded_query resolved))
+                       prompt   (:prompt resolved)]
                    (cond
                      (and (nil? query) (nil? handle))
                      {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
@@ -266,14 +352,22 @@
                     "their message includes a `handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "
                     "`handle` UUID as the `handle` argument.")
-  :inputSchema {:type       "object"
-                :properties {:handle {:type "string" :format "uuid"
-                                      :description "Handle UUID from the user's drill-through message."}}
-                :required   ["handle"]}
+  :inputSchema
+  [:map
+   [:handle {:description "Handle UUID from the user's drill-through message."}
+    ms/UUIDString]]
+  :outputSchema
+  [:map
+   [:query {:description "Base64-encoded MBQL query bound to the drill-through handle."}
+    :string]]
+  :annotations {:readOnlyHint    true
+                :destructiveHint false
+                :idempotentHint  true
+                :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle session-id handle)]
-                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                   (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
+                     {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                       :structuredContent {:query encoded}}
                      {:content [{:type "text" :text "No drill-through found for that handle."}]
                       :isError true})

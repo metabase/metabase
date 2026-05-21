@@ -14,6 +14,7 @@ import type {
   CreateDatabaseRequest,
   Database,
   DatabaseId,
+  DatabaseUsageInfo,
   Field,
   GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
@@ -105,6 +106,13 @@ export const databaseApi = Api.injectEndpoints({
         handleQueryFulfilled(queryFulfilled, (data) =>
           dispatch(updateMetadata(data, DatabaseSchema)),
         ),
+    }),
+    getDatabaseUsageInfo: builder.query<DatabaseUsageInfo, DatabaseId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/usage_info`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
     getDatabaseSettingsAvailable: builder.query<
       GetDatabaseSettingsAvailableResponse,
@@ -343,6 +351,7 @@ export const {
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
+  useGetDatabaseUsageInfoQuery,
   useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,

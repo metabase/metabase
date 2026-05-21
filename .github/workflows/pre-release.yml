@@ -33,7 +33,7 @@ jobs:
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
       cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -81,7 +81,7 @@ jobs:
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: .github
       - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -174,7 +174,7 @@ jobs:
       TERM: xterm
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
       - name: Prepare Docker containers
@@ -223,7 +223,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@smoke+-@EE" \
+            $CYPRESS_GREP_FLAG grepTags="@prerelease+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -232,7 +232,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            $CYPRESS_GREP_FLAG grepTags="@smoke+-@OSS" \
+            $CYPRESS_GREP_FLAG grepTags="@prerelease+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
@@ -279,7 +279,7 @@ jobs:
       ]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release

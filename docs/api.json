@@ -1167,6 +1167,81 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-complexity-score.api.node" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "error" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "measurement" : {
+              "type" : "number"
+            },
+            "rating" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "low", "medium", "high" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "rating_label" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "score" : {
+              "type" : "integer",
+              "minimum" : 0
+            }
+          },
+          "required" : [ "measurement", "score", "rating", "rating_label" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "components" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
+              }
+            },
+            "rating" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "low", "medium", "high" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "rating_label" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "score" : {
+              "oneOf" : [ {
+                "type" : "integer",
+                "minimum" : 0
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "score", "rating", "rating_label", "components" ],
+          "additionalProperties" : false
+        } ]
+      },
       "metabase-enterprise.data-studio.api.table.publish-table-selectors" : {
         "type" : "object",
         "properties" : {
@@ -2301,6 +2376,52 @@
         },
         "required" : [ "id", "db_id", "name" ]
       },
+      "metabase-enterprise.serialization.schema.import-status-response" : {
+        "description" : "Wire shape of `GET /metadata/import/:id`. Timestamps are ISO-8601 strings.\n  `:started-at`/`:finished-at`/`:wall-ms` are nil until the relevant lifecycle\n  stage is reached; `:error` is nil unless the import failed.",
+        "type" : "object",
+        "properties" : {
+          "enqueued-at" : {
+            "type" : "string"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "finished-at" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "started-at" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "queued", "running", "ok", "error" ]
+          },
+          "wall-ms" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "status", "enqueued-at", "started-at", "finished-at", "wall-ms", "error" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
         "type" : "object",
@@ -3368,10 +3489,39 @@
         },
         "required" : [ "name", "base_type", "display_name" ]
       },
-      "metabase.agent-api.api.construct-query-response" : {
-        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
+      "metabase.agent-api.api.construct-query-request" : {
+        "description" : "Request body for /v2/construct-query. Same as program-request, with an optional prompt\n  capturing the user's original intent when a caller has one.",
         "type" : "object",
         "properties" : {
+          "operations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
+            }
+          },
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
+          }
+        },
+        "required" : [ "source", "operations" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-api.api.construct-query-response" : {
+        "description" : "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute.",
+        "type" : "object",
+        "properties" : {
+          "prompt" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 10000,
+            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+          },
           "query" : {
             "type" : "string",
             "minLength" : 1
@@ -3819,7 +3969,7 @@
         "required" : [ "id", "type", "name" ]
       },
       "metabase.agent-api.api.program-request" : {
-        "description" : "Request body for /v2/construct-query and /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
+        "description" : "Request body for /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
         "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
       },
       "metabase.agent-api.api.query-request" : {
@@ -15230,7 +15380,7 @@
       "post" : {
         "operationId" : "post-api-agent-v2-construct-query",
         "summary" : "POST /api/agent/v2/construct-query",
-        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query) and `operations` (an array of operator\n  tuples). Returns a base64-encoded MBQL query that can be executed via\n  /v1/execute. See the agent_api reference for the full program syntax.",
+        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query), `operations` (an array of operator\n  tuples), and `prompt` (the user's original request). Returns a base64-encoded\n  MBQL query that can be executed via /v1/execute. See the agent_api reference\n  for the full program syntax.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15254,7 +15404,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
+                "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
               }
             }
           }
@@ -26002,179 +26152,7 @@
                   "type" : "object",
                   "properties" : {
                     "library" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     },
                     "meta" : {
                       "type" : "object",
@@ -26196,6 +26174,10 @@
                             "type" : "null"
                           } ]
                         },
+                        "format_version" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
                         "formula_version" : {
                           "type" : "integer",
                           "minimum" : 1
@@ -26204,357 +26186,13 @@
                           "type" : "number"
                         }
                       },
-                      "required" : [ "formula_version", "synonym_threshold" ]
+                      "required" : [ "formula_version", "format_version", "synonym_threshold" ]
                     },
                     "metabot" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     },
                     "universe" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     }
                   },
                   "required" : [ "library", "universe", "metabot", "meta" ]
@@ -26781,7 +26419,7 @@
       "post" : {
         "operationId" : "post-api-ee-database-routing-destination-database",
         "summary" : "POST /api/ee/database-routing/destination-database",
-        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, this endpoint does not test that the database is actually\n  reachable before adding it — destination details are not required to be valid at creation time, and an\n  unreachable destination is fine.",
         "parameters" : [ {
           "in" : "query",
           "name" : "check_connection_details",
@@ -30991,6 +30629,88 @@
         "tags" : [ "/api/ee/serialization" ]
       }
     },
+    "/api/ee/serialization/metadata/import" : {
+      "post" : {
+        "operationId" : "post-api-ee-serialization-metadata-import",
+        "summary" : "POST /api/ee/serialization/metadata/import",
+        "description" : "Import warehouse metadata previously emitted by `POST /metadata/export`. The\n  request body is the JSON document `{databases, tables, fields}`; sections are\n  parsed incrementally so memory stays bounded regardless of payload size.\n\n  To bypass the JSON-parsing request middleware, send with `Content-Type:\n  application/octet-stream`. Restricted to superusers.\n\n  Returns `202` immediately with an `:import-id`; the import runs\n  asynchronously. Poll `GET /metadata/import/:id` for its outcome.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "object",
+                      "properties" : {
+                        "import-id" : {
+                          "type" : "string"
+                        },
+                        "queued" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "queued", "import-id" ],
+                      "additionalProperties" : false
+                    },
+                    "status" : {
+                      "const" : 202
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
+    "/api/ee/serialization/metadata/import/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-serialization-metadata-import-id",
+        "summary" : "GET /api/ee/serialization/metadata/import/{id}",
+        "description" : "Status of a metadata import previously started by `POST /metadata/import`.\n  Status is retained in-memory and is not durable across server restarts.\n  Restricted to superusers.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.import-status-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
     "/api/ee/stale/{id}" : {
       "get" : {
         "operationId" : "get-api-ee-stale-id",
@@ -32119,6 +31839,143 @@
           }
         },
         "tags" : [ "/api/email" ]
+      }
+    },
+    "/api/embed-mcp/drills" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-drills",
+        "summary" : "POST /api/embed-mcp/drills",
+        "description" : "Stash a base64-encoded MBQL query for the iframe's pending drill-through and\n   return a handle UUID the iframe will thread into the agent message so the\n   `render_drill_through` tool can fetch it.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "encodedQuery" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "encodedQuery" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
+      }
+    },
+    "/api/embed-mcp/feedback" : {
+      "post" : {
+        "operationId" : "post-api-embed-mcp-feedback",
+        "summary" : "POST /api/embed-mcp/feedback",
+        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "conversation_data" : {
+                    "type" : "object",
+                    "properties" : {
+                      "prompt" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "query" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "source" : {
+                        "const" : "mcp"
+                      }
+                    },
+                    "required" : [ "source" ]
+                  },
+                  "feedback" : {
+                    "type" : "object",
+                    "properties" : {
+                      "freeform_feedback" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 10000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "issue_type" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "message_id" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "positive" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "message_id", "positive" ]
+                  }
+                },
+                "required" : [ "feedback", "conversation_data" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed-mcp" ]
       }
     },
     "/api/embed-theme" : {

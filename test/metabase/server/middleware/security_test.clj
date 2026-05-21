@@ -82,7 +82,9 @@
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
-          render-file stencil/render-file]
+          render-file (mt/original-fn #'stencil/render-file)]
+      ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [stencil/render-file (fn [path variables]
                                           (reset! nonceJSON (:nonceJSON variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't

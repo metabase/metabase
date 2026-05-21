@@ -35,10 +35,16 @@ export type ConversationSummary = {
   user: MetabotUserInfo | null;
 };
 
-export type ConversationSortColumn =
-  | "created_at"
-  | "message_count"
-  | "total_tokens";
+export const CONVERSATION_SORT_COLUMNS = [
+  "created_at",
+  "message_count",
+  "total_tokens",
+  "user",
+  "profile_id",
+  "ip_address",
+] as const;
+
+export type ConversationSortColumn = (typeof CONVERSATION_SORT_COLUMNS)[number];
 
 export type ConversationsRequest = {
   limit?: number;
@@ -100,34 +106,50 @@ export type ConversationDetail = {
 };
 
 export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityComponentId =
-  | "entity_count"
+export type DataComplexityGroupId = "size" | "ambiguity";
+
+export type DataComplexitySizeComponentId = "entity_count" | "field_count";
+export type DataComplexityAmbiguityComponentId =
   | "name_collisions"
   | "synonym_pairs"
-  | "field_count"
   | "repeated_measures";
+export type DataComplexityComponentId =
+  | DataComplexitySizeComponentId
+  | DataComplexityAmbiguityComponentId;
 
 export type DataComplexitySubScore =
-  | {
-      measurement: null;
-      score: null;
-      error: string;
-    }
-  | {
-      measurement: number;
-      score: number;
-    };
+  | { error: string }
+  | { measurement: number; score: number };
+
+export type DataComplexitySizeGroup = {
+  score: number | null;
+  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
+};
+
+export type DataComplexityAmbiguityGroup = {
+  score: number | null;
+  components: Record<
+    DataComplexityAmbiguityComponentId,
+    DataComplexitySubScore
+  >;
+};
+
+export type DataComplexityGroup =
+  | DataComplexitySizeGroup
+  | DataComplexityAmbiguityGroup;
 
 export type DataComplexityCatalog = {
-  total: number | null;
+  score: number | null;
   components: {
-    [K in DataComplexityComponentId]: DataComplexitySubScore;
+    size: DataComplexitySizeGroup;
+    ambiguity: DataComplexityAmbiguityGroup;
   };
 };
 
 export type DataComplexityScoresResponse = {
   meta: {
     formula_version: number;
+    format_version: number;
     synonym_threshold: number;
     calculated_at?: string;
     embedding_model?: {

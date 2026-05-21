@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -413,35 +414,39 @@
   [driver database test-table]
   (let [test-workspace {:id   perm-check-workspace-id
                         :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection conn]
-       (.setAutoCommit conn false)
-       (try
-         (let [init-result (try
-                             (driver/init-workspace-isolation! driver database test-workspace)
-                             (catch Exception e
-                               (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
-                                                    (ex-message e))
-                                               {:step :init} e))))
-               workspace-with-details (merge test-workspace init-result)]
-           (when test-table
+    (driver.conn/with-admin-connection
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       {:write? true}
+       (fn [^Connection conn]
+         (.setAutoCommit conn false)
+         (try
+           (let [init-result (try
+                               (driver/init-workspace-isolation! driver database test-workspace)
+                               (catch Exception e
+                                 (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
+                                                      (ex-message e))
+                                                 {:step :init} e))))
+                 workspace-with-details (merge test-workspace init-result)]
+             (when test-table
+               (try
+                 ;; `grant-workspace-read-access!` takes a vector of schema-name
+                 ;; strings; per-table grants no longer exist.
+                 (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                      [(:schema test-table)])
+                 (catch Exception e
+                   (throw (ex-info (tru "Failed to grant read access to schema {0}: {1}"
+                                        (:schema test-table) (ex-message e))
+                                   {:step :grant :table test-table} e)))))
              (try
-               (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+               (driver/destroy-workspace-isolation! driver database workspace-with-details)
                (catch Exception e
-                 (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                      (:schema test-table) (:name test-table) (ex-message e))
-                                 {:step :grant :table test-table} e)))))
-           (try
-             (driver/destroy-workspace-isolation! driver database workspace-with-details)
-             (catch Exception e
-               (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
-                                    (ex-message e))
-                               {:step :destroy} e)))))
-         nil
-         (catch Exception e
-           (ex-message e))
-         (finally
-           (.rollback conn)))))))
+                 (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
+                                      (ex-message e))
+                                 {:step :destroy} e)))))
+           nil
+           (catch Exception e
+             (ex-message e))
+           (finally
+             (.rollback conn))))))))

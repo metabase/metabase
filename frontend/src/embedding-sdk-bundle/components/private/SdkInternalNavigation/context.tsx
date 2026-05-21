@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
 
 // This type exists only to have a global place where to put the JSDoc for virtual
 type BaseEntry = {
@@ -19,6 +20,9 @@ export type SdkInternalNavigationEntry =
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
+      /** Id-keyed parameter values used for same-dashboard merge dispatch. */
+      parameterIdValuePairs?: [string, ParameterValueOrArray | null][];
+      tabId?: DashboardTabId;
       onPop?: () => void;
     })
   | (BaseEntry & {
@@ -63,6 +67,12 @@ export type SdkInternalNavigationContextValue = {
   canGoBack: boolean;
   previousEntry: SdkInternalNavigationEntry | undefined;
   initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
+  /**
+   * True when nav stack has pushed beyond the original entity. SdkDashboard reads
+   * this to skip its own styled wrapper so the outer wrapper from the provider
+   * stays the sole styled container (height/sticky/scroll behavior preserved).
+   */
+  hasNavigatedToEntity: boolean;
 };
 
 export const SdkInternalNavigationContext =

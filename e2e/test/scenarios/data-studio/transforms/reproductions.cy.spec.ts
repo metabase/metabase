@@ -135,6 +135,45 @@ describe("issue GDGT-1774", () => {
   });
 });
 
+describe("issue UXW-3160", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  it("should let the read-only definition view scroll to the last line of a long SQL transform (UXW-3160)", () => {
+    const lastLineMarker = "-- UXW_3160_LAST_LINE";
+    const longSql =
+      "SELECT\n  " +
+      Array.from({ length: 80 }, (_, i) => `'col_${i}' AS col_${i}`).join(
+        ",\n  ",
+      ) +
+      `\n${lastLineMarker}`;
+
+    H.createSqlTransform({
+      name: "Long SQL transform",
+      sourceQuery: longSql,
+      targetTable: "uxw_3160_target",
+      targetSchema: "public",
+      visitTransform: true,
+    });
+
+    cy.get(".cm-scroller").then(($el) => {
+      const scroller = $el[0];
+      scroller.scrollTop = scroller.scrollHeight;
+    });
+
+    cy.get(".cm-scroller").should(($el) => {
+      const rect = $el[0].getBoundingClientRect();
+      expect(rect.bottom).to.be.at.most(Cypress.config("viewportHeight"));
+    });
+
+    cy.get(".cm-scroller").findByText(lastLineMarker).should("be.visible");
+  });
+});
+
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }

@@ -29,11 +29,6 @@ export function convertSlackChatMessage(
       ...m,
       message: slackMrkdwnToMarkdown(m.message),
     }))
-    .with({ role: "user", type: "action" }, (m) => ({
-      ...m,
-      message: slackMrkdwnToMarkdown(m.message),
-      userMessage: slackMrkdwnToMarkdown(m.userMessage),
-    }))
     .with({ role: "agent", type: "text" }, (m) => ({
       ...m,
       message: slackMrkdwnToMarkdown(m.message),

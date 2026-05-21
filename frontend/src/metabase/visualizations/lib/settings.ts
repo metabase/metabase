@@ -194,18 +194,19 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     resolvedObject = object._raw;
   }
 
-  const { getProps, getWrapperStyle, getHidden, ...settingDefProps } =
-    settingDef;
-
-  const section = settingDef.getSection
-    ? settingDef.getSection(resolvedObject, computedSettings, extra)
-    : settingDef.section;
+  const {
+    getProps,
+    getWrapperStyle,
+    getSection,
+    getHidden,
+    ...settingDefProps
+  } = settingDef;
 
   return {
     ...settingDefProps,
     id: settingId,
     value,
-    section,
+    section: getSection?.(resolvedObject, computedSettings, extra),
     hidden: getHidden?.(resolvedObject, computedSettings, extra) ?? false,
     props:
       getProps?.(

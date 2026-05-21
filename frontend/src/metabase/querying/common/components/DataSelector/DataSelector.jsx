@@ -6,16 +6,18 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  databaseApi,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
+  useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -183,7 +185,6 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -1126,46 +1127,72 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+function withAllDatabases(WrappedComponent) {
+  return function DataSelectorWithAllDatabases(props) {
+    useListDatabasesQuery();
+    return <WrappedComponent {...props} />;
+  };
+}
+
+const isListDatabasesQuerySuccess = (state, query) =>
+  databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
+
 const DataSelector = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "allDatabases",
-  }),
+  withAllDatabases,
   withAvailableModels,
   withSchemaFetchers,
   connect(
-    (state, ownProps) => ({
-      availableModels: ownProps.metadata?.available_models ?? [],
-      metadata: getMetadata(state),
-      databases:
-        ownProps.databases ||
-        Databases.selectors.getList(state, {
-          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
-        }) ||
-        [],
-      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", "can-query": true },
-      }),
-      hasDataAccess: canUserCreateQueries(state),
-      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-      selectedQuestion: Questions.selectors.getObject(state, {
-        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-      }),
-    }),
-    {
-      fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
-      fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
-      fetchQuestion: (id) =>
-        Questions.actions.fetch({
-          id: getQuestionIdFromVirtualTableId(id),
+    (state, ownProps) => {
+      const databaseQuery = { ...ownProps.databaseQuery, "can-query": true };
+      const queriedDatabases =
+        databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data
+          ?.data;
+      const metadata = getMetadata(state);
+      return {
+        availableModels: ownProps.metadata?.available_models ?? [],
+        metadata,
+        databases:
+          ownProps.databases ||
+          queriedDatabases
+            ?.map(({ id }) => metadata.database(id))
+            .filter((database) => database != null) ||
+          [],
+        hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          saved: true,
+          "can-query": true,
         }),
+        hasLoadedDatabasesWithSaved: isListDatabasesQuerySuccess(state, {
+          saved: true,
+          "can-query": true,
+        }),
+        hasLoadedDatabasesWithTables: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          "can-query": true,
+        }),
+        hasDataAccess: canUserCreateQueries(state),
+        hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+        selectedQuestion: Questions.selectors.getObject(state, {
+          entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        }),
+      };
     },
+    (dispatch) => ({
+      fetchDatabases: (databaseQuery) =>
+        entityCompatibleQuery(
+          { ...databaseQuery, "can-query": true },
+          dispatch,
+          databaseApi.endpoints.listDatabases,
+          { forceRefetch: false },
+        ),
+      fetchFields: (tableId) =>
+        dispatch(Tables.actions.fetchMetadata({ id: tableId })),
+      fetchQuestion: (id) =>
+        dispatch(
+          Questions.actions.fetch({
+            id: getQuestionIdFromVirtualTableId(id),
+          }),
+        ),
+    }),
   ),
 )(UnconnectedDataSelector);

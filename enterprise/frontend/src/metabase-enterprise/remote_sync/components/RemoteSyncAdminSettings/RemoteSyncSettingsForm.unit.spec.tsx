@@ -39,7 +39,9 @@ describe("RemoteSyncSettingsForm", () => {
       setup({ remoteSyncType: "read-only" });
 
       expect(screen.getByText("Branch to sync with")).toBeInTheDocument();
-      expect(screen.getByLabelText(/Sync branch/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText(/Auto-sync with git/i)).toBeInTheDocument();
     });
 
@@ -94,7 +96,7 @@ describe("RemoteSyncSettingsForm", () => {
         screen.getByRole("heading", { name: "Branch to sync with" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("switch", { name: "Auto-sync with git" }),
+        screen.getByRole("switch", { name: /Auto-sync with git/ }),
       ).toBeInTheDocument();
     });
   });
@@ -718,7 +720,45 @@ describe("RemoteSyncSettingsForm", () => {
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText(/Sync branch/i)).toHaveAttribute("readonly");
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toHaveAttribute("readonly");
+    });
+  });
+
+  describe("DevInstanceUpsell", () => {
+    it("should show the upsell when not a dev instance and upsell has not been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Need a dedicated development environment?"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show the upsell when it has been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: true });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the upsell when it is a dev instance", async () => {
+      setup({ isDevInstance: true, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
     });
   });
 

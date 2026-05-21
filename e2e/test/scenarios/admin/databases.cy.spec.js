@@ -322,7 +322,7 @@ describe("admin > database > add", () => {
           cy.button("Save", { timeout: 7000 })
             .should("not.be.disabled")
             .click();
-          cy.findByText(/Exception authenticating MongoCredential/);
+          cy.findByText(/Authentication failed/);
           cy.button("Failed");
 
           cy.findByLabelText("Paste your connection string")
