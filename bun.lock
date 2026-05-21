@@ -343,7 +343,7 @@
         "mochawesome-report-generator": "^6.3.2",
         "mockdate": "^2.0.2",
         "msw": "^2.7.5",
-        "msw-storybook-addon": "^2.0.3",
+        "msw-storybook-addon": "^2.0.4",
         "mutationobserver-shim": "^0.3.7",
         "mysql2": "^3.9.8",
         "node-fetch": "2.6.7",
