@@ -87,7 +87,7 @@ jobs:
       matrix:
         shard: [1, 2] # 2 shards for parallel execution
     env:
-      SHARDS: 5 # should match matrix above
+      SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
