@@ -8,8 +8,8 @@ import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
-import { Button, Card, Icon, type IconName, Stack, Text } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import { Button, Card, Icon, Stack, Text } from "metabase/ui";
+import type { CollectionId, IconName } from "metabase-types/api";
 
 import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
