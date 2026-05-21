@@ -30,7 +30,6 @@
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)
    (java.io File)
-   (java.nio.file Files)
    (java.security MessageDigest)
    (java.util.zip GZIPInputStream)))
 

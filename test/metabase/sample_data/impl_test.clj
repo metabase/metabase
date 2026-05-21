@@ -17,7 +17,7 @@
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
-(defn- sample-database-db
+(defn- sample-database-db!
   "POC: sample DB is hosted by an embedded Postgres started via
    [[metabase.sample-data.embedded-postgres/ensure-started!]]. The
    `read-write?` argument exists for historical parity; PG doesn't have an
@@ -32,7 +32,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp [:model/Database db# (sample-database-db false)]
+  `(mt/with-temp [:model/Database db# (sample-database-db! false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -95,7 +95,7 @@
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (mt/with-temp [:model/Database db (sample-database-db true)]
+    (mt/with-temp [:model/Database db (sample-database-db! true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -137,7 +137,7 @@
 
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
-    (mt/with-temp [:model/Database db (sample-database-db true)]
+    (mt/with-temp [:model/Database db (sample-database-db! true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))

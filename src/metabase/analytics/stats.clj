@@ -784,7 +784,12 @@
    (let [major-version (config/current-major-version)
          minor-version (config/current-minor-version)
          engines       (t2/select-fn-set :engine :model/Database
-                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+                                         ;; Exclude the bundled Sample Database — it's a read-only demo and not a
+                                         ;; valid upload target, even though it happens to use an upload-capable
+                                         ;; engine (was H2, now embedded Postgres).
+                                         {:where [:and
+                                                  [:in :engine (map name (keys csv-upload-version-availability))]
+                                                  [:= :is_sample false]]})]
      (when (and major-version minor-version)
        (some
         (fn [engine]
