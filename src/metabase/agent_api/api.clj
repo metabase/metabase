@@ -397,7 +397,7 @@
   capturing the user's original intent when a caller has one."
   (mut/merge agent-lib/program-schema
              [:map
-              [:prompt {:optional true} ConstructQueryPrompt]]))
+              [:prompt {:optional true} [:maybe ConstructQueryPrompt]]]))
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."

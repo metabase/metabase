@@ -341,8 +341,8 @@
    {:keys [q limit]} :- [:map
                          [:q :string]
                          [:limit {:optional true}
-                          [:int {:description      "Max results"
-                                 :tool/description "Maximum number of results to return"}]]]]
+                          [:maybe [:int {:description      "Max results"
+                                         :tool/description "Maximum number of results to return"}]]]]]
   {:results []})
 
 ;; 5. POST with route + body params, task-support, and registered schema in response
@@ -461,8 +461,9 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:type        ["integer" "null"]
-                                                :description "Maximum number of results to return"}}
+                                        :limit {:oneOf [{:type        "integer"
+                                                         :description "Maximum number of results to return"}
+                                                        {:type "null"}]}}
                            :required   [:q :limit]
                            :additionalProperties false}
           :outputSchema {:type       "object"

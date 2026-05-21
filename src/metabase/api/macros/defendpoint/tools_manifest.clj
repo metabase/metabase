@@ -160,31 +160,23 @@
    :open-world?  :openWorldHint})
 
 (defn- method-default-annotations
-  "Default MCP ToolAnnotations for an HTTP method.
-   Returns the trio `readOnlyHint` / `destructiveHint` / `openWorldHint` for every method
-   so the published manifest always carries them — some MCP clients (e.g. the ChatGPT
-   Apps SDK) reject tools that omit those keys.
-   POST defaults to non-destructive; opt in with `:destructive? true` on the tool metadata."
+  "Default MCP ToolAnnotations for an HTTP method."
   [method]
-  (case method
-    (:get :head) {:readOnlyHint    true
-                  :destructiveHint false
-                  :idempotentHint  true
-                  :openWorldHint   false}
-    :post        {:readOnlyHint    false
-                  :destructiveHint false
-                  :openWorldHint   false}
-    :put         {:readOnlyHint    false
-                  :destructiveHint false
-                  :idempotentHint  true
-                  :openWorldHint   false}
-    :delete      {:readOnlyHint    false
-                  :destructiveHint true
-                  :idempotentHint  true
-                  :openWorldHint   false}
-    {:readOnlyHint    false
-     :destructiveHint false
-     :openWorldHint   false}))
+  ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present —
+  ;; some MCP clients (e.g. the ChatGPT Apps SDK) reject tools that omit them.
+  ;; `openWorldHint` signals whether a tool reaches arbitrary external entities
+  ;; (e.g. a web-search tool) — false here because every Metabase tool stays
+  ;; within the user's own instance.
+  (merge {:readOnlyHint    false
+          :destructiveHint false
+          :openWorldHint   false}
+         (case method
+           (:get :head) {:readOnlyHint   true
+                         :idempotentHint true}
+           :put         {:idempotentHint true}
+           :delete      {:destructiveHint true
+                         :idempotentHint  true}
+           {})))
 
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
@@ -224,77 +216,28 @@
       (when (:properties jss)
         (select-keys jss [:properties :required])))))
 
-(defn- nullable-schema
-  "Return a JSON Schema that accepts `nil` in addition to `schema`.
-  OpenAI's strict tool schema validation expects every property to be listed in
-  `required`; nullable properties are how we preserve optional API inputs in the
-  exported MCP schema without changing the endpoint contract."
-  [schema]
-  (cond
-    (= "null" (:type schema))
-    schema
-
-    (string? (:type schema))
-    (update schema :type (fn [type] [type "null"]))
-
-    (vector? (:type schema))
-    (update schema :type (fn [types] (vec (distinct (conj types "null")))))
-
-    (contains? schema :oneOf)
-    (update schema :oneOf (fn [schemas] (vec (distinct (conj schemas {:type "null"})))))
-
-    (contains? schema :anyOf)
-    (update schema :anyOf (fn [schemas] (vec (distinct (conj schemas {:type "null"})))))
-
-    :else
-    {:anyOf [schema {:type "null"}]}))
-
 (defn strict-tool-input-schema
   "Make an MCP inputSchema compatible with stricter LLM clients.
 
   MCP allows normal JSON Schema optional object properties.
   OpenAI's strict tool schema validation is narrower: every object property must be
-  required, and optional values should be modeled as nullable instead."
+  listed in `:required`. The Malli source already models nullability via `[:maybe ...]`
+  (see [[assert-optional-fields-nullable!]]), so this only needs to widen
+  `:required` and close the object — property types are left alone."
   [schema]
   (letfn [(strict-schema [schema]
             (let [schema (cond-> schema
-                           (:properties schema)
-                           (update :properties update-vals strict-schema)
-
-                           (:items schema)
-                           (update :items strict-schema)
-
-                           (:oneOf schema)
-                           (update :oneOf #(mapv strict-schema %))
-
-                           (:anyOf schema)
-                           (update :anyOf #(mapv strict-schema %))
-
-                           (:allOf schema)
-                           (update :allOf #(mapv strict-schema %)))]
+                           (:properties schema) (update :properties update-vals strict-schema)
+                           (:items schema)      (update :items strict-schema)
+                           (:oneOf schema)      (update :oneOf #(mapv strict-schema %))
+                           (:anyOf schema)      (update :anyOf #(mapv strict-schema %))
+                           (:allOf schema)      (update :allOf #(mapv strict-schema %)))]
               (if (and (= "object" (:type schema)) (seq (:properties schema)))
-                (let [property-names      (vec (keys (:properties schema)))
-                      required-property?  (set (:required schema))
-                      nullable-properties (remove required-property? property-names)]
-                  (-> schema
-                      (assoc :required property-names
-                             :additionalProperties false)
-                      (update :properties
-                              (fn [properties]
-                                (reduce (fn [properties property-name]
-                                          (update properties property-name nullable-schema))
-                                        properties
-                                        nullable-properties)))))
+                (assoc schema
+                       :required (vec (keys (:properties schema)))
+                       :additionalProperties false)
                 schema)))]
     (strict-schema schema)))
-
-(defn- map-entries
-  "Return malli `:map` entry seqs for the schema, or nil if it isn't a map after deref.
-   Each entry has shape `[key props value-schema]`."
-  [schema]
-  (let [walked (mc/deref-all schema)]
-    (when (= :map (mc/type walked))
-      (mc/children walked))))
 
 (defn- nullable-malli?
   "True when `schema` accepts `nil` (e.g. `[:maybe X]`, `:any`, `:nil`)."
@@ -302,20 +245,25 @@
   (try (mr/validate schema nil) (catch Throwable _ false)))
 
 (defn- assert-optional-fields-nullable!
-  "Throw if any top-level optional field on `malli-schema` rejects an explicit null.
-   The strict-tool transform rewrites optional fields to nullable JSON Schema for OpenAI
-   clients, so a Malli-only-optional field would publish a schema that allows null and
-   then reject the same payload at validation time.
+  "Throw if any optional field reachable from `malli-schema` rejects an explicit null.
+   The strict-tool transform forces every property into `:required`, so an optional
+   field that isn't `[:maybe ...]` would publish a schema that allows null but be
+   rejected by Malli validation at the endpoint.
    The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
   [malli-schema tool-name]
   (when malli-schema
-    (doseq [[k props value-schema] (map-entries (mr/resolve-schema malli-schema))
-            :when (and (true? (:optional props))
-                       (not (nullable-malli? value-schema)))]
-      (throw (ex-info (str "Tool " tool-name " input has optional non-nullable field "
-                           (pr-str k) ". Mark it `[:maybe ...]` so Malli accepts explicit "
-                           "nulls — strict JSON Schema rewrites optional fields to nullable.")
-                      {:tool tool-name :field k})))))
+    (mc/walk
+     (mr/resolve-schema malli-schema)
+     (fn [schema _path children _opts]
+       (when (= :map (mc/type schema))
+         (doseq [[k props value-schema] children
+                 :when (and (true? (:optional props))
+                            (not (nullable-malli? value-schema)))]
+           (throw (ex-info (str "Tool " tool-name " input has optional non-nullable field "
+                                (pr-str k) ". Mark it `[:maybe ...]` so the published JSON "
+                                "Schema is already nullable and Malli accepts explicit nulls.")
+                           {:tool tool-name :field k}))))
+       schema))))
 
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
@@ -349,16 +297,16 @@
   1. `:input-schema` on the tool metadata as a Malli schema.
   2. Implicit — derived from the endpoint's route/query/body Malli.
 
-  Both paths run through the strict transform.
-  When `:input-schema` is explicit, [[assert-optional-fields-nullable!]] runs first —
-  optional fields must be modeled as `[:maybe ...]` so the strict transform's
-  null-rewrite doesn't publish a schema that the runtime then rejects."
+  Either path is linted by [[assert-optional-fields-nullable!]]: every optional
+  field must be `[:maybe ...]` so the published JSON Schema is already nullable,
+  letting the strict transform leave property types alone."
   [tool-name form]
-  (let [explicit (get-in form [:metadata :tool :input-schema])]
-    (if explicit
-      (do (assert-optional-fields-nullable! explicit tool-name)
-          (-> explicit malli->json-schema strict-tool-input-schema))
-      (some-> (merge-input-schemas form) strict-tool-input-schema))))
+  (if-let [explicit (get-in form [:metadata :tool :input-schema])]
+    (do (assert-optional-fields-nullable! explicit tool-name)
+        (-> explicit malli->json-schema strict-tool-input-schema))
+    (do (doseq [k [:route :query :body]]
+          (assert-optional-fields-nullable! (get-in form [:params k :schema]) tool-name))
+        (some-> (merge-input-schemas form) strict-tool-input-schema))))
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
