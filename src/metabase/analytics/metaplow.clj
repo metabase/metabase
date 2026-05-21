@@ -82,10 +82,10 @@
   ^{:doc "Reuses TCP/TLS connections across requests to the metaplow collector. Same idea as Snowplow's
          `PoolingHttpClientConnectionManager` setup in `metabase.analytics.snowplow`, just via clj-http's wrapper.
          Sized to `worker-count`: every request goes to one host, so `:default-per-route` is the actual parallelism
-         cap."}
+         cap. Wrapped in `delay` so the pool isn't created until the first event is sent."}
   connection-manager
-  (conn-mgr/make-reusable-conn-manager {:threads           worker-count
-                                        :default-per-route worker-count}))
+  (delay (conn-mgr/make-reusable-conn-manager {:threads           worker-count
+                                               :default-per-route worker-count})))
 
 (defn- send-event!
   "POST a single payload to the Metaplow `/api/send` endpoint. Returns a map with `:status` (HTTP status code, or -1
@@ -98,7 +98,7 @@
                 :socket-timeout     5000
                 :connection-timeout 5000
                 :throw-exceptions   false
-                :connection-manager connection-manager})
+                :connection-manager @connection-manager})
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
       (log/warn e "Connection failure sending Metaplow event")
@@ -138,21 +138,23 @@
   sink-chan
   (a/chan (a/sliding-buffer 1)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defonce ^:private
   ^{:doc "Spawns `worker-count` worker threads that drain `source-chan` and apply `send-event-with-retries!` to each
-         event."}
+         event. Wrapped in `delay` so workers aren't spawned until the first event is enqueued — instances that don't
+         use Metaplow pay nothing at boot."}
   pipeline
-  (a/pipeline-blocking
-   worker-count
-   sink-chan
-   ;; The var (not the fn) is passed so the indirection survives `with-redefs` in tests.
-   (map #'send-event-with-retries!)
-   source-chan))
+  (delay
+    (a/pipeline-blocking
+     worker-count
+     sink-chan
+     ;; The var (not the fn) is passed so the indirection survives `with-redefs` in tests.
+     (map #'send-event-with-retries!)
+     source-chan)))
 
 (defn- enqueue!
   "Push a payload onto the async send queue. Returns true on success, false when the queue is full."
   [payload]
+  @pipeline ;; start the pipeline on first call
   (or (a/offer! source-chan payload)
       (do (analytics/inc! :metabase-metaplow/errors {:stage :enqueue!})
           false)))
