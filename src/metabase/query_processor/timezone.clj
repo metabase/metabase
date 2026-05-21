@@ -103,18 +103,18 @@
             database :- ::database
             & {:keys [use-report-timezone-id-if-unsupported?]
                :or   {use-report-timezone-id-if-unsupported? false}}] :- :string
-   (valid-timezone-id
-    (or *results-timezone-id-override*
-        (if use-report-timezone-id-if-unsupported?
-          (valid-timezone-id (report-timezone-id*))
-          (report-timezone-id-if-supported driver database))
+                                                                      (valid-timezone-id
+                                                                       (or *results-timezone-id-override*
+                                                                           (if use-report-timezone-id-if-unsupported?
+                                                                             (valid-timezone-id (report-timezone-id*))
+                                                                             (report-timezone-id-if-supported driver database))
         ;; don't actually fetch DB from store unless needed — that way if `*results-timezone-id-override*` is set we
         ;; don't need to init a store during tests
-        (database-timezone-id database)
+                                                                           (database-timezone-id database)
         ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
         ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
         ;;       GH issues: #2282, #2035
-        (system-timezone-id)))))
+                                                                           (system-timezone-id)))))
 
 (def ^ZonedDateTime now
   "Get the current moment in time adjusted to the results timezone ID, e.g. for relative datetime calculations."

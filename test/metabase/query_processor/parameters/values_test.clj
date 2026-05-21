@@ -8,29 +8,36 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.parameters.parse.types :as params.types]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.parameters.values :as params.values]
+   [metabase.query-processor.test :as qp]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
-(def ^:private test-uuid "00000000-0000-0000-0000-000000000000")
+(set! *warn-on-reflection* true)
+
+(def ^:private test-uuid (str (random-uuid)))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
   ([tag params]
    (value-for-tag meta/metadata-provider tag params))
   ([metadata-providerable tag params]
-   (#'params.values/value-for-tag metadata-providerable tag params)))
+   (#'params.values/value-for-tag
+    metadata-providerable
+    (lib/normalize ::lib.schema.template-tag/template-tag tag)
+    params)))
 
 (deftest ^:parallel variable-value-test
   (testing "Specified value, targeted by name"
@@ -70,11 +77,10 @@
 
 (deftest ^:parallel variable-value-test-6
   (testing "Empty value when required"
-    (is (thrown?
-         Exception
-         (value-for-tag
-          {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
-          [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
+    (is (thrown? Exception
+                 (value-for-tag
+                  {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
+                  [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
 
 (deftest ^:parallel variable-value-test-7
   (testing "Default used with unspecified value"
@@ -107,88 +113,61 @@
   (testing "Allows multiple bindings of the same tag"
     (testing "if only one has a value set"
       (is (= "2"
-             (#'params.values/value-for-tag
-              meta/metadata-provider
+             (value-for-tag
               {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
               [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
                {:type :category, :target [:variable [:template-tag "id"]], :value nil}
-               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))))
-
-(deftest ^:parallel variable-multiple-values-test-2
-  (testing "Allows multiple bindings of the same tag"
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
     (testing "if all values are equal"
       (is (= "2"
-             (#'params.values/value-for-tag
-              meta/metadata-provider
+             (value-for-tag
               {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
               [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
                {:type :category, :target [:variable [:template-tag "id"]], :value "2"}
-               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))))
-
-(deftest ^:parallel variable-multiple-values-test-3
-  (testing "Allows multiple bindings of the same tag"
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
     (testing "if no values are given"
       (testing "required tags use their defaults"
         (is (= "100"
-               (#'params.values/value-for-tag
-                meta/metadata-provider
+               (value-for-tag
                 {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
                 [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
-                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}])))))))
-
-(deftest ^:parallel variable-multiple-values-test-4
-  (testing "Allows multiple bindings of the same tag"
-    (testing "if no values are given"
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
       (testing "optional tags get no value"
         (is (= lib/parsed-param-no-value-placeholder
-               (#'params.values/value-for-tag
-                meta/metadata-provider
+               (value-for-tag
                 {:name "id", :display-name "ID", :type :text, :required false, :default "100"}
                 [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
                  {:type :category, :target [:variable [:template-tag "id"]], :value nil}])))))))
 
-(deftest ^:parallel variable-multiple-values-test-5
+(deftest ^:parallel variable-multiple-values-test-2
   (testing "Throws if multiple real values are set"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Multiple conflicting values"
-         (#'params.values/value-for-tag
-          meta/metadata-provider
+         (value-for-tag
           {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
           [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
            {:type :category, :target [:variable [:template-tag "id"]], :value "8"}])))))
 
-(defn- extra-field-info
-  "Add extra field information like `:coercion-strategy`, `:semantic-type`, and `:effective-type`."
-  ([field]
-   (extra-field-info meta/metadata-provider field))
-
-  ([metadata-providerable field]
-   (merge (lib.metadata/field metadata-providerable (u/the-id field)) field)))
-
 (defn- parse-tag
-  ([field-info info]
-   (parse-tag meta/metadata-provider field-info info))
-
-  ([metadata-providerable field-info info]
-   (#'params.values/parse-tag metadata-providerable field-info info)))
+  [tag params]
+  (#'params.values/parse-tag meta/metadata-provider (lib/normalize ::lib.schema.template-tag/template-tag tag) params))
 
 (deftest ^:parallel field-filter-date-range-targeted-by-name-test
   (testing "date range for a normal :type/Temporal field, targeted by name"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
+    (is (=? {:field {:id            (meta/id :checkins :date)
+                     :name          "DATE"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/Date
+                     :semantic-type nil}
              :value {:type  :date/range
                      :value "2015-04-01~2015-05-01"}}
             (value-for-tag
              {:name         "checkin_date"
               :display-name "Checkin Date"
               :type         :dimension
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]
+              :dimension    [:field (meta/id :checkins :date) nil]
               :widget-type  :date/all-options}
              [{:type   :date/range
                :target [:dimension [:template-tag "checkin_date"]]
@@ -196,13 +175,12 @@
 
 (deftest ^:parallel field-filter-date-range-targeted-by-id-test
   (testing "date range for a normal :type/Temporal field, targeted by id"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
+    (is (=? {:field {:id            (meta/id :checkins :date)
+                     :name          "DATE"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/Date
+                     :semantic-type nil}
              :value {:type  :date/range
                      :value "2015-04-01~2015-05-01"}}
             (value-for-tag
@@ -210,7 +188,7 @@
               :id           test-uuid
               :display-name "Checkin Date"
               :type         :dimension
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]
+              :dimension    [:field (meta/id :checkins :date) nil]
               :widget-type  :date/all-options}
              [{:type   :date/range
                :target [:dimension [:template-tag {:id test-uuid}]]
@@ -218,57 +196,58 @@
 
 (deftest ^:parallel field-filter-date-range-for-unix-timestamp-test
   (testing "date range for a UNIX timestamp field should work just like a :type/Temporal field (#11934)"
-    (mt/dataset tupac-sightings
-      (mt/$ids sightings
-        (is (=? {:field (extra-field-info
-                         (mt/application-database-metadata-provider (mt/id))
-                         {:id                %timestamp
-                          :name              "TIMESTAMP"
-                          :parent-id         nil
-                          :table-id          $$sightings
-                          :base-type         :type/BigInteger
-                          :effective-type    :type/Instant
-                          :coercion-strategy :Coercion/UNIXSeconds->DateTime})
-                 :value {:type  :date/range
-                         :value "2020-02-01~2020-02-29"}}
-                (value-for-tag
-                 (mt/application-database-metadata-provider (mt/id))
-                 {:name         "timestamp"
-                  :display-name "Sighting Timestamp"
-                  :type         :dimension
-                  :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} %timestamp]
-                  :widget-type  :date/range}
-                 [{:type   :date/range
-                   :target [:dimension [:template-tag "timestamp"]]
-                   :value  "2020-02-01~2020-02-29"}])))))))
+    (let [mp (lib.tu/merged-mock-metadata-provider
+              meta/metadata-provider
+              {:fields [{:id                (meta/id :checkins :date)
+                         :name              "TIMESTAMP"
+                         :base-type         :type/BigInteger
+                         :effective-type    :type/Instant
+                         :coercion-strategy :Coercion/UNIXSeconds->DateTime}]})]
+      (is (=? {:field {:id                (meta/id :checkins :date)
+                       :name              "TIMESTAMP"
+                       :parent-id         nil
+                       :table-id          (meta/id :checkins)
+                       :base-type         :type/BigInteger
+                       :effective-type    :type/Instant
+                       :coercion-strategy :Coercion/UNIXSeconds->DateTime}
+               :value {:type  :date/range
+                       :value "2020-02-01~2020-02-29"}}
+              (value-for-tag
+               mp
+               {:name         "timestamp"
+                :display-name "Sighting Timestamp"
+                :type         :dimension
+                :dimension    [:field (meta/id :checkins :date) nil]
+                :widget-type  :date/range}
+               [{:type   :date/range
+                 :target [:dimension [:template-tag "timestamp"]]
+                 :value  "2020-02-01~2020-02-29"}]))))))
 
 (deftest ^:parallel field-filter-with-unspecified-value-test
   (testing "unspecified"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
+    (is (=? {:field {:id            (meta/id :checkins :date)
+                     :name          "DATE"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/Date
+                     :semantic-type nil}
              :value lib/parsed-param-no-value-placeholder}
             (value-for-tag
              {:name         "checkin_date"
               :display-name "Checkin Date"
               :type         :dimension
               :widget-type  :date/all-options
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]}
+              :dimension    [:field (meta/id :checkins :date) nil]}
              nil)))))
 
 (deftest ^:parallel field-filter-id-requiring-parsing-test
   (testing "id requiring parsing"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :id)
-                      :name          "ID"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/BigInteger
-                      :semantic-type :type/PK})
+    (is (=? {:field {:id            (meta/id :checkins :id)
+                     :name          "ID"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/BigInteger
+                     :semantic-type :type/PK}
              :value {:type  :id
                      :value 5}}
             (value-for-tag
@@ -276,31 +255,31 @@
               :display-name "ID"
               :type         :dimension
               :widget-type  :number
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :id)]}
+              :dimension    [:field (meta/id :checkins :id) nil]}
              [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
 
 (deftest ^:parallel field-filter-with-required-but-no-value-test
   (testing "required but unspecified"
-    (is (thrown?
-         Exception
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QYou'll need to pick a value for 'Checkin Date' before this query can run.\E"
          (value-for-tag
           {:name         "checkin_date"
            :display-name "Checkin Date"
            :type         :dimension
            :widget-type  :date/all-options
            :required     true
-           :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]}
+           :dimension    [:field (meta/id :checkins :date) nil]}
           nil)))))
 
 (deftest ^:parallel field-filter-with-required-and-default-test
   (testing "required and default specified"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
+    (is (=? {:field {:id            (meta/id :checkins :date)
+                     :name          "DATE"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/Date
+                     :semantic-type nil}
              :value {:type  :date/range
                      :value "2015-04-01~2015-05-01"}}
             (value-for-tag
@@ -310,18 +289,17 @@
               :widget-type  :date/range
               :required     true
               :default      "2015-04-01~2015-05-01"
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]}
+              :dimension    [:field (meta/id :checkins :date) nil]}
              nil)))))
 
 (deftest ^:parallel field-filter-multiple-values-for-same-tag-test
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
+    (is (=? {:field {:id            (meta/id :checkins :date)
+                     :name          "DATE"
+                     :parent-id     nil
+                     :table-id      (meta/id :checkins)
+                     :base-type     :type/Date
+                     :semantic-type nil}
              :value [{:type  :date/range
                       :value "2015-01-01~2016-09-01"}
                      {:type  :date/single
@@ -331,7 +309,7 @@
               :display-name "Checkin Date"
               :type         :dimension
               :widget-type  :date/all-options
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]}
+              :dimension    [:field (meta/id :checkins :date) nil]}
              [{:type   :date/range
                :target [:dimension [:template-tag "checkin_date"]]
                :value  "2015-01-01~2016-09-01"}
@@ -340,58 +318,61 @@
                :value  "2015-07-01"}])))))
 
 (deftest ^:parallel field-filter-default-values-test
-  (testing "Make sure defaults values get picked up for field filter clauses"
-    (is (=? {:field (extra-field-info
-                     {:id            (meta/id :checkins :date)
-                      :name          "DATE"
-                      :parent-id     nil
-                      :table-id      (meta/id :checkins)
-                      :base-type     :type/Date
-                      :semantic-type nil})
-             :value {:type  :date/all-options
-                     :value "past5days"}}
-            (parse-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]
-              :default      "past5days"
-              :widget-type  :date/all-options}
-             nil)))))
+  (mt/with-metadata-provider meta/metadata-provider
+    (testing "Make sure defaults values get picked up for field filter clauses"
+      (is (=? {:field {:id            (meta/id :checkins :date)
+                       :name          "DATE"
+                       :parent-id     nil
+                       :table-id      (meta/id :checkins)
+                       :base-type     :type/Date
+                       :semantic-type nil}
+               :value {:type  :date/all-options
+                       :value "past5days"}}
+              (parse-tag
+               {:name         "checkin_date"
+                :display-name "Checkin Date"
+                :type         :dimension
+                :dimension    [:field (meta/id :checkins :date) nil]
+                :default      "past5days"
+                :widget-type  :date/all-options}
+               nil))))))
 
 (deftest ^:parallel field-filter-nil-values-test
-  (testing "Make sure nil values result in no value"
-    (is (=? {:field (extra-field-info
-                     {:id             (meta/id :checkins :date)
-                      :name           "DATE"
-                      :parent-id      nil
-                      :table-id       (meta/id :checkins)
-                      :base-type      :type/Date
-                      :effective-type :type/Date})
-             :value lib/parsed-param-no-value-placeholder}
-            (parse-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]
-              :widget-type  :date/all-options}
-             nil)))))
+  (mt/with-metadata-provider meta/metadata-provider
+    (testing "Make sure nil values result in no value"
+      (is (=? {:field {:id             (meta/id :checkins :date)
+                       :name           "DATE"
+                       :parent-id      nil
+                       :table-id       (meta/id :checkins)
+                       :base-type      :type/Date
+                       :effective-type :type/Date}
+               :value lib/parsed-param-no-value-placeholder}
+              (parse-tag
+               {:name         "checkin_date"
+                :display-name "Checkin Date"
+                :type         :dimension
+                :dimension    [:field (meta/id :checkins :date) nil]
+                :widget-type  :date/all-options}
+               nil))))))
+
+(defn- query->params-map
+  ([inner-query]
+   (query->params-map meta/metadata-provider inner-query))
+  ([metadata-provider inner-query]
+   (let [query (lib/query-from-legacy-inner-query metadata-provider (:id (lib.metadata/database metadata-provider)) inner-query)]
+     (params.values/stage->params-map query (lib/query-stage query -1)))))
 
 (deftest ^:parallel field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
-    (testing "Should throw an exception if Field does not exist"
-      (let [query (-> (lib/native-query meta/metadata-provider "SELECT * FROM table WHERE {{x}}")
-                      (lib/update-query-stage
-                       0 assoc :template-tags
-                       {"x" {:name         "x"
-                             :display-name "X"
-                             :type         :dimension
-                             :widget-type  :date/all-options
-                             :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} Integer/MAX_VALUE]}}))]
-        (is (thrown-with-msg?
+    (testing "Should throw an Exception if Field does not exist"
+      (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
+                         :template-tags {"x" {:name         "x"
+                                              :display-name "X"
+                                              :type         :dimension
+                                              :dimension    [:field Integer/MAX_VALUE nil]}})]
+        (is (thrown?
              clojure.lang.ExceptionInfo
-             #"\QCan't find field with ID\E"
-             (params.values/stage->params-map query)))))))
+             (query->params-map query)))))))
 
 (deftest ^:parallel card-query-test
   (mt/with-test-user :rasta
@@ -402,7 +383,7 @@
                         [{:database (meta/id)
                           :type     "native"
                           :native   {:query test-query}}])]
-        (is (=? {:card-id 1, :query test-query}
+        (is (=? {:card-id 1, :query test-query, :parameters nil}
                 (value-for-tag
                  mp
                  {:name         "card-template-tag-test"
@@ -430,45 +411,47 @@
               mp           (lib.tu/metadata-provider-with-cards-for-queries
                             meta/metadata-provider
                             [mbql-query])]
-          (is (=? {:card-id 1, :query expected-sql}
-                  (value-for-tag
-                   mp
-                   {:name         "card-template-tag-test"
-                    :display-name "Card template tag test"
-                    :type         :card
-                    :card-id      1}
-                   []))))))))
+          (is (= {:lib/type   :metabase.lib.parameters.parse.types/referenced-card-query
+                  :card-id    1
+                  :query      expected-sql
+                  :parameters nil}
+                 (value-for-tag
+                  mp
+                  {:name         "card-template-tag-test"
+                   :display-name "Card template tag test"
+                   :type         :card
+                   :card-id      1}
+                  []))))))))
 
-(deftest card-query-test-3
+(deftest ^:synchronized card-query-test-3
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
-        ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from
-        ;; the metadata provider
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; `with-temp` needed here because this tests model persistence
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
                                               :dataset_query mbql-query
-                                              :database_id   (mt/id)}]
+                                              :database_id   (meta/id)}]
               (persist-models!)
               (testing "tag uses persisted table"
-                (let [pi (t2/select-one :model/PersistedInfo :card_id (u/the-id model))]
+                (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
                   (is (= "persisted" (:state pi)))
                   (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
                                   (:query
                                    (value-for-tag
-                                    (mt/application-database-metadata-provider (mt/id))
                                     {:name         "card-template-tag-test"
                                      :display-name "Card template tag test"
                                      :type         :card
                                      :card-id      (:id model)}
                                     []))))
                   (testing "query hits persisted table"
-                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                    (let [persisted-schema (ddl.i/schema-name {:id (meta/id)}
                                                               (system/site-uuid))
                           update-query     (format "update %s.%s set name = name || ' from cached table'"
                                                    persisted-schema (:table_name pi))
@@ -485,7 +468,7 @@
                               ["Wine Bar" "Wine Bar from cached table"]
                               ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
                              (mt/rows (qp/process-query
-                                       {:database (mt/id)
+                                       {:database (meta/id)
                                         :type     :native
                                         :native   {:query model-query
                                                    :template-tags
@@ -499,31 +482,31 @@
 (deftest ^:parallel card-query-test-4
   (mt/with-test-user :rasta
     (testing "Card query template tag wraps error in tag details"
-      (let [mp       (lib.tu/metadata-provider-with-cards-for-queries
-                      meta/metadata-provider
-                      [{:type     :native
-                        :native   {:query         "SELECT {{x}}"
-                                   :template-tags {"x" {:id           "x-tag"
-                                                        :name         "x"
-                                                        :display-name "Number x"
-                                                        :type         :number
-                                                        :required     false}}}
-                        :database (meta/id)}
-                       {:type     :native
-                        :native   {:query         "SELECT * FROM {{#1}} AS y"
-                                   :template-tags {"#1" {:id           "#1"
-                                                         :name         "#1"
-                                                         :display-name "#1"
-                                                         :type         "card"
-                                                         :card-id      1}}}
-                        :database (meta/id)}])
+      (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+                meta/metadata-provider
+                [{:type     :native
+                  :native   {:query         "SELECT {{x}}"
+                             :template-tags {"x" {:id           "x-tag"
+                                                  :name         "x"
+                                                  :display-name "Number x"
+                                                  :type         :number
+                                                  :required     false}}}
+                  :database (meta/id)}
+                 {:type     :native
+                  :native   {:query         "SELECT * FROM {{#1}} AS y"
+                             :template-tags {"#1" {:id           "#1"
+                                                   :name         "#1"
+                                                   :display-name "#1"
+                                                   :type         "card"
+                                                   :card-id      1}}}
+                  :database (meta/id)}])
             tag      {:name         "card-template-tag-test"
                       :display-name "Card template tag test"
                       :type         :card
                       :card-id      1}
             e        (try
                        (value-for-tag mp tag [])
-                       (catch clojure.lang.ExceptionInfo e
+                       (catch ExceptionInfo e
                          e))
             exc-data (some (fn [e]
                              (when (:card-query-error? (ex-data e))
@@ -539,18 +522,20 @@
           (is (= tag
                  (:tag exc-data))))))))
 
-(deftest card-query-permissions-test
+(deftest ^:synchronized card-query-permissions-test
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          ;; `with-temp` needed here because this tests permissions
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection collection {}
                          :model/Card       {card-1-id :id} {:collection_id (u/the-id collection)
                                                             :dataset_query (let [mp (mt/metadata-provider)]
                                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                                 (lib/order-by (lib.metadata/field mp (mt/id :venues :id)))
+                                                                                 (lib/order-by (lib.metadata/field mp (mt/id :venues :id)) :asc)
                                                                                  (lib/limit 2)))}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
                                                    :dataset_query (mt/native-query
@@ -569,36 +554,34 @@
 
 (deftest ^:parallel card-query-errors-test
   (testing "error conditions for :card parameters"
-    (testing "should throw and exception if Card does not exist"
-      (let [query {:database      (meta/id)
-                   :type          :native
-                   :native        {:query "SELECT * FROM table WHERE {{x}}"}
-                   :template-tags {"x" {:name         "x"
-                                        :display-name "X"
-                                        :type         :card
-                                        :card-id      Integer/MAX_VALUE}}}]
+    (testing "should throw an Exception if Card does not exist"
+      (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
+                         :template-tags {"x" {:name         "x"
+                                              :display-name "X"
+                                              :type         :card
+                                              :card-id      Integer/MAX_VALUE}})]
         (is (thrown?
              clojure.lang.ExceptionInfo
-             (params.values/stage->params-map query (lib/query-stage query 0))))))))
+             (query->params-map query)))))))
 
-(defn- query-with-snippet [metadata-provider & {:as snippet-properties}]
-  (-> (lib/native-query metadata-provider "SELECT * FROM {{expensive-venues}}")
-      (lib/update-query-stage 0 assoc :template-tags {"expensive-venues" (merge
-                                                                          {:type         :snippet
-                                                                           :name         "expensive-venues"
-                                                                           :display-name "Expensive Venues"
-                                                                           :snippet-name "expensive-venues"}
-                                                                          snippet-properties)})))
+(defn- legacy-native-query-with-snippet [& {:as snippet-properties}]
+  (mt/native-query {:query         "SELECT * FROM {{expensive-venues}}"
+                    :template-tags {"expensive-venues" (merge
+                                                        {:type         :snippet
+                                                         :name         "expensive-venues"
+                                                         :display-name "Expensive Venues"
+                                                         :snippet-name "expensive-venues"}
+                                                        snippet-properties)}}))
 
 (deftest ^:parallel snippet-validation-test
   (testing "`:snippet-id` should be required"
     (is (thrown?
          clojure.lang.ExceptionInfo
-         (params.values/stage->params-map (query-with-snippet meta/metadata-provider)))))
-  (testing "If no such Snippet exists, it should throw an exception"
+         (query->params-map (legacy-native-query-with-snippet)))))
+  (testing "If no such Snippet exists, it should throw an Exception"
     (is (thrown?
          clojure.lang.ExceptionInfo
-         (params.values/stage->params-map (query-with-snippet meta/metadata-provider :snippet-id Integer/MAX_VALUE))))))
+         (query->params-map (legacy-native-query-with-snippet :snippet-id Integer/MAX_VALUE))))))
 
 (deftest ^:parallel snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
@@ -607,12 +590,14 @@
                     {:native-query-snippets [{:id      1
                                               :name    "expensive-venues"
                                               :content "venues WHERE price = 4"}]})
-          expected {"expensive-venues" (params.types/referenced-query-snippet 1 "venues WHERE price = 4")}]
+          expected {"expensive-venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+          query    (lib/query mp (legacy-native-query-with-snippet :snippet-id 1))]
       (is (= expected
-             (params.values/stage->params-map (query-with-snippet mp :snippet-id 1))))
+             (#'params.values/stage->params-map query (lib/query-stage query -1))))
       (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
-        (is (= expected
-               (params.values/stage->params-map (query-with-snippet mp :snippet-id 1, :snippet-name "Old Name"))))))))
+        (let [query (lib/query mp (legacy-native-query-with-snippet :snippet-id 1, :snippet-name "Old Name"))]
+          (is (= expected
+                 (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
@@ -621,7 +606,7 @@
                     {:native-query-snippets [{:id      1
                                               :name    "expensive-venues"
                                               :content "venues WHERE price = 4"}]})
-          expected {"snippet: expensive-venues" (params.types/referenced-query-snippet 1 "venues WHERE price = 4")}
+          expected {"snippet: expensive-venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
           query    (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive-venues}}")
                        (lib/with-template-tags {"expensive-venues" {:type         :snippet
                                                                     :name         "expensive-venues"
@@ -629,17 +614,17 @@
                                                                     :snippet-name "expensive-venues"
                                                                     :snippet-id   1}}))]
       (is (= expected
-             (params.values/stage->params-map query))))))
+             (params.values/stage->params-map query (lib/query-stage query -1)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"
-    (is (params.types/referenced-table-query?
-         (value-for-tag
-          {:name         "table-tag-test"
-           :display-name "Table tag test"
-           :type         :table
-           :table-id     1}
-          [])))
+    (is (=? {:lib/type :metabase.lib.parameters.parse.types/referenced-table-query}
+            (value-for-tag
+             {:name         "table-tag-test"
+              :display-name "Table tag test"
+              :type         :table
+              :table-id     1}
+             [])))
     (is (=? {:table-id 1}
             (value-for-tag {:name         "table-tag-test"
                             :display-name "Table tag test"
@@ -679,12 +664,10 @@
                               :type           :table
                               :table-id       1
                               :source-filters filters}
-                             []))))))
-
-(deftest ^:parallel table-tag-with-source-filters-test-2
+                             [])))))
   (testing "Table template tag with invalid source-filter op throws"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
+         ExceptionInfo
          #"Invalid"
          (value-for-tag {:name           "table-tag-test"
                          :display-name   "Table tag test"
@@ -694,15 +677,13 @@
                         [])))))
 
 (deftest ^:parallel invalid-param-test
-  (testing "Should throw an exception if we try to pass with a `:type` we don't understand"
-    (let [query {:database      (meta/id)
-                 :type          :native
-                 :native        {:query "SELECT * FROM table WHERE {{x}}"}
-                 :template-tags {"x" {:name "x"
-                                      :type :writer}}}]
+  (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
+    (let [query (assoc (mt/native-query {:query "SELECT * FROM table WHERE {{x}}"})
+                       :template-tags {"x" {:name "x"
+                                            :type :writer}})]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (params.values/stage->params-map query))))))
+           (query->params-map query))))))
 
 (deftest ^:parallel dont-be-too-strict-test
   (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
@@ -718,11 +699,7 @@
                  :filteringParameters "222b245f"}
                 [{:type   :category
                   :target [:variable [:template-tag "id"]]
-                  :value  "2"}])))))))
-
-(deftest ^:parallel dont-be-too-strict-test-2
-  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
-    (testing "\nUnknown key 'filteringParameters'"
+                  :value  "2"}]))))
       (testing "in params"
         (is (= "2"
                (value-for-tag
@@ -760,137 +737,136 @@
                 :card-id      1}
                nil))))))
 
-(defn- query-with-native-stage-with-keys [m]
-  (-> (lib/native-query meta/metadata-provider "SELECT * FROM whatever;")
-      (lib/update-query-stage 0 merge m)))
-
 (deftest ^:parallel no-value-template-tag-defaults-test
-  (testing "should not throw and exception if no :value is specified for a required parameter when defaults are provided"
-    (testing "Field filters"
-      (is (=? {"filter" {:value {:value ["Gizmo" "Gadget"]}}}
-              (params.values/stage->params-map
-               (query-with-native-stage-with-keys
-                {:template-tags {"filter"
-                                 {:id           "xyz456"
-                                  :name         "filter"
-                                  :display-name "Filter"
-                                  :type         :dimension
-                                  :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :category)]
-                                  :widget-type  :category
-                                  :default      ["Gizmo" "Gadget"]
-                                  :required     true}}
-                 :parameters    [{:type    :string/=
-                                  :id      "abc123"
-                                  :default ["Widget"]
-                                  :target  [:dimension [:template-tag "filter"]]}]})))))))
+  (testing "should not throw an Exception if no :value is specified for a required parameter when defaults are provided"
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (=? {"filter" {:value {:value ["Gizmo" "Gadget"]}}}
+                (query->params-map
+                 {:native        "SELECT * FROM table WHERE {{filter}};"
+                  :template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :widget-type  :category
+                                   :default      ["Gizmo" "Gadget"]
+                                   :required     true}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-raw-value-test
-  (testing "should not throw and exception if no :value is specified for a required parameter when defaults are provided"
+  (testing "should not throw an Exception if no :value is specified for a required parameter when defaults are provided"
     (testing "Raw value template tags"
       (is (= {"filter" "Foo"}
-             (params.values/stage->params-map
-              (query-with-native-stage-with-keys
-               {:template-tags {"filter"
-                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                 :name         "filter"
-                                 :display-name "Filter"
-                                 :type         :text
-                                 :required     true
-                                 :default      "Foo"}}
-                :parameters    [{:type    :string/=
-                                 :id      "5791ff38"
-                                 :default "Bar"
-                                 :target  [:variable [:template-tag "filter"]]}]})))))))
+             (query->params-map
+              {:native        "SELECT * FROM table WHERE {{filter}};"
+               :template-tags {"filter"
+                               {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                :name         "filter"
+                                :display-name "Filter"
+                                :type         :text
+                                :required     true
+                                :default      "Foo"}}
+               :parameters    [{:type    :string/=
+                                :id      "5791ff38"
+                                :default "Bar"
+                                :target  [:variable [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"
-    (testing "Field filters"
-      (is (=? {"filter" {:value ::params.types/no-value}}
-              (params.values/stage->params-map
-               (query-with-native-stage-with-keys
-                {:template-tags {"filter"
-                                 {:id           "xyz456"
-                                  :name         "filter"
-                                  :display-name "Filter"
-                                  :type         :dimension
-                                  :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :category)]
-                                  :widget-type  :category
-                                  :default      ["Gizmo" "Gadget"]}}
-                 :parameters    [{:type    :string/=
-                                  :id      "abc123"
-                                  :default ["Widget"]
-                                  :value   nil
-                                  :target  [:dimension [:template-tag "filter"]]}]})))))))
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
+                (query->params-map
+                 {:native        "SELECT * FROM table WHERE {{filter}};"
+                  :template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :widget-type  :category
+                                   :default      ["Gizmo" "Gadget"]}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :value   nil
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
-    (is (= {"filter" ::params.types/no-value}
-           (params.values/stage->params-map
-            (query-with-native-stage-with-keys
-             {:template-tags {"filter"
-                              {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                               :name         "filter"
-                               :display-name "Filter"
-                               :type         :text
-                               :default      "Foo"}}
-              :parameters    [{:type    :string/=
-                               :id      "5791ff38"
-                               :default "Bar"
-                               :target  [:variable [:template-tag "filter"]]}]}))))))
+    (is (= {"filter" lib/parsed-param-no-value-placeholder}
+           (query->params-map
+            {:native        "SELECT * FROM table WHERE {{filter}};"
+             :template-tags {"filter"
+                             {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                              :name         "filter"
+                              :display-name "Filter"
+                              :type         :text
+                              :default      "Foo"}}
+             :parameters    [{:type    :string/=
+                              :id      "5791ff38"
+                              :default "Bar"
+                              :target  [:variable [:template-tag "filter"]]}]})))))
 
 (deftest ^:parallel field-filter-multiple-values-test
   (testing "Make sure multiple values get returned the way we'd expect"
-    (let [query (query-with-native-stage-with-keys
-                 {:template-tags {"checkin_date" {:name         "checkin_date"
-                                                  :display-name "Checkin Date"
-                                                  :type         :dimension
-                                                  :widget-type  :date/all-options
-                                                  :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :checkins :date)]}}
-                  :parameters    [{:type   :date/range
-                                   :target [:dimension [:template-tag "checkin_date"]]
-                                   :value  "2015-01-01~2016-09-01"}
-                                  {:type   :date/single
-                                   :target [:dimension [:template-tag "checkin_date"]]
-                                   :value  "2015-07-01"}]})]
-      (is (=? {"checkin_date" {:value [{:type :date/range, :value "2015-01-01~2016-09-01"}
-                                       {:type :date/single, :value "2015-07-01"}]}}
-              (params.values/stage->params-map query (lib/query-stage query 0)))))))
+    (is (=? {"checkin_date" {:value [{:type :date/range, :value "2015-01-01~2016-09-01"}
+                                     {:type :date/single, :value "2015-07-01"}]}}
+            (query->params-map
+             {:native        "SELECT * FROM table WHERE {{checkin_date}};"
+              :template-tags {"checkin_date" {:name         "checkin_date"
+                                              :display-name "Checkin Date"
+                                              :type         :dimension
+                                              :widget-type  :date/all-options
+                                              :dimension    [:field (meta/id :checkins :date) nil]}}
+              :parameters    [{:type   :date/range
+                               :target [:dimension [:template-tag "checkin_date"]]
+                               :value  "2015-01-01~2016-09-01"}
+                              {:type   :date/single
+                               :target [:dimension [:template-tag "checkin_date"]]
+                               :value  "2015-07-01"}]})))))
 
 (deftest ^:parallel use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
-    (testing "Field filters"
-      (let [query (query-with-native-stage-with-keys
-                   {:template-tags {"filter"
-                                    {:id           "xyz456"
-                                     :name         "filter"
-                                     :display-name "Filter"
-                                     :type         :dimension
-                                     :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :category)]
-                                     :widget-type  :category}}
-                    :parameters    [{:type    :string/=
-                                     :id      "abc123"
-                                     :default ["Widget"]
-                                     :value   nil
-                                     :target  [:dimension [:template-tag "filter"]]}]})]
-        (is (=? {"filter" {:value ::params.types/no-value}}
-                (params.values/stage->params-map query (lib/query-stage query 0))))))))
+    (mt/dataset test-data
+      (testing "Field filters"
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
+                (query->params-map
+                 {:native        "SELECT * FROM table WHERE {{filter}};"
+                  :template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (meta/id :products :category) nil]
+                                   :widget-type  :category}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :value   nil
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel use-parameter-defaults-raw-value-template-tags-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (testing "Raw value template tags"
-      (let [query (query-with-native-stage-with-keys
-                   {:template-tags {"filter"
-                                    {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                     :name         "filter"
-                                     :display-name "Filter"
-                                     :type         :text}}
-                    :parameters    [{:type    :string/=
-                                     :id      "5791ff38"
-                                     :default "Bar"
-                                     :value   nil
-                                     :target  [:variable [:template-tag "filter"]]}]})]
-        (is (= {"filter" ::params.types/no-value}
-               (params.values/stage->params-map query (lib/query-stage query 0))))))))
+      (is (= {"filter" lib/parsed-param-no-value-placeholder}
+             (query->params-map
+              {:native        "SELECT * FROM table WHERE {{filter}};"
+               :template-tags {"filter"
+                               {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                :name         "filter"
+                                :display-name "Filter"
+                                :type         :text}}
+               :parameters    [{:type    :string/=
+                                :id      "5791ff38"
+                                :default "Bar"
+                                :value   nil
+                                :target  [:variable [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel value->number-test
   (testing `params.values/value->number
@@ -914,111 +890,104 @@
                                      :id           "__source__"
                                      :name         param-name}}]
       (testing "With no parameters passed in"
-        (let [query (-> (lib/native-query mp "SELECT *")
-                        (lib/update-query-stage 0 assoc :template-tags template-tags))]
-          (is (=? {param-name params.types/referenced-card-query?}
-                  (params.values/stage->params-map query (lib/query-stage query 0))))))
+        (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
+                (query->params-map mp {:native        "SELECT * FROM {{__source__}};"
+                                       :template-tags template-tags}))))
       (testing "WITH parameters passed in"
         (let [parameters [{:type   :date/all-options
                            :value  "2022-04-20"
-                           :target [:dimension [:template-tag "created_at"]]}]
-              query      (-> (lib/native-query mp "SELECT *")
-                             (lib/update-query-stage 0 merge {:template-tags template-tags
-                                                              :parameters    parameters}))]
-          (is (=? {param-name params.types/referenced-card-query?}
-                  (params.values/stage->params-map query (lib/query-stage query 0)))))))))
+                           :target [:dimension [:template-tag "created_at"]]}]]
+          (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
+                  (query->params-map mp {:native        "SELECT * FROM {{__source__}};"
+                                         :template-tags template-tags
+                                         :parameters    parameters}))))))))
 
 (deftest ^:parallel handle-dashboard-parameters-without-values-test
   (testing "dash params for a template tag may have no :value or :default (#38012)"
     (let [template-tags {"createdAt" {:type         :dimension
-                                      :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :orders :created-at)]
+                                      :dimension    [:field (meta/id :orders :created-at) nil]
                                       :name         "createdAt"
                                       :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                       :display-name "CreatedAt"
                                       :widget-type  :date/all-options}}]
+
       (testing "with no parameters given, no value"
-        (let [query (query-with-native-stage-with-keys
-                     {:template-tags template-tags})]
-          (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                :value lib/parsed-param-no-value-placeholder}}
-                  (params.values/stage->params-map query (lib/query-stage query 0))))))
+        (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                              :value lib/parsed-param-no-value-placeholder}}
+                (query->params-map {:native        "SELECT * FROM table WHERE {{createdAt}};"
+                                    :template-tags template-tags}))))
       (testing "with parameters given but blank, no value"
-        (let [query (query-with-native-stage-with-keys
-                     {:template-tags template-tags
-                      :parameters    [{:type   :date/relative
-                                       :value  nil
-                                       :target [:dimension [:template-tag "createdAt"]]}
-                                      {:type   :date/month-year
-                                       :value  nil
-                                       :target [:dimension [:template-tag "createdAt"]]}]})]
-          (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                :value lib/parsed-param-no-value-placeholder}}
-                  (params.values/stage->params-map query (lib/query-stage query 0))))))
+        (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                              :value lib/parsed-param-no-value-placeholder}}
+                (query->params-map {:native        "SELECT * FROM table WHERE {{createdAt}};"
+                                    :template-tags template-tags
+                                    :parameters    [{:type   :date/relative
+                                                     :value  nil
+                                                     :target [:dimension [:template-tag "createdAt"]]}
+                                                    {:type   :date/month-year
+                                                     :value  nil
+                                                     :target [:dimension [:template-tag "createdAt"]]}]}))))
       (testing "with only the relative date parameter set, use it"
-        (let [query (query-with-native-stage-with-keys
-                     {:template-tags template-tags
-                      :parameters    [{:type   :date/relative
-                                       :value  "past30days"
-                                       :target [:dimension [:template-tag "createdAt"]]}
-                                      {:type   :date/month-year
-                                       :value  nil
-                                       :target [:dimension [:template-tag "createdAt"]]}]})]
-          (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                :value {:type  :date/relative
-                                        :value "past30days"}}}
-                  (params.values/stage->params-map query (lib/query-stage query 0))))))
+        (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                              :value {:type  :date/relative
+                                      :value "past30days"}}}
+                (query->params-map {:native        "SELECT * FROM table WHERE {{createdAt}};"
+                                    :template-tags template-tags
+                                    :parameters    [{:type   :date/relative
+                                                     :value  "past30days"
+                                                     :target [:dimension [:template-tag "createdAt"]]}
+                                                    {:type   :date/month-year
+                                                     :value  nil
+                                                     :target [:dimension [:template-tag "createdAt"]]}]}))))
       (testing "with only the month-year parameter set, use it"
-        (let [query (query-with-native-stage-with-keys
-                     {:template-tags template-tags
-                      :parameters    [{:type   :date/relative
-                                       :value  nil
-                                       :target [:dimension [:template-tag "createdAt"]]}
-                                      {:type   :date/month-year
-                                       :value  "2023-01"
-                                       :target [:dimension [:template-tag "createdAt"]]}]})]
-          (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                :value {:type  :date/month-year
-                                        :value "2023-01"}}}
-                  (params.values/stage->params-map query (lib/query-stage query 0))))))
+        (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                              :value {:type  :date/month-year
+                                      :value "2023-01"}}}
+                (query->params-map {:native        "SELECT * FROM table WHERE {{createdAt}};"
+                                    :template-tags template-tags
+                                    :parameters    [{:type   :date/relative
+                                                     :value  nil
+                                                     :target [:dimension [:template-tag "createdAt"]]}
+                                                    {:type   :date/month-year
+                                                     :value  "2023-01"
+                                                     :target [:dimension [:template-tag "createdAt"]]}]}))))
       (testing "with both parameters set, use both"
-        (let [query (query-with-native-stage-with-keys
-                     {:template-tags template-tags
-                      :parameters    [{:type   :date/relative
-                                       :value  "past30days"
-                                       :target [:dimension [:template-tag "createdAt"]]}
-                                      {:type   :date/month-year
-                                       :value  "2023-01"
-                                       :target [:dimension [:template-tag "createdAt"]]}]})]
-          (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                :value [{:type  :date/relative
-                                         :value "past30days"}
-                                        {:type  :date/month-year
-                                         :value "2023-01"}]}}
-                  (params.values/stage->params-map query (lib/query-stage query 0)))))))))
+        (is (=? {"createdAt" {:field {:lib/type :metadata/column}
+                              :value [{:type  :date/relative
+                                       :value "past30days"}
+                                      {:type  :date/month-year
+                                       :value "2023-01"}]}}
+                (query->params-map {:native        "SELECT * FROM table WHERE {{createdAt}};"
+                                    :template-tags template-tags
+                                    :parameters    [{:type   :date/relative
+                                                     :value  "past30days"
+                                                     :target [:dimension [:template-tag "createdAt"]]}
+                                                    {:type   :date/month-year
+                                                     :value  "2023-01"
+                                                     :target [:dimension [:template-tag "createdAt"]]}]})))))))
 
 (deftest ^:parallel referenced-card-ids-test
-  (let [mp (lib.tu/mock-metadata-provider
-            meta/metadata-provider
-            {:cards [{:id            1
-                      :dataset-query (lib.tu.macros/mbql-query venues {:limit 2})}
-                     {:id            2
-                      :dataset-query {:database (meta/id)
-                                      :type     :native
-                                      :native   {:query         "SELECT * FROM {{card}}"
-                                                 :template-tags {"card" {:name         "card"
-                                                                         :display-name "card"
-                                                                         :type         :card
-                                                                         :card-id      1}}}}}]})]
-    ;; even tho Card 2 references Card 1, we don't want to include it in the set of referenced Card IDs, since you
-    ;; should only need permissions for Card 2 to be able to run the query (see #15131)
-    (is (=? #{2}
-            (params.values/referenced-card-ids
-             (params.values/stage->params-map
-              (lib/query
+  (let [mp    (lib.tu/mock-metadata-provider
+               meta/metadata-provider
+               {:cards [{:id            1
+                         :dataset-query (lib.tu.macros/mbql-query venues {:limit 2})}
+                        {:id            2
+                         :dataset-query {:database (meta/id)
+                                         :type     :native
+                                         :native   {:query         "SELECT * FROM {{card}}"
+                                                    :template-tags {"card" {:name         "card"
+                                                                            :display-name "card"
+                                                                            :type         :card
+                                                                            :card-id      1}}}}}]})
+        query (lib/query
                mp
                {:type   :native
                 :native {:query         "SELECT * FROM {{card}}"
                          :template-tags {"card" {:name         "card"
                                                  :display-name "card"
                                                  :type         :card
-                                                 :card-id      2}}}})))))))
+                                                 :card-id      2}}}})]
+    ;; even tho Card 2 references Card 1, we don't want to include it in the set of referenced Card IDs, since you
+    ;; should only need permissions for Card 2 to be able to run the query (see #15131)
+    (is (=? #{2}
+            (params.values/referenced-card-ids (params.values/stage->params-map query (lib/query-stage query -1)))))))

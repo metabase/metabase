@@ -61,7 +61,6 @@
   [_ info & _]
   (value info nil))
 
-
 (defmethod add-type-info Object
   [this info & _]
   (value info this))

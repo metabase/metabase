@@ -3,12 +3,12 @@
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
 
-    (query->params-map metadata-provider stage)
+    (stage->params-map metadata-providerable query-stage)
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
-  (:refer-clojure :exclude [every? get-in mapv not-empty some])
+  (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
    [metabase.lib.core :as lib]
@@ -20,30 +20,31 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? get-in mapv not-empty some]]))
+   [metabase.util.performance :refer [every? get-in mapv not-empty some]])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
 (defmulti ^:private parse-tag
-  "Parse a tag by its `:type`, returning an appropriate [[metabase.query-processor.parameters]] map."
+  "Parse a tag by its `:type`, returning an appropriate record type such as
+  `metabase.driver.common.parameters.FieldFilter`."
   {:arglists '([metadata-providerable tag params])}
   (fn [_metadata-providerable {tag-type :type, :as _tag} _params]
     (keyword tag-type)))
 
 (defmethod parse-tag :default
-  [_metadata-providerable
-   {tag-type :type, :as tag}
-   _params]
+  [_metadata-providerable {tag-type :type, :as tag} _params]
   (throw (ex-info (tru "Don''t know how to parse parameter of type {0}" (pr-str tag-type))
                   {:tag tag})))
 
@@ -68,7 +69,8 @@
 (mr/def ::parsed-param-value
   "Schema for valid param value(s). Params can have one or more values."
   [:maybe
-   [:or {:error/message "Valid param value(s)"}
+   [:or
+    {:error/message "Valid param value(s)"}
     ::params.types/no-value
     ::single-value
     [:sequential ::single-value]
@@ -88,7 +90,7 @@
   compatibility."
   [tag :- ::lib.schema.template-tag/template-tag]
   (let [target-type (case (:type tag)
-                      :dimension     :dimension
+                      (:dimension :temporal-unit) :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
@@ -164,12 +166,16 @@
                                (first params)
                                params)))
         nil-value?        (and (seq matching-params)
-                               (every? (fn [param]
-                                         (nil? (:value param)))
+                               (every? (fn [{:keys [value], :as _param}]
+                                         (or (nil? value)
+                                             (and (sequential? value)
+                                                  (every? nil? value))))
                                        matching-params))]
     (cond
       ;; if we have matching parameter(s) with at least one actual value, return them.
-      (and (seq matching-params) (some :value matching-params))
+      (and (seq matching-params)
+           (some :value matching-params)
+           (not nil-value?))
       (normalize-params (filter :value matching-params))
       ;; If a FieldFilter has value=nil, return a [[lib/parsed-param-no-value-placeholder]]
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
@@ -195,20 +201,21 @@
       ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
       (:required tag)
       (throw (missing-required-param-exception (:display-name tag)))
-      ;; otherwise return [[lib/parsed-param-no-value-placeholder]] to signify that this filter can be substituted with "1 = 1"
+      ;; otherwise return [[lib/parsed-param-no-value-placeholder]] to signify that this filter can be substituted
+      ;; with "1 = 1"
       :else
       lib/parsed-param-no-value-placeholder)))
 
-(mu/defmethod parse-tag :dimension :- [:maybe ::params.types/field-filter]
-  [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
-   {field-ref :dimension, :as tag} :- ::lib.schema.template-tag/template-tag
-   params                          :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (params.types/field-filter
-   (let [field-id (field-ref->field-id field-ref)]
-     (or (lib.metadata/field metadata-providerable field-id)
-         (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
-                         {:field-id field-id, :type qp.error-type/invalid-parameter}))))
-   (field-filter-value tag params)))
+(mu/defmethod parse-tag :dimension :- ::params.types/field-filter
+  [metadata-providerable              :- ::lib.schema.metadata/metadata-providerable
+   {:keys [dimension alias], :as tag} :- ::lib.schema.template-tag/template-tag
+   params                             :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
+  (let [field-id (field-ref->field-id dimension)
+        field    (or (lib.metadata/field metadata-providerable field-id)
+                     (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                                     {:field-id field-id, :type qp.error-type/invalid-parameter})))
+        value    (field-filter-value tag params)]
+    (lib/parsed-field-filter-param field value alias)))
 
 (mu/defmethod parse-tag :card :- ::params.types/referenced-card-query
   [metadata-providerable      :- ::lib.schema.metadata/metadata-providerable
@@ -230,14 +237,12 @@
                                          {:query (qp.persistence/persisted-info-native-query
                                                   (u/the-id (lib.metadata/database metadata-providerable))
                                                   persisted-info)})
-                                       (qp.compile/compile (lib/query
-                                                            (lib.metadata/->metadata-provider metadata-providerable)
-                                                            (limit/disable-max-results query))))]
-        (params.types/referenced-card-query card-id query params))
-      (catch clojure.lang.ExceptionInfo e
+                                       (qp.compile/compile (qp/disable-max-results query)))]
+        (lib/parsed-referenced-card-query-param card-id query params))
+      (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
-                     (str card-id) (pr-str (ex-message e)))
+                     (str card-id) (pr-str (.getMessage e)))
                 {:card-query-error? true
                  :card-id           card-id
                  :tag               tag
@@ -271,16 +276,17 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
-    (params.types/referenced-query-snippet snippet-id (:content snippet))))
+    (lib/parsed-referenced-query-snippet-param (:id snippet) (:content snippet))))
 
-(mu/defmethod parse-tag :temporal-unit
-  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [required] tag-name :name :as tag} :- ::lib.schema.template-tag/template-tag
-   params]
+(mu/defmethod parse-tag :temporal-unit :- ::params.types/temporal-unit
+  [metadata-providerable                      :- ::lib.schema.metadata/metadata-providerable
+   {:keys [required dimension alias] :as tag} :- ::lib.schema.template-tag/template-tag
+   params                                     :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
                                  (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
-                                                 {:type                qp.error-type/invalid-parameter
+                                                 {:type
+                                                  qp.error-type/invalid-parameter
                                                   :template-tag        tag
                                                   :matching-parameters params})))
                                (first matching-params))
@@ -292,17 +298,20 @@
                                    (lib/available-temporal-units))]
     (when-not (or (nil? param-value) (valid-temporal-units param-value))
       (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
-                      {:value    param-value
+                      {:value param-value
                        :expected valid-temporal-units})))
-    (params.types/temporal-unit
-     tag-name
-     (or (:value matching-param)
-         (when (and nil-value? (not required))
-           lib/parsed-param-no-value-placeholder)
-         (:default tag)
-         (if required
-           (throw (missing-required-param-exception (:display-name tag)))
-           lib/parsed-param-no-value-placeholder)))))
+    (let [field (let [field-id (field-ref->field-id dimension)]
+                  (or (lib.metadata/field metadata-providerable field-id)
+                      (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                                      {:field-id field-id, :type qp.error-type/invalid-parameter}))))
+          value (or (:value matching-param)
+                    (when (and nil-value? (not required))
+                      lib/parsed-param-no-value-placeholder)
+                    (:default tag)
+                    (if required
+                      (throw (missing-required-param-exception (:display-name tag)))
+                      lib/parsed-param-no-value-placeholder))]
+      (lib/parsed-temporal-unit-param field value alias))))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
@@ -336,17 +345,10 @@
       ;; Fall back to no value.
       :else                       lib/parsed-param-no-value-placeholder)))
 
-(defmethod parse-tag :number
-  [_metadata-providerable tag params]
-  (param-value-for-raw-value-tag tag params))
-
-(defmethod parse-tag :text
-  [_metadata-providerable tag params]
-  (param-value-for-raw-value-tag tag params))
-
-(defmethod parse-tag :date
-  [_metadata-providerable tag params]
-  (param-value-for-raw-value-tag tag params))
+(doseq [tag-type [:number :text :date :boolean]]
+  (defmethod parse-tag tag-type
+    [_metadata-providerable tag params]
+    (param-value-for-raw-value-tag tag params)))
 
 ;;; Parsing Values
 
@@ -356,7 +358,7 @@
   is returned."
   [s :- :string]
   (if (re-find #"\." s)
-    (parse-double s)
+    (Double/parseDouble s)
     (or (parse-long s) (biginteger s))))
 
 (mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
@@ -386,7 +388,7 @@
   [effective-type :- ::lib.schema.common/base-type value]
   (cond
     (isa? effective-type :type/UUID)
-    (java.util.UUID/fromString value)
+    (UUID/fromString value)
 
     (isa? effective-type :type/Number)
     (value->number value)
@@ -427,7 +429,7 @@
     (value->number value)
 
     (= param-type :date)
-    (params.types/date {:s value})
+    (lib/parsed-date-param value)
 
     ;; Field Filters
     (and (= param-type :dimension)
@@ -472,23 +474,21 @@
   Note that this takes a `metadata-providerable` plus `stage` rather than the more typical `query` plus `stage-number`
   because it ultimately called for all stages of a query (even ones inside joins) by
   [[metabase.query-processor.middleware.parameters/expand-stage]]. "
-  ([query]
-   (stage->params-map query (lib.util/query-stage query -1)))
-  ([metadata-providerable                                 :- ::lib.schema.metadata/metadata-providerable
-    {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
-   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
-   (try
-     (into {} (for [[k tag] tags
-                    :let    [v (value-for-tag metadata-providerable tag params)]]
-                (do
-                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                  [k v])))
-     (catch Throwable e
-       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
-                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
-                        :tags   tags
-                        :params params}
-                       e))))))
+  [metadata-providerable                                 :- ::lib.schema.metadata/metadata-providerable
+   {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
+  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (try
+    (into {} (for [[k tag] tags
+                   :let    [v (value-for-tag metadata-providerable tag params)]]
+               (do
+                 (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
+                 [k v])))
+    (catch Throwable e
+      (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
+                      {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                       :tags   tags
+                       :params params}
+                      e)))))
 
 (mu/defn referenced-card-ids :- [:set ::lib.schema.id/card]
   "Return a set of all Card IDs referenced in the parameters in `params-map`. This should be added to the (inner) query
@@ -496,6 +496,6 @@
   [params-map :- [:map-of ::lib.schema.common/non-blank-string ::parsed-param-value]]
   (into #{}
         (keep (fn [param]
-                (when (params.types/referenced-card-query? param)
+                (when (lib/parsed-referenced-card-query-param? param)
                   (:card-id param))))
         (vals params-map)))
