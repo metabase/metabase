@@ -625,14 +625,12 @@
                   (analytics/inc! :metabase-metabot/agent-errors labels)
                   (if (:api-error (ex-data e))
                     (if (:status (ex-data e))
-                      (log/errorf e
-                                  "Agent loop API error: %s status=%s provider=%s body=%s"
+                      (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
                                   (ex-message e)
                                   (:status (ex-data e))
                                   (:provider (ex-data e))
                                   (pr-str (:body (ex-data e))))
-                      (log/errorf e
-                                  "Agent loop API error: %s provider=%s"
+                      (log/errorf e "Agent loop API error: %s provider=%s"
                                   (ex-message e)
                                   (:provider (ex-data e))))
                     (log/error e "Agent loop error"))
