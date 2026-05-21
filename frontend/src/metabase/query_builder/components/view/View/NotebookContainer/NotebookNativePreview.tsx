@@ -73,7 +73,7 @@ export const NotebookNativePreview = () => {
           opened
           data-testid="convert-to-native-warning-modal"
           title={t`Convert this question to SQL?`}
-          message={t`This question is part of an embedded dashboard or is embedded itself. Converting it to SQL may silently break dashboard filters and embedding parameters that map to its columns, since native queries can't accept dimension-based filters.`}
+          message={t`This question is part of an embedded dashboard. Converting the query to SQL will break any dashboard filters that map to its columns, since the conversion won't include SQL variables for the filters to connect to. You can, however, manually add those variables to the converted SQL, then connect the dashboard filters to those variables.`}
           confirmButtonText={t`Convert to SQL`}
           confirmButtonProps={{ color: "brand", variant: "filled" }}
           onConfirm={handleConfirm}
