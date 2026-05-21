@@ -372,8 +372,6 @@ if (shouldEnableHotRefresh) {
 
   config.plugins.unshift(
     new ReactRefreshRspackPlugin({
-      overlay: false,
-
       // app-embed-mcp runs in an isolated iframe with CSP restrictions.
       // Excluding it avoids injecting the React Refresh runtime which uses eval.
       exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
