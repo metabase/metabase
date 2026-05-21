@@ -85,8 +85,8 @@
 
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
-   Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app
-   surface) use this to pick a sandbox configuration:
+   Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this
+   to pick a sandbox configuration:
 
    - `prefersBorder`    — presentation hint asking the host to draw a frame border
    - `domain`           — the origin the iframe content is anchored at
@@ -95,8 +95,8 @@
    - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
                               (the SDK bundle is served from this Metabase instance)
 
-   `frameDomains` is intentionally omitted — we don't nest iframes inside the
-   visualization, and leaving it out narrows the CSP for security review."
+   `frameDomains` is intentionally omitted — we don't nest iframes inside the visualization, and
+   leaving it out narrows the CSP for security review."
   [resource]
   (let [url (system/site-url)]
     {:ui (cond-> {:csp {:connectDomains  [url]

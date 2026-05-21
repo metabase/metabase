@@ -164,11 +164,11 @@
   [method]
   ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present —
   ;; some MCP clients (e.g. the ChatGPT Apps SDK) reject tools that omit them.
-  ;; `openWorldHint` signals whether a tool reaches arbitrary external entities
-  ;; (e.g. a web-search tool) — false here because every Metabase tool stays
-  ;; within the user's own instance.
   (merge {:readOnlyHint    false
           :destructiveHint false
+          ;; `openWorldHint` signals whether a tool reaches arbitrary external
+          ;; entities (e.g. a web-search tool) — false here because every
+          ;; Metabase tool stays within the user's own instance.
           :openWorldHint   false}
          (case method
            (:get :head) {:readOnlyHint   true
@@ -220,10 +220,9 @@
   "Make an MCP inputSchema compatible with stricter LLM clients.
 
   MCP allows normal JSON Schema optional object properties.
-  OpenAI's strict tool schema validation is narrower: every object property must be
-  listed in `:required`. The Malli source already models nullability via `[:maybe ...]`
-  (see [[assert-optional-fields-nullable!]]), so this only needs to widen
-  `:required` and close the object — property types are left alone."
+  OpenAI's strict tool schema validation is narrower: every object property must be listed in `:required`.
+  The Malli source already models nullability via `[:maybe ...]` (see [[assert-optional-fields-nullable!]]),
+  so this only needs to widen `:required` and close the object — property types are left alone."
   [schema]
   (letfn [(strict-schema [schema]
             (let [schema (cond-> schema
@@ -244,11 +243,10 @@
   [schema]
   (try (mr/validate schema nil) (catch Throwable _ false)))
 
-(defn- assert-optional-fields-nullable!
+(defn assert-optional-fields-nullable!
   "Throw if any optional field reachable from `malli-schema` rejects an explicit null.
-   The strict-tool transform forces every property into `:required`, so an optional
-   field that isn't `[:maybe ...]` would publish a schema that allows null but be
-   rejected by Malli validation at the endpoint.
+   The strict-tool transform forces every property into `:required`, so an optional field that isn't
+   `[:maybe ...]` would publish a schema that allows null but be rejected by Malli validation at the endpoint.
    The fix is at the schema definition: pair `:optional true` with `[:maybe ...]`."
   [malli-schema tool-name]
   (when malli-schema
@@ -291,22 +289,15 @@
                                            (seq all-req) (assoc :required all-req)))))
 
 (defn- tool-input-schema
-  "Resolve a tool's MCP `inputSchema`.
-
-  Sources, in priority order:
-  1. `:input-schema` on the tool metadata as a Malli schema.
-  2. Implicit — derived from the endpoint's route/query/body Malli.
-
-  Either path is linted by [[assert-optional-fields-nullable!]]: every optional
-  field must be `[:maybe ...]` so the published JSON Schema is already nullable,
-  letting the strict transform leave property types alone."
+  "Derive a tool's MCP `inputSchema` from the endpoint's route/query/body Malli.
+  Linted by [[assert-optional-fields-nullable!]]: every optional field must be `[:maybe ...]` so the
+  published JSON Schema is already nullable, letting the strict transform leave property types alone.
+  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP input shape differs from
+  the endpoint's wire shape."
   [tool-name form]
-  (if-let [explicit (get-in form [:metadata :tool :input-schema])]
-    (do (assert-optional-fields-nullable! explicit tool-name)
-        (-> explicit malli->json-schema strict-tool-input-schema))
-    (do (doseq [k [:route :query :body]]
-          (assert-optional-fields-nullable! (get-in form [:params k :schema]) tool-name))
-        (some-> (merge-input-schemas form) strict-tool-input-schema))))
+  (doseq [k [:route :query :body]]
+    (assert-optional-fields-nullable! (get-in form [:params k :schema]) tool-name))
+  (some-> (merge-input-schemas form) strict-tool-input-schema))
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
@@ -320,8 +311,8 @@
 (defn- tool-output-schema
   "Derive a tool's MCP `outputSchema` from the endpoint's `:response-schema`.
   No strict transform — outputs aren't constrained by OpenAI's strict-tool rules.
-  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP
-  body transform reshapes the endpoint response."
+  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP body transform
+  reshapes the endpoint response."
   [form]
   (response-schema->json-schema (:response-schema form)))
 

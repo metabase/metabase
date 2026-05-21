@@ -149,16 +149,14 @@
 ;; encoded query.
 
 (defn store-handle!
-  "Insert a new handle row binding `encoded-query` to the calling user, and return
-   the freshly minted handle UUID.
+  "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles
-   and reads can prefer the calling session before falling back across the user's
-   other sessions (see [[resolve-query-handle]]).
+   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and reads can
+   prefer the calling session before falling back across the user's other sessions (see
+   [[resolve-query-handle]]).
 
-   `prompt` is optional, but should be supplied for construct_query handles so
-   visualize_query can later return both the query and original user prompt to
-   the MCP iframe for feedback submission."
+   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can
+   later return both the query and original user prompt to the MCP iframe for feedback submission."
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
@@ -176,13 +174,14 @@
      handle-id)))
 
 (defn- find-handle-row
-  "Look up the handle row owned by `user-id` in a single query, by joining
-   `mcp_query_handle` to `core_session` and filtering on `core_session.user_id`.
-   Prefers a row stored under the calling `mcp-session-id` and falls back to any
-   other session owned by the same user — the fallback covers harnesses (e.g.
-   ChatGPT) that rotate MCP sessions between tool calls."
+  "Look up the handle row owned by `user-id`.
+   Prefers a row stored under the calling `mcp-session-id` and falls back to any other session
+   owned by the same user — the fallback covers harnesses (e.g. ChatGPT) that rotate MCP sessions
+   between tool calls."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
+    ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
+    ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
     (let [row (t2/select-one :model/McpQueryHandle
                              {:select [:mqh.*]
                               :from   [[:mcp_query_handle :mqh]]

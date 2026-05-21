@@ -537,31 +537,6 @@
    "- A `metric` source already provides its own aggregation and time dimension. Add only the additional breakouts/filters you need.\n"
    "- When the user asks for an exact year (e.g. 2024), use `[\"=\", [\"field\", year_field], 2024]` or a `between` with explicit dates — not relative filters like `time-interval`.\n"))
 
-(def ^:private construct-query-tool-input-malli
-  "Malli schema for the construct_query tool's MCP input.
-  Deliberately flatter than `::construct-query-request` — the operator/ref grammar
-  is conveyed through the tool description and the construct-query.md MCP resource,
-  not the schema. Server-side wire validation still goes through `::construct-query-request`."
-  [:map
-   [:source
-    {:tool/description "Database entity to query."}
-    [:map
-     [:type {:tool/description "Entity kind."}
-      [:enum "table" "card" "dataset" "metric"]]
-     [:id ms/PositiveInt]]]
-   [:operations
-    {:tool/description (str "Array of operator tuples like [\"filter\", clause] or "
-                            "[\"aggregate\", agg-clause]. See metabase://docs/construct-query.md "
-                            "for the full grammar.")}
-    [:sequential
-     [:sequential
-      {:tool/description (str "First element is the operator string; remaining "
-                              "elements are operator-specific arguments (scalars, "
-                              "references, or nested arrays).")}
-      :any]]]
-   [:prompt {:optional true}
-    [:maybe ConstructQueryPrompt]]])
-
 (defn- evaluate-program-to-live-query
   "Resolve a program's source entity, evaluate the program via agent-lib, and return
   the live lib query (with lib metadata attached)."
@@ -591,7 +566,6 @@
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            :description construct-query-tool-description
-           :input-schema construct-query-tool-input-malli
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
@@ -790,13 +764,6 @@
                              "instead. "
                              "Pass `query_handle` (preferred) from construct_query rather than constructing the "
                              "base64 query yourself.")
-           :input-schema [:map
-                          [:query {:optional true
-                                   :tool/description "Base64-encoded MBQL query. Use `query_handle` instead when available."}
-                           [:maybe ms/NonBlankString]]
-                          [:query_handle {:optional true
-                                          :tool/description "Handle returned by construct_query — preferred over raw `query`."}
-                           [:maybe ms/UUIDString]]]
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
