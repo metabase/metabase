@@ -18,7 +18,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [stencil.core :as stencil]))
+   [stencil.core :as stencil])
+  (:import
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -83,6 +85,18 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
+(defn- site-origin
+  "Origin (scheme://host[:port]) extracted from `site-url`, dropping any path segment.
+   ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
+   hosted under a subpath would otherwise leak the path and fail validation."
+  []
+  (let [^URI uri (URI. (system/site-url))
+        scheme   (.getScheme uri)
+        host     (.getHost uri)
+        port     (.getPort uri)]
+    (cond-> (str scheme "://" host)
+      (not (neg? port)) (str ":" port))))
+
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
    Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this
@@ -98,7 +112,7 @@
    `frameDomains` is intentionally omitted — we don't nest iframes inside the visualization, and leaving
    it out narrows the CSP for security review."
   [resource]
-  (let [url (system/site-url)]
+  (let [url (site-origin)]
     {:ui (cond-> {:csp {:connectDomains  [url]
                         :resourceDomains [url]}}
            (contains? resource :prefersBorder)

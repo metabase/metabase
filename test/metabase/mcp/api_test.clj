@@ -169,7 +169,14 @@
     (let [response (mcp-request (jsonrpc-request "initialize")
                                 {"host"   "Example.com"
                                  "origin" "https://example.COM"})]
-      (is (= 200 (:status response))))))
+      (is (= 200 (:status response)))))
+  (testing "approved MCP origins match the Origin header case-insensitively"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "HTTPS://example.com"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
 
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"

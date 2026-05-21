@@ -165,15 +165,17 @@
     (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
 
 (defn- approved-mcp-origin? [origin]
+  ;; Pre-lowercase both inputs so DNS hostname matching is case-insensitive (per RFC) and so mixed-case
+  ;; schemes still match `try-parse-url`'s lowercase-only `https?|app|capacitor` regex.
   (boolean
    (or (mcp/sandbox-origin? origin)
        (when-let [approved-origins (not-empty (mcp/cors-origins))]
-         (when-let [origin-url (mw.security/try-parse-url origin)]
+         (when-let [origin-url (mw.security/try-parse-url (u/lower-case-en origin))]
            (some (fn [approved-origin]
                    (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
                         (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
                         (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
-                 (mw.security/parse-approved-origins approved-origins)))))))
+                 (mw.security/parse-approved-origins (u/lower-case-en approved-origins))))))))
 
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).

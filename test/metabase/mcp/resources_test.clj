@@ -90,8 +90,11 @@
                                            {}))))))
 
 (deftest builtin-visualize-query-ui-resource-metadata-test
-  (testing "the visualize_query UI resource includes ChatGPT Apps metadata"
-    (let [site-url "https://metabase.example.com"
+  (testing "the visualize_query UI resource publishes bare origins in its ChatGPT Apps metadata"
+    ;; site-url is set with a subpath to confirm `_meta.ui.domain` and the CSP domain lists strip the
+    ;; path — ChatGPT's MCP host treats those fields as origins and would otherwise reject the value.
+    (let [site-url "https://metabase.example.com/sub/path"
+          origin   "https://metabase.example.com"
           uri      "ui://metabase/visualize-query.html"]
       (with-redefs [system/site-url (constantly site-url)]
         (mcp.resources/with-fallback-template
@@ -99,7 +102,7 @@
                    :contents [{:uri      uri
                                :mimeType "text/html;profile=mcp-app"
                                :_meta    {:ui {:prefersBorder true
-                                               :domain        site-url
-                                               :csp           {:connectDomains  [site-url]
-                                                               :resourceDomains [site-url]}}}}]}
+                                               :domain        origin
+                                               :csp           {:connectDomains  [origin]
+                                                               :resourceDomains [origin]}}}}]}
                   (mcp.resources/read-resource uri #{"agent:visualize"} {}))))))))
