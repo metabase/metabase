@@ -899,9 +899,10 @@
                                        {:message {:code "missing"}}
                                        {:error  {:message {:code 500}}}
                                        {:error  42}])))))
-    (testing "a non-string or blank at one key falls through to a later key with a real message"
+    (testing "a non-string, blank, or whitespace-only at one key falls through to a later key"
       (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
-      (is (= "real error" (body-preview {:error "" :detail "real error"}))))
+      (is (= "real error" (body-preview {:error ""    :detail "real error"})))
+      (is (= "real error" (body-preview {:error "   " :detail "real error"}))))
     (testing "empty maps and arrays return nil (nothing to preview, no warn)"
       (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
                    (is (every? nil? (map body-preview [{} []])))

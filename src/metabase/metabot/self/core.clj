@@ -507,9 +507,10 @@
 
 (defn- extract-error-message
   "First non-blank string under `[:error :message]`, `:error`, `:detail`, or `:message`.
-  Non-strings fall through so the raw envelope can't `str`-leak into the user-facing message."
+  Non-strings and whitespace-only strings fall through so neither the raw envelope nor a
+  meaningless blank can `str`-leak into the user-facing message."
   [m]
-  (let [s (fn [v] (when (string? v) (not-empty v)))]
+  (let [s (fn [v] (when (string? v) (not-empty (str/trim v))))]
     (or (s (get-in m [:error :message]))
         (s (:error m))
         (s (:detail m))
