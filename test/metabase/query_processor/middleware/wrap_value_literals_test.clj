@@ -26,12 +26,13 @@
    (letfn [(f [query]
              (mt/with-results-timezone-id timezone-id
                (qp.wrap-value-literals/wrap-value-literals query)))]
-     (if (:lib/type query)
-       (f query)
-       (let [mp meta/metadata-provider]
-         (-> (lib/query mp query)
-             f
-             lib/->legacy-MBQL))))))
+     (driver/with-driver ::tz-driver
+       (if (:lib/type query)
+         (f query)
+         (let [mp meta/metadata-provider]
+           (-> (lib/query mp query)
+               f
+               lib/->legacy-MBQL)))))))
 
 (deftest ^:parallel wrap-integers-test
   (is (= (lib.tu.macros/mbql-query venues
