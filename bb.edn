@@ -257,7 +257,7 @@
               :multi true :default [] :update-fn conj]]
    :arg-schema [:tuple [:string {:name "input-dir" :description "Directory of JUnit XML files to process"}]]
    :requires [[mage.junit-hooks :as junit-hooks]]
-   :task (task! (junit-hooks/rewrite parsed))}
+   :task (task! (junit-hooks/rewrite! parsed))}
 
   affected-modules
   {:doc "Which backend modules have changes?"

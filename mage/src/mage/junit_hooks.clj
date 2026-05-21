@@ -18,19 +18,19 @@
 (def ^:private hook-re
   #"\"(?:before|after) (?:each|all)\" hook for \"([^\"]+)\"")
 
-(defn- fix
-  "Strip the mocha hook label from `s`, leaving the underlying test name.
+(defn- unhooked-name
+  "`s` with the mocha hook label stripped, leaving the underlying test name.
   Non-strings (e.g. a missing attribute) pass through unchanged."
   [s]
   (if (string? s) (str/replace s hook-re "$1") s))
 
-(defn- fix-attrs
-  "Rewrite the `:name`/`:classname` attributes if present, without materializing
-  absent ones as nil."
+(defn- unhooked-attrs
+  "`attrs` with the `:name`/`:classname` hook labels stripped if present, without
+  materializing absent ones as nil."
   [attrs]
   (cond-> attrs
-    (contains? attrs :name)      (update :name fix)
-    (contains? attrs :classname) (update :classname fix)))
+    (contains? attrs :name)      (update :name unhooked-name)
+    (contains? attrs :classname) (update :classname unhooked-name)))
 
 ;; mocha-junit-reporter records the spec path as `file=` on the Root Suite
 ;; <testsuite>; that's the only place it appears in the document.
@@ -48,16 +48,16 @@
                   (fn [n]
                     (if (and (map? n) (= :testcase (:tag n)))
                       (let [before (get-in n [:attrs :name])
-                            after  (fix before)]
+                            after  (unhooked-name before)]
                         (swap! scanned inc)
                         (when (and (string? before) (not= after before))
                           (swap! rewrites conj [before after]))
-                        (update n :attrs fix-attrs))
+                        (update n :attrs unhooked-attrs))
                       n))
                   doc)]
     [doc' {:scanned @scanned :rewrites @rewrites}]))
 
-(defn- process-file [file {:keys [dry-run includes]}]
+(defn- process-file! [file {:keys [dry-run includes]}]
   (let [doc  (xml/parse-str (slurp (str file)))
         spec (spec-file doc)]
     (if (and (seq includes)
@@ -70,7 +70,7 @@
           :else             (do (spit (str file) (xml/emit-str doc'))
                                 {:action :rewrote :scanned scanned :rewrites rewrites :spec spec}))))))
 
-(defn- summarize [path {:keys [action scanned rewrites spec]}]
+(defn- summary [path {:keys [action scanned rewrites spec]}]
   (let [n    (count rewrites)
         head (case action
                :rewrote          (str path ": rewrote " n "/" scanned)
@@ -81,7 +81,7 @@
     (->> (cons head (map (fn [[b a]] (str "  " b " -> " a)) rewrites))
          (str/join "\n"))))
 
-(defn rewrite
+(defn rewrite!
   "Entry point. `parsed` is {:options {...} :arguments [in-dir]}."
   [{{:keys [dry-run include]} :options [in-dir] :arguments}]
   (when-not (and in-dir (fs/directory? in-dir))
@@ -90,8 +90,8 @@
   (let [opts      {:dry-run (boolean dry-run) :includes (or include [])}
         files     (sort (map str (fs/glob in-dir "*.xml")))
         results   (mapv (fn [f]
-                          (let [r (process-file f opts)]
-                            (binding [*out* *err*] (println (summarize f r)))
+                          (let [r (process-file! f opts)]
+                            (binding [*out* *err*] (println (summary f r)))
                             r))
                         files)
         scanned   (reduce + (map :scanned results))

@@ -8,7 +8,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private fix #'junit-hooks/fix)
+(def ^:private unhooked-name #'junit-hooks/unhooked-name)
 (def ^:private rewrite-doc #'junit-hooks/rewrite-doc)
 (def ^:private spec-file #'junit-hooks/spec-file)
 
@@ -61,20 +61,20 @@
   (binding [*err* (java.io.StringWriter.)]
     (f)))
 
-(deftest fix-strips-hook-label-test
+(deftest unhooked-name-strips-hook-label-test
   (testing "strips the hook label, keeping the suite prefix and test name"
     (is (= "Login works"
-           (fix "Login \"before each\" hook for \"works\""))))
+           (unhooked-name "Login \"before each\" hook for \"works\""))))
   (testing "handles every before/after each/all variant"
     (doseq [hook ["before each" "before all" "after each" "after all"]]
       (is (= "Suite the test"
-             (fix (str "Suite \"" hook "\" hook for \"the test\"")))
+             (unhooked-name (str "Suite \"" hook "\" hook for \"the test\"")))
           (str "should rewrite a " hook " hook"))))
   (testing "leaves ordinary test names untouched"
-    (is (= "just a normal test" (fix "just a normal test"))))
+    (is (= "just a normal test" (unhooked-name "just a normal test"))))
   (testing "passes non-strings through unchanged (e.g. a missing attribute)"
-    (is (nil? (fix nil)))
-    (is (= 42 (fix 42)))))
+    (is (nil? (unhooked-name nil)))
+    (is (= 42 (unhooked-name 42)))))
 
 (deftest rewrite-doc-test
   (let [[doc' {:keys [scanned rewrites]}] (rewrite-doc (xml/parse-str mocha-xml))]
@@ -98,7 +98,7 @@
   (with-temp-junit-dir
     {"results.xml" mocha-xml}
     (fn [dir]
-      (quietly #(junit-hooks/rewrite {:options {} :arguments [dir]}))
+      (quietly #(junit-hooks/rewrite! {:options {} :arguments [dir]}))
       (let [doc (xml/parse-str (slurp (str dir "/results.xml")))]
         (is (= ["Login works"] (testcase-names doc))
             "hook label is stripped on disk")
@@ -111,7 +111,7 @@
   (with-temp-junit-dir
     {"results.xml" mocha-xml}
     (fn [dir]
-      (quietly #(junit-hooks/rewrite {:options {:dry-run true} :arguments [dir]}))
+      (quietly #(junit-hooks/rewrite! {:options {:dry-run true} :arguments [dir]}))
       (is (= mocha-xml (slurp (str dir "/results.xml")))
           "dry-run must not modify the file"))))
 
@@ -120,7 +120,7 @@
     (with-temp-junit-dir
       {"backend.xml" backend-xml}
       (fn [dir]
-        (quietly #(junit-hooks/rewrite {:options {} :arguments [dir]}))
+        (quietly #(junit-hooks/rewrite! {:options {} :arguments [dir]}))
         (is (= backend-xml (slurp (str dir "/backend.xml"))))))))
 
 (deftest rewrite-include-filter-test
@@ -128,14 +128,14 @@
     (with-temp-junit-dir
       {"results.xml" mocha-xml}
       (fn [dir]
-        (quietly #(junit-hooks/rewrite {:options {:include ["does-not-match"]} :arguments [dir]}))
+        (quietly #(junit-hooks/rewrite! {:options {:include ["does-not-match"]} :arguments [dir]}))
         (is (= mocha-xml (slurp (str dir "/results.xml")))
             "non-matching spec path is skipped, file unchanged"))))
   (testing "--include rewrites files whose spec path matches"
     (with-temp-junit-dir
       {"results.xml" mocha-xml}
       (fn [dir]
-        (quietly #(junit-hooks/rewrite {:options {:include ["foo.cy.spec.js"]} :arguments [dir]}))
+        (quietly #(junit-hooks/rewrite! {:options {:include ["foo.cy.spec.js"]} :arguments [dir]}))
         (is (= ["Login works"]
                (testcase-names (xml/parse-str (slurp (str dir "/results.xml")))))
             "matching spec path is rewritten")))))
@@ -148,7 +148,7 @@
       (with-temp-junit-dir
         {"results.xml" no-classname}
         (fn [dir]
-          (quietly #(junit-hooks/rewrite {:options {} :arguments [dir]}))
+          (quietly #(junit-hooks/rewrite! {:options {} :arguments [dir]}))
           (let [tc (->> (xml/parse-str (slurp (str dir "/results.xml")))
                         (tree-seq map? :content)
                         (filter #(and (map? %) (= :testcase (:tag %))))
@@ -159,6 +159,6 @@
 
 (deftest rewrite-rejects-non-directory-test
   (is (thrown? clojure.lang.ExceptionInfo
-               (junit-hooks/rewrite {:options {} :arguments ["/no/such/dir/here"]}))))
+               (junit-hooks/rewrite! {:options {} :arguments ["/no/such/dir/here"]}))))
 
 (def keep-me "Ensures this namespace is loaded by mage.core-test")
