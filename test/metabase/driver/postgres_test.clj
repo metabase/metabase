@@ -90,6 +90,16 @@
                         ;; NB: because of test parallelism, this *will* affect other non-pg
                         ;; tests, but the check above in the test-driver function will
                         ;; prevent it from actually doing anything different in those tests.
+                        ;;
+                        ;; The linter (`:metabase/validate-deftest`) flags `with-redefs` inside a
+                        ;; `use-fixtures` body because it isn't parallel-safe -- the root var is
+                        ;; mutated globally across threads. We accept the hazard here for the
+                        ;; duration of the `:postgres-mbql5` equivalence experiment: this fixture
+                        ;; reruns every `:postgres` test under the `:postgres-mbql5` dispatch so
+                        ;; we can confirm behavioral parity. Once the experiment concludes and
+                        ;; `:postgres-mbql5` becomes `:postgres`, this entire `with-redefs` goes
+                        ;; away (see Phil's note in #ee-querying-platform 2026-05-21).
+                        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                         (with-redefs [mtd/-test-driver test-driver]
                           (mt/with-test-user :rasta (thunk))))))
 
