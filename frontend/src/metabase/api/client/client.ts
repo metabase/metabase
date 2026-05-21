@@ -7,6 +7,7 @@ import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
+import { addAntiCsrfToken, updateAntiCsrfToken } from "./csrf";
 import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
@@ -20,11 +21,6 @@ import {
 } from "./utils";
 
 const MAX_RETRIES = 10;
-
-const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
-const METABASE_VERSION_HEADER = "X-Metabase-Version";
-
-let ANTI_CSRF_TOKEN: string | null = null;
 
 type ResponseTransformer<T = unknown> = (opts: {
   /**
@@ -127,10 +123,6 @@ export class ApiClient extends EventEmitter {
       } else {
         headers["X-Metabase-Client"] = this.requestClient;
       }
-    }
-
-    if (ANTI_CSRF_TOKEN) {
-      headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
     }
 
     const locale = getLocaleHeader();
@@ -313,17 +305,16 @@ export class ApiClient extends EventEmitter {
     });
 
     try {
+      addAntiCsrfToken(request);
+
       const response = await fetch(request);
+
+      updateAntiCsrfToken(response);
 
       const unreadResponse = response.clone();
       const body = await getResponseBody(response);
       const status = getResponseStatus(response, body);
-      const token = response.headers.get(ANTI_CSRF_HEADER);
-      const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
-
-      if (token) {
-        ANTI_CSRF_TOKEN = token;
-      }
+      const metabaseVersion = response.headers.get("X-Metabase-Version");
 
       if (!options.noEvent) {
         // Strip basename so listeners (app-main.js) see the relative path.
