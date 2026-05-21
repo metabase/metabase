@@ -14,9 +14,9 @@ import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
 import {
   appendQueryParameters,
-  getBasenamePath,
   getResponseBody,
   getResponseStatus,
+  relativeUrl as relativePath,
   substituteUrlTags,
 } from "./utils";
 
@@ -318,12 +318,7 @@ export class ApiClient extends EventEmitter {
 
       if (!options.noEvent) {
         // Strip basename so listeners (app-main.js) see the relative path.
-        const basenamePath = getBasenamePath(this.basename);
-        const emitPath =
-          basenamePath && url.pathname.startsWith(basenamePath)
-            ? url.pathname.slice(basenamePath.length)
-            : url.pathname;
-        this.emit(String(status), emitPath + url.search);
+        this.emit(String(status), relativePath(this.basename, url));
       }
 
       if (status >= 200 && status <= 299) {

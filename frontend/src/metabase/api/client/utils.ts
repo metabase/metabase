@@ -1,15 +1,31 @@
 // Basename can be a path prefix ("/metabase") or a full URL with an optional
 // subpath ("http://localhost/mb"). The status-code emit needs the path portion
-// only — listeners expect "/api/..." regardless of how the host is wired.
+// only, listeners expect "/api/..." regardless of how the host is wired.
 export function getBasenamePath(basename: string): string {
   if (!basename) {
     return "";
   }
   try {
-    return new URL(basename).pathname.replace(/\/$/, "");
+    const url = new URL(basename);
+    return trimSuffix(url.pathname, "/");
   } catch {
-    return basename.replace(/\/$/, "");
+    // not a full url, assume it's a path prefix
+    return trimSuffix(basename, "/");
   }
+}
+
+export function relativeUrl(basename: string, url: URL): string {
+  const basenamePath = getBasenamePath(basename);
+  const relativePath = removePrefix(url.pathname, basenamePath);
+  return relativePath + url.search;
+}
+
+function removePrefix(str: string, prefix: string): string {
+  return str.startsWith(prefix) ? str.slice(prefix.length) : str;
+}
+
+function trimSuffix(str: string, suffix: string): string {
+  return str.endsWith(suffix) ? str.slice(0, -suffix.length) : str;
 }
 
 export async function getResponseBody(response: Response): Promise<unknown> {
