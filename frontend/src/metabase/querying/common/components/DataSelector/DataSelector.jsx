@@ -401,6 +401,7 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema,
       selectedTable,
       selectedField,
+      schemas,
     } = this.state;
 
     const invalidSchema =
@@ -428,6 +429,19 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
+    // A database with a single schema auto-selects it (see `skipSteps`). When the
+    // schema list arrives asynchronously *after* we already switched to the schema
+    // step (e.g. a freshly selected Mongo database in the native editor), that
+    // auto-selection ran against stale state and didn't advance, leaving us
+    // stranded on the schema step. Retry it now that the schema is available.
+    const onStepMissingOnlySchemaSelection =
+      activeStep === SCHEMA_STEP &&
+      !selectedSchema &&
+      this.props.useOnlyAvailableSchema &&
+      !this.props.readOnly &&
+      this.props.selectedSchemaId == null &&
+      schemas.length === 1;
+
     if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
@@ -441,6 +455,8 @@ export class UnconnectedDataSelector extends Component {
       });
     } else if (invalidField) {
       await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    } else if (onStepMissingOnlySchemaSelection) {
+      await this.onChangeSchema(schemas[0]);
     }
   }
 
