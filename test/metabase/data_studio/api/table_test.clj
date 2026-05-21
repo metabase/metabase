@@ -96,10 +96,10 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (with-redefs [sync/sync-table! (fn [table]
-                                         (swap! tables conj table)
-                                         (.countDown latch)
-                                         nil)]
+        (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [table]
+                                                       (swap! tables conj table)
+                                                       (.countDown latch)
+                                                       nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
                                                                                       :schema_ids   [(format "%d:FOO" d2)]
                                                                                       :table_ids    [t4]})
@@ -124,10 +124,10 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (with-redefs [sync/update-field-values-for-table! (fn [table]
-                                                            (swap! tables conj table)
-                                                            (.countDown latch)
-                                                            nil)]
+        (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+                                                                          (swap! tables conj table)
+                                                                          (.countDown latch)
+                                                                          nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
                                                                                         :schema_ids   [(format "%d:FOO" d2)]
                                                                                         :table_ids    [t4]})

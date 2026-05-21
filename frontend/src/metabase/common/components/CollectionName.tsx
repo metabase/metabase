@@ -1,5 +1,5 @@
 import { useGetCollectionQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getName } from "metabase/utils/name";
 import type { CollectionId } from "metabase-types/api";

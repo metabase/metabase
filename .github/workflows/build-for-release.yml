@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -77,7 +77,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -120,7 +120,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: |
@@ -155,7 +155,7 @@ jobs:
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
       build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -184,9 +184,13 @@ jobs:
   manage-milestones:
     # Close the milestone we're about to ship and open the next one BEFORE building,
     # so any PRs that merge while the build is in flight are tagged with the next
-    # milestone (not the one about to be released). Gated on the preflight checks
-    # so a bad version/commit input doesn't rotate the milestone spuriously.
-    needs: [check-version, check-commit]
+    # milestone (not the one about to be released).
+    #
+    # Sequenced after trigger-milestone-check so that the check sees the milestone
+    # in its open state. milestone-check is informational and must never block, so
+    # we run regardless of its outcome; only preflight failures suppress this.
+    needs: [check-version, check-commit, trigger-milestone-check]
+    if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
     permissions:
       contents: read
       issues: write
@@ -223,7 +227,7 @@ jobs:
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment

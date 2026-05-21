@@ -11,7 +11,7 @@ import {
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {

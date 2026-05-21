@@ -722,6 +722,7 @@
                          {:name "Test Collection"
                           :is_remote_synced true
                           :entity_id "test-collection-1xxxx"
+                          :type      "library-data"
                           :location "/"}
                          ;; Table must have collection_id and is_published to be included as Collection descendant
                          :model/Table {table-id :id} {:name "test-table"

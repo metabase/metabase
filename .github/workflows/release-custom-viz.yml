@@ -32,7 +32,7 @@ jobs:
       git_tag: ${{ steps.resolve.outputs.git_tag }}
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
 
@@ -64,7 +64,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
@@ -112,7 +112,7 @@ jobs:
         working-directory: enterprise/frontend/src/custom-viz
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
 
@@ -149,7 +149,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

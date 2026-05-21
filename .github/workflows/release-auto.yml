@@ -34,7 +34,7 @@ jobs:
       commit: ${{ steps.compute.outputs.commit }}
       should_release: ${{ steps.compute.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -124,8 +124,26 @@ jobs:
             }).catch(console.error);
 
             core.setOutput('should_release', 'false');
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Auto-${{ inputs.kind }} release for v${{ inputs.version }}"
+            echo ""
+            if [[ "${{ steps.compute.outputs.should_release }}" == "true" ]]; then
+              echo "**Releasing:** \`${{ steps.compute.outputs.version }}\`"
+              echo ""
+              echo "**Commit:** [\`${{ steps.compute.outputs.commit }}\`](https://github.com/${{ github.repository }}/commit/${{ steps.compute.outputs.commit }})"
+            else
+              echo "_Skipped — see logs for the reason._"
+            fi
+            echo ""
+            echo "**Triggered by:** @${{ github.actor }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   trigger-release:
+    name: Release ${{ needs.prepare.outputs.version }}
     needs: prepare
     if: ${{ needs.prepare.outputs.should_release == 'true' }}
     permissions:

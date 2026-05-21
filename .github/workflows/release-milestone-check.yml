@@ -27,7 +27,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: release
       - name: Install bun
@@ -59,6 +59,11 @@ jobs:
               version,
               commitHash,
             });
+
+            if (issueCount === undefined) {
+              // checkMilestoneForRelease returns undefined for patches, which have nothing to check.
+              return;
+            }
 
             await sendMilestoneCheckMessage({
               channelName: process.env.SLACK_RELEASE_CHANNEL,

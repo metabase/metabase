@@ -29,8 +29,42 @@ interface IgnorableError {
   ignore_error?: boolean;
 }
 
+export type DownloadDatasetArgs = {
+  method: "GET" | "POST";
+  url: string;
+  body?: Record<string, unknown>;
+};
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    downloadDataset: builder.mutation<Response, DownloadDatasetArgs>({
+      query: ({ method, url, body }) => {
+        if (method === "POST") {
+          // BE expects the body to be form-encoded :(
+          const formData = new URLSearchParams();
+          if (body != null) {
+            for (const key in body) {
+              formData.append(key, JSON.stringify(body[key]));
+            }
+          }
+          return {
+            method: "POST",
+            url,
+            body: { formData },
+            formData: true,
+            fetch: true,
+            transformResponse: ({ response }: { response: Response }) =>
+              response,
+          };
+        }
+        return {
+          method: "GET",
+          url,
+          fetch: true,
+          transformResponse: ({ response }: { response: Response }) => response,
+        };
+      },
+    }),
     getAdhocQuery: builder.query<
       Dataset,
       DatasetQuery & RefetchDeps & IgnorableError
@@ -40,8 +74,17 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset",
         body,
         noEvent: ignore_error,
+        // Use fetch so RTK Query's AbortSignal actually cancels the
+        // request. The XHR path only honors a `cancelled` promise, which
+        // we can't thread through `endpoint.initiate(...).abort()`.
+        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      // Dataset results can be large and the cache key is the full
+      // DatasetQuery, so cross-caller cache hits are rare. Evict
+      // immediately on unsubscribe to match the legacy fetch-and-discard
+      // behavior used by the imperative `runAdhocDatasetQuery` runner.
+      keepUnusedDataFor: 0,
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
@@ -58,8 +101,10 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset/pivot",
         body,
         noEvent: ignore_error,
+        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      keepUnusedDataFor: 0,
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
@@ -97,6 +142,7 @@ export const datasetApi = Api.injectEndpoints({
 });
 
 export const {
+  useDownloadDatasetMutation,
   useGetAdhocQueryQuery,
   useLazyGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,

@@ -2,12 +2,17 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useDeleteActionMutation, useListActionsQuery } from "metabase/api";
+import {
+  useDeleteActionMutation,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Databases } from "metabase/entities/databases";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -16,7 +21,6 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -40,13 +44,11 @@ interface OwnProps {
   model: Question;
 }
 
-interface DatabaseLoaderProps {
-  databases: Database[];
-}
+type Props = OwnProps;
 
-type Props = OwnProps & DatabaseLoaderProps;
-
-function ModelActionDetails({ model, databases }: Props) {
+function ModelActionDetails({ model }: Props) {
+  useListDatabasesQuery();
+  const databases = useSelector((state) => getMetadata(state).databasesList());
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });
@@ -204,4 +206,4 @@ function mostRecentFirst(action: WritebackAction) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Databases.loadList())(ModelActionDetails);
+export default ModelActionDetails;

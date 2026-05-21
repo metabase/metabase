@@ -88,6 +88,19 @@ type ResponseErrorInfo = {
   metabaseVersion: string | null;
 };
 
+/**
+ * Thrown when the transport itself fails before a response is received —
+ * e.g. the server dropped the connection, DNS lookup failed, or the user is
+ * offline. Callers can `instanceof`-check this to render a connectivity
+ * error message instead of treating it as a generic JS exception.
+ */
+export class NetworkError extends Error {
+  constructor(message = "Network error") {
+    super(message);
+    this.name = "NetworkError";
+  }
+}
+
 export class LegacyApi extends EventEmitter {
   basename = "";
   apiKey = "";
@@ -421,7 +434,7 @@ export class LegacyApi extends EventEmitter {
     options: RequestOptions,
   ): Promise<unknown> {
     const controller = options.controller || new AbortController();
-    const signal = options.signal ?? controller.signal;
+    const signal = controller.signal;
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
@@ -431,6 +444,20 @@ export class LegacyApi extends EventEmitter {
       body: requestBody,
       signal,
     });
+
+    // Propagate aborts from an externally-supplied signal. If the signal is
+    // already aborted (e.g. cancelled while we were awaiting auth-refresh
+    // middleware), defer the propagation to the next microtask so the request
+    // still gets dispatched first — matching XHR's `send()` then-`abort()`
+    // semantics, where `xhr.send()` runs before the cancel handler is wired
+    // up. Otherwise the network never sees the request at all.
+    if (options.signal) {
+      if (options.signal.aborted) {
+        queueMicrotask(() => controller.abort());
+      } else {
+        options.signal.addEventListener("abort", () => controller.abort());
+      }
+    }
 
     return fetch(request)
       .then((response) => {
@@ -488,9 +515,16 @@ export class LegacyApi extends EventEmitter {
       .catch((error: unknown) => {
         if (signal.aborted) {
           throw { isCancelled: true };
-        } else {
-          throw error;
         }
+        // A raw `fetch` rejection (e.g. the server dropped the connection)
+        // surfaces as a plain Error here, indistinguishable from JS
+        // exceptions thrown elsewhere. Wrap it so downstream renderers can
+        // `instanceof NetworkError`-check and route it to the connectivity
+        // error message.
+        if (error instanceof Error) {
+          throw new NetworkError(error.message);
+        }
+        throw error;
       });
   }
 
