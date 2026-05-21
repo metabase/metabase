@@ -217,6 +217,27 @@ interface GetHeatMapSeriesParams {
   series: SingleSeries[];
 }
 
+/**
+ * Recovers the segment name from a segment-filtered query's name.
+ *
+ * The query plan names each segmented query `"<base> (<segment>)"` — see
+ * `with-segment-suffix` in `metabase.explorations.query-plan.variants`. Every
+ * series in a heat-map group shares the same `<base>` (the unsegmented
+ * baseline's name), so the bare segment name is what remains once that prefix
+ * is stripped. Falls back to the full name when it doesn't match the shape.
+ */
+function getSegmentName(seriesName: string, baseName: string): string {
+  const prefix = `${baseName} (`;
+  if (
+    baseName.length > 0 &&
+    seriesName.startsWith(prefix) &&
+    seriesName.endsWith(")")
+  ) {
+    return seriesName.slice(prefix.length, -1);
+  }
+  return seriesName;
+}
+
 // the Table viz only supports one series, so we have to combine them
 export function getHeatMapSeries({
   series,
@@ -232,8 +253,11 @@ export function getHeatMapSeries({
   let minValue: number | undefined;
   let maxValue: number | undefined;
   series.forEach((s, i) => {
+    // The unsegmented baseline query is always first; the rest are
+    // segment-filtered variants of it.
+    const segmentName =
+      i === 0 ? t`(All)` : getSegmentName(s.card.name, card.name);
     for (const row of s.data.rows) {
-      const segmentName = i === 0 ? t`(All)` : `Segment ${i}`; // TODO: use the segment name
       rows.push([...row, segmentName]);
       const value = row[1];
       if (typeof value !== "number") {

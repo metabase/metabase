@@ -1311,6 +1311,10 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
+  if (unit === "hour-of-day") {
+    return dayjs.utc(value).format("h A");
+  }
+
   // dayjs can't format DDD to day of year, handle manually
   if (unit === "day-of-year") {
     return m.dayOfYear();

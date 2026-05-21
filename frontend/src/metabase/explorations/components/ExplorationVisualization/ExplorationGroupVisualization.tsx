@@ -261,7 +261,7 @@ interface ExplorationHeatMapProps {
 function ExplorationHeatMap({ series }: ExplorationHeatMapProps) {
   const combinedSeries = getHeatMapSeries({ series });
   return (
-    <Box flex={1} mih="10rem">
+    <Box flex={1}>
       <Visualization rawSeries={[combinedSeries]} className={S.chart} />
     </Box>
   );

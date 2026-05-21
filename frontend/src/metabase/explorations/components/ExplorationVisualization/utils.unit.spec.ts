@@ -1,9 +1,17 @@
 import type {
   ExplorationQuery,
   ExplorationQueryStatus,
+  RowValues,
+  SingleSeries,
 } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import {
+  getHeatMapSeries,
   getInterestingTimelineIds,
   getMaxTimelineInterestingness,
   getMostInterestingTimelineId,
@@ -33,6 +41,46 @@ function makeQuery(
     ...overrides,
   };
 }
+
+function makeHeatMapSeries(name: string, rows: RowValues[]): SingleSeries {
+  return {
+    card: createMockCard({ name, display: "table" }),
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ name: "Dimension" }),
+        createMockColumn({ name: "Value" }),
+      ],
+      rows,
+    }),
+  };
+}
+
+describe("getHeatMapSeries", () => {
+  it("labels the Segment column with the real segment name", () => {
+    const { data } = getHeatMapSeries({
+      series: [
+        makeHeatMapSeries("Revenue by Plan", [["A", 1]]),
+        makeHeatMapSeries("Revenue by Plan (Enterprise)", [["A", 2]]),
+        makeHeatMapSeries("Revenue by Plan (SMB)", [["A", 3]]),
+      ],
+    });
+
+    const segmentColumn = data.rows.map((row) => row[row.length - 1]);
+    expect(segmentColumn).toEqual(["(All)", "Enterprise", "SMB"]);
+  });
+
+  it("falls back to the full series name when it lacks the segment suffix", () => {
+    const { data } = getHeatMapSeries({
+      series: [
+        makeHeatMapSeries("Revenue by Plan", [["A", 1]]),
+        makeHeatMapSeries("Unrelated name", [["A", 2]]),
+      ],
+    });
+
+    const segmentColumn = data.rows.map((row) => row[row.length - 1]);
+    expect(segmentColumn).toEqual(["(All)", "Unrelated name"]);
+  });
+});
 
 describe("getMaxTimelineInterestingness", () => {
   it("returns an empty map when no query has timeline_interestingness", () => {
