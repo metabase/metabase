@@ -78,6 +78,8 @@ export function useInlineSQLPrompt(
     error,
     generate,
     cancelRequest,
+    modelOverride,
+    setModelOverride,
     clear: clearSuggestion,
     reset: resetSuggestionState,
     reject,
@@ -217,6 +219,8 @@ export function useInlineSQLPrompt(
               error={error}
               generate={generate}
               cancelRequest={cancelRequest}
+              modelOverride={modelOverride}
+              onModelOverrideChange={setModelOverride}
               suggestionModels={suggestionModels}
               getSourceSql={getSourceSql}
               value={promptValue}

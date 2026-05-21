@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupMetabotListModelsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -48,6 +49,7 @@ function setup() {
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 0 },
   );
+  setupMetabotListModelsEndpoint({ value: null, models: [] });
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),

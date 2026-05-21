@@ -8,6 +8,7 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
+import { MetabotModelSelector } from "metabase/metabot/components/MetabotModelSelector";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -105,18 +106,27 @@ export const MetabotGreeting = ({
             )}
           </Box>
           <Box className={S.inputActions}>
-            <ActionIcon
-              className={S.sendButton}
-              variant="filled"
-              size="2rem"
-              disabled={!isConfigured || inputDisabled}
-              loading={metabot.isDoingScience}
-              onClick={handleSubmit}
-              data-testid="metabot-send-message"
-              aria-label={t`Send`}
-            >
-              <Icon name="arrow_up" />
-            </ActionIcon>
+            <Box className={S.inputActionsRight}>
+              {isConfigured && (
+                <MetabotModelSelector
+                  disabled={metabot.isDoingScience}
+                  modelOverride={metabot.modelOverride}
+                  onModelOverrideChange={metabot.setModelOverride}
+                />
+              )}
+              <ActionIcon
+                className={S.sendButton}
+                variant="filled"
+                size="2rem"
+                disabled={!isConfigured || inputDisabled}
+                loading={metabot.isDoingScience}
+                onClick={handleSubmit}
+                data-testid="metabot-send-message"
+                aria-label={t`Send`}
+              >
+                <Icon name="arrow_up" />
+              </ActionIcon>
+            </Box>
           </Box>
         </Paper>
 

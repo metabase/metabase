@@ -33,11 +33,11 @@ export const metabotApi = Api.injectEndpoints({
     }),
     getMetabotSettings: builder.query<
       MetabotSettingsResponse,
-      { provider: MetabotProvider }
+      { provider?: MetabotProvider }
     >({
       query: ({ provider }) => ({
         method: "GET",
-        url: "/api/metabot/settings",
+        url: "/api/metabot/list-models",
         params: { provider },
       }),
       providesTags: () => [listTag("llm-models"), "session-properties"],

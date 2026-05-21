@@ -16,7 +16,7 @@
 }
 
 .inputContainer {
-  padding: 0 0.75rem 0 0.3rem;
+  padding: 0 0.75rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;

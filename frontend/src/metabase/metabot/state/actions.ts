@@ -57,6 +57,7 @@ export const {
   setIsProcessing,
   setNavigateToPath,
   setPendingMessageExternalId,
+  setModelOverride,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,

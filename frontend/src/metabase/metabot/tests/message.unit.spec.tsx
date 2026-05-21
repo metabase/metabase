@@ -1,4 +1,5 @@
-import { screen } from "__support__/ui";
+import { act, screen } from "__support__/ui";
+import { setModelOverride } from "metabase/metabot/state";
 
 import {
   assertConversation,
@@ -6,6 +7,7 @@ import {
   createPauses,
   enterChatMessage,
   input,
+  lastReqBody,
   mockAgentEndpoint,
   responseLoader,
   sendMessageButton,
@@ -48,6 +50,51 @@ describe("metabot > message", () => {
     expect(
       await screen.findByText("You, but don't tell anyone."),
     ).toBeInTheDocument();
+  });
+
+  it("should send the selected model override with chat messages", async () => {
+    const { store } = setup();
+    const agentSpy = mockAgentEndpoint({
+      textChunks: whoIsYourFavoriteResponse,
+    });
+
+    act(() => {
+      store.dispatch(
+        setModelOverride({
+          agentId: "omnibot",
+          model: "anthropic/claude-opus-4-1",
+        }),
+      );
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect((await lastReqBody(agentSpy)).model).toBe(
+      "anthropic/claude-opus-4-1",
+    );
+  });
+
+  it("should omit the model parameter when the model override is undefined", async () => {
+    const { store } = setup();
+    const agentSpy = mockAgentEndpoint({
+      textChunks: whoIsYourFavoriteResponse,
+    });
+
+    act(() => {
+      store.dispatch(
+        setModelOverride({
+          agentId: "omnibot",
+          model: "anthropic/claude-opus-4-1",
+        }),
+      );
+      store.dispatch(
+        setModelOverride({ agentId: "omnibot", model: undefined }),
+      );
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(await lastReqBody(agentSpy)).not.toHaveProperty("model");
   });
 
   it("should properly handle partial messages", async () => {

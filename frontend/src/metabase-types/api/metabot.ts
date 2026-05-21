@@ -177,6 +177,7 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  model?: string;
   profile_id?: string;
 };
 
@@ -216,7 +217,9 @@ export interface MetabotSettingsResponse {
   "credentials-error"?: string | null;
   models: {
     id: string;
+    value: string;
     display_name: string;
+    original_provider?: "anthropic" | "openai";
     group?: string | null;
   }[];
 }

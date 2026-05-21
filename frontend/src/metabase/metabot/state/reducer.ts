@@ -217,6 +217,11 @@ export const metabot = createSlice({
         state.profileOverride = action.payload.profile;
       },
     ),
+    setModelOverride: convoReducer(
+      (state, action: ConvoPayloadAction<{ model: string | undefined }>) => {
+        state.modelOverride = action.payload.model;
+      },
+    ),
     // REACTIONS REDUCERS
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;

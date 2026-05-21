@@ -1,30 +1,19 @@
-.editorContainer {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-  height: 100%;
-}
-
 .iconContainer {
-  padding-top: 12px;
-  width: 2.375rem;
+  width: 1.25rem;
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
 }
 
 .button {
-  margin-bottom: 0.625rem;
-  margin-right: -0.125rem;
   background: var(--mb-color-core-brand);
   border-radius: 50%;
-  align-self: flex-end;
-  margin-left: 2px;
   width: 1.25rem;
   height: 1.25rem;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
   transition:
     opacity 300ms ease,
     background 150ms ease,
@@ -40,16 +29,9 @@
   }
 }
 
-.buttonHidden {
-  opacity: 0;
-  transition: opacity 0ms ease;
-  user-select: none;
-  cursor: default;
-
-  &:hover,
-  &:active {
-    opacity: 0;
-  }
+.button[disabled] {
+  background-color: var(--mb-color-background-tertiary);
+  cursor: not-allowed;
 }
 
 .buttonResponding {

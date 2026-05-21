@@ -59,6 +59,19 @@
   align-items: flex-end;
 }
 
+.inputActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.inputActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .sendButton {
   color: var(--mb-color-background_page-primary);
 

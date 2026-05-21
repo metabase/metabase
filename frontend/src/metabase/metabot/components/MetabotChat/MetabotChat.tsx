@@ -189,8 +189,10 @@ export const MetabotChat = ({
               value={metabot.prompt}
               autoFocus
               isResponding={metabot.isDoingScience}
+              modelOverride={metabot.modelOverride}
               placeholder={t`How can I help? Type @ to mention items.`}
               onChange={metabot.setPrompt}
+              onModelOverrideChange={metabot.setModelOverride}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
               suggestionConfig={{

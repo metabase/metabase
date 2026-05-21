@@ -3,6 +3,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { skipToken, useGetMetabotSettingsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
@@ -76,6 +77,14 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
       }
     >
       <AIProviderConfigurationForm />
+      {connectedProvider && connectedProvider !== "metabase" && (
+        <AdminSettingInput
+          title={t`Model selection`}
+          description={t`Allow users to choose a different model for individual Metabot conversations.`}
+          name="llm-metabot-conversation-model-selection-enabled"
+          inputType="boolean"
+        />
+      )}
     </SettingsSection>
   );
 }

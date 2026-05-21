@@ -1,9 +1,13 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import {
+  setupMetabotListModelsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -16,6 +20,8 @@ const defaultProps: ComponentProps<typeof MetabotInlineSQLPrompt> = {
   error: undefined,
   generate: jest.fn(),
   cancelRequest: jest.fn(),
+  modelOverride: undefined,
+  onModelOverrideChange: jest.fn(),
   suggestionModels: [],
   getSourceSql: jest.fn(() => "select 1"),
   value: "",
@@ -24,15 +30,26 @@ const defaultProps: ComponentProps<typeof MetabotInlineSQLPrompt> = {
 
 function setup(
   props?: Partial<ComponentProps<typeof MetabotInlineSQLPrompt>>,
-  options?: { isAdmin?: boolean },
+  options?: {
+    isAdmin?: boolean;
+    isConfigured?: boolean;
+    isModelSelectionEnabled?: boolean;
+  },
 ) {
-  const { isAdmin = true } = options ?? {};
+  const {
+    isAdmin = true,
+    isConfigured = false,
+    isModelSelectionEnabled = true,
+  } = options ?? {};
   const settings = mockSettings({
-    "llm-metabot-configured?": false,
+    "llm-metabot-configured?": isConfigured,
+    "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+    "llm-metabot-conversation-model-selection-enabled": isModelSelectionEnabled,
     "metabot-enabled?": true,
   });
 
   setupUserMetabotPermissionsEndpoint();
+  setupMetabotListModelsEndpoint();
   setupEnterprisePlugins();
 
   renderWithProviders(<MetabotInlineSQLPrompt {...defaultProps} {...props} />, {
@@ -70,5 +87,36 @@ describe("MetabotInlineSQLPrompt", () => {
         "Ask your admin to connect to a model to use SQL generation.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("renders the model selector and changes the model override", async () => {
+    const onModelOverrideChange = jest.fn();
+    setup({ onModelOverrideChange }, { isConfigured: true });
+
+    const modelSelector = await screen.findByTestId("metabot-model-selector");
+    await waitFor(() => expect(modelSelector).toBeEnabled());
+
+    await userEvent.click(modelSelector);
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Claude Opus 4\.1/ }),
+    );
+
+    expect(onModelOverrideChange).toHaveBeenCalledWith(
+      "anthropic/claude-opus-4-1",
+    );
+  });
+
+  it("hides the model selector when conversation model selection is disabled", async () => {
+    setup(undefined, {
+      isConfigured: true,
+      isModelSelectionEnabled: false,
+    });
+
+    expect(
+      await screen.findByTestId("metabot-inline-sql-generate"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-model-selector"),
+    ).not.toBeInTheDocument();
   });
 });

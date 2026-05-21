@@ -6,6 +6,7 @@ import { t } from "ttag";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { MetabotModelSelector } from "metabase/metabot/components/MetabotModelSelector";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
   useMetabotName,
@@ -27,6 +28,8 @@ interface MetabotInlineSQLPromptProps {
   error: MetabotAgentTurnDisplayError | undefined;
   generate: (options: { prompt: string; sourceSql?: string }) => Promise<void>;
   cancelRequest: () => void;
+  modelOverride?: string;
+  onModelOverrideChange: (model: string | undefined) => void;
   suggestionModels: SuggestionModel[];
   getSourceSql: () => string;
   value: string;
@@ -40,6 +43,8 @@ export const MetabotInlineSQLPrompt = ({
   error,
   generate,
   cancelRequest,
+  modelOverride,
+  onModelOverrideChange,
   suggestionModels,
   getSourceSql,
   value,
@@ -124,31 +129,38 @@ export const MetabotInlineSQLPrompt = ({
             error?.message
           )}
         </Box>
-        <Flex gap="xs" flex="1 0 auto">
+        <Flex gap="xs" flex="1 0 auto" align="center">
           {canUseSqlGeneration && (
-            <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
-              <Button
-                className={S.submitButton}
-                data-testid="metabot-inline-sql-generate"
-                size="xs"
-                variant="filled"
-                px="0"
-                w="1.875rem"
-                styles={{ label: { display: "flex" } }}
-                onClick={handleSubmit}
-                disabled={isSubmitDisabled}
-              >
-                {isLoading ? (
-                  <Loader
-                    size="xs"
-                    color="text-tertiary"
-                    data-testid="metabot-inline-sql-generating"
-                  />
-                ) : (
-                  <Icon name="send" />
-                )}
-              </Button>
-            </Tooltip>
+            <>
+              <MetabotModelSelector
+                disabled={isLoading}
+                modelOverride={modelOverride}
+                onModelOverrideChange={onModelOverrideChange}
+              />
+              <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
+                <Button
+                  className={S.submitButton}
+                  data-testid="metabot-inline-sql-generate"
+                  size="xs"
+                  variant="filled"
+                  px="0"
+                  w="1.875rem"
+                  styles={{ label: { display: "flex" } }}
+                  onClick={handleSubmit}
+                  disabled={isSubmitDisabled}
+                >
+                  {isLoading ? (
+                    <Loader
+                      size="xs"
+                      color="text-tertiary"
+                      data-testid="metabot-inline-sql-generating"
+                    />
+                  ) : (
+                    <Icon name="send" />
+                  )}
+                </Button>
+              </Tooltip>
+            </>
           )}
           <Button
             className={S.cancelButton}

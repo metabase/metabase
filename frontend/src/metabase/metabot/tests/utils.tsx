@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupMetabotListModelsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   type RenderWithProvidersOptions,
@@ -216,6 +219,7 @@ export function setup(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
   );
+  setupMetabotListModelsEndpoint();
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),

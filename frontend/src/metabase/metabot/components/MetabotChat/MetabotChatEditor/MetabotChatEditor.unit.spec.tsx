@@ -4,9 +4,11 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  MOCK_METABOT_MODELS_RESPONSE,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupMetabotListModelsEndpoint,
 } from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
@@ -27,6 +29,7 @@ import { MetabotChatEditor } from "./MetabotChatEditor";
 const defaultProps = {
   value: "",
   onChange: jest.fn(),
+  onModelOverrideChange: jest.fn(),
   onSubmit: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
@@ -48,7 +51,11 @@ const setup = (
   props = {},
   {
     searchItems = [],
-  }: { searchItems?: ReturnType<typeof createMockSearchResult>[] } = {},
+    settings: settingOverrides = {},
+  }: {
+    searchItems?: ReturnType<typeof createMockSearchResult>[];
+    settings?: Parameters<typeof mockSettings>[0];
+  } = {},
 ) => {
   setupEnterprisePlugins();
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Model" }));
@@ -63,7 +70,11 @@ const setup = (
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
   setupSearchEndpoints(searchItems);
-  const settings = mockSettings({ "site-url": "http://localhost:3000" });
+  const settings = mockSettings({
+    "site-url": "http://localhost:3000",
+    "llm-metabot-conversation-model-selection-enabled": false,
+    ...settingOverrides,
+  });
 
   return renderWithProviders(
     <MetabotChatEditor {...defaultProps} {...props} />,
@@ -82,6 +93,160 @@ const getEditor = () =>
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {
+  it("allows stopping a response when the input is empty", async () => {
+    const onStop = jest.fn();
+
+    setup({ isResponding: true, onStop });
+
+    await userEvent.click(screen.getByTestId("metabot-stop-response"));
+
+    expect(onStop).toHaveBeenCalled();
+  });
+
+  it("changes the model override when switching models", async () => {
+    const onModelOverrideChange = jest.fn();
+    setupMetabotListModelsEndpoint();
+
+    setup(
+      { onModelOverrideChange },
+      {
+        settings: {
+          "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    const modelSelector = screen.getByTestId("metabot-model-selector");
+    await waitFor(() => expect(modelSelector).toBeEnabled());
+
+    await userEvent.click(modelSelector);
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Claude Opus 4\.1/ }),
+    );
+
+    expect(onModelOverrideChange).toHaveBeenCalledWith(
+      "anthropic/claude-opus-4-1",
+    );
+  });
+
+  it("groups model options by the backend group", async () => {
+    setupMetabotListModelsEndpoint({
+      ...MOCK_METABOT_MODELS_RESPONSE,
+      models: [
+        {
+          ...MOCK_METABOT_MODELS_RESPONSE.models[0],
+          group: "Fast",
+        },
+        {
+          ...MOCK_METABOT_MODELS_RESPONSE.models[1],
+          group: "Smart",
+        },
+      ],
+    });
+
+    setup(
+      {},
+      {
+        settings: {
+          "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    const modelSelector = screen.getByTestId("metabot-model-selector");
+    await waitFor(() => expect(modelSelector).toBeEnabled());
+    await userEvent.click(modelSelector);
+
+    expect(await screen.findByText("Fast")).toBeInTheDocument();
+    expect(screen.getByText("Smart")).toBeInTheDocument();
+  });
+
+  it("clears the model override when switching back to the default model", async () => {
+    const onModelOverrideChange = jest.fn();
+    setupMetabotListModelsEndpoint();
+
+    setup(
+      {
+        modelOverride: "anthropic/claude-opus-4-1",
+        onModelOverrideChange,
+      },
+      {
+        settings: {
+          "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    const modelSelector = screen.getByTestId("metabot-model-selector");
+    await waitFor(() => expect(modelSelector).toBeEnabled());
+
+    await userEvent.click(modelSelector);
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Claude Haiku 4\.5/ }),
+    );
+
+    expect(onModelOverrideChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it("hides the model selector when conversation model selection is disabled", () => {
+    setup(
+      {},
+      {
+        settings: {
+          "llm-metabot-conversation-model-selection-enabled": false,
+        },
+      },
+    );
+
+    expect(
+      screen.queryByTestId("metabot-model-selector"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the model selector for the Metabase-managed provider", () => {
+    setup(
+      {},
+      {
+        settings: {
+          "llm-metabot-provider": "metabase/anthropic/claude-sonnet-4-6",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    expect(
+      screen.queryByTestId("metabot-model-selector"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears unavailable model overrides after models load", async () => {
+    const onModelOverrideChange = jest.fn();
+    setupMetabotListModelsEndpoint({
+      ...MOCK_METABOT_MODELS_RESPONSE,
+      models: MOCK_METABOT_MODELS_RESPONSE.models.slice(0, 1),
+    });
+
+    setup(
+      {
+        modelOverride: "anthropic/claude-opus-4-1",
+        onModelOverrideChange,
+      },
+      {
+        settings: {
+          "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+          "llm-metabot-conversation-model-selection-enabled": true,
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(onModelOverrideChange).toHaveBeenCalledWith(undefined);
+    });
+  });
+
   it("should convert text value to formatted tiptap", async () => {
     setup({ value: "[Test Model](metabase://model/123)" });
 
