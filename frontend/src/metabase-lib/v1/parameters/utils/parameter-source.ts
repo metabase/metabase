@@ -68,11 +68,11 @@ export const isValidSourceConfig = (
 
 export const getSourceConfigForType = (
   sourceType: ValuesSourceType,
-  { card_id, value_field, values }: ValuesSourceConfig,
+  { card_id, value_field, label_field, values }: ValuesSourceConfig,
 ): ValuesSourceConfig => {
   switch (sourceType) {
     case "card":
-      return { card_id, value_field };
+      return { card_id, value_field, label_field };
     case "static-list":
       return { values };
     default:
