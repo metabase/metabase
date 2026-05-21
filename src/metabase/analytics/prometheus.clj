@@ -692,6 +692,11 @@
                      {:description "Number of advisories where this Metabase instance is potentially affected."
                       :labels [:severity :acknowledged]})])
 
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})])
+
 (defn- quartz-collectors
   []
   [(prometheus/counter :metabase-tasks/quartz-tasks-executed

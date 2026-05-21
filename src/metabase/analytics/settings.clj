@@ -46,8 +46,8 @@
 
 (defsetting metaplow-tracking-enabled
   (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
-        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
   :type       :boolean
   :getter     (fn [] (boolean (and (anon-tracking-enabled)
                                    (setting/get-value-of-type :string :metaplow-url))))
@@ -84,7 +84,7 @@
     ;; is first read.
     (let [value (or (first-user-creation) (t/offset-date-time))]
       (setting/set-value-of-type! :timestamp :instance-creation value)
-      ((requiring-resolve 'metabase.analytics.snowplow/track-event!) :snowplow/account {:event :new_instance_created} nil)))
+      ((requiring-resolve 'metabase.analytics.event/track-event!) :snowplow/account {:event :new_instance_created} nil)))
   (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
 
 (defsetting instance-creation
