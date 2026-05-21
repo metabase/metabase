@@ -1,6 +1,7 @@
 import type { EnterpriseSettings } from "metabase-types/api";
 
 import { Api } from "./api";
+import { listTag } from "./tags";
 
 type SlackSettings = Pick<
   EnterpriseSettings,
@@ -22,7 +23,7 @@ export const slackApi = Api.injectEndpoints({
         url: `/api/slack/settings`,
         body: settings,
       }),
-      invalidatesTags: ["session-properties"],
+      invalidatesTags: ["session-properties", listTag("subscription-channel")],
     }),
   }),
 });

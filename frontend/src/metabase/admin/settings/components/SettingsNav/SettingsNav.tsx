@@ -10,9 +10,9 @@ import {
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import { Divider, Flex } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -26,6 +26,8 @@ export function SettingsNav() {
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
+  const { isEnabled: isSecurityCenterEnabled, SecurityCenterPromoCard } =
+    PLUGIN_SECURITY_CENTER;
 
   return (
     <AdminNavWrapper>
@@ -116,6 +118,17 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
+      {isSecurityCenterEnabled && (
+        <Box
+          pos="sticky"
+          bottom={0}
+          pt="md"
+          bg="background-primary"
+          style={{ marginTop: "auto", zIndex: 1 }}
+        >
+          <SecurityCenterPromoCard />
+        </Box>
+      )}
     </AdminNavWrapper>
   );
 }
