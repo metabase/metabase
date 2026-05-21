@@ -11,7 +11,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.collections-rest.api :as collections-rest]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -1004,11 +1004,11 @@
    {:keys [description parent_collection_id]
     collection-name :name}
    :- ::create-collection-request]
-  ;; Delegate to collections-rest/create-collection! so MCP-created collections behave the same
-  ;; as UI/REST-created ones: namespace/type/is_remote_synced inheritance from parent, the
+  ;; Delegate to collections/create-collection! so MCP-created collections behave the same as
+  ;; UI/REST-created ones: namespace/type/is_remote_synced inheritance from parent, the
   ;; authority-level check, the tenant-collection validation, and both :event/collection-create
   ;; and :event/collection-touch firings all live in one place.
-  (let [coll (collections-rest/create-collection!
+  (let [coll (collections/create-collection!
               (cond-> {:name collection-name}
                 description          (assoc :description description)
                 parent_collection_id (assoc :parent_id parent_collection_id)))]
