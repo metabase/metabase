@@ -4,6 +4,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
@@ -13,7 +14,6 @@ import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getLearnUrl } from "metabase/selectors/settings";
@@ -577,18 +577,31 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Tables.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
-      card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
+const ValuesSourceTypeModalConnected = _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);
+
+// Loads the source card's virtual-table query metadata into the store (so the
+// connected fields are available) before rendering, replacing the former
+// Tables.load HOC.
+function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+  const { card_id } = props.sourceConfig;
+  const virtualTableId =
+    card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
+  const { isLoading, error } = useGetTableQueryMetadataQuery(
+    virtualTableId != null ? { id: virtualTableId } : skipToken,
+  );
+
+  return (
+    <ModalLoadingAndErrorWrapper loading={isLoading} error={error}>
+      <ValuesSourceTypeModalConnected {...props} />
+    </ModalLoadingAndErrorWrapper>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ValuesSourceTypeModalLoader;

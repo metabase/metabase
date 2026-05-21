@@ -18,7 +18,10 @@ type ForeignKeyField = {
   target?: { table_id?: TableId } | null;
   fk_target_field_id?: FieldId | null;
 };
-type ForeignKeyHost = { fields?: ForeignKeyField[] } | null | undefined;
+type ForeignKeyHost =
+  | { fields?: ForeignKeyField[]; fks?: unknown[] }
+  | null
+  | undefined;
 
 /**
  * Loads `query_metadata` for a single table and normalizes it into
@@ -48,7 +51,13 @@ export const fetchTableMetadata =
  */
 export const fetchTableForeignKeys =
   ({ id }: { id: TableId }) =>
-  async (dispatch: Dispatch) => {
+  async (dispatch: Dispatch, getState: GetState) => {
+    // Already loaded — skip, so callers that fire this from an effect don't
+    // churn the store on every re-render (mirrors the cached entity action).
+    const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
+    if (table?.fks != null) {
+      return { id, fks: table.fks };
+    }
     const fks = await entityCompatibleQuery(
       id,
       dispatch,
