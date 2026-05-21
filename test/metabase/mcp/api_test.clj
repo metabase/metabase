@@ -280,6 +280,25 @@
       (is (= "ORDERS" (-> result :structuredContent :name))
           "structuredContent should mirror the endpoint response shape"))))
 
+(deftest tools-list-strict-shape-test
+  (testing "no tool's inputSchema uses JSON-Schema constructs that ChatGPT's strict MCP validator rejects"
+    ;; Pins the strict-shape guarantee across the whole exposed tool surface. `construct_query` had
+    ;; this asserted before; broadening it to every tool catches drift in any wire schema (e.g.
+    ;; `query`'s `:multi` body referencing agent-lib `:tuple` schemas) that would silently leak
+    ;; `:allOf`/`:prefixItems`/`items:false` constructs into a tool that worked before the regression.
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (pos? (count tools)))
+      (doseq [{:keys [name inputSchema]} tools]
+        (let [schema-keys (atom #{})]
+          (walk/postwalk (fn [x] (when (map? x) (swap! schema-keys into (keys x))) x) inputSchema)
+          (is (empty? (select-keys (frequencies @schema-keys) [:allOf :prefixItems]))
+              (str "Tool " name " inputSchema contains :allOf or :prefixItems"))
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq inputSchema) (filter map?))))
+              (str "Tool " name " inputSchema contains `items: false` (tuple closure)")))))))
+
 (deftest tools-list-test
   (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)

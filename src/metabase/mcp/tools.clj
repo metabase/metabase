@@ -31,27 +31,39 @@
 ;; describes its own wire schema, and this layer patches the manifest to publish the MCP-visible
 ;; shape.
 
+;; Shared sub-shapes for the program-shaped tools (`construct_query`, `query`). Extracted so the two
+;; tools can't drift on what a program looks like to the LLM — both reuse the same `:source` map and
+;; the same flattened `:operations` (`[:sequential [:sequential :any]]`, no tuple-of-anys, no `:and`).
+;; The wire schemas under `agent_api` use the precise tuple/composite grammar; this layer publishes
+;; the permissive variant strict MCP clients (ChatGPT) accept.
+
+(def ^:private program-source-malli
+  [:map
+   [:type {:tool/description "Entity kind."}
+    [:enum "table" "card" "dataset" "metric"]]
+   [:id ms/PositiveInt]])
+
+(def ^:private program-operations-malli
+  [:sequential
+   [:sequential
+    {:tool/description (str "First element is the operator string; remaining "
+                            "elements are operator-specific arguments (scalars, "
+                            "references, or nested arrays).")}
+    :any]])
+
+(def ^:private operations-description
+  (str "Array of operator tuples like [\"filter\", clause] or [\"aggregate\", agg-clause]. "
+       "See metabase://docs/construct-query.md for the full grammar."))
+
 (def ^:private construct-query-mcp-input-malli
   "MCP-visible input for `construct_query`.
   Deliberately flatter than the wire schema — the operator/ref grammar is conveyed through the tool
   description and the construct-query.md MCP resource, not the schema."
   [:map
-   [:source
-    {:tool/description "Database entity to query."}
-    [:map
-     [:type {:tool/description "Entity kind."}
-      [:enum "table" "card" "dataset" "metric"]]
-     [:id ms/PositiveInt]]]
-   [:operations
-    {:tool/description (str "Array of operator tuples like [\"filter\", clause] or "
-                            "[\"aggregate\", agg-clause]. See metabase://docs/construct-query.md "
-                            "for the full grammar.")}
-    [:sequential
-     [:sequential
-      {:tool/description (str "First element is the operator string; remaining "
-                              "elements are operator-specific arguments (scalars, "
-                              "references, or nested arrays).")}
-      :any]]]
+   [:source     {:tool/description "Database entity to query."}
+    program-source-malli]
+   [:operations {:tool/description operations-description}
+    program-operations-malli]
    ;; Length bounds + description go on the inner `:string` so they end up on the JSON Schema branch
    ;; (and not as an `:allOf`, which ChatGPT's strict validator rejects).
    [:prompt {:optional true}
@@ -59,6 +71,25 @@
                       :max               10000
                       :tool/description  (str "The user's exact original message, when available. "
                                               "Pass it as-is without summarizing or rewriting.")}]]]])
+
+(def ^:private query-mcp-input-malli
+  "MCP-visible input for `query`. The wire body is a `:multi` whose `:program` branch references
+  agent-lib tuple/composite schemas — those emit `prefixItems`/`allOf` JSON Schema constructs that
+  strict MCP clients (ChatGPT) reject. This override publishes the same flattened program shape used
+  by `construct_query`, plus the `:continuation_token` alternative for pagination."
+  [:map
+   [:source             {:optional true
+                         :tool/description (str "Database entity to query. Omit when paginating via "
+                                                "`continuation_token`.")}
+    [:maybe program-source-malli]]
+   [:operations         {:optional true
+                         :tool/description operations-description}
+    [:maybe program-operations-malli]]
+   [:continuation_token {:optional true
+                         :tool/description (str "Token returned by a previous `query` response — pass "
+                                                "it back to fetch the next page. Mutually exclusive "
+                                                "with `source`/`operations`.")}
+    [:maybe ms/NonBlankString]]])
 
 (def ^:private execute-query-mcp-input-malli
   "MCP-visible input for `execute_query`.
@@ -85,6 +116,7 @@
 (def ^:private mcp-input-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:inputSchema`."
   {"construct_query" construct-query-mcp-input-malli
+   "query"           query-mcp-input-malli
    "execute_query"   execute-query-mcp-input-malli})
 
 (def ^:private mcp-output-overrides
