@@ -24,13 +24,8 @@ const MAX_RETRIES = 10;
 
 type ResponseTransformer<T = unknown> = (opts: {
   /**
-   * The decoded response body: `JSON.parse(bodyText)` if it parses, otherwise
-   * the raw text. Whatever this transformer returns replaces it.
+   * A cloned, unread `Response` for callers that need raw headers or stream.
    */
-  body: unknown;
-  /** The original request data the caller passed in. */
-  data: Record<string, unknown>;
-  /** A cloned, unread `Response` for callers that need raw headers or stream. */
   response: Response;
 }) => T;
 
@@ -194,7 +189,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         }
 
         const send = () =>
-          this._makeRequest(method, url, headers, body, data, options);
+          this._makeRequest(method, url, headers, body, options);
 
         if (withRetries) {
           return retry(send, {
@@ -274,7 +269,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._makeRequest<T>(method, url, headers, body, data, options);
+    return this._makeRequest<T>(method, url, headers, body, options);
   }
 
   private async _makeRequest<T = unknown>(
@@ -282,7 +277,6 @@ export class ApiClient extends EventEmitter<EventMap> {
     url: URL,
     headers: Record<string, string>,
     body: string | FormData | URLSearchParams | undefined,
-    data: Record<string, unknown>,
     options: RequestOptions<T>,
   ): Promise<T> {
     if (!isRequestMethod(method)) {
@@ -330,7 +324,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         // If a transformer is given its return value IS `T`. Otherwise the raw
         // body is `unknown`; we trust the caller's `T` annotation.
         return options.transformResponse
-          ? options.transformResponse({ body, data, response: unreadResponse })
+          ? options.transformResponse({ response: unreadResponse })
           : (body as T);
       } else {
         if (this.onResponseError) {
