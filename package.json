@@ -9,7 +9,10 @@
     "node": ">=22",
     "bun": ">=1.0.0"
   },
-  "trustedDependencies": ["cypress", "esbuild"],
+  "trustedDependencies": [
+    "cypress",
+    "esbuild"
+  ],
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.10.1",
@@ -224,7 +227,9 @@
     "@storybook/react-webpack5": "^8.5.0",
     "@storybook/test": "^8.5.0",
     "@svgr/webpack": "^8.1.0",
+    "@swc-contrib/mut-cjs-exports": "^14.9.0",
     "@swc/core": "^1.15.33",
+    "@swc/jest": "0.2.39",
     "@swc/plugin-emotion": "^14.9.0",
     "@tanstack/table-core": "^8.21.3",
     "@testing-library/cypress": "^10.1.0",
