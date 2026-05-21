@@ -178,6 +178,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
