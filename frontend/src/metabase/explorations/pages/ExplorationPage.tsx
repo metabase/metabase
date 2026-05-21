@@ -31,7 +31,10 @@ import {
   type ExplorationDocumentWithIsAutoInsights,
 } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
-import { ExplorationGroupVisualization } from "../components/ExplorationVisualization";
+import {
+  ExplorationChartAreaSkeleton,
+  ExplorationGroupVisualization,
+} from "../components/ExplorationVisualization";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
@@ -431,6 +434,9 @@ export function ExplorationPage({
           route={route}
         />
       )}
+      {!selectedGroup &&
+        !selectedDocument &&
+        hasUnsettledQueries(exploration) && <ExplorationChartAreaSkeleton />}
       {isCommentsSidebarOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );

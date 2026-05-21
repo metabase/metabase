@@ -14,7 +14,7 @@ export function ExplorationChartSkeleton({
   explorationQuery,
 }: {
   name: string | null;
-  explorationQuery: ExplorationQuery;
+  explorationQuery?: ExplorationQuery;
 }) {
   return (
     <>
