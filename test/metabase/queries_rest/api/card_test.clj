@@ -38,11 +38,11 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -315,22 +315,21 @@
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(deftest embedding-sdk-info-saves-query-execution
+(deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"
-                                       ;; This query is just to make sure the card actually runs a query, otherwise
-                                       ;; there won't be a QueryExecution record to check!
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
-      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-B"
-                                                         "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
-              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
-                                            :card_id (u/the-id card-1))))))))
+    (binding [qp.util/*execute-async?* false]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         ;; This query is just to make sure the card actually runs a query, otherwise
+                                         ;; there won't be a QueryExecution record to check!
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                              {:request-options {:headers {"x-metabase-client" "client-B"
+                                                           "x-metabase-client-version" "2"}}})
+        (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"

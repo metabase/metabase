@@ -125,7 +125,8 @@ export const settings = {
 
         if (dimensions.length < 2) {
           columns = [];
-          rows = [first];
+          // use `dimensions` so `rows` is `[]` when there are zero dimensions, not `[undefined]` (metabase#56235)
+          rows = dimensions;
         } else if (dimensions.length <= 3) {
           columns = [first];
           rows = [second, ...rest];

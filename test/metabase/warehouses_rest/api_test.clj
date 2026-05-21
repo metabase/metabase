@@ -1529,10 +1529,11 @@
           analyze-called? (promise)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
-          ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor
-          (with-redefs [quick-task/submit-task!         future-call
-                        sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
-                        analyze/analyze-db!             (deliver-when-db analyze-called? db-id)]
+          ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor.
+          ;; The Sync-now endpoint dispatches to the *explicit* sync fns (which bypass disable-auto-sync).
+          (with-redefs [quick-task/submit-task!                   future-call
+                        sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                        analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
@@ -1551,13 +1552,39 @@
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
+(deftest manual-sync-schema-runs-despite-disable-auto-sync-test
+  (testing (str "POST /api/database/:id/sync_schema is an explicit-request sync and must actually run "
+                "(not merely dispatch) when disable-auto-sync=true — the setting suppresses only "
+                "automatically-triggered syncs.")
+    ;; Resolve the test-data H2 connection details OUTSIDE the disable-auto-sync window, so loading the
+    ;; reference DB isn't itself suppressed. Create the target DB INSIDE the window so its creation event
+    ;; doesn't auto-sync it — then the only thing that can flip initial_sync_status to "complete" is the
+    ;; explicit Sync-now request under test. We deliberately do NOT stub sync-db-metadata!/analyze-db!:
+    ;; the real sync body must execute so the should-sync? gate inside do-sync-operation is genuinely
+    ;; exercised. The submit-task! redef runs the sync synchronously (so we can assert its effect) with
+    ;; H2 connections permitted on whatever thread the endpoint dispatches to.
+    (let [details (:details (mt/db))]
+      (mt/with-temporary-setting-values [disable-auto-sync true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (with-redefs [quick-task/submit-task! (fn [f]
+                                                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                    (f)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (testing "the explicit sync actually ran, not merely dispatched"
+            (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))
+                "Sync-now must complete the sync even when disable-auto-sync is on")
+            (is (pos? (t2/count :model/Table :db_id db-id))
+                "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
           blocker-latch (CountDownLatch. 1)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
-                      analyze/analyze-db!             (constantly nil)]
+        (with-redefs [sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db-explicit!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
           ;; the quick-task timeout and gets evicted.

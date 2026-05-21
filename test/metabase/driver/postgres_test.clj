@@ -1,4 +1,4 @@
-(ns metabase.driver.postgres-test
+(ns ^:mb/driver-tests metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.postgres-test]}
                                                             metabase.test.data/query          {:namespaces [metabase.driver.postgres-test]}
@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -50,6 +51,8 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.datasets :as mtd]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -65,6 +68,18 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO: once h2-mbql5 is on master, share code with that
+(defn- test-driver [driver thunk]
+  (when (contains? (tx.env/test-drivers) driver)
+    (testing (str "\n" driver "\n")
+      (driver/with-driver (tx/the-driver-with-test-extensions driver)
+        (thunk))
+      ;; the above is the original definition of test-driver, but we add in
+      ;; this clause to avoid having to rewrite all the tests below twice:
+      (when (= driver :postgres)
+        (driver/with-driver (tx/the-driver-with-test-extensions :postgres-mbql5)
+          (thunk))))))
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.
@@ -72,7 +87,11 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (mt/with-test-user :rasta (thunk)))))
+                        ;; NB: because of test parallelism, this *will* affect other non-pg
+                        ;; tests, but the check above in the test-driver function will
+                        ;; prevent it from actually doing anything different in those tests.
+                        (with-redefs [mtd/-test-driver test-driver]
+                          (mt/with-test-user :rasta (thunk))))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -433,7 +452,7 @@
   (mt/test-driver :postgres
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc meta/database :engine :postgres, :id 1)
+                                        {:database (assoc meta/database :engine driver/*driver*, :id 1)
                                          :tables   [(merge (meta/table-metadata :venues)
                                                            {:id     1
                                                             :db-id  1
@@ -444,19 +463,27 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause [:field 1 {:binning
-                                      {:strategy  :num-bins
-                                       :num-bins  100
-                                       :min-value 0.75
-                                       :max-value 54.0
-                                       :bin-width 0.75}}]]
+        (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
+                                                         :field
+                                                         {:binning
+                                                          {:strategy  :num-bins
+                                                           :num-bins  100
+                                                           :min-value 0.75
+                                                           :max-value 54.0
+                                                           :bin-width 0.75}}
+                                                         1)]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
-                 (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
+                 (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
 
-(def ^:private json-alias-mock-metadata-provider
+(defn- ^:private maybe-convert-and-compile [driver query]
+  (cond-> query
+    (= driver :postgres-mbql5) (lib.convert/->mbql5)
+    :always qp.compile/compile))
+
+(defn- ^:private json-alias-mock-metadata-provider [driver]
   (lib.tu/mock-metadata-provider
-   {:database (assoc meta/database :engine :postgres, :id 1)
+   {:database (assoc meta/database :engine driver, :id 1)
     :tables   [(merge (meta/table-metadata :venues)
                       {:id     1
                        :db-id  1
@@ -474,21 +501,25 @@
 (deftest ^:parallel json-alias-test
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-bucketed [:field 1
-                              {:temporal-unit                                              :month
-                               :metabase.query-processor.util.add-alias-info/source-table  1
-                               :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
-                               :metabase.query-processor.util.add-alias-info/position      1}]
-              compile-res    (qp.compile/compile
-                              (mt/query nil
-                                {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1
-                                            :aggregation  [[:count]]
-                                            :breakout     [field-bucketed]
-                                            :order-by     [[:asc field-bucketed]]}}))]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
+        (let [field-bucketed-fn (fn []
+                                  (sql.qp/mbql-clause-with-opts
+                                   driver/*driver* :field
+                                   {:temporal-unit                                              :month
+                                    :metabase.query-processor.util.add-alias-info/source-table  1
+                                    :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/position      1} 1))
+              compile-res (maybe-convert-and-compile
+                           driver/*driver*
+                           (mt/query nil
+                             {:database 1
+                              :type     :query
+                              :query    {:source-table 1
+                                         :aggregation  [[:count]]
+                                         :breakout     [(field-bucketed-fn)]
+                                         :order-by     [[:asc (field-bucketed-fn)]]}}))]
           (is (= ["SELECT"
                   "  DATE_TRUNC("
                   "    'month',"
@@ -503,7 +534,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -511,13 +542,14 @@
 (deftest ^:parallel json-alias-test-2
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
-      (qp.store/with-metadata-provider json-alias-mock-metadata-provider
-        (let [field-ordinary [:field 1 nil]
-              only-order     (qp.compile/compile
-                              {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc field-ordinary]]}})]
+      (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
+        (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
+              only-order (maybe-convert-and-compile
+                          driver/*driver*
+                          {:database 1
+                           :type     :query
+                           :query    {:source-table 1
+                                      :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
                   "  (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
@@ -526,11 +558,11 @@
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
+                 (str/split-lines (driver/prettify-native-form driver/*driver* (:query only-order))))))))))
 
-(def ^:private json-alias-in-model-mock-metadata-provider
+(defn- ^:private json-alias-in-model-mock-metadata-provider [driver]
   (providers.mock/mock-metadata-provider
-   json-alias-mock-metadata-provider
+   (json-alias-mock-metadata-provider driver)
    {:cards [{:name          "Model with JSON"
              :id            123
              :database-id   1
@@ -544,8 +576,9 @@
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
-      (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
-        (let [nested (qp.compile/compile
+      (qp.store/with-metadata-provider (json-alias-in-model-mock-metadata-provider driver/*driver*)
+        (let [nested (maybe-convert-and-compile
+                      driver/*driver*
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
@@ -898,7 +931,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))))
+             (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres
@@ -2144,7 +2177,8 @@
 (deftest canceled-query-no-stacktrace-test
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
-              (let [query    (merge {:type :query, :database 1} {})
+              (let [query    (cond-> {:type :query, :database 1}
+                               (= driver/*driver* :postgres-mbql5) (lib.convert/->mbql5))
                     metadata {}
                     rows     []
                     qp       (fn [query rff]
@@ -2153,7 +2187,7 @@
                                                                  (respond metadata rows))]
                                  (qp.pipeline/*run* query rff)))
                     qp       (catch-exceptions/catch-exceptions qp)
-                    result   (driver/with-driver :h2
+                    result   (driver/with-driver driver/*driver*
                                (qp (qp/userland-query query) qp.reducible/default-rff))]
                 (cond-> result
                   (map? result) (update :data dissoc :rows))))
@@ -2174,7 +2208,7 @@
             ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
             (catch-exceptions
              (fn [] (throw (ex-info "Error executing query: canceling statement due to user request"
-                                    {:driver :postgres
+                                    {:driver driver/*driver*
                                      :sql    ["SELECT pg_sleep(1000)"]
                                      :params []
                                      :type   qp.error-type/invalid-query
@@ -2183,16 +2217,19 @@
           (is (= 0 (count (into [] (cancel-messages) (log-messages))))
               "Query cancellation exceptions should not be logged")))
 
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (future
-          (Thread/sleep 400)
-          (a/put! qp.pipeline/*canceled-chan* :cancel))
-        (mt/with-log-messages-for-level [messages :error]
-          (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
-                                                     [:middleware :userland-query?] true))]
-            (is (= "ERROR: canceling statement due to user request" (:error response)))
-            (let [bad-messages (into [] (cancel-messages) (messages))]
-              (is (empty? bad-messages)))))))))
+      (let [mp (mt/metadata-provider)]
+        ;; Refresh the permission set in case the metadata provider created this test DB.
+        (mt/with-test-user :rasta
+          (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+            (future
+              (Thread/sleep 400)
+              (a/put! qp.pipeline/*canceled-chan* :cancel))
+            (mt/with-log-messages-for-level [messages :error]
+              (let [response (qp/process-query (assoc-in (lib/native-query mp "select pg_sleep(8), false")
+                                                         [:middleware :userland-query?] true))]
+                (is (= "ERROR: canceling statement due to user request" (:error response)))
+                (let [bad-messages (into [] (cancel-messages) (messages))]
+                  (is (empty? bad-messages)))))))))))
 
 (deftest bit-strings-can-be-filtered
   (mt/test-driver :postgres
@@ -2263,28 +2300,32 @@
 
 (deftest set-network-timeout-test
   (mt/test-driver :postgres
-    (testing "network hangs are interrupted after *network-timeout-ms*"
-      (binding [driver.settings/*network-timeout-ms* 3000]
-        (is (thrown-with-msg?
-             org.postgresql.util.PSQLException
-             #"An I/O error occurred while sending to the backend"
-             (try
-               (sql-jdbc.execute/do-with-connection-with-options
-                driver/*driver* (mt/id) nil
-                (fn [^Connection conn]
-                  (with-open [stmt (.createStatement conn)]
-                    (.execute stmt "SELECT pg_sleep(6)"))))
-               (catch Exception e
-                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
-                                  (u/full-exception-chain e))))
-                 (throw e)))))))
-    (testing "network hangs are not interrupted before *network-timeout-ms*"
-      (is (true?
-           (sql-jdbc.execute/do-with-connection-with-options
-            driver/*driver* (mt/id) nil
-            (fn [^Connection conn]
-              (with-open [stmt (.createStatement conn)]
-                (.execute stmt "SELECT pg_sleep(6)")))))))))
+    (let [db-name (u/lower-case-en (format "network-timeout-%s-%s" (name driver/*driver*) (mt/random-name)))
+          spec    (sql-jdbc.conn/connection-details->spec
+                   driver/*driver*
+                   (mt/dbdef->connection-details driver/*driver* :db {:database-name db-name}))]
+      (tx/with-temp-database! driver/*driver* db-name
+        ;; Use a raw spec against a unique DB; the shared test-data DB can be created/dropped by concurrent
+        ;; :postgres and :postgres-mbql5 test setup.
+        (letfn [(run-pg-sleep []
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver* spec nil
+                   (fn [^Connection conn]
+                     (with-open [stmt (.createStatement conn)]
+                       (.execute stmt "SELECT pg_sleep(6)")))))]
+          (testing "network hangs are interrupted after *network-timeout-ms*"
+            (binding [driver.settings/*network-timeout-ms* 3000]
+              (is (thrown-with-msg?
+                   org.postgresql.util.PSQLException
+                   #"An I/O error occurred while sending to the backend"
+                   (try
+                     (run-pg-sleep)
+                     (catch Exception e
+                       (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                        (u/full-exception-chain e))))
+                       (throw e)))))))
+          (testing "network hangs are not interrupted before *network-timeout-ms*"
+            (is (true? (run-pg-sleep)))))))))
 
 (deftest ^:parallel parse-final-identifier-test
   (mt/test-driver :postgres
