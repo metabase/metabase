@@ -11,11 +11,13 @@
   (:require
    [clojure.java.io :as io]
    [metabase.api.common :as api]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
@@ -81,7 +83,21 @@
          :uri->resource (sorted-map)
          :tools         (sorted-map)}))
 
-(defn- ui-meta [resource]
+(defn- ui-meta
+  "MCP `_meta.ui` block returned alongside UI resources. Hosts that render the
+   resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this to
+   pick a sandbox configuration:
+
+   - `prefersBorder`    — presentation hint asking the host to draw a frame border
+   - `domain`           — the origin the iframe content is anchored at
+   - `csp.connectDomains`  — hosts the iframe may XHR/fetch/WebSocket to
+                              (the embedded SDK calls back to this Metabase instance)
+   - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
+                              (the SDK bundle is served from this Metabase instance)
+
+   `frameDomains` is intentionally omitted — we don't nest iframes inside the
+   visualization, and leaving it out narrows the CSP for security review."
+  [resource]
   (let [url (system/site-url)]
     {:ui (cond-> {:csp {:connectDomains  [url]
                         :resourceDomains [url]}}
@@ -117,18 +133,37 @@
                          (assoc-in [:uri->resource uri] resource)))
     resource))
 
+(defn- malli->ui-input-schema
+  "Convert a Malli schema for a UI-tool input into the published JSON Schema.
+   Runs through the same pipeline as defendpoint tools (`malli->json-schema` +
+   strict transform) so behavior is consistent across all MCP tools."
+  [schema]
+  (-> schema tools-manifest/malli->json-schema tools-manifest/strict-tool-input-schema))
+
+(defn- malli->ui-output-schema
+  "Convert a Malli schema for a UI-tool output into the published JSON Schema.
+   No strict transform — outputs aren't constrained by OpenAI's strict-tool rules."
+  [schema]
+  (tools-manifest/malli->json-schema schema))
+
 (mu/defn- register-ui-tool!
+  "Register a UI tool. `inputSchema` and `outputSchema` are Malli schemas; the
+   JSON Schemas exported to MCP clients are derived from them via the same
+   pipeline used for defendpoint tools."
   [resource-key :- :keyword
    tool         :- [:map
                     [:name :string]
                     [:description :string]
-                    [:inputSchema :map]
-                    [:outputSchema {:optional true} :map]
-                    [:annotations {:optional true} :map]
+                    [:inputSchema  :any]
+                    [:outputSchema {:optional true} :any]
+                    [:annotations  {:optional true} :map]
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
-          tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
+          tool  (-> tool
+                    (update :inputSchema  malli->ui-input-schema)
+                    (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
+                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -231,59 +266,49 @@
                     "`Show me orders by month`, `Display revenue by region`, or "
                     "`Visualize active users over time`. This renders the final answer in the UI. "
                     "Do not call execute_query after visualize_query; showing the visualization "
-                    "is enough. "
-                    "In the case of ChatGPT (which rotates MCP sessions between tool calls), "
-                    "pass the `widgetSessionId` returned by the prior construct_query response so "
-                    "the handle resolves against the original session; other MCP clients can omit it.")
+                    "is enough.")
   ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
   ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
   ;; The response-fn enforces the at-least-one contract at runtime.
-  :inputSchema  {:type       "object"
-                 :properties {:query           {:type "string" :minLength 1
-                                                :description "Base64-encoded MBQL query (use query_handle instead when available)"}
-                              :query_handle    {:type "string" :format "uuid"
-                                                :description "Handle returned by construct_query; preferred over raw query"}
-                              :widgetSessionId {:type "string" :format "uuid"
-                                                :description "Session id returned by construct_query. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}}
-  :outputSchema {:type       "object"
-                 :properties {:query           {:type        "string"
-                                                :description "Base64-encoded MBQL query that the visualization is rendering."}
-                              :prompt          {:type        "string"
-                                                :description "User's original request, when stored alongside the handle."}
-                              :widgetSessionId {:type        "string" :format "uuid"
-                                                :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
-                 :required   ["query"]}
+  :inputSchema
+  [:map
+   [:query        {:optional true
+                   :description "Base64-encoded MBQL query (use query_handle instead when available)"}
+    [:maybe ms/NonBlankString]]
+   [:query_handle {:optional true
+                   :description "Handle returned by construct_query; preferred over raw query"}
+    [:maybe ms/UUIDString]]]
+  :outputSchema
+  [:map
+   [:query  {:description "Base64-encoded MBQL query that the visualization is rendering."}
+    :string]
+   [:prompt {:optional true
+             :description "User's original request, when stored alongside the handle."}
+    [:maybe :string]]]
   :annotations {:readOnlyHint    true
                 :destructiveHint false
                 :idempotentHint  true
                 :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
-                 (let [query             (:query arguments)
-                       handle            (:query_handle arguments)
-                       widget-id         (:widgetSessionId arguments)
-                       lookup-session-id (if (and widget-id (mcp.session/owned-by-user? widget-id api/*current-user-id*))
-                                           widget-id
-                                           session-id)
-                       resolved          (some->> handle (mcp.session/resolve-query-handle lookup-session-id))
-                       encoded           (or query (:encoded_query resolved))
-                       prompt            (:prompt resolved)]
+                 (let [query    (:query arguments)
+                       handle   (:query_handle arguments)
+                       resolved (some->> handle (mcp.session/resolve-query-handle
+                                                 session-id api/*current-user-id*))
+                       encoded  (or query (:encoded_query resolved))
+                       prompt   (:prompt resolved)]
                    (cond
                      (and (nil? query) (nil? handle))
                      {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
                       :isError true}
 
                      encoded
-                     (cond-> {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                           "Do not call execute_query after this; "
-                                                                           "the visualization is the final result.")}]
-                              ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                              ;; include the user's original request when submitting visualization feedback.
-                              ;; Re-emit `lookup-session-id` (not the current rotating MCP session id) so
-                              ;; the LLM keeps threading the same stable id across all follow-ups.
-                              :structuredContent (cond-> {:query encoded}
-                                                   prompt            (assoc :prompt prompt)
-                                                   lookup-session-id (assoc :widgetSessionId lookup-session-id))}
-                       lookup-session-id (assoc :_meta {"openai/widgetSessionId" lookup-session-id}))
+                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                   "Do not call execute_query after this; "
+                                                                   "the visualization is the final result.")}]
+                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                      ;; include the user's original request when submitting visualization feedback.
+                      :structuredContent (cond-> {:query encoded}
+                                           prompt (assoc :prompt prompt))}
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -296,38 +321,25 @@
                     "Use this tool, not execute_query, when the user asks to show the result and "
                     "their message includes a `handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "
-                    "`handle` UUID as the `handle` argument. "
-                    "In the case of ChatGPT (which rotates MCP sessions between tool calls), "
-                    "pass `widgetSessionId` from a prior tool response so the handle resolves "
-                    "against the original session; other MCP clients can omit it.")
-  :inputSchema  {:type       "object"
-                 :properties {:handle          {:type "string" :format "uuid"
-                                                :description "Handle UUID from the user's drill-through message."}
-                              :widgetSessionId {:type "string" :format "uuid"
-                                                :description "Session id from a prior tool response. In the case of ChatGPT, pass it so the handle resolves across rotating MCP sessions; other clients can omit it."}}
-                 :required   ["handle"]}
-  :outputSchema {:type       "object"
-                 :properties {:query           {:type        "string"
-                                                :description "Base64-encoded MBQL query bound to the drill-through handle."}
-                              :widgetSessionId {:type        "string" :format "uuid"
-                                                :description "Session id under which the handle resolved — re-emitted so ChatGPT can thread it to subsequent calls."}}
-                 :required   ["query"]}
+                    "`handle` UUID as the `handle` argument.")
+  :inputSchema
+  [:map
+   [:handle {:description "Handle UUID from the user's drill-through message."}
+    ms/UUIDString]]
+  :outputSchema
+  [:map
+   [:query {:description "Base64-encoded MBQL query bound to the drill-through handle."}
+    :string]]
   :annotations {:readOnlyHint    true
                 :destructiveHint false
                 :idempotentHint  true
                 :openWorldHint   false}
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
-                   (let [widget-id         (:widgetSessionId arguments)
-                         lookup-session-id (if (and widget-id (mcp.session/owned-by-user? widget-id api/*current-user-id*))
-                                             widget-id
-                                             session-id)]
-                     (if-let [encoded (mcp.session/read-handle lookup-session-id handle)]
-                       (cond-> {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
-                                :structuredContent (cond-> {:query encoded}
-                                                     lookup-session-id (assoc :widgetSessionId lookup-session-id))}
-                         lookup-session-id (assoc :_meta {"openai/widgetSessionId" lookup-session-id}))
-                       {:content [{:type "text" :text "No drill-through found for that handle."}]
-                        :isError true}))
+                   (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
+                     {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
+                      :structuredContent {:query encoded}}
+                     {:content [{:type "text" :text "No drill-through found for that handle."}]
+                      :isError true})
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
                     :isError true}))})

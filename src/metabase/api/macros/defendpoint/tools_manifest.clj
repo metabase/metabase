@@ -7,8 +7,7 @@
   - `name`, `description` — tool identity
   - `endpoint` — HTTP method + path
   - `inputSchema` — merged route + query + body parameters
-  - `outputSchema` — from the endpoint's response schema, or an explicit
-    `:output-schema` on the tool metadata
+  - `outputSchema` — from the response schema, or an explicit `:output-schema` on the tool metadata
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
@@ -252,7 +251,7 @@
     :else
     {:anyOf [schema {:type "null"}]}))
 
-(defn- strict-tool-input-schema
+(defn strict-tool-input-schema
   "Make an MCP inputSchema compatible with stricter LLM clients.
 
   MCP allows normal JSON Schema optional object properties. OpenAI's strict tool
@@ -291,6 +290,37 @@
                 schema)))]
     (strict-schema schema)))
 
+(defn- map-entries
+  "Return malli `:map` entry seqs for the schema, or nil if it isn't a map after deref.
+   Each entry has shape `[key props value-schema]`."
+  [schema]
+  (let [walked (mc/deref-all schema)]
+    (when (= :map (mc/type walked))
+      (mc/children walked))))
+
+(defn- nullable-malli?
+  "True when `schema` accepts `nil`. Mirrors Malli's runtime check: `[:maybe X]`,
+   `:any`, `:nil`, and a few other shapes pass."
+  [schema]
+  (try (mr/validate schema nil) (catch Throwable _ false)))
+
+(defn- assert-optional-fields-nullable!
+  "Throw if any top-level optional field on `malli-schema` rejects an explicit
+   null. The strict-tool transform rewrites optional fields to nullable JSON
+   Schema for OpenAI clients, so a Malli-only-optional field would publish a
+   schema that allows `null` and then reject the same payload at validation
+   time. The fix is at the schema definition: pair `:optional true` with
+   `[:maybe ...]`."
+  [malli-schema tool-name]
+  (when malli-schema
+    (doseq [[k props value-schema] (map-entries (mr/resolve-schema malli-schema))
+            :when (and (true? (:optional props))
+                       (not (nullable-malli? value-schema)))]
+      (throw (ex-info (str "Tool " tool-name " input has optional non-nullable field "
+                           (pr-str k) ". Mark it `[:maybe ...]` so Malli accepts explicit "
+                           "nulls — strict JSON Schema rewrites optional fields to nullable.")
+                      {:tool tool-name :field k})))))
+
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
@@ -317,20 +347,26 @@
                                            (seq all-req) (assoc :required all-req)))))
 
 (defn- tool-input-schema
-  "Resolve a tool's MCP `inputSchema`. Three sources, in priority order:
+  "Resolve a tool's MCP `inputSchema`. Two sources, in priority order:
 
-  1. `:input-schema` set on the tool metadata as a Malli vector — passed through
-     the standard `malli->json-schema` pipeline and the strict transform.
-  2. `:input-schema` set as a JSON Schema map — used verbatim (escape hatch for
-     hand-tuned schemas).
-  3. Implicit — derived from the endpoint's body Malli via `merge-input-schemas`,
-     then run through the strict transform."
-  [form]
+  1. `:input-schema` set on the tool metadata as a Malli schema — passed through
+     `malli->json-schema` (which inlines refs, flattens root-level composites, and
+     respects per-leaf `:json-schema` properties for things like `:format \"uuid\"`)
+     and then the strict transform.
+  2. Implicit — derived from the endpoint's route/query/body Malli via
+     `merge-input-schemas`, then run through the strict transform.
+
+  When `:input-schema` is an explicit Malli schema we also enforce that every
+  optional field is nullable — the strict transform rewrites optional fields to
+  nullable JSON Schema, and a Malli-only-optional field would publish a schema
+  that allows null and reject the same payload at runtime. See
+  [[assert-optional-fields-nullable!]]."
+  [tool-name form]
   (let [explicit (get-in form [:metadata :tool :input-schema])]
-    (cond
-      (vector? explicit) (-> explicit malli->json-schema strict-tool-input-schema)
-      (map? explicit)    explicit
-      :else              (some-> (merge-input-schemas form) strict-tool-input-schema))))
+    (if explicit
+      (do (assert-optional-fields-nullable! explicit tool-name)
+          (-> explicit malli->json-schema strict-tool-input-schema))
+      (some-> (merge-input-schemas form) strict-tool-input-schema))))
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
@@ -342,20 +378,21 @@
       (malli->json-schema content))))
 
 (defn- tool-output-schema
-  "Resolve a tool's MCP `outputSchema`. Three sources, in priority order:
+  "Resolve a tool's MCP `outputSchema`. Two sources, in priority order:
 
-  1. `:output-schema` on the tool metadata as a Malli vector — passed through
-     the standard `malli->json-schema` pipeline (no strict transform — server
-     emits exact shapes; we don't want all-required/nullable rewriting on
-     outputs).
-  2. `:output-schema` as a JSON Schema map — used verbatim (escape hatch).
-  3. Implicit — derived from the endpoint's response schema."
+  1. `:output-schema` on the tool metadata as a Malli schema — passed through
+     `malli->json-schema` (no strict transform: the server emits exact shapes
+     and we don't want all-required/nullable rewriting on outputs).
+  2. Implicit — derived from the endpoint's response schema.
+
+  An override is only appropriate when an MCP body transform reshapes the
+  endpoint's response on the way out (e.g. `make-store-construct-query-result`
+  swaps `:query` for `:query_handle`); the transformer is then responsible for
+  matching this shape and should validate against the same schema at runtime."
   [form]
-  (let [explicit (get-in form [:metadata :tool :output-schema])]
-    (cond
-      (vector? explicit) (malli->json-schema explicit)
-      (map? explicit)    explicit
-      :else              (response-schema->json-schema (:response-schema form)))))
+  (if-let [explicit (get-in form [:metadata :tool :output-schema])]
+    (malli->json-schema explicit)
+    (response-schema->json-schema (:response-schema form))))
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -399,7 +436,7 @@
         description    (or (:description tool-md)
                            (:docstr form))
         full-path      (str prefix (route-path->endpoint-path route-path))
-        input-schema   (tool-input-schema form)
+        input-schema   (tool-input-schema tool-name form)
         output-schema  (tool-output-schema form)
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)

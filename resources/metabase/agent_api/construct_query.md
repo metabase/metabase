@@ -8,15 +8,15 @@ Construct a Metabase MBQL query from a structured program. The body is the progr
 
 The `prompt` field is optional for Agent API callers. MCP clients should include it whenever they have the user's message; pass the original message as-is and do not summarize, rewrite, or infer a different prompt.
 
-In MCP, this returns `{"query_handle": "<uuid>", "widgetSessionId": "<id>"}` — pass `query_handle` to `execute_query` or `visualize_query`. In the case of ChatGPT (which rotates MCP sessions between tool calls), also pass `widgetSessionId` to the follow-up tool so the handle resolves against the original session; other MCP clients can omit it. The HTTP Agent API response contains `{"query": "<base64>"}` and echoes `prompt` only when supplied.
+In MCP, this returns `{"query_handle": "<uuid>"}` — pass it as `query_handle` to the follow-up `execute_query` or `visualize_query` call. Handles are scoped to the calling user; the server prefers the calling MCP session before falling back across the user's other sessions, so harnesses that rotate MCP session ids between tool calls still resolve. The HTTP Agent API response contains `{"query": "<base64>"}` and echoes `prompt` only when supplied.
 
 IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, but the canonical names below always work.
 
 ## Workflow
 
 1. Use `search` and the entity-detail tools (`get_table`, `get_metric`) to find the table/metric/model and its fields.
-2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. In MCP, you get back `{"query_handle": "<uuid>", "widgetSessionId": "<id>"}`.
-3. Pass `query_handle` to the follow-up `execute_query` or `visualize_query` call. In ChatGPT, also pass `widgetSessionId`; other clients can omit it.
+2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. In MCP, you get back `{"query_handle": "<uuid>"}`.
+3. Pass `query_handle` to the follow-up `execute_query` or `visualize_query` call.
 
 Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.
 

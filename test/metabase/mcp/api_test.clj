@@ -353,7 +353,7 @@
                                  "")
                              "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
-          (is (str/includes? reference "{\"query_handle\": \"<uuid>\", \"widgetSessionId\": \"<id>\"}")))))))
+          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -676,6 +676,7 @@
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
                                              :query (mcp.session/read-handle session-id
+                                                                             (mt/user->id :crowberto)
                                                                              (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
@@ -739,21 +740,7 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id})))))
-
-  (testing "render_drill_through does not resolve a handle from another session"
-    (let [user-id             (mt/user->id :crowberto)
-          [owner-session _]   (initialize!)
-          [attacker-session _] (initialize!)
-          handle              (mt/with-current-user user-id
-                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
-      (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "No drill-through found")}]}}}
-              (mcp-request (jsonrpc-request "tools/call"
-                                            {:name      "render_drill_through"
-                                             :arguments {:handle handle}})
-                           {"mcp-session-id" attacker-session}))))))
+                           {"mcp-session-id" session-id}))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"
@@ -810,39 +797,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
 
-  (testing "visualize_query does not resolve a query_handle from another session"
-    (let [user-id             (mt/user->id :crowberto)
-          [owner-session _]   (initialize!)
-          [attacker-session _] (initialize!)
-          handle              (mt/with-current-user user-id
-                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
-      (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
-              (mcp-request (jsonrpc-request "tools/call"
-                                            {:name      "visualize_query"
-                                             :arguments {:query_handle handle}})
-                           {"mcp-session-id" attacker-session})))))
-
-  (testing "execute_query does not resolve a query_handle from another session"
-    (let [[owner-session _]    (initialize!)
-          [attacker-session _] (initialize!)
-          construct-data       (call-tool owner-session "construct_query"
-                                          {:source     {:type "table" :id (mt/id :orders)}
-                                           :operations [["limit" 5]]
-                                           :prompt     "show 5 orders"})
-          response             (mcp-request (jsonrpc-request "tools/call"
-                                                             {:name      "execute_query"
-                                                              :arguments {:query_handle (:query_handle construct-data)}})
-                                            {"mcp-session-id" attacker-session})]
-      (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
-              response)))))
-
-;;; --------------------------------------- widgetSessionId cross-session handle resolution -------------------------------------
+;;; --------------------------------------- cross-session handle resolution -------------------------------------
 
 (deftest tools-expose-output-schema-test
   (testing "MCP tools/list declares outputSchema for tools that emit structuredContent"
@@ -850,12 +807,13 @@
           response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
           tools          (get-in response [:body :result :tools])
           tools-by-name  (into {} (map (juxt :name identity)) tools)]
-      (testing "construct_query advertises {query_handle, widgetSessionId} as its output"
+      (testing "construct_query advertises {query_handle} as its output"
         (let [output-schema (get-in tools-by-name ["construct_query" :outputSchema])
               prop-names    (set (map name (keys (:properties output-schema))))]
           (is (= "object" (:type output-schema)))
           (is (contains? prop-names "query_handle"))
-          (is (contains? prop-names "widgetSessionId"))))
+          (is (not (contains? prop-names "widgetSessionId"))
+              "widgetSessionId was retired in favour of cross-session per-user lookup")))
       (testing "visualize_query advertises its structuredContent shape"
         (let [output-schema (get-in tools-by-name ["visualize_query" :outputSchema])]
           (is (= "object" (:type output-schema)))
@@ -865,45 +823,32 @@
           (is (= "object" (:type output-schema)))
           (is (contains? (set (map name (keys (:properties output-schema)))) "query")))))))
 
-(deftest construct-query-returns-widget-session-id-test
-  (testing "construct_query echoes the calling MCP session id as widgetSessionId for cross-session handoff"
+(deftest construct-query-returns-bare-handle-test
+  (testing "construct_query returns just `{:query_handle uuid}` — no widget session plumbing"
     (let [[session-id _] (initialize!)
           construct-data (call-tool session-id "construct_query"
                                     {:source     {:type "table" :id (mt/id :orders)}
                                      :operations [["limit" 5]]
-                                     :prompt     "show 5 orders"})
-          response       (mcp-request (jsonrpc-request "tools/call"
-                                                       {:name      "construct_query"
-                                                        :arguments {:source     {:type "table" :id (mt/id :orders)}
-                                                                    :operations [["limit" 5]]
-                                                                    :prompt     "show 5 orders"}})
-                                      {"mcp-session-id" session-id})]
-      ;; Structured content (LLM-visible) carries `widgetSessionId` so the model
-      ;; can thread it forward in tool-call arguments.
-      (is (= session-id (:widgetSessionId construct-data)))
-      ;; The MCP `_meta.openai/widgetSessionId` is the OpenAI-runtime channel
-      ;; that ChatGPT correlates tool calls by.
-      (is (= session-id (get-in response [:body :result :_meta :openai/widgetSessionId]))))))
+                                     :prompt     "show 5 orders"})]
+      (is (some? (parse-uuid (:query_handle construct-data))))
+      (is (not (contains? construct-data :widgetSessionId))))))
 
-(deftest visualize-query-resolves-via-widget-session-id-test
-  (testing "visualize_query resolves a handle from another session when widgetSessionId points back to the original session"
+(deftest visualize-query-resolves-via-cross-session-fallback-test
+  (testing "visualize_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
     (let [user-id             (mt/user->id :crowberto)
           [owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
                                 (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query            "ZW5jb2RlZA=="
-                                                     :widgetSessionId  owner-session}
-                                 :_meta             {:openai/widgetSessionId owner-session}}}}
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
-                                             :arguments {:query_handle    handle
-                                                         :widgetSessionId owner-session}})
+                                             :arguments {:query_handle handle}})
                            {"mcp-session-id" rotated-session}))))))
 
-(deftest execute-query-resolves-via-widget-session-id-test
-  (testing "execute_query resolves a handle from another session when widgetSessionId points back to the original session"
+(deftest execute-query-resolves-via-cross-session-fallback-test
+  (testing "execute_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
     (let [[owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
           construct-data      (call-tool owner-session "construct_query"
@@ -912,31 +857,27 @@
                                           :prompt     "show 5 orders"})
           response            (mcp-request (jsonrpc-request "tools/call"
                                                             {:name      "execute_query"
-                                                             :arguments {:query_handle    (:query_handle construct-data)
-                                                                         :widgetSessionId owner-session}})
+                                                             :arguments {:query_handle (:query_handle construct-data)}})
                                            {"mcp-session-id" rotated-session})]
       (is (= 200 (:status response)))
       (is (not (get-in response [:body :result :isError]))))))
 
-(deftest render-drill-through-resolves-via-widget-session-id-test
-  (testing "render_drill_through resolves a handle from another session when widgetSessionId points back to the original session"
+(deftest render-drill-through-resolves-via-cross-session-fallback-test
+  (testing "render_drill_through resolves a handle stored in another session of the same user"
     (let [user-id             (mt/user->id :crowberto)
           [owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
                                 (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query            "ZW5jb2RlZA=="
-                                                     :widgetSessionId  owner-session}
-                                 :_meta             {:openai/widgetSessionId owner-session}}}}
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
-                                             :arguments {:handle          handle
-                                                         :widgetSessionId owner-session}})
+                                             :arguments {:handle handle}})
                            {"mcp-session-id" rotated-session}))))))
 
-(deftest visualize-query-rejects-cross-user-widget-session-id-test
-  (testing "visualize_query refuses to resolve another user's handle even when widgetSessionId points at the owner's session"
+(deftest visualize-query-refuses-cross-user-handle-test
+  (testing "visualize_query refuses to resolve another user's handle"
     (let [owner-id              (mt/user->id :crowberto)
           [owner-session _]     (initialize!)                     ;; crowberto
           ;; Fresh UUID-shaped sentinel for the stored payload so the leak
@@ -948,8 +889,7 @@
           response              (mcp-request-as :rasta
                                                 (jsonrpc-request "tools/call"
                                                                  {:name      "visualize_query"
-                                                                  :arguments {:query_handle    handle
-                                                                              :widgetSessionId owner-session}})
+                                                                  :arguments {:query_handle handle}})
                                                 {"mcp-session-id" attacker-session})]
       (testing "the response is an error, NOT crowberto's encoded query"
         (is (=? {:status 200
@@ -958,7 +898,7 @@
                 response))
         (is (not= encoded-payload
                   (get-in response [:body :result :structuredContent :query]))
-            "widgetSessionId must not bypass user scoping")))))
+            "cross-user handle resolution must fail")))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 

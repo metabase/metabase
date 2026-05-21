@@ -152,24 +152,23 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
-(defn- same-origin-host?
-  [origin host]
-  (let [origin-url (mw.security/parse-url origin)
-        host-url   (mw.security/parse-url (str host))]
-    (boolean
-     (and origin-url
-          host-url
-          (= (u/lower-case-en (:domain origin-url))
-             (u/lower-case-en (:domain host-url)))))))
+(defn- normalize-domain
+  "Extract and lowercase the domain from a URL or Host-style header value. Uses
+   `mw.security/parse-url` so bracketed IPv6 forms (`[::1]:3000`) and ports are
+   handled correctly. Returns nil for unparsable input."
+  [url]
+  (some-> url str mw.security/parse-url :domain u/lower-case-en))
 
-(defn- approved-mcp-origin?
-  [origin]
-  (or (mcp/sandbox-origin? origin)
-      (when-let [approved-origins (not-empty (mcp/cors-origins))]
-        ;; `parse-url` returns nil for malformed Origin values — treat those as
-        ;; not approved rather than passing nil down to `approved-domain?` et al.
-        (when-let [origin-url (mw.security/parse-url origin)]
-          (boolean
+(defn- same-origin-host? [origin host]
+  (let [origin-domain (normalize-domain origin)]
+    (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
+
+(defn- approved-mcp-origin? [origin]
+  (boolean
+   (or (mcp/sandbox-origin? origin)
+       (when-let [approved-origins (not-empty (mcp/cors-origins))]
+          ;; `parse-url` returns nil for a malformed origin - we treat that as non-approved.
+         (when-let [origin-url (mw.security/parse-url origin)]
            (some (fn [approved-origin]
                    (and (mw.security/approved-domain? (:domain origin-url) (:domain approved-origin))
                         (mw.security/approved-protocol? (:protocol origin-url) (:protocol approved-origin))
