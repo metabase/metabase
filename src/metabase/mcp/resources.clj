@@ -100,14 +100,16 @@
 (defn- site-origin
   "Origin (scheme://host[:port]) extracted from `site-url`, dropping any path segment.
    ChatGPT's MCP host treats `_meta.ui.domain` and the CSP domain lists as origins, so an instance
-   hosted under a subpath would otherwise leak the path and fail validation."
+   hosted under a subpath would otherwise leak the path and fail validation. Returns nil when
+   `site-url` is unset — callers degrade gracefully rather than NPE on a misconfigured instance."
   []
-  (let [^URI uri (URI. (system/site-url))
-        scheme   (.getScheme uri)
-        host     (.getHost uri)
-        port     (.getPort uri)]
-    (cond-> (str scheme "://" host)
-      (not (neg? port)) (str ":" port))))
+  (when-let [url (system/site-url)]
+    (let [^URI uri (URI. url)
+          scheme   (.getScheme uri)
+          host     (.getHost uri)
+          port     (.getPort uri)]
+      (cond-> (str scheme "://" host)
+        (not (neg? port)) (str ":" port)))))
 
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
@@ -131,8 +133,10 @@
     {:ui (cond-> {:csp {:connectDomains  [url]
                         :resourceDomains [url]}}
            (contains? resource :prefersBorder)
-           (chatgpt-client?) (assoc :domain url)
-           (assoc :prefersBorder (:prefersBorder resource)))}))
+           (assoc :prefersBorder (:prefersBorder resource))
+
+           (chatgpt-client?)
+           (assoc :domain url))}))
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
