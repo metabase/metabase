@@ -279,14 +279,6 @@ export class ApiClient extends EventEmitter<EventMap> {
       throw new Error("Invalid HTTP method");
     }
 
-    // An already-aborted signal makes `fetch` reject before the request is
-    // dispatched, so a request the caller has already cancelled never reaches
-    // the server. That's the behavior we want: a superseded request (e.g. a
-    // query aborted via `useLoadQuestion`'s `nextSignal()` while parked in the
-    // embedding-SDK token refresh) should simply not go out. Only reads are ever
-    // cancelled this way, so nothing durable is lost.
-    const { signal } = options;
-
     // We wrap the fetch args in an explicit `Request` (instead of just calling
     // `fetch(url, init)`) so fetch-mock populates `call.request` on every
     // recorded call. `findRequests()` in our Jest helpers reads `call.request`
@@ -296,7 +288,7 @@ export class ApiClient extends EventEmitter<EventMap> {
       method,
       headers,
       body,
-      signal,
+      signal: options.signal,
     });
 
     try {
@@ -334,7 +326,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         throw { status, data: body };
       }
     } catch (error: unknown) {
-      if (signal?.aborted) {
+      if (options.signal?.aborted) {
         throw { isCancelled: true };
       }
       // A raw `fetch` rejection (e.g. the server dropped the connection)
