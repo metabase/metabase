@@ -128,8 +128,10 @@
           "skewness must not be present in temporal fingerprints")
       (is (some? (:earliest dt)))
       (is (some? (:latest dt)))
-      (is (some? (:mode-fraction dt)))
-      (is (some? (:top-3-fraction dt))))))
+      ;; 5 distinct timestamps, each once: mode-stats counts the raw Temporal values (no epoch-millis
+      ;; conversion) and must still produce the right fractions.
+      (is (= 0.2 (:mode-fraction dt)) "1/5")
+      (is (= 0.6 (:top-3-fraction dt)) "3/5"))))
 
 (deftest ^:parallel mode-stats-large-values-test
   (testing "mode-fraction / top-3-fraction count frequencies correctly for large text values
