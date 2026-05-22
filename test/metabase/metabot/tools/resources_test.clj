@@ -600,9 +600,10 @@
                    :model/Card {card-id :id} {:name "Dash card"}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (testing "metabase://dashboard/{id}/items returns cards on the dashboard"
-        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})
+              card             (t2/select-one [:model/Card :entity_id] :id card-id)]
           (is (str/includes? output "Dash card"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id card) "\""))))))))
 
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)

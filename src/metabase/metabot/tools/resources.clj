@@ -522,27 +522,25 @@
 ;; ----- Dashboard -----
 
 (defn- fetch-dashboard [id-str]
-  (let [result (entity-details/get-dashboard-details {:dashboard-id (parse-long id-str)})]
-    (if-let [dashboard (:structured-output result)]
-      {:structured-output (assoc dashboard :result-type :entity)}
-      {:status-code 404 :output (:output result)})))
+  (let [dashboard (t2/select-one :model/Dashboard (parse-long id-str))]
+    (if dashboard
+      (mbr/entity-result (mbr/extract-as-user "Dashboard" dashboard))
+      {:status-code 404 :output (str "Dashboard " id-str " not found")})))
 
 (defn- fetch-dashboard-items [id-str]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards)))
+        cards        (t2/select :model/Card
+                                {:where    [:and
+                                            [:= :archived false]
+                                            [:exists {:select 1
+                                                      :from   [[:report_dashboardcard :dc]]
+                                                      :where  [:and
+                                                               [:= :dc.card_id :report_card.id]
+                                                               [:= :dc.dashboard_id dashboard-id]]}]]
+                                 :order-by [[:%lower.name :asc]]})
+        items        (mbr/extract-readable "Card" cards)]
+    (mbr/list-result :dashboard-items items {:total (count items)})))
 
 ;; ----- Dispatch -----
 
