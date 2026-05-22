@@ -76,7 +76,7 @@ jobs:
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
 
       - name: Upload failure result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: failure-result-${{ matrix.source }}-${{ matrix.target }}
@@ -84,7 +84,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
@@ -208,7 +208,7 @@ jobs:
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}

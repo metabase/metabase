@@ -52,7 +52,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Cache build scripts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-scripts
           path: release/dist/index.cjs
@@ -290,7 +290,7 @@ jobs:
         run: bun run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk

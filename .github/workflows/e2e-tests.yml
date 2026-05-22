@@ -129,7 +129,7 @@ jobs:
 
       - name: Upload merged timing files
         if: steps.merge.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: merged-e2e-timings
           path: e2e/support/runTimings.json
