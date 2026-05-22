@@ -40,6 +40,6 @@
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; run every day at midnight
+                  ;; run every day at midnight
                   (cron/cron-schedule "0 0 0 * * ? *")))]
     (task/schedule-task! job trigger)))

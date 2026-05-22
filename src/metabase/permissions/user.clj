@@ -28,7 +28,7 @@
                 (map permissions.path/collection-readwrite-path
                      (user->tenant-collection-and-descendant-ids user-or-id))
 
-                 ;; Current User always gets read perms for Transforms if they are an analyst (1 DB Call)
+                ;; Current User always gets read perms for Transforms if they are an analyst (1 DB Call)
                 (when (or (data-perms/is-data-analyst? user-id) (data-perms/is-superuser? user-id))
                   (concat ["/collection/namespace/transforms/root/"]
                           (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)

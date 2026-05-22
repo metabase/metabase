@@ -312,7 +312,7 @@
                        :base_type      :type/Text
                        :effective_type :type/Text}
                       original-field)))
-           ;; drop the column and create a new one with the same name
+            ;; drop the column and create a new one with the same name
             (sql-jdbc.execute/do-with-connection-with-options
              :h2
              (mt/db)

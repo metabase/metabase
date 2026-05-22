@@ -189,12 +189,12 @@
   that for you."
   {:added "0.32.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver)
-  ;; VERY IMPORTANT: Unlike all other driver multimethods, we DO NOT use the driver hierarchy for dispatch here. Why?
-  ;; We do not want a driver to inherit parent drivers' implementations and have those implementations end up getting
-  ;; called multiple times. If a driver does not implement `initialize!`, *always* fall back to the default no-op
-  ;; implementation.
-  ;;
-  ;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
+;; VERY IMPORTANT: Unlike all other driver multimethods, we DO NOT use the driver hierarchy for dispatch here. Why?
+;; We do not want a driver to inherit parent drivers' implementations and have those implementations end up getting
+;; called multiple times. If a driver does not implement `initialize!`, *always* fall back to the default no-op
+;; implementation.
+;;
+;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
 
 (defmethod initialize! :default [_]) ; no-op
 

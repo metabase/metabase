@@ -174,7 +174,7 @@
         (t2/update! :model/Workspace workspace-id
                     ;; Increment graph_version since new transform = graph needs recalculation
                     (cond-> {:graph_version [:+ :graph_version 1]}
-                     ;; Transition base_status from :empty to :active when first transform is added
+                      ;; Transition base_status from :empty to :active when first transform is added
                       (= :empty (:base_status workspace))
                       (assoc :base_status :active)))
         transform))))

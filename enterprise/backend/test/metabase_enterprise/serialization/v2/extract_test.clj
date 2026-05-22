@@ -1439,7 +1439,7 @@
                                                                                         :type                 "category"
                                                                                         :name                 "CATEGORY"
                                                                                         :values_source_type   "card"
-                                                                                         ;; card_id is in a different collection with dashboard's collection
+                                                                                        ;; card_id is in a different collection with dashboard's collection
                                                                                         :values_source_config {:card_id     c1-1-id
                                                                                                                :value_field [:field field-id nil]}}]}
 
@@ -1451,7 +1451,7 @@
                                                                                         :type                 "category"
                                                                                         :name                 "CATEGORY"
                                                                                         :values_source_type   "card"
-                                                                                         ;; card_id is in a different collection with dashboard's collection
+                                                                                        ;; card_id is in a different collection with dashboard's collection
                                                                                         :values_source_config {:card_id     c1-2-id
                                                                                                                :value_field [:field field-id nil]}}]}
                        :model/DashboardCard _                       {:card_id      c4-id
@@ -1466,7 +1466,7 @@
                        :model/DashboardCard _                          {:card_id      c3-1-id
                                                                         :dashboard_id clickdash-id
                                                                         :visualization_settings
-                                                                 ;; Top-level click behavior for the card.
+                                                                        ;; Top-level click behavior for the card.
                                                                         (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
                                                                               mapping-id (json/encode dimension)]
                                                                           {:click_behavior {:type     "link"

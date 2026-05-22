@@ -1602,7 +1602,7 @@
                      actual)
 
         (map? expected)
-    ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
+        ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
         (select-keys actual (keys expected))
 
         :else

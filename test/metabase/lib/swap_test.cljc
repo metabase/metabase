@@ -26,7 +26,7 @@
                     (= target-clause clause) source-clause
                     :else                    clause))
                 (clause-fn swapped))
-                          ;; And didn't change anything else.
+             ;; And didn't change anything else.
              (= (m/dissoc-in query   [:stages 0 clause-key])
                 (m/dissoc-in swapped [:stages 0 clause-key]))))))))
 
@@ -46,7 +46,7 @@
    (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
      (lib/breakout $q (meta/field-metadata :products :category))
      (lib/breakout $q (meta/field-metadata :people :source))
-      ;; Deliberately including the same field three times: without binning, and with two different binning settings.
+     ;; Deliberately including the same field three times: without binning, and with two different binning settings.
      (lib/breakout $q (meta/field-metadata :orders :subtotal))
      (lib/breakout $q (lib/with-binning
                        (meta/field-metadata :orders :subtotal)
@@ -55,7 +55,7 @@
                        (meta/field-metadata :orders :subtotal)
                        (nth (lib/available-binning-strategies $q (meta/field-metadata :orders :subtotal))
                             2)))
-      ;; Likewise including multiple temporal buckets.
+     ;; Likewise including multiple temporal buckets.
      (lib/breakout $q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
      (lib/breakout $q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))))
 

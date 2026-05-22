@@ -591,8 +591,8 @@
        (setting [_this setting-key]
          (setting unparsed-metadata setting-key))
 
-      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
-      ;; thing at once.
+       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+       ;; thing at once.
        clojure.core.protocols/Datafiable
        (datafy [_this]
          (perf/postwalk
