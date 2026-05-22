@@ -690,7 +690,12 @@
                      {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
    (prometheus/gauge :metabase-security-center/vulnerable-advisories
                      {:description "Number of advisories where this Metabase instance is potentially affected."
-                      :labels [:severity :acknowledged]})])
+                      :labels [:severity :acknowledged]})
+
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})])
 
 (defn- quartz-collectors
   []
