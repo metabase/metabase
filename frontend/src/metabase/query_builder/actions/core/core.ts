@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import {
+  cardApi,
   databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
@@ -10,11 +11,11 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
+import { createQuestionCard, updateQuestionCard } from "metabase/redux/cards";
 import {
   API_UPDATE_QUESTION,
   REVERT_CARD_TO_REVISION,
@@ -62,11 +63,11 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
 
-    const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard?.id }, { reload: true }),
+    return entityCompatibleQuery(
+      { id: outdatedCard?.id },
+      dispatch,
+      cardApi.endpoints.getCard,
     );
-
-    return Questions.HACK_getObjectFromAction(action);
   };
 });
 
@@ -81,10 +82,11 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       return;
     }
 
-    const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
+    const card = await entityCompatibleQuery(
+      { id: outdatedQuestion.id() },
+      dispatch,
+      cardApi.endpoints.getCard,
     );
-    const card = Questions.HACK_getObjectFromAction(action);
 
     dispatch(loadMetadataForCard(card));
 
@@ -377,14 +379,14 @@ async function reduxCreateQuestion(
 ) {
   const display = question.display();
   const size = getDefaultSize(display);
-  const action = await dispatch(
-    Questions.actions.create({
+  const card = (await dispatch(
+    createQuestionCard({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
       ...(size && { size_x: size.width, size_y: size.height }),
     }),
-  );
-  return question.setCard(Questions.HACK_getObjectFromAction(action));
+  )) as Card;
+  return question.setCard(card);
 }
 
 async function reduxUpdateQuestion(
@@ -401,8 +403,8 @@ async function reduxUpdateQuestion(
 
   const card = _.omit(fullCard, ...keysToOmit);
 
-  const action = await dispatch(
-    Questions.actions.update({ id: question.id() }, card),
-  );
-  return question.setCard(Questions.HACK_getObjectFromAction(action));
+  const updatedCard = (await dispatch(
+    updateQuestionCard({ id: question.id(), ...card }),
+  )) as Card;
+  return question.setCard(updatedCard);
 }

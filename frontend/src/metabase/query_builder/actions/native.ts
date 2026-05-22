@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 
-import { Questions } from "metabase/entities/questions";
+import { cardApi } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { createThunkAction } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -54,17 +55,15 @@ export const OPEN_DATA_REFERENCE_AT_QUESTION =
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
   (id: CardId) => async (dispatch: Dispatch) => {
-    const action = await dispatch(
-      Questions.actions.fetch(
-        { id },
-        { noEvent: true, useCachedForbiddenError: true },
-      ),
+    const card = await entityCompatibleQuery(
+      { id, ignore_error: true },
+      dispatch,
+      cardApi.endpoints.getCard,
     );
-    const question = Questions.HACK_getObjectFromAction(action);
-    if (question) {
+    if (card) {
       return [
-        { type: "database", id: question.database_id },
-        { type: "question", id: question.id },
+        { type: "database", id: card.database_id },
+        { type: "question", id: card.id },
       ];
     }
   },
