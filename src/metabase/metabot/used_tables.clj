@@ -78,6 +78,7 @@
     (catch Exception e
       (record-extraction-warning! :query-build)
       (log/warn e "Failed to convert query to MBQL 5")
+      (log/debugf "Failed to convert query to MBQL 5: %s" (pr-str raw-query))
       nil)))
 
 (defn- native-tables
@@ -89,11 +90,13 @@
         (if (:error result)
           (do (record-extraction-warning! :native-parse)
               (log/warnf "tables-for-native error: %s" (:error result))
+              (log/debugf "tables-for-native error: %s; query: %s" (:error result) (pr-str query))
               #{})
           (into #{} (keep :table-id) (:tables result))))
       (catch Exception e
         (record-extraction-warning! :native-parse)
         (log/warn e "Failed to extract tables from native SQL")
+        (log/debugf "Failed to extract tables from native SQL: %s" (pr-str query))
         #{}))
     #{}))
 
@@ -113,6 +116,7 @@
     (catch Exception e
       (record-extraction-warning! :query-walk)
       (log/warn e "Failed to walk query for used-table extraction")
+      (log/debugf "Failed to walk query for used-table extraction: %s" (pr-str query))
       {:tables #{} :cards #{}})))
 
 (defn- card-query
@@ -181,7 +185,8 @@
               (lib/native-query (lib.metadata/->metadata-provider metadata-providerable db-id) sql)
               (catch Exception e
                 (record-extraction-warning! :native-build)
-                (log/warn e "Failed to build native query from raw SQL")
+                (log/warnf e "Failed to build native query for %s from raw SQL on database %s" tool-name db-id)
+                (log/debugf "Failed to build native query for %s from raw SQL on database %s: %s" tool-name db-id sql)
                 nil)))))))
 
 (defn- transform-sql-starting-query
@@ -306,16 +311,17 @@
 
 (defn- extract-and-insert!
   "Extract used tables from `parts` and insert `metabot_used_table` rows for `message-id`.
-  Best-effort: any failure (extraction *or* insert) is logged and swallowed, since this runs
+  Best-effort: any `Exception` (extraction *or* insert) is logged and swallowed, since this runs
   off the turn-finalization path and must never surface to the user. For example, a table
   deleted between query generation and now would make the row's `table_id` FK invalid."
   [message-id parts]
-  (try
-    (let [rows (extract-used-tables-with-timing message-id parts)]
-      (when (seq rows)
-        (t2/insert! :model/MetabotUsedTable rows)))
-    (catch Throwable e
-      (log/warn e "Failed to record metabot used tables for message" message-id))))
+  (log/with-thread-context {:metabot_message_id message-id}
+    (try
+      (let [rows (extract-used-tables-with-timing message-id parts)]
+        (when (seq rows)
+          (t2/insert! :model/MetabotUsedTable rows)))
+      (catch Exception e
+        (log/warn e "Failed to record metabot used tables for message" message-id)))))
 
 (defn record-used-tables!
   "Extract used tables from `parts` and persist `metabot_used_table` rows for `message-id`.
