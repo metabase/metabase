@@ -186,11 +186,20 @@ export class ApiClient extends EventEmitter<EventMap> {
           this._makeRequest(method, url, headers, body, options);
 
         if (withRetries) {
-          return retry(send, {
-            maxRetries: MAX_RETRIES,
-            shouldRetry: isRetriableError,
-          });
+          try {
+            return await retry(send, {
+              maxRetries: MAX_RETRIES,
+              shouldRetry: isRetriableError,
+              signal: options.signal,
+            });
+          } catch (error) {
+            if (options.signal?.aborted) {
+              throw { isCancelled: true };
+            }
+            throw error;
+          }
         }
+
         return send();
       };
     };

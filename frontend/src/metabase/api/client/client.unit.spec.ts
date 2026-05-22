@@ -220,6 +220,37 @@ describe("api", () => {
         }),
       ).rejects.toEqual({ isCancelled: true });
     });
+
+    // The retry path surfaces the signal's AbortError when a backoff is cut
+    // short; the client must normalize it to the same cancellation shape as a
+    // mid-fetch abort so consumers' `error.isCancelled` checks keep working.
+    it("rejects as cancelled when the signal aborts during a retry backoff", async () => {
+      jest.useFakeTimers();
+      try {
+        fetchMock.get("path:/api/card/1/query", { status: 503, body: {} });
+
+        const controller = new AbortController();
+        const promise = apiInstance
+          .GET("/api/card/:cardId/query")(
+            { cardId: 1 },
+            { signal: controller.signal },
+          )
+          .catch((error: unknown) => error);
+
+        // Let the first attempt fail with 503 and schedule the backoff.
+        await jest.advanceTimersByTimeAsync(0);
+
+        // Aborting mid-backoff ends the wait early; the loop stops without
+        // another attempt and the 503 never surfaces.
+        controller.abort();
+        await jest.runAllTimersAsync();
+
+        expect(await promise).toEqual({ isCancelled: true });
+        expect(fetchMock.callHistory.calls()).toHaveLength(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe("status-code event emit", () => {
