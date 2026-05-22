@@ -393,9 +393,9 @@
                        (describe-indexes :singly-index))))
 
               (testing "compound index column index"
-             ;; first index column is :a
+                ;; first index column is :a
                 (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :a 1 :b 1 :c 1))
-             ;; first index column is :e
+                ;; first index column is :e
                 (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :e 1 :d 1 :f 1))
                 (is (= #{{:type :normal-column-index :value "_id"}
                          {:type :normal-column-index :value "a"}
@@ -403,7 +403,7 @@
                        (describe-indexes :compound-index))))
 
               (testing "compound index that has many keys can still determine the first key"
-              ;; first index column is :j
+                ;; first index column is :j
                 (mongo.util/create-index (mongo.util/collection db "compound-index-big")
                                          (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1))
                 (is (= #{{:type :normal-column-index :value "_id"}

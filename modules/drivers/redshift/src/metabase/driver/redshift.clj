@@ -624,8 +624,8 @@
 ;; This might be helpful for getting privileges for actions in the future.
 #_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
     [_driver conn-spec & {:as _options}]
-  ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
-  ;; result in an operation not supported error
+    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
+    ;; result in an operation not supported error
     (->> (jdbc/query
           conn-spec
           (str/join
@@ -635,7 +635,7 @@
             "   NULL as role,"
             "   t.schemaname as schema,"
             "   t.objectname as table,"
-          ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
+            ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
             "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"

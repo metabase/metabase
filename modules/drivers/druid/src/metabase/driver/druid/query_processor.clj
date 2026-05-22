@@ -1070,7 +1070,7 @@
   (when fields
     (log/warn
      (u/format-color 'red
-         ;; TODO - this is not really true, is it
+                     ;; TODO - this is not really true, is it
                      "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause.")))
   druid-query)
 

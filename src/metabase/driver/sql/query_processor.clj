@@ -47,7 +47,7 @@
       (str/replace #";([\s;]*(--.*\n?)*)*$" "")
       str/trimr
       (as-> trimmed
-        ;; Query could potentially end with a comment.
+            ;; Query could potentially end with a comment.
             (if (re-find #"--.*$" trimmed)
               (str trimmed "\n")
               trimmed))))
@@ -1668,12 +1668,12 @@
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver field arg]
   (if (and (uuid-field? field)
-             ;; If the arg is a uuid we are happy especially for joins (#46558)
+           ;; If the arg is a uuid we are happy especially for joins (#46558)
            (not (uuid-field? arg))
-             ;; If we could not convert the arg to a UUID then we have to cast the Field.
-             ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+           ;; If we could not convert the arg to a UUID then we have to cast the Field.
+           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
            (not (uuid? (->honeysql driver arg)))
-             ;; Check for inlined values
+           ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
     [::cast-to-text field]
     field))
@@ -2083,8 +2083,8 @@
     (merge
      honeysql-form
      (if needs-columns?
-        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
-        ;; This is ok since we control the alias.
+       ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
+       ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
         :from [[table-alias]]}

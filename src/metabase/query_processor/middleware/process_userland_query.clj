@@ -184,7 +184,7 @@
         (letfn [(rff* [metadata]
                   (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result (rff (dissoc metadata :preprocessed_query))]
-                        ;; temporarily disabled because it impacts query performance
+                    ;; temporarily disabled because it impacts query performance
                     (add-and-save-execution-metadata-xform! execution-info result)))]
           (try
             (qp query rff*)

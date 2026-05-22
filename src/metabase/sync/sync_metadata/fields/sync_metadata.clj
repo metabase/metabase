@@ -120,10 +120,10 @@
             {:base_type           new-base-type
              :effective_type      new-base-type
              :coercion_strategy   nil
-                ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
              :fingerprint_version 0
              :fingerprint         nil
-                ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
              :semantic_type       nil}
              ;; we must override user-set values
              (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
@@ -160,7 +160,7 @@
            ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
            (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
                   (some? old-pk)
-                     ;; otherwise, log only if logical pk status has changed
+                  ;; otherwise, log only if logical pk status has changed
                   (not= new-pk (= old-semantic-type :type/PK)))
              (log/infof "Database pk of %s has changed from '%s' to '%s'"
                         (common/field-metadata-name-for-logging table metabase-field)

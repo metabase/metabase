@@ -260,10 +260,10 @@
      (triggers/with-schedule
       (cron/schedule
        (cron/cron-schedule task-schedule)
-        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-        ;; Just wait until the next sync cycle.
-        ;;
-        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+       ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+       ;; Just wait until the next sync cycle.
+       ;;
+       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
        (cron/with-misfire-handling-instruction-do-nothing))))))
 
 (defn- update-db-trigger-if-needed!
@@ -280,8 +280,8 @@
                                                          %)
                                                       (:triggers job))))]
     (cond
-     ;; no new schedule
-     ;; delete the existing trigger
+      ;; no new schedule
+      ;; delete the existing trigger
       (nil? new-trigger)
       (do
         (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
@@ -289,7 +289,7 @@
                    (:name database))
         (delete-trigger! database task-info))
 
-     ;; need to recreate the new trigger
+      ;; need to recreate the new trigger
       (and (some? new-trigger)
            (nil? existing-trigger-with-same-schedule))
       (do
@@ -304,7 +304,7 @@
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
-     ;; don't need to do anything as the existing trigger matches the new schedule
+      ;; don't need to do anything as the existing trigger matches the new schedule
       :else
       nil)))
 

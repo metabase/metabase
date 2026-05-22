@@ -152,7 +152,7 @@
             (mt/with-temp
               [:model/Card                       {card-id :id} {}
 
-                 ;; user 1 in group 1
+               ;; user 1 in group 1
                :model/User                       {user-id-1 :id} {}
                :model/PermissionsGroup           {group-id-1 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-1
@@ -161,7 +161,7 @@
                                      :group_id group-id-1
                                      :table_id (mt/id :categories)
                                      :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
-                 ;; user 2 in group 2 with gtap using the same card
+               ;; user 2 in group 2 with gtap using the same card
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}
                :model/PermissionsGroupMembership _ {:group_id group-id-2
@@ -189,7 +189,7 @@
                                      :group_id group-id-1
                                      :table_id (mt/id :categories)
                                      :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}
-                 ;; user 2 in group 2 with gtap using card 2
+               ;; user 2 in group 2 with gtap using card 2
                :model/Card                       {card-id-2 :id} {}
                :model/User                       {user-id-2 :id} {}
                :model/PermissionsGroup           {group-id-2 :id} {}

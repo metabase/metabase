@@ -857,9 +857,9 @@
                               {:name "a", :base-type :type/*, :effective-type :type/*}
                               {:name "a", :base-type :type/Integer}]
             :let             [expected-base-type (if (= (:base-type initial-metadata) :type/Integer)
-                                       ;; if the initial driver type comes back as something other than `:type/*`, we
-                                       ;; should use that. Otherwise if it comes back as `:type/*` use the type
-                                       ;; calculated by Lib.
+                                                   ;; if the initial driver type comes back as something other than `:type/*`, we
+                                                   ;; should use that. Otherwise if it comes back as `:type/*` use the type
+                                                   ;; calculated by Lib.
                                                    :type/Integer
                                                    :type/BigInteger)]]
       ;; should work with and without rows
