@@ -15,9 +15,8 @@
 
 (defn- timeout-transform-runs! [_ctx]
   (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "transform"}
-    (let [timed-out (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute)]
-      (when (seq timed-out)
-        (log/infof "Timed out %d transform run(s)." (count timed-out))))))
+    (when-let [timed-out (not-empty (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))]
+      (log/infof "Timed out %d transform run(s)." (count timed-out)))))
 
 (task/defjob  ^{:doc "Timeout long-running tasks that have been lost by a worker."
                 org.quartz.DisallowConcurrentExecution true}

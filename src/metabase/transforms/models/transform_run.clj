@@ -167,17 +167,16 @@
       (analytics/inc! :metabase-transforms/timeouts-total
                       {:type "transform"}
                       (count timed-out))
-      (run! (fn [run]
-              (when-let [start (:start_time run)]
-                (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                                    {:type "transform"}
-                                    (timeout-util/detection-latency-ms start timeout-dur detected-at)))
-              (publish-timeout-event! (assoc run
-                                             :status    :timeout
-                                             :is_active nil
-                                             :end_time  end-time
-                                             :message   "Timed out by metabase")))
-            timed-out))
+      (doseq [run timed-out]
+        (when-let [start (:start_time run)]
+          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                              {:type "transform"}
+                              (timeout-util/detection-latency-ms start timeout-dur detected-at)))
+        (publish-timeout-event! (assoc run
+                                       :status    :timeout
+                                       :is_active nil
+                                       :end_time  end-time
+                                       :message   "Timed out by metabase"))))
     (cancel/delete-old-canceling-runs!)
     timed-out))
 

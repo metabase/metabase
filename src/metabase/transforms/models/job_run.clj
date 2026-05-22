@@ -93,12 +93,11 @@
       (analytics/inc! :metabase-transforms/timeouts-total
                       {:type "job"}
                       (count timed-out))
-      (run! (fn [run]
-              (when-let [updated-at (:updated_at run)]
-                (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                                    {:type "job"}
-                                    (timeout-util/detection-latency-ms updated-at timeout-dur detected-at))))
-            timed-out))
+      (doseq [run timed-out]
+        (when-let [updated-at (:updated_at run)]
+          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
+                              {:type "job"}
+                              (timeout-util/detection-latency-ms updated-at timeout-dur detected-at)))))
     timed-out))
 
 (defn running-run-for-job-id
