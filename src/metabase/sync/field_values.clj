@@ -42,23 +42,23 @@
 
 (defn- sql-driver?
   "Does this `table`'s database use a SQL-derived driver? Determines whether we can use the
-   single-query UNION path or have to fall back to per-field DISTINCT queries (e.g. for Mongo)."
+  single-query UNION path or have to fall back to per-field DISTINCT queries (e.g. for Mongo)."
   [table]
   (let [engine (:engine (t2/select-one :model/Database :id (:db_id table)))]
     (isa? driver/hierarchy engine :sql)))
 
 (defn- empty-counts
   "Initial counter map for a sync run.
-   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
-   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
-   - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
+  - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
+  - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
+  - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
   []
   {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
 
 (defn- update-field-values-for-table-union!
   "Bulk-fetch distinct values for `fields-to-sync` via one UNION ALL query, then persist per field.
-   If the bulk query fails, every field in the batch is reported as an error (no per-field
-   fallback — by design)."
+  If the bulk query fails, every field in the batch is reported as an error (no per-field
+  fallback — by design)."
   [table fields-to-sync fvs-map]
   (let [n-fields  (count fields-to-sync)
         n-queries (count (partition-all union-distinct/*batch-size* fields-to-sync))
@@ -87,7 +87,7 @@
 
 (defn- update-field-values-for-table-per-field!
   "Sequential per-field fallback for non-SQL drivers that can't run the UNION query (e.g. Mongo).
-   Matches master's behavior — one DISTINCT per field, no batching."
+  Matches master's behavior — one DISTINCT per field, no batching."
   [_table fields-to-sync fvs-map]
   (let [n-fields (count fields-to-sync)]
     (-> (reduce (fn [counts field]
@@ -104,8 +104,8 @@
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
-   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
-   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
+  SQL drivers use a single UNION ALL query covering every list-eligible field with an active
+  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
   [table :- i/TableInstance]
   (let [all-fields                        (table->fields-to-scan table)
         {to-sync  true

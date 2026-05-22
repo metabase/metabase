@@ -12,8 +12,8 @@
 
 (defn- sql-test-drivers
   "Normal drivers that generate SQL. `union-distinct-values` builds and runs a SQL query, so it
-   only applies to SQL drivers — non-SQL drivers (e.g. Mongo) go through the per-field fallback
-   in `sync-fields-grouped-by-table!` and aren't exercised by these direct-call tests."
+  only applies to SQL drivers — non-SQL drivers (e.g. Mongo) go through the per-field fallback
+  in `sync-fields-grouped-by-table!` and aren't exercised by these direct-call tests."
   []
   (into #{}
         (filter #(isa? driver/hierarchy % :sql))

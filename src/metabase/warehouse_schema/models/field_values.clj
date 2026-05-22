@@ -373,10 +373,10 @@
 
 (defn limit-values
   "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
-   Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
-   the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
+  Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
+  the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
 
-   Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
+  Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
   [values]
   (loop [str-length 0
          acc        (sorted-set)
@@ -473,8 +473,8 @@
 
 (def ^:private ^:dynamic *fv-select-batch-size*
   "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
-   under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
-   have thousands of list-eligible fields, so we partition before issuing the select."
+  under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
+  have thousands of list-eligible fields, so we partition before issuing the select."
   500)
 
 (defn batched-get-latest-full-field-values
@@ -490,16 +490,16 @@
 
 (defn persist-field-values!
   "Persist pre-fetched distinct values for a single field. Compares against `existing-fv` and
-   creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
-   `::fv-updated`, `::fv-created`, or `::fv-deleted`.
+  creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
+  `::fv-updated`, `::fv-created`, or `::fv-deleted`.
 
-   - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
-   - `values`: the new collection of scalar distinct values for the field (already char-length
-     capped and sorted by the caller).
-   - `has_more_values`: boolean — whether `values` is known to be a subset of all possible values.
+  - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
+  - `values`: the new collection of scalar distinct values for the field (already char-length
+    capped and sorted by the caller).
+  - `has_more_values`: boolean — whether `values` is known to be a subset of all possible values.
 
-   Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
-   deleted as a side effect of `clear-field-values-for-field!` when `values` is empty."
+  Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
+  deleted as a side effect of `clear-field-values-for-field!` when `values` is empty."
   [field existing-fv values has_more_values]
   (let [field-name (or (:name field) (:id field))]
     (cond
@@ -538,12 +538,12 @@
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already
-   exists, then update values for it; otherwise create a new FieldValues object with the newly
-   fetched values. Returns whether the field values were created / updated / deleted as a result
-   of this call.
+  exists, then update values for it; otherwise create a new FieldValues object with the newly
+  fetched values. Returns whether the field values were created / updated / deleted as a result
+  of this call.
 
-   Note that if the full FieldValues are create / updated / deleted, it'll delete all the
-   Advanced FieldValues of the same `field`."
+  Note that if the full FieldValues are create / updated / deleted, it'll delete all the
+  Advanced FieldValues of the same `field`."
   [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
     (let [existing-fv               (or field-values (get-latest-full-field-values (u/the-id field)))
@@ -599,7 +599,7 @@
 
 (def ^:private ^:dynamic *on-demand-select-batch-size*
   "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
-   clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
   500)
 
 (defn update-field-values-for-on-demand-dbs!

@@ -26,9 +26,9 @@
 
 (defn- sync-database-counts!
   "Like [[sync-database!']] but keeps only the create/update/delete/error counts. The
-   `:probed`/`:queries` observability counters are dropped — they're a function of how many
-   fields across the whole database have active FieldValues, which is global state these
-   whole-database sync tests don't (and shouldn't) pin down."
+  `:probed`/`:queries` observability counters are dropped — they're a function of how many
+  fields across the whole database have active FieldValues, which is global state these
+  whole-database sync tests don't (and shouldn't) pin down."
   [step database]
   (mapv #(select-keys % [:errors :created :updated :deleted])
         (sync-database!' step database)))
