@@ -150,10 +150,11 @@
    :request  {:foo :bar :headers {"x-secret-request" "hide-me-too"}}})
 
 (defn- assert-no-headers!
-  "`=?` is a subset match — it silently passes if `:headers` is present in `ex-data` but
-   absent from the expectation. Headers leaking into logs/ex-data has bitten us before,
-   so each error case asserts the absence explicitly."
+  "Assert that `ex-data` has no `:headers` key under `:request` or `:response`."
   [data]
+  ;; Not folded into the parent `=?` because `=?` is a subset match — it would silently pass
+  ;; if `:headers` reappeared in ex-data but was just absent from the expectation. We've had
+  ;; that regression before; assert the absence explicitly per error case.
   (is (not (contains? (:request data) :headers))
       "request headers should be stripped from ex-data")
   (is (not (contains? (:response data) :headers))

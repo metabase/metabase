@@ -136,9 +136,10 @@
 
 (defn- check-response!
   "Return the response body on success (HTTP 200 or 202); throw on failure.
-  On failure the thrown `ex-info` carries `:error-code :ai-service-error`, the upstream `:status`, and the
-  slurped body under `[:response :body]`. The exception message includes a body preview when one can be
-  extracted (truncated to [[max-body-preview-chars]])."
+  On failure the thrown `ex-info` carries `:error-code :ai-service-error`, the upstream `:status`,
+  and the slurped body under `[:response :body]`.
+  The exception message includes a body preview when one can be extracted,
+  truncated to [[max-body-preview-chars]]."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
