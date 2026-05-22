@@ -77,13 +77,28 @@ describe("admin > custom visualizations", () => {
 
         H.visitCustomVizSettings();
 
+        cy.log(
+          "Enabling custom viz is blocked until the image CSP setting is on",
+        );
         H.main()
           .findByRole("button", { name: /Enable custom visualizations/ })
-          .should("be.visible")
+          .should("be.disabled");
+        H.main()
+          .findByText(/Turn on "Restrict image domains"/)
+          .should("be.visible");
+
+        cy.log("Turn on the image CSP setting, then custom viz can be enabled");
+        H.updateSetting("csp-img-enabled", true);
+        cy.reload();
+
+        H.main()
+          .findByRole("button", { name: /Enable custom visualizations/ })
+          .should("be.enabled")
           .click();
 
         H.getAddVisualizationLink().should("be.visible");
 
+        cy.log("Deactivate custom visualizations");
         H.main()
           .findByRole("button", { name: /More options/ })
           .click();
@@ -124,6 +139,7 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
+        H.updateSetting("csp-img-enabled", true);
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
@@ -167,6 +183,7 @@ describe("admin > custom visualizations", () => {
   describe("admin settings page", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -518,6 +535,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — question", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -775,6 +793,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — dashboard", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     });
@@ -1044,6 +1063,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1174,6 +1194,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1396,6 +1417,7 @@ describe("admin > custom visualizations", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -1577,6 +1599,7 @@ describe("sandbox", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.updateSetting("csp-img-enabled", true);
     H.updateSetting("custom-viz-enabled", true);
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     H.createQuestion(
