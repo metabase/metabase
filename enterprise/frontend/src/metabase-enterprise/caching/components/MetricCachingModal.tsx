@@ -76,7 +76,7 @@ export function MetricCachingModal({ card, onClose }: MetricCachingModalProps) {
           shouldAllowInvalidation
           shouldShowName={false}
           onReset={onClose}
-          formBoxProps={{ pb: 0, px: 0 }}
+          formBoxProps={{ p: 0 }}
           renderFooter={() => (
             <MetricCachingModalFooter cardId={card.id} cardName={card.name} />
           )}

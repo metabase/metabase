@@ -1,11 +1,10 @@
-import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
+import type { ComponentType, Dispatch, SetStateAction } from "react";
 
 import {
   getPerformanceTabMetadata,
   strategies,
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
-import type { MetricPageParams, MetricUrls } from "metabase/metrics/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { ModalOverlayProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -42,14 +41,6 @@ export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
 };
 
-export interface MetricSettingsPageProps {
-  params: MetricPageParams;
-  urls?: MetricUrls;
-  renderBreadcrumbs?: (card: Card) => ReactNode;
-  showAppSwitcher?: boolean;
-  showDataStudioLink?: boolean;
-}
-
 export interface MetricCachingModalProps {
   card: Card;
   onClose: () => void;
@@ -72,8 +63,6 @@ const getDefaultPluginCaching = () => ({
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
-  MetricCachingPage:
-    PluginPlaceholder as ComponentType<MetricSettingsPageProps>,
   MetricCachingModal:
     PluginPlaceholder as ComponentType<MetricCachingModalProps>,
 });

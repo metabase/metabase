@@ -25,7 +25,6 @@ const urls: MetricUrls = {
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
   dependencies: (id) => `/metric/${id}/dependencies`,
-  caching: (id) => `/metric/${id}/caching`,
   history: (id) => `/metric/${id}/history`,
 };
 

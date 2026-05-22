@@ -35,7 +35,6 @@ const mockUrls = {
   overview: (id: number) => `/metric/${id}/overview`,
   query: (id: number) => `/metric/${id}/query`,
   dependencies: (id: number) => `/metric/${id}/dependencies`,
-  caching: (id: number) => `/metric/${id}/caching`,
   history: (id: number) => `/metric/${id}/history`,
 };
 
