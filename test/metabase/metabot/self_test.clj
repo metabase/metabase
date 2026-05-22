@@ -930,7 +930,27 @@
     (testing "long bodies are truncated to 500 chars with an ellipsis"
       (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))
-        (is (= 501 (count preview)))))))
+        (is (= 501 (count preview)))))
+    (testing "InputStream bodies are read up to the truncation window — not fully slurped"
+      ;; A proxied ByteArrayInputStream lets us count bytes pulled off the stream and
+      ;; assert we stop short of consuming the whole body once the preview is filled.
+      ;; The InputStreamReader inside io/reader uses an 8KB decode buffer, so the
+      ;; ceiling isn't max-body-preview-chars exactly — but it's still constant rather
+      ;; than scaling with body size.
+      (let [body-bytes (.getBytes (apply str (repeat 1000000 \x)))
+            counter    (java.util.concurrent.atomic.AtomicLong. 0)
+            stream     (proxy [java.io.ByteArrayInputStream] [body-bytes]
+                         (read
+                           ([] (.incrementAndGet counter) (proxy-super read))
+                           ([buf] (let [n (proxy-super read buf)]
+                                    (when (pos? n) (.addAndGet counter n)) n))
+                           ([buf off len] (let [n (proxy-super read buf off len)]
+                                            (when (pos? n) (.addAndGet counter n)) n))))
+            preview    (body-preview stream)]
+        (is (str/ends-with? preview "…"))
+        (is (= 501 (count preview)))
+        (is (< (.get counter) (count body-bytes))
+            "should not consume the entire 1MB stream just to render a 500-char preview")))))
 
 (defn- caught
   "Run `thunk` and return the thrown exception, or nil if it didn't throw."

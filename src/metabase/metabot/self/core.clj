@@ -518,6 +518,23 @@
         (s (:detail m))
         (s (:message m)))))
 
+(defn- slurp-bounded
+  "Read at most `limit` chars from `r`, returning nil on read error or empty input.
+  Used so a multi-MB upstream body doesn't get pulled fully into memory just to be
+  truncated to a few hundred chars."
+  [r limit]
+  (try
+    (with-open [rdr (io/reader r)]
+      (let [buf (char-array limit)]
+        (loop [off 0]
+          (if (= off limit)
+            (String. buf 0 limit)
+            (let [n (.read ^java.io.Reader rdr buf off (- limit off))]
+              (if (neg? n)
+                (when (pos? off) (String. buf 0 off))
+                (recur (+ off n))))))))
+    (catch Throwable _ nil)))
+
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
   Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`
@@ -532,7 +549,9 @@
                                                      (map? head)    (extract-error-message head)
                                                      (string? head) head
                                                      :else          nil))
-                    (instance? InputStream body) (try (slurp body) (catch Throwable _ nil))
+                    ;; +1 so the truncation branch below detects overflow without having
+                    ;; to read the full stream.
+                    (instance? InputStream body) (slurp-bounded body (inc max-body-preview-chars))
                     :else                        nil)
         ;; Surface *some* context to the user even for unrecognised shapes — the warn
         ;; signals operators to add the new envelope shape to [[extract-error-message]].
