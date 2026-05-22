@@ -117,10 +117,8 @@
                (range 1 (inc (.getColumnCount metadata))))))
           (catch Exception e
             (if (driver/table-known-to-not-exist? driver e)
-              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
-              (do
-                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
-                init)
+              ;; if the table does not exist, we just ignore it, rather than failing with an exception
+              init
               (throw e))))))))
 
 (defn- jdbc-fields-metadata
@@ -658,7 +656,7 @@
   (->> (for [[field-path field-type] (seq field-types)
              :when field-type]
          (let [curr-type (get field-type-map field-type :type/*)]
-           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+           {:name              (str/join " → " (map name field-path)) ;; right arrow
             :database-type     (db-type-map curr-type)
             :base-type         curr-type
             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...

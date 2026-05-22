@@ -215,7 +215,6 @@ function FeedbackCard({
             readonly
             hideActions
             getCopyText={noopGetCopyText}
-            showFeedbackButtons={false}
             submittedFeedback={undefined}
             bg="background-secondary"
             p="md"

@@ -105,7 +105,8 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule
+          :metabase_version))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test

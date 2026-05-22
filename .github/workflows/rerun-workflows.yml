@@ -28,7 +28,7 @@ jobs:
           node-version: lts/Jod # 22.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const MAX_ATTEMPTS = 1;

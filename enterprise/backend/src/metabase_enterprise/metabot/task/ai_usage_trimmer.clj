@@ -5,7 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase-enterprise.metabot.settings :as metabot.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -20,7 +20,7 @@
 (defn- trim-old-usage-data!
   []
   (let [retention-days (metabot.settings/ai-usage-max-retention-days)]
-    (if (infinite? retention-days)
+    (if (nil? retention-days)
       (log/info "Skipping AI usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))

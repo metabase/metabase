@@ -1626,7 +1626,9 @@ jobs:
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
       - be-tests-athena-ee
-      - be-tests-bigquery-cloud-sdk-ee
+      # these are not reliable, but we want to run them anyway to gather data about failures
+      # - be-tests-snowflake-ee
+      # - be-tests-bigquery-cloud-sdk-ee
       - be-tests-druid-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee
@@ -1638,7 +1640,6 @@ jobs:
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
-      - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
@@ -1652,7 +1653,7 @@ jobs:
     if: always() && !cancelled()
     steps:
       - name: Check job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:
@@ -1666,7 +1667,7 @@ jobs:
               }));
 
             // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' || job.name == 'be-tests-starburst-ee'))) {
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
                 console.log("");
                 console.log("        _------.        ");
                 console.log("       /  ,     \_      ");

@@ -1023,6 +1023,30 @@ describe("scenarios > metabot > usage auditing", () => {
     });
   });
 
+  it("sorts the conversations table by each sortable column", () => {
+    const sortableColumns: Array<{ headerLabel: RegExp; sortBy: string }> = [
+      { headerLabel: /^User/, sortBy: "user" },
+      { headerLabel: /^Profile/, sortBy: "profile_id" },
+      { headerLabel: /^Date/, sortBy: "created_at" },
+      { headerLabel: /^Messages/, sortBy: "message_count" },
+      { headerLabel: /^Tokens/, sortBy: "total_tokens" },
+      { headerLabel: /^IP/, sortBy: "ip_address" },
+    ];
+
+    visitConversationsPage();
+
+    for (const { headerLabel, sortBy } of sortableColumns) {
+      H.main()
+        .findByRole("table")
+        .findByRole("button", { name: headerLabel })
+        .click();
+
+      cy.wait("@conversations")
+        .its("request.url")
+        .should("include", `sort_by=${sortBy}`);
+    }
+  });
+
   it("shows message usage stats charts", () => {
     visitUsageStatsPage();
     H.main().findByRole("tab", { name: "Messages" }).realClick();

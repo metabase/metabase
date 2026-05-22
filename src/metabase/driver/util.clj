@@ -730,20 +730,33 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
-(defn fields-hidden-for-write-data-connection
-  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
-   when the write-data-connection form marker is true."
-  [driver]
+(defn- fields-hidden-by-form-marker
+  "Returns the set of field names (strings) whose resolved `visible-if` includes `marker false`,
+   meaning they are hidden when the named form marker is set on the connection-edit form."
+  [driver marker]
   (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-props     (conn-prop-fn driver)
           resolved      (connection-props-server->client driver all-props)
           props-by-name (collect-all-props-by-name resolved)]
       (into #{}
             (keep (fn [[field-name {:keys [visible-if]}]]
-                    (when (false? (get visible-if "write-data-connection"))
+                    (when (false? (get visible-if marker))
                       field-name)))
             props-by-name))))
+
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "write-data-connection"))
+
+(defn fields-hidden-for-admin-connection
+  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
+   when the admin-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.

@@ -34,6 +34,30 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
+(deftest should-auto-sync?-respects-disable-auto-sync-test
+  (testing "should-auto-sync? gates automatically-triggered syncs on the disable-auto-sync setting,"
+    (testing "so that newly inserted or edited databases skip Quartz trigger registration."
+      (mt/with-temp [:model/Database db {}]
+        (testing "default (disable-auto-sync=false): a regular database is auto-sync-eligible"
+          (is (true? (database/should-auto-sync? db))))
+        (testing "with disable-auto-sync=true: a regular database is not auto-sync-eligible"
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (is (false? (database/should-auto-sync? db)))))))
+    (testing "but should-sync? (the gate for explicit, user-requested syncs) ignores the setting"
+      (mt/with-temp [:model/Database db {}]
+        (is (true? (database/should-sync? db)))
+        (mt/with-temporary-setting-values [disable-auto-sync true]
+          (is (true? (database/should-sync? db))
+              "an explicit Sync-now must remain available even when auto-sync is disabled")))))
+  (testing "destination databases (router children) are excluded from both, regardless of the flag"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database dest   {:router_database_id (:id router)}]
+      (is (false? (database/should-sync? dest)))
+      (is (false? (database/should-auto-sync? dest)))
+      (mt/with-temporary-setting-values [disable-auto-sync true]
+        (is (false? (database/should-sync? dest)))
+        (is (false? (database/should-auto-sync? dest)))))))
+
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]
           (when (str/ends-with? trigger-key (str \. db-id))
