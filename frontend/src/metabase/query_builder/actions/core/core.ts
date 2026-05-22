@@ -383,7 +383,7 @@ async function reduxCreateQuestion(
     createQuestionCard({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
-      ...(size && { size_x: size.width, size_y: size.height }),
+      ...(size && { size: { size_x: size.width, size_y: size.height } }),
     }),
   )) as Card;
   return question.setCard(card);
