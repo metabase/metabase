@@ -61,15 +61,20 @@
 ;;  - (let [{{:keys [user]} :details} database])
 
 (mr/def ::connection-type
-  [:enum :default :write-data])
+  [:enum :default :write-data :transform])
 
 (def ^:dynamic *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
+   - `:transform` — same details as `:write-data` (transforms write, so `:write-data-details`
+     are taken into account when configured), but resolved through a separate connection pool
+     whose c3p0 leak-detector tolerates transform-length runtimes. Set by
+     [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]] or [[with-default-connection]], not directly."
+   Bind via [[with-write-connection]], [[with-default-connection]], or
+   [[with-transform-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -87,6 +92,17 @@
    Use this to compile or execute a read query from inside a broader write-connection context."
   [& body]
   `(binding [*connection-type* :default]
+     ~@body))
+
+(defmacro with-transform-connection
+  "Establishes a transform-connection context for body.
+
+   Connection details resolve the same as `:write-data` (transforms write, so
+   `:write-data-details` are taken into account when configured), but queries are routed
+   through a separate connection pool keyed on `:transform` so the pool can carry its own
+   c3p0 properties. See [[*connection-type*]] for the rationale."
+  [& body]
+  `(binding [*connection-type* :transform]
      ~@body))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
@@ -107,20 +123,31 @@
   [_database]
   nil)
 
+(defn- resolve-connection-type
+  "Resolution rule mapping a requested `connection-type` plus already-resolved `write-details`."
+  [connection-type write-details]
+  (cond
+    (= connection-type :transform) :transform
+    write-details                  :write-data
+    :else                          :default))
+
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
 
    Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
 
-   By default, returns the primary `:details`. Within a [[with-write-connection]] scope,
-   takes `:write-data-details` into account (if configured). Within a
+   By default, returns the primary `:details`. Within a [[with-write-connection]] or
+   [[with-transform-connection]] scope, takes `:write-data-details` into account (if
+   configured) — transforms write, so they get write-data credentials when set. The two
+   contexts still resolve to *different* pool keys (`:write-data` vs `:transform`) so the
+   pool properties (e.g. `unreturnedConnectionTimeout`) can differ. Within a
    [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
    overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [write?        (= *connection-type* :write-data)
-          write-details (when write? (database-write-data-details database))
-          base          (merge (:details database) write-details)]
+    (let [write-context? (contains? #{:write-data :transform} *connection-type*)
+          write-details  (when write-context? (database-write-data-details database))
+          base           (merge (:details database) write-details)]
       ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
@@ -130,7 +157,7 @@
         (try (analytics/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
       (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::effective-connection-type (if write-details :write-data :default))
+          (assoc ::effective-connection-type (resolve-connection-type *connection-type* write-details))
           (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
@@ -143,7 +170,8 @@
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
       :default    (:details database)
-      :write-data (database-write-data-details database))))
+      :write-data (database-write-data-details database)
+      :transform  (:details database))))
 
 (defn write-connection-requested?
   "True if currently executing within a [[with-write-connection]] scope."
@@ -151,18 +179,17 @@
   (= *connection-type* :write-data))
 
 (defn effective-connection-type
-  "Returns the connection type actually in effect for the given database. Return value
-  matches malli schema [[::connection-type]].
+  "Returns the effective pool key for the given database. Return value matches malli schema
+  [[::connection-type]].
 
-   Returns `:write-data` only when a write connection is both *requested*
-   ([[with-write-connection]]) and *configured* (the database has `:write-data-details`).
-   Otherwise returns `:default`, avoiding duplicate resource allocation (e.g. connection
-   pools) when the requested type would resolve identically to `:default`."
+   `:write-data` only when both *requested* ([[with-write-connection]]) and *configured*
+   (the database has `:write-data-details`); otherwise falls back to `:default` to avoid a
+   duplicate pool. `:transform` always resolves to `:transform` — the transform pool is
+   distinguished by its pool properties, not its details. See [[*connection-type*]]."
   [database]
-  (if (and (= *connection-type* :write-data)
-           (some? (database-write-data-details (driver.u/ensure-lib-database database))))
-    :write-data
-    :default))
+  (let [write-details (when (= *connection-type* :write-data)
+                        (database-write-data-details (driver.u/ensure-lib-database database)))]
+    (resolve-connection-type *connection-type* write-details)))
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type
