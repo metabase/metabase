@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
@@ -14,28 +15,15 @@ function setup(opts: SetupOpts = {}) {
 
 describe("DataStep", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
-    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    // position fields are zeroed so floating-ui (Mantine popovers) does not
-    // compute a `NaN` offset from the otherwise-undefined `top`/`left`.
-    HTMLElement.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
-      height: 1,
-      width: 1,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      x: 0,
-      y: 0,
-    });
   });
 
   afterAll(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
   });

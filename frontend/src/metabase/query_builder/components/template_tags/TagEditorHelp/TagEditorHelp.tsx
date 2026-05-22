@@ -204,7 +204,7 @@ interface TagExampleProps {
 const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
-    <p>
+    <div>
       <Code block>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
         <Button
@@ -215,7 +215,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
           {t`Try it`}
         </Button>
       )}
-    </p>
+    </div>
   </div>
 );
 

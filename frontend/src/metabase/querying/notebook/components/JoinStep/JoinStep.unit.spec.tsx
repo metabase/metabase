@@ -286,7 +286,10 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    // restore (not reset): resetAllMocks would leave the spied
+    // `getBoundingClientRect` returning `undefined`, which crashes
+    // floating-ui callbacks that fire after the tests finish.
+    jest.restoreAllMocks();
   });
 
   it("should display a join correctly", () => {
