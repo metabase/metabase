@@ -725,15 +725,18 @@
 (deftest read-collections-tree-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {parent-id :id} {:name "P" :location "/"}
-                   :model/Collection _              {:name "C" :location (str "/" parent-id "/")}]
-      (testing "metabase://collections?tree=true returns all collections with full path strings"
+                   :model/Collection {child-id :id}  {:name "C" :location (str "/" parent-id "/")}]
+      (testing "metabase://collections?tree=true returns all collections; hierarchy is encoded via parent_id"
         (let [{:keys [output]} (read-resource/read-resource
-                                {:uris ["metabase://collections?tree=true"]})]
-          (is (str/includes? output "<list type=\"collections-tree\""))
-          (is (str/includes? output "P"))
-          ;; child path is rendered as "P/C" (parent name + child name)
-          (is (str/includes? output "P/C")
-              "child collection should carry path=\"P/C\" computed from ancestor names"))))))
+                                {:uris ["metabase://collections?tree=true"]})
+              parent           (t2/select-one [:model/Collection :entity_id] :id parent-id)
+              child            (t2/select-one [:model/Collection :entity_id] :id child-id)]
+          (is (str/includes? output "\"list-type\":\"collections-tree\""))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id parent) "\"")))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id child) "\""))
+              "tree mode returns all collections in the namespace, including descendants")
+          (is (str/includes? output (str "\"parent_id\":\"" (:entity_id parent) "\""))
+              "child collection's MBR carries parent_id = parent's entity_id (per MBR spec)"))))))
 
 (deftest read-table-field-with-slash-test
   (testing "field IDs containing slashes (e.g. composite ids c75/17) are preserved through dispatch"

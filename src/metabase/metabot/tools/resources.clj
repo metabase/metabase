@@ -155,20 +155,6 @@
    :description description
    :uri         (llm-rep/metabase-uri :database id)})
 
-(defn- present-collection
-  "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."
-  ([coll] (present-collection coll nil))
-  ([{:keys [id name location authority_level description personal_owner_id]} path-name]
-   {:type              "collection"
-    :id                id
-    :name              name
-    :path              (or path-name name)
-    :location          location
-    :authority_level   authority_level
-    :is_personal       (boolean personal_owner_id)
-    :description       description
-    :uri               (llm-rep/metabase-uri :collection id)}))
-
 (defn- present-table
   [{:keys [id name display_name schema db_id description]}]
   {:type         "table"
@@ -249,32 +235,26 @@
     (list-result :databases dbs)))
 
 (defn- fetch-collections-list
-  "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
+  "metabase://collections (root only) and metabase://collections?tree=true (flat list of all).
+
+   In MBR, hierarchy is encoded by each Collection's `parent_id` (entity_id of
+   parent). For tree mode we return the flat list across the namespace; the
+   caller assembles the tree by chaining `parent_id`."
   [{:keys [tree] :as _query-params}]
-  (let [tree?    (= "true" tree)
-        where    (cond-> [:and
-                          [:= :archived false]
-                          [:= :namespace nil]
-                          ;; Exclude the system Trash collection from navigation listings.
-                          [:or [:= :type nil] [:!= :type "trash"]]]
-                   (not tree?) (conj [:= :location "/"]))
-        colls    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                  :description :personal_owner_id]
-                                 {:where    where
-                                  :order-by [[:location :asc] [:%lower.name :asc]]})
-                      (filter mi/can-read?))
-        ;; For tree mode, compute path names by chaining ancestor names.
-        id->name (when tree? (into {} (map (juxt :id :name)) colls))
-        ancestors (fn [{:keys [location]}]
-                    (when (and location (not= "/" location))
-                      (->> (str/split location #"/")
-                           (remove str/blank?)
-                           (keep parse-long))))
-        path-of  (fn [coll]
-                   (str/join "/" (concat (keep id->name (ancestors coll))
-                                         [(:name coll)])))
-        items    (mapv (fn [c] (present-collection c (when tree? (path-of c)))) colls)]
-    (list-result (if tree? :collections-tree :collections-root) items)))
+  (let [tree?  (= "true" tree)
+        where  (cond-> [:and
+                        [:= :archived false]
+                        [:= :namespace nil]
+                        ;; Exclude the system Trash collection from navigation listings.
+                        [:or [:= :type nil] [:!= :type "trash"]]]
+                 (not tree?) (conj [:= :location "/"]))
+        colls  (t2/select :model/Collection
+                          {:where    where
+                           :order-by [[:location :asc] [:%lower.name :asc]]})
+        items  (mbr/extract-readable "Collection" colls)]
+    (mbr/list-result (if tree? :collections-tree :collections-root)
+                     items
+                     {:total (count items)})))
 
 (defn- fetch-user-recents []
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
