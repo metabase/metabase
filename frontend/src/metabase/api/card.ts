@@ -339,7 +339,7 @@ export const cardApi = Api.injectEndpoints({
         "embedding_params" | "embedding_type"
       >(),
       getCardDashboards: builder.query<
-        { id: DashboardId; name: string }[],
+        { id: DashboardId; name: string; enable_embedding: boolean }[],
         Pick<Card, "id">
       >({
         query: ({ id }) => ({

@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.lib.core :as lib]
@@ -43,6 +44,14 @@
                                 :post "mcp"
                                 {:request-options {:headers extra-headers}}
                                 body)))
+
+(defn- mcp-request-as
+  "Like `mcp-request` but authenticates as the given test username."
+  [username body extra-headers]
+  (client/client-full-response (test.users/username->token username)
+                               :post "mcp"
+                               {:request-options {:headers extra-headers}}
+                               body))
 
 (defn- mcp-request-unauthenticated
   "Make an unauthenticated POST request to /api/mcp."
@@ -96,10 +105,23 @@
                  {"mcp-session-id" session-id})
     [session-id response]))
 
+(defn- initialize-as!
+  "Like `initialize!` but authenticates as the given test username."
+  [username]
+  (let [response   (mcp-request-as username (jsonrpc-request "initialize") {})
+        session-id (get-in response [:headers "Mcp-Session-Id"])]
+    (mcp-request-as username
+                    (jsonrpc-notification "notifications/initialized")
+                    {"mcp-session-id" session-id})
+    [session-id response]))
+
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
    content (the JSON-decoded text from the first content block).
-   Records test failures if the response status is not 200 or the tool returns an error."
+   Records test failures if the response status is not 200 or the tool returns an error.
+   Also enforces the MCP spec contract: every successful tool result with content
+   must include `structuredContent` (because every tool in our manifest declares
+   `outputSchema`, and the spec mandates structuredContent for those)."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
@@ -110,6 +132,9 @@
     (is (not (:isError result))
         (str "Tool " tool-name " error: " (some-> result :content first :text)))
     (when-not (:isError result)
+      (is (contains? result :structuredContent)
+          (str "Tool " tool-name " declared an outputSchema in tools/list but did "
+               "not return structuredContent — MCP spec violation."))
       (json/decode+kw (:text (first (:content result)))))))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
@@ -120,6 +145,38 @@
                                                 (jsonrpc-request "initialize"))]
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
+
+(deftest origin-validation-test
+  (testing "cross-origin browser requests are rejected when the origin is not configured"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "mbtest.poom.dev"
+                                 "origin" "http://127.0.0.1:6274"})]
+      (is (= 403 (:status response)))
+      (is (= "Origin not allowed" (get-in response [:body :error :message])))))
+  (testing "cross-origin browser requests are accepted for configured MCP client origins"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))
+  (testing "same-origin requests with bracketed IPv6 hosts are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "[::1]:3000"
+                                 "origin" "http://[::1]:3000"})]
+      (is (= 200 (:status response)))))
+  (testing "same-origin requests with mixed-case host/origin are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "Example.com"
+                                 "origin" "https://example.COM"})]
+      (is (= 200 (:status response)))))
+  (testing "approved MCP origins match the Origin header case-insensitively"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "HTTPS://example.com"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
 
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"
@@ -187,6 +244,68 @@
     "search"
     "visualize_query"})
 
+(deftest tools-list-all-tools-declare-required-hints-test
+  (testing "every tool advertises readOnlyHint, destructiveHint, openWorldHint (some MCP clients reject tools that omit them)"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (seq tools) "tools/list should return at least one tool")
+      (doseq [{:keys [name annotations]} tools]
+        (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
+        (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
+        (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
+(deftest text-content-includes-structured-content-for-maps-test
+  (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
+    (let [text-content (var-get #'mcp.tools/text-content)]
+      (testing "map → both content and structuredContent"
+        (let [result (text-content {:foo "bar"})]
+          (is (= {:foo "bar"} (:structuredContent result)))
+          (is (= "{\"foo\":\"bar\"}" (-> result :content first :text)))))
+      (testing "sequential → structuredContent is the collection"
+        (is (= [1 2 3] (:structuredContent (text-content [1 2 3])))))
+      (testing "string → no structuredContent (nothing to structure)"
+        (let [result (text-content "ok")]
+          (is (not (contains? result :structuredContent)))
+          (is (= "ok" (-> result :content first :text))))))))
+
+(deftest tool-result-emits-structured-content-test
+  (testing "tools that declare outputSchema emit structuredContent — guards the regression where Claude Desktop got 500s because we declared outputSchema without matching structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "get_table"
+                                                        :arguments {:id (mt/id :orders)}})
+                                      {"mcp-session-id" session-id})
+          result         (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (not (:isError result))
+          (str "get_table should succeed: " (some-> result :content first :text)))
+      (is (contains? result :structuredContent)
+          "get_table declares outputSchema → MUST emit structuredContent")
+      (is (map? (:structuredContent result))
+          "structuredContent should be the parsed response object, not a string")
+      (is (= "ORDERS" (-> result :structuredContent :name))
+          "structuredContent should mirror the endpoint response shape"))))
+
+(deftest tools-list-strict-shape-test
+  (testing "no tool's inputSchema uses JSON-Schema constructs that ChatGPT's strict MCP validator rejects"
+    ;; Pins the strict-shape guarantee across the whole exposed tool surface. `construct_query` had
+    ;; this asserted before; broadening it to every tool catches drift in any wire schema (e.g.
+    ;; `query`'s `:multi` body referencing agent-lib `:tuple` schemas) that would silently leak
+    ;; `:allOf`/`:prefixItems`/`items:false` constructs into a tool that worked before the regression.
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (pos? (count tools)))
+      (doseq [{:keys [name inputSchema]} tools]
+        (let [schema-keys (atom #{})]
+          (walk/postwalk (fn [x] (when (map? x) (swap! schema-keys into (keys x))) x) inputSchema)
+          (is (empty? (select-keys (frequencies @schema-keys) [:allOf :prefixItems]))
+              (str "Tool " name " inputSchema contains :allOf or :prefixItems"))
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq inputSchema) (filter map?))))
+              (str "Tool " name " inputSchema contains `items: false` (tuple closure)")))))))
+
 (deftest tools-list-test
   (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)
@@ -220,17 +339,45 @@
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
-      (testing "construct_query exposes the optional user prompt"
+      (testing "construct_query exposes the nullable user prompt"
         (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
               construct-query-tool   (get tools-by-name "construct_query")
               construct-query-schema (:inputSchema construct-query-tool)
               prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
                                          (get-in construct-query-schema [:properties :prompt]))
               required-fields        (set (:required construct-query-schema))
+              schema-keys            (atom #{})
               reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
+          (walk/postwalk (fn [x]
+                           (when (map? x)
+                             (swap! schema-keys into (keys x)))
+                           x)
+                         construct-query-schema)
           (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
-          (is (not (contains? required-fields "prompt")))
-          (is (str/includes? (:description prompt-schema) "exact original message"))
+          ;; Strict-tool-input-schema forces every property into :required and
+          ;; converts previously-optional ones (like :prompt) to nullable unions.
+          (is (or (contains? required-fields "prompt")
+                  (contains? required-fields :prompt)))
+          (is (= false (:additionalProperties construct-query-schema)))
+          ;; Prompt is nullable. Either a `:type` union (hand-written form) or an
+          ;; `:anyOf`/`:oneOf` with a {:type "null"} branch (Malli `[:maybe …]`).
+          (is (or (= ["string" "null"] (:type prompt-schema))
+                  (= #{"string" "null"} (set (:type prompt-schema)))
+                  (some #(= "null" (:type %)) (:anyOf prompt-schema))
+                  (some #(= "null" (:type %)) (:oneOf prompt-schema))))
+          ;; ChatGPT's MCP validator rejects exactly these JSON-Schema constructs.
+          ;; `:oneOf`/`:minLength`/`:maxLength` are accepted by ChatGPT and not asserted against.
+          (is (empty? (select-keys (frequencies @schema-keys)
+                                   [:allOf :prefixItems])))
+          ;; `items: false` (tuple closure) must not appear either.
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq construct-query-schema)
+                              (filter map?)))))
+          (is (str/includes? (or (:description prompt-schema)
+                                 (some :description (:anyOf prompt-schema))
+                                 (some :description (:oneOf prompt-schema))
+                                 "")
+                             "exact original message"))
           (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
           (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 
@@ -554,7 +701,9 @@
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle session-id (:query_handle construct-data))})
+                                             :query (mcp.session/read-handle session-id
+                                                                             (mt/user->id :crowberto)
+                                                                             (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})]
@@ -617,21 +766,7 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id})))))
-
-  (testing "render_drill_through does not resolve a handle from another session"
-    (let [user-id             (mt/user->id :crowberto)
-          [owner-session _]   (initialize!)
-          [attacker-session _] (initialize!)
-          handle              (mt/with-current-user user-id
-                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
-      (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "No drill-through found")}]}}}
-              (mcp-request (jsonrpc-request "tools/call"
-                                            {:name      "render_drill_through"
-                                             :arguments {:handle handle}})
-                           {"mcp-session-id" attacker-session}))))))
+                           {"mcp-session-id" session-id}))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"
@@ -688,37 +823,108 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
 
-  (testing "visualize_query does not resolve a query_handle from another session"
+;;; --------------------------------------- cross-session handle resolution -------------------------------------
+
+(deftest tools-expose-output-schema-test
+  (testing "MCP tools/list declares outputSchema for tools that emit structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])
+          tools-by-name  (into {} (map (juxt :name identity)) tools)]
+      (testing "construct_query advertises {query_handle} as its output"
+        (let [output-schema (get-in tools-by-name ["construct_query" :outputSchema])
+              prop-names    (set (map name (keys (:properties output-schema))))]
+          (is (= "object" (:type output-schema)))
+          (is (contains? prop-names "query_handle"))
+          (is (not (contains? prop-names "widgetSessionId"))
+              "widgetSessionId was retired in favour of cross-session per-user lookup")))
+      (testing "visualize_query advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["visualize_query" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query"))))
+      (testing "render_drill_through advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["render_drill_through" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query")))))))
+
+(deftest construct-query-returns-bare-handle-test
+  (testing "construct_query returns just `{:query_handle uuid}` — no widget session plumbing"
+    (let [[session-id _] (initialize!)
+          construct-data (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})]
+      (is (some? (parse-uuid (:query_handle construct-data))))
+      (is (not (contains? construct-data :widgetSessionId))))))
+
+(deftest visualize-query-resolves-via-cross-session-fallback-test
+  (testing "visualize_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
     (let [user-id             (mt/user->id :crowberto)
           [owner-session _]   (initialize!)
-          [attacker-session _] (initialize!)
+          [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
                                 (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
       (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
-                           {"mcp-session-id" attacker-session})))))
+                           {"mcp-session-id" rotated-session}))))))
 
-  (testing "execute_query does not resolve a query_handle from another session"
-    (let [[owner-session _]    (initialize!)
-          [attacker-session _] (initialize!)
-          construct-data       (call-tool owner-session "construct_query"
-                                          {:source     {:type "table" :id (mt/id :orders)}
-                                           :operations [["limit" 5]]
-                                           :prompt     "show 5 orders"})
-          response             (mcp-request (jsonrpc-request "tools/call"
-                                                             {:name      "execute_query"
-                                                              :arguments {:query_handle (:query_handle construct-data)}})
-                                            {"mcp-session-id" attacker-session})]
+(deftest execute-query-resolves-via-cross-session-fallback-test
+  (testing "execute_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
+    (let [[owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          construct-data      (call-tool owner-session "construct_query"
+                                         {:source     {:type "table" :id (mt/id :orders)}
+                                          :operations [["limit" 5]]
+                                          :prompt     "show 5 orders"})
+          response            (mcp-request (jsonrpc-request "tools/call"
+                                                            {:name      "execute_query"
+                                                             :arguments {:query_handle (:query_handle construct-data)}})
+                                           {"mcp-session-id" rotated-session})]
+      (is (= 200 (:status response)))
+      (is (not (get-in response [:body :result :isError]))))))
+
+(deftest render-drill-through-resolves-via-cross-session-fallback-test
+  (testing "render_drill_through resolves a handle stored in another session of the same user"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
       (is (=? {:status 200
-               :body   {:result {:isError true
-                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
-              response)))))
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" rotated-session}))))))
+
+(deftest visualize-query-refuses-cross-user-handle-test
+  (testing "visualize_query refuses to resolve another user's handle"
+    (let [owner-id              (mt/user->id :crowberto)
+          [owner-session _]     (initialize!)                     ;; crowberto
+          ;; Fresh UUID-shaped sentinel for the stored payload so the leak
+          ;; assertion below can't accidentally match against any other test fixture.
+          encoded-payload       (str (random-uuid))
+          handle                (mt/with-current-user owner-id
+                                  (mcp.session/store-handle! owner-session owner-id encoded-payload))
+          [attacker-session _]  (initialize-as! :rasta)
+          response              (mcp-request-as :rasta
+                                                (jsonrpc-request "tools/call"
+                                                                 {:name      "visualize_query"
+                                                                  :arguments {:query_handle handle}})
+                                                {"mcp-session-id" attacker-session})]
+      (testing "the response is an error, NOT crowberto's encoded query"
+        (is (=? {:status 200
+                 :body   {:result {:isError true
+                                   :content [{:text #(str/includes? % "Query handle not found")}]}}}
+                response))
+        (is (not= encoded-payload
+                  (get-in response [:body :result :structuredContent :query]))
+            "cross-user handle resolution must fail")))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 

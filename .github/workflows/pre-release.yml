@@ -43,7 +43,7 @@ jobs:
       # note: this block can be removed after we stop needing to be able to test versions before v55
       - name: Get test mode config
         id: config
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -287,7 +287,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send tests complete message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

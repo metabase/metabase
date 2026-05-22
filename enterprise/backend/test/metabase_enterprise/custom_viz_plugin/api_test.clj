@@ -1,4 +1,4 @@
-(ns metabase-enterprise.custom-viz-plugin.api-test
+(ns ^:synchronous metabase-enterprise.custom-viz-plugin.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

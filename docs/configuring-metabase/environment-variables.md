@@ -82,8 +82,10 @@ Whether AI features are enabled.
 
 ### `MB_AI_USAGE_MAX_RETENTION_DAYS`
 
-- Type: string
+- Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
+- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
 
 Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.
 
@@ -443,8 +445,7 @@ By default, this is 20 minutes.
 Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
   If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
 
-  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
-  that it doesn't timeout any long-running queries in your transforms.
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
 
   Please be aware that other services (like Nginx) may still drop long-running queries.
 
@@ -456,6 +457,13 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 - [Configuration file name](./config-file.md): `default-maps-enabled`
 
 Whether or not the default GeoJSON maps are enabled.
+
+### `MB_DISABLE_AUTO_SYNC`
+
+- Type: boolean
+- Default: `false`
+
+When true, suppresses automatically-triggered syncs: the scheduled sync-and-analyze and update-field-values jobs do not run (and new triggers are not registered), and adding a new database does not kick off an initial sync. Syncs originating from an explicit request — the Sync-now REST endpoints, or a transform finalizing its output table — are unaffected. For deployments that load database metadata from disk at startup and should not have Metabase re-discover it.
 
 ### `MB_DISABLE_CORS_ON_LOCALHOST`
 
@@ -2188,8 +2196,9 @@ Timeout in milliseconds to wait after query cancellation before escalating to th
 
 The timeout for a transform job, in minutes.
 
-Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
-  so make sure that value isn't lower, or it will timeout your transform.
+Controls the timeout for transform runs, including the queries they execute. This takes precedence
+  over MB_DB_QUERY_TIMEOUT_MINUTES for queries executed inside a transform, so transforms can run longer than regular
+  Metabase queries.
 
 ### `MB_TRANSFORMS_ENABLED`
 
