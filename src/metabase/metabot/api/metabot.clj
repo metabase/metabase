@@ -70,11 +70,13 @@
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
-      [:generated              [:map
-                                [:status [:= :generated]]
-                                [:prompt_count nat-int?]]]
-      [:no-library-content     [:map [:status [:= :no-library-content]]]]
-      [:ai-produced-no-prompts [:map [:status [:= :ai-produced-no-prompts]]]]]
+      [:generated              [:map {:closed true}
+                                [:status       [:= :generated]]
+                                ;; `:generated` is only returned when total > 0 — see
+                                ;; [[metabot.suggested-prompts/generate-sample-prompts]].
+                                [:prompt_count pos-int?]]]
+      [:no-library-content     [:map {:closed true} [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts [:map {:closed true} [:status [:= :ai-produced-no-prompts]]]]]
   "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
    Returns a discriminated union on `:status`; see [[metabot.suggested-prompts/generate-sample-prompts]].
    The managed-free-limit case surfaces as a 402, not a union variant."
