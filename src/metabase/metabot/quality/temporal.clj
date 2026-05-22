@@ -73,9 +73,11 @@
   [a b]
   (- 1.0 (normalized-distance a b)))
 
-(defn- similar?
+(defn similar?
   "True if `a` and `b` are at or above the configured query-similarity
-  threshold. Shared by thrash detection and re-discovery clustering."
+  threshold. Shared by thrash detection and re-discovery clustering;
+  also re-used by Phase 7 attribution to identify rediscovery / thrash
+  observables under the same threshold the signals were scored with."
   [a b]
   (>= (similarity a b) constants/query-similarity-threshold))
 
@@ -137,11 +139,12 @@
 ;;; Thrash detection
 ;;; ---------------------------------------------------------------------------
 
-(defn- thrash-pair?
+(defn thrash-pair?
   "True if two adjacent tool-events represent a thrash — same function
   name, arguments above the similarity threshold. Skips events with
   `nil` `:function` (unknown / orphan tool-input) so they never trip
-  the rule."
+  the rule. Also re-used by Phase 7 attribution to fire the
+  `thrash-event` observable on the second-in-pair turn."
   [a b]
   (and (some? (:function a))
        (= (:function a) (:function b))
@@ -163,14 +166,16 @@
 ;;; Re-discovery clustering
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private search-tools-set
+(def search-tools-set
   "Tool-name strings classified as search calls for re-discovery counting.
   All four search-tool variants (`search`, `sql_search`, `nlq_search`,
   `transform_search`) register under the same `:tool-name` `\"search\"`
-  in `metabase.metabot.tools.search`, so a single entry suffices."
+  in `metabase.metabot.tools.search`, so a single entry suffices. Public
+  so the Phase 7 attribution layer can identify search calls under the
+  same membership rule the signals were scored with."
   #{"search"})
 
-(defn- search-query-string
+(defn search-query-string
   "Project a search tool's `:arguments` to the text that uniquely
   identifies the query for clustering. Prefer `:keyword_queries` (the
   field every search variant accepts); fall back to whole-args
@@ -180,14 +185,16 @@
     (str/join " " (map safe-str kws))
     (args->string args)))
 
-(defn- connected-components
+(defn connected-components
   "Transitive clustering by union-find. Given a vector of items and a
-  `pair-similar?` predicate, return a seq of sets of indices where each
-  set is one connected component (any two indices in the same set are
-  reachable through a chain of pairwise-similar items).
+  `pair-similar?` predicate, return a seq of seqs of indices where each
+  inner seq is one connected component (any two indices in the same
+  component are reachable through a chain of pairwise-similar items).
 
   `O(n²)` in the number of items, which is fine for the small search-
-  call counts we see per conversation (<20)."
+  call counts we see per conversation (<20). Public so the Phase 7
+  attribution layer can re-cluster search calls without duplicating the
+  union-find."
   [items pair-similar?]
   (let [n      (count items)
         parent (int-array n)]

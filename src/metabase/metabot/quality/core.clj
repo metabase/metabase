@@ -12,6 +12,7 @@
   `pre-foundation` sentinel, conversations that throw inside extract
   get an `extract-error` sentinel."
   (:require
+   [metabase.metabot.quality.attribution :as attribution]
    [metabase.metabot.quality.concern-signals :as concern-signals]
    [metabase.metabot.quality.constants :as quality.constants]
    [metabase.metabot.quality.extract :as extract]
@@ -114,26 +115,30 @@
 (defn- run-pipeline
   "Run the pure pipeline — extract has already succeeded by the time we
   get here, and `pre-foundation?` has already returned false. Returns a
-  map carrying the conversation-level fields to persist."
+  map carrying the conversation-level fields to persist plus a
+  per-assistant-message `:quality_attribution` map keyed by message id."
   [normalized]
   (let [governance     (governance/resolve (all-entity-refs normalized))
         ancestry-of    (memoize governance/walk-source-card-ancestry)
         normalized'    (temporal/derive normalized)
         signals        (concern-signals/compute normalized' governance ancestry-of)
-        subs           (subscores/compose normalized' signals)]
-    {:quality_score     (:composite subs)
-     :quality_breakdown (build-breakdown normalized' signals subs)}))
+        subs           (subscores/compose normalized' signals)
+        attribution    (attribution/project normalized' governance ancestry-of)]
+    {:quality_score       (:composite subs)
+     :quality_breakdown   (build-breakdown normalized' signals subs)
+     :quality_attribution attribution}))
 
 (defn compute-conversation-score
   "Pure entry point: given a seq of `MetabotMessage` rows, return the
-  values to persist on `metabot_conversation`. Three result shapes:
+  values to persist. Three result shapes:
 
-  - **Pre-foundation** — sentinel breakdown, `quality_score = nil`.
-  - **Extract error** — sentinel breakdown, `quality_score = nil`.
-  - **Real score** — composite `:quality_score`, full `:quality_breakdown`.
-
-  Phase 7 will extend this to also return `:quality_attribution` per
-  assistant message; today the contract is conversation-level only."
+  - **Pre-foundation** — sentinel breakdown, `quality_score = nil`,
+    no `:quality_attribution` (assistant rows stay NULL).
+  - **Extract error** — sentinel breakdown, `quality_score = nil`,
+    no `:quality_attribution`.
+  - **Real score** — composite `:quality_score`, full
+    `:quality_breakdown`, and `:quality_attribution` keyed by assistant
+    message id (Phase 7)."
   [messages]
   (let [normalized (try (extract/normalize messages)
                         (catch Throwable t
@@ -160,10 +165,19 @@
   (t2/select :model/MetabotMessage :conversation_id conversation-id))
 
 (defn- write-result!
+  "Persist a pipeline result. Always updates the conversation row;
+  per-assistant-row attribution is updated separately (and only on the
+  real-score path — sentinel paths leave `quality_attribution` NULL).
+
+  One UPDATE per assistant row, idiomatic Toucan. Phase 10 may revisit
+  to bulk-update if profiling shows the per-row cost matters."
   [conversation-id result]
   (t2/update! :model/MetabotConversation conversation-id
               {:quality_score     (:quality_score result)
-               :quality_breakdown (:quality_breakdown result)}))
+               :quality_breakdown (:quality_breakdown result)})
+  (doseq [[msg-id payload] (:quality_attribution result)]
+    (t2/update! :model/MetabotMessage msg-id
+                {:quality_attribution payload})))
 
 (defn score-conversation!
   "Compute and persist the quality score for `conversation-id`.

@@ -196,4 +196,20 @@
                Q ⊆ P so H is empty")
           (is (= {:iterations 1 :tool_calls 1 :errors 0}
                  (:context breakdown))
-              "single tool call, single iteration, no errors"))))))
+              "single tool call, single iteration, no errors"))
+        (testing "Phase 7 — per-turn quality_attribution lands on the assistant row
+                  with the same shape the conversation breakdown uses"
+          (let [msgs            (t2/select :model/MetabotMessage
+                                           :conversation_id conversation-id
+                                           {:order-by [[:created_at :asc] [:id :asc]]})
+                user-row        (first (filter #(= :user      (:role %)) msgs))
+                assistant-row   (first (filter #(= :assistant (:role %)) msgs))
+                attribution     (:quality_attribution assistant-row)]
+            (is (nil? (:quality_attribution user-row))
+                "user rows never carry attribution — the column stays NULL")
+            (is (= quality.constants/composite-version (:version attribution)))
+            (is (= [] (:observables attribution))
+                "healthy clean conversation → no observables on the only assistant turn")
+            (is (= {:A 1.0 :B nil :C 1.0 :D 1.0 :composite 1.0}
+                   (:prefix_subscores attribution))
+                "last (and only) assistant turn's prefix_subscores match the conversation-level subscores")))))))

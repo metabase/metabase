@@ -179,6 +179,39 @@
       (is (pos? (:selection-quality
                  (cs/compute (normalized :Q [y] :D [x]) gov (fn [id] (get ancestry id [])))))))))
 
+(deftest selection-quality-substitution-table-self-match-excluded-test
+  (testing "the same table appearing in both CONV_D and CONV_Q does not self-substitute
+            — a database-listing call surfaces a table that the agent then uses
+            correctly; without the X ≠ Y guard, identical name + db-id + schema
+            would trivially match"
+    (let [t-d (atom-rec "table" 8)
+          t-q (atom-rec "table" 8)
+          gov {(entity-key "table" 8) (table-gov {:db-id 1 :schema "PUBLIC" :name "INVOICES"})}]
+      (is (zero? (:selection-quality
+                  (cs/compute (normalized :Q [t-q] :D [t-d]) gov (constantly []))))))))
+
+(deftest selection-quality-substitution-table-self-match-coexists-with-real-match-test
+  (testing "Y in both D and Q is correctly skipped; an unrelated table-X in D with similar
+            name + matching db/schema still fires the substitution"
+    (let [y     (atom-rec "table" 8)
+          y-d   (atom-rec "table" 8)
+          x     (atom-rec "table" 9)
+          gov   {(entity-key "table" 8) (table-gov {:db-id 1 :schema "PUBLIC" :name "INVOICES"})
+                 (entity-key "table" 9) (table-gov {:db-id 1 :schema "PUBLIC" :name "INVOICE"})}]
+      (is (pos? (:selection-quality
+                 (cs/compute (normalized :Q [y] :D [y-d x]) gov (constantly []))))
+          "the real substitute X=9 should still be found even though Y=8 is in D"))))
+
+(deftest selection-quality-ancestral-substitute-self-match-excluded-test
+  (testing "an entity in both D and Q does not match itself via ancestry —
+            walker already excludes the starting card, but the atom-key guard
+            inside ancestral-substitute pins the no-self-match contract"
+    (let [y     (atom-rec "card" 100)
+          y-d   (atom-rec "card" 100)
+          gov   {(entity-key "card" 100) (card-gov {:verified? false :db-id 1 :name "raw"})}]
+      (is (zero? (:selection-quality
+                  (cs/compute (normalized :Q [y] :D [y-d]) gov (constantly []))))))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Selection-quality — personal-collection component
 ;;; ---------------------------------------------------------------------------

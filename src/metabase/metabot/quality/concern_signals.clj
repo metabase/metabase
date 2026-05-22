@@ -46,7 +46,16 @@
     db-id + schema + name-similarity. Cards keep the strict rule. The
     asymmetry is documented at the call site; switching tables to the
     strict rule would effectively no-op the table half of anchoring
-    default #7."
+    default #7.
+
+  - **X ≠ Y guarantee.** Substitution detection never matches an entity
+    against itself. When the same entity is both surfaced and authored
+    against (e.g. a database-listing call enumerates table T, then the
+    agent uses T), its D-atom and Q-atom share the same governance row
+    — name-similarity, db-id, and schema all trivially match. Cards are
+    incidentally protected by the asymmetric verified? rule; tables
+    rely on an explicit `atom-key` guard inside [[name-substitute]] and
+    [[ancestral-substitute]]."
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.temporal :as temporal]))
@@ -132,48 +141,77 @@
        (= (:schema x-gov) (:schema y-gov))
        (name-similar? (:name x-gov) (:name y-gov))))
 
-(defn- name-substitute?
-  "True iff some D atom of the same type as Y is a valid substitution
-  candidate for Y under the type-appropriate predicate."
+(defn- name-substitute
+  "First D atom of the same type as Y that is a valid substitution
+  candidate for Y under the type-appropriate predicate, or nil. Returns
+  the atom (not a boolean) so Phase 7 attribution can attach the
+  canonical X to the observable.
+
+  Excludes X = Y by atom-key. When the same entity is both surfaced
+  (CONV_D) and authored against (CONV_Q), its D-atom and Q-atom share
+  the governance row, which would otherwise trivially satisfy
+  name-similarity + db-id + schema — a self-substitution false positive.
+  Cards are also protected by the asymmetric verified? rule (Y must be
+  unverified, X must be verified), but tables drop both predicates and
+  rely on this guard."
   [y d-atoms governance]
   (let [y-gov   (gov governance y)
         y-type  (:type y)
+        y-key   (atom-key y)
         pred    (cond
                   (card-type?  y-type) card-substitute-candidate?
                   (table-type? y-type) table-substitute-candidate?
                   :else                (constantly false))]
     (when y-gov
-      (some (fn [x]
-              (and (= (:type x) y-type)
-                   (when-let [x-gov (gov governance x)]
-                     (pred x-gov y-gov))))
-            d-atoms))))
+      (first (filter (fn [x]
+                       (and (not= (atom-key x) y-key)
+                            (= (:type x) y-type)
+                            (when-let [x-gov (gov governance x)]
+                              (pred x-gov y-gov))))
+                     d-atoms)))))
 
-(defn- ancestral-substitute?
-  "True iff some D atom is a verified model whose source-card ancestry
-  includes Y. Applies to card-type Y only (the strategy-doc case where
-  the agent authored against a base card while the canonical surface is
-  a model layered on top of it).
+(defn- ancestral-substitute
+  "First D atom that is a verified model whose source-card ancestry
+  includes Y, or nil. Applies to card-type Y only (the strategy-doc
+  case where the agent authored against a base card while the canonical
+  surface is a model layered on top of it).
 
   `ancestry-of` is called with the integer card-id of X; the returned
   ancestor list is integers. Y's id is coerced to Long for the
-  membership check; non-numeric ids short-circuit to `false`."
+  membership check; non-numeric ids short-circuit to nil.
+
+  Excludes X = Y by atom-key (defensive — `walk-source-card-ancestry`
+  already seeds its visited-set with the starting card so a self-cycle
+  cannot return, but the guard makes the no-self-match contract
+  uniform across both substitute helpers)."
   [y d-atoms governance ancestry-of]
   (when (card-type? (:type y))
     (when-let [y-id (coerce-id (:id y))]
-      (some (fn [x]
-              (when (and (= "model" (:type x))
-                         (true? (:verified? (gov governance x))))
-                (when-let [x-id (coerce-id (:id x))]
-                  (boolean (some #(= y-id %) (ancestry-of x-id))))))
-            d-atoms))))
+      (let [y-key (atom-key y)]
+        (first (filter (fn [x]
+                         (when (and (not= (atom-key x) y-key)
+                                    (= "model" (:type x))
+                                    (true? (:verified? (gov governance x))))
+                           (when-let [x-id (coerce-id (:id x))]
+                             (boolean (some #(= y-id %) (ancestry-of x-id))))))
+                       d-atoms))))))
+
+(defn find-substitute
+  "Return the first CONV_D atom that qualifies as a canonical substitute
+  for Y under the §E selection-quality substitution rule, or nil. Public
+  so Phase 7 attribution can fire the `canonical-bypass` observable with
+  a reference to the bypassed canonical surface. Composes
+  name-similarity with ancestral-lineage; name-similarity wins when
+  both fire (the more direct grounding)."
+  [y d-atoms governance ancestry-of]
+  (or (name-substitute y d-atoms governance)
+      (ancestral-substitute y d-atoms governance ancestry-of)))
 
 (defn- has-substitute?
   "Composite substitution check for Y across CONV_D — name-similarity OR
   ancestral lineage."
   [y d-atoms governance ancestry-of]
-  (or (name-substitute? y d-atoms governance)
-      (ancestral-substitute? y d-atoms governance ancestry-of)))
+  (some? (find-substitute y d-atoms governance ancestry-of)))
 
 (defn- substitution-candidates
   "Y-side filter: CONV_Q atoms eligible for substitution detection.
