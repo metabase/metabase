@@ -20,10 +20,12 @@ export function getPieChartLegend(
   const legendSlices = getArrayFromMapValues(chartModel.sliceTree).filter(
     (s) => s.includeInLegend,
   );
-  const adjustedPercentages = reconcilePercentagesIfNeeded(
-    legendSlices.map((s) => s.normalizedPercentage),
-    getPiePercentDecimals(chartModel, settings, "legend") ?? NaN,
-  );
+  const rawPercentages = legendSlices.map((s) => s.normalizedPercentage);
+  const decimals = getPiePercentDecimals(chartModel, settings, "legend");
+  const adjustedPercentages =
+    decimals !== undefined
+      ? reconcilePercentagesIfNeeded(rawPercentages, decimals)
+      : [...rawPercentages];
 
   const {
     height: legendHeight,
