@@ -2901,9 +2901,10 @@
           ;; Database dep comes from mbql-deps on the query's :database key
           (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
               "Database dependency should come from the query")
-          ;; Table dep comes from mbql-deps on the query's :source-table
-          (is (some #(some (fn [step] (= "Table" (:model step))) %) deps)
-              "Table dependency should come from the query"))))))
+          ;; Tables/Fields are intentionally not dependencies — they're synthesized as inactive rows on import
+          ;; if missing, and upserted otherwise.
+          (is (not-any? #(some (fn [step] (#{"Table" "Field"} (:model step))) %) deps)
+              "Table/Field should not be dependencies"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"
