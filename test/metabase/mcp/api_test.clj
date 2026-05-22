@@ -602,7 +602,6 @@
                                           :database_id   (mt/id)
                                           :dataset_query (orders-count-query)}]
         (let [[session-id _] (initialize!)
-              orders-id      (mt/id :orders)
               db-name        (t2/select-one-fn :name :model/Database (mt/id))
               orders-query   {:lib/type "mbql/query"
                               :stages   [{:lib/type     "mbql.stage/mbql"

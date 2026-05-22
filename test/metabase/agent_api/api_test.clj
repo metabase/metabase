@@ -88,17 +88,6 @@
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
-(defn- visible-field-id
-  "Find the real field ID for a field by display name within a table's visible columns."
-  [table-id field-display-name]
-  (let [mp           (mt/metadata-provider)
-        query        (lib/query mp (lib.metadata/table mp table-id))
-        visible-cols (lib/visible-columns query)]
-    (->> visible-cols
-         (filter #(= (lib/display-name query %) field-display-name))
-         first
-         :id)))
-
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-new-search-if-available-otherwise-legacy
