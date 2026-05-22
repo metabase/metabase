@@ -1,24 +1,42 @@
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/entity-framework/use-entity-list-query";
-import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
-import { Databases } from "metabase/entities/databases";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { ListDatabasesRequest } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-export const useDatabaseListQuery = (
-  props: UseEntityListQueryProps<ListDatabasesRequest> = {},
-): UseEntityListQueryResult<Database> => {
-  return useEntityListQuery<Database, ListDatabasesRequest>(props, {
-    fetchList: Databases.actions.fetchList,
-    getList: Databases.selectors.getList,
-    getLoading: Databases.selectors.getLoading,
-    getLoaded: Databases.selectors.getLoaded,
-    getError: Databases.selectors.getError,
-    getListMetadata: Databases.selectors.getListMetadata,
+export const useDatabaseListQuery = ({
+  query,
+  reload = false,
+  enabled = true,
+}: UseEntityListQueryProps<ListDatabasesRequest> = {}): UseEntityListQueryResult<Database> => {
+  const {
+    data: response,
+    isFetching,
+    isSuccess,
+    error,
+  } = useListDatabasesQuery(enabled ? (query ?? undefined) : skipToken, {
+    refetchOnMountOrArgChange: reload,
   });
+  const data = useSelector((state) => {
+    if (!response) {
+      return undefined;
+    }
+    const metadata = getMetadata(state);
+    return response.data
+      .map(({ id }) => metadata.database(id))
+      .filter((database): database is Database => database != null);
+  });
+  return {
+    data,
+    isLoading: isFetching,
+    isLoaded: isSuccess,
+    error,
+  };
 };

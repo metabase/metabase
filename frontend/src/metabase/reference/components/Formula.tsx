@@ -3,16 +3,14 @@ import { t } from "ttag";
 
 import { QueryDefinition } from "metabase/querying/segments/components/QueryDefinition";
 import { Icon, Transition, type TransitionProps } from "metabase/ui";
-import type { Segment } from "metabase-types/api";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 
 import S from "./Formula.module.css";
 
-type FormulaEntityProps = {
+type FormulaProps = {
   type: "segment";
-  entity: Segment;
-};
-
-type FormulaProps = FormulaEntityProps & {
+  definition: DatasetQuery;
+  tableId: TableId;
   isExpanded: boolean;
   expandFormula: () => void;
   collapseFormula: () => void;
@@ -30,7 +28,8 @@ const TRANSITION: TransitionProps["transition"] = {
 
 export const Formula = ({
   type,
-  entity,
+  definition,
+  tableId,
   isExpanded,
   expandFormula,
   collapseFormula,
@@ -48,8 +47,8 @@ export const Formula = ({
         <div className={S.formulaDefinition} style={styles}>
           <QueryDefinition
             className={S.formulaDefinitionInner}
-            definition={entity.definition}
-            tableId={entity.table_id}
+            definition={definition}
+            tableId={tableId}
           />
         </div>
       )}

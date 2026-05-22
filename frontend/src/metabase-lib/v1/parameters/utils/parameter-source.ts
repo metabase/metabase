@@ -1,4 +1,4 @@
-import type Field from "metabase-lib/v1/metadata/Field";
+import Field from "metabase-lib/v1/metadata/Field";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
 import type {
   Parameter,
@@ -38,6 +38,36 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
   return parameter.values_source_config ?? {};
 };
 
+/**
+ * Whether the parameter's selected values can be remapped to human-readable
+ * labels. True when a connected field has a remapping, when a static list
+ * includes [value, label] pairs, or when a card/question source configures a
+ * label column.
+ */
+export const hasRemappedParameterValues = (
+  parameter: Parameter | null | undefined,
+  fields: Field[],
+): boolean => {
+  if (Field.remappedField(fields) != null) {
+    return true;
+  }
+
+  if (parameter == null) {
+    return false;
+  }
+
+  const sourceType = getSourceType(parameter);
+  const sourceConfig = getSourceConfig(parameter);
+  const sourceLabelField = sourceConfig.label_field;
+  const sourceValues = sourceConfig.values ?? [];
+
+  return (
+    (sourceType === "static-list" &&
+      sourceValues.some((value) => Array.isArray(value) && value.length > 1)) ||
+    (sourceType === "card" && sourceLabelField != null)
+  );
+};
+
 export const canUseCustomSource = (parameter: Parameter) => {
   const type = getParameterType(parameter);
 
@@ -68,11 +98,11 @@ export const isValidSourceConfig = (
 
 export const getSourceConfigForType = (
   sourceType: ValuesSourceType,
-  { card_id, value_field, values }: ValuesSourceConfig,
+  { card_id, value_field, label_field, values }: ValuesSourceConfig,
 ): ValuesSourceConfig => {
   switch (sourceType) {
     case "card":
-      return { card_id, value_field };
+      return { card_id, value_field, label_field };
     case "static-list":
       return { values };
     default:

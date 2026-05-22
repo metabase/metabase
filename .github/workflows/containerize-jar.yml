@@ -53,7 +53,7 @@ jobs:
     outputs:
       platforms: ${{ steps.platforms.outputs.result }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 1
       # we want the dockerfile from the commit we're building

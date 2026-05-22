@@ -124,6 +124,38 @@
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Table identifier qualification                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti table-qualification-style
+  "Returns the shape of identifiers this driver emits for tables in compiled SQL. One of:
+
+   - `:table-qualification-style/table`           — bare `table` (no current driver uses this)
+   - `:table-qualification-style/schema-table`    — `schema.table` (e.g. Postgres, Redshift, H2, ClickHouse) — default
+   - `:table-qualification-style/db-table`        — `db.table` (e.g. MySQL, which calls its table-containers
+                                                    \"database\"; the default db name is fixed by the JDBC connection URL)
+   - `:table-qualification-style/db-schema-table` — `db.schema.table` (e.g. SQL Server, BigQuery)"
+  {:added "0.62.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod table-qualification-style :default
+  [_]
+  :table-qualification-style/schema-table)
+
+(defmulti db-slot-value
+  "Returns the project-id / catalog string a driver places in the `db` segment of a fully-qualified
+   table reference. Meaningful only for drivers whose [[table-qualification-style]] includes a `db`
+   segment; returns `nil` otherwise."
+  {:added "0.62.0" :arglists '([driver database])}
+  (fn [driver _] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod db-slot-value :default
+  [_ _database]
+  nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
