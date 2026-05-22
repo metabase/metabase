@@ -18,11 +18,13 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, keyed by
-  `[card-id dim-id k]`. Both `query-name` and `dataset-query` go through the
-  cache, so the underlying QP call runs at most once per (card, dim, k) per
-  JVM."
+  them are deduplicated in-process via `discovery-cache`, a bounded LRU
+  keyed by `[card-id dim-id k]`. Both `query-name` and `dataset-query` go
+  through the cache, so the underlying QP call runs at most once per
+  (card, dim, k) while the entry stays warm in the LRU."
   (:require
+   [clojure.core.cache :as cache]
+   [clojure.core.cache.wrapped :as cache.wrapped]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -76,24 +78,29 @@
                    (:rows data)))))
     (catch Throwable _ nil)))
 
+(def ^:private discovery-cache-threshold
+  "Max distinct `[card-id dim-id k]` entries kept in [[discovery-cache]] before
+  the LRU starts evicting."
+  1024)
+
 (defonce ^:private discovery-cache
-  ;; In-memory only; resets on JVM restart. Keyed by [card-id dim-id k].
-  (atom {}))
+  ;; LRU keyed by [card-id dim-id k]. Bounded so a long-lived JVM with many
+  ;; explorations doesn't accumulate entries indefinitely.
+  (atom (cache/lru-cache-factory {} :threshold discovery-cache-threshold)))
 
 (defn- cached-discovery
   "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k]`. Returns
   the discovered vector (or `[]` on failure / no rows). Both `query-name`
   and `dataset-query` go through this so the underlying QP query runs at
-  most once per (card, dim, k) for the lifetime of the JVM."
+  most once per (card, dim, k) while the entry stays in the LRU."
   [{:keys [mp card target dim params]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
         cache-key [card-id dim-id k]]
-    (or (get @discovery-cache cache-key)
-        (let [values (or (run-top-k-discovery mp card target dim k) [])]
-          (swap! discovery-cache assoc cache-key values)
-          values))))
+    (cache.wrapped/lookup-or-miss
+     discovery-cache cache-key
+     (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))
 
 ;; ---------------------------------------------------------------------------
 ;; plan-rows — eager. Orchestrator calls this at plan time to produce one
@@ -179,6 +186,23 @@
     (with-segment-suffix
       (tru "{0} for {1} = {2} over time" (:name card) dim-label (str v))
       segment)))
+
+(defn plan-time-name
+  "Localized chart name computed eagerly at plan time, before the row has
+  been executed. For variants whose `query-name` is pure (everything except
+  `per-value-time-series`) this returns the final name. For
+  `per-value-time-series` we return a placeholder that omits the discovered
+  value; the runner's `finalize-row!` overwrites it once discovery resolves.
+
+  `ctx` keys: `:card`, `:dim-label`, `:segment`, `:params`. Notably no
+  `:mp`/`:target`/`:dim` — those stay deferred so the QP-touching parts of
+  variant dispatch don't run at plan time."
+  [variant {:keys [card dim-label segment] :as ctx}]
+  (if (= "per-value-time-series" variant)
+    (with-segment-suffix
+      (tru "{0} for {1} over time" (:name card) dim-label)
+      segment)
+    (query-name variant ctx)))
 
 ;; ---------------------------------------------------------------------------
 ;; dataset-query — runner-side. MBQL the QP will run.

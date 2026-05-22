@@ -70,23 +70,31 @@
 
 (defn- materialize-item
   "Translate one plan item into a vector of row *recipes* via the variant's
-  `plan-rows` multimethod. Recipes carry `:query_type`, `:display`,
-  `:segment_id`, and `:params` — no name, no MBQL. Both are deferred to
-  the runner, which builds them just before executing each row. 1:1
-  variants emit one recipe; `per-value-time-series` fans out to K recipes
-  with `:params.value_index 0..K-1`."
+  `plan-rows` multimethod, then enrich each recipe with its localized
+  `:name` via `qp.variants/plan-time-name`.
+
+  The `:name` is computed here but may be modified later for variants that fan out
+  (and note that the mechanical planner doesn't choose any of these variants)."
   [metric-by-id item]
-  (let [metric  (get metric-by-id (:metric_id item))
-        segment (segment-for metric (get-in item [:params :segment_id]))
-        ctx     {:segment segment
-                 :params  (:params item)}]
-    (qp.variants/plan-rows (:variant item) ctx)))
+  (let [metric    (get metric-by-id (:metric_id item))
+        appl      (get-in metric [:applicability (:dimension_id item)])
+        dim       (:dim appl)
+        dim-label (or (:display_name dim) (:dimension_id dim))
+        item-seg  (segment-for metric (get-in item [:params :segment_id]))
+        plan-ctx  {:segment item-seg :params (:params item)}]
+    (mapv (fn [recipe]
+            (assoc recipe :name
+                   (qp.variants/plan-time-name
+                    (:query_type recipe)
+                    {:card      (:card metric)
+                     :dim-label dim-label
+                     :segment   (segment-for metric (:segment_id recipe))
+                     :params    (:params recipe)})))
+          (qp.variants/plan-rows (:variant item) plan-ctx))))
 
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes and insert them as
-  `ExplorationQuery` rows. No database I/O happens here — recipes are pure
-  structural transforms. The runner builds `:name` and `:dataset_query`
-  when it claims each row. Returns the number of rows inserted."
+  `ExplorationQuery` rows. Returns the number of rows inserted."
   [thread-id metric-by-id plan]
   (let [rows (vec
               (for [item   plan
@@ -102,6 +110,7 @@
                  :dimension_id          (:dimension_id item)
                  :query_type            (:query_type recipe)
                  :display               (:display recipe)
+                 :name                  (:name recipe)
                  :params                (:params recipe)
                  :status                "pending"}))]
     (when (seq rows)
