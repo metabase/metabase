@@ -284,8 +284,6 @@
    (redux/post-complete
     (robust-fuse {:earliest   earliest
                   :latest     latest
-                  ;; Feed mode-stats the raw Temporal (it keys on a hash, so no numeric coercion is
-                  ;; needed); `filter some?` drops the nils the old `keep ->millis-from-epoch` did.
                   :mode-stats ((filter some?) mode-stats)})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused
