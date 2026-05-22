@@ -1,8 +1,9 @@
 import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Anchor, Card, Code, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Card, Code, Flex, Icon, Stack, Text } from "metabase/ui";
 
 interface SdkIframeEmbedSiteUrlMismatchErrorProps {
   siteUrl: string;
@@ -14,9 +15,9 @@ export const SdkIframeEmbedSiteUrlMismatchError = ({
   const applicationName = useSelector(getApplicationName);
 
   const siteUrlSettingLink = (
-    <Anchor key="link" href="/admin/settings/general" target="_blank">
+    <Link key="link" to="/admin/settings/general" target="_blank">
       {t`Site URL`}
-    </Anchor>
+    </Link>
   );
 
   return (
