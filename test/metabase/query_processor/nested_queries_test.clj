@@ -54,6 +54,7 @@
                   {:source-query {:source-table $$venues
                                   :order-by     [[:asc $venues.id]]
                                   :limit        10}
+                   :order-by     [[:asc *venues.id]]
                    :limit        5}))))))))
 
 (defn- sql-driver? []

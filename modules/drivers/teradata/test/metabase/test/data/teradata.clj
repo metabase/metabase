@@ -10,7 +10,7 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl])
   (:import
-   (java.sql Connection PreparedStatement Types)))
+   (java.sql Connection PreparedStatement SQLException Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +24,7 @@
 (defmethod sql.tx/field-base-type->sql-type [:teradata :type/Decimal]    [_ _] "DECIMAL")
 (defmethod sql.tx/field-base-type->sql-type [:teradata :type/Float]      [_ _] "FLOAT")
 (defmethod sql.tx/field-base-type->sql-type [:teradata :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:teradata :type/Text]       [_ _] "VARCHAR(2048)")
+(defmethod sql.tx/field-base-type->sql-type [:teradata :type/Text]       [_ _] "VARCHAR(2048) CHARACTER SET UNICODE")
 (defmethod sql.tx/field-base-type->sql-type [:teradata :type/Time]       [_ _] "TIME")
 
 ;; Tested using Teradata Express VM image. Set the host to the correct address if localhost does not work.
@@ -117,6 +117,45 @@
         (.setNull stmt (inc i) (get column-types column Types/VARCHAR))
         (sql-jdbc.execute/set-parameter driver stmt (inc i) value)))))
 
+(defn- sql-exception-chain
+  [e]
+  (when (instance? SQLException e)
+    (loop [^SQLException ex e
+           chain             []]
+      (let [chain (conj chain {:message    (ex-message ex)
+                               :sql-state  (.getSQLState ex)
+                               :error-code (.getErrorCode ex)})]
+        (if-let [next-ex (.getNextException ex)]
+          (recur next-ex chain)
+          chain)))))
+
+(defn- execute-row!
+  [driver ^PreparedStatement stmt columns column-types row]
+  (set-row-parameters! driver stmt columns column-types row)
+  (.executeUpdate stmt))
+
+(defn- execute-rows-individually!
+  [driver ^Connection conn sql columns column-types rows]
+  (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+    (doseq [[i row] (map-indexed vector rows)]
+      (try
+        (execute-row! driver stmt columns column-types row)
+        (catch Throwable e
+          (throw (ex-info (format "INSERT FAILED on row %d: %s" (inc i) (ex-message e))
+                          {:driver         driver
+                           :sql            sql
+                           :row-number     (inc i)
+                           :rows           (count rows)
+                           :row            row
+                           :sql-exceptions (sql-exception-chain e)}
+                          e)))))))
+
+(defn- rows-require-individual-inserts?
+  [rows]
+  (boolean (some (fn [row]
+                   (some #(or (nil? %) (= "" %)) (vals row)))
+                 rows)))
+
 (defmethod load-data/do-insert! :teradata
   [driver ^Connection conn table-identifier rows]
   (when (seq rows)
@@ -124,17 +163,37 @@
           column-types (column-sql-types columns rows)
           sql          (insert-sql driver table-identifier columns)]
       (try
-        (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
-          (doseq [row rows]
-            (set-row-parameters! driver stmt columns column-types row)
-            (.addBatch stmt))
-          (.executeBatch stmt))
+        (if (rows-require-individual-inserts? rows)
+          (execute-rows-individually! driver conn sql columns column-types rows)
+          (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+            (doseq [row rows]
+              (set-row-parameters! driver stmt columns column-types row)
+              (.addBatch stmt))
+            (.executeBatch stmt)))
         (catch Throwable e
           (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                           {:driver driver
                            :sql    sql
-                           :rows   (count rows)}
+                           :rows   (count rows)
+                           :sql-exceptions (sql-exception-chain e)}
                           e)))))))
 
 (defmethod sql.tx/pk-sql-type :teradata [_]
   "INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 2147483647 NO CYCLE)")
+
+(defmethod tx/aggregate-column-info :teradata
+  ([driver ag-type]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Decimal})))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Decimal}))))
+
+(defmethod load-data/chunk-size :teradata
+  [_driver _dbdef _tabledef]
+  200)

@@ -232,15 +232,41 @@
           :quarter (num-to-interval :month (* amount 3))
           :year (num-to-interval :year amount)))))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:teradata :seconds] [_ _ field-or-value]
-  (:to_timestamp field-or-value))
+(defmethod sql.qp/float-dbtype :teradata
+  [_]
+  "DOUBLE PRECISION")
 
-(defmethod sql.qp/unix-timestamp->honeysql [:teradata :milliseconds] [_ _ field-or-value]
-  (sql.qp/unix-timestamp->honeysql (h2x// field-or-value 1000) :seconds))
+(defmethod sql.qp/unix-timestamp->honeysql [:teradata :seconds]
+  [_ _ expr]
+  (h2x/with-database-type-info [:to_timestamp expr] "timestamp"))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:teradata :milliseconds]
+  [driver _ expr]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+
+(defn- default-select
+  [driver {[from] :from}]
+  (let [table-identifier (if (sequential? from)
+                           (first (second from))
+                           from)
+        [raw-identifier] (when table-identifier
+                           (sql.qp/format-honeysql driver table-identifier))
+        expr             (if (seq raw-identifier)
+                           [:raw (format "%s.*" raw-identifier)]
+                           :*)]
+    [[expr]]))
+
+(defn- select-with-top
+  [select value]
+  (with-meta (vec select) (assoc (meta select) :top value)))
 
 (defmethod sql.qp/apply-top-level-clause [:teradata :limit]
-  [_ _ honeysql-form {_value :limit}]
-  (update honeysql-form :select sql.u/select-clause-deduplicate-aliases))
+  [driver _ honeysql-form {value :limit}]
+  (let [deduped-select (sql.u/select-clause-deduplicate-aliases (:select honeysql-form))
+        select         (if (seq deduped-select)
+                         deduped-select
+                         (default-select driver honeysql-form))]
+    (assoc honeysql-form :select (select-with-top select value))))
 
 (defmethod sql.qp/apply-top-level-clause [:teradata :page] [_ _ honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (:raw (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
