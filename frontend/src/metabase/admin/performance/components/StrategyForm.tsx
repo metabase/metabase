@@ -22,6 +22,7 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
+  type BoxProps,
   Button,
   FixedSizeIcon,
   Flex,
@@ -86,7 +87,10 @@ interface StrategyFormProps {
    * provides the Formik context so the consumer's buttons can dispatch
    * submit / reset via `useFormikContext`. */
   renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
-  classNames?: { formBox?: string };
+  /** Mantine props applied to the inner `FormBox` wrapper, useful for
+   * neutralizing its default padding when the surrounding surface already
+   * provides its own inset (e.g. a Mantine `Modal`). */
+  formBoxProps?: BoxProps;
 }
 
 export const StrategyForm = ({
@@ -101,7 +105,7 @@ export const StrategyForm = ({
   onReset,
   isInSidebar = false,
   renderFooter,
-  classNames,
+  formBoxProps,
   buttonLabels = isInSidebar
     ? {
         save: t`Save`,
@@ -137,7 +141,7 @@ export const StrategyForm = ({
         isInSidebar={isInSidebar}
         renderFooter={renderFooter}
         strategyType={initialValues.type}
-        classNames={classNames}
+        formBoxProps={formBoxProps}
       />
     </FormProvider>
   );
@@ -179,7 +183,7 @@ const StrategyFormBody = ({
   buttonLabels,
   isInSidebar,
   renderFooter,
-  classNames,
+  formBoxProps,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -191,7 +195,7 @@ const StrategyFormBody = ({
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
   renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
-  classNames?: { formBox?: string };
+  formBoxProps?: BoxProps;
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -248,9 +252,10 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         <Box
-          className={cx(Styles.FormBox, classNames?.formBox, {
+          className={cx(Styles.FormBox, {
             [Styles.FormBoxSidebar]: isInSidebar,
           })}
+          {...formBoxProps}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="md" c="text-secondary">

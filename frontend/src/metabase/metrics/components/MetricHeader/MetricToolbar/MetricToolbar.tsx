@@ -39,7 +39,8 @@ type MetricModalType =
   | "copy"
   | "archive"
   | "add-to-dashboard"
-  | "alert";
+  | "alert"
+  | "caching";
 
 interface MetricToolbarProps {
   card: Card;
@@ -58,7 +59,6 @@ export function MetricToolbar({
     <>
       <MetricToolbarButtons
         card={card}
-        urls={urls}
         showDataStudioLink={showDataStudioLink}
         onOpenModal={setModalType}
       />
@@ -76,14 +76,12 @@ export function MetricToolbar({
 
 interface MetricToolbarButtonsProps {
   card: Card;
-  urls: MetricUrls;
   showDataStudioLink: boolean;
   onOpenModal: (modalType: MetricModalType) => void;
 }
 
 function MetricToolbarButtons({
   card,
-  urls,
   showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
@@ -197,9 +195,8 @@ function MetricToolbarButtons({
             <>
               <Menu.Divider role="separator" />
               <Menu.Item
-                leftSection={<Icon name="gear" />}
-                component={ForwardRefLink}
-                to={urls.caching(card.id)}
+                leftSection={<Icon name="sync" />}
+                onClick={() => onOpenModal("caching")}
               >
                 {t`Caching`}
               </Menu.Item>
@@ -278,6 +275,10 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
           question={new Question(card)}
           onClose={onClose}
         />
+      );
+    case "caching":
+      return (
+        <PLUGIN_CACHING.MetricCachingModal card={card} onClose={onClose} />
       );
     default:
       return null;

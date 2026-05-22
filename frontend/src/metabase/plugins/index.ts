@@ -16,6 +16,7 @@ export {
 export {
   PLUGIN_CACHING,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
