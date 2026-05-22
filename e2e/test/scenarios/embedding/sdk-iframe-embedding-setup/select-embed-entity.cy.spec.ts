@@ -249,7 +249,7 @@ describe(suiteTitle, () => {
     });
 
     H.entityPickerModal().within(() => {
-      cy.findByText("Select default collection").should("be.visible");
+      cy.findByText("Select initial collection").should("be.visible");
 
       // The picker opens on "Recent items" by default. Navigate via the
       // root sidebar to disambiguate from any matching recent entries.

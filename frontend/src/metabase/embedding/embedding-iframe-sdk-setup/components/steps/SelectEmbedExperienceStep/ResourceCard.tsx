@@ -169,7 +169,7 @@ export const ResourceCard = () => {
     if (experience === "browser") {
       return (
         <CollectionPickerModal
-          title={t`Select default collection`}
+          title={t`Select initial collection`}
           value={PICKER_RECENTS_VALUE}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
