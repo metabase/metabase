@@ -127,23 +127,23 @@ export class ApiClient extends EventEmitter<EventMap> {
     };
   }
 
-  private async _dispatch<T = unknown>(
+  private async _dispatch(
     init: RequestInit,
     withRetries: boolean = false,
-  ): Promise<T> {
+  ): Promise<unknown> {
     if (!isRequestMethod(init.method)) {
       throw new Error("Invalid HTTP method");
     }
 
     try {
       if (withRetries) {
-        return await retry(() => this._makeRequest<T>(init), {
+        return await retry(() => this._makeRequest(init), {
           maxRetries: MAX_RETRIES,
           shouldRetry: isRetriableError,
           signal: init.signal,
         });
       }
-      return await this._makeRequest<T>(init);
+      return await this._makeRequest(init);
     } catch (error) {
       if (init.signal?.aborted) {
         throw { isCancelled: true };
@@ -160,12 +160,12 @@ export class ApiClient extends EventEmitter<EventMap> {
     }
   }
 
-  private async _makeRequest<T = unknown>({
+  private async _makeRequest<RawResponse extends boolean>({
     url,
     noEvent,
     rawResponse,
     ...init
-  }: RequestInit): Promise<T> {
+  }: RequestInit<RawResponse>): Promise<ResponseFor<RawResponse>> {
     // We wrap the fetch args in an explicit `Request` (instead of just calling
     // `fetch(url, init)`) so fetch-mock populates `call.request` on every
     // recorded call. `findRequests()` in our Jest helpers reads `call.request`
@@ -198,7 +198,7 @@ export class ApiClient extends EventEmitter<EventMap> {
       throw { status, data: body };
     }
 
-    return body as T;
+    return body as ResponseFor<RawResponse>;
   }
 
   /**
@@ -234,9 +234,11 @@ export class ApiClient extends EventEmitter<EventMap> {
           body = JSON.stringify(data);
         }
 
-        // GET/POST/etc. are intentionally `any`-typed (see ApiMethod); the raw
-        // vs parsed distinction is resolved by MethodCreator's `Raw` parameter.
-        return this._dispatch<any>(
+        // GET/POST/etc. are intentionally `any`-typed (see ApiMethod), and this
+        // closure can't name MethodCreator's `Raw`, so we cast to `any` — a
+        // literal `rawResponse: true` is still narrowed to `Response` by the
+        // `ApiMethod<Raw>` return type at the call site.
+        return this._dispatch(
           {
             ...options,
             url,
@@ -245,7 +247,7 @@ export class ApiClient extends EventEmitter<EventMap> {
             body,
           },
           withRetries,
-        );
+        ) as any;
       };
     };
   }
@@ -259,14 +261,14 @@ export class ApiClient extends EventEmitter<EventMap> {
    *
    * No method-derived guesswork about whether data is body or querystring.
    */
-  async request<T = unknown, Raw extends boolean = false>(
+  async request<Raw extends boolean = false>(
     options: {
       method: RequestMethod;
       url: string;
       body?: unknown;
       params?: Record<string, unknown>;
     } & RequestOptions<Raw>,
-  ): Promise<ResponseFor<T, Raw>> {
+  ): Promise<ResponseFor<Raw>> {
     if (Array.isArray(options.body)) {
       throw new Error("API bodies must be plain objects, not arrays");
     }
@@ -302,13 +304,13 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._dispatch<ResponseFor<T, Raw>>({
+    return this._dispatch({
       ...options,
       url,
       method,
       headers,
       body,
-    });
+    }) as ResponseFor<Raw>;
   }
 }
 

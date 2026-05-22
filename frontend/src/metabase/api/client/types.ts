@@ -1,24 +1,24 @@
 import type { RequestMethod } from "./method";
 
-export type RequestOptions<Raw extends boolean = boolean> = {
+export type RequestOptions<RawResponse extends boolean = boolean> = {
   noEvent?: boolean;
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
   /**
    * When `true`, resolve with the raw `Response` instead of the parsed body —
    * for callers that read it themselves (binary downloads, map tiles as a blob).
    * Passing a literal `true` narrows the resolved type to `Response`.
    */
-  rawResponse?: Raw;
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
+  rawResponse?: RawResponse;
 };
 
 /**
  * What a request resolves with: the raw `Response` when `rawResponse` is `true`,
  * otherwise the parsed body typed as `T`.
  */
-export type ResponseFor<T, Raw extends boolean> = Raw extends true
+export type ResponseFor<Raw extends boolean> = Raw extends true
   ? Response
-  : T;
+  : unknown;
 
 export type RequestClientInfo =
   | string
@@ -31,8 +31,11 @@ export type RequestClientInfo =
  */
 export type ApiMethod<Raw extends boolean = boolean> = (
   rawData?: any,
-  invocationOptions?: RequestOptions,
-) => Promise<ResponseFor<any, Raw>>;
+  invocationOptions?: RequestOptions<Raw>,
+  // Non-raw GET/POST/etc. stay `any` (not `unknown`) to preserve the legacy
+  // loose typing the many existing call sites rely on; a literal
+  // `rawResponse: true` still narrows the result to `Response`.
+) => Promise<Raw extends true ? Response : any>;
 
 export type MethodCreator = <Raw extends boolean = false>(
   urlTemplate: string,
@@ -49,9 +52,9 @@ export type EventMap = {
   responseError: [ResponseErrorInfo];
 };
 
-export type RequestInit = {
+export type RequestInit<RawResponse extends boolean = boolean> = {
   method: RequestMethod;
   url: URL;
   body?: BodyInit;
   headers?: Record<string, string>;
-} & RequestOptions;
+} & RequestOptions<RawResponse>;
