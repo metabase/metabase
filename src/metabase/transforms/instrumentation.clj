@@ -105,6 +105,30 @@
     (when rows
       (analytics/observe! :metabase-transforms/data-transfer-rows labels rows))))
 
+(mu/defn record-incremental-rows!
+  "Observe the source-available and target-processed row counts for an incremental transform run.
+
+   `rows-available` is the count of source rows in the (lo, hi] checkpoint range and comes from
+   `transforms-base.util/get-source-range-params`. `rows-processed` is the number of rows actually
+   written to the target — for SQL incremental transforms, the `:rows-affected` value returned by
+   `driver/run-transform!`. Both observations are emitted with the same `full-incremental-run`
+   label so a Grafana panel can compare available vs. processed across the same population of runs.
+
+   Both numbers are required for emission: if either is missing the function is a no-op. This
+   keeps `sum(rows-available)` and `sum(rows-processed)` over the same run population rather than
+   silently undercounting one side."
+  [rows-available        :- [:maybe int?]
+   rows-processed        :- [:maybe int?]
+   full-incremental-run? :- :boolean]
+  (when (and (some? rows-available) (some? rows-processed))
+    (let [labels {:full-incremental-run (str full-incremental-run?)}]
+      (analytics/observe! :metabase-transforms/incremental-rows
+                          (assoc labels :type "available")
+                          rows-available)
+      (analytics/observe! :metabase-transforms/incremental-rows
+                          (assoc labels :type "processed")
+                          rows-processed))))
+
 (defn record-job-start!
   "Record the start of a transform job run."
   [job-id run-method]

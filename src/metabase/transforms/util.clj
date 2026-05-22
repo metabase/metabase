@@ -19,14 +19,28 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
+
+(defn- driver-result->rows-processed
+  "Pulls a row count out of whatever `driver/run-transform!` returned. The contract is
+  unfortunately heterogeneous: incremental + most strategies return `{:rows-affected N}`,
+  but the `create-or-replace` branch in `driver/sql` returns the bare integer. Anything
+  else — a Python transform's HTTP response, for example — yields nil so the metric is
+  skipped rather than mislabelled."
+  [driver-result]
+  (cond
+    (integer? driver-result) driver-result
+    (map? driver-result)     (:rows-affected driver-result)
+    :else                    nil))
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
 
@@ -125,8 +139,12 @@
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
       ;; Enrich the active task.transform.* span with checkpoint range attrs for
       ;; incremental runs. No-op when tracing is disabled or no span is active.
-      (when source-range-params
-        (tracing/add-span-attrs! :tasks (transforms-base.u/checkpoint-span-attrs source-range-params)))
+      ;; `when-let` with map destructure folds the nil-guard, the `:rows-available`
+      ;; extraction, and the `:as` rebind into one form.
+      (when-let [{:keys [rows-available] :as srp} source-range-params]
+        (tracing/add-span-attrs! :tasks
+                                 (cond-> (transforms-base.u/checkpoint-span-attrs srp)
+                                   (some? rows-available) (assoc :transform/rows-available rows-available))))
       (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
             ret (driver.conn/with-transform-connection
@@ -142,6 +160,25 @@
                     (run-transform! cancel-chan source-range-params)))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
+        ;; Source-range-params is non-nil only for incremental transforms, so this gate
+        ;; gives us "incremental only" emission for free. Both numbers must be present
+        ;; for the metric pair to fire — see `record-incremental-rows!`.
+        ;;
+        ;; Narrow try/catch: succeed-started-run! has already marked the run, so a throw
+        ;; from the emission code must not escape to the outer catch (which would call
+        ;; fail-started-run! and re-throw, polluting logs for a run that actually
+        ;; succeeded). Prometheus calls are left naked inside; the realistic failure
+        ;; is unregistered-metric typos, which CI catches loudly.
+        (when-let [{:keys [rows-available]} source-range-params]
+          (try
+            (when-some [rows-processed (driver-result->rows-processed (:result ret))]
+              (tracing/add-span-attrs! :tasks {:transform/rows-processed rows-processed})
+              (transforms.instrumentation/record-incremental-rows!
+               rows-available
+               rows-processed
+               (transforms-base.u/full-incremental-run? transform)))
+            (catch Throwable t
+              (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
         ret))
     (catch Throwable t
       (if (:timeout (ex-data t))

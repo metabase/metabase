@@ -287,7 +287,9 @@
    :checkpoint-filter-field-id (the field ID of the checkpoint column)
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
    :lo                         values in the source table must be > this :value.
-   :hi                         values in the source table must be <= this :value."
+   :hi                         values in the source table must be <= this :value.
+   :rows-available             count of source rows in (lo, hi] from the same scan that
+                               derived the watermark — nil if the count was not produced."
   [{:keys [source target] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
@@ -318,19 +320,27 @@
             base-type         (:base-type column)
             lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
-            max-value
+            ;; A single scan produces both the high watermark and the count of rows the
+            ;; upcoming run will see in (lo, hi]. Combining max + count avoids a second
+            ;; round-trip and pins both numbers to the same point-in-time view of the
+            ;; source — any rows that arrive between this scan and the actual transform
+            ;; run land in the next watermark window, not this one.
+            [max-value rows-available]
             (let [table-id          (:table-id column)
                   table-metadata    (lib.metadata/table metadata-provider table-id)
                   base-query        (lib/query metadata-provider table-metadata)
                   filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-                  query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
-                  query-result      (qp/process-query query)]
-              (ffirst (get-in query-result [:data :rows])))]
-        {:column                     column
-         :checkpoint-filter-field-id checkpoint-filter-field-id
-         :lo                         (when lo {:value lo})
-         :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
-                                           lo {:value lo})}))))
+                  query             (-> (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+                                        (lib/aggregate (lib/count)))
+                  query-result      (qp/process-query query)
+                  [mv cv]           (first (get-in query-result [:data :rows]))]
+              [mv (some-> cv long)])]
+        (cond-> {:column                     column
+                 :checkpoint-filter-field-id checkpoint-filter-field-id
+                 :lo                         (when lo {:value lo})
+                 :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
+                                                   lo {:value lo})}
+          (some? rows-available) (assoc :rows-available rows-available))))))
 
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
