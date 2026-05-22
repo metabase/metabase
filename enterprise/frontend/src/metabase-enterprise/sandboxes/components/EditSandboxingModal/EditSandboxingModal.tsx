@@ -20,8 +20,10 @@ import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { GTAPApi } from "metabase/services";
 import { Button, Center, Icon, Loader } from "metabase/ui";
+import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -327,6 +329,7 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -357,9 +360,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />

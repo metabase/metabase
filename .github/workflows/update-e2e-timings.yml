@@ -42,7 +42,7 @@ jobs:
 
       - name: Collect and average timing data
         id: collect-timings
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { collectAndAverageTimings } = require('${{ github.workspace }}/.github/scripts/average-e2e-timings.js');

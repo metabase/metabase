@@ -70,7 +70,7 @@ jobs:
       uses: ./.github/actions/prepare-release-scripts
     - name: Get platforms
       id: platforms
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         result-encoding: string
         script: | # js
