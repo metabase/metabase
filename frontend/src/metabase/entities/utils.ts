@@ -982,9 +982,19 @@ const RETIRED_ENTITY_NAMES = [
   "schemas",
   "segments",
   "snippets",
+  "tables",
 ];
 
-export function combineEntities(entities: Entity[]): CombinedEntities {
+/**
+ * Custom slice reducers for retired entities whose normalized slice needs more
+ * than the default `handleEntities` merge — passed in by the caller (see
+ * `metabase/redux/entities`) to keep custom reducers out of this module and
+ * avoid circular imports.
+ */
+export function combineEntities(
+  entities: Entity[],
+  retiredReducers: Record<string, EntitiesReducer> = {},
+): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};
   const reducersMap: EntitiesReducersMap = {};
 
@@ -1000,7 +1010,11 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
 
   for (const name of RETIRED_ENTITY_NAMES) {
     if (!(name in reducersMap)) {
-      reducersMap[name] = handleEntities(/^metabase\/entities\//, name);
+      reducersMap[name] = handleEntities(
+        /^metabase\/entities\//,
+        name,
+        retiredReducers[name],
+      );
     }
   }
 

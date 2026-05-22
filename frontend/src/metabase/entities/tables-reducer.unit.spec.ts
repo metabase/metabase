@@ -1,9 +1,9 @@
 import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
+import { tablesReducer } from "metabase/entities/tables-reducer";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-describe("table entity", () => {
-  describe("saved questions | reducer", () => {
+describe("tablesReducer", () => {
+  describe("saved questions virtual table sync", () => {
     function getQuestion({
       id = 5,
       name = "Q1",
@@ -24,7 +24,7 @@ describe("table entity", () => {
       };
     }
 
-    function getCreateAction(question) {
+    function getCreateAction(question: unknown) {
       return {
         type: Questions.actionTypes.CREATE,
         payload: {
@@ -34,7 +34,7 @@ describe("table entity", () => {
       };
     }
 
-    function getUpdateAction(question) {
+    function getUpdateAction(question: unknown) {
       return {
         type: Questions.actionTypes.UPDATE,
         payload: {
@@ -44,20 +44,40 @@ describe("table entity", () => {
       };
     }
 
-    it("should add saved question to tables state", () => {
+    it("should add saved question to tables state on CREATE", () => {
       const { question, virtualTable } = getQuestion();
 
-      const nextState = Tables.reducer({}, getCreateAction(question));
+      const nextState = tablesReducer({}, getCreateAction(question));
 
       expect(nextState).toEqual({
         [virtualTable.id]: virtualTable,
       });
     });
 
+    it("should leave state untouched on CREATE when the virtual table already exists", () => {
+      const { question, virtualTable } = getQuestion();
+      const state = { [virtualTable.id]: virtualTable };
+
+      const nextState = tablesReducer(state, getCreateAction(question));
+
+      expect(nextState).toBe(state);
+    });
+
+    it("should ignore CREATE actions flagged with error", () => {
+      const { question } = getQuestion();
+
+      const nextState = tablesReducer(
+        {},
+        { ...getCreateAction(question), error: true },
+      );
+
+      expect(nextState).toEqual({});
+    });
+
     it("should remove saved question from state when archived", () => {
       const { question, virtualTable } = getQuestion({ archived: true });
 
-      const nextState = Tables.reducer(
+      const nextState = tablesReducer(
         {
           card__123: { foo: "bar" },
           [virtualTable.id]: virtualTable,
@@ -68,19 +88,66 @@ describe("table entity", () => {
       expect(nextState).toEqual({ card__123: { foo: "bar" } });
     });
 
+    it("should not mutate the previous state when removing an archived question", () => {
+      const { question, virtualTable } = getQuestion({ archived: true });
+      const state = {
+        card__123: { foo: "bar" },
+        [virtualTable.id]: virtualTable,
+      };
+
+      const nextState = tablesReducer(state, getUpdateAction(question));
+
+      expect(nextState).not.toBe(state);
+      expect(state[virtualTable.id]).toBeDefined();
+    });
+
     it("should add saved question to tables state when unarchived", () => {
       const { question, virtualTable } = getQuestion();
 
-      const nextState = Tables.reducer({}, getUpdateAction(question));
+      const nextState = tablesReducer({}, getUpdateAction(question));
 
       expect(nextState).toEqual({
         [virtualTable.id]: virtualTable,
       });
     });
+
+    it("should sync display_name and description into an existing virtual table on UPDATE", () => {
+      const { question, virtualTable } = getQuestion();
+      const state = { [virtualTable.id]: virtualTable };
+
+      const renamed = { ...question, name: "Renamed", description: "Now here" };
+      const nextState = tablesReducer(state, getUpdateAction(renamed));
+
+      expect(nextState[virtualTable.id]).toMatchObject({
+        display_name: "Renamed",
+        description: "Now here",
+      });
+    });
+
+    it("should leave state untouched on UPDATE when nothing relevant changed", () => {
+      const { question, virtualTable } = getQuestion();
+      const state = { [virtualTable.id]: virtualTable };
+
+      const nextState = tablesReducer(state, getUpdateAction(question));
+
+      expect(nextState).toBe(state);
+    });
+
+    it("should ignore UPDATE actions flagged with error", () => {
+      const { question, virtualTable } = getQuestion({ archived: true });
+      const state = { [virtualTable.id]: virtualTable };
+
+      const nextState = tablesReducer(state, {
+        ...getUpdateAction(question),
+        error: true,
+      });
+
+      expect(nextState).toBe(state);
+    });
   });
 
   describe("metabase/entities/UPDATE original_fields sync", () => {
-    function getEntitiesUpdateAction(fields) {
+    function getEntitiesUpdateAction(fields: Record<string, unknown>) {
       return {
         type: "metabase/entities/UPDATE",
         payload: {
@@ -101,7 +168,7 @@ describe("table entity", () => {
         },
       };
 
-      const nextState = Tables.reducer(
+      const nextState = tablesReducer(
         state,
         getEntitiesUpdateAction({
           10: { id: 10, table_id: 1, display_name: "New" },
@@ -117,7 +184,7 @@ describe("table entity", () => {
     it("leaves state untouched when the table has no original_fields", () => {
       const state = { 1: { id: 1, name: "Orders" } };
 
-      const nextState = Tables.reducer(
+      const nextState = tablesReducer(
         state,
         getEntitiesUpdateAction({
           10: { id: 10, table_id: 1, display_name: "New" },
@@ -135,7 +202,7 @@ describe("table entity", () => {
         },
       };
 
-      const nextState = Tables.reducer(
+      const nextState = tablesReducer(
         state,
         getEntitiesUpdateAction({
           10: { id: 10, table_id: 1, display_name: "New" },
@@ -159,7 +226,7 @@ describe("table entity", () => {
         },
       };
 
-      const nextState = Tables.reducer(
+      const nextState = tablesReducer(
         state,
         getEntitiesUpdateAction({
           "card__1:10": { id: 10, table_id: "card__1", display_name: "Both" },
@@ -177,7 +244,7 @@ describe("table entity", () => {
         },
       };
 
-      const nextState = Tables.reducer(state, {
+      const nextState = tablesReducer(state, {
         type: "metabase/entities/UPDATE",
         error: true,
         payload: {
