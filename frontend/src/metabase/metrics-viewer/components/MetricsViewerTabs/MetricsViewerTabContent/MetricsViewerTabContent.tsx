@@ -211,7 +211,7 @@ export function MetricsViewerTabContent({
       : item.availableOptions.length > 0,
   );
   const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
-  const showColumnLabels = tab.showColumnLabels !== false;
+  const showColumnLabels = tab.showColumnLabels === true;
 
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
     isNotNull,

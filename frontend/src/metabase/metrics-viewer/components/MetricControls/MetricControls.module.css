@@ -1,3 +1,58 @@
-.divider {
-  align-self: stretch;
+.root {
+  position: relative;
+  width: 100%;
+  height: 2.5rem;
+}
+
+.leftControls {
+  position: absolute;
+  top: 0.25rem;
+  left: 0;
+}
+
+.centerCluster {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  max-width: 100%;
+  transform: translateX(-50%);
+}
+
+.centerControls {
+  box-sizing: border-box;
+  height: 2.5rem;
+  overflow: hidden;
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+}
+
+.controlSection {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.controlSection + .controlSection {
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.controlButton {
+  height: 2rem;
+  padding-inline: 1rem;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background: var(--mb-color-background-hover);
+  }
+}
+
+.optionsButton {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background: var(--mb-color-background-hover);
+  }
 }

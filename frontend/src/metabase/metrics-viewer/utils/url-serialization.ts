@@ -344,7 +344,7 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     type: tab.type,
     label: tab.label,
     display: tab.display,
-    ...(tab.showColumnLabels === false ? { showColumnLabels: false } : {}),
+    ...(tab.showColumnLabels === true ? { showColumnLabels: true } : {}),
     ...(tab.visualizationSettings &&
     Object.keys(tab.visualizationSettings).length > 0
       ? { visualizationSettings: tab.visualizationSettings }
@@ -378,8 +378,8 @@ export function deserializeTab(
     type: serializedTab.type,
     label: serializedTab.label,
     display: serializedTab.display,
-    ...(serializedTab.showColumnLabels === false
-      ? { showColumnLabels: false }
+    ...(serializedTab.showColumnLabels === true
+      ? { showColumnLabels: true }
       : {}),
     ...(serializedTab.visualizationSettings
       ? { visualizationSettings: serializedTab.visualizationSettings }

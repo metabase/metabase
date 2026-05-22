@@ -42,7 +42,7 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
-    it("round-trips disabled column labels", () => {
+    it("round-trips enabled column labels", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1 }],
         tabs: [
@@ -51,7 +51,7 @@ describe("url-serialization", () => {
             type: "time",
             label: "By Month",
             display: "line",
-            showColumnLabels: false,
+            showColumnLabels: true,
             definitions: [{ slotIndex: 0, dimensionId: "created_at" }],
           },
         ],

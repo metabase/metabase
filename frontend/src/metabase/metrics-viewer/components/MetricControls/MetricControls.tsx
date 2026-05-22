@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -10,19 +11,11 @@ import type {
 import {
   type AvailableDimensionsResult,
   type DimensionFilterValue,
+  getDimensionIcon,
   getProjectionInfo,
   getTabConfig,
 } from "metabase/metrics-viewer/utils";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Divider,
-  Flex,
-  Icon,
-  Menu,
-  Switch,
-} from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Menu, Switch } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
@@ -64,6 +57,10 @@ type MetricControlsProps = {
   ) => void;
 };
 
+function ControlSection({ children }: { children: ReactNode }) {
+  return <Box className={S.controlSection}>{children}</Box>;
+}
+
 export function MetricControls({
   definition,
   displayType,
@@ -78,7 +75,7 @@ export function MetricControls({
   onTemporalUnitChange,
   onBinningChange,
   canToggleColumnLabels,
-  showColumnLabels = true,
+  showColumnLabels = false,
   onShowColumnLabelsChange,
   showStackSeries,
   visualizationSettings,
@@ -113,120 +110,118 @@ export function MetricControls({
     (sourceId) => (availableDimensions.bySource[sourceId]?.length ?? 0) > 0,
   );
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
-  const columnPickerLabel = tabLabel ?? t`Select column`;
+  const columnPickerLabel =
+    tabType === "time" ? t`Time` : (tabLabel ?? t`Select column`);
+  const columnPickerIcon = projectionInfo.projectionDimension
+    ? getDimensionIcon(projectionInfo.projectionDimension)
+    : undefined;
+
+  const hasCenterControls =
+    hasFilterControls || hasBucketControls || hasBinningControls;
 
   return (
-    <Box pos="relative" display="inline-flex">
-      <Flex
-        maw="100%"
-        h="3rem"
-        display="inline-flex"
-        bg="background-primary"
-        bd="1px solid var(--mb-color-border)"
-        bdrs="lg"
-        px="sm"
-        align="center"
-        gap="xs"
-        data-testid="metrics-viewer-controls"
-      >
+    <Box className={S.root} data-testid="metrics-viewer-controls">
+      <Flex className={S.leftControls} align="center" gap="md">
         <ChartTypePicker
           chartTypes={chartTypes}
           value={effectiveDisplayType}
           onChange={onDisplayTypeChange}
         />
         {showStackSeries && onVisualizationSettingsChange && (
-          <>
-            <Divider orientation="vertical" className={S.divider} mx="xs" />
-            <ChartLayoutPicker
-              isStacked={!!visualizationSettings?.["graph.split_panels"]}
-              onToggle={(stacked) =>
-                onVisualizationSettingsChange({
-                  "graph.split_panels": stacked,
-                })
-              }
-            />
-          </>
-        )}
-        {hasFilterControls && projectionInfo.filterDimension && (
-          <>
-            <Divider orientation="vertical" className={S.divider} mx="xs" />
-            {hasAvailableDimensions && (
-              <>
-                <Button
-                  w={184}
-                  justify="space-between"
-                  fw="bold"
-                  py="xs"
-                  px="sm"
-                  aria-label={t`Change column`}
-                  variant="subtle"
-                  color="text-primary"
-                  rightSection={<Icon name="chevrondown" size={12} />}
-                  onClick={openDimensionPickerSidebar}
-                >
-                  {columnPickerLabel}
-                </Button>
-                <Divider orientation="vertical" className={S.divider} mx="xs" />
-              </>
-            )}
-            <DimensionFilterButton
-              definition={definition}
-              filterDimension={projectionInfo.filterDimension}
-              dimensionFilter={dimensionFilter}
-              allFilterDimensions={allFilterDimensions}
-              onChange={onDimensionFilterChange}
-            />
-          </>
-        )}
-        {hasBucketControls && projectionInfo.projectionDimension && (
-          <>
-            <Divider orientation="vertical" className={S.divider} mx="xs" />
-            <BucketButton
-              definition={definition}
-              dimension={projectionInfo.projectionDimension}
-              projection={projectionInfo.projection!}
-              onChange={onTemporalUnitChange}
-            />
-          </>
-        )}
-        {hasBinningControls && projectionInfo.projectionDimension && (
-          <>
-            <Divider orientation="vertical" className={S.divider} mx="xs" />
-            <BinningButton
-              definition={definition}
-              dimension={projectionInfo.projectionDimension}
-              projection={projectionInfo.projection!}
-              onBinningChange={onBinningChange}
-            />
-          </>
+          <ChartLayoutPicker
+            isStacked={!!visualizationSettings?.["graph.split_panels"]}
+            onToggle={(stacked) =>
+              onVisualizationSettingsChange({
+                "graph.split_panels": stacked,
+              })
+            }
+          />
         )}
       </Flex>
-      {canToggleColumnLabels && onShowColumnLabelsChange && (
-        <Menu position="bottom-start" withinPortal>
-          <Menu.Target>
-            <ActionIcon
-              aria-label={t`Column label options`}
-              pos="absolute"
-              right="-2.5rem"
-              top="50%"
-              variant="subtle"
-              style={{ transform: "translateY(-50%)" }}
-            >
-              <Icon name="ellipsis" c="text-primary" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown p="md">
-            <Switch
-              label={t`Show column labels`}
-              size="sm"
-              labelPosition="right"
-              checked={showColumnLabels}
-              onChange={(event) =>
-                onShowColumnLabelsChange(event.currentTarget.checked)
-              }
-            />
-          </Menu.Dropdown>
-        </Menu>
+      {(hasCenterControls || canToggleColumnLabels) && (
+        <Flex className={S.centerCluster} align="center" gap="sm">
+          {hasCenterControls && (
+            <Flex className={S.centerControls} align="center">
+              {hasFilterControls && projectionInfo.filterDimension && (
+                <>
+                  {hasAvailableDimensions && (
+                    <ControlSection>
+                      <Button
+                        className={S.controlButton}
+                        justify="space-between"
+                        fw="bold"
+                        aria-label={t`Change column`}
+                        variant="subtle"
+                        color="text-primary"
+                        leftSection={
+                          columnPickerIcon ? (
+                            <Icon c="brand" name={columnPickerIcon} size={16} />
+                          ) : undefined
+                        }
+                        onClick={openDimensionPickerSidebar}
+                      >
+                        {columnPickerLabel}
+                      </Button>
+                    </ControlSection>
+                  )}
+                  <ControlSection>
+                    <DimensionFilterButton
+                      definition={definition}
+                      filterDimension={projectionInfo.filterDimension}
+                      dimensionFilter={dimensionFilter}
+                      allFilterDimensions={allFilterDimensions}
+                      onChange={onDimensionFilterChange}
+                    />
+                  </ControlSection>
+                </>
+              )}
+              {hasBucketControls && projectionInfo.projectionDimension && (
+                <ControlSection>
+                  <BucketButton
+                    definition={definition}
+                    dimension={projectionInfo.projectionDimension}
+                    projection={projectionInfo.projection!}
+                    onChange={onTemporalUnitChange}
+                  />
+                </ControlSection>
+              )}
+              {hasBinningControls && projectionInfo.projectionDimension && (
+                <ControlSection>
+                  <BinningButton
+                    definition={definition}
+                    dimension={projectionInfo.projectionDimension}
+                    projection={projectionInfo.projection!}
+                    onBinningChange={onBinningChange}
+                  />
+                </ControlSection>
+              )}
+            </Flex>
+          )}
+          {canToggleColumnLabels && onShowColumnLabelsChange && (
+            <Menu position="bottom-start" withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  className={S.optionsButton}
+                  aria-label={t`Column label options`}
+                  variant="subtle"
+                >
+                  <Icon name="ellipsis" c="text-primary" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown p="md">
+                <Switch
+                  label={t`Show column labels`}
+                  size="sm"
+                  labelPosition="right"
+                  checked={showColumnLabels}
+                  onChange={(event) =>
+                    onShowColumnLabelsChange(event.currentTarget.checked)
+                  }
+                />
+              </Menu.Dropdown>
+            </Menu>
+          )}
+        </Flex>
       )}
     </Box>
   );
