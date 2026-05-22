@@ -72,7 +72,7 @@
                             :semantic-queries ["sales"]
                             :entity-types ["table" "dashboard"]}
                       results (search/search args)]
-                   ;; Should return both results combined via RRF
+                  ;; Should return both results combined via RRF
                   (is (= 2 (count results)))
                   (is (some #(= (:id %) 1) results))
                   (is (some #(= (:id %) 2) results)))))
@@ -83,7 +83,7 @@
                 (let [args {:term-queries ["orders" "sales"]
                             :entity-types ["table" "dashboard"]}
                       results (search/search args)]
-                   ;; Both queries return same results, RRF should boost them
+                  ;; Both queries return same results, RRF should boost them
                   (is (= 2 (count results)))
                   (is (some #(= (:id %) 1) results))
                   (is (some #(= (:id %) 2) results)))))

@@ -413,7 +413,7 @@
                                                            :type                 "category"
                                                            :name                 "CATEGORY"
                                                            :values_source_type   "card"
-                                                            ;; card_id is in a different collection with dashboard's collection
+                                                           ;; card_id is in a different collection with dashboard's collection
                                                            :values_source_config {:card_id     (:id card1s)
                                                                                   :value_field [:field (:id field1s) nil]}}]}
                :model/Dashboard  dash1s {:name          (mt/random-name)
@@ -422,7 +422,7 @@
                                                           :type                 "category"
                                                           :name                 "CATEGORY"
                                                           :values_source_type   "card"
-                                                           ;; card_id is in a different collection with dashboard's collection
+                                                          ;; card_id is in a different collection with dashboard's collection
                                                           :values_source_config {:card_id     (:id card1s)
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
 
@@ -460,7 +460,7 @@
 
               (testing "ingest and load"
                 (ts/with-db dest-db
-                 ;; ingest
+                  ;; ingest
                   (testing "doing ingestion"
                     (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                         "successful"))

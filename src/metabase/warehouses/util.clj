@@ -91,9 +91,9 @@
                                     (nil? (test-database-connection engine details-with-ssl :log-exception false)))
                            details-with-ssl)]
     (or
-      ;; Opportunistic SSL
+     ;; Opportunistic SSL
      details-with-ssl
-      ;; Try with original parameters
+     ;; Try with original parameters
      (some-> (test-database-connection engine details)
              (assoc :valid false))
      details)))

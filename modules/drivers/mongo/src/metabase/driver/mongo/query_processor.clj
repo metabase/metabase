@@ -812,9 +812,9 @@ function(bin) {
 (defmethod datetime-diff :month
   [x y _unit]
   {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
-           ;; dateDiff counts month boundaries not whole months, so we need to adjust
-           ;; if x<y but x>y in the month calendar then subtract one month
-           ;; if x>y but x<y in the month calendar then add one month
+         ;; dateDiff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
          {:$switch {:branches [{:case {:$and [{$lt [x y]}
                                               {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
                                 :then -1}

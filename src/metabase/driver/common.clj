@@ -306,7 +306,7 @@
        :type :checked-section
        :check (fn []
                 (and
-                  ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+                 ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
                  (not (premium-features/is-hosted?))
                  (premium-features/enable-database-auth-providers?)))
        :default false}
