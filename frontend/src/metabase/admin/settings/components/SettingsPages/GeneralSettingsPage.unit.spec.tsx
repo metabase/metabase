@@ -186,12 +186,10 @@ describe("GeneralSettingsPage", () => {
   it("should load and persist the allowed image domains setting", async () => {
     await setup();
 
-    const imgInput = await screen.findByDisplayValue(
-      "https://imgcdn.example.com",
-    );
+    const imgInput = await screen.findByLabelText("Allowed domains for images");
     await userEvent.clear(imgInput);
     await userEvent.type(imgInput, "https://images.example.org");
-    await userEvent.click(screen.getByText("Friendly table and field names")); // blur
+    await userEvent.tab();
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");
@@ -211,9 +209,7 @@ describe("GeneralSettingsPage", () => {
   it("should disable the allowed-hosts textarea when csp-img-enabled is off", async () => {
     await setup({ cspImgEnabled: false });
 
-    const imgInput = await screen.findByDisplayValue(
-      "https://imgcdn.example.com",
-    );
+    const imgInput = await screen.findByLabelText("Allowed domains for images");
     expect(imgInput).toBeDisabled();
   });
 
