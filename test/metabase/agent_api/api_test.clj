@@ -375,6 +375,30 @@
   (testing "Missing :query in body is rejected by the request schema"
     (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {})))
 
+(deftest construct-query-rejects-typod-stage-keys-test
+  (testing (str "The agent boundary asserts every stage's top-level keys are in a known set. "
+                "`lib.schema.mbql-stage/mbql` is not a closed map, so typo'd stage keys "
+                "(e.g. `aggreagation` for `aggregation`) would otherwise be silently dropped "
+                "at resolve time and the LLM would never learn that its intent was discarded.")
+    (testing "typo'd `aggreagation` is rejected with :unknown-stage-key"
+      (let [response (mt/user-http-request
+                      :rasta :post 400 "agent/v2/construct-query"
+                      {:query {:lib/type "mbql/query"
+                               :stages   [{:lib/type      "mbql.stage/mbql"
+                                           :source-table  [(db-name) "PUBLIC" "ORDERS"]
+                                           :aggreagation  [["count" {}]]}]}})]
+        (is (=? {:error "unknown-stage-key"} response))
+        (is (=? {:unknown-keys ["aggreagation"]} response))))
+    (testing "diagnostic lists the valid stage keys so the LLM can self-correct"
+      (let [response (mt/user-http-request
+                      :rasta :post 400 "agent/v2/construct-query"
+                      {:query {:lib/type "mbql/query"
+                               :stages   [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [(db-name) "PUBLIC" "ORDERS"]
+                                           :groupby      ["foo"]}]}})]
+        (is (=? {:error "unknown-stage-key"} response))
+        (is (re-find #"aggregation" (:message response)))))))
+
 (deftest construct-query-rejects-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
                 "is rejected by the now-closed request schema, instead of being silently ignored. "

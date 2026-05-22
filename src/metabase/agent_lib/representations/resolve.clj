@@ -126,7 +126,7 @@
 
   This is the inverse of [[resolve-query]] for the agent/tool output path: table/field/card IDs
   are exported to portable FK paths / entity_ids, lib's normalized keyworded form is converted
-  back to the string-keyed YAML representation, and internal `:lib/metadata` is dropped.
+  back to the string-keyed portable representation, and internal `:lib/metadata` is dropped.
 
   The optional `content-store` is used for Metabase-content lookups (Card / Measure / Segment
   by id) on the export side. Agent-facing callers should pass a permission-aware store —

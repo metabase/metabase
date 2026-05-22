@@ -108,12 +108,15 @@
     (case (count candidates)
       0 (throw (unknown-table-ex-info metadata-provider path))
       1 (first candidates)
-      (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates." (pr-str path) (count candidates))
+      ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
+      ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
+      ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
+      (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `entity_details` with entity-type `database` to list available tables and retry with a more specific portable FK."
+                           (pr-str path) (count candidates))
                       {:status-code  400
                        :error        :ambiguous-table
                        :agent-error? true
-                       :path         path
-                       :candidates   (mapv (juxt :schema :name :id) candidates)})))))
+                       :path         path})))))
 
 (defn- find-field
   "Resolve a field path `[db schema table field …]` to a `:metadata/column` or throw with context.

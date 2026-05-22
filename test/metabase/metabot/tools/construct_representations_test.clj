@@ -182,10 +182,15 @@
                                          ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
+          (let [d   (ex-data e)
+                msg (ex-message e)]
             (is (true? (:agent-error? d)))
             (is (= :ambiguous-fk (:error d)))
-            (is (re-find #"PRODUCT_ID" (ex-message e)))))))))
+            (testing "diagnostic names the source table and points at `source-field`"
+              (is (re-find #"ORDERS" msg))
+              (is (re-find #"source-field" msg)))
+            (testing "FK column names are NOT enumerated (S1 info-leak parity)"
+              (is (not (re-find #"PRODUCT_ID" msg))))))))))
 
 (deftest llm-writes-wrong-db-name-in-source-table-fails-loudly-test
   (testing (str "Post step-14-follow-up, database identity is derived from the first stage's\n"

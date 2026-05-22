@@ -1455,18 +1455,25 @@
           (is (re-find #"no foreign key" (ex-message e))))))))
 
 (deftest implicit-join-ambiguous-fk-test
-  (testing "throws :ambiguous-fk and lists candidate FK paths when multiple FKs exist"
+  (testing (str "throws :ambiguous-fk when multiple FKs exist, and does NOT enumerate the "
+                "candidate FK column names (parity with the S1 info-leak strip: the "
+                "un-sandboxed metadata provider could otherwise surface bridge-table "
+                "column names the caller cannot see)")
     (try
       (repair/repair mp-ambiguous base-query)
       (is false "expected throw")
       (catch clojure.lang.ExceptionInfo e
-        (let [d (ex-data e)]
+        (let [d   (ex-data e)
+              msg (ex-message e)]
           (is (= :ambiguous-fk (:error d)))
           (is (true? (:agent-error? d)))
-          (let [msg (ex-message e)]
-            (is (re-find #"PRODUCT_ID" msg))
-            (is (re-find #"ALT_PRODUCT_ID" msg)))
-          (is (= 2 (count (:candidates d)))))))))
+          (testing "ex-data carries no candidate FK column paths"
+            (is (nil? (:candidates d))))
+          (testing "message must not name the FK columns (PRODUCT_ID / ALT_PRODUCT_ID)"
+            (is (not (re-find #"PRODUCT_ID" msg)))
+            (is (not (re-find #"ALT_PRODUCT_ID" msg))))
+          (testing "message tells the LLM how to disambiguate via `source-field`"
+            (is (re-find #"source-field" msg))))))))
 
 (deftest implicit-join-skips-joins-subtree-test
   (testing "field references inside explicit joins are not auto-wired with source-field"
@@ -1620,13 +1627,19 @@
         (repair/repair mp-via-two-joins q)
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
+          (let [d   (ex-data e)
+                msg (ex-message e)]
             (is (= :ambiguous-fk-via-join (:error d)))
             (is (true? (:agent-error? d)))
-            (is (= 2 (count (:candidates d))))
-            (let [aliases (set (map :alias (:candidates d)))]
-              (is (contains? aliases "P"))
-              (is (contains? aliases "PA")))))))))
+            (testing "alias names ARE surfaced (they came from the LLM's own joins:)"
+              (is (= #{"P" "PA"} (set (:aliases d))))
+              (is (re-find #"\"P\"" msg))
+              (is (re-find #"\"PA\"" msg)))
+            (testing "FK column portables are NOT surfaced (un-sandboxed MP info-leak guard)"
+              (is (nil? (:candidates d)))
+              (is (not (re-find #"PRODUCTS_ALT" msg))))
+            (testing "message tells the LLM how to disambiguate via `source-field-join-alias`"
+              (is (re-find #"source-field-join-alias" msg)))))))))
 
 (deftest source-field-join-alias-skips-joins-subtree-test
   (testing (str "a field clause inside an explicit join's `conditions:` is NOT touched - those "

@@ -1,27 +1,24 @@
 (ns metabase.agent-lib.representations.repair
   "Repair pass for LLM-authored representations queries.
 
-  Works on the **string-keyed, portable** representations form -- i.e. the output of
-  `metabase.agent-lib.representations/parse-yaml` *before* it has been handed to the resolver.
-  This is where we gently patch up the sort of shape drift that LLMs routinely produce:
+  Works on the **string-keyed, portable** representations form -- i.e. the JSON body
+  `metabase.agent-lib.representations/external-query->portable` produced from the LLM's
+  external-query input, *before* it has been handed to the resolver. This is where we gently
+  patch up the sort of shape drift that LLMs routinely produce:
 
     * missing `{}` options on clauses (LLMs forget to emit empty maps);
     * missing `\"lib/type\"` marker on stages and on the top-level query;
-    * (structurally prepared, but Phase-2 feature) resolved-UUID generation for aggregation refs.
+    * stage / clause shape normalisations covering common LLM-authored variants
+      (see the per-pass docstrings below).
 
   **Key invariant: idempotency.** Repair must be a fixed point under repeated application: for
   any repr `q`, `(repair q)` must equal `(repair (repair q))`. This is enforced by property test
   and by construction -- every pass is written as `when-something-is-missing, add it`, never as
   `rewrite what's there`.
 
-  Phase 1 scope: the three basic passes above. More complex repairs -- placeholder UUID expansion
-  for `@agg-N` references (Phase 2 step 10), implicit-join `source-field` inference (Phase 1
-  step 6) -- live in follow-up passes that will be composed here once implemented.
-
   The repair pass does **not** do FK resolution (that's the resolver's job) and does **not**
-  validate (that's `representations/validate-query`'s job). It runs *between* parse and
-  validate-and-resolve -- i.e. we parse the LLM YAML, repair obvious issues, then validate, then
-  resolve.
+  validate (that's `representations/validate-query`'s job). It runs *between* the JSON
+  external-query → portable conversion and validate-and-resolve.
 
   ## Implicit joins
 
@@ -1690,22 +1687,22 @@
                   (if src-fk
                     (assoc clause 1 (assoc opts "source-field" src-fk))
                     clause))
-              (let [src-name      (display-source-table mp source-table-id)
-                    candidate-fks (mapv (fn [{:keys [source-field-id]}]
-                                          (export-source-field-portable export-resolver source-field-id))
-                                        candidates)]
-                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify :source-field explicitly in the clause options. Candidates: {3}"
+              ;; Deliberately do NOT enumerate the candidate FK columns: the metadata provider
+              ;; is un-sandboxed and any leaked `[db schema table field]` path could surface
+              ;; bridge-table column names the caller is not permitted to see (`:agent-error?`
+              ;; relays the message verbatim to the user). The LLM can recover by calling
+              ;; `entity_details` on the source table to inspect available foreign-key columns.
+              (let [src-name (display-source-table mp source-table-id)]
+                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `entity_details` on the source table to list the available foreign-key columns."
                                      (display-portable fk)
                                      (pr-str src-name)
-                                     (count candidates)
-                                     (str/join ", " (map display-portable candidate-fks)))
+                                     (count candidates))
                                 {:status-code  400
                                  :error        :ambiguous-fk
                                  :agent-error? true
                                  :field        fk
                                  :source-table source-table-id
-                                 :target-table target-table-id
-                                 :candidates   candidate-fks}))))))))))
+                                 :target-table target-table-id}))))))))))
 
 (defn- resolve-implicit-joins-in-stage
   "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
@@ -1844,22 +1841,20 @@
                                            "source-field"            src-fk
                                            "source-field-join-alias" alias))
                     clause))
-              (let [aliases (mapv :alias cands)
-                    portables (mapv (fn [{:keys [source-field-id]}]
-                                      (export-source-field-portable export-resolver source-field-id))
-                                    cands)]
-                (throw (ex-info (tru "Field {0} is reachable from {1} explicit joins ({2}). Specify :source-field-join-alias explicitly. Candidate aliases: {3}"
+              ;; Alias names came from the LLM's own input (the `joins:` block it authored),
+              ;; so listing them in the diagnostic is fine. The FK column portables are NOT
+              ;; surfaced here — see the rationale on `:ambiguous-fk` above.
+              (let [aliases (mapv :alias cands)]
+                (throw (ex-info (tru "Field {0} is reachable from {1} explicit joins via aliases {2}. Specify the `source-field-join-alias` option on the field clause to pick which join''s foreign key to use."
                                      (display-portable fk)
                                      (count cands)
-                                     (str/join ", " (map pr-str aliases))
-                                     (str/join ", " (map display-portable portables)))
+                                     (str/join ", " (map pr-str aliases)))
                                 {:status-code  400
                                  :error        :ambiguous-fk-via-join
                                  :agent-error? true
                                  :field        fk
                                  :target-table target-table-id
-                                 :candidates   (mapv (fn [c p] {:alias (:alias c) :source-field p})
-                                                     cands portables)}))))))))))
+                                 :aliases      aliases}))))))))))
 
 (defn- resolve-source-field-join-alias-in-stage
   [stage mp import-resolver export-resolver]
@@ -2356,7 +2351,7 @@
   the LLM-facing contract in the step-14 follow-up. Database identity is now derived from
   the first stage's `source-table:` / `source-card:` (see
   [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]]), and Pass 1.9
-  stamps `database:` from the MP into the parsed YAML so the downstream resolver and lib
+  stamps `database:` from the MP into the parsed query so the downstream resolver and lib
   schema see a spec-compliant document.
 
   Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 3

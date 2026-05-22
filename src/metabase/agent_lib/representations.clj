@@ -82,9 +82,12 @@
   The string-transformer keywordizes enum values (`\"mbql/query\"` → `:mbql/query`,
   `\"mbql.stage/mbql\"` → `:mbql.stage/mbql`, etc.) so the schema's keyword-typed enum slots
   accept the JSON shape directly. Throws with `:error :invalid-external-query` and a humanized
-  explanation when the input shape is structurally invalid even after decoding. This is the
-  HTTP / tool-input boundary check; deeper structural normalization happens after the repair
-  pass via [[metabase.agent-lib.representations.resolve/resolve-query]]."
+  explanation when the input shape is structurally invalid even after decoding.
+
+  NOTE: kept as a building block; the agent boundary uses [[assert-known-stage-keys!]] instead
+  because the lib schema's stage shape is not a closed map (typo'd stage keys would silently
+  pass) and the humanized output here references function predicates in a form that isn't
+  LLM-actionable."
   [external-query]
   (let [schema  (mr/schema ::lib.schema/external-query)
         decoded (mc/decode schema external-query mtx/string-transformer)]
@@ -96,6 +99,40 @@
                        :details     (pr-str (mu.humanize/humanize error))
                        :schema      ::lib.schema/external-query})))
     decoded))
+
+(def ^:private known-stage-keys
+  "The complete set of top-level keys a `mbql.stage/mbql` stage may carry on the
+  LLM-facing surface. Sourced from `metabase.lib.schema.mbql-stage` and pruned to the
+  keys the `construct_query` / `query` contract advertises (see
+  `resources/metabot/prompts/tools/construct_notebook_query.md`)."
+  #{"lib/type"
+    "source-table" "source-card"
+    "filters" "aggregation" "breakout" "expressions" "fields" "joins"
+    "order-by" "limit"})
+
+(defn assert-known-stage-keys!
+  "Boundary check: every stage in the portable query must carry only known top-level keys.
+  `lib.schema.mbql-stage/mbql` is not a closed map, so a typo'd key (e.g. `aggreagation` vs
+  `aggregation`) would otherwise be silently dropped at resolve / lib.normalize time and the
+  LLM would never learn that its intent was discarded. This check catches the common typo
+  class with a clean `:agent-error?` diagnostic that names the offending key.
+
+  Operates on the string-keyed portable form produced by [[external-query->portable]]."
+  [portable-query]
+  (when (and (map? portable-query) (vector? (get portable-query "stages")))
+    (doseq [[stage-idx stage] (map-indexed vector (get portable-query "stages"))
+            :when (map? stage)
+            :let [unknown (remove known-stage-keys (keys stage))]
+            :when (seq unknown)]
+      (throw (ex-info (tru "Stage {0} has unknown key(s): {1}. Valid stage keys are: {2}."
+                           stage-idx
+                           (pr-str (vec unknown))
+                           (pr-str (vec (sort known-stage-keys))))
+                      {:status-code  400
+                       :error        :unknown-stage-key
+                       :agent-error? true
+                       :stage-index  stage-idx
+                       :unknown-keys (vec unknown)})))))
 
 ;;; ============================================================
 ;;; Repair-pipeline schema (string-keyed portable form)

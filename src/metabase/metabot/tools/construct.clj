@@ -149,7 +149,7 @@
   All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
   message to the LLM instead of a stack trace.
 
-  Note: the `database:` field at the top level of the YAML is intentionally NOT consulted.
+  Note: the `database:` field at the top level of the query is intentionally NOT consulted.
   It's a spec-mandated but redundant field (the source already identifies the database); a
   repair pass stamps it after we've resolved the id via this function. See `repr-plan.md`
   step 14 follow-up."
@@ -232,17 +232,21 @@
   shape and concentrates on the LLM-friendly repair passes.
 
   Pipeline:
-    1. Convert to the string-keyed portable form the repair pipeline operates on.
-    2. Resolve the database id from the first stage's `source-table:` / `source-card:`
+    1. Boundary-validate the keyword-keyed input against `::lib.schema/external-query`
+       ([[repr/validate-external-query]]). Catches structural issues — missing `stages`,
+       typo'd stage keys (e.g. `aggreagation` vs `aggregation`), wrong top-level `lib/type`,
+       etc. — that the loose `:map` wire schema doesn't catch.
+    2. Convert to the string-keyed portable form the repair pipeline operates on.
+    3. Resolve the database id from the first stage's `source-table:` / `source-card:`
        ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
-    3. Run the repair pass (fill in `{}` options, missing `lib/type` markers, stamp the
+    4. Run the repair pass (fill in `{}` options, missing `lib/type` markers, stamp the
        top-level `database:`, auto-wire `source-field` for implicit joins, rewrite inline
        `order-by` aggregations to refs, etc.).
-    4. Sanity-check the post-repair shape against the portable repair schema.
-    5. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
+    5. Sanity-check the post-repair shape against the portable repair schema.
+    6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
-    6. Export that final numeric pMBQL back to the portable form for the LLM-facing
+    7. Export that final numeric pMBQL back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
   Returns a map with `:structured-output` and `:instructions` keys. Throws with an
@@ -255,7 +259,16 @@
   pass stamps `database:` into the portable form before lib.schema / resolve need it."
   [external-query]
   (let [parsed      (try
-                      (repr/external-query->portable external-query)
+                      ;; Step 1 — convert to the string-keyed portable form the repair pipeline
+                      ;; operates on.
+                      ;; Step 2 — boundary check that every stage's top-level keys are known.
+                      ;; Catches LLM-authored typos (e.g. `aggreagation` for `aggregation`)
+                      ;; that `lib.schema` does not enforce — `::lib.schema.mbql-stage/mbql` is
+                      ;; not a closed map, so unknown stage keys would otherwise be silently
+                      ;; dropped at resolve / lib.normalize time.
+                      (let [portable (repr/external-query->portable external-query)]
+                        (repr/assert-known-stage-keys! portable)
+                        portable)
                       (catch clojure.lang.ExceptionInfo e
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
