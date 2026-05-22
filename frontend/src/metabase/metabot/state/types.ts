@@ -129,7 +129,13 @@ export interface MetabotConverstationState {
 export const fixedMetabotAgentIds = ["omnibot", "sql"] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
-export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
+export type MetabotAgentId =
+  | FixedMetabotAgentId
+  | `test_${number}`
+  | `tab_${string}`;
+
+export const isTabAgentId = (id: MetabotAgentId): id is `tab_${string}` =>
+  id.startsWith("tab_");
 
 export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;

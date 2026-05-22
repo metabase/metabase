@@ -9,6 +9,7 @@ import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   ActionIcon,
   Box,
@@ -26,7 +27,7 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import type { MetabotAgentId } from "../../state";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -34,23 +35,32 @@ import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  agentId: "omnibot",
-  suggestionModels: [
-    "dataset",
-    "metric",
-    "card",
-    "table",
-    "database",
-    "dashboard",
-  ],
-};
+export interface MetabotConfig {
+  agentId?: MetabotAgentId;
+  emptyText?: string;
+  hideSuggestedPrompts?: boolean;
+  preventClose?: boolean;
+  preventRetryMessage?: boolean;
+  suggestionModels: SuggestionModel[];
+}
+
+const defaultSuggestionModels: SuggestionModel[] = [
+  "dataset",
+  "metric",
+  "card",
+  "table",
+  "database",
+  "dashboard",
+];
 
 export const MetabotChat = ({
-  config = defaultConfig,
+  agentId,
+  config,
 }: {
+  agentId: MetabotAgentId;
   config?: MetabotConfig;
 }) => {
+  const suggestionModels = config?.suggestionModels ?? defaultSuggestionModels;
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -58,7 +68,7 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(config.agentId);
+  const metabot = useMetabotAgent(agentId);
   const metabotName = useMetabotName();
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
@@ -80,11 +90,6 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const handleResetChat = () => {
-    metabot.resetConversation();
-    suggestedPromptsReq.refetch();
-  };
-
   const handleClose = () => {
     metabot.setPrompt("");
     metabot.setVisible(false);
@@ -103,17 +108,17 @@ export const MetabotChat = ({
         </Flex>
 
         <Flex gap="sm">
-          {isConfigured && (
-            <Tooltip label={t`Clear conversation`} position="bottom">
+          {!config?.preventClose && (
+            <Tooltip label={t`Minimize`} position="bottom">
               <ActionIcon
-                onClick={handleResetChat}
-                data-testid="metabot-reset-chat"
+                onClick={handleClose}
+                data-testid="metabot-minimize-chat"
               >
-                <Icon c="text-primary" name="revert" />
+                <Icon c="text-primary" name="chevrondown" />
               </ActionIcon>
             </Tooltip>
           )}
-          {!config.preventClose && (
+          {!config?.preventClose && (
             <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
               <Icon c="text-primary" name="close" />
             </ActionIcon>
@@ -148,14 +153,14 @@ export const MetabotChat = ({
                 />
               ) : (
                 <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
-                  {config.emptyText ??
+                  {config?.emptyText ??
                     (showIllustrations
                       ? t`I can help you explore your metrics and models.`
                       : t`Explore your metrics and models with AI.`)}
                 </Text>
               )}
             </Flex>
-            {isConfigured && !config.hideSuggestedPrompts && (
+            {isConfigured && !config?.hideSuggestedPrompts && (
               <Stack
                 gap="sm"
                 className={Styles.promptSuggestionsContainer}
@@ -189,7 +194,7 @@ export const MetabotChat = ({
             <Messages
               messages={metabot.messages}
               onRetryMessage={
-                config.preventRetryMessage ? undefined : metabot.retryMessage
+                config?.preventRetryMessage ? undefined : metabot.retryMessage
               }
               isDoingScience={metabot.isDoingScience}
               debug={metabot.debugMode}
@@ -229,7 +234,7 @@ export const MetabotChat = ({
               onModelOverrideChange={metabot.setModelOverride}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
-              suggestionConfig={{ suggestionModels: config.suggestionModels }}
+              suggestionConfig={{ suggestionModels }}
             />
           </Paper>
         </Box>

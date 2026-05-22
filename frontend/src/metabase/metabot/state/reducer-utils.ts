@@ -6,12 +6,13 @@ import { match } from "ts-pattern";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
-import type {
-  MetabotAgentId,
-  MetabotAgentTurnDisplayError,
-  MetabotAgentTurnError,
-  MetabotConverstationState,
-  MetabotState,
+import {
+  type MetabotAgentId,
+  type MetabotAgentTurnDisplayError,
+  type MetabotAgentTurnError,
+  type MetabotConverstationState,
+  type MetabotState,
+  isTabAgentId,
 } from "./types";
 import { createMessageId } from "./utils";
 
@@ -82,6 +83,11 @@ export const resetReactionState = (
   state: WritableDraft<MetabotState>,
   agentId: MetabotAgentId,
 ) => {
+  if (isTabAgentId(agentId)) {
+    state.reactions.navigateToPath = null;
+    state.reactions.suggestedTransforms = [];
+    return;
+  }
   match(agentId)
     .with("omnibot", () => {
       state.reactions.navigateToPath = null;

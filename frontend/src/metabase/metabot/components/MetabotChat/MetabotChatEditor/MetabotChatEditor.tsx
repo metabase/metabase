@@ -8,11 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { parseProviderAndModel } from "metabase/admin/ai/utils";
 import { useGetMetabotSettingsQuery } from "metabase/api";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getErrorMessage } from "metabase/api/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useSetting } from "metabase/common/hooks";
@@ -31,7 +33,9 @@ import {
   Box,
   Flex,
   Icon,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Loader,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Select,
   type SelectOption,
   Stack,
@@ -196,6 +200,7 @@ export const MetabotChatEditor = forwardRef<
     const configuredModel = parseProviderAndModel(savedProviderValue);
     const showModelSelector =
       isModelSelectionEnabled && configuredModel?.provider !== "metabase";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, isLoading, error } = useGetMetabotSettingsQuery(
       showModelSelector ? {} : skipToken,
     );
@@ -213,6 +218,7 @@ export const MetabotChatEditor = forwardRef<
     const selectedModelOption = modelOptions.find(
       (option) => option.value === selectedModel,
     );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const isModelSelectDisabled = isResponding || isLoading;
 
     useEffect(
@@ -282,7 +288,7 @@ export const MetabotChatEditor = forwardRef<
           <Box className={S.iconContainer} mr="auto">
             <MetabotIcon c="brand" />
           </Box>
-          {showModelSelector && (
+          {/* {showModelSelector && (
             <Select
               data-testid="metabot-model-selector"
               data={modelOptions}
@@ -319,7 +325,7 @@ export const MetabotChatEditor = forwardRef<
                 option: S.modelSelectOption,
               }}
             />
-          )}
+          )} */}
           <UnstyledButton
             className={cx(S.button, isResponding && S.buttonResponding)}
             disabled={props.value.length === 0 || isResponding}

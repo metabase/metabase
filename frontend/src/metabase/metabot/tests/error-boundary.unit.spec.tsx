@@ -6,12 +6,12 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { MetabotPanel } from "metabase/tabs/components/MetabotBar/MetabotPanel";
 import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 
-import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import { getMetabotInitialState } from "../state/reducer-utils";
@@ -55,7 +55,7 @@ function setup() {
 
   renderWithProviders(
     <MetabotProvider>
-      <Metabot />
+      <MetabotPanel agentId="omnibot" anchorEl={null} />
     </MetabotProvider>,
     {
       storeInitialState: createMockState({

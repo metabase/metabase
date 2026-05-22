@@ -166,7 +166,6 @@ export function RunListPage({ location }: RunListPageProps) {
         <PaneHeader
           breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
           py={0}
-          showMetabotButton
         />
         {!data || isLoading || error != null ? (
           <Center h="100%">

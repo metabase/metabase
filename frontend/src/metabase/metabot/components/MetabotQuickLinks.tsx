@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import { replace } from "react-router-redux";
 
 import {
-  useMetabotAgent,
+  useAskMetabotInNewTab,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
@@ -16,7 +16,7 @@ export const getMetabotQuickLinks = () => {
       path="metabot/new"
       component={(props) => {
         const { canUseMetabot, isLoading } = useUserMetabotPermissions();
-        const { submitInput } = useMetabotAgent("omnibot");
+        const askMetabotInNewTab = useAskMetabotInNewTab();
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
         const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -29,14 +29,14 @@ export const getMetabotQuickLinks = () => {
           dispatch(replace("/"));
 
           if (prompt && canUseMetabot) {
-            void submitInput(prompt, { focusInput: true });
+            void askMetabotInNewTab(prompt);
             setHasSubmitted(true);
           }
         }, [
           isLoading,
           canUseMetabot,
           prompt,
-          submitInput,
+          askMetabotInNewTab,
           dispatch,
           hasSubmitted,
         ]);

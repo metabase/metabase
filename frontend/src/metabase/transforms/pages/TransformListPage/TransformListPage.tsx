@@ -327,7 +327,6 @@ export const TransformListPage = ({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
         }
-        showMetabotButton
         py={0}
       />
       <Stack className={CS.overflowHidden}>
