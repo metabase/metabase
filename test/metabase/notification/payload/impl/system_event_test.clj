@@ -187,9 +187,9 @@
                                                          {:first_name "Ngoc" :email "ngoc@metabase.com"}
                                                          false))
                           :channel/email first))]
-                  ;; The logo should be embedded as an attachment with a cid: reference
+          ;; The logo should be embedded as an attachment with a cid: reference
           (is (re-find #"<img[^>]*src=\"cid:[^\"]+@metabase\"[^>]*>" (-> email :message first :content)))
-                  ;; There should be an attachment for the logo
+          ;; There should be an attachment for the logo
           (is (some #(and (= (:type %) :inline)
                           (= (:content-type %) "image/png"))
                     (rest (:message email)))))))))

@@ -216,7 +216,7 @@
                        :model/Table            {table-id-1 :id} {:db_id  db-id}
                        :model/Table            {table-id-2 :id} {:db_id  db-id}]
           (mt/with-no-data-perms-for-all-users!
-              ;; Query permissions for a single table is enough to fetch the DB
+            ;; Query permissions for a single table is enough to fetch the DB
             (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
             (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
             (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
@@ -1452,7 +1452,7 @@
           (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
-           ;; make sure the new schedule is randomized, not from the payload
+            ;; make sure the new schedule is randomized, not from the payload
             (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
                       (:metadata_sync_schedule db)))
             (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
@@ -1823,7 +1823,7 @@
      ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
      :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :visibility_type "hidden"}
      :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :visibility_type "cruft"}
-       ;; table is not active
+     ;; table is not active
      :model/Table    _ {:db_id db-id :schema "schema_3" :name "table_3" :active false}]
     (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
       (is (= ["schema_1a" "schema_1b" "schema_1c"]
@@ -1997,7 +1997,7 @@
                      :model/Card       card-2 (assoc (card-with-native-query "Card 2")
                                                      :type :model)
                      :model/Card       _card-3 (assoc (card-with-native-query "error")
-                                               ;; regular saved question should not be in the results
+                                                      ;; regular saved question should not be in the results
                                                       :type :question)]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]

@@ -42,6 +42,6 @@
                  (triggers/with-identity trimmer-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; daily at 23:14:37
+                  ;; daily at 23:14:37
                   (cron/cron-schedule "37 14 23 * * ?")))]
     (task/schedule-task! job trigger)))

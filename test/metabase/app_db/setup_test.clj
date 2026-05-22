@@ -139,7 +139,7 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-             ;; set up a db in a way we have a MB instance running metabase 45
+        ;; set up a db in a way we have a MB instance running metabase 45
         (update-to-changelog-id "v45.00-001" conn))
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false))))))

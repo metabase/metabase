@@ -122,7 +122,7 @@
                            {:name "Bad Measure"
                             :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
-                          ;; Metric nested in an arithmetic expression: metric + 1
+                            ;; Metric nested in an arithmetic expression: metric + 1
                             :definition (measure-definition
                                          (lib/+ (lib.metadata/metric mp metric-id)
                                                 1))})))))))

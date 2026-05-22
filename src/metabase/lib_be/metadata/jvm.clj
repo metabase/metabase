@@ -472,7 +472,7 @@
     :metadata/measure :measure/table_id))
 
 (defn- card-id-key [metadata-type]
-    ;; types not in the case statement do not support Card ID
+  ;; types not in the case statement do not support Card ID
   (case metadata-type
     :metadata/metric :source_card_id))
 

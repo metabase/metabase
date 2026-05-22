@@ -1447,7 +1447,7 @@
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-       ;; TODO investigate why the actions don't get indexed automatically
+        ;; TODO investigate why the actions don't get indexed automatically
         (search/reindex! {:async? false :in-place? true})
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
