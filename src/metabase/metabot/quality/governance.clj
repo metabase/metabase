@@ -8,10 +8,16 @@
   - **Sparse return map.** [[resolve]] returns `{[type id-str] facts}`
     where each facts map carries only the keys that are populated for
     that entity type. Cards get `:verified? :lives-in-personal? :name
-    :source-card-id`; tables get `:schema :db-id :name`; dashboards /
-    databases / transforms get `:name` only. An entity that the appdb
-    can't find is absent from the map — downstream readers must
-    tolerate `nil`.
+    :source-card-id :db-id`; tables get `:schema :db-id :name`;
+    dashboards / databases / transforms get `:name` only. An entity
+    that the appdb can't find is absent from the map — downstream
+    readers must tolerate `nil`.
+
+    Card `:db-id` is consumed by Phase 5's substitution detection to
+    prevent spurious cross-database matches (e.g. an Orders card in
+    postgres cannot substitute for an Orders card in mysql). It mirrors
+    the table-level `:db-id` so cards and tables share the same
+    governance shape for the substitution-match predicate.
 
   - **Memoization is the caller's job.** [[walk-source-card-ancestry]]
     issues one query per chain hop; per the impl plan, the
@@ -86,6 +92,7 @@
                   [:c.type :card-type]
                   [:c.name :card-name]
                   [:c.source_card_id :source-card-id]
+                  [:c.database_id :db-id]
                   [:col.personal_owner_id :personal-owner-id]
                   [:mr.status :review-status]]
       :from      [[:report_card :c]]
@@ -106,12 +113,13 @@
   `[type id-str]` — that re-keying happens in [[index-cards]]."
   [rows]
   (reduce
-   (fn [acc {:keys [card-id card-name source-card-id personal-owner-id review-status]}]
+   (fn [acc {:keys [card-id card-name source-card-id db-id personal-owner-id review-status]}]
      (let [existing (get acc card-id)
            verified-here? (= "verified" review-status)]
        (assoc acc card-id
               {:name               card-name
                :source-card-id     source-card-id
+               :db-id              db-id
                :lives-in-personal? (some? personal-owner-id)
                :verified?          (or verified-here? (:verified? existing false))})))
    {}

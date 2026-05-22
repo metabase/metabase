@@ -59,3 +59,37 @@
   "Baseline reuse count above which max-per-entity reuse contributes to
   Conversational-economy."
   2)
+
+(def C-thrash
+  "Saturation constant for Conversational-economy's thrash-events count
+  under `t / (t + C-thrash)`."
+  3.0)
+
+(def C-reuse
+  "Saturation constant for Conversational-economy's max-per-entity
+  reuse excess (over [[target-max-entity-reuse]]) under
+  `excess / (excess + C-reuse)`."
+  3.0)
+
+(def C-economy-iterations
+  "Saturation constant for Conversational-economy's iterations-per-artifact
+  excess (over [[target-iterations-per-artifact]]) under
+  `excess / (excess + C-economy-iterations)`."
+  3.0)
+
+(def typical-search-result-length
+  "Search-tool result-list length used to normalize Discovery-efficiency's
+  avg-rank-used component. Matches the search tool's default `:limit`
+  parameter; the signal saturates at `1.0` when ranks consistently land
+  at or beyond this position. Ranks are 0-based, so a list of 10 entries
+  has max rank `9` — but normalizing by the inclusive list length keeps
+  the math intuitive (`rank / length`)."
+  10.0)
+
+(def substitution-name-distance-threshold
+  "Normalized Levenshtein distance ≤ this value treats two entity names
+  as substitution candidates in Selection-quality. Looser than the
+  thrash/rediscovery threshold (distance 0.3 ↔ similarity 0.7) because
+  user-facing entity names tend to vary in their suffixes
+  (`orders_2023` vs. `orders_2024`)."
+  0.3)

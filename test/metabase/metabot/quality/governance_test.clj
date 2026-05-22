@@ -67,6 +67,14 @@
         (is (= base-id (get-in res [["model" (str model-id)] :source-card-id])))
         (is (= "model-of-card" (get-in res [["model" (str model-id)] :name])))))))
 
+(deftest resolve-card-surfaces-db-id-test
+  (testing "card facts include :db-id alongside :name (used by substitution detection to avoid cross-database matches)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cdb"}
+                   :model/Card     {c-id  :id} {:name        "with-db"
+                                                :database_id db-id}]
+      (let [res (governance/resolve [{:type "card" :id c-id}])]
+        (is (= db-id (get-in res [["card" (str c-id)] :db-id])))))))
+
 (deftest resolve-collapses-card-types-to-single-query-test
   (testing "all four card-types (card/question/model/metric) query report_card; same id under different types lands as separate keys with the same facts"
     (mt/with-temp [:model/Card {c-id :id} {:name "shared"}]
