@@ -535,7 +535,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Doohickey", value: "177", secondaryValue: "23.79 %" },
         { name: "Gadget", value: "199", secondaryValue: "26.75 %" },
         { name: "Gizmo", value: "158", secondaryValue: "21.24 %" },
-        { name: "Widget", value: "210", secondaryValue: "28.23 %" },
+        { name: "Widget", value: "210", secondaryValue: "28.22 %" },
       ],
       footer: { name: "Total", value: "744", secondaryValue: "100 %" },
       blurAfter: true,
