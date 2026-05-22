@@ -252,6 +252,153 @@ describe("ValuesSourceModal", () => {
         });
       });
 
+      it("should not show the label field selector until a value field is selected", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockField({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+              ],
+            }),
+          ],
+        });
+
+        expect(
+          screen.getByText("Column to supply the values"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText("Column to supply the labels"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("should only offer text columns as the label field for remapping", async () => {
+        const { onSubmit } = await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+              // start with a label so we exercise selecting a different one
+              label_field: ["field", 3, null],
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockField({
+                  id: 1,
+                  name: "id",
+                  display_name: "ID",
+                  base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
+                  semantic_type: "type/PK",
+                }),
+                createMockField({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+                createMockField({
+                  id: 3,
+                  name: "title",
+                  display_name: "Title",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Title",
+                }),
+              ],
+            }),
+          ],
+        });
+        expect(
+          screen.getByText("Column to supply the labels"),
+        ).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
+        const categoryOption = await screen.findByRole("heading", {
+          name: "Category",
+        });
+        expect(
+          screen.queryByRole("heading", { name: "ID" }),
+        ).not.toBeInTheDocument();
+        await userEvent.click(categoryOption);
+
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(onSubmit).toHaveBeenCalledWith("card", {
+          card_id: 1,
+          value_field: ["field", 2, null],
+          label_field: ["field", "category", { "base-type": "type/Text" }],
+        });
+      });
+
+      it("should allow clearing the label field with the None option", async () => {
+        const { onSubmit } = await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+              label_field: ["field", 3, null],
+            },
+          }),
+          cards: [
+            createMockCard({
+              id: 1,
+              name: "Products",
+              result_metadata: [
+                createMockField({
+                  id: 2,
+                  name: "category",
+                  display_name: "Category",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Category",
+                }),
+                createMockField({
+                  id: 3,
+                  name: "title",
+                  display_name: "Title",
+                  base_type: "type/Text",
+                  effective_type: "type/Text",
+                  semantic_type: "type/Title",
+                }),
+              ],
+            }),
+          ],
+        });
+
+        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
+        const noneOption = await screen.findByRole("heading", { name: "None" });
+        await userEvent.click(noneOption);
+
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(onSubmit).toHaveBeenCalledWith("card", {
+          card_id: 1,
+          value_field: ["field", 2, null],
+          label_field: undefined,
+        });
+      });
+
       it("should show card values", async () => {
         await setup({
           parameter: createMockUiParameter({

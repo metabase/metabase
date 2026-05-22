@@ -33,7 +33,6 @@ export const Value = ({
     ...rawOptions,
     uuid,
     token,
-    displayValue: tc(rawOptions.displayValue),
   };
 
   if (rawOptions.remap) {
