@@ -279,19 +279,14 @@
                    :headers      {"Cache-Control" "no-cache"}
                    :status       200}
                   [os canceled-chan]
-                   (let [writer        (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                         safe-hash     (fn []
-                                         (try (mcp.tools/tools-hash token-scopes)
-                                              (catch Throwable e
-                                                (log/warn e "MCP tools-hash failed; skipping list-changed check")
-                                                nil)))]
-                     (loop [last-hash (safe-hash)]
+                   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
                        (when-not (a/poll! canceled-chan)
                          (.write writer ": keepalive\n\n")
                          (.flush writer)
                          (Thread/sleep 30000)
-                         (let [current-hash (safe-hash)]
-                           (when (and current-hash last-hash (not= current-hash last-hash))
+                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
+                           (when (not= current-hash last-hash)
                              (.write writer ^String (sse-body [tools-list-changed-notification]))
                              (.flush writer))
                            (recur current-hash))))))]
