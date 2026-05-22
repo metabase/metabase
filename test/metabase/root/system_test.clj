@@ -10,6 +10,10 @@
 (def db-handle (system/mutable-component-handle :db))
 (def scheduler-handle (system/mutable-component-handle :scheduler))
 
+(def k1-handle (system/mutable-component-handle :k1))
+(def k2-handle (system/mutable-component-handle :k2))
+(def k3-handle (system/mutable-component-handle :k3))
+
 (def op-delay 10)
 
 (defn take-a-while
@@ -95,6 +99,64 @@
 
       (finally
         ((:stop! sched))))))
+
+(deftest ^:synchronized binding-reads-through-to-root-test
+  (testing "Inside a binding for k1, concurrent root mutations to k2 (via swap!) and k3 (via reset!) should be visible — the override is sparse and reads fall through for un-overridden keys"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/alter-root k2-handle :root-k2)
+    (mc/alter-root k3-handle :root-k3)
+    (let [bound-thread-entered (promise)
+          writes-done          (promise)
+          writer (future
+                   (deref bound-thread-entered 1000 ::timed-out)
+                   (mc/swap! k2-handle (constantly :updated-k2))
+                   (mc/reset! k3-handle :updated-k3)
+                   (deliver writes-done true))]
+      (try
+        (mc/binding k1-handle :bound-k1
+                    (fn []
+                      (deliver bound-thread-entered true)
+                      (is (true? (deref writes-done 1000 ::timed-out)))
+                      (testing "the bound thread sees its own override for k1"
+                        (is (= :bound-k1 (mc/current k1-handle))))
+                      (testing "the writer's root updates to k2 and k3 are visible from inside the binding"
+                        (is (= :updated-k2 (mc/current k2-handle)))
+                        (is (= :updated-k3 (mc/current k3-handle))))
+                      (testing "`root` also reflects the writer's updates"
+                        (is (= :updated-k2 (mc/root k2-handle)))
+                        (is (= :updated-k3 (mc/root k3-handle))))))
+        (finally
+          @writer)))))
+
+(deftest ^:synchronized nested-binding-reads-through-to-root-test
+  (testing "Even from a nested binding (so we're not on the root system to begin with), concurrent root writes should still be visible for un-overridden keys"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/alter-root k2-handle :root-k2)
+    (mc/alter-root k3-handle :root-k3)
+    (let [bound-thread-entered (promise)
+          writes-done          (promise)
+          writer (future
+                   (deref bound-thread-entered 1000 ::timed-out)
+                   (mc/swap! k2-handle (constantly :updated-k2))
+                   (mc/reset! k3-handle :updated-k3)
+                   (deliver writes-done true))]
+      (try
+        (mc/binding k1-handle :outer-k1
+                    (fn []
+                      (mc/binding k1-handle :inner-k1
+                                  (fn []
+                                    (deliver bound-thread-entered true)
+                                    (is (true? (deref writes-done 1000 ::timed-out)))
+                                    (testing "k1 shows the innermost override"
+                                      (is (= :inner-k1 (mc/current k1-handle))))
+                                    (testing "the writer's root updates to k2 and k3 read through both binding layers"
+                                      (is (= :updated-k2 (mc/current k2-handle)))
+                                      (is (= :updated-k3 (mc/current k3-handle))))
+                                    (testing "`root` also reflects the writer's updates"
+                                      (is (= :updated-k2 (mc/root k2-handle)))
+                                      (is (= :updated-k3 (mc/root k3-handle))))))))
+        (finally
+          @writer)))))
 
 (comment
   (let [iterations 100]
