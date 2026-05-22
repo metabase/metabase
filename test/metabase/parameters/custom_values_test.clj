@@ -35,6 +35,23 @@
                       [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :name)]
                       {:query-string "bakery"}))))))))))
 
+(deftest ^:parallel with-label-field-test
+  (testing "providing a label-field adds a second breakout so each row is a [value label] pair"
+    (binding [custom-values/*max-rows* 3]
+      (mt/with-temp
+        [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                                 {:database_id (mt/id)
+                                  :type        :question
+                                  :table_id    (mt/id :venues)})]
+        (is (= {:has_more_values true
+                :values          [[1 "Red Medicine"]
+                                  [2 "Stout Burgers & Beers"]
+                                  [3 "The Apple Pan"]]}
+               (custom-values/values-from-card
+                card
+                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :id)]
+                {:label-field [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} (mt/id :venues :name)]})))))))
+
 (deftest ^:parallel with-mbql-card-test-2
   (testing "source card is a model" ; Models are opaque, so this sees the post-aggregation columns.
     (binding [custom-values/*max-rows* 3]
@@ -334,6 +351,69 @@
                                             :value_field [:field Integer/MAX_VALUE nil]}}
                     nil
                     (constantly mock-default-result))))))))))
+
+(deftest ^:parallel parameter->values-with-label-field-test
+  ;; bind to an admin to bypass the permissions check
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "a card source with a label_field returns [value label] pairs through parameter->values"
+      (binding [custom-values/*max-rows* 3]
+        (mt/with-temp
+          [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                                   {:database_id (mt/id)
+                                    :type        :question
+                                    :table_id    (mt/id :venues)})]
+          (is (= {:has_more_values true
+                  :values          [[1 "Red Medicine"]
+                                    [2 "Stout Burgers & Beers"]
+                                    [3 "The Apple Pan"]]}
+                 (custom-values/parameter->values
+                  {:name                 "Card as source"
+                   :slug                 "card"
+                   :id                   "_CARD_"
+                   :type                 :category
+                   :values_source_type   :card
+                   :values_source_config {:card_id     (:id card)
+                                          :value_field (mt/$ids $venues.id)
+                                          :label_field (mt/$ids $venues.name)}}
+                  nil
+                  (fn [] (throw (ex-info "Shouldn't call this function" {})))))))))))
+
+(deftest ^:parallel parameter-remapped-value-card-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "a card source with a label_field remaps a single value to a [value label] pair"
+      (mt/with-temp
+        [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                                 {:database_id (mt/id)
+                                  :type        :question
+                                  :table_id    (mt/id :venues)})]
+        (is (= [1 "Red Medicine"]
+               (custom-values/parameter-remapped-value
+                {:name                 "Card as source"
+                 :slug                 "card"
+                 :id                   "_CARD_"
+                 :type                 :category
+                 :values_source_type   :card
+                 :values_source_config {:card_id     (:id card)
+                                        :value_field (mt/$ids $venues.id)
+                                        :label_field (mt/$ids $venues.name)}}
+                1
+                (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))
+    (testing "a card source without a label_field has no remapped value"
+      (mt/with-temp
+        [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                                 {:database_id (mt/id)
+                                  :type        :question
+                                  :table_id    (mt/id :venues)})]
+        (is (nil? (custom-values/parameter-remapped-value
+                   {:name                 "Card as source"
+                    :slug                 "card"
+                    :id                   "_CARD_"
+                    :type                 :category
+                    :values_source_type   :card
+                    :values_source_config {:card_id     (:id card)
+                                           :value_field (mt/$ids $venues.id)}}
+                   1
+                   (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
 
 (deftest ^:parallel order-by-aggregation-fields-test
   (testing "Values could be retrieved for queries containing ordering by aggregation (#46369)"
