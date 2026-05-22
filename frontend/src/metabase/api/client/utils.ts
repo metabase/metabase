@@ -28,17 +28,6 @@ function trimSuffix(str: string, suffix: string): string {
   return str.endsWith(suffix) ? str.slice(0, -suffix.length) : str;
 }
 
-export async function getResponseBody(response: Response): Promise<unknown> {
-  const bodyText = await response.text();
-
-  try {
-    return JSON.parse(bodyText);
-  } catch (error) {
-    // do nothing
-  }
-  return bodyText;
-}
-
 export function appendQueryParameters(
   url: URL,
   params: Record<string, unknown>,
@@ -56,6 +45,49 @@ export function appendQueryParameters(
       url.searchParams.append(key, String(value));
     }
   }
+}
+
+export async function getResponseBody(response: Response): Promise<unknown> {
+  if (response.status === 202) {
+    // Streaming endpoints (queries, downloads) commit HTTP 202 up front, so a
+    // post-commit failure can't change the status line — it's signalled by a
+    // small {_status: N} JSON body. The only bodies possible on a 202 are JSON (a
+    // result or that _status error) or a non-JSON export read off the clone by a
+    // transformResponse caller. We only ever need JSON here: parse in one pass,
+    // and treat a parse failure as a successful non-JSON export.
+    try {
+      return await response.json();
+    } catch {
+      return undefined;
+    }
+  }
+
+  // Off the 202 path the backend only sets application/json when the body
+  // is valid JSON. The one exception is an empty body (e.g. 204 No Content),
+  // which we surface as null. A genuine parse failure here means the backend
+  // broke that invariant, so let it throw rather than masking it as data.
+  if (isJson(response)) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  // Non-JSON bodies (text/plain 503 "still initializing", HTML errors) are read
+  // as text so they can surface as error.data. An empty body is no content.
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function isJson(response: Response): boolean {
+  return (
+    response.headers.get("Content-Type")?.includes("application/json") ?? false
+  );
 }
 
 export function getResponseStatus(response: Response, body: unknown): number {
