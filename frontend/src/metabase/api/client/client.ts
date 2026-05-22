@@ -54,8 +54,6 @@ type MethodCreator = (
 ) => ApiMethod;
 
 type ResponseErrorInfo = {
-  body: unknown;
-  status: number;
   metabaseVersion: string | null;
 };
 
@@ -318,8 +316,6 @@ export class ApiClient extends EventEmitter<EventMap> {
 
       if (status < 200 || status > 299) {
         this.onResponseError?.({
-          body,
-          status,
           metabaseVersion: response.headers.get("X-Metabase-Version"),
         });
 
