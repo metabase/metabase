@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
 import type {
   MetricSourceId,
@@ -11,32 +10,36 @@ import type {
 import {
   type AvailableDimensionsResult,
   type DimensionPickerItem,
-  type DimensionPickerSection,
   type DimensionPickerSidebarCategory,
-  type DimensionPickerSidebarCategorySelectRow,
   type SourceDisplayInfo,
   type TabInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
-  buildDimensionPickerSidebarCategorySelectRows,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Icon,
   ScrollArea,
-  Select,
   Stack,
   Text,
   TextInput,
   Title,
-  UnstyledButton,
 } from "metabase/ui";
 
 import S from "./DimensionPickerSidebar.module.css";
 import { useDimensionPickerSidebar } from "./DimensionPickerSidebarContext";
+import { AllFieldsList } from "./components/AllFieldsList";
+import { CategoryItem } from "./components/CategoryItem";
+import {
+  filterSections,
+  getSelectedCategoryKey,
+  hasSameDimensions,
+  isCategorySelected,
+} from "./utils";
 
 type DimensionPickerSidebarProps = {
   activeTab: MetricsViewerTabState;
@@ -52,76 +55,6 @@ type DimensionPickerSidebarProps = {
 };
 
 type SidebarMode = "default" | "all";
-
-function getDimensionMappingEntries(tabInfo: TabInfo | MetricsViewerTabState) {
-  return Object.entries(tabInfo.dimensionMapping).filter(
-    (entry): entry is [string, string] => entry[1] != null,
-  );
-}
-
-function hasSameDimensions(
-  item: DimensionPickerItem,
-  tab: MetricsViewerTabState,
-) {
-  if (item.tabInfo.type !== tab.type) {
-    return false;
-  }
-
-  const itemEntries = getDimensionMappingEntries(item.tabInfo);
-  const tabEntries = getDimensionMappingEntries(tab);
-  return (
-    itemEntries.length === tabEntries.length &&
-    itemEntries.every(
-      ([slotIndex, dimensionId]) =>
-        tab.dimensionMapping[Number(slotIndex)] === dimensionId,
-    )
-  );
-}
-
-function filterSections(
-  sections: DimensionPickerSection[],
-  searchText: string,
-): DimensionPickerSection[] {
-  const trimmedSearchText = searchText.trim().toLocaleLowerCase();
-  if (!trimmedSearchText) {
-    return sections;
-  }
-
-  return sections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) =>
-        item.name.toLocaleLowerCase().includes(trimmedSearchText),
-      ),
-    }))
-    .filter((section) => section.items.length > 0);
-}
-
-function getSidebarSectionName(sectionName?: string) {
-  if (sectionName === t`Shared`) {
-    return t`Shared dimensions`;
-  }
-
-  return sectionName;
-}
-
-function getSelectedCategoryKey(
-  categories: DimensionPickerSidebarCategory[],
-  activeTab: MetricsViewerTabState,
-) {
-  return categories.find((category) => isCategorySelected(category, activeTab))
-    ?.key;
-}
-
-function isCategorySelected(
-  category: DimensionPickerSidebarCategory,
-  activeTab: MetricsViewerTabState,
-) {
-  return (
-    hasSameDimensions(category, activeTab) ||
-    category.targetItems.some((item) => hasSameDimensions(item, activeTab))
-  );
-}
 
 export function DimensionPickerSidebar({
   activeTab,
@@ -244,11 +177,12 @@ export function DimensionPickerSidebar({
 
   return (
     <Box
-      component="aside"
       className={S.root}
+      component="aside"
       data-testid="metrics-viewer-dimension-picker-sidebar"
+      pl="lg"
     >
-      <Flex align="center" justify="space-between" px="lg" pt="lg" pb="md">
+      <Flex align="center" justify="space-between" pt="xs" pb="md">
         <Flex align="center" gap="sm" miw={0}>
           {showAllFields && (
             <ActionIcon
@@ -268,19 +202,19 @@ export function DimensionPickerSidebar({
         </ActionIcon>
       </Flex>
 
-      <Box px="lg" pb="md">
+      <Box pb="md">
         <TextInput
-          classNames={{ input: S.searchInput }}
-          size="sm"
           aria-label={t`Search fields`}
-          value={searchText}
+          classNames={{ input: S.searchInput }}
+          leftSection={<Icon name="search" size={14} />}
           onChange={(event) => setSearchText(event.currentTarget.value)}
           placeholder={t`Search fields`}
-          leftSection={<Icon name="search" size={16} />}
+          size="sm"
+          value={searchText}
         />
       </Box>
 
-      <ScrollArea flex="1 1 auto" px="lg" pb="lg">
+      <ScrollArea pb="lg" offsetScrollbars="present">
         {showAllFields ? (
           <AllFieldsList
             activeTab={activeTab}
@@ -290,59 +224,47 @@ export function DimensionPickerSidebar({
         ) : categories.length > 0 ? (
           <Stack gap="lg">
             <Stack gap="xs">
-              <Text px="sm" size="sm" c="text-secondary">
+              <Text px="sm" size="sm" c="text-secondary" my="sm">
                 {t`Shared dimensions`}
               </Text>
-              <Stack gap={0}>
+              <Stack gap="xs">
                 {categories.map((category) => {
                   const isSelected = category.key === selectedTabCategoryKey;
                   const isExpanded = category.key === expandedCategoryKey;
-                  const categorySelectRows = getCategorySelectRows({
-                    category,
-                    activeTab,
-                    metricSlots,
-                    sourceDataById,
-                    sourceColors,
-                  });
 
                   return (
-                    <Box key={category.key}>
-                      <CategoryButton
-                        item={category}
-                        isSelected={isSelected}
-                        canConfigure={categorySelectRows.length > 0}
-                        isExpanded={isExpanded}
-                        onClick={() => handleCategorySelect(category)}
-                        onConfigure={() =>
-                          handleToggleCategorySettings(category)
-                        }
-                      />
-                      {isExpanded && categorySelectRows.length > 0 && (
-                        <Stack className={S.categorySelectList} gap="xs">
-                          {categorySelectRows.map((row) => (
-                            <MetricDimensionSelect
-                              key={row.slotIndex}
-                              row={row}
-                              onChange={(dimensionId) =>
-                                handleCategoryDimensionChange(
-                                  category,
-                                  row.slotIndex,
-                                  dimensionId,
-                                )
-                              }
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                    </Box>
+                    <CategoryItem
+                      key={category.key}
+                      category={category}
+                      activeTab={activeTab}
+                      metricSlots={metricSlots}
+                      sourceDataById={sourceDataById}
+                      sourceColors={sourceColors}
+                      isSelected={isSelected}
+                      isExpanded={isExpanded}
+                      onCategorySelect={() => handleCategorySelect(category)}
+                      onToggleCategorySettings={() =>
+                        handleToggleCategorySettings(category)
+                      }
+                      onDimensionChange={(slotIndex, dimensionId) =>
+                        handleCategoryDimensionChange(
+                          category,
+                          slotIndex,
+                          dimensionId,
+                        )
+                      }
+                    />
                   );
                 })}
-                <UnstyledButton
-                  className={S.seeAllButton}
+                <Button
+                  mr="auto"
+                  mt="sm"
                   onClick={handleSeeAll}
+                  size="sm"
+                  variant="subtle"
                 >
                   {t`See all`}
-                </UnstyledButton>
+                </Button>
               </Stack>
             </Stack>
           </Stack>
@@ -355,200 +277,5 @@ export function DimensionPickerSidebar({
         )}
       </ScrollArea>
     </Box>
-  );
-}
-
-function getCategorySelectRows({
-  category,
-  activeTab,
-  metricSlots,
-  sourceDataById,
-  sourceColors,
-}: {
-  category: DimensionPickerSidebarCategory;
-  activeTab: MetricsViewerTabState;
-  metricSlots: MetricSlot[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  sourceColors: SourceColorMap;
-}) {
-  const categoryTab = isCategorySelected(category, activeTab)
-    ? activeTab
-    : {
-        ...activeTab,
-        type: category.tabInfo.type,
-        label: category.tabInfo.label,
-        dimensionMapping: category.tabInfo.dimensionMapping,
-      };
-
-  return buildDimensionPickerSidebarCategorySelectRows({
-    category,
-    activeTab: categoryTab,
-    metricSlots,
-    sourceDataById,
-    sourceColors,
-  });
-}
-
-function CategoryButton({
-  item,
-  isSelected,
-  canConfigure,
-  isExpanded,
-  onClick,
-  onConfigure,
-}: {
-  item: DimensionPickerSidebarCategory;
-  isSelected: boolean;
-  canConfigure: boolean;
-  isExpanded: boolean;
-  onClick: () => void;
-  onConfigure: () => void;
-}) {
-  return (
-    <Flex className={S.categoryRow} data-expanded={isExpanded || undefined}>
-      <UnstyledButton
-        className={S.categoryItem}
-        data-selected={isSelected || undefined}
-        aria-label={item.name}
-        aria-pressed={isSelected}
-        onClick={onClick}
-      >
-        <Icon className={S.itemIcon} name={item.icon} size={16} />
-        <Text className={S.itemLabel} component="span">
-          {item.name}
-        </Text>
-      </UnstyledButton>
-      {canConfigure && (
-        <ActionIcon
-          className={S.settingsButton}
-          aria-label={t`Configure ${item.name}`}
-          aria-expanded={isExpanded}
-          variant="subtle"
-          onClick={onConfigure}
-        >
-          <SettingsSlidersIcon />
-        </ActionIcon>
-      )}
-    </Flex>
-  );
-}
-
-function SettingsSlidersIcon() {
-  return (
-    <svg
-      className={S.settingsIcon}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path d="M4 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M8 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M12 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="4" cy="6" r="1.5" fill="currentColor" />
-      <circle cx="8" cy="10" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function MetricDimensionSelect({
-  row,
-  onChange,
-}: {
-  row: DimensionPickerSidebarCategorySelectRow;
-  onChange: (dimensionId: string) => void;
-}) {
-  return (
-    <Select
-      classNames={{ input: S.metricSelectInput }}
-      aria-label={t`Select dimension for ${row.metricName}`}
-      data={row.options}
-      value={row.value}
-      searchable
-      nothingFoundMessage={t`No fields found`}
-      leftSection={
-        <SourceColorIndicator
-          colors={row.colors}
-          fallbackIcon="metric"
-          size={14}
-        />
-      }
-      size="sm"
-      onChange={(value) => {
-        if (value) {
-          onChange(value);
-        }
-      }}
-    />
-  );
-}
-
-function DimensionButton({
-  item,
-  isSelected,
-  onClick,
-}: {
-  item: DimensionPickerItem;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <UnstyledButton
-      className={S.item}
-      data-selected={isSelected || undefined}
-      aria-label={item.name}
-      aria-pressed={isSelected}
-      onClick={onClick}
-    >
-      <Icon className={S.itemIcon} name={item.icon} size={16} />
-      <Text className={S.itemLabel} component="span">
-        {item.name}
-      </Text>
-    </UnstyledButton>
-  );
-}
-
-function AllFieldsList({
-  activeTab,
-  sections,
-  onSelect,
-}: {
-  activeTab: MetricsViewerTabState;
-  sections: DimensionPickerSection[];
-  onSelect: (item: DimensionPickerItem) => void;
-}) {
-  if (sections.length === 0) {
-    return (
-      <Text c="text-secondary" ta="center" py="lg">{t`No fields found`}</Text>
-    );
-  }
-
-  return (
-    <Stack gap="lg">
-      {sections.map((section, sectionIndex) => {
-        const sectionKey = section.name ?? `section-${sectionIndex}`;
-        const sectionName = getSidebarSectionName(section.name);
-
-        return (
-          <Stack key={sectionKey} gap="xs">
-            {sectionName && (
-              <Text px="sm" size="sm" c="text-secondary">
-                {sectionName}
-              </Text>
-            )}
-            <Stack gap={0}>
-              {section.items.map((item, itemIndex) => (
-                <DimensionButton
-                  key={`${item.tabInfo.type}-${item.name}-${itemIndex}`}
-                  item={item}
-                  isSelected={hasSameDimensions(item, activeTab)}
-                  onClick={() => onSelect(item)}
-                />
-              ))}
-            </Stack>
-          </Stack>
-        );
-      })}
-    </Stack>
   );
 }
