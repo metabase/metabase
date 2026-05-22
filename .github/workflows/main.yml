@@ -12,7 +12,7 @@ jobs:
       contains(github.event.issue.labels.*.name, 'Type:New Feature')
     steps:
       - name: Setting title
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         id: vars
         with:
           script: |

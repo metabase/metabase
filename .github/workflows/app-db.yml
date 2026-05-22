@@ -369,7 +369,7 @@ jobs:
     if: always() && !cancelled()
     steps:
       - name: Check job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

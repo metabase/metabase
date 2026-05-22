@@ -36,7 +36,7 @@ jobs:
 
       - name: Generate version matrix
         id: set-matrix
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { buildCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
@@ -76,7 +76,7 @@ jobs:
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
 
       - name: Upload failure result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: failure-result-${{ matrix.source }}-${{ matrix.target }}
@@ -84,7 +84,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
@@ -121,7 +121,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Download failure results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: failure-result-*
@@ -130,7 +130,7 @@ jobs:
 
       - name: Notify Slack
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -208,7 +208,7 @@ jobs:
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}

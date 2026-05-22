@@ -12,7 +12,8 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +88,7 @@
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                              ;; First call returns tool-input, second returns text
+                                            ;; First call returns tool-input, second returns text
                                                               (let [n (swap! call-count inc)]
                                                                 (if (= 1 n)
                                                                   (mut/mock-llm-response
@@ -255,19 +256,29 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
       (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
-        ;; User asks: "Show me the first 10 orders"
-        ;; - Iteration 1: LLM calls search tool to find orders table
-        ;; - Iteration 2: LLM calls construct_notebook_query to create a raw query
-        ;; - Iteration 3: LLM returns text with chart link
-        ;;
-        ;; We use real tools with only the search backend and LLM mocked.
-        ;; The construct_notebook_query tool runs real query construction against test DB.
-        ;; We use a simple "raw" query type that doesn't require field IDs.
+    ;; User asks: "Show me the first 10 orders"
+    ;; - Iteration 1: LLM calls search tool to find orders table
+    ;; - Iteration 2: LLM calls construct_notebook_query to create a raw query
+    ;; - Iteration 3: LLM returns text with chart link
+    ;;
+    ;; We use real tools with only the search backend and LLM mocked.
+    ;; The construct_notebook_query tool runs real query construction against test DB.
+    ;; We use a simple "raw" query type that doesn't require field IDs.
         (mt/with-current-user (mt/user->id :crowberto)
           (let [orders-table-id (mt/id :orders)
-                ;; Track LLM calls
+            ;; Look up database + schema + table name so we can write the portable FK
+            ;; that the representations-format construct_notebook_query expects.
+                orders-table    (t2/select-one :model/Table :id orders-table-id)
+                db-name         (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-fk        [db-name (:schema orders-table) (:name orders-table)]
+                external-query  {:lib/type "mbql/query"
+                                 :database db-name
+                                 :stages   [{:lib/type     "mbql.stage/mbql"
+                                             :source-table orders-fk
+                                             :limit        10}]}
+            ;; Track LLM calls
                 llm-call-count  (atom 0)
-                ;; Scripted LLM responses - uses real table ID from test DB
+            ;; Scripted LLM responses - uses real table ID from test DB
                 llm-responses
                 [;; Iteration 1: Search for orders table
                  [{:type :start :id "msg-1"}
@@ -278,24 +289,22 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-                 ;; Iteration 2: Construct a simple query via agent-lib program
+             ;; Iteration 2: Construct a simple query via the representations YAML format
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :source_entity {:type "table" :id orders-table-id}
-                               :program       {:source     {:type "table" :id orders-table-id}
-                                               :operations [["limit" 10]]}
+                               :query         external-query
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
-                 ;; Iteration 3: Final text response
+             ;; Iteration 3: Final text response
                  [{:type :start :id "msg-3"}
                   {:type :text
                    :text "Here are the first 10 orders from the orders table."}
                   {:type :usage :usage {:promptTokens 300 :completionTokens 10} :model "test" :id "msg-3"}]]]
-            ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
-            ;; Everything else runs real code
+        ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
+        ;; Everything else runs real code
             (mt/with-dynamic-fn-redefs [openrouter/openrouter           (fn [_opts]
                                                                           (let [n (swap! llm-call-count inc)]
                                                                             (mut/mock-llm-response (get llm-responses (dec n) []))))
@@ -309,24 +318,24 @@
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
                          {:type :tool-input :function "search"}
-                         ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
+                     ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
                          {:type     :tool-output
                           :function "search"
                           :result   {:structured-output {:total_count 1}}}
                          {:type :start}
                          {:type :tool-input :function "construct_notebook_query"}
-                         ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
+                     ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
                          {:type :usage :usage {:promptTokens 300 :completionTokens 50}}
-                         ;; references real db id
+                     ;; references real db id
                          {:type     :tool-output
                           :function "construct_notebook_query"
                           :result   {:structured-output {:query {:database (mt/id)}}}}
                          {:type :data :data-type "navigate_to"}
                          {:type :start}
-                         ;; has final text part
+                     ;; has final text part
                          {:type :text}
-                         ;; Cumulative usage after iteration 3: 300+300=600 prompt, 50+10=60 completion
+                     ;; Cumulative usage after iteration 3: 300+300=600 prompt, 50+10=60 completion
                          {:type :usage :usage {:promptTokens 600 :completionTokens 60}}
                          {:type      :data
                           :data-type "state"
@@ -353,7 +362,7 @@
                                       (fn [_]
                                         (let [n (swap! call-count inc)]
                                           (case (int n)
-                                            ;; Iteration 1: tool call with usage
+                          ;; Iteration 1: tool call with usage
                                             1 (mut/mock-llm-response
                                                [{:type :start :id "msg-1"}
                                                 {:type      :tool-input
@@ -362,7 +371,7 @@
                                                  :arguments {:query "test"}}
                                                 {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                                  :model "gpt-4" :id "msg-1"}])
-                                            ;; Iteration 2: text response with usage
+                          ;; Iteration 2: text response with usage
                                             (mut/mock-llm-response
                                              [{:type :start :id "msg-2"}
                                               {:type :text :text "Done"}
@@ -481,7 +490,7 @@
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
                                          {:profile-id "internal"})))))
 
-      ;; clear! is much faster than a new mt/with-prometheus-system!
+    ;; clear! is much faster than a new mt/with-prometheus-system!
       (analytics/clear! :metabase-metabot/agent-requests)
       (analytics/clear! :metabase-metabot/agent-iterations)
       (analytics/clear! :metabase-metabot/agent-errors)
@@ -545,7 +554,7 @@
                                   :context         {}
                                   :profile-id      :internal
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}})
-                ;; The collector also contains token_usage events; filter for just ai_service_events.
+              ;; The collector also contains token_usage events; filter for just ai_service_events.
                 (let [events (snowplow-test/pop-event-data-and-user-id!)
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                   (is (=? [{:user-id (str rasta-id)
@@ -625,7 +634,7 @@
                                   :context         {}
                                   :profile-id      :internal
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}})
-                ;; Filter for just token_usage events (other events may also be present)
+              ;; Filter for just token_usage events (other events may also be present)
                 (let [events       (snowplow-test/pop-event-data-and-user-id!)
                       token-events (filter #(contains? (:data %) "total_tokens") events)]
                   (is (=? [{:user-id (str rasta-id)

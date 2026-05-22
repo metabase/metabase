@@ -154,12 +154,15 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
+        // Subscriptions can be archived server-side when a referenced
+        // parameter is removed, so invalidate the subscription list too.
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
             listTag("dashboard"),
             idTag("dashboard", id),
             tag("parameter-values"),
             listTag("revision"),
+            listTag("subscription"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
