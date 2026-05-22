@@ -924,27 +924,10 @@
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))
-    (testing "InputStream bodies get slurped"
-      (is (= "boom"
-             (body-preview (java.io.ByteArrayInputStream. (.getBytes "boom"))))))
     (testing "long bodies are truncated to 500 chars with an ellipsis"
       (let [preview (body-preview (apply str (repeat 2000 \x)))]
         (is (str/ends-with? preview "…"))
-        (is (= 501 (count preview)))))
-    (testing "InputStream bodies are read up to the truncation window — not fully slurped"
-      ;; ByteArrayInputStream.available() returns the number of *unread* bytes, so we
-      ;; can compute how much body-preview consumed without proxying read methods.
-      ;; The InputStreamReader inside io/reader uses an 8KB decode buffer, so the
-      ;; ceiling isn't max-body-preview-chars exactly — but it's still constant
-      ;; rather than scaling with body size.
-      (let [body-bytes (.getBytes ^String (apply str (repeat 1000000 \x)))
-            stream     (java.io.ByteArrayInputStream. body-bytes)
-            preview    (body-preview stream)
-            consumed   (- (alength body-bytes) (.available stream))]
-        (is (str/ends-with? preview "…"))
-        (is (= 501 (count preview)))
-        (is (< consumed (alength body-bytes))
-            "should not consume the entire 1MB stream just to render a 500-char preview")))))
+        (is (= 501 (count preview)))))))
 
 (defn- caught
   "Run `thunk` and return the thrown exception, or nil if it didn't throw."
@@ -1026,6 +1009,59 @@
       (is (= "openai API request failed" (ex-message ex)))
       (is (= #{:api-error :provider :error-code :exception-class}
              (set (keys (ex-data ex)))))))
+
+  (testing "InputStream JSON bodies are decoded and structured-extracted"
+    (let [json     (json/encode {:error {:message "model decommissioned"}})
+          upstream (ex-info "clj-http error"
+                            {:status  500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body    (java.io.ByteArrayInputStream. (.getBytes ^String json))})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                             upstream))]
+      (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
+      (is (=? {:error {:message "model decommissioned"}} (:body (ex-data ex))))))
+
+  (testing "Large InputStream bodies are bounded — not fully slurped into memory"
+    ;; ByteArrayInputStream.available() returns the unread byte count, so we can
+    ;; measure how much rethrow-api-error! pulled off the stream without proxying.
+    (let [body-bytes (.getBytes ^String (apply str (repeat 2000000 \x)))
+          stream     (java.io.ByteArrayInputStream. body-bytes)
+          upstream   (ex-info "clj-http error"
+                              {:status  502 :reason-phrase "Bad Gateway"
+                               :headers {"content-type" "text/plain"}
+                               :body    stream})
+          ex         (caught #(self.core/rethrow-api-error!
+                               "openrouter"
+                               (constantly "OpenRouter upstream provider returned an error")
+                               upstream))
+          consumed   (- (alength body-bytes) (.available stream))]
+      (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
+      (is (str/ends-with? (ex-message ex) "…"))
+      (is (< consumed (alength body-bytes))
+          "should not consume the entire 2MB stream just to surface an error preview")))
+
+  (testing "Truncated InputStream JSON bodies fall back to the raw bounded string"
+    ;; A small slurp cap forces the JSON to be cut mid-envelope. We should fall back
+    ;; to surfacing the raw bounded string rather than throwing on parse failure.
+    (let [json     (json/encode {:error {:message (apply str (repeat 10000 \x))}})
+          upstream (ex-info "clj-http error"
+                            {:status  500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body    (java.io.ByteArrayInputStream. (.getBytes ^String json))})
+          ex       (with-redefs [self.core/max-body-slurp-chars 100]
+                     (caught #(self.core/rethrow-api-error!
+                               "anthropic"
+                               (constantly "Anthropic upstream provider returned an error")
+                               upstream)))]
+      (is (str/includes? (ex-message ex) "Anthropic upstream provider returned an error"))
+      (is (str/includes? (ex-message ex) "{\"error\":{\"message\":\"xxx")
+          "the truncated raw string is surfaced in the user-facing message when JSON parse fails")
+      (is (string? (:body (ex-data ex)))
+          "the bounded raw string is kept on ex-data when JSON parse fails")
+      (is (<= (count (:body (ex-data ex))) 100)
+          "the body in ex-data respects the slurp cap")))
 
   (testing "Retry-After header survives the ex-data allow-list and reaches retry-delay-ms"
     ;; Regression test: an earlier revision allow-listed only :status/:reason-phrase/:body,

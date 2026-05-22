@@ -519,12 +519,10 @@
         (s (:message m)))))
 
 (defn- slurp-bounded
-  "Read at most `limit` chars from `r`, returning nil on read error or empty input.
-  Used so a multi-MB upstream body doesn't get pulled fully into memory just to be
-  truncated to a few hundred chars."
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input."
   [r limit]
   (try
-    (with-open [rdr (io/reader r)]
+    (with-open [rdr (io/reader r :encoding "UTF-8")]
       (let [buf (char-array limit)]
         (loop [off 0]
           (if (= off limit)
@@ -535,24 +533,41 @@
                 (recur (+ off n))))))))
     (catch Throwable _ nil)))
 
+(def ^:private max-body-slurp-chars
+  "Cap on how many chars we read off an upstream InputStream body when decoding for
+  error surfacing. Large enough to cover any realistic JSON error envelope; small
+  enough to bound the pathological multi-MB case."
+  1000000)
+
+(defn- decode-bounded-body
+  "Decode a clj-http response map's `:body` for error surfacing.
+  Bound-slurps InputStream bodies first so a giant upstream payload doesn't get
+  pulled fully into memory. The bounded string is then handed to `json/decode-body`;
+  on parse failure (e.g. the cap truncated us mid-envelope) the raw bounded string
+  is kept as `:body` so [[body-preview]] can still surface *something*."
+  [res]
+  (let [bounded (cond-> res
+                  (instance? InputStream (:body res))
+                  (update :body #(or (slurp-bounded % max-body-slurp-chars) "")))]
+    (try
+      (json/decode-body bounded)
+      (catch Throwable _ bounded))))
+
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
   Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`
   and emit a warn. Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
-                    (nil? body)                  nil
-                    (string? body)               body
-                    (map? body)                  (extract-error-message body)
-                    (sequential? body)           (let [head (first body)]
-                                                   (cond
-                                                     (map? head)    (extract-error-message head)
-                                                     (string? head) head
-                                                     :else          nil))
-                    ;; +1 so the truncation branch below detects overflow without having
-                    ;; to read the full stream.
-                    (instance? InputStream body) (slurp-bounded body (inc max-body-preview-chars))
-                    :else                        nil)
+                    (nil? body)        nil
+                    (string? body)     body
+                    (map? body)        (extract-error-message body)
+                    (sequential? body) (let [head (first body)]
+                                         (cond
+                                           (map? head)    (extract-error-message head)
+                                           (string? head) head
+                                           :else          nil))
+                    :else              nil)
         ;; Surface *some* context to the user even for unrecognised shapes — the warn
         ;; signals operators to add the new envelope shape to [[extract-error-message]].
         s         (or extracted
@@ -578,7 +593,7 @@
       (throw e)
 
       (:body data)
-      (let [res     (json/decode-body data)
+      (let [res     (decode-bounded-body data)
             base    (res->message res)
             preview (body-preview (:body res))
             msg     (cond-> base
