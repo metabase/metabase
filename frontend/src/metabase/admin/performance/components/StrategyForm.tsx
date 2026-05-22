@@ -24,8 +24,10 @@ import {
   Box,
   Button,
   FixedSizeIcon,
+  Flex,
   Group,
   Icon,
+  Loader,
   Radio,
   Stack,
   Text,
@@ -48,15 +50,43 @@ import { isModelWithClearableCache } from "../types";
 import { getDefaultValueForField, getLabelString } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
-import {
-  FormWrapper,
-  LoaderInButton,
-  StyledFormButtonsGroup,
-} from "./StrategyForm.styled";
 
 interface ButtonLabels {
   save: string;
   discard: string;
+}
+
+/** Context passed to a `renderFooter` slot so the consumer can wire up
+ * Save / Discard / progress states without re-reading Formik themselves. */
+interface StrategyFormFooterContext {
+  dirty: boolean;
+  isFormPending: boolean;
+}
+
+/** Module-level, frozen so the form's initialValues reference is stable
+ * across renders. The targetId picks one of the two when no saved strategy
+ * is set yet. */
+const ROOT_DEFAULT_STRATEGY: CacheStrategy = { type: "nocache" };
+const INHERIT_DEFAULT_STRATEGY: CacheStrategy = { type: "inherit" };
+
+interface StrategyFormProps {
+  targetId: number | null;
+  targetModel: CacheableModel;
+  targetName: string;
+  setIsDirty: (isDirty: boolean) => void;
+  saveStrategy: (values: CacheStrategy) => Promise<void>;
+  savedStrategy?: CacheStrategy;
+  shouldAllowInvalidation?: boolean;
+  shouldShowName?: boolean;
+  onReset?: () => void;
+  buttonLabels?: ButtonLabels;
+  isInSidebar?: boolean;
+  /** Optional slot that replaces the default footer (Save / Discard / Clear
+   * cache). When provided the consumer owns the footer chrome; the form still
+   * provides the Formik context so the consumer's buttons can dispatch
+   * submit / reset via `useFormikContext`. */
+  renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
+  classNames?: { formBox?: string };
 }
 
 export const StrategyForm = ({
@@ -70,6 +100,7 @@ export const StrategyForm = ({
   shouldShowName = true,
   onReset,
   isInSidebar = false,
+  renderFooter,
   classNames,
   buttonLabels = isInSidebar
     ? {
@@ -80,26 +111,9 @@ export const StrategyForm = ({
         save: t`Save changes`,
         discard: t`Discard changes`,
       },
-}: {
-  targetId: number | null;
-  targetModel: CacheableModel;
-  targetName: string;
-  setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: CacheStrategy) => Promise<void>;
-  savedStrategy?: CacheStrategy;
-  shouldAllowInvalidation?: boolean;
-  shouldShowName?: boolean;
-  onReset?: () => void;
-  buttonLabels?: ButtonLabels;
-  isInSidebar?: boolean;
-  classNames?: { formBox?: string };
-}) => {
-  const defaultStrategy: CacheStrategy = useMemo(
-    () => ({
-      type: targetId === rootId ? "nocache" : "inherit",
-    }),
-    [targetId],
-  );
+}: StrategyFormProps) => {
+  const defaultStrategy =
+    targetId === rootId ? ROOT_DEFAULT_STRATEGY : INHERIT_DEFAULT_STRATEGY;
 
   const initialValues = savedStrategy ?? defaultStrategy;
 
@@ -121,6 +135,7 @@ export const StrategyForm = ({
         shouldShowName={shouldShowName}
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
+        renderFooter={renderFooter}
         strategyType={initialValues.type}
         classNames={classNames}
       />
@@ -131,8 +146,8 @@ export const StrategyForm = ({
 /** Don't count the addition/deletion of a default value as a reason to consider the form dirty */
 const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
-  const defaultValues = _.object(
-    _.map(fieldNames, (fieldName) => [
+  const defaultValues = Object.fromEntries(
+    fieldNames.map((fieldName) => [
       fieldName,
       getDefaultValueForField(values.type, fieldName),
     ]),
@@ -163,6 +178,7 @@ const StrategyFormBody = ({
   shouldShowName = true,
   buttonLabels,
   isInSidebar,
+  renderFooter,
   classNames,
 }: {
   targetId: number | null;
@@ -174,6 +190,7 @@ const StrategyFormBody = ({
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
   classNames?: { formBox?: string };
 }) => {
   const { values, initialValues, setFieldValue } =
@@ -219,7 +236,7 @@ const StrategyFormBody = ({
   }, [values, setFieldValue, setStatus]);
 
   return (
-    <FormWrapper>
+    <Flex direction="column" h="100%">
       <Form
         display="flex"
         style={{
@@ -236,7 +253,7 @@ const StrategyFormBody = ({
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-secondary">
+            <Box lh="1rem" pt="md" c="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" c="inherit" />
@@ -304,17 +321,21 @@ const StrategyFormBody = ({
             )}
           </Stack>
         </Box>
-        <FormButtons
-          targetId={targetId}
-          targetModel={targetModel}
-          targetName={targetName}
-          shouldAllowInvalidation={shouldAllowInvalidation}
-          buttonLabels={buttonLabels}
-          isInSidebar={isInSidebar}
-          dirty={dirty}
-        />
+        {renderFooter ? (
+          <StrategyFormFooterSlot dirty={dirty} renderFooter={renderFooter} />
+        ) : (
+          <FormButtons
+            targetId={targetId}
+            targetModel={targetModel}
+            targetName={targetName}
+            shouldAllowInvalidation={shouldAllowInvalidation}
+            buttonLabels={buttonLabels}
+            isInSidebar={isInSidebar}
+            dirty={dirty}
+          />
+        )}
       </Form>
-    </FormWrapper>
+    </Flex>
   );
 };
 
@@ -326,9 +347,21 @@ const FormButtonsGroup = ({
   isInSidebar?: boolean;
 }) => {
   return (
-    <StyledFormButtonsGroup isInSidebar={isInSidebar}>
+    <Group
+      py="md"
+      gap="md"
+      justify={isInSidebar ? "flex-end" : undefined}
+      px={isInSidebar ? "md" : "2.5rem"}
+      pb={isInSidebar ? 0 : undefined}
+      bg={isInSidebar ? undefined : "background-primary"}
+      style={
+        isInSidebar
+          ? undefined
+          : { borderTop: "1px solid var(--mb-color-border)" }
+      }
+    >
       {children}
-    </StyledFormButtonsGroup>
+    </Group>
   );
 };
 
@@ -392,6 +425,20 @@ const FormButtons = ({
   return null;
 };
 
+/** Thin wrapper that bridges the form-pending hook into the consumer's
+ * `renderFooter` slot. Lives inside StrategyFormBody so it can read Formik
+ * context (`useIsFormPending` does that internally). */
+const StrategyFormFooterSlot = ({
+  dirty,
+  renderFooter,
+}: {
+  dirty: boolean;
+  renderFooter: (ctx: StrategyFormFooterContext) => ReactNode;
+}) => {
+  const { isFormPending } = useIsFormPending();
+  return <>{renderFooter({ dirty, isFormPending })}</>;
+};
+
 const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
@@ -452,7 +499,7 @@ const SaveAndDiscardButtons = ({
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<LoaderInButton size="1rem" />}
+        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
         className="strategy-form-submit-button"
@@ -483,49 +530,31 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack gap="xs">
-            <Text lh="1rem" color="text-secondary" id={headingId}>
+            <Text lh="1.5rem" fw="bold" fz="md" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
+            <Text lh="1rem" fw="normal" size="sm" c="text-secondary">
               {t`This determines how long cached results will be stored.`}
             </Text>
           </Stack>
         }
         name="type"
       >
-        <Stack mt="md" gap="md">
-          {_.map(availableStrategies, (option, name) => {
-            const labelString = getLabelString(option.label, model);
-            /** Special colon sometimes used in Asian languages */
-            const wideColon = "：";
-            const colon = labelString.includes(wideColon) ? wideColon : ":";
-            const optionLabelParts = labelString.split(colon);
-            const optionLabelFormatted = (
-              <>
-                <strong>{optionLabelParts[0]}</strong>
-                {optionLabelParts[1] ? (
-                  <>
-                    {colon} {optionLabelParts[1]}
-                  </>
-                ) : null}
-              </>
-            );
-            return (
-              <Radio
-                value={name}
-                key={name}
-                label={optionLabelFormatted}
-                autoFocus={values.type === name}
-                role="radio"
-                styles={{
-                  label: {
-                    paddingLeft: undefined,
-                    paddingInlineStart: ".5rem",
-                  },
-                }}
-              />
-            );
-          })}
+        <Stack mt="xl" gap="md">
+          {Object.entries(availableStrategies).map(([name, option]) => (
+            <Radio
+              key={name}
+              value={name}
+              label={<strong>{getLabelString(option.label, model)}</strong>}
+              description={
+                option.description
+                  ? getLabelString(option.description, model)
+                  : undefined
+              }
+              autoFocus={values.type === name}
+              role="radio"
+            />
+          ))}
         </Stack>
       </FormRadioGroup>
     </section>

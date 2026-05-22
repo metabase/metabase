@@ -32,7 +32,7 @@ export const SidebarCacheSection = ({
   const savedStrategy = targetConfig?.strategy;
 
   const shortStrategyLabel =
-    getShortStrategyLabel(savedStrategy, model) || t`Use default`;
+    getShortStrategyLabel(savedStrategy, model) || t`Default`;
   const labelId = "question-caching-policy-label";
 
   return (
