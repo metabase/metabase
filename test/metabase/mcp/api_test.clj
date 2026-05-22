@@ -686,9 +686,12 @@
 (deftest tools-call-create-question-accepts-query-handle-test
   (testing "create_question resolves query_handle through the MCP layer instead of requiring raw base64"
     (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
           construct-data (call-tool session-id "construct_query"
-                                    {:source     {:type "table" :id (mt/id :orders)}
-                                     :operations [["limit" 5]]})
+                                    {:query {:lib/type "mbql/query"
+                                             :stages   [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table [db-name "PUBLIC" "ORDERS"]
+                                                         :limit        5}]}})
           question-id    (atom nil)]
       (try
         (let [question-data (call-tool session-id "create_question"
@@ -710,18 +713,23 @@
                                                                                                 (mt/id :orders)))
                                                                  (lib/aggregate (lib/count)))
                                               :display       :table}]
-      (let [products-id     (mt/id :products)
+      (let [db-name         (t2/select-one-fn :name :model/Database (mt/id))
+            products-id     (mt/id :products)
+            products-fk     [db-name "PUBLIC" "PRODUCTS"]
             [session-id _]  (initialize!)
             construct-data  (call-tool session-id "construct_query"
-                                       {:source     {:type "table" :id products-id}
-                                        :operations [["limit" 5]]})
+                                       {:query {:lib/type "mbql/query"
+                                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                                            :source-table products-fk
+                                                            :limit        5}]}})
             update-data     (call-tool session-id "update_question"
                                        {:id           card-id
                                         :query_handle (:query_handle construct-data)})
             persisted       (t2/select-one-fn :dataset_query :model/Card :id card-id)
             persisted-table (some :source-table (:stages persisted))]
         (is (= card-id (:id update-data)))
-        ;; Handle was resolved and applied to the card.
+        ;; Handle was resolved and applied to the card. Construct sends portable FKs over the
+        ;; wire; the persisted dataset_query is the resolved MBQL 5 map with numeric IDs.
         (is (= products-id persisted-table)
             (str "Expected handle-resolved query's :source-table = products id " products-id
                  ", got " persisted-table))))))

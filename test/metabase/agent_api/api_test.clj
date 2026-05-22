@@ -511,8 +511,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
           (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
-                                                     {:source     {:type "table" :id (mt/id :orders)}
-                                                      :operations [["limit" 10]]})]
+                                                     {:query (orders-query :limit 10)})]
             (mt/user-http-request :rasta :post 403 "agent/v1/question"
                                   {:name          "Should Not Save"
                                    :query         (:query construct-resp)
@@ -523,8 +522,7 @@
       (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
         ;; rasta has data perms by default in test setup, but no write on `locked-id`.
         (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                                   {:source     {:type "table" :id (mt/id :orders)}
-                                                    :operations [["limit" 10]]})]
+                                                   {:query (orders-query :limit 10)})]
           (mt/user-http-request :rasta :post 403 "agent/v1/question"
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
@@ -675,9 +673,12 @@
                                               :dataset_query (orders-count-query)
                                               :display       :table}]
       (let [products-id  (mt/id :products)
+            products-fk  [(db-name) "PUBLIC" "PRODUCTS"]
             new-query    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id products-id}
-                                                :operations [["limit" 5]]})
+                                               {:query {:lib/type "mbql/query"
+                                                        :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                    :source-table products-fk
+                                                                    :limit        5}]}})
             base64-query (:query new-query)
             _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                                {:query base64-query})
@@ -685,6 +686,8 @@
             stages       (:stages persisted)
             source-table (some :source-table stages)]
         ;; Query was replaced - source-table changed from orders to products.
+        ;; Construct sends portable FKs over the wire, but the persisted dataset_query is the
+        ;; resolved MBQL 5 map with numeric IDs.
         (is (some? persisted))
         (is (= products-id source-table)
             (str "Expected persisted dataset_query :source-table to be the products table id "
@@ -743,14 +746,16 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
           ;; Block data access on the sample DB for the All Users group.
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-          (let [products-id  (mt/id :products)
+          (let [products-fk  [(db-name) "PUBLIC" "PRODUCTS"]
                 new-query    (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
-                                                   {:source     {:type "table" :id products-id}
-                                                    :operations [["limit" 5]]})
+                                                   {:query {:lib/type "mbql/query"
+                                                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                        :source-table products-fk
+                                                                        :limit        5}]}})
                 base64-query (:query new-query)]
             (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                                   {:query base64-query}))
-          ;; Persisted query unchanged.
+          ;; Persisted query unchanged - dataset_query.stages[0].source-table is the orders table id.
           (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
             (is (= (mt/id :orders) (some :source-table (:stages persisted)))
                 "dataset_query should not have been swapped")))))))
