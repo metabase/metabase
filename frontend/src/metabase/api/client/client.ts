@@ -291,7 +291,7 @@ export class ApiClient extends EventEmitter<EventMap> {
     // recorded call. `findRequests()` in our Jest helpers reads `call.request`
     // to filter by method; without the Request object that field is undefined
     // and the helper returns nothing.
-    const request = new Request(url.href, {
+    const request = new Request(url, {
       method,
       headers,
       body,
