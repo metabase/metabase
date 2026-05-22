@@ -1360,7 +1360,7 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id source_card_id visualization_settings
+           result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]
   (set
    (concat
