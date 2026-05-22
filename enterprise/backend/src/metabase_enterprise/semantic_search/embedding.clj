@@ -195,8 +195,8 @@
 
   `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
   `:endpoint`        — full URL including /v1/embeddings
-  `:api-key`         — Bearer token for non-metabase-cloud-forwarded requests. For forwarded requests premium
-                       `premium-embedding-token` is used.
+  `:api-key`         — Bearer token. If empty ai service proxying is assumed and premium-embedding-token is
+                       used for authentication
   `:model-name`      — model identifier sent in the request body
   `:texts`           — collection of input strings
   `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
@@ -217,31 +217,21 @@
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
-          auth-header (case provider
-                        "openai" (if-not (string? (not-empty api-key))
-                                   (throw (ex-info "Missing api key"
-                                                   {:provider provider
-                                                    :endpoint endpoint}))
-                                   {"Authorization" (str "Bearer " api-key)})
-                        "ai-service" {"x-metabase-instance-token"
-                                      (u/prog1 (premium-features/premium-embedding-token)
-                                        (when (nil? <>)
-                                          (throw (ex-info "Premium embedding token not set."
-                                                          {:provider provider
-                                                           :endpoint endpoint
-                                                           :setting "premium-embedding-token"}))))}
-                        (throw (ex-info "Unsupported provider."
-                                        {:provider provider})))
-          headers     (merge {"Content-Type"  "application/json"}
-                             auth-header)
-          body        (json/encode
-                       (merge {:model           model-name
-                               :input           texts
-                               :encoding_format "base64"}
-                              extra-body))
           {:keys [usage data]} (-> (http/post endpoint
-                                              {:headers headers
-                                               :body    body})
+                                              {:headers
+                                               (merge {"Content-Type"  "application/json"}
+                                                      (if (and (empty? api-key)
+                                                               (= "ai-service" provider))
+                                                        {"x-metabase-instance-token"
+                                                         (u/prog1 (premium-features/premium-embedding-token)
+                                                           (when (nil? <>)
+                                                             (throw (ex-info "Premium embedding token not set"
+                                                                             {:provider provider}))))}
+                                                        {"Authorization" (str "Bearer " api-key)}))
+                                               :body    (json/encode (merge {:model           model-name
+                                                                             :input           texts
+                                                                             :encoding_format "base64"}
+                                                                            extra-body))})
                                    :body
                                    (json/decode true))
           total-tokens         (:total_tokens usage 0)
@@ -276,34 +266,42 @@
 
 ;;;; Embedding-service provider
 
-(defn- embedding-service-url
+(defn- embedding-service-resolve-config!
+  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set 
+  the ai service proxying is assumed. In that case premium-embedding-token is used for authentication."
   []
-  (if-some [base-url (semantic-settings/ee-embedding-service-base-url)]
-    (str base-url "/v1/embeddings")
-    (throw (ex-info "Embedding service base URL not configured"
-                    {:setting "ee-embedding-service-base-url"}))))
+  (let [base-url (semantic-settings/ee-embedding-service-base-url)
+        api-key  (semantic-settings/ee-embedding-service-api-key)]
+    (when-not base-url
+      (throw (ex-info "Embedding service base URL not configured"
+                      {:setting "ee-embedding-service-base-url"})))
+    [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod get-embedding "ai-service"
   [{:keys [model-name]} text & {:keys [record-tokens? type]}]
-  (first (openai-compatible-get-embeddings-batch
-          {:provider       "ai-service"
-           :endpoint       (embedding-service-url)
-           :model-name     model-name
-           :texts          [text]
-           :snowplow?      true
-           :record-tokens? record-tokens?
-           :type           type})))
+  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+    (first (openai-compatible-get-embeddings-batch
+            {:provider       "ai-service"
+             :endpoint       endpoint
+             :api-key        api-key
+             :model-name     model-name
+             :texts          [text]
+             :snowplow?      true
+             :record-tokens? record-tokens?
+             :type           type}))))
 
 (defmethod get-embeddings-batch "ai-service"
   [{:keys [model-name]} texts & {:keys [record-tokens? type]}]
-  (openai-compatible-get-embeddings-batch
-   {:provider       "ai-service"
-    :endpoint       (embedding-service-url)
-    :model-name     model-name
-    :texts          texts
-    :snowplow?      true
-    :record-tokens? record-tokens?
-    :type           type}))
+  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+    (openai-compatible-get-embeddings-batch
+     {:provider       "ai-service"
+      :endpoint       endpoint
+      :api-key        api-key
+      :model-name     model-name
+      :texts          texts
+      :snowplow?      true
+      :record-tokens? record-tokens?
+      :type           type})))
 
 (defmethod pull-model "ai-service" [_]
   (log/debug "ai-service provider does not require pulling a model"))
