@@ -932,24 +932,18 @@
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))))
     (testing "InputStream bodies are read up to the truncation window — not fully slurped"
-      ;; A proxied ByteArrayInputStream lets us count bytes pulled off the stream and
-      ;; assert we stop short of consuming the whole body once the preview is filled.
+      ;; ByteArrayInputStream.available() returns the number of *unread* bytes, so we
+      ;; can compute how much body-preview consumed without proxying read methods.
       ;; The InputStreamReader inside io/reader uses an 8KB decode buffer, so the
-      ;; ceiling isn't max-body-preview-chars exactly — but it's still constant rather
-      ;; than scaling with body size.
-      (let [body-bytes (.getBytes (apply str (repeat 1000000 \x)))
-            counter    (java.util.concurrent.atomic.AtomicLong. 0)
-            stream     (proxy [java.io.ByteArrayInputStream] [body-bytes]
-                         (read
-                           ([] (.incrementAndGet counter) (proxy-super read))
-                           ([buf] (let [n (proxy-super read buf)]
-                                    (when (pos? n) (.addAndGet counter n)) n))
-                           ([buf off len] (let [n (proxy-super read buf off len)]
-                                            (when (pos? n) (.addAndGet counter n)) n))))
-            preview    (body-preview stream)]
+      ;; ceiling isn't max-body-preview-chars exactly — but it's still constant
+      ;; rather than scaling with body size.
+      (let [body-bytes (.getBytes ^String (apply str (repeat 1000000 \x)))
+            stream     (java.io.ByteArrayInputStream. body-bytes)
+            preview    (body-preview stream)
+            consumed   (- (alength body-bytes) (.available stream))]
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))
-        (is (< (.get counter) (count body-bytes))
+        (is (< consumed (alength body-bytes))
             "should not consume the entire 1MB stream just to render a 500-char preview")))))
 
 (defn- caught
