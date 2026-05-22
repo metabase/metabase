@@ -5,6 +5,7 @@ import { getInspectorRoutes } from "./routes";
 
 export function initializePlugin() {
   if (hasPremiumFeature("transforms-python")) {
+    PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab = true;
     PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes = getInspectorRoutes;
   }
 }
