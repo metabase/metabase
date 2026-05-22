@@ -47,21 +47,15 @@
     result))
 
 (defn generate-sample-prompts
-  "Generate suggested prompts for the Metabot instance with `metabot-id`.
-
-   Returns a map describing the outcome so callers can distinguish success from
-   the various 'no error, but nothing produced' cases. The `:status` key is a
-   single discriminator so the frontend can switch on one field:
+  "Generate suggested prompts for the Metabot with `metabot-id`. Returns one of:
 
      {:status :generated :prompt_count N}        ; happy path
      {:status :no-library-content}               ; metabot has no models/metrics to summarize
      {:status :ai-produced-no-prompts}           ; LLM returned 0 questions for the inputs
 
-   Throws a 402 via [[metabot.usage/check-metabase-managed-free-limit!]] when the managed AI
-   usage cap is hit — making the return type a closed union so the regenerate endpoint can
-   declare an exact response schema. Callers that want best-effort behavior (e.g. PUT /:id)
-   pre-guard with [[metabot.usage/managed-free-limit-reached?]] and catch the 402 to handle
-   the rare TOCTOU race where the limit flips between the pre-check and here."
+   Throws a 402 via [[metabot.usage/check-metabase-managed-free-limit!]] when the managed AI cap is hit.
+   Best-effort callers (e.g. PUT /:id) pre-guard with [[metabot.usage/managed-free-limit-reached?]]
+   and catch the 402 to handle the rare TOCTOU race where the limit flips between the two checks."
   [metabot-id & {:as opts}]
   (metabot.usage/check-metabase-managed-free-limit!)
   (let [opts (merge default-opts opts)]

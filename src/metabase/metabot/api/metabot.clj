@@ -75,17 +75,9 @@
                                 [:prompt_count nat-int?]]]
       [:no-library-content     [:map [:status [:= :no-library-content]]]]
       [:ai-produced-no-prompts [:map [:status [:= :ai-produced-no-prompts]]]]]
-  "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.
-
-   Returns a single-tag discriminated union so the UI can `switch` on `:status` to distinguish a
-   successful regeneration from the various 'no error, but nothing produced' cases.
-
-   The managed-free-limit case isn't in the union: both this endpoint and
-   [[metabot.suggested-prompts/generate-sample-prompts]] throw a 402 via
-   [[metabot.usage/check-metabase-managed-free-limit!]], so the locked state always surfaces as
-   a 402 error rather than a 200 with a status — no TOCTOU race between checks.
-
-   Response shape: see [[metabase.metabot.suggested-prompts/generate-sample-prompts]]."
+  "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
+   Returns a discriminated union on `:status`; see [[metabot.suggested-prompts/generate-sample-prompts]].
+   The managed-free-limit case surfaces as a 402, not a union variant."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
