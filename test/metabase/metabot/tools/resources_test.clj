@@ -453,10 +453,10 @@
 (deftest read-transform-target-authorization-test
   (testing "fetch-transform-target gates the target table by mi/can-read?"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {target-id :id :as target-table}
-                     {:db_id db-id :name "TARGET-TABLE" :schema "PUBLIC" :active true}]
-        (let [stub-transform {:id                 999
+      (mt/with-temp [:model/Database {db-id :id} {:name "TT-DB"}
+                     :model/Table _ {:db_id db-id :name "TARGET-TABLE" :schema "PUBLIC" :active true}]
+        (let [target-table (t2/select-one :model/Table :db_id db-id :name "TARGET-TABLE")
+              stub-transform {:id                 999
                               :name               "Stub Transform"
                               :source_database_id db-id
                               :target_db_id       db-id
@@ -468,8 +468,8 @@
                                       {:uris ["metabase://transform/999/target"]})]
                 (is (str/includes? output "TARGET-TABLE")
                     "target table name should appear when user has read perms")
-                (is (str/includes? output (str "uri=\"metabase://table/" target-id "\""))
-                    "target table URI should appear when user has read perms"))))
+                (is (str/includes? output "\"model\":\"Table\",\"id\":\"TARGET-TABLE\"")
+                    "target table MBR shape should appear when user has read perms"))))
 
           (testing "when user CANNOT read the target, it's filtered out"
             (with-redefs [transforms.core/get-transform (constantly stub-transform)
@@ -478,13 +478,13 @@
                                       {:uris ["metabase://transform/999/target"]})]
                 (is (not (str/includes? output "TARGET-TABLE"))
                     "target table name must NOT appear when user lacks read perms")
-                (is (not (str/includes? output (str "uri=\"metabase://table/" target-id "\"")))
-                    "target table URI must NOT appear when user lacks read perms")
-                ;; The target *database* URI is still surfaced — that's intentional, the
-                ;; URI carries no extra metadata and any read_resource call on it will
-                ;; enforce its own auth.
-                (is (str/includes? output (str "uri=\"metabase://database/" db-id "\""))
-                    "target database URI is informational and remains visible")))))))))
+                (is (not (str/includes? output "\"model\":\"Table\",\"id\":\"TARGET-TABLE\""))
+                    "target table MBR must NOT appear when user lacks read perms")
+                ;; The target *database* MBR is still surfaced — that's intentional, the
+                ;; entity carries no extra metadata and any read_resource call on its
+                ;; URI will enforce its own auth.
+                (is (str/includes? output "\"model\":\"Database\",\"id\":\"TT-DB\"")
+                    "target database MBR is informational and remains visible")))))))))
 
 (deftest read-databases-list-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -556,15 +556,15 @@
 
 (deftest read-card-sources-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {table-id :id} {:db_id db-id}
+    (mt/with-temp [:model/Database {db-id :id} {:name "Card-Sources-DB"}
+                   :model/Table {table-id :id} {:db_id db-id :name "Card-Sources-Table"}
                    :model/Card {card-id :id} {:type :model :database_id db-id :table_id table-id}]
-      (testing "metabase://model/{id}/sources returns the FK-resolved sources"
+      (testing "metabase://model/{id}/sources returns the FK-resolved sources as MBR"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://model/" card-id "/sources")]})]
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "\""))
-              "should include the database URI")
-          (is (str/includes? output (str "uri=\"metabase://table/" table-id "\""))
-              "should include the source-table URI"))))))
+          (is (str/includes? output "\"model\":\"Database\",\"id\":\"Card-Sources-DB\"")
+              "should include the database in MBR shape")
+          (is (str/includes? output "\"model\":\"Table\",\"id\":\"Card-Sources-Table\"")
+              "should include the source-table in MBR shape"))))))
 
 (deftest read-card-sources-source-card-type-test
   (testing "source-card resolution preserves the card type — metric must not collapse to question"
@@ -585,17 +585,20 @@
                                                             :database_id    db-id
                                                             :table_id       table-id
                                                             :source_card_id model-id}]
-        (testing "source_card_id pointing at a :metric emits a metric URI"
+        (testing "source_card_id pointing at a :metric extracts to MBR with type :metric"
           (let [{:keys [output]} (read-resource/read-resource
-                                  {:uris [(str "metabase://question/" q-id "/sources")]})]
-            (is (str/includes? output (str "uri=\"metabase://metric/" metric-id "\""))
-                "should resolve source-card of type :metric to a metric URI, not question")
-            (is (not (str/includes? output (str "uri=\"metabase://question/" metric-id "\"")))
-                "must NOT collapse the metric source-card to a question URI")))
-        (testing "source_card_id pointing at a :model still emits a model URI (regression)"
+                                  {:uris [(str "metabase://question/" q-id "/sources")]})
+                metric           (t2/select-one [:model/Card :entity_id] :id metric-id)]
+            (is (str/includes? output (str "\"entity_id\":\"" (:entity_id metric) "\""))
+                "should include the metric source-card by its entity_id")
+            (is (str/includes? output "\"type\":\"metric\"")
+                "the MBR for the source-card carries type=metric (not question)")))
+        (testing "source_card_id pointing at a :model still emits an MBR with type :model"
           (let [{:keys [output]} (read-resource/read-resource
-                                  {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
-            (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
+                                  {:uris [(str "metabase://question/" q-from-model-id "/sources")]})
+                model            (t2/select-one [:model/Card :entity_id] :id model-id)]
+            (is (str/includes? output (str "\"entity_id\":\"" (:entity_id model) "\"")))
+            (is (str/includes? output "\"type\":\"model\""))))))))
 
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -610,9 +613,9 @@
 
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (testing "metabase://user/recent-items returns a list shape (possibly empty)"
+    (testing "metabase://user/recent-items returns an MBR list shape (possibly empty)"
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://user/recent-items"]})]
-        (is (str/includes? output "<list type=\"recent-items\""))))))
+        (is (str/includes? output "\"list-type\":\"recent-items\""))))))
 
 (deftest read-list-shape-test
   (testing "list responses always carry list-type/total/truncated keys in MBR JSON"
@@ -754,17 +757,17 @@
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id} {:name "QvM-DB"}
                    :model/Card {q-id :id} {:type :question :database_id db-id :name "Q-card"}
                    :model/Card {m-id :id} {:type :model    :database_id db-id :name "M-card"}]
       (testing "metabase://question/{id}/sources discriminates from model"
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://question/" q-id "/sources")]})]
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "\"")))))
+          (is (str/includes? output "\"model\":\"Database\",\"id\":\"QvM-DB\""))))
       (testing "metabase://model/{id}/sources for a model card"
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://model/" m-id "/sources")]})]
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "\""))))))))
+          (is (str/includes? output "\"model\":\"Database\",\"id\":\"QvM-DB\"")))))))
 
 (deftest read-question-resource-test
   (let [mp (mt/metadata-provider)

@@ -75,37 +75,6 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
-(def ^:private max-list-items
-  "Maximum number of items returned in a single list response. When exceeded the response
-   includes :truncated true and :total so the agent knows there are more items it can drill into."
-  25)
-
-(defn- truncate-list
-  "Cap a sequence of items at `max-list-items`, returning {:items :total :truncated}."
-  [items]
-  (let [items (vec items)
-        total (count items)]
-    {:items     (vec (take max-list-items items))
-     :total     total
-     :truncated (> total max-list-items)}))
-
-(defn- list-result
-  "Build a structured-output map for a list of items.
-   `list-type` is a keyword like :databases, :collection-items, :recents, etc."
-  [list-type items]
-  (let [{:keys [items total truncated]} (truncate-list items)]
-    {:structured-output
-     {:result-type :metabot-list
-      :list-type   list-type
-      :items       items
-      :total       total
-      :truncated   truncated}}))
-
-(defn- entity-result
-  "Build a structured-output map for a single entity (databases, collections, etc.)."
-  [item]
-  {:structured-output (assoc item :result-type :metabot-entity)})
-
 (defn- parse-query-string
   "Parse a URI query string like \"tree=true&foo=bar\" into a keyword-keyed map.
    Returns nil for empty or nil input."
@@ -143,53 +112,7 @@
     {:segments     segments
      :query-params (parse-query-string qs)}))
 
-;; ----- Item presenters (list-row shapes) -----
-
-(defn- present-table
-  [{:keys [id name display_name schema db_id description]}]
-  {:type         "table"
-   :id           id
-   :name         name
-   :display_name display_name
-   :schema       schema
-   :database_id  db_id
-   :description  description
-   :uri          (llm-rep/metabase-uri :table id)})
-
-(defn- present-transform
-  [{:keys [id name description source_database_id]}]
-  {:type        "transform"
-   :id          id
-   :name        name
-   :database_id source_database_id
-   :description description
-   :uri         (llm-rep/metabase-uri :transform id)})
-
-(defn- present-source-card
-  "Resolve a source-card id to a typed item map (model / metric / question)."
-  [source-card-id]
-  (let [src-card (t2/select-one [:model/Card :id :type :card_schema] :id source-card-id)
-        src-type (case (:type src-card)
-                   :model  "model"
-                   :metric "metric"
-                   "question")]
-    {:type src-type
-     :id   source-card-id
-     :uri  (llm-rep/metabase-uri (keyword src-type) source-card-id)}))
-
 ;; ----- Lineage helpers -----
-
-(defn- card-sources-items
-  "Build URI list for the entities a card references, FK-only (database_id, table_id, source_card_id)."
-  [{:keys [database_id table_id source_card_id]}]
-  (cond-> []
-    database_id    (conj {:type "database"
-                          :id   database_id
-                          :uri  (llm-rep/metabase-uri :database database_id)})
-    table_id       (conj {:type "table"
-                          :id   table_id
-                          :uri  (llm-rep/metabase-uri :table table_id)})
-    source_card_id (conj (present-source-card source_card_id))))
 
 (defn- transform-source-table-ids
   "FK-only source tables for a transform: walks (:source :source-tables) entries when present."
@@ -228,22 +151,45 @@
                      items
                      {:total (count items)})))
 
+(defn- recent-model->mbr-model
+  "Activity-feed shorthand -> MBR model name."
+  [model]
+  (case model
+    "card"      "Card"
+    "dataset"   "Card"
+    "metric"    "Card"
+    "dashboard" "Dashboard"
+    "table"     "Table"
+    "model"     "Card"
+    nil))
+
+(defn- recent-model->toucan
+  [model]
+  (case model
+    "card"      :model/Card
+    "dataset"   :model/Card
+    "metric"    :model/Card
+    "model"     :model/Card
+    "dashboard" :model/Dashboard
+    "table"     :model/Table
+    nil))
+
 (defn- fetch-user-recents []
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        items   (mapv (fn [{:keys [id name model timestamp]}]
-                        (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
-                          {:type      type
-                           :id        id
-                           :name      name
-                           :timestamp timestamp
-                           :uri       (llm-rep/metabase-uri (keyword type) id)}))
-                      recents)]
-    (list-result :recent-items items)))
+        ;; Group recents by their target Toucan model so we batch each model's
+        ;; MBR extraction. Activity-feed entries that don't map to an MBR model
+        ;; we know how to extract (e.g. snippets) fall through unchanged.
+        items   (->> recents
+                     (keep (fn [{:keys [id model timestamp]}]
+                             (when-let [tm (recent-model->toucan model)]
+                               (when-let [inst (t2/select-one tm id)]
+                                 (when (mi/can-read? inst)
+                                   (-> (mbr/->mbr (recent-model->mbr-model model) inst)
+                                       (assoc :_recently_viewed_at timestamp)))))))
+                     vec)]
+    (mbr/list-result :recent-items items {:total (count items)})))
 
 ;; ----- Database drill-down -----
 
@@ -392,15 +338,13 @@
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select [:model/Transform :id :name :description
-                                      :source_database_id :source]
+                     (->> (t2/select :model/Transform
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
-                          (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
-                          (filter mi/can-read?)
-                          (mapv present-transform)))
-        card-items (mbr/extract-readable "Card" cards)
-        items      (concat card-items transforms)]
+                          (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))))
+        card-items     (mbr/extract-readable "Card" cards)
+        transform-items (mbr/extract-readable "Transform" (or transforms []))
+        items           (concat card-items transform-items)]
     (mbr/list-result :table-derived items {:total (count items)})))
 
 (defn- fetch-table-derived [id-str]
@@ -443,8 +387,17 @@
                              :limit       30}))
 
 (defn- fetch-card-sources [id-str]
-  (let [card (api/read-check :model/Card (parse-long id-str))]
-    (list-result :card-sources (card-sources-items card))))
+  (let [card    (mbr/resolve-user-entity :model/Card id-str)
+        _       (api/read-check card)
+        {:keys [database_id table_id source_card_id]} card
+        db      (when database_id    (t2/select-one :model/Database database_id))
+        table   (when table_id       (t2/select-one :model/Table table_id))
+        src     (when source_card_id (t2/select-one :model/Card source_card_id))
+        items   (cond-> []
+                  db    (conj (mbr/->mbr "Database" db))
+                  table (conj (mbr/->mbr "Table" table))
+                  src   (conj (mbr/->mbr "Card" src)))]
+    (mbr/list-result :card-sources items {:total (count items)})))
 
 ;; ----- Metric -----
 
@@ -468,24 +421,26 @@
 ;; ----- Transform -----
 
 (defn- fetch-transform [id-str]
-  {:structured-output (-> (transforms/get-transform (parse-long id-str))
-                          (assoc :result-type :entity :type :transform))})
+  (let [transform-id (parse-long id-str)]
+    ;; transforms/get-transform runs its own read-check, throws if denied.
+    (transforms/get-transform transform-id)
+    (if-let [t (t2/select-one :model/Transform transform-id)]
+      (mbr/entity-result (mbr/extract-as-user "Transform" t))
+      {:status-code 404 :output (str "Transform " id-str " not found")})))
 
 (defn- fetch-transform-sources [id-str]
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
         source-tables    (when (seq source-table-ids)
-                           (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+                           (->> (t2/select :model/Table
                                            :id [:in (set source-table-ids)])
-                                (filter mi/can-read?)
-                                (mapv present-table)))
+                                (mbr/extract-readable "Table")))
         db-id            (:source_database_id transform)
+        db               (when db-id (t2/select-one :model/Database db-id))
         items            (cond-> []
-                           db-id         (conj {:type "database"
-                                                :id   db-id
-                                                :uri  (llm-rep/metabase-uri :database db-id)})
+                           db            (conj (mbr/->mbr "Database" db))
                            source-tables (into source-tables))]
-    (list-result :transform-sources items)))
+    (mbr/list-result :transform-sources items {:total (count items)})))
 
 (defn- fetch-transform-target [id-str]
   (let [transform    (transforms/get-transform (parse-long id-str))
@@ -494,14 +449,14 @@
         ;; tables are readable). Gate it here so users who can read the transform definition
         ;; but lack perms on the target database don't see the target's name/schema.
         target-table (when-let [tt (:table transform)]
-                       (when (mi/can-read? tt) tt))
+                       (when (mi/can-read? tt)
+                         (t2/select-one :model/Table (:id tt))))
         db-id        (:target_db_id transform)
+        db           (when db-id (t2/select-one :model/Database db-id))
         items        (cond-> []
-                       db-id        (conj {:type "database"
-                                           :id   db-id
-                                           :uri  (llm-rep/metabase-uri :database db-id)})
-                       target-table (conj (present-table target-table)))]
-    (list-result :transform-target items)))
+                       db           (conj (mbr/->mbr "Database" db))
+                       target-table (conj (mbr/->mbr "Table" target-table)))]
+    (mbr/list-result :transform-target items {:total (count items)})))
 
 ;; ----- Dashboard -----
 
@@ -625,12 +580,12 @@
 (defn- format-content
   "Format a tool result as an LLM-ready string.
 
-   MBR-shaped results (`:mbr-entity`, `:mbr-list`) JSON-encode to a string for
-   inclusion in the :output payload. Legacy XML-shaped results (`:entity`,
-   `:metabot-list`, `:metabot-entity`) render via the llm-rep formatters during
-   per-entity migration to MBR.
-
-   Returns the :output string directly for error results (404s etc.)."
+   MBR-shaped results (`:mbr-entity`, `:mbr-list`) JSON-encode to a string.
+   Two legacy XML branches remain pinned to field-stats drill-downs:
+   `:field-metadata` (per-field values + instructions) and `:entity` (the
+   table-details rollup used by `/fields` endpoints). Both layer non-MBR
+   field-value samples on top of schema; migrating them to MBR is tracked
+   separately."
   [content]
   (if-let [structured (:structured-output content)]
     (case (:result-type structured)
@@ -640,11 +595,7 @@
                        instructions/field-metadata-instructions)
       :mbr-entity     (json/encode (:entity structured))
       :mbr-list       (json/encode (select-keys structured [:list-type :items :total :truncated]))
-      :entity         (llm-rep/entity->xml structured)
-      :metabot-list   (llm-rep/metabot-list->xml structured)
-      :metabot-entity (llm-rep/metabot-entity->xml structured)
-      ;; fallback — should not happen, but better than EDN
-      (llm-rep/entity->xml structured))
+      :entity         (llm-rep/entity->xml structured))
     ;; error case — :output is already a string
     (:formatted content)))
 

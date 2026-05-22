@@ -221,19 +221,32 @@
   (let [{:keys [db-name schema table-name]} (canonical-fields table db-name)]
     (table-uri db-name schema table-name)))
 
+(def ^:private max-list-items
+  "Cap on items in a single list response. When exceeded the response includes
+   `:truncated true` and `:total` so the agent knows there are more items it
+   can drill into (via search or by paginating, once that's wired)."
+  25)
+
 (defn list-result
   "Wrap a sequence of MBR items in the list envelope used by `read_resource`.
 
    The shape matches `metabase.metabot.tools.resources` dispatch contract:
    the outer map has `:structured-output` whose `:result-type` tells
-   [[metabase.metabot.tools.resources/format-content]] how to render."
-  [list-type items {:keys [total truncated]}]
-  {:structured-output
-   {:result-type :mbr-list
-    :list-type   list-type
-    :items       (vec items)
-    :total       (or total (count items))
-    :truncated   (boolean truncated)}})
+   [[metabase.metabot.tools.resources/format-content]] how to render.
+
+   Caps items at `max-list-items`; the full count survives in `:total` and the
+   `:truncated` boolean lets the caller decide whether to refine the URI or
+   page."
+  [list-type items _opts-ignored]
+  (let [items   (vec items)
+        total   (count items)
+        capped  (vec (take max-list-items items))]
+    {:structured-output
+     {:result-type :mbr-list
+      :list-type   list-type
+      :items       capped
+      :total       total
+      :truncated   (> total max-list-items)}}))
 
 (defn entity-result
   "Wrap a single MBR map in the entity envelope used by `read_resource`.
