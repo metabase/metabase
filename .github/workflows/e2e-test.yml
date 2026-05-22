@@ -130,6 +130,7 @@ jobs:
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          DEBUG: "cypress:*"
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
@@ -148,6 +149,7 @@ jobs:
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          DEBUG: "cypress:*"
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
