@@ -13,6 +13,8 @@
 (def k1-handle (system/mutable-component-handle :k1))
 (def k2-handle (system/mutable-component-handle :k2))
 (def k3-handle (system/mutable-component-handle :k3))
+(def k4-handle (system/mutable-component-handle :k4))
+(def k5-handle (system/mutable-component-handle :k5))
 
 (def op-delay 10)
 
@@ -129,10 +131,12 @@
           @writer)))))
 
 (deftest ^:synchronized nested-binding-reads-through-to-root-test
-  (testing "Even from a nested binding (so we're not on the root system to begin with), concurrent root writes should still be visible for un-overridden keys"
+  (testing "Bindings layer on a stack: outer-level writes shadow root for inner reads, writer's root updates cascade through both layers for un-overridden keys"
     (mc/alter-root k1-handle :root-k1)
     (mc/alter-root k2-handle :root-k2)
     (mc/alter-root k3-handle :root-k3)
+    (mc/alter-root k4-handle :root-k4)
+    (mc/alter-root k5-handle :root-k5)
     (let [bound-thread-entered (promise)
           writes-done          (promise)
           writer (future
@@ -143,27 +147,39 @@
       (try
         (mc/binding k1-handle :outer-k1
                     (fn []
+                      (deliver bound-thread-entered true)
+                      (is (true? (deref writes-done 1000 ::timed-out)))
+                      ;; Outer-level shadows: visible to inner reads, but never reach root.
+                      (mc/swap!  k4-handle (constantly :outer-shadow-k4))
+                      (mc/reset! k5-handle :outer-shadow-k5)
                       (mc/binding k1-handle :inner-k1
                                   (fn []
-                                    (deliver bound-thread-entered true)
-                                    (is (true? (deref writes-done 1000 ::timed-out)))
                                     (testing "inside the inner binding"
                                       (testing "k1 shows the innermost override"
                                         (is (= :inner-k1 (mc/current k1-handle))))
-                                      (testing "the writer's root updates to k2 and k3 read through both binding layers"
+                                      (testing "writer's root updates to k2 and k3 cascade through both layers"
                                         (is (= :updated-k2 (mc/current k2-handle)))
                                         (is (= :updated-k3 (mc/current k3-handle))))
-                                      (testing "`root` also reflects the writer's updates"
+                                      (testing "outer-level shadows on k4 and k5 are visible from the inner binding"
+                                        (is (= :outer-shadow-k4 (mc/current k4-handle)))
+                                        (is (= :outer-shadow-k5 (mc/current k5-handle))))
+                                      (testing "`root` bypasses both bindings — sees writer's updates and ignores outer-level shadows"
                                         (is (= :updated-k2 (mc/root k2-handle)))
-                                        (is (= :updated-k3 (mc/root k3-handle)))))))
-                      (testing "back in the outer binding after the inner pops, the root cascade still flows through"
+                                        (is (= :updated-k3 (mc/root k3-handle)))
+                                        (is (= :root-k4 (mc/root k4-handle)))
+                                        (is (= :root-k5 (mc/root k5-handle)))))))
+                      (testing "back in the outer binding after the inner pops, outer-level shadows and root cascade are both still visible"
                         (is (= :outer-k1 (mc/current k1-handle)))
                         (is (= :updated-k2 (mc/current k2-handle)))
-                        (is (= :updated-k3 (mc/current k3-handle))))))
-        (testing "after both bindings unwind, root reads reflect the writer's updates"
+                        (is (= :updated-k3 (mc/current k3-handle)))
+                        (is (= :outer-shadow-k4 (mc/current k4-handle)))
+                        (is (= :outer-shadow-k5 (mc/current k5-handle))))))
+        (testing "after both bindings unwind, outer-level shadows are gone and writer's root updates remain"
           (is (= :root-k1 (mc/current k1-handle)))
           (is (= :updated-k2 (mc/current k2-handle)))
-          (is (= :updated-k3 (mc/current k3-handle))))
+          (is (= :updated-k3 (mc/current k3-handle)))
+          (is (= :root-k4 (mc/current k4-handle)))
+          (is (= :root-k5 (mc/current k5-handle))))
         (finally
           @writer)))))
 
