@@ -56,19 +56,17 @@ x.com")
   :audit      :getter
   :export?    true
   :setter     (fn [new-value]
-                (let [coerced (if (string? new-value)
-                                (setting/string->boolean new-value)
-                                (boolean new-value))]
-                  (when (and (false? coerced)
-                             ;; OSS deployments don't load the enterprise namespace; requiring-resolve
-                             ;; returns nil and the cross-setting constraint is vacuously satisfied.
+                (let [disabling? (not (if (string? new-value)
+                                        (setting/string->boolean new-value)
+                                        new-value))]
+                  (when (and disabling?
                              (when-let [custom-viz-enabled?
                                         (requiring-resolve
                                          'metabase-enterprise.custom-viz-plugin.settings/custom-viz-enabled)]
                                (custom-viz-enabled?)))
                     (throw (ex-info (tru "Cannot disable the image CSP setting while Custom Visualizations are enabled.")
                                     {:status-code 400})))
-                  (setting/set-value-of-type! :boolean :csp-img-enabled coerced))))
+                  (setting/set-value-of-type! :boolean :csp-img-enabled new-value))))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

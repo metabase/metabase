@@ -23,14 +23,14 @@
   :export?    true
   :audit      :getter
   :setter     (fn [new-value]
-                (let [coerced (if (string? new-value)
-                                (setting/string->boolean new-value)
-                                (boolean new-value))]
-                  (when (and (true? coerced)
+                (let [enabling? (if (string? new-value)
+                                  (setting/string->boolean new-value)
+                                  new-value)]
+                  (when (and enabling?
                              (not (server.settings/csp-img-enabled)))
                     (throw (ex-info (tru "Turn on the image CSP setting before enabling Custom Visualizations.")
                                     {:status-code 400})))
-                  (setting/set-value-of-type! :boolean :custom-viz-enabled coerced))))
+                  (setting/set-value-of-type! :boolean :custom-viz-enabled new-value))))
 
 (defenterprise enable-custom-viz?
   "Enterprise implementation: custom visualizations are enabled when the admin has opted in via the
