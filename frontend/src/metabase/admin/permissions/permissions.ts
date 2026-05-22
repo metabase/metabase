@@ -216,6 +216,10 @@ export const updateDataPermission = createThunkAction(
   }: UpdateDataPermissionParams) => {
     return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
       if (isDatabaseEntityId(entityId)) {
+        // Fire-and-forget background refresh of the database's table metadata;
+        // the reducer below reads the current snapshot synchronously. Swallow
+        // rejections so a failed fetch doesn't surface as an unhandled
+        // promise rejection.
         void entityCompatibleQuery(
           {
             id: entityId.databaseId,
@@ -225,7 +229,7 @@ export const updateDataPermission = createThunkAction(
           },
           dispatch,
           databaseApi.endpoints.getDatabaseMetadata,
-        );
+        ).catch(() => undefined);
       }
 
       const metadata = getMetadataWithHiddenTables(getState());
