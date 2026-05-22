@@ -1,16 +1,26 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { useSelector } from "metabase/redux";
 
 import { getDashboard } from "../selectors";
 
 export const useRegisterDashboardMetabotContext = () => {
-  useRegisterMetabotContextProvider(async (state) => {
-    const dashboard = getDashboard(state);
-    if (!dashboard) {
+  const currentDashboard = useSelector(getDashboard);
+  const currentDashboardId = currentDashboard?.id;
+  const currentDashboardName = currentDashboard?.name;
+
+  useRegisterMetabotContextProvider(async () => {
+    if (!currentDashboardId) {
       return {};
     }
 
     return {
-      user_is_viewing: [{ type: "dashboard", id: dashboard.id }],
+      user_is_viewing: [
+        {
+          type: "dashboard",
+          id: currentDashboardId,
+          name: currentDashboardName,
+        },
+      ],
     };
-  }, []);
+  }, [currentDashboardId, currentDashboardName]);
 };

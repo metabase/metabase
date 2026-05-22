@@ -106,6 +106,24 @@
   background: var(--mb-color-background-secondary);
 }
 
+.navigateToQuestionCard {
+  overflow: hidden;
+}
+
+.navigateToQuestionHeader {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+}
+
+.navigateToQuestionVisualization {
+  height: 24rem;
+  border-top: 1px solid var(--mb-color-border);
+
+  @media screen and (max-width: 40em) {
+    height: 18rem;
+  }
+}
+
 .agentPartActions {
   opacity: 0;
   transition: opacity 150ms linear;

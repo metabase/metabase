@@ -1,14 +1,32 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
+import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import {
+  useMetabotContext,
+  useRegisterMetabotContextProvider,
+} from "metabase/metabot";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
-import type { MetabotCodeEdit } from "metabase-types/api";
+import type { ClickObject } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type {
+  Dataset,
+  DatasetColumn,
+  MetabotAdhocQueryInfo,
+  MetabotChartConfig,
+  MetabotCodeEdit,
+  MetabotColumnInfo,
+  RowValue,
+} from "metabase-types/api";
 
 import {
   CodeEditTablePills,
@@ -22,6 +40,93 @@ type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
+};
+
+type SelectedChartData = NonNullable<MetabotChartConfig["selected_data"]>;
+
+const getColumnName = (column: DatasetColumn | undefined | null) => {
+  return column?.display_name || column?.name || t`Value`;
+};
+
+const getMetabotColumnInfo = (column: DatasetColumn): MetabotColumnInfo => ({
+  name: getColumnName(column),
+  type: column.base_type as MetabotColumnInfo["type"],
+});
+
+const getColumnInfo = (
+  column: DatasetColumn | undefined | null,
+): SelectedChartData["column"] | undefined => {
+  if (!column) {
+    return undefined;
+  }
+
+  return getMetabotColumnInfo(column);
+};
+
+const formatClickValue = (value: RowValue | undefined) => {
+  if (value == null) {
+    return t`empty`;
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+};
+
+const getSelectedChartDataLabel = (selectedData: SelectedChartData) => {
+  const dimensionLabels = selectedData.dimensions
+    ?.map(({ column, value }) => `${column.name}: ${formatClickValue(value)}`)
+    .join(", ");
+  const valueLabel = selectedData.column
+    ? `${selectedData.column.name}: ${formatClickValue(selectedData.value)}`
+    : formatClickValue(selectedData.value);
+
+  return [dimensionLabels, valueLabel].filter(Boolean).join(", ");
+};
+
+const getSelectedChartData = (
+  clicked: ClickObject | null,
+): SelectedChartData | null => {
+  if (!clicked) {
+    return null;
+  }
+
+  const row = clicked.origin
+    ? {
+        columns: clicked.origin.cols.map(getMetabotColumnInfo),
+        values: clicked.origin.row,
+      }
+    : undefined;
+
+  const selectedData: SelectedChartData = {
+    value: clicked.value,
+    column: getColumnInfo(clicked.column),
+    dimensions: clicked.dimensions?.map(({ column, value }) => ({
+      column: getMetabotColumnInfo(column),
+      value,
+    })),
+    row,
+  };
+
+  return {
+    ...selectedData,
+    label: getSelectedChartDataLabel(selectedData),
+  };
+};
+
+const getChartData = (result: Dataset | null): MetabotChartConfig["data"] => {
+  if (!result?.data) {
+    return undefined;
+  }
+
+  return [
+    {
+      columns: result.data.cols.map(getMetabotColumnInfo),
+      rows: result.data.rows,
+    },
+  ];
 };
 
 export const AgentDataPartMessage = ({
@@ -47,6 +152,7 @@ export const AgentDataPartMessage = ({
       return (
         <Stack gap="md">
           {debug && <NavigateToDataPart type={part.type} path={part.value} />}
+          <NavigateToQuestionCard path={part.value} />
           {sourcePills}
         </Stack>
       );
@@ -77,6 +183,172 @@ export const AgentDataPartMessage = ({
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;
     });
+
+const NavigateToQuestionCard = ({ path }: { path: string }) => {
+  const { prompt, promptInputRef, setPrompt } = useMetabotContext();
+  const [selectedContext, setSelectedContext] =
+    useState<MetabotAdhocQueryInfo | null>(null);
+  const { questionHash, questionName } = useMemo(() => {
+    try {
+      const card = deserializeCardFromQuery(path);
+      return {
+        questionHash: path.replace(/^\/question#/, ""),
+        questionName: card.name || t`Untitled question`,
+      };
+    } catch {
+      return {
+        questionHash: null,
+        questionName: t`Untitled question`,
+      };
+    }
+  }, [path]);
+
+  useRegisterMetabotContextProvider(
+    async () =>
+      selectedContext ? { user_is_viewing: [selectedContext] } : undefined,
+    [selectedContext],
+  );
+
+  const handleVisualizationClick = useCallback(
+    ({
+      question,
+      result,
+      clicked,
+    }: {
+      question: Question;
+      result: Dataset | null;
+      clicked: ClickObject | null;
+    }) => {
+      const selectedData = getSelectedChartData(clicked);
+      if (!selectedData) {
+        return;
+      }
+
+      setSelectedContext({
+        type: "adhoc",
+        name: question.displayName() ?? undefined,
+        query: question.datasetQuery(),
+        chart_configs: [
+          {
+            title: question.displayName(),
+            description: question.description() ?? undefined,
+            query: question.datasetQuery(),
+            display_type: question.display(),
+            data: getChartData(result),
+            selected_data: selectedData,
+          },
+        ],
+      });
+
+      const mention = selectedData.label
+        ? t`this data point: ${selectedData.label}`
+        : t`this data point`;
+      const trimmedPrompt = prompt.trim();
+      setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
+      promptInputRef?.current?.focus();
+    },
+    [prompt, promptInputRef, setPrompt],
+  );
+
+  return (
+    <Box
+      bd="1px solid var(--mb-color-border)"
+      bdrs="sm"
+      className={cx(Styles.agentPartCard, Styles.navigateToQuestionCard)}
+      data-testid="metabot-generated-question"
+    >
+      <Flex
+        align="center"
+        justify="space-between"
+        gap="md"
+        className={Styles.navigateToQuestionHeader}
+      >
+        <Text fw="bold" size="sm" truncate>
+          {questionName}
+        </Text>
+        <ActionIcon
+          component="a"
+          href={path}
+          target="_blank"
+          rel="noopener noreferrer"
+          h="sm"
+          aria-label={t`Open question in a new tab`}
+          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+        >
+          <Icon name="external" size="1rem" />
+        </ActionIcon>
+      </Flex>
+      {questionHash ? (
+        <AdHocQuestionLoader questionHash={questionHash}>
+          {({ question, loading: isLoadingQuestion, error: questionError }) => {
+            if (questionError) {
+              return <NavigateToQuestionError />;
+            }
+
+            if (isLoadingQuestion || !question) {
+              return <NavigateToQuestionLoading />;
+            }
+
+            return (
+              <QuestionResultLoader question={question} collectionPreview>
+                {({ result, rawSeries, loading: isLoadingResult, error }) => (
+                  <Box className={Styles.navigateToQuestionVisualization}>
+                    {error ? (
+                      <NavigateToQuestionError />
+                    ) : (
+                      <QueryVisualization
+                        question={question}
+                        result={result}
+                        rawSeries={rawSeries}
+                        queryBuilderMode="view"
+                        isRunnable={false}
+                        isRunning={isLoadingResult || result == null}
+                        isDirty={false}
+                        isResultDirty={false}
+                        maxTableRows={10}
+                        handleVisualizationClick={(
+                          clicked: ClickObject | null,
+                        ) =>
+                          handleVisualizationClick({
+                            question,
+                            result,
+                            clicked,
+                          })
+                        }
+                      />
+                    )}
+                  </Box>
+                )}
+              </QuestionResultLoader>
+            );
+          }}
+        </AdHocQuestionLoader>
+      ) : (
+        <NavigateToQuestionError />
+      )}
+    </Box>
+  );
+};
+
+const NavigateToQuestionError = () => (
+  <Box className={Styles.navigateToQuestionVisualization}>
+    <Flex h="100%" align="center" justify="center">
+      <Text c="text-secondary" size="sm">
+        {t`Could not load the generated question.`}
+      </Text>
+    </Flex>
+  </Box>
+);
+
+const NavigateToQuestionLoading = () => (
+  <Box className={Styles.navigateToQuestionVisualization}>
+    <Flex h="100%" align="center" justify="center">
+      <Text c="text-secondary" size="sm">
+        {t`Loading generated question...`}
+      </Text>
+    </Flex>
+  </Box>
+);
 
 const DataPartJsonCard = ({
   type,

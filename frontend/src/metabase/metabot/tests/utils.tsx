@@ -189,6 +189,7 @@ export function setup(
 ) {
   const settings = mockSettings({
     "llm-metabot-configured?": options?.isConfigured ?? true,
+    "llm-metabot-conversation-model-selection-enabled": false,
   });
 
   setupEnterprisePlugins();

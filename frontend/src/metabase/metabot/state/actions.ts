@@ -223,6 +223,7 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
+    suppressNavigateTo?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
@@ -274,7 +275,7 @@ export const submitInput = createAsyncThunk<
       dispatch(
         addUserMessage({
           id: messageId,
-          ..._.omit(data, ["context", "metabot_id"]),
+          ..._.omit(data, ["context", "metabot_id", "suppressNavigateTo"]),
           message: prompt,
           agentId,
         }),
@@ -355,7 +356,10 @@ const findCodeEditBuffer = (
 
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
-  MetabotAgentRequest & { agentId: MetabotAgentId },
+  MetabotAgentRequest & {
+    agentId: MetabotAgentId;
+    suppressNavigateTo?: boolean;
+  },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase/metabot/sendAgentRequest",
@@ -363,7 +367,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { agentId, ...request } = payload;
+    const { agentId, suppressNavigateTo, ...request } = payload;
 
     let state = {};
     let response: ProcessedChatResponse | undefined;
@@ -412,10 +416,12 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
+                if (!suppressNavigateTo) {
+                  dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk()) {
-                  dispatch(push(part.value) as UnknownAction);
+                  if (!isEmbeddingSdk()) {
+                    dispatch(push(part.value) as UnknownAction);
+                  }
                 }
                 pushDataPart({ type: "data_part", part });
               })

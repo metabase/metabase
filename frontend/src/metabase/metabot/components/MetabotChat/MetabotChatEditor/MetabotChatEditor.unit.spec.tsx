@@ -29,6 +29,7 @@ const defaultProps = {
   onChange: jest.fn(),
   onSubmit: jest.fn(),
   onStop: jest.fn(),
+  onModelOverrideChange: jest.fn(),
   suggestionConfig: {
     suggestionModels: [
       "table",

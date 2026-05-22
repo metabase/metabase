@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
@@ -9,6 +10,7 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import {
+  createMockDashboard,
   createMockDatabase,
   createMockUser,
   createMockUserMetabotPermissions,
@@ -91,6 +93,11 @@ describe("metabot > context", () => {
   });
 
   it("should allow components to register additional context", async () => {
+    fetchMock.get(
+      "path:/api/dashboard/1",
+      createMockDashboard({ id: 1, name: "Sales Dashboard" }),
+    );
+
     const agentSpy = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
     });
@@ -126,6 +133,105 @@ describe("metabot > context", () => {
         (await lastReqBody(agentSpy))?.context,
       ),
     ).toBe(true);
+  });
+
+  it("should show attached context from what the user is viewing", async () => {
+    fetchMock.get("path:/api/document/1", { id: 1, name: "Company Plan" });
+
+    const TestComponent = () => {
+      useRegisterMetabotContextProvider(
+        () =>
+          Promise.resolve({
+            user_is_viewing: [{ type: "document", id: 1 }],
+          }),
+        [],
+      );
+      return null;
+    };
+
+    setup({
+      ui: (
+        <>
+          <Metabot />
+          <TestComponent />
+        </>
+      ),
+    });
+
+    await screen.findByText("Company Plan");
+    const attachedContext = screen.getByTestId("metabot-attached-context");
+
+    expect(attachedContext).toHaveTextContent("Company Plan");
+    expect(attachedContext).toHaveAttribute("href", "/document/1");
+  });
+
+  it("should update attached context while the chat is open", async () => {
+    fetchMock.get("path:/api/document/1", { id: 1, name: "Company Plan" });
+    fetchMock.get("path:/api/document/2", { id: 2, name: "Roadmap" });
+
+    const TestComponent = () => {
+      const [documentId, setDocumentId] = useState(1);
+
+      useRegisterMetabotContextProvider(
+        () =>
+          Promise.resolve({
+            user_is_viewing: [{ type: "document", id: documentId }],
+          }),
+        [documentId],
+      );
+
+      return (
+        <button onClick={() => setDocumentId(2)}>View another document</button>
+      );
+    };
+
+    setup({
+      ui: (
+        <>
+          <Metabot />
+          <TestComponent />
+        </>
+      ),
+    });
+
+    expect(await screen.findByText("Company Plan")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("View another document"));
+
+    await screen.findByText("Roadmap");
+    const attachedContext = screen.getByTestId("metabot-attached-context");
+
+    expect(attachedContext).toHaveTextContent("Roadmap");
+    expect(attachedContext).toHaveAttribute("href", "/document/2");
+  });
+
+  it("should show attached context without an entity id", async () => {
+    const TestComponent = () => {
+      useRegisterMetabotContextProvider(
+        () =>
+          Promise.resolve({
+            user_is_viewing: [{ type: "adhoc" }],
+          }),
+        [],
+      );
+      return null;
+    };
+
+    setup({
+      ui: (
+        <>
+          <Metabot />
+          <TestComponent />
+        </>
+      ),
+    });
+
+    const attachedContext = await screen.findByTestId(
+      "metabot-attached-context",
+    );
+
+    expect(attachedContext).toHaveTextContent("Unsaved question");
+    expect(attachedContext).not.toHaveAttribute("href");
   });
 
   it("should send SQL profile and SQL error context for SQL fixes", async () => {

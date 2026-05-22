@@ -4,6 +4,7 @@ import { match } from "ts-pattern";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
+import { useSelector } from "metabase/redux";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -225,9 +226,10 @@ export const registerQueryBuilderMetabotContextFn = async ({
     return {};
   }
 
+  const questionName = question.displayName() ?? undefined;
   const questionCtx = question.isSaved()
-    ? { id: question.id(), type: question.type() }
-    : { type: "adhoc" as const };
+    ? { id: question.id(), type: question.type(), name: questionName }
+    : { type: "adhoc" as const, name: questionName };
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
@@ -260,10 +262,11 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
 export const useRegisterQueryBuilderMetabotContext = () => {
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const currentQuestion = useSelector(getQuestion);
 
   useRegisterMetabotContextProvider(
     async (state) => {
-      const question = getQuestion(state);
+      const question = currentQuestion;
       const series = getTransformedSeries(state);
       const visualizationSettings = getVisualizationSettings(state);
       const timelineEvents = getVisibleTimelineEvents(state);
@@ -278,6 +281,6 @@ export const useRegisterQueryBuilderMetabotContext = () => {
         isMetabotEnabled,
       });
     },
-    [isMetabotEnabled],
+    [currentQuestion, isMetabotEnabled],
   );
 };
