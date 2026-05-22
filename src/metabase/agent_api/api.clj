@@ -395,11 +395,8 @@
      are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
      them would force a wide schema change just to satisfy the lint at the agent boundary."
   [:map {:closed true}
-   [:query {:tool/description (str "A Metabase MBQL 5 query in the canonical portable "
-                                   "representations format (JSON object matching "
-                                   "::lib.schema/external-query). See the "
-                                   "construct_notebook_query tool documentation for the format "
-                                   "reference.")}
+   [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
+                                   "`construct_notebook_query` tool for the format reference.")}
     :map]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
@@ -441,14 +438,12 @@
   executed via /v1/execute or paginated via /v2/query."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           ;; Condensed inline summary so LLMs see the shape directly in `tools/list` without
-           ;; having to fetch the resource. Full grammar (operators, joins, expressions,
-           ;; multi-stage queries, FK details) lives in `metabase://docs/construct-query.md`
-           ;; \u2014 keep this string short; substantive guidance belongs in the resource.
+           ;; Condensed inline summary so LLMs see the shape directly in `tools/list`. Full
+           ;; grammar lives in the `construct_notebook_query` tool prompt.
            :description
-           (str "Construct a Metabase MBQL 5 query in the portable representations JSON format. "
-                "Pass the body `{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` "
-                "to feed `execute_query` or `visualize_query`.\n"
+           (str "Construct a Metabase MBQL 5 query as JSON. Pass the body "
+                "`{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` to feed "
+                "`execute_query` or `visualize_query`.\n"
                 "\n"
                 "Workflow: use search / entity_details first to discover the exact database, "
                 "schema, table, and column NAMES (not numeric IDs). Never invent identifiers.\n"
@@ -479,9 +474,9 @@
                 "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
                 "ids where a portable FK is required; (3) putting a post-aggregation filter "
                 "(`[\">\", {}, [\"aggregation\", {}, 0], 10]`) alongside `order-by` / `limit` "
-                "in the same stage \u2014 split into two stages explicitly. Read "
-                "`metabase://docs/construct-query.md` for the full grammar, operator catalog, "
-                "joins, expressions, and multi-stage examples.")
+                "in the same stage \u2014 split into two stages explicitly. See the "
+                "`construct_notebook_query` tool prompt for the full grammar, operator "
+                "catalog, joins, expressions, and multi-stage examples.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
@@ -626,11 +621,10 @@
            :description (str "Execute a Metabase query and return results with column "
                              "metadata. If more rows are available, the response includes a "
                              "continuation_token — pass it back to get the next page.\n\n"
-                             "The body is either `{\"query\": <external-query>}` (a portable "
-                             "MBQL 5 representations JSON query, same format as construct_query; "
-                             "see the construct_notebook_query tool for the JSON format "
-                             "reference) or `{\"continuation_token\": \"...\"}` from a previous "
-                             "response.")
+                             "The body is either `{\"query\": <object>}` (same shape as "
+                             "construct_query; see the `construct_notebook_query` tool for "
+                             "the format reference) or `{\"continuation_token\": \"...\"}` "
+                             "from a previous response.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params

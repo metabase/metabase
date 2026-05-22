@@ -1,7 +1,7 @@
-Construct a notebook query in the **MBQL 5 portable representations JSON** format — Metabase's canonical wire format for a query (schema: `::lib.schema/external-query`). You write a JSON object describing the query shape; Metabase validates, repairs, and resolves it.
+Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:
-- `query`: a JSON **object** (never a quoted string) in representations form. The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
+- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month

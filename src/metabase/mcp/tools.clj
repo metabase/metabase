@@ -49,17 +49,15 @@
   publishing the full `::lib.schema/external-query` recursively would pull in `::query`'s optional
   non-nullable `:lib/metadata` (which trips the manifest's strict-tool lint) and emit `prefixItems` /
   `allOf` JSON Schema constructs that strict MCP clients (ChatGPT) reject."
-  [:map {:tool/description (str "A Metabase MBQL 5 query in the canonical portable representations "
-                                "format (JSON object matching ::lib.schema/external-query). See the "
-                                "construct_notebook_query tool documentation for the format reference, "
-                                "or the metabase://docs/construct-query.md MCP resource.")}])
+  [:map {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
+                                "`construct_notebook_query` tool for the format reference.")}])
 
 (def ^:private construct-query-mcp-input-malli
   "MCP-visible input for `construct_query`.
   Deliberately flatter than the wire schema — the MBQL 5 representations grammar is conveyed through
   the tool description and the construct-query.md MCP resource, not the schema."
   [:map
-   [:query  {:tool/description "Database query in MBQL 5 representations format."}
+   [:query  {:tool/description "Metabase MBQL 5 query."}
     external-query-mcp-malli]
    ;; Length bounds + description go on the inner `:string` so they end up on the JSON Schema branch
    ;; (and not as an `:allOf`, which ChatGPT's strict validator rejects).
@@ -77,7 +75,7 @@
   `construct_query`, plus the `:continuation_token` alternative for pagination."
   [:map
    [:query              {:optional true
-                         :tool/description (str "Database query in MBQL 5 representations format. "
+                         :tool/description (str "Metabase MBQL 5 query. "
                                                 "Omit when paginating via `continuation_token`.")}
     [:maybe external-query-mcp-malli]]
    [:continuation_token {:optional true

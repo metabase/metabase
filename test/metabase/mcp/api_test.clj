@@ -346,8 +346,7 @@
               ;; root :type tag lives under the first branch rather than the top level.
               query-leaf-type        (or (:type query-schema)
                                          (some :type (:allOf query-schema)))]
-          (is (str/includes? (:description construct-query-tool) "construct-query.md")
-              "description must point the LLM at the canonical format reference")
+          (is (str/includes? (:description construct-query-tool) "construct_notebook_query"))
           (is (contains? required-fields "query"))
           (is (= "object" query-leaf-type)))))))
 
