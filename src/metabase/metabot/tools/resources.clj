@@ -446,9 +446,10 @@
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions false
-                                      :with-field-values         false}))
+  (let [card (t2/select-one :model/Card :id (parse-long id-str) :type :metric)]
+    (if card
+      (mbr/entity-result (mbr/extract-as-user "Card" card))
+      {:status-code 404 :output (str "Metric " id-str " not found")})))
 
 (defn- fetch-metric-dimensions [id-str]
   (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
