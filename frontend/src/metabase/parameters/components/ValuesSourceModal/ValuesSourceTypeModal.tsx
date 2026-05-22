@@ -454,6 +454,7 @@ const ColumnSelect = ({
 };
 
 const getErrorMessage = (question: Question, parameter: Parameter) => {
+  // avoids using the sectionId to determine the parameter type
   const parameterType = getParameterType(parameter.type);
   const type = question.type();
 
@@ -582,6 +583,7 @@ const getColumnByReference = (
 };
 
 const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
+  // avoids using the sectionId to determine the parameter type
   const type = getParameterType(parameter.type);
   return Lib.fieldableColumns(query, 0).filter((column) => {
     if (type === "number") {
