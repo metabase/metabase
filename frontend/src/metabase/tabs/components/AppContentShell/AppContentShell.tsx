@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -10,22 +11,29 @@ import S from "./AppContentShell.module.css";
 
 interface AppContentShellProps {
   children: ReactNode;
+  showChrome?: boolean;
 }
 
-export function AppContentShell({ children }: AppContentShellProps) {
+export function AppContentShell({
+  children,
+  showChrome = true,
+}: AppContentShellProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>(
     null,
   );
 
   return (
-    <div className={S.shell}>
-      <TabBar />
-      <main className={S.content} ref={setViewportElement}>
+    <div className={cx(S.shell, { [S.shellBare]: !showChrome })}>
+      {showChrome && <TabBar />}
+      <main
+        className={cx(S.content, { [S.contentBare]: !showChrome })}
+        ref={setViewportElement}
+      >
         <ContentViewportContext.Provider value={viewportElement ?? null}>
           {children}
         </ContentViewportContext.Provider>
       </main>
-      <MetabotBar />
+      {showChrome && <MetabotBar />}
     </div>
   );
 }

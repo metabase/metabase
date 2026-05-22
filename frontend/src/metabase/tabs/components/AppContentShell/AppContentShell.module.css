@@ -10,6 +10,11 @@
   gap: 4px;
 }
 
+.shellBare {
+  padding: 0;
+  gap: 0;
+}
+
 .content {
   flex: 1 1 auto;
   width: 100%;
@@ -19,6 +24,12 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background-primary);
+}
+
+.contentBare {
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
 }
 
 @media print {

@@ -21,6 +21,7 @@ import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
+  getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -54,6 +55,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
   isNavBarEnabled: boolean;
 }
@@ -75,6 +77,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  isDataStudioApp: getIsDataStudioApp(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
 
@@ -85,10 +88,13 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
+  isDataStudioApp,
   isNavBarEnabled,
   children,
   onError,
 }: AppProps) {
+  const showAppChrome = !isAdminApp && !isDataStudioApp;
+
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(applicationName, { titleIndex: 0 });
@@ -107,7 +113,7 @@ function App({
             <AppBanner />
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
-              <AppContentShell>
+              <AppContentShell showChrome={showAppChrome}>
                 {errorPage ? getErrorComponent(errorPage) : children}
               </AppContentShell>
               <UndoListing />
