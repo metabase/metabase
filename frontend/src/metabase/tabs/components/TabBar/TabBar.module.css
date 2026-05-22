@@ -1,0 +1,29 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 2px 0;
+  background-color: transparent;
+  overflow-x: auto;
+  flex: 0 0 auto;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px dashed var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.addButton:hover {
+  opacity: 1;
+}

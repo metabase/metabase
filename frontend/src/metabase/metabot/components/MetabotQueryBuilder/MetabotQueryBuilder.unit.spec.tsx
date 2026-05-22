@@ -154,7 +154,6 @@ describe("MetabotQueryBuilder", () => {
     await userEvent.click(screen.getByTestId("metabot-send-message"));
 
     expect(submitInput).toHaveBeenCalledWith("Show me orders", {
-      profile: "nlq",
       preventOpenSidebar: true,
       suppressNavigateTo: true,
     });

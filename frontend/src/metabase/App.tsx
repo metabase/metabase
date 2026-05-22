@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
@@ -11,7 +11,6 @@ import {
   Unauthorized,
 } from "metabase/common/components/ErrorPages";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -27,9 +26,10 @@ import {
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
+import { AppContentShell } from "metabase/tabs/components/AppContentShell/AppContentShell";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
-import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import { AppContainer, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
@@ -94,7 +94,6 @@ function App({
   children,
   onError,
 }: AppProps) {
-  const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const applicationName = useSelector(getApplicationName);
 
   usePageTitle(applicationName, { titleIndex: 0 });
@@ -113,13 +112,9 @@ function App({
             <AppBanner />
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : children}
-                </ContentViewportContext.Provider>
-              </AppContent>
+              <AppContentShell>
+                {errorPage ? getErrorComponent(errorPage) : children}
+              </AppContentShell>
               <UndoListing />
               <StatusListing />
               <NewModals />

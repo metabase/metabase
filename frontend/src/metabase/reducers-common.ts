@@ -19,6 +19,7 @@ import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
+import { tabsReducer as tabs } from "metabase/tabs/tabs.slice";
 
 import { metabotReducer as metabot } from "./metabot/state";
 
@@ -43,4 +44,5 @@ export const commonReducers = {
   parameters: combineReducers(parameters),
   downloads,
   metabot,
+  tabs,
 };

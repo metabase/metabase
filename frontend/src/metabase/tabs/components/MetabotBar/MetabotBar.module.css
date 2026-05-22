@@ -1,0 +1,16 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 0 0 4px;
+  background-color: transparent;
+  flex: 0 0 auto;
+}
+
+.bar .button,
+.bar .button[data-with-left-section],
+.bar .button[data-with-right-section] {
+  height: 20px;
+  padding: 0 2px 0 6px;
+  font-size: 11px;
+}

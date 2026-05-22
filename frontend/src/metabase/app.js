@@ -42,6 +42,7 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { tabsListenerMiddleware } from "metabase/tabs/tabs.middleware";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
@@ -65,7 +66,9 @@ const browserHistory = useRouterHistory(createHistory)({
 initializePlugins();
 
 function _init(reducers, getRoutes, callback) {
-  const store = getStore(reducers, browserHistory);
+  const store = getStore(reducers, browserHistory, undefined, [
+    tabsListenerMiddleware.middleware,
+  ]);
   const routes = getRoutes(store);
   const syncedHistory = syncHistoryWithStore(browserHistory, store);
 
