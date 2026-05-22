@@ -160,12 +160,12 @@ export class ApiClient extends EventEmitter<EventMap> {
     }
   }
 
-  private async _makeRequest<RawResponse extends boolean>({
-    url,
-    noEvent,
-    rawResponse,
-    ...init
-  }: RequestInit<RawResponse>): Promise<ResponseFor<RawResponse>> {
+  /**
+   * Run the request over the network: build an explicit `Request`, attach the
+   * anti-CSRF token, `fetch`, and capture the anti-CSRF token from the response.
+   * Returns the raw `Response` untouched — no body read, status check, or events.
+   */
+  private async _fetch({ url, ...init }: RequestInit): Promise<Response> {
     // We wrap the fetch args in an explicit `Request` (instead of just calling
     // `fetch(url, init)`) so fetch-mock populates `call.request` on every
     // recorded call. `findRequests()` in our Jest helpers reads `call.request`
@@ -179,11 +179,22 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     updateAntiCsrfToken(response);
 
-    const { ok, status, body } = await handleResponse(response, rawResponse);
+    return response;
+  }
 
-    if (!noEvent && (status === 401 || status === 403)) {
+  private async _makeRequest<RawResponse extends boolean>(
+    init: RequestInit<RawResponse>,
+  ): Promise<ResponseFor<RawResponse>> {
+    const response = await this._fetch(init);
+
+    const { ok, status, body } = await handleResponse(
+      response,
+      init.rawResponse,
+    );
+
+    if (!init.noEvent && (status === 401 || status === 403)) {
       // Strip basename so listeners (app-main.js) see the relative path.
-      const path = relativePath(this.basename, url);
+      const path = relativePath(this.basename, init.url);
       this.emit(status, path);
     }
 
@@ -248,22 +259,24 @@ export class ApiClient extends EventEmitter<EventMap> {
   }
 
   /**
-   * RTK Query entry point with explicit body/params semantics:
+   * Resolve options through the middleware pipeline and assemble a `RequestInit`:
+   * URL (basename + `:tag` substitution), client headers, and body placement.
+   * Shared by `request` and `requestRaw`.
+   *
+   * Body/params semantics:
    * - `body`: sent as the request body. `FormData` / `URLSearchParams` are
    *   forwarded as-is so the browser sets the right Content-Type. Anything
    *   else is `JSON.stringify`'d. For `GET` it's folded into the querystring.
    * - `params`: URL `:tag` substitution first, leftover keys become querystring.
-   *
-   * No method-derived guesswork about whether data is body or querystring.
    */
-  async request<Raw extends boolean = false>(
+  private async _prepareRequest(
     options: {
       method: RequestMethod;
       url: string;
       body?: unknown;
       params?: Record<string, unknown>;
-    } & RequestOptions<Raw>,
-  ): Promise<ResponseFor<Raw>> {
+    } & RequestOptions,
+  ): Promise<RequestInit> {
     if (Array.isArray(options.body)) {
       throw new Error("API bodies must be plain objects, not arrays");
     }
@@ -297,15 +310,47 @@ export class ApiClient extends EventEmitter<EventMap> {
       body = JSON.stringify(options.body);
     }
 
+    return { ...options, url, method, headers, body };
+  }
+
+  /**
+   * RTK Query entry point with explicit body/params semantics. Reads and parses
+   * the body, throwing `{ status, data }` on a non-2xx response. Pass
+   * `rawResponse: true` to resolve with the raw `Response` instead.
+   */
+  async request<Raw extends boolean = false>(
+    options: {
+      method: RequestMethod;
+      url: string;
+      body?: unknown;
+      params?: Record<string, unknown>;
+    } & RequestOptions<Raw>,
+  ): Promise<ResponseFor<Raw>> {
+    const init = await this._prepareRequest(options);
+
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._dispatch({
-      ...options,
-      url,
-      method,
-      headers,
-      body,
-    }) as ResponseFor<Raw>;
+    return this._dispatch(init) as ResponseFor<Raw>;
+  }
+
+  /**
+   * Resolve with the raw `Response`, leaving everything after the network to the
+   * caller: unlike `request`, it does not read the body, recover a 202 `_status`,
+   * emit events, or throw on a non-2xx status. For streaming callers (e.g. SSE)
+   * that consume `response.body` and do their own error handling, while still
+   * getting the client pipeline — middleware, client headers, anti-CSRF, and
+   * basename resolution — that a hand-rolled `fetch` would otherwise miss.
+   */
+  async fetch(
+    options: {
+      method: RequestMethod;
+      url: string;
+      body?: unknown;
+      params?: Record<string, unknown>;
+    } & RequestOptions,
+  ): Promise<Response> {
+    const init = await this._prepareRequest(options);
+    return this._fetch(init);
   }
 }
 

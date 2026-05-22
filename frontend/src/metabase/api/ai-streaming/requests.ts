@@ -56,16 +56,12 @@ export async function aiStreamingQuery(
       abortController,
     });
 
-    // The basename is needed to work within the Embedding SDK
-    const response = await fetch(`${api.basename}${req.url}`, {
+    const response = await api.fetch({
       method: "POST",
-      headers: {
-        ...api.getClientHeaders(),
-        Accept: "text/event-stream",
-        "Content-Type": "application/json",
-      },
+      url: req.url,
+      body: req.body,
+      headers: { Accept: "text/event-stream" },
       signal: abortController.signal,
-      body: JSON.stringify(req.body),
     });
 
     if (!response.ok) {

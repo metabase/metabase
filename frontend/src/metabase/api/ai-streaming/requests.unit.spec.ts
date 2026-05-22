@@ -31,9 +31,10 @@ describe("ai requests", () => {
 
       await aiStreamingQuery({ url: endpoint, body: {} });
 
-      expect(fetchSpy).toHaveBeenCalledWith(
+      // The client wraps the args in a `Request`, so assert on its URL.
+      const [request] = fetchSpy.mock.calls[0];
+      expect((request as Request).url).toBe(
         "http://example.com/some-streamed-endpoint",
-        expect.anything(),
       );
 
       fetchSpy.mockRestore();
