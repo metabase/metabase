@@ -37,7 +37,7 @@ describe("FilterColumnPicker", () => {
     );
   });
 
-  test("Searching by displayName should works (#39622)", async () => {
+  it("Searching by displayName should work (#39622)", async () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndexes = [0];
     setup({ query, stageIndexes });
