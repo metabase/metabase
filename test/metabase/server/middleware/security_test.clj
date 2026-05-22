@@ -607,15 +607,17 @@
         (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
 
 (deftest ^:parallel parse-allowed-resource-hosts-test
-  (testing "parses like the iframe parser but with no always-allowed seed hosts"
-    (is (= ["mysite.com" "*.mysite.com" "http://localhost:8000" "cdn.deep.example.com"]
+  (testing "parses like the iframe parser, seeded with the always-allowed resource hosts"
+    (is (= (concat @#'mw.security/always-allowed-resource-hosts
+                   ["mysite.com" "*.mysite.com" "http://localhost:8000" "cdn.deep.example.com"])
            (mw.security/parse-allowed-resource-hosts "mysite.com, http://localhost:8000, cdn.deep.example.com"))))
-  (testing "empty / blank input yields no hosts"
-    (is (= [] (mw.security/parse-allowed-resource-hosts nil)))
-    (is (= [] (mw.security/parse-allowed-resource-hosts "")))
-    (is (= [] (mw.security/parse-allowed-resource-hosts "   "))))
+  (testing "empty / blank input yields just the seed hosts"
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts nil)))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "")))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "   "))))
   (testing "invalid hosts are dropped"
-    (is (= [] (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
+    (is (= @#'mw.security/always-allowed-resource-hosts
+           (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
 
 (deftest csp-img-enabled-setter-oss-test
   (testing "csp-img-enabled can be turned on/off freely when no enterprise custom-viz setter is loaded"

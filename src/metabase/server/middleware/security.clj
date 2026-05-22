@@ -111,12 +111,20 @@
    "https://www.metabase.com/"
    "https://metabase.com/"])
 
+(def ^:private always-allowed-resource-hosts
+  "Implicitly-allowed `img-src`/`font-src` hosts: our own origin and `data:` URIs."
+  ["'self'" "data:"])
+
+(defn- parse-hosts-string
+  "Split a comma/whitespace-separated `hosts-string` into individual hosts, adding wildcard prefixes as needed."
+  [hosts-string]
+  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)))
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
-  (->> (str/split hosts-string #"[ ,\s\r\n]+")
-       (remove str/blank?)
-       (mapcat add-wildcard-entries)
-       (into always-allowed-iframe-hosts)))
+  (into always-allowed-iframe-hosts (parse-hosts-string hosts-string)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
@@ -124,13 +132,9 @@
 
 (defn- parse-allowed-resource-hosts*
   [hosts-string]
-  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
-       (remove str/blank?)
-       (mapcat add-wildcard-entries)
-       vec))
+  (into always-allowed-resource-hosts (parse-hosts-string hosts-string)))
 
-(def ^{:doc "Parse the string of allowed `img-src`/`font-src` hosts, adding wildcard prefixes as needed.
-  Unlike [[parse-allowed-iframe-hosts]] this has no implicitly-allowed seed hosts."}
+(def ^{:doc "Parse a string of allowed resource hosts (e.g. for `img-src`), adding wildcard prefixes as needed."}
   parse-allowed-resource-hosts
   (memoize parse-allowed-resource-hosts*))
 
@@ -212,14 +216,12 @@
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                  ;; in dev, assets (logos, fonts, etc.) are served from the webpack dev server origin
-                  :font-src     (into (cond-> ["'self'" "data:"]
+                  :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
                   :img-src      (if (server.settings/csp-img-enabled)
-                                  (into (cond-> ["'self'" "data:"]
-                                          config/is-dev? (conj frontend-address))
-                                        (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts)))
+                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                    config/is-dev? (conj frontend-address))
                                   ["*"])
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
