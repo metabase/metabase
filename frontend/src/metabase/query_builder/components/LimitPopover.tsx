@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { Radio } from "metabase/common/components/Radio";
@@ -35,20 +36,18 @@ export const LimitPopover = ({
 
   // Apply the typed value when the popover is dismissed (unmounted), but only
   // when it differs from the current limit
-  const selectedLimitRef = useRef(selectedLimit);
-  selectedLimitRef.current = selectedLimit;
-  const limitRef = useRef(limit);
-  limitRef.current = limit;
-  const onChangeLimitRef = useRef(onChangeLimit);
-  onChangeLimitRef.current = onChangeLimit;
+  const selectedLimitRef = useLatest(selectedLimit);
+  const limitRef = useLatest(limit);
+  const onChangeLimitRef = useLatest(onChangeLimit);
 
   useEffect(() => {
-    return () => {
+    const applyPendingLimit = () => {
       if (selectedLimitRef.current !== limitRef.current) {
         onChangeLimitRef.current(selectedLimitRef.current);
       }
     };
-  }, []);
+    return () => applyPendingLimit();
+  }, [selectedLimitRef, limitRef, onChangeLimitRef]);
 
   // Focus and select the input only when the user actively switches to the
   // custom option, not when the popover opens with a custom limit already set.
