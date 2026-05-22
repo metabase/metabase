@@ -512,7 +512,7 @@
   ;; Filter per-lookup so a structured value (e.g. {:error {:code 500}}) never gets
   ;; str-coerced into the user-facing exception message — bad shapes fall through to
   ;; the next key instead.
-  (let [s (fn [v] (when (string? v) (not-empty (str/trim v))))]
+  (letfn [(s [v] (when (string? v) (not-empty (str/trim v))))]
     (or (s (get-in m [:error :message]))
         (s (:error m))
         (s (:detail m))
@@ -531,7 +531,7 @@
               (if (neg? n)
                 (when (pos? off) (String. buf 0 off))
                 (recur (+ off n))))))))
-    (catch Throwable _ nil)))
+    (catch Exception _ nil)))
 
 (def ^:private max-body-slurp-chars
   "Cap on how many chars we read off an upstream InputStream body when decoding for error surfacing."
@@ -552,7 +552,14 @@
                   (update :body #(or (slurp-bounded % max-body-slurp-chars) "")))]
     (try
       (json/decode-body bounded)
-      (catch Throwable _ bounded))))
+      (catch Exception _ bounded))))
+
+(defn- truncate-to-preview-limit
+  "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
+  [s]
+  (if (<= (count s) max-body-preview-chars)
+    s
+    (str (subs s 0 max-body-preview-chars) "…")))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
@@ -571,15 +578,14 @@
                     :else              nil)
         ;; Surface *some* context to the user even for unrecognised shapes — the warn
         ;; signals operators to add the new envelope shape to [[extract-error-message]].
+        ;; Truncate once: the warn line shouldn't carry a multi-MB pr-str any more than
+        ;; the user-facing exception message should.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [printed (pr-str body)]
-                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" printed)
-                          printed)))]
-    (when-let [trimmed (some-> s str/trim not-empty)]
-      (if (<= (count trimmed) max-body-preview-chars)
-        trimmed
-        (str (subs trimmed 0 max-body-preview-chars) "…")))))
+                        (let [capped (truncate-to-preview-limit (pr-str body))]
+                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
+                          capped)))]
+    (some-> s str/trim not-empty truncate-to-preview-limit)))
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
