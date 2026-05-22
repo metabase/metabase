@@ -195,21 +195,30 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 
 ## Privacy
 
-When using the Metabase AI service, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
+### Data sent to the Metabase AI service
 
-If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
+When using the Metabase AI service, we don't send the _results_ of your queries to a third-party AI provider, and we don't look at them ourselves.
 
-In both cases, Metabot can't create assets or write data. If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the form you send may contain sensitive data from your conversation.
+What we send:
 
-### What Metabot can see
+- Your prompts.
+- Metadata (like table and field names), so Metabot knows what to query.
+- A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
+- The data plotted in a chart when you ask Metabot to analyze a visualization — the points drawn on the chart, not the underlying row-level query results. What's sent depends on the chart type.
 
-Metabot has access to your Metabase metadata and some data values to help answer your questions:
+We, Metabase the company, also collect some of this metadata to gauge usage and improve the AI integration.
 
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
-- **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
+### Data sent to your own AI provider
 
-When you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the context for the conversation - including this metadata and conversation prompts - might be sent to Metabase.
+If you're using your own API key, everything listed above is sent to your selected AI provider. Review your provider's data handling and privacy policies.
+
+### Data sent to the MCP client
+
+When using the [MCP server](./mcp.md), query _results_ are sent to the connected MCP client.
+
+### Data sent when submitting feedback
+
+If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, the context for that conversation, including metadata and your prompts, might be sent to Metabase the company, and may contain sensitive data.
 
 ## Further reading
 
