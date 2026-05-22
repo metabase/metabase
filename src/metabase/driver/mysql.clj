@@ -464,6 +464,13 @@
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
 
+;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
+;; `CHAR`. (The `:sql` default for `::cast-to-text` casts to `text`, which is fine on Postgres,
+;; H2, Snowflake, etc. but a syntax error here.)
+(defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "char"]))
+
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
