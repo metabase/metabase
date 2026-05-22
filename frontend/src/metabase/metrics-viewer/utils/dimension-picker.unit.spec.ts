@@ -12,6 +12,7 @@ import {
 } from "./__tests__/test-helpers";
 import {
   type AvailableDimension,
+  buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
   buildDimensionPickerSidebarCategorySelectRows,
   getAvailableDimensionsForPicker,
@@ -273,6 +274,53 @@ describe("getExistingTabDimensionIds", () => {
     expect(getExistingTabDimensionIds(tabs, "tab-category")).toEqual(
       new Set(["dim-created-at"]),
     );
+  });
+});
+
+describe("buildDimensionPickerSections", () => {
+  it("uses table names without a Shared prefix for grouped shared dimensions", () => {
+    const sections = buildDimensionPickerSections({
+      availableDimensions: {
+        shared: [
+          {
+            icon: "label",
+            group: { id: "customers", type: "main", displayName: "Customers" },
+            tabInfo: {
+              type: "category",
+              label: "Customer Name",
+              dimensionMapping: {
+                0: "dim-customer-name",
+                1: "dim-customer-name",
+              },
+            },
+          },
+          {
+            icon: "calendar",
+            group: { id: "orders", type: "main", displayName: "Orders" },
+            tabInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: {
+                0: "dim-created-at",
+                1: "dim-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      hasMultipleSources: true,
+    });
+
+    expect(sections).toEqual([
+      expect.objectContaining({ name: "Customers", isShared: true }),
+      expect.objectContaining({ name: "Orders", isShared: true }),
+    ]);
   });
 });
 

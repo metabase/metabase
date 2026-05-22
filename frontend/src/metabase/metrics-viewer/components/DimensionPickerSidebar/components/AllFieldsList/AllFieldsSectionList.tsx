@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import type { MetricsViewerTabState } from "metabase/metrics-viewer/types";
 import type {
   DimensionPickerItem,
@@ -7,11 +5,11 @@ import type {
 } from "metabase/metrics-viewer/utils";
 import { Stack, Text } from "metabase/ui";
 
-import { getSidebarSectionName, hasSameDimensions } from "../utils";
+import { getSidebarSectionName, hasSameDimensions } from "../../utils";
 
 import { DimensionButton } from "./DimensionButton";
 
-export function AllFieldsList({
+export function AllFieldsSectionList({
   activeTab,
   sections,
   onSelect,
@@ -20,16 +18,12 @@ export function AllFieldsList({
   sections: DimensionPickerSection[];
   onSelect: (item: DimensionPickerItem) => void;
 }) {
-  if (sections.length === 0) {
-    return (
-      <Text c="text-secondary" ta="center" py="lg">{t`No fields found`}</Text>
-    );
-  }
-
   return (
     <Stack gap="lg">
       {sections.map((section, sectionIndex) => {
-        const sectionKey = section.name ?? `section-${sectionIndex}`;
+        const sectionKey = section.name
+          ? `${section.name}-${sectionIndex}`
+          : `section-${sectionIndex}`;
         const sectionName = getSidebarSectionName(section.name);
 
         return (

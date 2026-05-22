@@ -17,6 +17,7 @@ import { DimensionPickerSidebarProvider } from "./DimensionPickerSidebarContext"
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const SOURCE_ID: MetricSourceId = "metric:1";
+const SECOND_SOURCE_ID: MetricSourceId = "metric:2";
 
 const activeTab: MetricsViewerTabState = {
   id: "tab-category",
@@ -76,10 +77,16 @@ function setup({
   tab = activeTab,
   dimensions = availableDimensions,
   slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
+  sourceOrder = [SOURCE_ID],
+  sources = sourceDataById,
+  hasMultipleSources = false,
 }: {
   tab?: MetricsViewerTabState;
   dimensions?: AvailableDimensionsResult;
   slots?: MetricSlot[];
+  sourceOrder?: MetricSourceId[];
+  sources?: Record<MetricSourceId, SourceDisplayInfo>;
+  hasMultipleSources?: boolean;
 } = {}) {
   const onAddTab = jest.fn();
   const onUpdateActiveTab = jest.fn();
@@ -90,10 +97,10 @@ function setup({
         activeTab={tab}
         availableDimensions={dimensions}
         metricSlots={slots}
-        sourceColors={{ 0: ["#509ee3"] }}
-        sourceOrder={[SOURCE_ID]}
-        sourceDataById={sourceDataById}
-        hasMultipleSources={false}
+        sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
+        sourceOrder={sourceOrder}
+        sourceDataById={sources}
+        hasMultipleSources={hasMultipleSources}
         onAddTab={onAddTab}
         onUpdateActiveTab={onUpdateActiveTab}
       />
@@ -187,6 +194,88 @@ describe("DimensionPickerSidebar", () => {
     expect(screen.getByText("All fields")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Created At" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Revenue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("groups all fields by metric when multiple metrics are selected", async () => {
+    setup({
+      dimensions: {
+        shared: [
+          {
+            icon: "string",
+            group: { id: "customers", type: "main", displayName: "Customers" },
+            tabInfo: {
+              type: "category",
+              label: "Customer Name",
+              dimensionMapping: {
+                0: "dim-customer-name",
+                1: "dim-customer-name",
+              },
+            },
+          },
+        ],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: {
+                id: "subscriptions",
+                type: "main",
+                displayName: "Subscriptions",
+              },
+              tabInfo: {
+                type: "time",
+                label: "Placed At",
+                dimensionMapping: { 0: "dim-placed-at" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              tabInfo: {
+                type: "category",
+                label: "Order Status",
+                dimensionMapping: { 1: "dim-order-status" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "ARR" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+      hasMultipleSources: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByRole("button", { name: "ARR" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Customers")).toBeInTheDocument();
+    expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+    expect(screen.queryByText("Shared · Customers")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
+
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Order Status" }),
     ).toBeInTheDocument();
   });
 

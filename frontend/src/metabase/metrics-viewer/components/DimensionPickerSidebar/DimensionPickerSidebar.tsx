@@ -74,6 +74,8 @@ export function DimensionPickerSidebar({
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string | null>(
     null,
   );
+  const [expandedMetricSourceId, setExpandedMetricSourceId] =
+    useState<MetricSourceId | null>(null);
 
   const sections = useMemo(
     () =>
@@ -219,6 +221,13 @@ export function DimensionPickerSidebar({
           <AllFieldsList
             activeTab={activeTab}
             sections={filteredSections}
+            sourceOrder={sourceOrder}
+            sourceDataById={sourceDataById}
+            sourceColors={sourceColors}
+            metricSlots={metricSlots}
+            hasMultipleSources={hasMultipleSources}
+            expandedMetricSourceId={expandedMetricSourceId}
+            onToggleMetric={setExpandedMetricSourceId}
             onSelect={handleSelect}
           />
         ) : categories.length > 0 ? (

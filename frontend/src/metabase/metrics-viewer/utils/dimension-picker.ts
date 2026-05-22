@@ -238,7 +238,25 @@ export type DimensionPickerSidebarCategorySelectRow = {
 export type DimensionPickerSection = {
   name?: string;
   items: DimensionPickerItem[];
+  isShared?: boolean;
+  sourceId?: MetricSourceId;
 };
+
+function getDimensionPickerSectionName(
+  sectionName: string | undefined,
+  groupName: string | undefined,
+  metadata: Pick<DimensionPickerSection, "isShared" | "sourceId">,
+) {
+  if ((metadata.isShared || metadata.sourceId) && groupName) {
+    return groupName;
+  }
+
+  if (sectionName && groupName) {
+    return `${sectionName} · ${groupName}`;
+  }
+
+  return sectionName ?? groupName;
+}
 
 export function buildDimensionPickerSections({
   availableDimensions,
@@ -256,6 +274,7 @@ export function buildDimensionPickerSections({
   const splitByGroup = (
     dimensions: AvailableDimension[],
     sectionName?: string,
+    metadata: Pick<DimensionPickerSection, "isShared" | "sourceId"> = {},
   ) => {
     const groups = new Map<string | undefined, AvailableDimension[]>();
     for (const dimension of dimensions) {
@@ -269,8 +288,10 @@ export function buildDimensionPickerSections({
     }
 
     if (groups.size <= 1) {
+      const groupName = dimensions[0]?.group?.displayName;
       sections.push({
-        name: sectionName,
+        name: getDimensionPickerSectionName(sectionName, groupName, metadata),
+        ...metadata,
         items: dimensions.map((dimension) => ({
           ...dimension,
           name: dimension.tabInfo.label,
@@ -281,9 +302,9 @@ export function buildDimensionPickerSections({
 
     for (const [, groupDimensions] of groups) {
       const groupName = groupDimensions[0].group?.displayName;
-      const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
       sections.push({
-        name,
+        name: getDimensionPickerSectionName(sectionName, groupName, metadata),
+        ...metadata,
         items: groupDimensions.map((dimension) => ({
           ...dimension,
           name: dimension.tabInfo.label,
@@ -293,7 +314,7 @@ export function buildDimensionPickerSections({
   };
 
   if (hasMultipleSources && availableDimensions.shared.length > 0) {
-    splitByGroup(availableDimensions.shared, t`Shared`);
+    splitByGroup(availableDimensions.shared, t`Shared`, { isShared: true });
   }
 
   for (const sourceId of sourceOrder) {
@@ -304,7 +325,7 @@ export function buildDimensionPickerSections({
 
     if (hasMultipleSources) {
       const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
-      splitByGroup(sourceDimensions, sourceName);
+      splitByGroup(sourceDimensions, sourceName, { sourceId });
     } else {
       splitByGroup(sourceDimensions);
     }
