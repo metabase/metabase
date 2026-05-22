@@ -2,31 +2,37 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
   CollectionPickerModal,
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
-import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import { Button, Card, Icon, Stack, Text } from "metabase/ui";
+import type { CollectionId, IconName } from "metabase-types/api";
 
-import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
-import { useSdkIframeEmbedSetupContext } from "../context";
+import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
-} from "../types";
-import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+} from "../../../types";
+import { getResourceIdFromSettings } from "../../../utils/get-default-sdk-iframe-embed-setting";
 
-import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
-import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
+// The picker uses the "recents" id to open on the Recent items tab while still
+// being able to resolve to a valid initial path.
+const PICKER_RECENTS_VALUE = {
+  id: "recents" as CollectionId,
+  model: "collection" as const,
+};
 
-export const SelectEmbedResourceStep = () => {
+export const ResourceCard = () => {
   const {
     experience,
     settings,
     updateSettings,
+    resource,
     recentDashboards,
     recentQuestions,
     recentCollections,
@@ -36,7 +42,14 @@ export const SelectEmbedResourceStep = () => {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
-  // If a step does not allow resource selection, hide it.
+  const selectedItemId = getResourceIdFromSettings(settings);
+
+  const { data: selectedCollection } = useGetCollectionQuery(
+    experience === "browser" && selectedItemId != null
+      ? { id: selectedItemId as CollectionId }
+      : skipToken,
+  );
+
   if (!hasResourceSelectionStep(experience)) {
     return null;
   }
@@ -47,7 +60,17 @@ export const SelectEmbedResourceStep = () => {
     .with("chart", () => recentQuestions)
     .exhaustive();
 
-  const selectedItemId = getResourceIdFromSettings(settings);
+  const selectedResourceName = match(experience)
+    .with("dashboard", () => resource?.name)
+    .with("chart", () => resource?.name)
+    .with("browser", () => selectedCollection?.name)
+    .exhaustive();
+
+  const fallbackResourceName = recentItems.find(
+    (item) => item.id === selectedItemId,
+  )?.name;
+
+  const { title, icon, placeholder, label } = getResourceCopy(experience);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -114,35 +137,6 @@ export const SelectEmbedResourceStep = () => {
     });
   };
 
-  const renderSelectResourceList = () => {
-    if (recentItems.length === 0) {
-      return (
-        <SelectEmbedResourceMissingRecents
-          experience={experience}
-          openPicker={openPicker}
-        />
-      );
-    }
-
-    return (
-      <Stack gap="md">
-        <Text c="text-secondary" mb="md">
-          {getEmbedDescription(experience)}
-        </Text>
-
-        {recentItems.map((recentItem) => (
-          <SelectEmbedResourceRecentItemCard
-            key={recentItem.id}
-            recentItem={recentItem}
-            experience={experience}
-            onSelect={updateEmbedSettings}
-            selectedItemId={selectedItemId}
-          />
-        ))}
-      </Stack>
-    );
-  };
-
   const renderPickerModal = () => {
     if (!isPickerOpen) {
       return null;
@@ -152,11 +146,7 @@ export const SelectEmbedResourceStep = () => {
       return (
         <DashboardPickerModal
           title={t`Select a dashboard`}
-          value={
-            selectedItemId
-              ? { id: selectedItemId, model: "dashboard" }
-              : undefined
-          }
+          value={PICKER_RECENTS_VALUE}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
@@ -168,9 +158,7 @@ export const SelectEmbedResourceStep = () => {
       return (
         <QuestionPickerModal
           title={t`Select a chart`}
-          value={
-            selectedItemId ? { id: selectedItemId, model: "card" } : undefined
-          }
+          value={PICKER_RECENTS_VALUE}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
@@ -181,11 +169,8 @@ export const SelectEmbedResourceStep = () => {
     if (experience === "browser") {
       return (
         <CollectionPickerModal
-          title={t`Select a collection`}
-          value={{
-            id: selectedItemId ?? "root",
-            model: "collection",
-          }}
+          title={t`Select default collection`}
+          value={PICKER_RECENTS_VALUE}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={COLLECTION_MODAL_OPTIONS}
@@ -196,33 +181,29 @@ export const SelectEmbedResourceStep = () => {
     return null;
   };
 
-  const browseResourceTitle = match(experience)
-    .with("dashboard", () => t`Browse dashboards`)
-    .with("browser", () => t`Browse collections`)
-    .with("chart", () => t`Browse questions`)
-    .exhaustive();
-
   return (
     <>
-      <Card p="md" mb="md">
-        <Group justify="space-between" mb="md">
+      <Card p="md">
+        <Stack gap="md">
           <Text size="lg" fw="bold">
-            {getEmbedTitle(experience)}
+            {title}
           </Text>
 
-          <ActionIcon
-            size="lg"
-            title={browseResourceTitle}
+          <Button
+            variant="default"
+            leftSection={<Icon name={icon} c="brand" size={16} />}
+            rightSection={<Icon name="chevrondown" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
-            c="text-primary"
-            bd="1px solid var(--mb-color-border)"
+            aria-label={label}
+            fullWidth
+            styles={{ label: { flex: 1, textAlign: "left" } }}
           >
-            <Icon name="search" size={16} />
-          </ActionIcon>
-        </Group>
-
-        {renderSelectResourceList()}
+            <Text fw="bold">
+              {selectedResourceName ?? fallbackResourceName ?? placeholder}
+            </Text>
+          </Button>
+        </Stack>
       </Card>
 
       {renderPickerModal()}
@@ -230,21 +211,35 @@ export const SelectEmbedResourceStep = () => {
   );
 };
 
-const getEmbedTitle = (experience: string) =>
-  match(experience)
-    .with("dashboard", () => t`Select a dashboard to embed`)
-    .with("chart", () => t`Select a chart to embed`)
-    .with("browser", () => t`Select a collection to embed`)
-    .with("exploration", () => t`Exploration embed setup`)
-    .otherwise(() => t`Select content to embed`);
+type ResourceExperience = Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
+>;
 
-const getEmbedDescription = (experience: string) =>
-  match(experience)
-    .with("dashboard", () => t`Choose from your recently visited dashboards`)
-    .with("chart", () => t`Choose from your recently visited charts`)
-    .with("browser", () => t`Choose a collection to start browsing from`)
-    .with("exploration", () => null)
-    .otherwise(() => t`Choose your content to embed`);
+const getResourceCopy = (experience: ResourceExperience) =>
+  match<
+    ResourceExperience,
+    { title: string; icon: IconName; placeholder: string; label: string }
+  >(experience)
+    .with("dashboard", () => ({
+      title: t`Select a dashboard to embed`,
+      icon: "dashboard",
+      placeholder: t`Select a dashboard`,
+      label: t`Change dashboard`,
+    }))
+    .with("chart", () => ({
+      title: t`Select a chart to embed`,
+      icon: "bar",
+      placeholder: t`Select a chart`,
+      label: t`Change chart`,
+    }))
+    .with("browser", () => ({
+      title: t`Select initial collection`,
+      icon: "collection",
+      placeholder: t`Select initial collection`,
+      label: t`Change initial collection`,
+    }))
+    .exhaustive();
 
 const MODAL_OPTIONS = {
   showPersonalCollections: true,
@@ -262,8 +257,8 @@ const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
 ): experience is Exclude<
   SdkIframeEmbedSetupExperience,
-  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 > =>
   !(
-    STEPS_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
+    EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);
