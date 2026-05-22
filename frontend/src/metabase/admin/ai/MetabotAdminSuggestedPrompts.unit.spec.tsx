@@ -8,8 +8,12 @@ import {
   setupRemoveMetabotPromptSuggestionEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import type { SuggestedMetabotPrompt } from "metabase-types/api";
+import type {
+  RegenerateSuggestedMetabotPromptsResponse,
+  SuggestedMetabotPrompt,
+} from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { mockSuggestedPrompts } from "./test-utils";
@@ -59,10 +63,13 @@ const setup = async (opts?: SetupOpts) => {
     : paginationContext;
 
   const TestComponent = () => (
-    <MetabotPromptSuggestionPane
-      metabot={{ id: metabotId, collection_id: null }}
-      pageSize={pageSize}
-    />
+    <>
+      <MetabotPromptSuggestionPane
+        metabot={{ id: metabotId, collection_id: null }}
+        pageSize={pageSize}
+      />
+      <UndoListing />
+    </>
   );
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {
@@ -253,5 +260,64 @@ describe("suggested prompts", () => {
     expect(loadingRow).toBeInTheDocument();
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
+  });
+
+  describe("regenerate empty-state toasts", () => {
+    const clickRegenerate = async () =>
+      userEvent.click(
+        await screen.findByRole("button", {
+          name: /Regenerate suggested prompts/,
+        }),
+      );
+
+    const setupForRegenerate = async (
+      body: RegenerateSuggestedMetabotPromptsResponse,
+    ) => {
+      const { metabotId } = await setup();
+      setupMetabotPromptSuggestionsEndpoint({
+        metabotId,
+        prompts: defaultMetabotMockedPrompts,
+        paginationContext: {
+          offset: 0,
+          limit: 3,
+          total: defaultMetabotMockedPrompts.length,
+        },
+      });
+      setupRegenerateMetabotPromptSuggestionsEndpoint(
+        metabotId,
+        undefined,
+        body,
+      );
+    };
+
+    it("shows the no-library-content toast", async () => {
+      await setupForRegenerate({ status: "no-library-content" });
+      await clickRegenerate();
+      expect(
+        await screen.findByText(/No models or metrics to summarize/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the ai-produced-no-prompts toast", async () => {
+      await setupForRegenerate({ status: "ai-produced-no-prompts" });
+      await clickRegenerate();
+      expect(
+        await screen.findByText(/AI didn't generate any prompts/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show a toast on the happy path", async () => {
+      await setupForRegenerate({ status: "generated", prompt_count: 3 });
+      await clickRegenerate();
+      // Give any toast a chance to render, then assert none of the empty-state copy is visible.
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/No models or metrics to summarize/),
+        ).not.toBeInTheDocument();
+      });
+      expect(
+        screen.queryByText(/AI didn't generate any prompts/),
+      ).not.toBeInTheDocument();
+    });
   });
 });

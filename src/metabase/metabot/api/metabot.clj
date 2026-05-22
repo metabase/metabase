@@ -63,16 +63,18 @@
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
-      [:generated                  [:map
-                                    [:status [:= :generated]]
-                                    [:prompt_count nat-int?]]]
-      [:no-library-content         [:map [:status [:= :no-library-content]]]]
-      [:ai-produced-no-prompts     [:map [:status [:= :ai-produced-no-prompts]]]]
-      [:managed-free-limit-reached [:map [:status [:= :managed-free-limit-reached]]]]]
+      [:generated              [:map
+                                [:status [:= :generated]]
+                                [:prompt_count nat-int?]]]
+      [:no-library-content     [:map [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts [:map [:status [:= :ai-produced-no-prompts]]]]]
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.
 
    Returns a single-tag discriminated union so the UI can `switch` on `:status` to distinguish a
    successful regeneration from the various 'no error, but nothing produced' cases.
+
+   The managed-free-limit case isn't in the union: [[metabot.usage/check-metabase-managed-free-limit!]]
+   throws a 402 before we ever call into [[metabot.suggested-prompts/generate-sample-prompts]].
 
    Response shape: see [[metabase.metabot.suggested-prompts/generate-sample-prompts]]."
   [{:keys [id]} :- [:map [:id pos-int?]]]

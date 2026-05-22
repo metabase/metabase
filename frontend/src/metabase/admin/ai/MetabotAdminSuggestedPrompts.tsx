@@ -1,5 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
@@ -79,28 +80,25 @@ export const MetabotPromptSuggestionPane = ({
       return;
     }
     setPage(0);
-    switch (data.status) {
-      case "generated":
-        return;
-      case "no-library-content":
+    match(data)
+      .with({ status: "generated" }, () => undefined)
+      .with({ status: "no-library-content" }, () => {
         sendToast({
-          message: t`No models or metrics to summarise — add some to this Metabot's collection first.`,
+          // translators: shown when an admin clicks "Regenerate suggested prompts"
+          // but the Metabot has no models or metrics for the AI to summarize.
+          message: t`No models or metrics to summarize — add some to this Metabot's collection first.`,
           icon: "info",
         });
-        return;
-      case "ai-produced-no-prompts":
+      })
+      .with({ status: "ai-produced-no-prompts" }, () => {
         sendToast({
+          // translators: shown when an admin clicks "Regenerate suggested prompts"
+          // and the AI ran successfully but returned no suggested prompts.
           message: t`The AI didn't generate any prompts this time. Try again in a moment.`,
           icon: "info",
         });
-        return;
-      case "managed-free-limit-reached":
-        sendToast({
-          message: t`Your managed AI usage limit has been reached.`,
-          icon: "warning",
-        });
-        return;
-    }
+      })
+      .exhaustive();
   };
 
   const prompts = useMemo(() => data?.prompts ?? [], [data?.prompts]);

@@ -54,7 +54,7 @@
    single discriminator so the frontend can switch on one field:
 
      {:status :generated :prompt_count N}        ; happy path
-     {:status :no-library-content}               ; metabot has no models/metrics to summarise
+     {:status :no-library-content}               ; metabot has no models/metrics to summarize
      {:status :ai-produced-no-prompts}           ; LLM returned 0 questions for the inputs
      {:status :managed-free-limit-reached}       ; managed AI usage cap hit
 
@@ -84,7 +84,7 @@
               model-inputs  (map model-input models)]
           (if (and (empty? metric-inputs) (empty? model-inputs))
             (do
-              (log/info "Skipping suggested prompt generation: metabot has no models or metrics to summarise."
+              (log/info "Skipping suggested prompt generation: metabot has no models or metrics to summarize."
                         {:metabot-id metabot-id})
               {:status :no-library-content})
             (let [{:keys [table_questions metric_questions]}
@@ -94,8 +94,9 @@
                                          :model      (:type origin)
                                          :card_id    (:id origin)}]
                                (map #(assoc base :prompt %) questions)))
-                  metric-prompts (mapcat ->prompt metric_questions metrics)
-                  model-prompts  (mapcat ->prompt table_questions models)
+                  ;; Realize into vectors so we don't redo `->prompt` work when counting and inserting.
+                  metric-prompts (vec (mapcat ->prompt metric_questions metrics))
+                  model-prompts  (vec (mapcat ->prompt table_questions models))
                   total          (+ (count metric-prompts) (count model-prompts))]
               (when (seq metric-prompts)
                 (t2/insert! :model/MetabotPrompt metric-prompts))

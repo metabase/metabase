@@ -67,20 +67,26 @@
                                                        :tables :table_questions})))]
           ;; --------------------------- Generating sample prompts ---------------------------
           (testing "should generate prompt suggestions for metabot"
-            (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
-              ;; Trigger prompt generation by calling the regenerate endpoint
-              (is (=? {:status       "generated"
-                       :prompt_count (reduce + (map count (vals prompts)))}
-                      (mt/user-http-request :crowberto :post 200
-                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
-            (let [added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] :prompt]
+            (let [response (with-redefs [metabot.example-question-generator/generate-example-questions
+                                         prompt-generator]
+                             ;; Trigger prompt generation by calling the regenerate endpoint
+                             (mt/user-http-request
+                              :crowberto :post 200
+                              (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
+                  added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] :prompt]
                                            :metabot_id metabot-id
                                            {:join     [[:report_card :card] [:= :card.id :card_id]]
                                             :order-by [:metabot_prompt.id]})]
+              (is (=? {:status       "generated"
+                       :prompt_count (reduce + (map count (vals prompts)))}
+                      response))
               ;; Verify prompts were added to the database
               (is (= prompts
                      (-> (group-by :model_name added-prompts)
-                         (update-vals #(map :prompt %)))))))
+                         (update-vals #(map :prompt %)))))
+              ;; And that :prompt_count in the response matches the actual DB row count, not
+              ;; just the count the mock declared it would generate.
+              (is (= (:prompt_count response) (count added-prompts)))))
           ;; --------------------------- Querying sample prompts ---------------------------
           (let [expected-prompts (into #{} (mapcat val) prompts)
                 all-prompts (mt/user-http-request :rasta :get 200
