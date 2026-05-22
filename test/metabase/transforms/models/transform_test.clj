@@ -15,15 +15,59 @@
                                      :type     "native"
                                      :native   {:query "SELECT 1"}}}}]
       (is (= (mt/id) (:source_database_id transform)))))
-  (testing "updating a transform correctly sets the source-database-id column"
+
+  (testing "A transform with no source database has a nil source_database_id"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
-                    :source_database_id (mt/id)
+                    :source {:type "python"
+                             :body "print(\"hello\")"}}]
+      (is (nil? (:source_database_id transform)))))
+
+  (testing "updating a transform recomputes the source-database-id column from the source"
+    (mt/with-temp [:model/Transform transform
+                   {:name   "Test Transform"
+                    :source {:type "python"
+                             :body "print(\"hello\")"}}]
+      (is (nil? (:source_database_id transform)))
+      (t2/update! :model/Transform (:id transform) {:source {:type  "query"
+                                                             :query {:database (mt/id)
+                                                                     :type     "native"
+                                                                     :native   {:query "SELECT 1"}}}})
+      (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform (:id transform)))))))
+
+(deftest source-database-deletion-sets-null-test
+  (testing "deleting a database referenced by a transform nulls the transform's source_database_id (ON DELETE SET NULL)"
+    (mt/with-temp [:model/Database db {:name (mt/random-name) :engine :h2 :details {}}
+                   :model/Transform transform
+                   {:name   "Test Transform"
                     :source {:type  "query"
-                             :query {:database (mt/id)
+                             :query {:database (:id db)
                                      :type     "native"
                                      :native   {:query "SELECT 1"}}}}]
-      (is (= (mt/id) (:source_database_id transform))))))
+      (is (= (:id db) (:source_database_id transform)))
+      (t2/delete! :model/Database (:id db))
+      (is (nil? (t2/select-one-fn :source_database_id :model/Transform (:id transform))))
+      ;; transform itself still exists
+      (is (some? (t2/select-one :model/Transform (:id transform)))))))
+
+(deftest can-read-write-on-orphaned-transform-test
+  (testing "superusers can read/write a transform whose source database has been deleted, data analysts cannot"
+    (mt/with-temp [:model/Database db {:name (mt/random-name) :engine :h2 :details {}}
+                   :model/Transform transform
+                   {:name   "Orphan Transform"
+                    :source {:type  "query"
+                             :query {:database (:id db)
+                                     :type     "native"
+                                     :native   {:query "SELECT 1"}}}}]
+      (t2/delete! :model/Database (:id db))
+      (let [reloaded (t2/select-one :model/Transform (:id transform))]
+        (is (nil? (:source_database_id reloaded)))
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (mi/can-read? reloaded))
+          (is (mi/can-write? reloaded)))
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (not (mi/can-read? reloaded)))
+          (is (not (mi/can-write? reloaded))))))))
 
 (deftest no-events-during-deserialization-test
   (testing "Transform lifecycle hooks do not publish events during deserialization"
