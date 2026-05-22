@@ -24,25 +24,25 @@ type ForeignKeyHost =
   | undefined;
 
 /**
- * Loads `query_metadata` for a single table and normalizes it into
- * `state.entities`, so `getMetadata` can read it. Replaces the
- * `Tables.actions.fetchMetadata` entity action.
+ * Loads `query_metadata` for a single table, so `getMetadata` can read it.
+ * Replaces the `Tables.actions.fetchMetadata` entity action.
+ *
+ * Normalization into `state.entities` happens in the endpoint's own
+ * `onQueryStarted` (it dispatches `updateMetadata(data, TableSchema)`), so this
+ * thunk just initiates the request and returns the unwrapped result.
  */
 export const fetchTableMetadata =
   (
     { id, ...params }: { id: TableId; [key: string]: unknown },
     options: FetchOptions = {},
   ) =>
-  async (dispatch: Dispatch) => {
-    const result = await entityCompatibleQuery(
+  async (dispatch: Dispatch) =>
+    entityCompatibleQuery(
       { id, ...params, ...options.params },
       dispatch,
       tableApi.endpoints.getTableQueryMetadata,
       { forceRefetch: options.reload ?? false },
     );
-    dispatch(updateMetadata(result, TableSchema));
-    return result;
-  };
 
 /**
  * Loads a table's foreign keys and normalizes them onto the table in
