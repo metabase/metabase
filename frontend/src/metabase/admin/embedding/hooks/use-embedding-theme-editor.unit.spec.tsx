@@ -1,7 +1,7 @@
 import Color from "color";
 import fetchMock from "fetch-mock";
 
-import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import { act, renderHookWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { performUndo } from "metabase/redux/undo";
@@ -46,6 +46,16 @@ function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
     withRouter: true,
     storeInitialState,
   });
+}
+
+/**
+ * `regenerateAdditionalColorsFromBrand` / `resetMainColors` / `handleSave`
+ * dispatch an async `ADD_UNDO` thunk that renders an undo toast (the test store
+ * mounts `UndoListing` via `withUndos`). Awaiting the toast lets the dispatch
+ * and the toast list's render timers settle inside `act()`.
+ */
+function waitForUndoToast() {
+  return screen.findByTestId("toast-undo");
 }
 
 describe("useEmbeddingThemeEditor", () => {
@@ -140,6 +150,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
 
       expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
     });
@@ -154,6 +165,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
       expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
 
       act(() => {
@@ -173,6 +185,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
 
       act(() => {
         result.current.setChartColor(3, "#abcdef");
@@ -191,6 +204,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
       expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
 
       act(() => {
@@ -210,6 +224,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
       expect(result.current.hasOutOfSyncAdditionalColors).toBe(false);
 
       act(() => {
@@ -240,6 +255,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
 
       const colors = result.current.currentTheme?.settings.colors;
       expect(colors?.filter).toBe(expected.filter);
@@ -262,9 +278,10 @@ describe("useEmbeddingThemeEditor", () => {
       const filterBefore = result.current.currentTheme?.settings.colors?.filter;
       expect(filterBefore).toBe("#abc123");
 
-      await act(async () => {
+      act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
 
       expect(result.current.currentTheme?.settings.colors?.filter).not.toBe(
         filterBefore,
@@ -279,7 +296,7 @@ describe("useEmbeddingThemeEditor", () => {
 
       await act(async () => {
         // performUndo is a thunk; the test store wires thunk middleware at runtime.
-        store.dispatch(performUndo(undo.id) as never);
+        await store.dispatch(performUndo(undo.id) as never);
       });
 
       expect(result.current.currentTheme?.settings.colors?.filter).toBe(
@@ -301,9 +318,10 @@ describe("useEmbeddingThemeEditor", () => {
       const BRAND = "#509EE3";
       expect(result.current.currentTheme?.settings.colors?.brand).toBe(BRAND);
 
-      await act(async () => {
+      act(() => {
         result.current.regenerateAdditionalColorsFromBrand();
       });
+      await waitForUndoToast();
 
       const colors = result.current.currentTheme?.settings.colors;
 
@@ -352,6 +370,7 @@ describe("useEmbeddingThemeEditor", () => {
       act(() => {
         result.current.resetMainColors();
       });
+      await waitForUndoToast();
 
       expect(result.current.hasMainColorChanges).toBe(false);
     });
@@ -369,9 +388,10 @@ describe("useEmbeddingThemeEditor", () => {
       const brandBefore = result.current.currentTheme?.settings.colors?.brand;
       expect(brandBefore).toBe("#aa1111");
 
-      await act(async () => {
+      act(() => {
         result.current.resetMainColors();
       });
+      await waitForUndoToast();
 
       expect(result.current.currentTheme?.settings.colors?.brand).not.toBe(
         brandBefore,
@@ -384,7 +404,7 @@ describe("useEmbeddingThemeEditor", () => {
 
       await act(async () => {
         // performUndo is a thunk; the test store wires thunk middleware at runtime.
-        store.dispatch(performUndo(undo.id) as never);
+        await store.dispatch(performUndo(undo.id) as never);
       });
 
       expect(result.current.currentTheme?.settings.colors?.brand).toBe(
@@ -489,7 +509,11 @@ describe("useEmbeddingThemeEditor", () => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      const saved = await result.current.handleSave();
+      let saved: EmbeddingTheme | null = null;
+      await act(async () => {
+        saved = await result.current.handleSave();
+      });
+      await waitForUndoToast();
 
       expect(saved?.id).toBe(42);
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(

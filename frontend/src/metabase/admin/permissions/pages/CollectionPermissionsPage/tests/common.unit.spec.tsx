@@ -222,7 +222,7 @@ describe("Admin > CollectionPermissionsPage", () => {
   });
 
   it("hides the tenant collections tab when tenants feature is not available", async () => {
-    setup();
+    await setup();
 
     expect(
       screen.queryByRole("radio", { name: "Shared collections" }),

@@ -18,7 +18,7 @@ const tokenFeatures = { tenants: true, audit_app: true };
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
   describe("Shared collections Tab", () => {
     it("shows the tab when tenants are enabled", async () => {
-      setup({
+      await setup({
         tokenFeatures,
         enterprisePlugins: ["tenants", "audit_app"],
         settings: { "use-tenants": true },
@@ -30,7 +30,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     });
 
     it("hides the tab when tenants are disabled", async () => {
-      setup({
+      await setup({
         tokenFeatures,
         enterprisePlugins: ["tenants", "audit_app"],
         settings: { "use-tenants": false },

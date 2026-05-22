@@ -8,7 +8,7 @@ import {
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
@@ -147,7 +147,7 @@ interface SetupOptions {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
-export function setup({
+export async function setup({
   initialRoute = "/admin/permissions/collections",
   collections = defaultCollections,
   rootCollection = defaultRootCollection,
@@ -196,4 +196,6 @@ export function setup({
       initialRoute,
     },
   );
+
+  await waitForLoaderToBeRemoved();
 }
