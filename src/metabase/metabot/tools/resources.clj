@@ -441,9 +441,14 @@
 ;; ----- Card (model / question) -----
 
 (defn- fetch-card
-  "type-str is \"model\" or \"question\"."
-  [type-str id-str]
-  (table-details (keyword type-str) (parse-long id-str) false))
+  "type-str is \"model\" or \"question\". The MBR Card includes :dataset_query in
+   portable form, so query shape, joins, expressions, and result_metadata are
+   already part of the entity — no separate /fields call is required to see
+   what columns the card produces. The /fields and /field/{id} endpoints stay
+   on the field-stats path because they layer field-values on top of the schema."
+  [_type-str id-str]
+  (let [card (t2/select-one :model/Card (parse-long id-str))]
+    (mbr/entity-result (mbr/extract-as-user "Card" card))))
 
 (defn- fetch-card-fields [type-str id-str]
   (table-details (keyword type-str) (parse-long id-str) true))
