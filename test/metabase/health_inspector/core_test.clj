@@ -1,4 +1,4 @@
-(ns metabase.health-inspector.test
+(ns metabase.health-inspector.core-test
   (:require
    [clojure.test :refer :all]
    [metabase.health-inspector.core :as hi]
@@ -26,3 +26,4 @@
     (is (= [100 100] (map :health (runs "test-check"))))
     (is (= ["test check" "test check"] (map :message (runs "test-check"))))
     (is (= [100 100] (map :health (runs "validate-queries"))))))
+

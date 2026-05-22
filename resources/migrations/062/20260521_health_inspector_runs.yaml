@@ -20,16 +20,17 @@ databaseChangeLog:
               - column:
                   name: message
                   type: ${text.type}
-                  constraints:
-                    nullable: false
+                  remarks: A message to show to the instance admin.
               - column:
                   name: check_name
                   type: varchar(254)
+                  remarks: The name of the check
                   constraints:
                     nullable: false
               - column:
                   name: run_at
                   type: ${timestamp_type}
+                  remarks: When it was run
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -37,3 +38,5 @@ databaseChangeLog:
                   name: health
                   type: integer
                   remarks: Health as a percentage out of 100
+                  constraints:
+                    nullable: false

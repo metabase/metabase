@@ -1015,7 +1015,7 @@
 
   health-inspector
   {:team "Querying Platform"
-   :api #{metabase.health-inspector}
+   :api #{metabase.health-inspector.api}
    :uses #{api
            lib
            lib-be
