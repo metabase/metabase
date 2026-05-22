@@ -38,11 +38,11 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -315,22 +315,21 @@
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(deftest embedding-sdk-info-saves-query-execution
+(deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"
-                                       ;; This query is just to make sure the card actually runs a query, otherwise
-                                       ;; there won't be a QueryExecution record to check!
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
-      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-B"
-                                                         "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
-              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
-                                            :card_id (u/the-id card-1))))))))
+    (binding [qp.util/*execute-async?* false]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         ;; This query is just to make sure the card actually runs a query, otherwise
+                                         ;; there won't be a QueryExecution record to check!
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                              {:request-options {:headers {"x-metabase-client" "client-B"
+                                                           "x-metabase-client-version" "2"}}})
+        (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -4412,7 +4411,8 @@
                    :collection_id forbidden-coll-id
                    :id other-dash-id
                    :description nil
-                   :archived false}]
+                   :archived false
+                   :enable_embedding false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
           (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
 
@@ -4441,7 +4441,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (is (= [{:id dash-id
-               :name "My Dashboard"}]
+               :name "My Dashboard"
+               :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-2
@@ -4457,8 +4458,8 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id1 :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
-      (is (= [{:id dash-id1 :name "Dashboard One"}
-              {:id dash-id2 :name "Dashboard Two"}]
+      (is (= [{:id dash-id1 :name "Dashboard One" :enable_embedding false}
+              {:id dash-id2 :name "Dashboard Two" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-4
@@ -4467,7 +4468,7 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-5
@@ -4476,12 +4477,24 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id :name "My Dashboard" :enable_embedding false}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-6
   (testing "nonexistent card"
     (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards")))
+
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-includes-enable_embedding
+  (testing "Response exposes enable_embedding so the frontend can warn before converting embedded questions to SQL"
+    (mt/with-temp [:model/Dashboard {embedded-dash-id :id} {:name "Embedded Dashboard"
+                                                            :enable_embedding true}
+                   :model/Dashboard {plain-dash-id :id} {:name "Plain Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id embedded-dash-id :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id plain-dash-id :card_id card-id}]
+      (is (= [{:id embedded-dash-id :name "Embedded Dashboard" :enable_embedding true}
+              {:id plain-dash-id :name "Plain Dashboard" :enable_embedding false}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in-7
   (testing "Don't have permissions on all the dashboards involved"

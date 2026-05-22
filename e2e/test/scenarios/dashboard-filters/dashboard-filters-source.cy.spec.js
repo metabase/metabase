@@ -118,6 +118,89 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
   });
 
+  describe("question source with custom labels", () => {
+    const stringLabelSource = {
+      name: "String label source",
+      native: {
+        query:
+          "SELECT DISTINCT CATEGORY, CONCAT(CATEGORY, ' Label') AS LABEL " +
+          "FROM PRODUCTS WHERE CATEGORY != 'Doohickey'",
+      },
+    };
+
+    const numberLabelSource = {
+      name: "Number label source",
+      native: {
+        query: "SELECT ID, TITLE FROM PRODUCTS ORDER BY ID ASC LIMIT 5",
+      },
+    };
+
+    it("should remap a string value to a string label (string/string)", () => {
+      H.createNativeQuestion(stringLabelSource, { wrapId: true });
+      H.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
+
+      H.editDashboard();
+      H.setFilter("Text or Category", "Is");
+      mapFilterToQuestion();
+      H.setFilterQuestionSource({
+        question: "String label source",
+        field: "CATEGORY",
+        labelField: "LABEL",
+      });
+      H.saveDashboard();
+
+      cy.log("the dropdown shows the labels instead of the raw values");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Gadget Label").should("be.visible");
+        cy.findByText("Gizmo Label").should("be.visible");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Gizmo Label").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log("the selected value is shown remapped to its label");
+      H.filterWidget().findByText("Gizmo Label").should("be.visible");
+    });
+
+    it("should remap a number value to a string label (number/string)", () => {
+      H.createNativeQuestion(numberLabelSource, { wrapId: true });
+      H.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
+
+      H.editDashboard();
+      H.setFilter("Number", "Equal to", "Number");
+
+      mapFilterToQuestion("Rating");
+      H.setFilterQuestionSource({
+        question: "Number label source",
+        field: "ID",
+        labelField: "TITLE",
+      });
+      H.saveDashboard();
+
+      cy.log(
+        "the dropdown shows the product titles instead of the numeric ids",
+      );
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Rustic Paper Wallet").should("be.visible");
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log("the selected value is shown remapped to its label");
+      H.filterWidget().findByText("Rustic Paper Wallet").should("be.visible");
+    });
+  });
+
   describe("native question source", () => {
     it("should be able to use a native question source", () => {
       H.createNativeQuestion(nativeSourceQuestion, { wrapId: true });

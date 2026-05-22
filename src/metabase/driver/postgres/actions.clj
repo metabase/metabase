@@ -99,6 +99,35 @@
      :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))
 
+(defn- maybe-parse-sql-error-with-postgres
+  [driver error-type database action-type error-message]
+  ((get-method sql-jdbc.actions/maybe-parse-sql-error [:postgres error-type])
+   driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/violate-not-null-constraint]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/violate-unique-constraint]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/violate-foreign-key-constraint]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/incorrect-value-type]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/violate-permission-constraint]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres-mbql5 driver-api/violate-check-constraint]
+  [driver error-type database action-type error-message]
+  (maybe-parse-sql-error-with-postgres driver error-type database action-type error-message))
+
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]
   {:type/BigInteger          "BIGINT"

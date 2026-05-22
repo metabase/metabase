@@ -42,8 +42,10 @@ module.exports = {
     // otherwise the path conflicts and the output bundle will not appear.
     path: OUT_TEMP_PATH,
     filename: OUT_FILE_NAME,
-    library: "metabase.embed",
-    libraryTarget: "umd",
+    library: {
+      name: ["metabase", "embed"],
+      type: "umd",
+    },
     globalObject: "this",
     publicPath: `http://localhost:${DEV_PORT}/app`,
   },
