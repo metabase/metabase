@@ -2,9 +2,12 @@ import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
@@ -13,9 +16,8 @@ import { Radio } from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
-import { Questions } from "metabase/entities/questions";
 import { connect, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -666,28 +668,37 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-const ValuesSourceTypeModalConnected = _.compose(
-  Questions.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  connect(null, mapDispatchToProps),
+const ValuesSourceTypeModalConnected = connect(
+  null,
+  mapDispatchToProps,
 )(ValuesSourceTypeModal);
 
-// Loads the source card's virtual-table query metadata into the store (so the
-// connected fields are available) before rendering, replacing the former
-// Tables.load HOC.
+// Loads the source card and its virtual-table query metadata into the store (so
+// the question and its connected fields are available) before rendering,
+// replacing the former Questions.load / Tables.load HOCs.
 function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading, error } = useGetTableQueryMetadataQuery(
+  const { isLoading: isMetadataLoading, error } = useGetTableQueryMetadataQuery(
     virtualTableId != null ? { id: virtualTableId } : skipToken,
+  );
+  const { isLoading: isCardLoading } = useGetCardQuery(
+    card_id != null ? { id: card_id } : skipToken,
+  );
+  const question = useSelector((state) =>
+    card_id != null
+      ? (getMetadata(state).question(card_id) ?? undefined)
+      : undefined,
   );
 
   return (
-    <ModalLoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <ValuesSourceTypeModalConnected {...props} />
+    <ModalLoadingAndErrorWrapper
+      loading={isMetadataLoading || isCardLoading}
+      error={error}
+      noWrapper
+    >
+      <ValuesSourceTypeModalConnected {...props} question={question} />
     </ModalLoadingAndErrorWrapper>
   );
 }
