@@ -1821,12 +1821,12 @@
 ;;; 50 tests
 ;;;
 
-(defn with-redef
+(defn- with-redef
   [handle value thunk]
-  (let [original (mc/root handle)]
+  (let [before (mc/root handle)]
     (mc/alter-root handle value)
     (try (thunk)
-         (finally (mc/alter-root handle original)))))
+         (finally (mc/alter-root handle before)))))
 
 (deftest ^:mb/old-migrations-test delete-send-pulse-job-on-migrate-down-test
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
@@ -1854,7 +1854,7 @@
             (migrate!)
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
             ;; see the same app DB as this test, then restore the prior root on exit
-            (let [handle     (mdb.connection/application-db-handle)]
+            (let [handle (mdb.connection/application-db-handle)]
               (with-redef handle (mc/current handle)
                 (fn []
                   ;; simulate starting MB after migrate up, which will trigger this function
