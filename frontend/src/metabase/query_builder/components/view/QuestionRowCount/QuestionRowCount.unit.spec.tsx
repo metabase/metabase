@@ -156,20 +156,38 @@ describe("QuestionRowCount", () => {
           expect(rowCount).toHaveTextContent("Showing 321 rows");
         });
 
-        it("shows the limit input only after selecting the custom option", async () => {
+        it("renders the limit input and focuses it when selecting the custom option", async () => {
           await setup({ question: getCard() });
 
           await userEvent.click(await screen.findByLabelText("Row count"));
-          expect(
-            screen.queryByPlaceholderText("Pick a limit"),
-          ).not.toBeInTheDocument();
+
+          // The input is always rendered, defaulting to the hard row limit
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          expect(input).toHaveDisplayValue("2000");
+          expect(input).not.toHaveFocus();
 
           await userEvent.click(
             await screen.findByRole("radio", { name: /Set custom limit/i }),
           );
 
-          const input = await screen.findByPlaceholderText("Pick a limit");
-          expect(input).toHaveDisplayValue("2000");
+          expect(input).toHaveFocus();
+        });
+
+        it("activates the custom option when focusing the input", async () => {
+          await setup({ question: getCard() });
+
+          await userEvent.click(await screen.findByLabelText("Row count"));
+
+          const customRadio = await screen.findByRole("radio", {
+            name: /Set custom limit/i,
+          });
+          expect(customRadio).not.toBeChecked();
+
+          await userEvent.click(
+            await screen.findByPlaceholderText("Pick a limit"),
+          );
+
+          expect(customRadio).toBeChecked();
         });
 
         it("allows setting a limit with Enter", async () => {

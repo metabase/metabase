@@ -29,7 +29,6 @@ export const LimitPopover = ({
     limit != null ? String(limit) : String(HARD_ROW_LIMIT),
   );
   const inputRef = useRef<HTMLInputElement>(null);
-  const didMountRef = useRef(false);
 
   const parsedValue = parseInt(value, 10);
   const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
@@ -48,19 +47,6 @@ export const LimitPopover = ({
     };
     return () => applyPendingLimit();
   }, [selectedLimitRef, limitRef, onChangeLimitRef]);
-
-  // Focus and select the input only when the user actively switches to the
-  // custom option, not when the popover opens with a custom limit already set.
-  useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-    if (isCustom) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isCustom]);
 
   return (
     <Box className={cx(className, CS.textBold, CS.textMedium)}>
@@ -82,32 +68,38 @@ export const LimitPopover = ({
             setIsCustom(false);
             onChangeLimit(null);
           } else {
-            setIsCustom(true);
-            onChangeLimit(parsedValue > 0 ? parsedValue : HARD_ROW_LIMIT);
+            // Activating custom is handled by the input's onFocus
+            inputRef.current?.focus();
+            inputRef.current?.select();
           }
         }}
       />
-      {isCustom && (
-        <Box mt="sm" ml="1.25rem">
-          <LimitInput
-            ref={inputRef}
-            small
-            value={value}
-            placeholder={t`Pick a limit`}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setValue(e.target.value)
+      <Box mt="sm" ml="1.25rem">
+        <LimitInput
+          ref={inputRef}
+          small
+          value={value}
+          className={cx({ [cx(CS.textBrand, CS.borderBrand)]: isCustom })}
+          placeholder={t`Pick a limit`}
+          onFocus={() => {
+            if (!isCustom) {
+              setIsCustom(true);
+              onChangeLimit(parsedValue > 0 ? parsedValue : HARD_ROW_LIMIT);
             }
-            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-              if (e.nativeEvent.isComposing) {
-                return;
-              }
-              if (e.key === "Enter") {
-                onClose();
-              }
-            }}
-          />
-        </Box>
-      )}
+          }}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setValue(e.target.value)
+          }
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
+            if (e.key === "Enter") {
+              onClose();
+            }
+          }}
+        />
+      </Box>
     </Box>
   );
 };
