@@ -2,7 +2,10 @@
 import EventEmitter from "events";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { OnBeforeRequestHandler } from "metabase/plugins/oss/api";
+import type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
+} from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
@@ -139,40 +142,48 @@ export class ApiClient extends EventEmitter<EventMap> {
     };
   }
 
+  private async _resolveOptions(options: OnBeforeRequestHandlerConfig) {
+    const middlewareResult = await apiRequestManipulationMiddleware(
+      this.beforeRequestHandlers,
+      {
+        ...options,
+        // This will transform arrays to objects with numeric keys
+        // we shouldn't be using top level-arrays in the API.
+        // It also defensively copies the data object, so middleware can safely mutate it.
+        data: { ...options.data },
+      },
+    );
+
+    return {
+      ...middlewareResult,
+      url: this.buildUrl(middlewareResult.url, middlewareResult.data),
+      headers: this.getClientHeaders(middlewareResult.headers),
+    };
+  }
+
   private _makeMethod(
     methodTemplate: RequestMethod,
     withRetries: boolean = false,
   ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
       return async (rawData = {}, invocationOptions = {}) => {
-        const middlewareResult = await apiRequestManipulationMiddleware(
-          this.beforeRequestHandlers,
-          {
-            url: urlTemplate,
-            method: methodTemplate,
-            headers: {
-              ...methodOptions.headers,
-              ...invocationOptions.headers,
-            },
-            // this will transform arrays to objects with numeric keys
-            // we shouldn't be using top level-arrays in the API
-            data: { ...rawData },
-          },
-        );
-
-        const { method, data } = middlewareResult;
         const options = { ...methodOptions, ...invocationOptions };
+        const { url, method, data, headers } = await this._resolveOptions({
+          url: urlTemplate,
+          method: methodTemplate,
+          headers: {
+            ...methodOptions.headers,
+            ...invocationOptions.headers,
+          },
+          data: rawData,
+        });
 
         // Method-derived placement: POST/PUT/DELETE put data in body, GET
         // puts it in the querystring. Callers wanting RTK-style explicit
         // body/params semantics use `request()` below instead.
-        const url = this.buildUrl(middlewareResult.url, data);
-        let body: string | undefined = undefined;
-
-        const headers = this.getClientHeaders(middlewareResult.headers);
-
+        let body: BodyInit | undefined = undefined;
         if (method === "GET") {
-          // GET cannot carry a body: fold any body content into the querystring.
+          // GET cannot carry a body: fold data into the querystring.
           appendQueryParameters(url, data);
         } else if (Object.keys(data).length > 0) {
           body = JSON.stringify(data);
@@ -210,57 +221,45 @@ export class ApiClient extends EventEmitter<EventMap> {
    *
    * No method-derived guesswork about whether data is body or querystring.
    */
-  async request<T = unknown>({
-    method: methodTemplate,
-    url: urlTemplate,
-    body: requestBody,
-    params,
-    headers: headersFromArg,
-    ...options
-  }: {
-    method: RequestMethod;
-    url: string;
-    body?: unknown;
-    params?: Record<string, unknown>;
-  } & RequestOptions<T>): Promise<T> {
-    if (Array.isArray(requestBody)) {
+  async request<T = unknown>(
+    options: {
+      method: RequestMethod;
+      url: string;
+      body?: unknown;
+      params?: Record<string, unknown>;
+    } & RequestOptions<T>,
+  ): Promise<T> {
+    if (Array.isArray(options.body)) {
       throw new Error("API bodies must be plain objects, not arrays");
     }
 
-    const middlewareResult = await apiRequestManipulationMiddleware(
-      this.beforeRequestHandlers,
-      {
-        url: urlTemplate,
-        method: methodTemplate,
-        headers: headersFromArg,
-        data: { ...params },
-      },
-    );
+    const { url, method, data, headers } = await this._resolveOptions({
+      url: options.url,
+      method: options.method,
+      headers: options.headers,
+      data: options.params ?? {},
+    });
 
-    const { method, data } = middlewareResult;
-
-    const url = this.buildUrl(middlewareResult.url, data);
-    const headers = this.getClientHeaders(middlewareResult.headers);
-    let body: string | FormData | URLSearchParams | undefined = undefined;
+    let body: BodyInit | undefined = undefined;
 
     // Leftover params (post URL-tag substitution) always go to the querystring.
     appendQueryParameters(url, data);
 
     if (method === "GET") {
-      // GET cannot carry a body: fold any body content into the querystring.
-      const params = (requestBody ?? {}) as Record<string, unknown>;
-      appendQueryParameters(url, params);
+      // GET cannot carry a body: fold body into the querystring.
+      const bodyParams = (options.body ?? {}) as Record<string, unknown>;
+      appendQueryParameters(url, bodyParams);
     } else if (
-      requestBody instanceof FormData ||
-      requestBody instanceof URLSearchParams
+      options.body instanceof FormData ||
+      options.body instanceof URLSearchParams
     ) {
-      body = requestBody;
+      body = options.body;
 
       // Let the browser set Content-Type with the multipart boundary
       // (FormData) or urlencoded charset (URLSearchParams).
       delete headers["Content-Type"];
-    } else if (requestBody !== undefined) {
-      body = JSON.stringify(requestBody);
+    } else if (options.body !== undefined) {
+      body = JSON.stringify(options.body);
     }
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
