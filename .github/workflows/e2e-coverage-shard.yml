@@ -84,10 +84,15 @@ jobs:
       # cypress-split divides the spec set by timing data; INSTRUMENT_COVERAGE
       # makes the support hook drain __coverage__ into e2e/coverage-manifest/.
       - name: Run shard ${{ inputs.split_index }}
+        # No SPLIT_FILE: cypress-split shards evenly by spec count using
+        # SPLIT/SPLIT_INDEX alone. Omitting it means no timings are read or
+        # written, which avoids cypress-split's after:run writeback (it would
+        # otherwise try to overwrite ./e2e/support/timings.json from a cwd where
+        # that subpath isn't reachable, crashing the run). Even-by-count is fine
+        # here — every spec runs exactly once across the shards.
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
-          SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_SUMMARY: false
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |

@@ -14,6 +14,16 @@ const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
 const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 
+// @cypress/code-coverage accumulates coverage across all specs in a `cypress
+// run` (headless never resets). For a per-spec manifest we need each spec
+// isolated, so force a reset at the start of every spec. isInteractive: true is
+// the only path that actually clears the plugin's coverage map.
+if (Cypress.expose("codeCoverageTasksRegistered") === true) {
+  before(() => {
+    cy.task("resetCoverage", { isInteractive: true }, { log: false });
+  });
+}
+
 // remove default html output on test failure
 configure({
   getElementError: (message, container) => {
