@@ -59,10 +59,10 @@
 (deftest validate-curation-id-errors-test
   (testing "Non-integer ids are caught"
     (let [errs (#'phase1/validate-curation pool (assoc (valid) :top_tier [1 "two"]))]
-      (is (some #(str/includes? % "every chart id must be an integer") errs))))
+      (is (some #(str/includes? % "every breakout id must be an integer") errs))))
   (testing "Ids outside the pool are caught"
     (let [errs (#'phase1/validate-curation pool (assoc (valid) :top_tier [1 999]))]
-      (is (some #(str/includes? % "not in the supplied chart pool") errs))
+      (is (some #(str/includes? % "not in the supplied breakout pool") errs))
       (is (some #(str/includes? % "999") errs))))
   (testing "An id appearing in both tiers is caught"
     (let [errs (#'phase1/validate-curation pool {:top_tier       [1 2]

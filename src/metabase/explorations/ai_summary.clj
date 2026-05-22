@@ -55,10 +55,13 @@
 ;;; ----- pool sizing + thread-scoped data loading -----
 
 (def ^:private max-charts-in-pool
-  "Hard cap on charts in the Phase-1 curation pool. Picked from the top of the
-  contextual / deterministic interestingness ranking; the rest of the
-  ranked-but-not-pooled charts are unreachable for this run."
-  100)
+  "Hard cap on charts in the Phase-1 curation pool. Filled by
+  [[common/select-pool]], which balances across metrics (a single base metric's
+  many breakouts can't monopolize the pool) rather than taking a pure global
+  ranking — so what the cap trims is the least-relevant tail, spread fairly across
+  metric views. Phase-1 index entries are one compact line each, so a few hundred
+  fits comfortably in the curator's context."
+  200)
 
 (defn- load-result-rows
   "Returns `{exploration_query_id {:result_data bytes :chart_stats m :stored_result_id N
@@ -615,14 +618,17 @@
     (try
       (let [placeholder-doc (or (find-placeholder-doc thread-id)
                                 (create-placeholder-doc! thread-id creator-id coll-id))
+            breakouts        (common/group-breakouts prepped)
+            breakouts-by-rep (into {} (map (juxt :rep-id identity)) breakouts)
+            breakout-ids     (mapv :rep-id breakouts)
             curation-prompt (phase1/build-curation-prompt
                              {:thread-prompt     (:prompt thread)
                               :selections        selections
                               :timelines         timelines
-                              :index-entries     prepped
-                              :pool-size         (count prepped)
+                              :index-entries     breakouts
+                              :pool-size         (count breakouts)
                               :total-chart-count (count done-queries)})
-            p1 (phase1/run-curation! thread-id curation-prompt pool-ids)
+            p1 (phase1/run-curation! thread-id curation-prompt breakout-ids)
             p1-transcript {:prompt       curation-prompt
                            :attempts     (:attempts p1)
                            :outcome      (:outcome p1)
@@ -655,22 +661,23 @@
                        thread-id document-id)
             :phase-1-failed)
           (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
-                top-prepped       (vec (keep prepped-by-id top_tier))
-                awareness-prepped (vec (keep prepped-by-id awareness_tier))
-                categorical-top-ids (->> top-prepped
+                top-breakouts       (vec (keep breakouts-by-rep top_tier))
+                awareness-breakouts (vec (keep breakouts-by-rep awareness_tier))
+                categorical-top-ids (->> top-breakouts
+                                         (mapcat :variants)
                                          (filter (fn [p]
                                                    (= :categorical (phase2/x-axis-kind (:cfg p)))))
                                          (keep :stored-result-id)
                                          set)
                 analysis-prompt   (phase2/build-analysis-prompt
-                                   {:thread-prompt      (:prompt thread)
-                                    :selections         selections
-                                    :curation-rationale rationale
-                                    :timelines          timelines
-                                    :top-blocks         top-prepped
-                                    :awareness-blocks   awareness-prepped
-                                    :total-chart-count  (count done-queries)
-                                    :pool-size          (count prepped)})
+                                   {:thread-prompt       (:prompt thread)
+                                    :selections          selections
+                                    :curation-rationale  rationale
+                                    :timelines           timelines
+                                    :top-breakouts       top-breakouts
+                                    :awareness-breakouts awareness-breakouts
+                                    :total-chart-count   (count done-queries)
+                                    :pool-size           (count breakouts)})
                 p2 (phase2/run-analysis! thread-id analysis-prompt categorical-top-ids)
                 p2-transcript {:prompt       analysis-prompt
                                :attempts     (:attempts p2)
@@ -776,14 +783,17 @@
           (if-let [reason (request/with-current-user creator-id
                             (metabot/llm-call-unavailable-reason :permission/metabot-other-tools))]
             (gate-closed-skip! thread-id (base-transcript thread-id) reason)
-            (let [done-queries (->> (t2/hydrate
-                                     (t2/select :model/ExplorationQuery
-                                                :exploration_thread_id thread-id
-                                                :status "done")
-                                     :interestingness_score
-                                     :contextual_interestingness_score)
-                                    (sort-by common/chart-rank-score >))
-                  pool-queries (vec (take max-charts-in-pool done-queries))
+            (let [done-queries (t2/hydrate
+                                (t2/select :model/ExplorationQuery
+                                           :exploration_thread_id thread-id
+                                           :status "done")
+                                :interestingness_score
+                                :contextual_interestingness_score)
+                  ;; metric-balanced selection decides *which* charts survive the cap;
+                  ;; re-sort the survivors by `chart-rank-key` so the index reads best-first.
+                  pool-queries (->> (common/select-pool max-charts-in-pool done-queries)
+                                    (sort-by common/chart-rank-key #(compare %2 %1))
+                                    vec)
                   result-rows  (load-result-rows (map :id pool-queries))
                   prepped      (vec (keep (fn [q]
                                             (let [{:keys [result_data chart_stats stored_result_id

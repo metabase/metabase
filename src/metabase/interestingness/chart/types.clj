@@ -64,7 +64,7 @@
 
 (mr/def ::trend-direction
   "Direction of a trend."
-  [:enum :strongly-increasing :increasing :flat :decreasing :strongly-decreasing])
+  [:enum :strongly-increasing :increasing :flat :decreasing :strongly-decreasing :no-clear-trend])
 
 (mr/def ::trend-summary
   "Summary of trend in time series data."

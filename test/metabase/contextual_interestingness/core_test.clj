@@ -173,6 +173,25 @@
         (fn []
           (is (nil? (call {}))))))))
 
+(deftest score-and-describe-prompt-describes-chart-not-data-test
+  (testing "The describer is told to describe what the chart IS, not narrate the data's shape"
+    ;; exercise the prompt builder directly — gate-independent
+    (let [msg (#'contextual-interestingness/build-user-message
+               {:chart-config   chart-config
+                :context-string "Why is revenue down this month?"})]
+      (is (str/includes? msg "Describe the chart, not the data")))))
+
+(deftest score-and-describe-slicing-routes-into-prompt-test
+  (testing "An explicit :chart-slicing is surfaced to the describer, which is told to name it"
+    (let [msg (#'contextual-interestingness/build-user-message
+               {:chart-config   chart-config
+                :context-string "Why is revenue down this month?"
+                :chart-slicing  "top 10 values, remainder grouped as Other; filtered to segment \"Standard Surveys\""})]
+      (is (str/includes? msg "Slicing (this chart is a specific cut"))
+      (is (str/includes? msg "filtered to segment \"Standard Surveys\""))
+      ;; the rubric directs the model to fold the slicing into chart_description
+      (is (str/includes? msg "fold it in")))))
+
 (deftest score-and-describe-sql-input-routes-into-prompt-test
   (testing "Provided :sql shows up in the user message handed to the LLM"
     (let [captured (atom nil)]

@@ -168,10 +168,11 @@
   prompt and the validator from disagreeing about which charts require sort."
   [cfg]
   (let [xt (some-> cfg :series first val :x :type)]
-    (case xt
-      "datetime" :temporal
-      "number"   :numeric
-      (if xt :categorical :unknown))))
+    (cond
+      (#{"datetime" "date" "time"} xt) :temporal
+      (= "number" xt)                  :numeric
+      xt                               :categorical
+      :else                            :unknown)))
 
 (defn- sort-instruction-line
   "Per-chart directive inserted into [[full-block]] telling the model exactly what to do with
@@ -224,12 +225,33 @@
    :required             ["document"]
    :additionalProperties false})
 
+(defn- breakout-heading
+  "Header for one breakout (metric × dimension × segment) above its rendering variants. When a
+  breakout has more than one rendering, tells the analyst to embed just the best-fitting one."
+  [{:keys [representative variants]}]
+  (let [{:keys [metric-detail dim-detail]} representative
+        n (count variants)]
+    (str "## Breakout: " (or metric-detail "(metric)") " by " (or dim-detail "(dimension)")
+         (when (> n 1)
+           (str "\n_" n " renderings of this breakout are available below — embed the ONE that best "
+                "supports the point you're making; do not embed several renderings of the same breakout._"))
+         "\n")))
+
+(defn- breakout-block
+  "Render one curated breakout: the heading followed by each rendering variant via `render-fn`
+  (`full-block` for top-tier, `slim-block` for awareness)."
+  [render-fn breakout]
+  (str (breakout-heading breakout) "\n"
+       (str/join "\n\n" (map render-fn (:variants breakout)))))
+
 (defn build-analysis-prompt
-  "Phase 2 prompt: research-paper-shaped AI Summary document grounded
-  in the Phase-1-curated chart set. The Selmer template lives at
+  "Phase 2 prompt: research-paper-shaped AI Summary document grounded in the Phase-1-curated
+  breakouts. Each curated breakout is rendered as a listing of its rendering variants (full
+  data for top-tier, summary for awareness) so the analyst can embed whichever rendering best
+  supports each point. The Selmer template lives at
   `resources/explorations/ai_summary/prompts/phase2_analysis.selmer`."
   [{:keys [thread-prompt selections curation-rationale timelines
-           top-blocks awareness-blocks
+           top-breakouts awareness-breakouts
            total-chart-count pool-size]}]
   (prompts/render
    "phase2_analysis.selmer"
@@ -238,13 +260,13 @@
     :selections            (when (seq selections) (str/join "\n" selections))
     :curation_rationale    (when-not (str/blank? curation-rationale) curation-rationale)
     :timeline_md           (common/format-timeline-events timelines)
-    :top_block_count       (count top-blocks)
-    :awareness_block_count (count awareness-blocks)
+    :top_block_count       (count top-breakouts)
+    :awareness_block_count (count awareness-breakouts)
     :pool_size             pool-size
     :total_chart_count     total-chart-count
-    :top_md                (str/join "\n\n---\n\n" (map full-block top-blocks))
-    :awareness_blocks      (boolean (seq awareness-blocks))
-    :slim_md               (str/join "\n\n---\n\n" (map slim-block awareness-blocks))}))
+    :top_md                (str/join "\n\n---\n\n" (map #(breakout-block full-block %) top-breakouts))
+    :awareness_blocks      (boolean (seq awareness-breakouts))
+    :slim_md               (str/join "\n\n---\n\n" (map #(breakout-block slim-block %) awareness-breakouts))}))
 
 (defn- extract-doc [response]
   (when (map? response)

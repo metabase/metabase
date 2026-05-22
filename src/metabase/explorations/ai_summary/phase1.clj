@@ -28,21 +28,25 @@
    :thinking-config {:type "enabled" :budget_tokens 8000}})
 
 (defn index-entry
-  "Phase-1 entry for one chart. Multi-line so the curator can tell apart
-  charts that share a title but differ on dimension granularity, FK source,
-  or aggregation type. Built from a `common/prep-chart` record."
-  [{:keys [exploration-query-id name score summary-line dim-detail metric-detail
-           metric-description chart-description]}]
-  (str "- id=" exploration-query-id
-       " score=" (format "%.2f" (double (or score 0.0)))
-       " | " name "\n"
-       (when chart-description
-         (str "  chart:  " chart-description "\n"))
-       (when metric-description
-         (str "  metric description: " metric-description "\n"))
-       "  metric: " (or metric-detail "(unknown)") "\n"
-       "  dim:    " (or dim-detail "(unknown)") "\n"
-       "  data:   " summary-line))
+  "Phase-1 entry for one breakout (metric × dimension × segment), built from a
+  `common/group-breakouts` record. The curator picks breakouts by their `id=`; every
+  rendering of a chosen breakout then flows to Phase 2 automatically, where the analyst
+  embeds whichever one best supports each point — so the curator never sees or chooses
+  renderings. Multi-line so the curator can tell apart breakouts that share a title but
+  differ on granularity, FK source, or aggregation."
+  [{:keys [rep-id score representative]}]
+  (let [{:keys [name summary-line dim-detail metric-detail
+                metric-description chart-description]} representative]
+    (str "- id=" rep-id
+         " score=" (format "%.2f" (double (or score 0.0)))
+         " | " name "\n"
+         (when chart-description
+           (str "  chart:  " chart-description "\n"))
+         (when metric-description
+           (str "  metric description: " metric-description "\n"))
+         "  metric: " (or metric-detail "(unknown)") "\n"
+         "  dim:    " (or dim-detail "(unknown)") "\n"
+         "  data:   " summary-line)))
 
 (def curation-schema
   "Phase-1 output: `{top_tier [ids] awareness_tier [ids] rationale string}`.
@@ -51,10 +55,10 @@
   {:type                 "object"
    :properties           {:top_tier       {:type        "array"
                                            :items       {:type "integer"}
-                                           :description "exploration_query_ids of charts that will receive full data point grounding so the analyst can cite specific values."}
+                                           :description "breakout ids (the id= of a pool entry) whose renderings will receive full data point grounding so the analyst can cite specific values."}
                           :awareness_tier {:type        "array"
                                            :items       {:type "integer"}
-                                           :description "exploration_query_ids of charts the analyst should be aware of but won't cite at value level."}
+                                           :description "breakout ids the analyst should be aware of but won't cite at value level."}
                           :rationale      {:type        "string"
                                            :description "1-3 sentence explanation of why these charts were selected and at these tiers."}}
    :required             ["top_tier" "awareness_tier" "rationale"]
@@ -131,27 +135,27 @@
             combined   (+ (count (or top [])) (count (or aware [])))]
         (cond-> []
           (not top-seq?)
-          (conj "top_tier must be an array of integer exploration_query_ids")
+          (conj "top_tier must be an array of integer breakout ids")
 
           (not aware-seq?)
-          (conj "awareness_tier must be an array of integer exploration_query_ids")
+          (conj "awareness_tier must be an array of integer breakout ids")
 
           (or (not (string? rationale)) (str/blank? rationale))
           (conj "rationale must be a non-empty string explaining the selection")
 
           (seq non-int)
-          (conj (str "every chart id must be an integer; found: "
+          (conj (str "every breakout id must be an integer; found: "
                      (str/join ", " (map pr-str non-int))))
 
           (seq outside)
-          (conj (str "these ids are not in the supplied chart pool: "
+          (conj (str "these ids are not in the supplied breakout pool: "
                      (str/join ", " outside)
-                     " (pool contains " (count pool-ids) " ids — see the prompt's CHART POOL section)"))
+                     " (pool contains " (count pool-ids) " breakout ids — pick from the id= values in the prompt's POOL section)"))
 
           (seq overlap)
-          (conj (str "the same chart appears in both top_tier and awareness_tier: "
+          (conj (str "the same breakout appears in both top_tier and awareness_tier: "
                      (str/join ", " overlap)
-                     ". A chart must appear in at most one tier."))
+                     ". A breakout must appear in at most one tier."))
 
           (and top-seq? (< (count top) top-tier-min))
           (conj (str "top_tier has " (count top) " entries; need at least " top-tier-min))

@@ -77,6 +77,7 @@
     :flat "flat"
     :decreasing "decreasing"
     :strongly-decreasing "strongly decreasing"
+    :no-clear-trend "no clear trend"
     (name direction)))
 
 (defn- volatility-level-text
@@ -169,11 +170,17 @@
          "**Mean**: " (format-number mean) " | **Std Dev**: " (format-number std-dev))))
 
 (defn- render-trend
-  "Render trend information."
+  "Render trend information. For `:no-clear-trend`, present the raw endpoints
+  without a confident percent headline — the first→last percent is a misleading
+  endpoint artifact when the slope and the endpoints disagree or the series is
+  pathologically noisy."
   [{:keys [direction overall-change-pct start-value end-value]}]
-  (str "**Trend**: " (trend-direction-text direction)
-       " (" (format-pct overall-change-pct) " overall, "
-       "from " (format-number start-value) " to " (format-number end-value) ")"))
+  (if (= direction :no-clear-trend)
+    (str "**Trend**: no clear trend (high variance or non-monotonic; first "
+         (format-number start-value) " to last " (format-number end-value) ")")
+    (str "**Trend**: " (trend-direction-text direction)
+         " (" (format-pct overall-change-pct) " overall, "
+         "from " (format-number start-value) " to " (format-number end-value) ")")))
 
 (defn- render-volatility
   "Render volatility information."

@@ -9,6 +9,22 @@
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary.phase2 :as phase2]))
 
+;;; ---------------------------------------------- x-axis-kind ----------------------------------------------
+
+(defn- cfg-with-x [t]
+  {:series {"s" {:x {:name "x" :type t} :y {:name "y" :type "number"}}}})
+
+(deftest x-axis-kind-test
+  (testing "date/datetime/time x-axes are temporal (regression: 'date' was misclassified categorical)"
+    (is (= :temporal (phase2/x-axis-kind (cfg-with-x "date"))))
+    (is (= :temporal (phase2/x-axis-kind (cfg-with-x "datetime"))))
+    (is (= :temporal (phase2/x-axis-kind (cfg-with-x "time")))))
+  (testing "number → numeric, string/boolean → categorical, missing → unknown"
+    (is (= :numeric (phase2/x-axis-kind (cfg-with-x "number"))))
+    (is (= :categorical (phase2/x-axis-kind (cfg-with-x "string"))))
+    (is (= :categorical (phase2/x-axis-kind (cfg-with-x "boolean"))))
+    (is (= :unknown (phase2/x-axis-kind {:series {"s" {:x {:name "x"} :y {}}}})))))
+
 ;;; ---------------------------------------------- downsample-pairs ----------------------------------------------
 
 (deftest downsample-pairs-passthrough-test

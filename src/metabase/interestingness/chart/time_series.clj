@@ -44,9 +44,33 @@
         (< pct-change -10) :decreasing
         :else :flat))))
 
+(defn- reconcile-direction
+  "Guard against a regression-derived `direction` that would mislead the reader.
+
+  The regression slope and the first→last `change-pct` are computed independently
+  and can flatly contradict each other — the source of labels like
+  'strongly increasing (-97.9% overall)'. When the slope direction disagrees in
+  *sign* with the change the reader actually sees, or when the series is so noisy
+  that its swings dwarf its mean (CV ≥ 1.0), report `:no-clear-trend` rather than
+  asserting a direction.
+
+  Note we deliberately do NOT suppress on moderate CV: a clean, wide ramp
+  (e.g. 100→20) legitimately has CV ≈ 0.5, and is a real trend."
+  [direction change-pct cv]
+  (let [dir-sign (case direction
+                   (:strongly-increasing :increasing) 1
+                   (:strongly-decreasing :decreasing) -1
+                   0)]
+    (cond
+      (and (not (zero? dir-sign)) (neg? (* dir-sign change-pct))) :no-clear-trend
+      (>= cv 1.0)                                                 :no-clear-trend
+      :else                                                       direction)))
+
 (defn- compute-trend
   "Compute trend summary using linear regression.
-  Returns map with :direction :overall-change-pct :start-value :end-value"
+  Returns map with :direction :overall-change-pct :start-value :end-value.
+  `:direction` is reconciled against the first→last change and series noise (see
+  [[reconcile-direction]]) so it never contradicts the data it summarizes."
   [values]
   (let [n (count values)
         values-vec (vec values)
@@ -56,8 +80,10 @@
         start-val (first values-vec)
         end-val (last values-vec)
         mean-val (dfn/mean values)
+        std-dev (dfn/standard-deviation values)
+        cv (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))
         change-pct (stats.u/percentage-change start-val end-val)]
-    {:direction (slope-to-direction slope mean-val n)
+    {:direction (reconcile-direction (slope-to-direction slope mean-val n) change-pct cv)
      :overall-change-pct change-pct
      :start-value start-val
      :end-value end-val}))

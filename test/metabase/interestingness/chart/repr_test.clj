@@ -182,6 +182,16 @@
       (is (str/includes? (u/lower-case-en result) "quarter"))
       (is (some #(str/includes? result %) ["Q1" "Q2" "Q3" "Q4"])))))
 
+(deftest ^:parallel render-trend-no-clear-trend-is-honest-test
+  (testing "A :no-clear-trend direction renders honestly — no asserted direction, no confident % headline"
+    (let [out (#'repr/render-trend {:direction :no-clear-trend
+                                    :overall-change-pct -97.9
+                                    :start-value 1727 :end-value 36})]
+      (is (str/includes? out "no clear trend"))
+      (is (not (str/includes? out "increasing")))
+      (is (str/includes? out "1727"))
+      (is (str/includes? out "36")))))
+
 (deftest ^:parallel repr-time-series-includes-series-name-and-trend-test
   (testing "time series representation includes series name and trend direction"
     (let [values [10.0 20.0 30.0 40.0 50.0]

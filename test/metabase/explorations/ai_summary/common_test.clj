@@ -8,6 +8,119 @@
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary.common :as common]))
 
+;;; ---------------------------------------------- chart-rank-key ----------------------------------------------
+
+(defn- q
+  "Build a fake hydrated ExplorationQuery for ranking/selection tests. Ids are
+  numeric, as they always are in production."
+  [id card-id dim-id ctx det]
+  {:id id :card_id card-id :dimension_id dim-id
+   :contextual_interestingness_score ctx :interestingness_score det})
+
+(defn- rank-order
+  "Ids of `queries` sorted best-first by `chart-rank-key`."
+  [queries]
+  (mapv :id (sort-by common/chart-rank-key #(compare %2 %1) queries)))
+
+(deftest chart-rank-key-deterministic-secondary-test
+  (testing "Equal contextual score → higher deterministic score ranks first"
+    ;; id 1 = low det, id 2 = high det
+    (is (= [2 1]
+           (rank-order [(q 1 10 11 0.5 0.2)
+                        (q 2 20 21 0.5 0.9)])))))
+
+(deftest chart-rank-key-contextual-is-primary-test
+  (testing "Contextual score dominates: a high-det/low-ctx chart ranks below a high-ctx/low-det chart"
+    ;; id 1 = interesting-but-irrelevant, id 2 = relevant
+    (is (= [2 1]
+           (rank-order [(q 1 10 11 0.2 0.99)
+                        (q 2 20 21 0.7 0.10)])))))
+
+(deftest chart-rank-key-stable-tiebreak-test
+  (testing "Identical ctx and det resolve deterministically (lower id first)"
+    (is (= [10 20]
+           (rank-order [(q 20 1 1 0.5 0.5)
+                        (q 10 2 2 0.5 0.5)])))))
+
+;;; ---------------------------------------------- select-pool ----------------------------------------------
+
+(deftest select-pool-balances-across-metrics-test
+  (testing "A metric with many strong breakouts cannot crowd out other metrics' top breakouts"
+    ;; metric A (card 1): five strong breakouts; metric B (card 2) and C (card 3): one each
+    (let [metric-a [(q 101 1 11 0.7 0.9) (q 102 1 12 0.7 0.8) (q 103 1 13 0.7 0.7)
+                    (q 104 1 14 0.7 0.6) (q 105 1 15 0.7 0.5)]
+          metric-b [(q 201 2 21 0.7 0.4)]
+          metric-c [(q 301 3 31 0.5 0.9)]
+          pool     (set (map :id (common/select-pool 4 (concat metric-a metric-b metric-c))))]
+      (is (contains? pool 201) "metric B's only chart survives")
+      (is (contains? pool 301) "metric C's only chart survives, despite lower contextual score")
+      (is (<= (count (filter #{101 102 103 104 105} pool)) 2)
+          "the dominant metric is capped, not allowed to fill the pool")
+      ;; pure global ranking would have selected 101..104 and dropped 201 and 301
+      (is (not= #{101 102 103 104} pool)))))
+
+(deftest select-pool-balances-dimensions-within-metric-test
+  (testing "Within one metric, a single dimension's fan-out doesn't bury another dimension's best breakout"
+    (let [dim1 [(q 1101 1 100 0.7 0.9) (q 1102 1 100 0.7 0.7)]
+          dim2 [(q 1200 1 200 0.7 0.8)]
+          pool (set (map :id (common/select-pool 2 (concat dim1 dim2))))]
+      (is (= #{1101 1200} pool)
+          "second slot goes to the other dimension (det 0.8), not dim1's weaker breakout (det 0.7)"))))
+
+(deftest select-pool-weights-by-metric-relevance-test
+  (testing "Big relevance gap → strong metric earns several breakouts, pointless metric squeezed out"
+    (let [helpful   [(q 1 1 11 0.9 0.9) (q 2 1 12 0.9 0.8) (q 3 1 13 0.9 0.7)]
+          pointless [(q 4 2 21 0.15 0.9) (q 5 2 22 0.15 0.8) (q 6 2 23 0.15 0.7)]
+          pool      (set (map :id (common/select-pool 3 (concat helpful pointless))))]
+      (is (= #{1 2 3} pool)
+          "all three slots go to the relevant metric; the pointless metric is excluded")))
+  (testing "Comparable metrics interleave — very-interesting does not crowd out sort-of-interesting"
+    (let [very   [(q 1 1 11 0.9 0.9) (q 2 1 12 0.9 0.8) (q 3 1 13 0.9 0.7)]
+          sortof [(q 4 2 21 0.6 0.9) (q 5 2 22 0.6 0.8) (q 6 2 23 0.6 0.7)]
+          pool   (set (map :id (common/select-pool 4 (concat very sortof))))]
+      (is (contains? pool 4) "the sort-of-interesting metric's top breakout still gets in")
+      (is (= 2 (count (filter #{1 2 3} pool))) "very-interesting metric gets 2 of 4 slots")
+      (is (= 2 (count (filter #{4 5 6} pool))) "sort-of-interesting metric gets 2 of 4 slots"))))
+
+(deftest select-pool-treats-segments-as-distinct-breakouts-test
+  (testing "Same metric+dimension, different segments are spread as separate breakouts"
+    (let [mk     (fn [id seg det] {:id id :card_id 1 :dimension_id 10 :segment_id seg
+                                   :contextual_interestingness_score 0.7 :interestingness_score det})
+          charts [(mk 1 nil 0.9) (mk 2 nil 0.85) (mk 3 "A" 0.8) (mk 4 "B" 0.7)]
+          pool   (set (map :id (common/select-pool 2 charts)))]
+      ;; grouping by (dimension, segment) sends the 2nd slot to a different segment (id 3),
+      ;; not another chart from the same unsegmented breakout (id 2)
+      (is (= #{1 3} pool)))))
+
+;;; ---------------------------------------------- variant-label / group-breakouts ----------------------------------------------
+
+(deftest variant-label-test
+  (is (= "full breakdown" (common/variant-label "default")))
+  (is (= "top-N + Other" (common/variant-label "top-n-other")))
+  (is (= "series over time" (common/variant-label "time-facet")))
+  (testing "unknown variants fall back to the raw type"
+    (is (= "weird" (common/variant-label "weird")))))
+
+(defn- pc
+  "A minimal prepped-chart record for breakout-grouping tests."
+  [id card dim seg score qtype]
+  {:exploration-query-id id :card-id card :dimension-id dim :segment-id seg
+   :score score :query-type qtype :variant-label (common/variant-label qtype)})
+
+(deftest group-breakouts-bundles-variants-test
+  (testing "Charts grouped by (metric, dimension, segment); variants ordered best-first; breakouts best-first"
+    (let [charts [(pc 1 100 10 nil 0.5 "default")
+                  (pc 2 100 10 nil 0.9 "top-n-other")  ; same breakout as 1, higher score
+                  (pc 3 100 20 nil 0.7 "default")       ; different dimension
+                  (pc 4 100 10 "S" 0.6 "default")]      ; same dim, different segment
+          bs    (common/group-breakouts charts)]
+      (is (= 3 (count bs)) "(10,nil), (20,nil), (10,S) are three distinct breakouts")
+      (let [b0 (first bs)]
+        (is (= 2 (:rep-id b0)) "representative is the highest-scored variant (top-n-other, id 2)")
+        (is (= [2 1] (mapv :exploration-query-id (:variants b0))) "variants ordered best-first")
+        (is (= 0.9 (:score b0))))
+      (is (= [0.9 0.7 0.6] (mapv :score bs)) "breakouts ordered best-first by representative score"))))
+
 ;;; ---------------------------------------------- summarize-parts ----------------------------------------------
 
 (deftest summarize-parts-collapses-by-type-test

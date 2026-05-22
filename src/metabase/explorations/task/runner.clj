@@ -246,6 +246,43 @@
   (t2/select-one-fn :exploration_id :model/ExplorationThread
                     :id (:exploration_thread_id exploration-query)))
 
+(defn- params-get
+  "Read `k` from a `params` blob whose keys may be keywords or strings."
+  [params k]
+  (or (get params k) (get params (name k))))
+
+(defn- variant-note
+  "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
+  (which adds no breakdown beyond the bare metric × dimension)."
+  [query-type params]
+  (case query-type
+    "temporal-pattern-day"  "aggregated by day-of-week"
+    "temporal-pattern-hour" "aggregated by hour-of-day"
+    "time-facet"            "one line per dimension value, over time"
+    "top-n-other"           (str "top " (params-get params :k) " values, remainder grouped as Other")
+    "filtered-subset"       (let [vs (params-get params :filter_values)]
+                              (str "restricted to "
+                                   (if (and (sequential? vs) (= 1 (count vs)))
+                                     (str (first vs))
+                                     (str (count vs) " selected values"))))
+    "per-value-time-series" "a single dimension value, tracked over time"
+    nil))
+
+(defn- slicing-note
+  "Compact, explicit description of how a chart is sliced — its breakdown variant and/or
+  segment filter — handed to the contextual scorer/describer so fan-out siblings of one
+  metric × dimension get distinct, accurate descriptions instead of collapsing together.
+  Returns nil for a plain unsegmented default breakdown (nothing to call out)."
+  [row]
+  (let [segment-name (when-let [sid (:segment_id row)]
+                       (t2/select-one-fn :name :model/Segment :id sid))
+        variant      (variant-note (:query_type row) (:params row))
+        parts        (cond-> []
+                       variant      (conj variant)
+                       segment-name (conj (str "filtered to segment \"" segment-name "\"")))]
+    (when (seq parts)
+      (str/join "; " parts))))
+
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
   Card's description (when present), the compiled SQL of the dataset_query, and the thread
@@ -287,6 +324,7 @@
               (some-> (contextual-interestingness/score-and-describe-chart
                        {:chart-config     chart-config
                         :card-description card-description
+                        :chart-slicing    (slicing-note exploration-query)
                         :sql              sql
                         :context-string   prompt})
                       (update :metric-description #(or card-description %))))))))

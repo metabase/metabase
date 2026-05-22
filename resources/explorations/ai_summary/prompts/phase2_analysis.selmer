@@ -14,13 +14,20 @@ data is inconclusive or contradicts itself, say *that* clearly and prove
 moment they support the surrounding sentence — not collected into a gallery.
 
 The user picked a set of metrics, dimensions, and (optionally) timelines, and
-the system generated one chart per (metric × dimension × segment) combination.
-A curator (an earlier LLM pass) selected {{ top_block_count }} charts for
+the system generated charts for each (metric × dimension × segment) BREAKOUT.
+A curator (an earlier LLM pass) selected {{ top_block_count }} breakouts for
 TOP-TIER analysis (full data points provided — you may cite specific values
-verbatim) and {{ awareness_block_count }} charts for AWARENESS only (you
+verbatim) and {{ awareness_block_count }} breakouts for AWARENESS only (you
 know they exist; only key-points and a summary are provided — don't cite
 values from them, but consider them when suggesting next steps). These were
-picked from a pool of {{ pool_size }} upstream-ranked charts (out of {{ total_chart_count }} total).
+picked from a pool of {{ pool_size }} upstream-ranked breakouts (out of {{ total_chart_count }} total charts).
+
+Each breakout below may offer MORE THAN ONE rendering of the same data (e.g. a
+full breakdown, a top-N + Other rollup, a day-of-week view, or a series over
+time), each with its own `stored_result_id`. They are alternative views of the
+same breakout — for any given point, embed the ONE rendering that best supports and explains
+it (top-N + Other to show concentration, the over-time view for a trend, etc.).
+Do NOT embed several renderings of the same breakout to make one point unless the others add significant value.
 
 CURATOR'S RATIONALE (from Phase 1):
 {% if curation_rationale %}{{ curation_rationale|safe }}{% else %}(none provided){% endif %}
@@ -217,12 +224,12 @@ SELECTIONS:
 {% endif %}
 ---
 
-TOP-TIER CHARTS (full data — cite values from these):
+TOP-TIER BREAKOUTS (full data — cite values from these; each lists its renderings):
 
 {{ top_md|safe }}{% if awareness_blocks %}
 
 ---
 
-AWARENESS-TIER CHARTS (summary only — context, not citation):
+AWARENESS-TIER BREAKOUTS (summary only — context, not citation):
 
 {{ slim_md|safe }}{% endif %}

@@ -49,7 +49,9 @@
   {:type       "object"
    :properties (cond-> {:chart_description
                         {:type        "string"
-                         :description (str "One short sentence (≤ 25 words) describing what the chart shows — combining the metric and dimension. "
+                         :description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
+                                           "If a Slicing line is present (segment filter, top-N + Other rollup, specific-values subset, per-value over-time view), name it — it's part of what the chart is. "
+                                           "Describe the chart, not the data: do NOT narrate the data's shape, trend, or magnitude (no first/last/peak values, no 'rising'/'dramatic decline') and do NOT draw conclusions — the numbers come from the stats, not from you. "
                                            "Ground filters, joins, and aggregation in the COMPILED SQL block when one is provided — do not restate the title. "
                                            "Write this FIRST so the rest of the response is grounded in it.")}}
                  generate-metric?
@@ -82,7 +84,7 @@
 You see a structured description of the chart (title, display type, axis types, summary statistics, notable values), optionally the compiled SQL of the underlying query, and the user's natural-language question.
 
 Workflow — fill fields in this order, and DO use your earlier answers as context for the later ones:
-  1. chart_description: one sentence describing the metric + dimension as the user would understand them. Pull semantics from the SQL where it clarifies (filters, joins, aggregation). Do not parrot the title; add what the title leaves out.
+  1. chart_description: one sentence describing WHAT THE CHART IS — the metric and the dimension as the user would understand them, with semantics pulled from the SQL (filters, joins, aggregation). If a 'Slicing' line is present, fold it in — a segment filter, a top-N + Other rollup, a specific-values subset, or a per-value over-time view is part of what distinguishes this chart from its siblings, so name it. Describe the chart, not the data: do not narrate the data's shape or trend, do not cite first/last/peak values, and do not draw conclusions — the stats already carry the numbers. Do not parrot the title; add what the title leaves out. GOOD: 'Total fish caught per survey date, summed from fish_catch_summary, restricted to Standard Surveys.' BAD: '...showing a dramatic decline from ~1,700 fish in 1940 to 36 in 2023.'
   2. metric_description (when requested): one sentence describing the underlying metric in business terms.
   3. reasoning: one short sentence justifying the score that follows.
   4. score: in [0.0, 1.0], grounded in your own descriptions, not just the title.
@@ -119,13 +121,16 @@ Always return a single object matching the supplied schema. Do not respond with 
       :timeline-events (:timeline_events chart-config)})))
 
 (defn- build-user-message
-  [{:keys [chart-config card-description sql context-string]}]
+  [{:keys [chart-config card-description chart-slicing sql context-string]}]
   (str rubric-preamble
        "USER QUESTION:\n" context-string
        "\n\n---\n\nCHART:\n"
        (when-not (str/blank? card-description)
          (str "Authored metric description (use as ground truth — do not regenerate metric_description): "
               card-description "\n\n"))
+       (when-not (str/blank? chart-slicing)
+         (str "Slicing (this chart is a specific cut of the metric — name it in chart_description): "
+              chart-slicing "\n\n"))
        (chart->representation chart-config)
        (when-not (str/blank? sql)
          (str "\n\nCOMPILED SQL (for semantic context — read filters, joins, aggregation):\n```sql\n"

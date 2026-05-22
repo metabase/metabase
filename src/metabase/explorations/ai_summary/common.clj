@@ -198,14 +198,151 @@
         (str " [joined]")))))
 
 (defn chart-rank-score
-  "Sort key for a hydrated query: prefer the LLM-judged contextual score, fall
-  back to the deterministic interestingness, then 0. Higher is better.
-  Lives here (rather than in the orchestrator) because [[prep-chart]] stamps
-  it onto the prepped record."
+  "Numeric display hint for a hydrated query: prefer the LLM-judged contextual
+  score, fall back to the deterministic interestingness, then 0. Stamped onto the
+  prepped record as `:score` and shown in the Phase-1 index. NOT the sort key —
+  see [[chart-rank-key]], which orders by *both* signals."
   [q]
   (or (:contextual_interestingness_score q)
       (:interestingness_score q)
       0.0))
+
+(defn chart-rank-key
+  "Descending-better lexicographic sort key for a hydrated query.
+
+  Contextual interestingness is the coarse, generally bucketed primary
+  stratum (the classifier tends to cluster scores around ~1.0/0.7/0.5/0.2).
+  Deterministic interestingness is the continuous secondary key that orders charts
+  *within* a contextual bucket, so ordering stays meaningful when dozens of charts
+  share a bucket — the old `(or ctx det)` threw this away whenever a contextual
+  score existed. `:id` is a stable final tiebreak for a fully deterministic total
+  order. Sort best-first with a descending vector comparator, e.g.
+  `(sort-by chart-rank-key #(compare %2 %1) qs)`."
+  [q]
+  [(double (or (:contextual_interestingness_score q) 0.0))
+   (double (or (:interestingness_score q) 0.0))
+   (- (long (or (:id q) 0)))])
+
+(defn- rank-desc
+  "Comparator over hydrated queries: best [[chart-rank-key]] first."
+  [a b]
+  (compare (chart-rank-key b) (chart-rank-key a)))
+
+(defn- round-robin
+  "Flatten a seq of best-first seqs by taking the head of each in turn, dropping
+  emptied seqs as they run out. Preserves the outer ordering within each round."
+  [colls]
+  (lazy-seq
+   (when-let [colls (seq (filter seq colls))]
+     (concat (map first colls)
+             (round-robin (map rest colls))))))
+
+(defn- metric-queue
+  "Order one metric's charts best-first while spreading across its breakouts: a
+  round-robin over `(dimension, segment)` groups (each ordered by [[chart-rank-key]],
+  groups themselves ordered by their best chart) so one breakout's variant fan-out —
+  or one heavily-segmented dimension — can't consume the metric's whole allocation
+  before another breakout is seen."
+  [charts]
+  (->> charts
+       (group-by (juxt :dimension_id :segment_id))
+       vals
+       (map #(sort rank-desc %))
+       (sort-by first rank-desc)
+       round-robin))
+
+(def ^:private metric-breakout-decay
+  "Geometric discount applied to each successive breakout from the same metric while filling
+  the pool: the metric's k-th breakout (in [[metric-queue]] / breakout-spread order) is
+  weighted `relevance × decay^(k-1)`.
+
+  This gives *relevance-weighted* diversity rather than flat round-robin. Whether a
+  less-relevant metric's top breakout outranks a more-relevant metric's k-th breakout depends
+  on the *ratio* of their relevances (`decay^k < r_lo/r_hi`), so the behaviour adapts to the
+  data instead of relying on the contextual score's (intentionally blocky, only-a-guideline)
+  tier structure:
+   - a big relevance gap → the strong metric earns several breakouts before a marginal one
+     earns any (a clearly-pointless metric is squeezed out entirely);
+   - comparable metrics interleave, so a very-interesting metric does NOT crowd out a
+     sort-of-interesting one.
+
+  ~0.6 hedges against an over-confident or incomplete contextual
+  score by keeping sort-of-interesting metrics represented. Tunable: → 1 approaches pure
+  global ranking (strong metric monopolizes), → 0 approaches flat round-robin (egalitarian)."
+  0.6)
+
+(defn select-pool
+  "Pick up to `n` charts from `queries`, balanced across metrics so a single base metric with
+  many interesting breakouts can't crowd out other metric views — while still giving more
+  slots to more-relevant metrics.
+
+  The chart explosion comes from one metric (`:card_id`) being sliced many ways —
+  variants × dimensions × segments. A pure global ranking lets the strongest metric fill the
+  whole pool; a flat round-robin over-corrects, giving a pointless metric as many breakouts as
+  the best one. Instead, each chart gets an adjusted score = its [[chart-rank-score]]
+  relevance × [[metric-breakout-decay]] raised to the chart's position within its metric (in
+  [[metric-queue]] breakout-spread order, so fresh dimensions outrank redundant renderings),
+  and we take the global top-`n` by adjusted score. See [[metric-breakout-decay]] for the
+  relevance-vs-diversity behaviour. The caller re-sorts the survivors by [[chart-rank-key]]
+  for best-first display."
+  [n queries]
+  (->> queries
+       (group-by :card_id)
+       vals
+       (mapcat (fn [metric-charts]
+                 (map-indexed (fn [pos c]
+                                [(* (chart-rank-score c) (Math/pow metric-breakout-decay pos)) c])
+                              (metric-queue metric-charts))))
+       (sort-by (fn [[adj c]] [adj (chart-rank-key c)]) #(compare %2 %1))
+       (map second)
+       (take n)
+       vec))
+
+(defn variant-label
+  "Short, human label for a chart's rendering variant — for the Phase-2 menu that lets the
+  analyst pick the rendering that best fits a point. The variant's params (k, filter values)
+  are already visible in the chart title, so the label stays terse."
+  [query-type]
+  (case query-type
+    "default"               "full breakdown"
+    "top-n-other"           "top-N + Other"
+    "temporal-pattern-day"  "by day-of-week"
+    "temporal-pattern-hour" "by hour-of-day"
+    "time-facet"            "series over time"
+    "filtered-subset"       "filtered subset"
+    "per-value-time-series" "single value over time"
+    (or query-type "variant")))
+
+(defn breakout-key
+  "Identity of the breakout a prepped chart belongs to: metric × dimension × segment.
+  Variants (`default`, `top-n-other`, `time-facet`, …) of the same breakout share this key."
+  [c]
+  [(:card-id c) (:dimension-id c) (:segment-id c)])
+
+(defn group-breakouts
+  "Group prepped charts into breakouts (metric × dimension × segment), bundling each
+  breakout's rendering variants so Phase 2 can present the whole menu and let the analyst
+  embed whichever rendering best supports each point. Within a breakout, variants are ordered
+  best-first by `:score` (stable on id); the breakout's `:representative`, `:rep-id`, and
+  `:score` are its best variant. Breakouts are returned best-first.
+
+      => [{:rep-id N :representative <prepped> :variants [<prepped> ...] :score s} ...]"
+  [prepped]
+  (let [variant-key (fn [c] [(double (or (:score c) 0.0))
+                             (- (long (:exploration-query-id c)))])]
+    (->> prepped
+         (group-by breakout-key)
+         vals
+         (map (fn [variants]
+                (let [sorted (vec (sort-by variant-key #(compare %2 %1) variants))
+                      rep    (first sorted)]
+                  {:rep-id         (:exploration-query-id rep)
+                   :representative rep
+                   :variants       sorted
+                   :score          (:score rep)})))
+         (sort-by (fn [b] [(double (or (:score b) 0.0)) (- (long (:rep-id b)))])
+                  #(compare %2 %1))
+         vec)))
 
 (defn prep-chart
   "Compute the rich per-chart record both phases consume.
@@ -250,6 +387,13 @@
              :stored-result-id     stored-result-id
              :name                 (:name query)
              :score                (chart-rank-score query)
+             ;; breakout identity (metric × dimension × segment) + which rendering this is —
+             ;; lets Phase 2 group a breakout's variants and offer the analyst the menu.
+             :card-id              (:card_id query)
+             :dimension-id         (:dimension_id query)
+             :segment-id           (:segment_id query)
+             :query-type           (:query_type query)
+             :variant-label        (variant-label (:query_type query))
              :display-type         (:display_type cfg)
              :cfg                  cfg
              :stats                chart-stats
