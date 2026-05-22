@@ -2,8 +2,10 @@ import type {
   CustomVisualization,
   CustomVisualizationMount,
   CustomVisualizationSettingDefinition,
+  Widgets,
 } from "custom-viz";
 import type { ComponentType } from "react";
+import { t } from "ttag";
 
 import type { CustomVizPluginId } from "metabase-types/api";
 
@@ -25,6 +27,9 @@ export function sanitizePluginSettings(
   if (!settings) {
     return settings;
   }
+
+  assertValidSettingWidgets(settings);
+
   const sanitizedSettings: CustomVisualization<
     Record<string, unknown>
   >["settings"] = {};
@@ -51,4 +56,36 @@ export function sanitizePluginSettings(
     }
   }
   return sanitizedSettings;
+}
+
+const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
+  "input",
+  "number",
+  "radio",
+  "select",
+  "toggle",
+  "segmentedControl",
+  "field",
+  "fields",
+  "color",
+  "multiselect",
+] as const;
+
+function assertValidSettingWidgets(
+  settings: CustomVisualization<Record<string, unknown>>["settings"],
+): void {
+  if (!settings) {
+    return;
+  }
+  for (const [settingId, def] of Object.entries(settings)) {
+    const widget = (def as { widget?: unknown }).widget;
+    if (
+      typeof widget === "string" &&
+      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
+    ) {
+      throw new Error(
+        t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+      );
+    }
+  }
 }
