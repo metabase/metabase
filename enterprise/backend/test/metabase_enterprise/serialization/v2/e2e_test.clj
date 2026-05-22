@@ -560,10 +560,7 @@
                          [{:id coll-eid          :model "Collection"}]
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
-                         [{:id "Linked database" :model "Database"}]
-                         [{:model "Database" :id "Linked database"}
-                          {:model "Schema"   :id "Public"}
-                          {:model "Table"    :id "Linked table"}]}
+                         [{:id "Linked database" :model "Database"}]}
                        (set (serdes/dependencies extracted-dashboard))))
 
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
