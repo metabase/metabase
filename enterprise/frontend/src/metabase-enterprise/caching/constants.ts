@@ -41,14 +41,18 @@ const durationStrategyValidationSchema = Yup.object({
 export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
   schedule: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Schedule: pick when to regularly invalidate the cache`,
+    label: t`Schedule`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    description: t`Pick when to regularly invalidate the cache`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     shortLabel: t`Scheduled`,
     validationSchema: scheduleStrategyValidationSchema,
   },
   duration: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Duration: keep the cache for a number of hours`,
+    label: t`Duration`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    description: t`Keep the cache for a number of hours`,
     validationSchema: durationStrategyValidationSchema,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     shortLabel: t`Duration`,
