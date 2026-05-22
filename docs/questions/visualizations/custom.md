@@ -40,7 +40,7 @@ While this sandboxing limits the damage a plugin can do, you still need to revie
 4. Click **Add visualization**.
 
 - Bundles must be smaller than 5 MB.
-- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.60"). If your Metabase is older than the plugin requires, the plugin won't load.
+- Each plugin lists the Metabase versions it supports (for example, "Requires Metabase >=1.62"). If your Metabase is older than the plugin requires, Metabase rejects the upload.
 - The **Manage visualizations** page shows each plugin's icon, name, the first eight characters of its bundle hash, and its required Metabase version range, so you can tell which version is installed.
 
 ## Managing custom visualizations
@@ -69,7 +69,8 @@ Custom visualizations behave like built-in charts in most places:
 
 ## Exports and limitations
 
-- **PDF and PNG exports** of dashboards and questions include custom visualizations.
+- **PDF exports** of dashboards and questions include custom visualizations.
+- **PNG exports** include a custom visualization only if its developer turned on PNG export for that plugin. PNG export is off by default.
 - **Static visualizations don't.** Dashboard subscriptions sent by [email](../../dashboards/subscriptions.md) and Slack render static images, and they fall back to a default visualization for cards that use a custom visualization.
 
 ## Developing custom visualizations

@@ -74,7 +74,7 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
   "icon": "icon.svg",
   "assets": ["image.png"],
   "metabase": {
-    "version": ">=1.60.0"
+    "version": ">=1.62.0"
   }
 }
 ```
@@ -84,7 +84,7 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 | `name`             | Unique identifier for the plugin. Has to match the `id` your visualization returns.                                |
 | `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically — don't list it under `assets`. |
 | `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                  |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.60.0"`, `"^1.60"`, `">=1.59 <1.61"`).    |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).    |
 
 ## Defining a visualization
 
@@ -150,7 +150,7 @@ export default createVisualization;
 | `minSize`                | `{ width, height }`                 | Minimum size on a dashboard grid.                                                                                                                        |
 | `defaultSize`            | `{ width, height }`                 | Default size on a dashboard grid.                                                                                                                        |
 | `noHeader`               | `boolean`                           | When `true`, hides the default card title and description header.                                                                                        |
-| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                                             |
+| `canSavePng`             | `boolean`                           | Set to `true` to enable PNG export for this visualization. Disabled by default.                                                                          |
 | `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the visualization can't render with the current data or settings. Metabase shows the error message to the person viewing the chart. |
 | `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created with `defineSetting()`.                                                                                               |
 | `VisualizationComponent` | `React.ComponentType`               | The interactive React component that renders the visualization in questions and dashboards.                                                              |
@@ -338,7 +338,7 @@ Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** >
 
 ## Versioning and compatibility
 
-The Custom Visualizations SDK works with Metabase 1.60 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.60.0"`, `"^1.60"`, `">=1.59 <1.61"`. If you upload a bundle to a Metabase older than its range allows, the plugin won't install; if a running instance later falls outside the range — after a downgrade, say — the plugin stops loading, and cards that used it fall back to a default visualization until the instance is back in range.
+The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. If you upload a bundle to a Metabase older than its range allows, the plugin won't install; if a running instance later falls outside the range — after a downgrade, say — the plugin stops loading, and cards that used it fall back to a default visualization until the instance is back in range.
 
 ## Sandbox restrictions
 
