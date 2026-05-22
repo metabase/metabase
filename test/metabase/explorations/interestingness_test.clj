@@ -1,7 +1,9 @@
 (ns metabase.explorations.interestingness-test
   (:require
    [clojure.test :refer :all]
-   [metabase.explorations.interestingness :as explorations.interestingness]))
+   [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]))
 
 (defn- result
   [cols rows]
@@ -27,6 +29,58 @@
         (is (= ["2026-01-01" "2026-02-01" "2026-03-01"] (:x_values s)))
         (is (= [10 20 30] (:y_values s)))
         (is (= "Count" (:display_name s)))))))
+
+(defn- dow-x-values [loc]
+  (binding [i18n/*user-locale* loc]
+    (-> (explorations.interestingness/qp-result->chart-config
+         (query "bar")
+         (result [{:name "survey_date" :base_type :type/Integer
+                   :field_ref [:field 1 {:temporal-unit :day-of-week}]}
+                  {:name "total" :base_type :type/Integer :display_name "Sum of Total Catch"}]
+                 [[1 100] [2 200] [7 50]]))
+        :series (get "Sum of Total Catch"))))
+
+(deftest day-of-week-extraction-is-labeled-dimension-test
+  (testing "A :day-of-week extraction column is the dimension (not the metric), labeled, axes not swapped"
+    (mt/with-temporary-setting-values [start-of-week :sunday]
+      (let [s (dow-x-values "en")]
+        (is (= "string" (-> s :x :type)) "day-of-week dim rendered as labeled categorical, not numeric")
+        (is (= [100 200 50] (:y_values s)) "metric stays on y — axis not swapped")
+        (is (every? string? (:x_values s)))
+        ;; start-of-week :sunday → 1=Sunday, 2=Monday, 7=Saturday
+        (is (= ["Sunday" "Monday" "Saturday"] (:x_values s))))))
+  (testing "labels follow the user's locale, not hard-coded English"
+    (mt/with-temporary-setting-values [start-of-week :sunday]
+      (is (= ["dimanche" "lundi" "samedi"] (:x_values (dow-x-values "fr")))))))
+
+(deftest hour-of-day-extraction-is-labeled-test
+  (testing "An :hour-of-day extraction column is treated as the dimension and labeled with a localized time"
+    (let [hcfg (fn [loc] (binding [i18n/*user-locale* loc]
+                           (-> (explorations.interestingness/qp-result->chart-config
+                                (query "bar")
+                                (result [{:name "h" :base_type :type/Integer
+                                          :field_ref [:field 1 {:temporal-unit :hour-of-day}]}
+                                         {:name "n" :base_type :type/Integer}]
+                                        [[0 5] [13 9]]))
+                               :series vals first)))
+          de   (hcfg "de")]
+      (is (= "string" (-> de :x :type)))
+      (is (= [5 9] (:y_values de)))
+      ;; German uses a 24-hour clock
+      (is (= ["00:00" "13:00"] (:x_values de)))
+      ;; en-US uses a 12-hour clock — exact AM/PM text varies by JDK, but it must differ from 24h
+      (is (not= ["00:00" "13:00"] (:x_values (hcfg "en-US"))) "hour labels follow locale"))))
+
+(deftest truncation-unit-day-stays-temporal-test
+  (testing "A :day truncation unit (real date) is unaffected — still datetime, not labeled"
+    (let [cfg (explorations.interestingness/qp-result->chart-config
+               (query "line")
+               (result [{:name "d" :base_type :type/DateTime :field_ref [:field 1 {:temporal-unit :day}]}
+                        {:name "n" :base_type :type/Integer}]
+                       [["2026-01-01T00:00" 1] ["2026-01-02T00:00" 2]]))
+          s   (-> cfg :series vals first)]
+      (is (= "datetime" (-> s :x :type)))
+      (is (= ["2026-01-01T00:00" "2026-01-02T00:00"] (:x_values s))))))
 
 (deftest categorical-x-integer-y-test
   (let [cfg (explorations.interestingness/qp-result->chart-config

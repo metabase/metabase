@@ -237,9 +237,49 @@
                 "supports the point you're making; do not embed several renderings of the same breakout._"))
          "\n")))
 
+(defn- sibling-block
+  "Lighter rendering for a NON-primary variant of a top-tier breakout. Same identity + chart
+  Markdown + pre-computed key points as a full block, but WITHOUT the verbatim
+  `Actual data points` dump — that dump is the dominant prompt-token cost and the variants of
+  one breakout are alternate views of the same underlying data. The analyst can still embed
+  this rendering; for verbatim point-by-point values it cites the primary rendering, whose
+  full dump is one block above. `primary-srid` names that primary."
+  [primary-srid {:keys [stored-result-id name cfg stats dim-detail metric-detail chart-description]}]
+  (let [repr    (interestingness/generate-representation
+                 {:title                  (:title cfg)
+                  :display-type           (:display_type cfg)
+                  :stats                  stats
+                  :omit-temporal-context? true})
+        key-pts (render-key-points-section cfg stats)]
+    (str "### stored_result_id " stored-result-id " — " name " (alternate rendering)\n\n"
+         (when chart-description
+           (str "- **chart**: " chart-description "\n"))
+         "- **metric**: " (or metric-detail "(unknown)") "\n"
+         "- **dim**: " (or dim-detail "(unknown)") "\n"
+         (sort-instruction-line cfg) "\n\n"
+         "Alternate rendering of the same breakout — embed via `stored_result_id: "
+         stored-result-id "`. Verbatim point-by-point values are NOT repeated here; for those, "
+         "cite the primary rendering (`stored_result_id: " primary-srid "`) above.\n\n"
+         repr
+         (when key-pts (str "\n\n" key-pts)))))
+
+(defn- top-breakout-block
+  "Top-tier breakout rendering: the heading, then the FULL block (with verbatim data points)
+  for the representative rendering, then a lighter `sibling-block` (no verbatim dump) for each
+  remaining rendering. Cuts the per-breakout verbatim data from N× to 1× while keeping every
+  rendering embeddable."
+  [{:keys [variants] :as breakout}]
+  (let [[primary & siblings] variants
+        primary-srid (:stored-result-id primary)]
+    (str (breakout-heading breakout) "\n"
+         (full-block primary)
+         (when (seq siblings)
+           (str "\n\n" (str/join "\n\n" (map #(sibling-block primary-srid %) siblings)))))))
+
 (defn- breakout-block
   "Render one curated breakout: the heading followed by each rendering variant via `render-fn`
-  (`full-block` for top-tier, `slim-block` for awareness)."
+  (used for the awareness tier with `slim-block` — every awareness variant is summary-only, so
+  there's no verbatim dump to dedup)."
   [render-fn breakout]
   (str (breakout-heading breakout) "\n"
        (str/join "\n\n" (map render-fn (:variants breakout)))))
@@ -264,7 +304,7 @@
     :awareness_block_count (count awareness-breakouts)
     :pool_size             pool-size
     :total_chart_count     total-chart-count
-    :top_md                (str/join "\n\n---\n\n" (map #(breakout-block full-block %) top-breakouts))
+    :top_md                (str/join "\n\n---\n\n" (map top-breakout-block top-breakouts))
     :awareness_blocks      (boolean (seq awareness-breakouts))
     :slim_md               (str/join "\n\n---\n\n" (map #(breakout-block slim-block %) awareness-breakouts))}))
 

@@ -453,7 +453,8 @@
                                 :temperature temperature
                                 :max-tokens  max-tokens
                                 :ai-proxy?   ai-proxy?}
-                         (:thinking opts) (assoc :thinking (:thinking opts)))]
+                         (:thinking opts)         (assoc :thinking (:thinking opts))
+                         (contains? opts :cache?) (assoc :cache? (:cache? opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}

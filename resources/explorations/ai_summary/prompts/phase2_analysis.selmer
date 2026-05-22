@@ -147,6 +147,16 @@ TONE & CALIBRATION:
   GOOD: "Revenue dropped 42% after the pricing change, concentrated in
          enterprise deals — see the chart below."
   BAD:  "The mean is 45.2, std dev 12.8, trend -15%, with peaks at...".
+- Never name the INPUT SCAFFOLDING in your prose. The chart blocks give you
+  pre-computed structures — "Key points", "Significant changes", a "Trend"
+  label (e.g. "no clear trend"), data flagged "pre-computed" — purely so you
+  can ground your claims. The reader never sees them, so don't refer to them.
+  State the finding directly with its value and date.
+  GOOD: "The longest fish on record, 50, was logged in 1993 and recurs in
+         2018 and 2023 — no downward drift."
+  BAD:  "The trend label is 'flat (0.0% overall)', and the significant-changes
+         log shows 50 at 2023-04-01." / "the pre-computed key-points label a
+         -97.9% change."
 - Round all percent changes to ONE decimal place when you cite them in
   prose: write `+29,314.1%`, not `+29,314.13%` or `+29314.125%`. The
   pre-computed key-points already follow this; mirror that precision in

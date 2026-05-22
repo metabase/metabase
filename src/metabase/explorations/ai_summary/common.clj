@@ -463,7 +463,11 @@
         opts (cond-> {:request-id          (str (random-uuid))
                       :source              "exploration"
                       :tag                 tag
-                      :required-permission :permission/metabot-other-tools}
+                      :required-permission :permission/metabot-other-tools
+                      ;; One-shot calls: the big prompt prefix is only ever reread on a
+                      ;; repair retry (rare), so Anthropic prompt caching mostly just charges
+                      ;; the cache-write premium for zero reads. Opt out.
+                      :cache?              false}
                thinking-config (assoc :thinking thinking-config))]
     (try
       (let [{:keys [result parts]}

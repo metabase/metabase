@@ -87,9 +87,9 @@
                                                              :thinking  :reasoning-end
                                                              :tool_use  :tool-input-available)}
                                                     @payload))
-                                  (vreset! current-type nil)
-                                  (vreset! current-id nil)
-                                  (vreset! payload {})))]
+                           (vreset! current-type nil)
+                           (vreset! current-id nil)
+                           (vreset! payload {})))]
       (fn
         ([result]
          (cond-> result
@@ -109,20 +109,20 @@
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
                                              (u/prog1
-                                              (vreset! message-id (:id message))
-                                              (vreset! model-name (:model message))
-                                              (vreset! last-usage (:usage message))))
+                                               (vreset! message-id (:id message))
+                                               (vreset! model-name (:model message))
+                                               (vreset! last-usage (:usage message))))
              ;; start of new content block
              (= t "content_block_start") (-> (u/prog1
-                                              (vreset! current-type block-type)
-                                              (vreset! current-id chunk-id)
-                                              (vreset! payload
-                                                       (case block-type
-                                                         :text     {:id chunk-id}
-                                                         :thinking {:id chunk-id}
-                                                         :tool_use {:toolCallId chunk-id
-                                                                    :toolName   (:name content_block)}
-                                                         nil)))
+                                               (vreset! current-type block-type)
+                                               (vreset! current-id chunk-id)
+                                               (vreset! payload
+                                                        (case block-type
+                                                          :text     {:id chunk-id}
+                                                          :thinking {:id chunk-id}
+                                                          :tool_use {:toolCallId chunk-id
+                                                                     :toolName   (:name content_block)}
+                                                          nil)))
                                              (rf (merge (case block-type
                                                           :text     {:type :text-start}
                                                           :thinking {:type :reasoning-start}
@@ -154,7 +154,7 @@
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
              ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
-                                         (vreset! last-usage (:usage chunk)))
+                                          (vreset! last-usage (:usage chunk)))
              ;; end of message
              (= t "message_stop")       identity
              ;; catch errors if any
@@ -319,11 +319,11 @@
   When `:effort` is present it is split out into the top-level `output_config`
   field that the adaptive API expects — callers can keep passing one map and
   not care about the wire format split."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking]
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking cache?]
+    :or   {model "claude-haiku-4-5" cache? true}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
-        all-tools (if (and all-tools (not schema))
+        all-tools (if (and all-tools (not schema) cache?)
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)
         ;; Anthropic forbids `tool_choice` forced tool use when extended thinking
@@ -338,9 +338,11 @@
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
-                           :cache_control {:type "ephemeral"}
                            :messages      messages}
-                    system            (assoc :system (system->cached-content-blocks system))
+                    cache?            (assoc :cache_control {:type "ephemeral"})
+                    system            (assoc :system (if cache?
+                                                       (system->cached-content-blocks system)
+                                                       [{:type "text" :text system}]))
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
                          tool_choice) (assoc :tool_choice (case (name tool_choice)

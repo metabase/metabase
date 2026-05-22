@@ -54,7 +54,11 @@
                      - `{:type \"adaptive\" :effort \"high|medium|low\"}` (Opus
                        4.7+; `:effort` is forwarded as `output_config.effort`)
                    Only the Claude adapter currently consumes this; other
-                   providers ignore it."
+                   providers ignore it.
+    :cache?      - Whether to apply Anthropic ephemeral prompt-cache breakpoints
+                   (default true). Set false for one-shot calls that never reread
+                   the prefix, to avoid paying the cache-write premium for zero
+                   cache reads. Anthropic-only; ignored by other adapters."
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -65,7 +69,8 @@
    [:max-tokens  {:optional true} [:maybe :int]]
    [:schema      {:optional true} :any]
    [:ai-proxy?   {:optional true} [:maybe :boolean]]
-   [:thinking    {:optional true} [:maybe :map]]])
+   [:thinking    {:optional true} [:maybe :map]]
+   [:cache?      {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"

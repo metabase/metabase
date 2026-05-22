@@ -9,6 +9,34 @@
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary.phase2 :as phase2]))
 
+;;; ---------------------------------------------- top-breakout-block (P2 dedup) ----------------------------------------------
+
+(deftest top-breakout-block-dedups-data-dumps-test
+  (testing "Full verbatim block goes to the representative rendering only; siblings get sibling-block"
+    (with-redefs [phase2/full-block    (fn [v] (str "FULL[" (:stored-result-id v) "]"))
+                  phase2/sibling-block (fn [primary-srid v]
+                                         (str "SIBLING[" (:stored-result-id v)
+                                              "->primary " primary-srid "]"))]
+      (let [breakout {:representative {:metric-detail "M" :dim-detail "D"}
+                      :variants       [{:stored-result-id 100}
+                                       {:stored-result-id 101}
+                                       {:stored-result-id 102}]}
+            out      (#'phase2/top-breakout-block breakout)]
+        (is (str/includes? out "FULL[100]") "primary rendering gets the full block")
+        (is (= 1 (count (re-seq #"FULL\[" out))) "exactly one full block per breakout")
+        (is (str/includes? out "SIBLING[101->primary 100]"))
+        (is (str/includes? out "SIBLING[102->primary 100]"))))))
+
+(deftest top-breakout-block-single-variant-test
+  (testing "A single-rendering breakout gets just the full block, no siblings"
+    (with-redefs [phase2/full-block    (fn [v] (str "FULL[" (:stored-result-id v) "]"))
+                  phase2/sibling-block (fn [_ v] (str "SIBLING[" (:stored-result-id v) "]"))]
+      (let [out (#'phase2/top-breakout-block
+                 {:representative {:metric-detail "M" :dim-detail "D"}
+                  :variants       [{:stored-result-id 200}]})]
+        (is (str/includes? out "FULL[200]"))
+        (is (not (str/includes? out "SIBLING")))))))
+
 ;;; ---------------------------------------------- x-axis-kind ----------------------------------------------
 
 (defn- cfg-with-x [t]

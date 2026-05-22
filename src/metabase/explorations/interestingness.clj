@@ -7,9 +7,52 @@
   line chart. This namespace normalizes either shape into the `chart-config` consumed by
   `metabase.interestingness.chart/chart-interestingness`."
   (:require
-   [metabase.types.core]))
+   [clojure.string :as str]
+   [metabase.types.core]
+   [metabase.util.i18n :as i18n])
+  (:import
+   (java.time DayOfWeek LocalTime Month)
+   (java.time.format DateTimeFormatter FormatStyle TextStyle)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private extraction-units
+  #{:day-of-week :hour-of-day :month-of-year :quarter-of-year
+    :day-of-month :day-of-year :week-of-year :minute-of-hour})
+
+(defn- col-extraction-unit
+  "The extraction temporal-unit on `col`'s field_ref (e.g. :day-of-week), or nil."
+  [col]
+  (let [fr (:field_ref col)
+        u  (when (sequential? fr)
+             (some #(when (map? %) (or (:temporal-unit %) (get % "temporal-unit"))) fr))]
+    (when-let [k (some-> u keyword)]
+      (extraction-units k))))
+
+(defn- start-of-week-day ^DayOfWeek []
+  (-> ((requiring-resolve 'metabase.settings.core/get) :start-of-week)
+      (or :sunday)
+      name
+      (str/upper-case)
+      (DayOfWeek/valueOf)))
+
+(defn- extraction-label
+  "Humanize an extraction-unit breakout value in the current user's locale (via
+  [[metabase.util.i18n/user-locale]], the same accessor the formatter uses): weekday name for
+  :day-of-week (honoring the `start-of-week` setting), month name for :month-of-year, a
+  localized short time for :hour-of-day; anything else (and any failure) falls back to the raw
+  value stringified."
+  [unit v]
+  (try
+    (let [n   (long (double v))
+          loc (i18n/user-locale)]
+      (case unit
+        :day-of-week   (.getDisplayName (.plus (start-of-week-day) (long (dec n))) TextStyle/FULL loc)
+        :month-of-year (.getDisplayName (Month/of (int n)) TextStyle/FULL loc)
+        :hour-of-day   (.format (.withLocale (DateTimeFormatter/ofLocalizedTime FormatStyle/SHORT) loc)
+                                (LocalTime/of (int n) 0))
+        (str v)))
+    (catch Throwable _ (str v))))
 
 (defn- col->chart-type
   [col]
@@ -44,7 +87,13 @@
         metric-idx (first (keep-indexed (fn [i c] (when (numeric-col? c) i)) cols))]
     (when metric-idx
       (case n
-        2 {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}
+        ;; An extraction-unit column (day-of-week, hour-of-day, …) is an integer position, so
+        ;; it's numeric too — pin it as the dimension so the real measure stays the metric and
+        ;; the axes don't swap. Otherwise the lone numeric column is the metric.
+        2 (let [extr-idx (first (keep-indexed (fn [i c] (when (col-extraction-unit c) i)) cols))]
+            (if (and extr-idx (numeric-col? (nth cols (- 1 extr-idx))))
+              {:dim-idx extr-idx :metric-idx (- 1 extr-idx)}
+              {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}))
         3 (let [temporal-idx (first (keep-indexed
                                      (fn [i c]
                                        (when (and (not= i metric-idx) (temporal-col? c)) i))
@@ -79,8 +128,10 @@
   [exploration-query cols rows dim-idx metric-idx]
   (let [dim-col             (nth cols dim-idx)
         metric-col          (nth cols metric-idx)
-        dim-chart-type      (col->chart-type dim-col)
-        [x-values y-values] (pair-filter rows dim-idx metric-idx)]
+        extr                (col-extraction-unit dim-col)
+        dim-chart-type      (if extr "string" (col->chart-type dim-col))
+        [x-values0 y-values] (pair-filter rows dim-idx metric-idx)
+        x-values            (if extr (mapv #(extraction-label extr %) x-values0) x-values0)]
     (when (seq y-values)
       (let [series-name (or (:display_name metric-col) (:name metric-col) "value")]
         {:display_type (effective-display-type (:display exploration-query) dim-chart-type)
