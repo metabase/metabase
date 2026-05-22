@@ -29,18 +29,25 @@ export const LimitPopover = ({
     limit != null ? String(limit) : String(HARD_ROW_LIMIT),
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  // Set when the popover is dismissed with Escape so the pending value is
+  // discarded instead of applied on unmount (Enter/outside-click still commit).
+  const cancelRef = useRef(false);
 
   const parsedValue = parseInt(value, 10);
   const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
 
-  // Apply the typed value when the popover is dismissed (unmounted), but only
-  // when it differs from the current limit
+  // Commit the selected limit when the popover is dismissed (unmounted), but
+  // only when it differs from the current limit. Both radios and the typed
+  // value are local-only until this point, so Escape can discard them.
   const selectedLimitRef = useLatest(selectedLimit);
   const limitRef = useLatest(limit);
   const onChangeLimitRef = useLatest(onChangeLimit);
 
   useEffect(() => {
     const applyPendingLimit = () => {
+      if (cancelRef.current) {
+        return;
+      }
       if (selectedLimitRef.current !== limitRef.current) {
         onChangeLimitRef.current(selectedLimitRef.current);
       }
@@ -49,7 +56,15 @@ export const LimitPopover = ({
   }, [selectedLimitRef, limitRef, onChangeLimitRef]);
 
   return (
-    <Box className={cx(className, CS.textBold, CS.textMedium)}>
+    <Box
+      className={cx(className, CS.textBold, CS.textMedium)}
+      onKeyDownCapture={(e) => {
+        if (e.key === "Escape") {
+          cancelRef.current = true;
+          onClose();
+        }
+      }}
+    >
       <Radio
         vertical
         value={isCustom ? "custom" : "maximum"}
@@ -66,7 +81,6 @@ export const LimitPopover = ({
         onChange={(selected: string) => {
           if (selected === "maximum") {
             setIsCustom(false);
-            onChangeLimit(null);
           } else {
             // Activating custom is handled by the input's onFocus
             inputRef.current?.focus();
@@ -81,12 +95,7 @@ export const LimitPopover = ({
           value={value}
           className={cx({ [cx(CS.textBrand, CS.borderBrand)]: isCustom })}
           placeholder={t`Pick a limit`}
-          onFocus={() => {
-            if (!isCustom) {
-              setIsCustom(true);
-              onChangeLimit(parsedValue > 0 ? parsedValue : HARD_ROW_LIMIT);
-            }
-          }}
+          onFocus={() => setIsCustom(true)}
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             setValue(e.target.value)
           }

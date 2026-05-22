@@ -226,6 +226,41 @@ describe("QuestionRowCount", () => {
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
 
+        it("discards the typed value when dismissed with Escape", async () => {
+          const { rowCount } = await setup({ question: getCard() });
+
+          await userEvent.click(rowCount);
+          await userEvent.click(
+            await screen.findByRole("radio", { name: /Set custom limit/i }),
+          );
+          const input = await screen.findByPlaceholderText("Pick a limit");
+          fireEvent.change(input, { target: { value: "25" } });
+
+          fireEvent.keyDown(input, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          expect(rowCount).not.toHaveTextContent("Show 25 rows");
+        });
+
+        it("discards an updated value when dismissed with Escape", async () => {
+          const { rowCount } = await setup({
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
+          });
+
+          await userEvent.click(rowCount);
+          const input = await screen.findByDisplayValue("25");
+          fireEvent.change(input, { target: { value: "400" } });
+
+          fireEvent.keyDown(input, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          expect(rowCount).not.toHaveTextContent("Show 400 rows");
+        });
+
         it("allows updating a limit", async () => {
           const { rowCount } = await setup({
             question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
@@ -250,12 +285,35 @@ describe("QuestionRowCount", () => {
           await userEvent.click(
             await screen.findByRole("radio", { name: /Show maximum/i }),
           );
+          // the reset is committed when the popover is dismissed
+          await userEvent.click(rowCount);
 
           await waitFor(() =>
             expect(rowCount).toHaveTextContent(
               `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
             ),
           );
+        });
+
+        it("discards a reset to maximum when dismissed with Escape", async () => {
+          const { rowCount } = await setup({
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
+            result: createMockDataset(),
+            isResultDirty: true,
+          });
+
+          await userEvent.click(rowCount);
+          const maximumRadio = await screen.findByRole("radio", {
+            name: /Show maximum/i,
+          });
+          await userEvent.click(maximumRadio);
+          fireEvent.keyDown(maximumRadio, { key: "Escape" });
+
+          await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+          });
+          // the limit stays at 25 instead of being reset to the maximum
+          expect(rowCount).toHaveTextContent("Show 25 rows");
         });
 
         it("doesn't allow managing limit if query is read-only", async () => {
