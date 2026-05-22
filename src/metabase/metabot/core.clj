@@ -15,6 +15,7 @@
   agent-collection-create
   agent-dashboard-create
   agent-dashboard-update
+  agent-query
   agent-question-create
   agent-question-update
   agent-query-construct

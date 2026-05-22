@@ -22,13 +22,7 @@
     (t2/select-one :model/Collection :id collection-id)
     (collection/root-collection-with-ui-details collection-namespace)))
 
-(defn- write-check-collection-or-root-collection
-  "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`,
-  check that you have Root Collection perms."
-  [parent-coll]
-  (api/write-check parent-coll))
-
-(defn write-check-authority-level
+(defn- write-check-authority-level
   "Check that a superuser is creating this collection if they are setting the authority level."
   [{authority-level :authority_level :as coll}]
   (when (some? authority-level)
@@ -46,7 +40,7 @@
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
   collection)
 
-(def CreateCollectionArguments
+(def ^:private CreateCollectionArguments
   "The arguments to a create-collection call — what the public API surface accepts."
   [:map
    [:name            ms/NonBlankString]
@@ -55,7 +49,7 @@
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
    [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
 
-(def NewCollectionArguments
+(def ^:private NewCollectionArguments
   "What we use internally to actually create a collection — what `t2/insert!` needs."
   (-> CreateCollectionArguments
       (malli.util/dissoc :parent_id)
@@ -72,7 +66,9 @@
   `\"trash\"`), and `:is_remote_synced` from the parent collection."
   [coll-data :- CreateCollectionArguments]
   (let [parent-coll (parent-or-root coll-data)]
-    (write-check-collection-or-root-collection parent-coll)
+    ;; `api/write-check` handles both branches - a real collection and the root sentinel
+    ;; returned by `parent-or-root` when no parent_id is given.
+    (api/write-check parent-coll)
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
                (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))

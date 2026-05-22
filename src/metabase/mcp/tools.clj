@@ -305,8 +305,8 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
-   For POST requests, `params` is sent as the request body.
-   For GET/DELETE requests, `params` is sent as parsed query params.
+   For POST/PUT/PATCH requests, `params` is sent as the request body.
+   For other methods (GET/DELETE), `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
   (agent-api/routes
@@ -330,7 +330,8 @@
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
-   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
+   For POST/PUT/PATCH, `params` becomes the request body; otherwise (GET/DELETE)
+   `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request.
@@ -378,8 +379,9 @@
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
-   and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
-   request body. For GET/DELETE requests, remaining args are sent as query params."
+   and calls `invoke-agent-api`. For POST/PUT/PATCH requests, remaining args are
+   sent as the request body. For other methods (GET/DELETE), remaining args are
+   sent as query params."
   [tool-def arguments token-scopes session-id]
   (let [{:keys [method path]} (:endpoint tool-def)
         tool-name             (:name tool-def)

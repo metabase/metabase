@@ -3,7 +3,6 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
@@ -403,7 +402,7 @@
   Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
-  {:scope "agent:query"
+  {:scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
@@ -638,6 +637,11 @@
     ;; user cannot run, and (b) plant the card in a collection they cannot write to.
     ;; (REST also calls `check-if-card-can-be-saved`, which only fires for `card-type :metric`;
     ;; this endpoint always creates a question, so we omit it.)
+    ;;
+    ;; TODO (Bryan 2026-05-20): extract REST's create-card pre-check stack into a shared
+    ;; `metabase.queries.*` helper so REST + agent-api can't drift. Branch review caught
+    ;; this gap; the next person who adds a REST check will probably miss the agent side
+    ;; again unless we dedup.
     (query-perms/check-run-permissions-for-query dataset-query)
     (api/create-check :model/Card {:collection_id collection_id})
     (let [card (queries/create-card!
@@ -657,6 +661,9 @@
 ;;; ------------------------------------------------- Update Question ------------------------------------------------
 
 (mr/def ::update-question-request
+  "Patch shape for `update_question`. Every field is optional; only the fields the caller
+  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
+  resolved upstream in the MCP layer)."
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
@@ -667,6 +674,9 @@
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
 (mr/def ::update-question-response
+  "Returned by `update_question` - the fields the LLM is most likely to want to read back
+  after an update. Excludes the full dataset_query, which the caller can re-fetch via
+  `read_resource` if needed."
   [:map
    [:id            ms/PositiveInt]
    [:name          ms/NonBlankString]
@@ -724,6 +734,10 @@
         ;; data perms to run the *new* query, otherwise a user with collection write on a card
         ;; can repoint it at data they cannot query. `queries/update-card!` does NOT run this
         ;; check itself, so we have to run it before calling in.
+        ;;
+        ;; TODO (Bryan 2026-05-20): see matching TODO above `create_question`. Extract REST's
+        ;; update-card pre-check stack so REST + agent-api can't drift; this single check is
+        ;; only the most recent gap we noticed.
         _                  (when (api/column-will-change? :dataset_query card-before-update card-updates)
                              (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
         _                  (queries/update-card! {:card-before-update    card-before-update
@@ -831,6 +845,8 @@
    [:dashcards     {:optional true} [:maybe [:sequential ::dashcard-mutation]]]])
 
 (mr/def ::update-dashboard-response
+  "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard
+  ids in row/col order so the LLM can confirm what landed on the dashboard."
   [:map
    [:id            ms/PositiveInt]
    [:name          ms/NonBlankString]
@@ -957,9 +973,9 @@
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
                          (t2/update! :model/Dashboard id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
-                         ;; activity feed records the right collection. Note: the REST endpoint
-                         ;; at dashboards_rest/api.clj:1015 passes the dashboard id here instead,
-                         ;; which appears to be a bug - the other collection-touch publishers
+                         ;; activity feed records the right collection. Note: the dashboards-rest
+                         ;; PUT-dashboard endpoint passes the dashboard id here instead, which
+                         ;; appears to be a bug - the other collection-touch publishers
                          ;; (collections_rest, queries_rest, collections/models/collection) all
                          ;; pass the real collection id. Filed for follow-up.
                          (when (contains? updates :collection_id)
@@ -992,12 +1008,17 @@
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 
 (mr/def ::create-collection-request
+  "Request shape for `create_collection`. `:parent_collection_id` is named separately from
+  the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
+  saying \"put it under this parent\", not echoing back a server-set field)."
   [:map
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::create-collection-response
+  "Returned by `create_collection`. Exposes the materialized-path `:location` so callers
+  can sanity-check nesting without a follow-up read."
   [:map
    [:id            ms/PositiveInt]
    [:name          ms/NonBlankString]

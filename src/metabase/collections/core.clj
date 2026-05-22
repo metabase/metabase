@@ -13,12 +13,7 @@
 
 (p/import-vars
  [metabase.collections.create
-  apply-defaults-to-collection
-  create-collection!
-  validate-new-tenant-collection!
-  write-check-authority-level
-  CreateCollectionArguments
-  NewCollectionArguments]
+  create-collection!]
  [metabase.collections.models.collection
   has-remote-synced-collection?
   check-for-remote-sync-update
