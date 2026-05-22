@@ -170,6 +170,22 @@
                        (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
           (concat tools (mcp.resources/list-ui-tools)))))
 
+(defn tools-hash
+  "Return a stable hash of the tool list visible to `token-scopes`.
+   Used by the SSE keepalive loop to detect manifest changes and emit
+   `notifications/tools/list_changed`. Hashes the JSON encoding of
+   `[name inputSchema outputSchema]` per tool, sorted by name, so the
+   result is determined purely by the wire-visible schema bytes — no
+   reliance on Clojure's `hash` of map values (which can be unstable
+   for non-data leaves like functions, and is order-sensitive for some
+   collection types)."
+  [token-scopes]
+  (->> (list-tools token-scopes)
+       (map (juxt :name :inputSchema :outputSchema))
+       (sort-by first)
+       json/encode
+       hash))
+
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
   [tools]
