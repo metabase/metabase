@@ -263,8 +263,13 @@
   (invoke [this x]
     (set! total (inc total))
     (when-not (nil? x)
-      (cond (contains? counts x)                        (set! counts (update counts x inc))
-            (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts x 1))))
+      ;; Key the frequency map on (hash x), not x itself: mode-fraction / top-3-fraction need only
+      ;; value frequencies, never the values, and retaining raw values (e.g. ~1KB truncated text
+      ;; blobs) is the dominant fingerprint-accumulator memory cost. Hash collisions among the
+      ;; <=100 bounded keys are ~1e-6 and only perturb a heuristic score.
+      (let [k (hash x)]
+        (cond (contains? counts k)                        (set! counts (update counts k inc))
+              (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts k 1)))))
     this))
 
 (defn- mode-stats

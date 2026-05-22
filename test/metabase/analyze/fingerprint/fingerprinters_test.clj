@@ -131,6 +131,20 @@
       (is (some? (:mode-fraction dt)))
       (is (some? (:top-3-fraction dt))))))
 
+(deftest ^:parallel mode-stats-large-values-test
+  (testing "mode-fraction / top-3-fraction count frequencies correctly for large text values
+            (the tracker keys on a hash, so it must not retain the values yet must still count them)"
+    (let [big1   (apply str (repeat 2000 \a))
+          big2   (apply str (repeat 2000 \b))
+          big3   (apply str (repeat 2000 \c))
+          ;; big1 x6, big2 x3, big3 x1  -> mode 0.6, top-3 covers all 10
+          result (transduce identity
+                            (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text}))
+                            (concat (repeat 6 big1) (repeat 3 big2) [big3]))
+          txt    (get-in result [:type :type/Text])]
+      (is (= 0.6 (:mode-fraction txt)))
+      (is (= 1.0 (:top-3-fraction txt))))))
+
 (deftest ^:parallel fingerprint-numeric-values-test
   (is (= {:global {:distinct-count 99
                    :nil%           0.0}
