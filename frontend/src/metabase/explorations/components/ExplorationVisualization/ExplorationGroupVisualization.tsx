@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
+import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isCartesianChart } from "metabase/visualizations";
@@ -12,6 +13,7 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
+  ExplorationQueryType,
   ExplorationThread,
   ExplorationThreadMetric,
   SingleSeries,
@@ -167,10 +169,13 @@ function ExplorationGroupVisualizationChart({
     [queries],
   );
 
-  const seriesGroups = useMemo(() => {
+  const { seriesGroups, layoutStrategy } = useMemo(() => {
     const filteredDatasets = datasets.filter((d) => d !== undefined);
     if (filteredDatasets.length < datasets.length) {
-      return undefined;
+      return {
+        seriesGroups: undefined,
+        layoutStrategy: undefined,
+      };
     }
     return buildSeriesGroups({
       queries,
@@ -210,24 +215,41 @@ function ExplorationGroupVisualizationChart({
         groupQueries={queries}
         interestingTimelineIds={interestingTimelineIds}
       />
-      {seriesGroups.map(({ series, stackCount }) =>
-        isCartesianChart(series[0].card.display) ? (
-          <ExplorationCartesianChart
-            key={series[0].card.id}
-            series={series}
-            timelineEvents={timelineEvents}
-            stackCount={stackCount}
-          />
-        ) : series[0].card.display === "table" ? (
-          <ExplorationHeatMap key={series[0].card.id} series={series} />
-        ) : (
-          <ExplorationMap
-            key={series[0].card.id}
-            series={series}
-            queryColors={queryColors}
-          />
-        ),
-      )}
+      <Box className={S.chartGrid} data-chart-layout={layoutStrategy}>
+        {seriesGroups.map(({ series, stackCount, queryType, isTimeseries }) => (
+          <Box key={queryType}>
+            {
+              // TODO: I don't like we mix layout and title display logic - we should move this to "buildSeriesGroups"
+              //  and return there something like "groupTitle?: string"
+              (layoutStrategy === "two-small-charts-down" ||
+                layoutStrategy === "two-small-tables-down") &&
+                !isTimeseries && <Text>{queryType}</Text>
+            }
+            {isCartesianChart(series[0].card.display) ? (
+              <ExplorationCartesianChart
+                key={series[0].card.id}
+                series={series}
+                timelineEvents={timelineEvents}
+                stackCount={stackCount}
+                queryType={queryType}
+              />
+            ) : series[0].card.display === "table" ? (
+              <ExplorationHeatMap
+                key={series[0].card.id}
+                series={series}
+                queryType={queryType}
+              />
+            ) : (
+              <ExplorationMap
+                key={series[0].card.id}
+                series={series}
+                queryColors={queryColors}
+                queryType={queryType}
+              />
+            )}
+          </Box>
+        ))}
+      </Box>
     </>
   );
 }
@@ -236,6 +258,7 @@ interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   timelineEvents: TimelineEvent[];
   stackCount?: number;
+  queryType: ExplorationQueryType;
 }
 
 function ExplorationCartesianChart({
@@ -244,7 +267,7 @@ function ExplorationCartesianChart({
   stackCount,
 }: ExplorationCartesianChartProps) {
   return (
-    <Box flex={1} mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}>
+    <Box h="100%" mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}>
       <Visualization
         rawSeries={series}
         timelineEvents={timelineEvents}
@@ -256,12 +279,18 @@ function ExplorationCartesianChart({
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
+  queryType: ExplorationQueryType;
 }
 
 function ExplorationHeatMap({ series }: ExplorationHeatMapProps) {
   const combinedSeries = getHeatMapSeries({ series });
+  // The pivoted heat-map renders one body row per segment series plus a
+  // header row. Size the box to exactly that height (rather than `h="100%"`)
+  // so a short table isn't stretched to fill — and leave empty space below —
+  // its grid cell.
+  const tableHeight = HEADER_HEIGHT + series.length * ROW_HEIGHT;
   return (
-    <Box flex={1}>
+    <Box h={tableHeight}>
       <Visualization rawSeries={[combinedSeries]} className={S.chart} />
     </Box>
   );
@@ -270,11 +299,12 @@ function ExplorationHeatMap({ series }: ExplorationHeatMapProps) {
 interface ExplorationMapProps {
   series: SingleSeries[];
   queryColors: Record<string, string>;
+  queryType: ExplorationQueryType;
 }
 
 function ExplorationMap({ series, queryColors }: ExplorationMapProps) {
   return (
-    <Stack key={series[0].card.id} gap="md" flex={1}>
+    <Stack key={series[0].card.id} gap="md" h="100%">
       {series.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {series.map((s) => {

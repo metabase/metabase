@@ -61,9 +61,16 @@ jest.mock("metabase-lib", () => ({
   defaultDisplay: () => mockDefaultDisplay.value,
 }));
 
+// `isDate` drives the timeseries-vs-categorical branch in `getDisplay`;
+// `isState`/`isCountry` drive its map branch. Default to "everything is a
+// date" so charts render as cartesian lines; a test flips
+// `mockIsDate.value` to exercise the categorical / heat-map paths.
+const mockIsDate = { value: (): boolean => true };
 jest.mock("metabase-lib/v1/types/utils/isa", () => ({
   __esModule: true,
-  isDate: () => true,
+  isDate: () => mockIsDate.value(),
+  isState: () => false,
+  isCountry: () => false,
 }));
 
 jest.mock("metabase/visualizations", () => ({
@@ -110,6 +117,8 @@ function makeQuery(
     card_id: 1,
     dimension_id: "dim-1",
     dimension_name: "Dim 1",
+    query_type: "default",
+    display: null,
     position: 0,
     error_message: null,
     started_at: null,
@@ -189,7 +198,7 @@ function setup({ queries, datasets }: SetupOpts) {
     }
   }
 
-  renderWithProviders(
+  return renderWithProviders(
     <ExplorationGroupVisualization
       group={{ ...group, query_ids: queries.map((q) => q.id) }}
       queries={queries}
@@ -211,6 +220,7 @@ describe("ExplorationGroupVisualization", () => {
       settings: { "graph.x_axis.scale": "timeseries" },
     };
     mockScrollContainerHeight.value = 400;
+    mockIsDate.value = () => true;
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
@@ -531,6 +541,103 @@ describe("ExplorationGroupVisualization", () => {
       expect(within(legend).getAllByRole("listitem")).toHaveLength(2);
       expect(screen.getAllByText("Sessions (US)")).toHaveLength(1);
       expect(screen.getAllByText("Sessions (EU)")).toHaveLength(1);
+    });
+  });
+
+  describe("chart layout grid", () => {
+    /**
+     * Helper: give each query a categorical dataset and render. Each test
+     * gives its queries distinct `dimension_id`s so `buildSeriesGroups`
+     * yields one series group per query.
+     */
+    function setupGroupLayout(queries: ExplorationQuery[]) {
+      const datasets = new Map(queries.map((q) => [q.id, makeDataset()]));
+      return setup({ queries, datasets });
+    }
+
+    /** A line query in its own series group (distinct `dimension_id`). */
+    function lineQuery(id: number, name: string): ExplorationQuery {
+      return makeQuery({
+        id,
+        name,
+        status: "done",
+        dimension_id: `dim-${id}`,
+      });
+    }
+
+    /**
+     * Four segment queries sharing a `dimension_id` — enough for
+     * `getDisplay` to pick the `table` heat-map display for the group.
+     */
+    function tableGroupQueries(
+      dimensionId: string,
+      name: string,
+      startId: number,
+    ): ExplorationQuery[] {
+      return Array.from({ length: 4 }, (_, i) =>
+        makeQuery({
+          id: startId + i,
+          name,
+          status: "done",
+          dimension_id: dimensionId,
+          segment_id: i + 1,
+        }),
+      );
+    }
+
+    it('uses the "two-small-charts-down" layout for the day-of-week + hour-of-day trio', () => {
+      const { container } = setupGroupLayout([
+        lineQuery(101, "Revenue trend"),
+        lineQuery(102, "Revenue (day of week)"),
+        lineQuery(103, "Revenue (hour of day)"),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "two-small-charts-down",
+      );
+    });
+
+    it('uses the "default" layout for an ordinary multi-chart group', () => {
+      const { container } = setupGroupLayout([
+        lineQuery(101, "Revenue (US)"),
+        lineQuery(102, "Revenue (EU)"),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "default",
+      );
+    });
+
+    it('uses the "default" layout for a 3-chart group whose names do not match', () => {
+      const { container } = setupGroupLayout([
+        lineQuery(101, "Revenue trend"),
+        lineQuery(102, "Revenue by region"),
+        lineQuery(103, "Revenue by plan"),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "default",
+      );
+    });
+
+    it('uses the "two-small-tables-down" layout when the two bottom charts are heat-map tables', () => {
+      // Categorical (non-date) datasets so `getDisplay` skips the line
+      // branch and the two bottom groups resolve to `table` heat-maps.
+      mockIsDate.value = () => false;
+
+      const { container } = setupGroupLayout([
+        lineQuery(1, "Orders trend"),
+        ...tableGroupQueries("dim-dow", "Orders (day of week)", 10),
+        ...tableGroupQueries("dim-hod", "Orders (hour of day)", 20),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "two-small-tables-down",
+      );
     });
   });
 });

@@ -13,6 +13,7 @@ import type {
   DatasetColumn,
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryType,
   ExplorationThread,
   ExplorationThreadMetric,
   RowValue,
@@ -31,6 +32,7 @@ interface BuildSeriesGroupsParams {
 
 interface SeriesGroup {
   series: SingleSeries[];
+  queryType: ExplorationQueryType;
   isTimeseries: boolean;
   stackCount?: number;
 }
@@ -41,7 +43,10 @@ export function buildSeriesGroups({
   queries,
   datasets,
   ...rest
-}: BuildSeriesGroupsParams): SeriesGroup[] {
+}: BuildSeriesGroupsParams): {
+  seriesGroups: SeriesGroup[];
+  layoutStrategy: ChartLayout;
+} {
   const queriesWithDatasetGroups = groupQueriesWithDatasets({
     queries,
     datasets,
@@ -49,6 +54,7 @@ export function buildSeriesGroups({
   const seriesGroups = queriesWithDatasetGroups.map((queriesWithDatasets) =>
     buildSeries({ ...rest, queriesWithDatasets }),
   );
+
   // time charts first
   seriesGroups.sort((a, b) => {
     if (a.isTimeseries === b.isTimeseries) {
@@ -56,7 +62,27 @@ export function buildSeriesGroups({
     }
     return a.isTimeseries ? -1 : 1;
   });
-  return seriesGroups;
+
+  const layoutStrategy = getGroupVizualizationLayoutStrategy(seriesGroups);
+
+  if (
+    layoutStrategy === "two-small-charts-down" ||
+    layoutStrategy === "two-small-tables-down"
+  ) {
+    seriesGroups[0].series = seriesGroups[0].series.map((series) => ({
+      ...series,
+      card: {
+        ...series.card,
+        visualization_settings: {
+          ...series.card.visualization_settings,
+          "graph.x_axis.title_text": "",
+          "graph.y_axis.title_text": "",
+        },
+      },
+    }));
+  }
+
+  return { seriesGroups, layoutStrategy };
 }
 
 interface ExplorationQueryWithDataset extends ExplorationQuery {
@@ -100,12 +126,21 @@ export function buildSeries({
 
   const series = queriesWithDatasets.map((queryWithDataset) => {
     const { dataset, ...query } = queryWithDataset;
+
+    const queriesWithSegments = queriesWithDatasets.filter(
+      (query) => query.segment_id != null,
+    );
+
     const {
       display,
       settings,
       isTimeseries: isTimeseriesForQuery,
       stackCount: stackCountForQuery,
-    } = getDisplay(queryWithDataset, queriesWithDatasets.length);
+    } = getDisplay(
+      queryWithDataset,
+      queriesWithDatasets.length,
+      queriesWithSegments.length,
+    );
     isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
     // this works because we should always get the same stackCount for all queries in a group
     // but that's only because we don't run queries for segments and breakouts at the same time
@@ -133,7 +168,12 @@ export function buildSeries({
     return { card, data: dataset.data };
   });
 
-  return { series, isTimeseries, stackCount };
+  return {
+    series,
+    isTimeseries,
+    stackCount,
+    queryType: queriesWithDatasets[0]?.query_type || "default",
+  };
 }
 
 interface GetDisplayResult {
@@ -143,9 +183,12 @@ interface GetDisplayResult {
   isTimeseries?: boolean;
 }
 
+const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;
+
 function getDisplay(
   queryWithDataset: ExplorationQueryWithDataset,
   numQueries: number,
+  numSegmentQueries: number,
 ): GetDisplayResult {
   const { cols, rows } = queryWithDataset.dataset.data;
   const isTimeseries = cols.some(isDate);
@@ -207,7 +250,7 @@ function getDisplay(
   }
 
   // if we have multiple queries (segments), show a heat map rather than a bar chart
-  if (numQueries > 1) {
+  if (numSegmentQueries >= MIN_SEGMENTS_TO_SHOW_HEATMAP) {
     return { display: "table" };
   }
   return { display: "bar" };
@@ -392,3 +435,35 @@ export function getDocumentsForDocumentMenu(
     (d) => d.id !== explorationThread.auto_insights_document_id,
   );
 }
+
+// Pre-defined chart layouts; the value drives the `data-chart-layout` attribute
+// the grid CSS keys off. New layouts are added here and in the CSS module.
+export type ChartLayout =
+  | "default"
+  | "two-small-charts-down"
+  | "two-small-tables-down";
+
+export const getGroupVizualizationLayoutStrategy = (
+  seriesGroups: SeriesGroup[],
+): ChartLayout => {
+  const isTwoSmallChartsDownStrategy =
+    seriesGroups.length === 3 &&
+    // FIXME: resolve typing issue
+    seriesGroups[1].queryType === "temporal-pattern-day" &&
+    seriesGroups[2].queryType === "temporal-pattern-hour";
+
+  const bottomChartsAreTables =
+    isTwoSmallChartsDownStrategy &&
+    seriesGroups[1].series[0].card.display === "table" &&
+    seriesGroups[2].series[0].card.display === "table";
+
+  // The layout the chart grid renders. Currently derived from a single flag;
+  // a later refactor will replace that with a function returning this value.
+  const chartLayout: ChartLayout = !isTwoSmallChartsDownStrategy
+    ? "default"
+    : bottomChartsAreTables
+      ? "two-small-tables-down"
+      : "two-small-charts-down";
+
+  return chartLayout;
+};
