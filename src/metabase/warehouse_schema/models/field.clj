@@ -468,7 +468,7 @@
 
 (defmethod serdes/dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]
-    [[db-path]]))
+    #{[db-path]}))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
