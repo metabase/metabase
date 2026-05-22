@@ -67,9 +67,12 @@
   with-relevant-permissions-for-user
   has-any-transforms-permission?
   has-db-transforms-permission?
+  has-any-workspaces-permission?
+  has-db-workspaces-permission?
   set-default-group-permissions!
   set-default-database-permissions!
   set-default-table-permissions!
+  set-default-table-permissions-bulk!
   with-global-permissions-lock
   with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql

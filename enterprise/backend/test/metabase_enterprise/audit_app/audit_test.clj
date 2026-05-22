@@ -81,7 +81,8 @@
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
               :perms/create-queries        :no
-              :perms/transforms            :no}
+              :perms/transforms            :no
+              :perms/workspaces            :no}
              (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
 

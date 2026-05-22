@@ -1,9 +1,10 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
@@ -13,7 +14,6 @@ import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getLearnUrl } from "metabase/selectors/settings";
@@ -277,11 +277,21 @@ const CardSourceModal = ({
     return query != null ? getSupportedColumns(query, parameter) : [];
   }, [query, parameter]);
 
+  const labelColumns = useMemo(() => {
+    return query != null ? getLabelColumns(query) : [];
+  }, [query]);
+
   const selectedField = useMemo(() => {
     return query != null && sourceConfig.value_field != null
       ? getColumnByReference(query, columns, sourceConfig.value_field)
       : undefined;
   }, [query, columns, sourceConfig.value_field]);
+
+  const selectedLabelField = useMemo(() => {
+    return query != null && sourceConfig.label_field != null
+      ? getColumnByReference(query, labelColumns, sourceConfig.label_field)
+      : undefined;
+  }, [query, labelColumns, sourceConfig.label_field]);
 
   const { values, isError } = useParameterValues({
     parameter,
@@ -290,19 +300,32 @@ const CardSourceModal = ({
     onFetchParameterValues,
   });
 
-  const valuesText = useMemo(
-    () => getValuesText(getSourceValues(values)),
-    [values],
+  const valuesText = useMemo(() => getValuesText(values), [values]);
+
+  const handleValueFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
+      if (query == null || column == null) {
+        return;
+      }
+      onChangeSourceConfig({
+        ...sourceConfig,
+        value_field: Lib.legacyRef(query, STAGE_INDEX, column),
+      });
+    },
+    [query, sourceConfig, onChangeSourceConfig],
   );
 
-  const handleFieldChange = useCallback(
-    (event: SelectChangeEvent<Lib.ColumnMetadata>) => {
+  const handleLabelFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
       if (query == null) {
         return;
       }
       onChangeSourceConfig({
         ...sourceConfig,
-        value_field: Lib.legacyRef(query, STAGE_INDEX, event.target.value),
+        label_field:
+          column != null
+            ? Lib.legacyRef(query, STAGE_INDEX, column)
+            : undefined,
       });
     },
     [query, sourceConfig, onChangeSourceConfig],
@@ -328,32 +351,34 @@ const CardSourceModal = ({
             {question ? question.displayName() : t`Pick a model or question…`}
           </SelectButton>
         </ModalSection>
-        {question && (
-          <ModalSection>
-            <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-            {query != null && columns.length ? (
-              <Select
-                value={selectedField}
+        {question && query != null && (
+          <>
+            <ColumnSelect
+              query={query}
+              columns={columns}
+              selectedColumn={selectedField}
+              label={t`Column to supply the values`}
+              placeholder={t`Pick a column…`}
+              emptyMessage={
+                <>
+                  {getErrorMessage(question, parameter)}{" "}
+                  {t`Please pick a different model or question.`}
+                </>
+              }
+              onChange={handleValueFieldChange}
+            />
+            {selectedField != null && labelColumns.length > 0 && (
+              <ColumnSelect
+                query={query}
+                columns={labelColumns}
+                selectedColumn={selectedLabelField}
+                label={t`Column to supply the labels`}
                 placeholder={t`Pick a column…`}
-                onChange={handleFieldChange}
-              >
-                {columns.map((column, index) => (
-                  <Option
-                    key={index}
-                    name={
-                      Lib.displayInfo(query, STAGE_INDEX, column).displayName
-                    }
-                    value={column}
-                  />
-                ))}
-              </Select>
-            ) : (
-              <ModalErrorMessage>
-                {getErrorMessage(question, parameter)}{" "}
-                {t`Please pick a different model or question.`}
-              </ModalErrorMessage>
+                withNoneOption
+                onChange={handleLabelFieldChange}
+              />
             )}
-          </ModalSection>
+          </>
         )}
       </ModalPane>
       <ModalMain>
@@ -368,6 +393,63 @@ const CardSourceModal = ({
         )}
       </ModalMain>
     </ModalBodyWithPane>
+  );
+};
+
+interface ColumnSelectProps {
+  query: Lib.Query;
+  columns: Lib.ColumnMetadata[];
+  selectedColumn: Lib.ColumnMetadata | undefined;
+  label: string;
+  placeholder: string;
+  emptyMessage?: ReactNode;
+  withNoneOption?: boolean;
+  onChange: (column: Lib.ColumnMetadata | undefined) => void;
+}
+
+const ColumnSelect = ({
+  query,
+  columns,
+  selectedColumn,
+  label,
+  placeholder,
+  emptyMessage,
+  withNoneOption,
+  onChange,
+}: ColumnSelectProps) => {
+  const handleChange = useCallback(
+    (event: SelectChangeEvent<Lib.ColumnMetadata | undefined>) => {
+      onChange(event.target.value);
+    },
+    [onChange],
+  );
+
+  return (
+    <ModalSection>
+      <ModalLabel>{label}</ModalLabel>
+      {columns.length > 0 ? (
+        <Select
+          value={selectedColumn}
+          placeholder={placeholder}
+          onChange={handleChange}
+        >
+          {[
+            ...(withNoneOption
+              ? [<Option key="none" name={t`None`} value={undefined} />]
+              : []),
+            ...columns.map((column, index) => (
+              <Option
+                key={index}
+                name={Lib.displayInfo(query, STAGE_INDEX, column).displayName}
+                value={column}
+              />
+            )),
+          ]}
+        </Select>
+      ) : emptyMessage != null ? (
+        <ModalErrorMessage>{emptyMessage}</ModalErrorMessage>
+      ) : null}
+    </ModalSection>
   );
 };
 
@@ -509,6 +591,13 @@ const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
   });
 };
 
+// Labels used for remapping are always text, regardless of the parameter type.
+const getLabelColumns = (query: Lib.Query) => {
+  return Lib.fieldableColumns(query, 0).filter((column) =>
+    Lib.isStringOrStringLike(column),
+  );
+};
+
 /**
  * if !hasFields(parameter) then exclude the option to set the source type to
  * "From connected fields" i.e. values_source_type=null
@@ -577,18 +666,31 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Tables.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
-      card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
+const ValuesSourceTypeModalConnected = _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);
+
+// Loads the source card's virtual-table query metadata into the store (so the
+// connected fields are available) before rendering, replacing the former
+// Tables.load HOC.
+function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+  const { card_id } = props.sourceConfig;
+  const virtualTableId =
+    card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
+  const { isLoading, error } = useGetTableQueryMetadataQuery(
+    virtualTableId != null ? { id: virtualTableId } : skipToken,
+  );
+
+  return (
+    <ModalLoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <ValuesSourceTypeModalConnected {...props} />
+    </ModalLoadingAndErrorWrapper>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ValuesSourceTypeModalLoader;

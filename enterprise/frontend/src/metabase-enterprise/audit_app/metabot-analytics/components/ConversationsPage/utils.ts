@@ -5,7 +5,10 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import type { SortDirection } from "metabase-types/api";
 
-import type { ConversationSortColumn } from "../../types";
+import {
+  CONVERSATION_SORT_COLUMNS,
+  type ConversationSortColumn,
+} from "../../types";
 import {
   type FilterUrlState,
   filterUrlStateConfig,
@@ -56,7 +59,7 @@ function parseSortColumn(param: QueryParam): ConversationSortColumn {
 }
 
 function isSortColumn(value: string): value is ConversationSortColumn {
-  return ["created_at", "message_count", "total_tokens"].includes(value);
+  return CONVERSATION_SORT_COLUMNS.some((col) => col === value);
 }
 
 function parseSortDirection(param: QueryParam): SortDirection {

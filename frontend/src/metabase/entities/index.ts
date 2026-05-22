@@ -69,6 +69,3 @@
  */
 
 export { Questions as questions } from "./questions";
-
-export { Databases as databases } from "./databases";
-export { Tables as tables } from "./tables";

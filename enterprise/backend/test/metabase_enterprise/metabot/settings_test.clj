@@ -15,7 +15,7 @@
 (deftest ai-usage-max-retention-days-infinite-test
   (testing "0 is an alias for infinite retention"
     (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 0]
-      (is (= ##Inf (metabot.settings/ai-usage-max-retention-days))))))
+      (is (nil? (metabot.settings/ai-usage-max-retention-days))))))
 
 (deftest ai-usage-max-retention-days-passthrough-test
   (testing "values at or above the minimum pass through unchanged"

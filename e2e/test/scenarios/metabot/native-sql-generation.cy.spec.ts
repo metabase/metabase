@@ -173,15 +173,14 @@ describe("Native SQL generation", () => {
       });
       acceptButton().should("be.visible");
 
-      // change the selected database, should close the input
+      // change the selected database, should keep the input open
       rejectButton().click();
       toggleInlineSQLPrompt();
       inlinePrompt().should("be.visible");
       H.NativeEditor.selectDataSource("QA Postgres12");
-      inlinePrompt().should("not.exist");
+      inlinePrompt().should("be.visible");
 
-      // open again, send a prompt, req.body.history should be empty
-      toggleInlineSQLPrompt();
+      // send a prompt, req.body.history should be empty
       inlinePromptInput().click();
       cy.realType("select something", { pressDelay: 10 });
       H.mockMetabotResponse({

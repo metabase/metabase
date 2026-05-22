@@ -53,7 +53,7 @@ jobs:
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -157,6 +157,17 @@ jobs:
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
+
+      - name: Rewrite JUnit hook failures (dry-run)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [ -d ./target/junit ]; then
+            bun e2e/support/fix-junit-hooks.ts --dry-run ./target/junit
+          else
+            echo "No ./target/junit directory; nothing to process."
+          fi
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

@@ -123,6 +123,7 @@ config:
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-auto-sync: false
     disable-cors-on-localhost: false
     download-row-limit: null
     email-from-address: notifications@metabase.com

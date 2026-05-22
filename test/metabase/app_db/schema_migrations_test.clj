@@ -18,6 +18,7 @@
   51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -2930,6 +2931,125 @@
                                                   :access_granted false
                                                   :created_at     :%now
                                                   :updated_at     :%now}))))))))
+
+(deftest dependency-status-segment-handles-missing-column-migration-test
+  (testing "The whole 20260402_dependency_status changeset run survives a missing
+            segment.dependency_analysis_version column (issue #74443). Every changeset that
+            touches the column — the INSERT (T00:00:09) and the DROP COLUMN (T00:00:23) —
+            must MARK_RAN rather than fail."
+    (impl/test-migrations ["v60.2026-04-02T00:00:09" "v60.2026-04-02T00:00:24"] [migrate!]
+      ;; Simulate an instance whose segment table never got dependency_analysis_version.
+      (t2/query "ALTER TABLE segment DROP COLUMN dependency_analysis_version")
+      ;; Must not throw: the migration run completes despite the missing column.
+      (migrate!)
+      (doseq [id ["v60.2026-04-02T00:00:09"   ; INSERT … SELECT FROM segment
+                  "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
+        (testing (str id " is recorded as MARK_RAN")
+          (is (= "MARK_RAN"
+                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+
+;;;
+;;; 62 tests
+;;;
+
+(defn- insert-legacy-library-collection!
+  [attrs]
+  (t2/insert-returning-pk!
+   :collection
+   (merge {:name             (mt/random-name)
+           :slug             (mt/random-name)
+           :location         "/"
+           :entity_id        (mt/random-name)
+           :archived         false
+           :is_sample        false
+           :is_remote_synced false
+           :created_at       :%now}
+          attrs)))
+
+(defn- collection-entity-id
+  [collection-id]
+  (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
+
+(deftest backfill-legacy-library-root-collection-entity-ids-test
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                           :slug      "library"
+                                                           :type      "library"
+                                                           :entity_id "legacy-library-root"})
+            data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                           :slug      "data"
+                                                           :type      "library-data"
+                                                           :location  (str "/" library-id "/")
+                                                           :entity_id "legacy-library-data"})
+            metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                           :slug      "metrics"
+                                                           :type      "library-metrics"
+                                                           :location  (str "/" library-id "/")
+                                                           :entity_id "legacy-library-metric"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "librarylibrarydatadat"
+               (collection-entity-id data-id)))
+        (is (= "librarylibrarymetrics"
+               (collection-entity-id metrics-id))))))
+  (testing "ambiguous Library Data direct children are not modified"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id        (insert-legacy-library-collection! {:name      "Library"
+                                                                  :slug      "library"
+                                                                  :type      "library"
+                                                                  :entity_id "legacy-library-root"})
+            data-id           (insert-legacy-library-collection! {:name      "Data"
+                                                                  :slug      "data"
+                                                                  :type      "library-data"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-library-data"})
+            duplicate-data-id (insert-legacy-library-collection! {:name      "Other Data"
+                                                                  :slug      "other-data"
+                                                                  :type      "library-data"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-other-data"})
+            metrics-id        (insert-legacy-library-collection! {:name      "Metrics"
+                                                                  :slug      "metrics"
+                                                                  :type      "library-metrics"
+                                                                  :location  (str "/" library-id "/")
+                                                                  :entity_id "legacy-library-metric"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "legacy-library-data"
+               (collection-entity-id data-id)))
+        (is (= "legacy-other-data"
+               (collection-entity-id duplicate-data-id)))
+        (is (= "librarylibrarymetrics"
+               (collection-entity-id metrics-id))))))
+  (testing "Library Data collections outside Library root do not count as ambiguous"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id      (insert-legacy-library-collection! {:name      "Library"
+                                                                :slug      "library"
+                                                                :type      "library"
+                                                                :entity_id "legacy-library-root"})
+            other-parent-id (insert-legacy-library-collection! {:name      "Other parent"
+                                                                :slug      "other-parent"
+                                                                :entity_id "legacy-other-parent"})
+            data-id         (insert-legacy-library-collection! {:name      "Data"
+                                                                :slug      "data"
+                                                                :type      "library-data"
+                                                                :location  (str "/" library-id "/")
+                                                                :entity_id "legacy-library-data"})
+            orphan-data-id  (insert-legacy-library-collection! {:name      "Orphan Data"
+                                                                :slug      "orphan-data"
+                                                                :type      "library-data"
+                                                                :location  (str "/" other-parent-id "/")
+                                                                :entity_id "legacy-orphan-data"})]
+        (migrate!)
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id library-id)))
+        (is (= "librarylibrarydatadat"
+               (collection-entity-id data-id)))
+        (is (= "legacy-orphan-data"
+               (collection-entity-id orphan-data-id)))))))
 
 (deftest heal-effective-type-drift-without-coercion-test
   (testing "GHY-3388: heal metabase_field rows where coercion_strategy is NULL and effective_type

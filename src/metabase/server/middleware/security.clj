@@ -60,20 +60,26 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
+(defn try-parse-url
+  "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
+   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+   fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
     ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
     (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+          [_ protocol domain port] (re-matches pattern url)]
+      (when domain
+        {:protocol protocol :domain domain :port port}))))
+
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url. Logs an error when the input
+   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+   For client-controlled input prefer [[try-parse-url]]."
+  [url]
+  (or (try-parse-url url)
+      (do (log/errorf "Invalid URL: %s" url) nil)))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
