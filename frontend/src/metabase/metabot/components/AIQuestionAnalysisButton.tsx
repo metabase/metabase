@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
-  useMetabotAgent,
+  useAskMetabotInNewTab,
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
@@ -14,7 +14,7 @@ import { getMetabotNotConfiguredToastProps } from "./AIProviderConfigurationNoti
 
 export const AIQuestionAnalysisButton = () => {
   const { hasMetabotAccess, canUseMetabot } = useUserMetabotPermissions();
-  const { submitInput } = useMetabotAgent("omnibot");
+  const askMetabotInNewTab = useAskMetabotInNewTab();
   const metabotName = useMetabotName();
   const [sendToast] = useToast();
 
@@ -33,7 +33,7 @@ export const AIQuestionAnalysisButton = () => {
     }
 
     trackExplainChartClicked();
-    submitInput("Analyze this chart");
+    void askMetabotInNewTab("Analyze this chart");
   };
 
   const tooltipLabel = t`Explain this chart`;

@@ -2,9 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 0 0 4px;
+  padding: 0 8px 0 4px;
   background-color: transparent;
   flex: 0 0 auto;
+  gap: 4px;
+  position: relative;
 }
 
 .bar .button,
@@ -13,4 +15,89 @@
   height: 20px;
   padding: 0 2px 0 6px;
   font-size: 11px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  max-width: 200px;
+  padding: 0 4px 0 8px;
+  gap: 4px;
+  background-color: var(--mb-color-background-secondary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+  font-size: 11px;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background-color: var(--mb-color-background-tertiary);
+}
+
+.tabActive {
+  background-color: var(--mb-color-brand-lighter);
+  border-color: var(--mb-color-brand);
+}
+
+.tabActive:hover {
+  background-color: var(--mb-color-brand-lighter);
+}
+
+.tabTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tabStatus {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.tabClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--mb-color-text-tertiary);
+  cursor: pointer;
+  border-radius: var(--mantine-radius-xs);
+  padding: 0;
+}
+
+.tabClose:hover {
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-primary);
+}
+
+.panel {
+  width: 450px;
+  height: 640px;
+  max-height: 640px;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+.panelFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md);
 }

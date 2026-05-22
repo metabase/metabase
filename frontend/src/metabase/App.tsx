@@ -21,7 +21,6 @@ import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
-  getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -33,7 +32,6 @@ import { AppContainer, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
-import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -56,7 +54,6 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
-  isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
   isNavBarEnabled: boolean;
 }
@@ -78,7 +75,6 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
-  isDataStudioApp: getIsDataStudioApp(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
 
@@ -89,7 +85,6 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
-  isDataStudioApp,
   isNavBarEnabled,
   children,
   onError,
@@ -118,7 +113,6 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Metabot hide={isAdminApp || isDataStudioApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />

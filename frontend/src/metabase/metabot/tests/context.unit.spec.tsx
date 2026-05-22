@@ -17,7 +17,7 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChat } from "../components/MetabotChat";
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
 
 import {
@@ -116,7 +116,7 @@ describe("metabot > context", () => {
     setup({
       ui: (
         <>
-          <Metabot />
+          <MetabotChat agentId="omnibot" />
           <TestComponent />
         </>
       ),
@@ -152,7 +152,7 @@ describe("metabot > context", () => {
     setup({
       ui: (
         <>
-          <Metabot />
+          <MetabotChat agentId="omnibot" />
           <TestComponent />
         </>
       ),
@@ -188,7 +188,7 @@ describe("metabot > context", () => {
     setup({
       ui: (
         <>
-          <Metabot />
+          <MetabotChat agentId="omnibot" />
           <TestComponent />
         </>
       ),
@@ -220,7 +220,7 @@ describe("metabot > context", () => {
     setup({
       ui: (
         <>
-          <Metabot />
+          <MetabotChat agentId="omnibot" />
           <TestComponent />
         </>
       ),

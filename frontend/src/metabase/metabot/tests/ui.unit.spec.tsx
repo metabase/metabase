@@ -10,7 +10,7 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import * as domModule from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChat } from "../components/MetabotChat";
 
 import {
   assertNotVisible,
@@ -96,14 +96,6 @@ describe("metabot > ui", () => {
     expect(await chat()).toBeInTheDocument();
 
     await userEvent.click(await closeChatButton());
-    await assertNotVisible();
-  });
-
-  it("should be able to hide metabot via a prop", async () => {
-    const { rerender } = setup();
-    await assertVisible();
-
-    rerender(<Metabot hide={true} />);
     await assertNotVisible();
   });
 
@@ -294,7 +286,7 @@ describe("metabot > ui", () => {
       ui: (
         <div>
           <AnotherComponent />
-          <Metabot />
+          <MetabotChat agentId="omnibot" />
         </div>
       ),
     });

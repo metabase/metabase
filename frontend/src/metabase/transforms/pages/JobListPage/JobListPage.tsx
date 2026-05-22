@@ -123,7 +123,6 @@ export const JobListPage = () => {
       <PaneHeader
         breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
         py={0}
-        showMetabotButton
       />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}

@@ -34,6 +34,22 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
+export const getVisibleAgentId = createSelector(
+  getMetabotState,
+  (state): MetabotAgentId | null => {
+    const entries = Object.entries(state.conversations) as Array<
+      [MetabotAgentId, (typeof state.conversations)[MetabotAgentId]]
+    >;
+    const visible = entries.find(([id, convo]) => {
+      if (!convo?.visible) {
+        return false;
+      }
+      return id.startsWith("tab_");
+    });
+    return visible ? visible[0] : null;
+  },
+);
+
 export const getMetabotId = () =>
   isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
 

@@ -166,7 +166,6 @@ function NewTransformPageBody({
               {t`New transform`}
             </DataStudioBreadcrumbs>
           }
-          showMetabotButton
         />
         <Box
           w="100%"

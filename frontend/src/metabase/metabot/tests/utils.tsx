@@ -29,7 +29,7 @@ import {
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChat } from "../components/MetabotChat";
 import { FIXED_METABOT_ENTITY_IDS, FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
@@ -202,7 +202,7 @@ export function setup(
   );
 
   const {
-    ui = <Metabot />,
+    ui = <MetabotChat agentId="omnibot" />,
     currentUser = createMockUser(),
     metabotInitialState = metabotState,
     promptSuggestions = [],

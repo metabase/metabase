@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -30,7 +29,6 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
   showAppSwitcher?: boolean;
 }
 
@@ -42,7 +40,6 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
@@ -52,7 +49,6 @@ export const PaneHeader = ({
         {breadcrumbs}
 
         <Group ml="auto" gap="md" className={S.ButtonGroup}>
-          {showMetabotButton && <MetabotDataStudioButton />}
           {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
