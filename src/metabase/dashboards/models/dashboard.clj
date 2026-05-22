@@ -50,10 +50,10 @@
   ([instance]
    ;; Dashboards in audit collection should be read only
    (and (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+              ;; We want to make sure there's an existing audit collection before doing the equality check below.
+              ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+              ;; Is a direct descendant of audit collection
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -120,9 +120,9 @@
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) :none))
-     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
-     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
-     ;; (metabase#34657)
+    ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+    ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+    ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list
@@ -304,7 +304,7 @@
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                            ;; Xrays populate this in their transient cards
+                           ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))

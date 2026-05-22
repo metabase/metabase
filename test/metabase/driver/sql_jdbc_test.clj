@@ -233,25 +233,25 @@
         [[uuid]] (lib/ends-with col (str uuid))
         [[uuid]] (lib/contains col (str uuid))
 
-          ;; Test partial uuid values
+        ;; Test partial uuid values
         [[uuid]] (lib/contains col (subs (str uuid) 0 1))
         [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
         [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
 
-          ;; Cannot match a uuid, but should not blow up
+        ;; Cannot match a uuid, but should not blow up
         [[uuid]] (lib/!= col "q")
         []       (lib/= col "q")
         []       (lib/starts-with col "q")
         []       (lib/ends-with col "q")
         []       (lib/contains col "q")
 
-          ;; empty/null handling
+        ;; empty/null handling
         []       (lib/is-empty col)
         [[uuid]] (lib/not-empty col)
         []       (lib/is-null col)
         [[uuid]] (lib/not-null col)
 
-          ;; nil value handling
+        ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
       (testing ":= uses indexable query"

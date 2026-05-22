@@ -1808,7 +1808,7 @@
   (testing "when model has no dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Card {card-id :id} {:name "Test Card" :collection_id remote-synced-coll-id}]
-       ;; Card with no actual dependencies will return empty
+      ;; Card with no actual dependencies will return empty
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-id}))]
         (is (empty? result)
             "Should return empty when card has no dependencies")))))
@@ -2106,15 +2106,15 @@
                    :model/Collection {grandchild-id :id} {:name "Grandchild Collection"
                                                           :location (format "/%d/%d/" coll-id child-id)
                                                           :type nil}]
-        ;; Move collection to parent with into-remote-synced? true
+      ;; Move collection to parent with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id) true)
 
-        ;; Check that the moved collection became remote-synced type
+      ;; Check that the moved collection became remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
             "Moved collection should have remote-synced type"))
 
-        ;; Check that child collections also became remote-synced type
+      ;; Check that child collections also became remote-synced type
       (let [moved-child (t2/select-one :model/Collection :id child-id)]
         (is (true? (:is_remote_synced moved-child))
             "Child collection should have remote-synced type"))
@@ -2132,10 +2132,10 @@
                    :model/Collection {child-id :id} {:name "Child Collection"
                                                      :location (format "/%d/" coll-id)
                                                      :type nil}]
-        ;; Move collection to parent with into-remote-synced? false
+      ;; Move collection to parent with into-remote-synced? false
       (collection/move-collection! coll (format "/%d/" parent-id) false)
 
-        ;; Check that collection types remain nil
+      ;; Check that collection types remain nil
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Moved collection should not have remote-synced type"))
@@ -2153,10 +2153,10 @@
                    :model/Collection {child-id :id} {:name "Child Collection"
                                                      :location (format "/%d/" coll-id)
                                                      :is_remote_synced true}]
-        ;; Move remote-synced collection with into-remote-synced? true
+      ;; Move remote-synced collection with into-remote-synced? true
       (collection/move-collection! coll (format "/%d/" parent-id))
 
-        ;; Check that collections remain remote-synced type
+      ;; Check that collections remain remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Library collection should lose remote-synced type"))
@@ -2201,7 +2201,7 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
+      ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
       (let [ex (is (thrown-with-msg? Exception
                                      #"Uses content that is not remote synced."
                                      (collection/move-collection! coll (format "/%d/" parent-id) true))
@@ -2212,7 +2212,7 @@
         (is (contains? ex-data :non-remote-synced-models)
             "Exception should contain non-remote-synced models"))
 
-        ;; Verify the transaction was rolled back - collection should not be moved or changed
+      ;; Verify the transaction was rolled back - collection should not be moved or changed
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after failed move")
@@ -2235,12 +2235,12 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should throw an exception after updates are made but before transaction commits
+      ;; This should throw an exception after updates are made but before transaction commits
       (is (thrown? Exception
                    (collection/move-collection! coll (format "/%d/" parent-id) true))
           "Should throw exception for non-remote-synced dependencies")
 
-        ;; Verify the transaction was completely rolled back
+      ;; Verify the transaction was completely rolled back
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced unchanged-coll))
             "Collection type should remain unchanged after transaction rollback")
@@ -2266,10 +2266,10 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
-        ;; This should succeed because we're not converting to remote-synced
+      ;; This should succeed because we're not converting to remote-synced
       (collection/move-collection! coll (format "/%d/" parent-id))
 
-        ;; Verify the collection was moved but did not become remote-synced type
+      ;; Verify the collection was moved but did not become remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
             "Collection should not have remote-synced type")

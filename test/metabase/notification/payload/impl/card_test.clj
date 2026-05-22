@@ -160,7 +160,7 @@
                     (is (= (construct-email
                             {:message [{notification.tu/default-card-name true
                                         "Manage your subscriptions"       true}
-                                      ;; icon
+                                       ;; icon
                                        notification.tu/png-attachment
                                        notification.tu/csv-attachment]})
                            (mt/summarize-multipart-single-email

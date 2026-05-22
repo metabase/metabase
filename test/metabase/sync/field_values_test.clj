@@ -129,30 +129,30 @@
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; expired linked-filter fieldvalues
+                                      ;; expired linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; valid sandbox fieldvalues
+                                      ;; valid sandbox fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; valid linked-filter fieldvalues
+                                      ;; valid linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; old full fieldvalues
+                                      ;; old full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; new full fieldvalues
+                                      ;; new full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at now

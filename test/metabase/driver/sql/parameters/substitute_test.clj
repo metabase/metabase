@@ -131,7 +131,7 @@
       (let [;; Use high IDs that won't collide with existing test metadata
             parent-field-id 999901
             nested-field-id 999902
-          ;; Create a metadata provider that has a parent struct field and a nested child field
+            ;; Create a metadata provider that has a parent struct field and a nested child field
             metadata-provider
             (lib.tu/merged-mock-metadata-provider
              meta/metadata-provider

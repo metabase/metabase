@@ -116,8 +116,8 @@
               (format-honeysql
                {:select [[(identifier :checkins :id)]
                          [(identifier :checkins :user_id)]
-                          ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
-                          ;; We should complain loudly and then ignore them.
+                         ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
+                         ;; We should complain loudly and then ignore them.
                          [(identifier :venues :name)]
                          [(identifier :venues :category_id)]]
                 :from [[(identifier :checkins)]]
@@ -1234,8 +1234,8 @@
           (mt/with-temp [:model/Card model {:type :model
                                             :dataset_query (mt/mbql-query
                                                              products
-                                                              ;; note does not include the field we have to filter on. No way
-                                                              ;; to use the sandbox filter on the cached table
+                                                             ;; note does not include the field we have to filter on. No way
+                                                             ;; to use the sandbox filter on the cached table
                                                              {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
@@ -1248,7 +1248,7 @@
               (is (string? (:table_name persisted-info)))
 
               (let [query (mt/mbql-query nil
-                                    ;; just generate a select count(*) from card__<id>
+                            ;; just generate a select count(*) from card__<id>
                             {:aggregation [:count]
                              :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
@@ -1345,7 +1345,7 @@
     (met/with-gtaps! (mt/$ids orders
                        {:attributes {"user_id" 1}
                         :gtaps {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
-                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                ;; Since noone's zipcode == 1, this sandboxed table will return nothing
                                 :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))

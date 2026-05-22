@@ -1371,7 +1371,7 @@
 (deftest ^:parallel relative-time-interval-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
-   ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
+    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
     (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
       (mt/dataset checkins:1-per-day:60
         (is (= 7

@@ -721,13 +721,13 @@
                                            :to_entity_type :card :to_entity_id parent-id}]
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
-           ;; Event marks entity stale in analysis_finding
+         ;; Event marks entity stale in analysis_finding
          (events/publish-event! :event/card-update {:object parent :previous-object parent :user-id api/*current-user-id*})
          (testing "Parent card should be marked stale"
            (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
                                         :analyzed_entity_id parent-id))))
-           ;; Run entity-check job to process stale entities
+         ;; Run entity-check job to process stale entities
          (#'task.entity-check/check-entities!)
          (testing "Parent should be re-analyzed"
            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding

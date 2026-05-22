@@ -229,7 +229,7 @@
     (semantic.tu/with-test-db-defaults!
       (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
         (semantic.core/init! (semantic.tu/mock-documents) nil)
-             ;; add column to index table
+        ;; add column to index table
         (let [original-dynamic-schema semantic.db.migration.impl/dynamic-schema-version]
           (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
                            (fn [tx _opts]

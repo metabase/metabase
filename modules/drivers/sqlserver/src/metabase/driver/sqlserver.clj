@@ -1093,10 +1093,10 @@
    nil
    (fn [^Connection conn]
      (let [^DatabaseMetaData metadata (.getMetaData conn)
-             ;; SQL Server doesn't have a special escape method, but we should still handle nil
+           ;; SQL Server doesn't have a special escape method, but we should still handle nil
            schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
            table-name (some->> name (driver/escape-entity-name-for-metadata driver))
-             ;; SQL Server uses the database name from the connection, not as a parameter
+           ;; SQL Server uses the database name from the connection, not as a parameter
            db-name nil]
        (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
          (.next rs))))))

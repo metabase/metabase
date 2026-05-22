@@ -255,7 +255,7 @@
             inner-step  (mt/random-name)
             outer-steps [(sync-util/create-sync-step outer-step
                                                      (fn [_]
-                             ;; Nested sync operation
+                                                       ;; Nested sync operation
                                                        (sync-util/sync-operation :sync mock-db "Inner sync"
                                                          (sync-util/run-sync-operation "inner"
                                                                                        mock-db

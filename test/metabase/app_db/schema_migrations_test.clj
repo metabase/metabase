@@ -355,7 +355,7 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-          ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+        ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         #_(testing "Rollback restores the original state"
             (migrate! :down 46)
             (let [new-base-types (t2/select-pk->fn :base_type Field)]
@@ -583,7 +583,7 @@
     (when (#{:postgres :mysql} (mdb/db-type))
       (impl/test-migrations "v48.00-049" [migrate!]
         (create-raw-user! (mt/random-email))
-       ;; Use raw :activity keyword as table name since the model has since been removed
+        ;; Use raw :activity keyword as table name since the model has since been removed
         (let [_activity-1 (t2/insert-returning-pks! :activity
                                                     {:topic       "card-create"
                                                      :user_id     1
@@ -785,7 +785,7 @@
                :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
                            tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
                :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
-                 ;; h2 has a strange way of naming constraint
+               ;; h2 has a strange way of naming constraint
                :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
 
@@ -899,9 +899,9 @@
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
     (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
       (when (= (mdb/db-type) :postgres)
-          ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
-          ;; then rolled back to 49 again. The rollback to 48 will cause the
-          ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
+        ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
+        ;; then rolled back to 49 again. The rollback to 48 will cause the
+        ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
         (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
       (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"

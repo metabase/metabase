@@ -110,9 +110,9 @@
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
          (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
-  ;; TODO -- we should require these columns to be distinct as well (I think?)
-  ;; TODO -- require all numbers to be positive
-  ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
+;; TODO -- we should require these columns to be distinct as well (I think?)
+;; TODO -- require all numbers to be positive
+;; TODO -- can you specify something in both pivot-rows and pivot-cols?
 
 (defn- test-query []
   (mt/dataset test-data
