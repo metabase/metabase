@@ -10,8 +10,8 @@ import { roundFloat } from "metabase/utils/formatting/numbers";
  * subset, or nested-pie children that sum to their parent's share), the input is
  * returned unchanged so the caller rounds as usual.
  *
- * Order is significant: ties in the fractional remainder are awarded to the last
- * entry, so callers should pass shares in display order.
+ * Order is significant: ties in the fractional remainder are awarded to the
+ * first entry, so callers should pass shares in display order.
  */
 export function reconcilePercentagesIfNeeded(
   shares: number[],
@@ -51,10 +51,10 @@ export function reconcilePercentagesIfNeeded(
   );
 
   if (unitsToDistribute > 0) {
-    // Largest remainder first; ties go to the later index (last record wins).
+    // Largest remainder first; ties go to the earlier index (first record wins).
     const order = exactUnits
       .map((_, index) => index)
-      .sort((a, b) => remainders[b] - remainders[a] || b - a);
+      .sort((a, b) => remainders[b] - remainders[a] || a - b);
     for (let i = 0; i < unitsToDistribute; i++) {
       floorUnits[order[i]] += 1;
     }
