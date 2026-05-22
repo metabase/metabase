@@ -113,20 +113,14 @@ function CustomVizEmptyState() {
               <Text c="text-secondary" lh="1.25rem">
                 {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and upload them here as packaged bundles (.tgz).`}
               </Text>
-              <Text fw="bold" lh="1.25rem">
-                {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
-              </Text>
-            </Stack>
-            <Stack gap="xs" align="flex-start">
-              <Button
-                variant="filled"
-                onClick={handleEnable}
-                disabled={!cspImgEnabled}
-              >
-                {t`Enable custom visualizations`}
-              </Button>
+              {cspImgEnabled && (
+                <Text fw="bold" lh="1.25rem">
+                  {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
+                </Text>
+              )}
+
               {!cspImgEnabled && (
-                <Text c="text-tertiary" size="sm">
+                <Text c="text-secondary" lh="1.25rem">
                   {jt`Turn on "Restrict image domains" in ${(
                     <Link
                       key="link"
@@ -138,6 +132,15 @@ function CustomVizEmptyState() {
                   )} before enabling custom visualizations.`}
                 </Text>
               )}
+            </Stack>
+            <Stack gap="xs" align="flex-start">
+              <Button
+                variant="filled"
+                onClick={handleEnable}
+                disabled={!cspImgEnabled}
+              >
+                {t`Enable custom visualizations`}
+              </Button>
             </Stack>
           </Stack>
           <SimpleGrid cols={2} spacing="sm">
