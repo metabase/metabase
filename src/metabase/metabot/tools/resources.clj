@@ -335,12 +335,14 @@
 ;; ----- Collection drill-down -----
 
 (defn- fetch-collection [id-str]
-  (let [coll (t2/select-one :model/Collection (parse-long id-str))]
-    (mbr/entity-result (mbr/extract-as-user "Collection" coll))))
+  (if-let [coll (mbr/resolve-user-entity :model/Collection id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Collection" coll))
+    {:status-code 404 :output (str "Collection " id-str " not found")}))
 
 (defn- fetch-collection-items [id-str]
-  (let [coll-id        (parse-long id-str)
-        coll           (api/read-check :model/Collection coll-id)
+  (let [coll           (mbr/resolve-user-entity :model/Collection id-str)
+        _              (api/read-check coll)
+        coll-id        (:id coll)
         cards          (t2/select :model/Card
                                   {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
                                    :order-by [[:%lower.name :asc]]})
@@ -358,8 +360,9 @@
     (mbr/list-result :collection-items items {:total (count items)})))
 
 (defn- fetch-collection-subcollections [id-str]
-  (let [coll-id (parse-long id-str)
-        coll    (api/read-check :model/Collection coll-id)
+  (let [coll    (mbr/resolve-user-entity :model/Collection id-str)
+        _       (api/read-check coll)
+        coll-id (:id coll)
         subs    (t2/select :model/Collection
                            :location (str (:location coll) coll-id "/")
                            :archived false
@@ -421,14 +424,16 @@
 ;; ----- Card (model / question) -----
 
 (defn- fetch-card
-  "type-str is \"model\" or \"question\". The MBR Card includes :dataset_query in
-   portable form, so query shape, joins, expressions, and result_metadata are
-   already part of the entity — no separate /fields call is required to see
-   what columns the card produces. The /fields and /field/{id} endpoints stay
-   on the field-stats path because they layer field-values on top of the schema."
+  "type-str is \"model\" / \"question\" / \"card\". The MBR Card includes
+   :dataset_query in portable form, so query shape, joins, expressions, and
+   result_metadata are already part of the entity — no separate /fields call
+   is required to see what columns the card produces. The /fields and
+   /field/{id} endpoints stay on the field-stats path because they layer
+   field-values on top of the schema."
   [_type-str id-str]
-  (let [card (t2/select-one :model/Card (parse-long id-str))]
-    (mbr/entity-result (mbr/extract-as-user "Card" card))))
+  (if-let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Card" card))
+    {:status-code 404 :output (str "Card " id-str " not found")}))
 
 (defn- fetch-card-fields [type-str id-str]
   (table-details (keyword type-str) (parse-long id-str) true))
@@ -446,8 +451,8 @@
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (let [card (t2/select-one :model/Card :id (parse-long id-str) :type :metric)]
-    (if card
+  (when-let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (if (= :metric (:type card))
       (mbr/entity-result (mbr/extract-as-user "Card" card))
       {:status-code 404 :output (str "Metric " id-str " not found")})))
 
@@ -503,14 +508,14 @@
 ;; ----- Dashboard -----
 
 (defn- fetch-dashboard [id-str]
-  (let [dashboard (t2/select-one :model/Dashboard (parse-long id-str))]
-    (if dashboard
-      (mbr/entity-result (mbr/extract-as-user "Dashboard" dashboard))
-      {:status-code 404 :output (str "Dashboard " id-str " not found")})))
+  (if-let [dashboard (mbr/resolve-user-entity :model/Dashboard id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Dashboard" dashboard))
+    {:status-code 404 :output (str "Dashboard " id-str " not found")}))
 
 (defn- fetch-dashboard-items [id-str]
-  (let [dashboard-id (parse-long id-str)
-        _            (api/read-check :model/Dashboard dashboard-id)
+  (let [dashboard    (mbr/resolve-user-entity :model/Dashboard id-str)
+        _            (api/read-check dashboard)
+        dashboard-id (:id dashboard)
         cards        (t2/select :model/Card
                                 {:where    [:and
                                             [:= :archived false]
@@ -557,11 +562,13 @@
       ["table" id "fields" & rst]                      (fetch-table-field id (str/join "/" rst))
       ["table" id "derived"]                           (fetch-table-derived id)
 
-      ;; Card (model / question — share handlers, dispatch on the type segment)
-      [(t :guard #{"model" "question"}) id]            (fetch-card t id)
-      [(t :guard #{"model" "question"}) id "fields"]   (fetch-card-fields t id)
-      [(t :guard #{"model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
-      [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources id)
+      ;; Card (model / question / card — share handlers, dispatch on the type segment.
+      ;; `card` is the canonical MBR type; `model` and `question` remain for backcompat
+      ;; with prompts/transcripts that already use them.)
+      [(t :guard #{"card" "model" "question"}) id]            (fetch-card t id)
+      [(t :guard #{"card" "model" "question"}) id "fields"]   (fetch-card-fields t id)
+      [(t :guard #{"card" "model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
+      [(t :guard #{"card" "model" "question"}) id "sources"]  (fetch-card-sources id)
 
       ;; Metric
       ["metric" id]                                    (fetch-metric id)

@@ -23,7 +23,8 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,6 +38,32 @@
   "URI for a user-content entity keyed by entity_id."
   [type entity-id]
   (str "metabase://" (enc type) "/" (enc entity-id)))
+
+(defn- nano-id?
+  "Cheap shape check: NanoID is 21 chars from the alphabet `A-Za-z0-9_-`.
+
+   Used to discriminate `metabase://card/<entity_id>` (new MBR-style URI) from
+   `metabase://card/<numeric_id>` (legacy backcompat) without a DB hit. False
+   positives on weird numeric strings are fine — the resolver downstream will
+   still hit the DB and 404 cleanly."
+  [s]
+  (boolean (and (string? s)
+                (= 21 (count s))
+                (re-matches #"[A-Za-z0-9_-]{21}" s))))
+
+(defn resolve-user-entity
+  "Look up a user-content entity by either entity_id (preferred) or numeric id (legacy).
+
+   `toucan-model` is the Toucan 2 model keyword (`:model/Card`, `:model/Dashboard`,
+   etc.). `id-str` is the raw URI segment.
+
+   Returns the Toucan instance or nil if no row matches."
+  [toucan-model id-str]
+  (when id-str
+    (if (nano-id? id-str)
+      (t2/select-one toucan-model :entity_id id-str)
+      (when-let [n (parse-long id-str)]
+        (t2/select-one toucan-model n)))))
 
 (defn database-uri
   "URI for a Database addressed by its name (path-form natural key)."
