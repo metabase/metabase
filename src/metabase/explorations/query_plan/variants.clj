@@ -36,7 +36,7 @@
   "Label used for the rollup bucket in `top-n-other`. Plain string so the case
   expression doesn't need localization parametrization — the bucket name is the
   same regardless of which categorical dim is being grouped."
-  "Other")
+  "(Other)")
 
 (defn- maybe-segment-filtered
   [query segment]
@@ -258,7 +258,7 @@
                                                  (lib/breakoutable-columns base-query))
             pairs      (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
             case-expr  (lib/case pairs other-bucket-label)
-            expr-name  (str (or (:display_name dim) (:dimension_id dim) "value") "_grouped")
+            expr-name  (or (:display_name dim) (:dimension_id dim) "value")
             with-expr  (lib/expression base-query expr-name case-expr)
             expr-ref   (lib/expression-ref with-expr expr-name)
             with-bo    (lib/breakout with-expr expr-ref)]
