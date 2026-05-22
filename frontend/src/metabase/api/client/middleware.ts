@@ -56,7 +56,7 @@ function merge(
   }
   if (next?.headers) {
     result.headers = {
-      ...result.headers,
+      ...(result.headers ?? {}),
       ...next.headers,
     };
   }

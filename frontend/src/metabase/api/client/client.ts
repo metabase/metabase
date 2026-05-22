@@ -113,6 +113,9 @@ export class ApiClient extends EventEmitter<EventMap> {
       this.beforeRequestHandlers,
       {
         ...options,
+        // `headers` is optional on the public API, but handlers may merge into
+        // it, so always hand the pipeline a real object to spread into.
+        headers: options.headers ?? {},
         // This will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API.
         // It also defensively copies the data object, so middleware can safely mutate it.
