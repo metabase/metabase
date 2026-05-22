@@ -11,6 +11,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupSettingEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -163,6 +164,11 @@ export async function setup({
     settingValue: {},
   });
 
+  setupUserMetabotPermissionsEndpoint();
+
+  // The whitelabel LogoIcon fetches the configured logo SVG. Stub the default.
+  fetchMock.get("end:app/assets/img/logo.svg", "<svg></svg>");
+
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
@@ -229,6 +235,7 @@ export async function setup({
       initialRoute: pathname,
       withRouter: true,
       withDND: true,
+      withKBar: true,
     },
   );
 

@@ -2,7 +2,6 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
@@ -23,7 +22,6 @@ import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
-  getIsAppBarVisible,
   getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
@@ -60,7 +58,6 @@ interface AppStateProps {
   isAdminApp: boolean;
   isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
-  isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
 }
 
@@ -82,7 +79,6 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
-  isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
 
@@ -94,7 +90,6 @@ function App({
   errorPage,
   isAdminApp,
   isDataStudioApp,
-  isAppBarVisible,
   isNavBarEnabled,
   children,
   onError,
@@ -116,7 +111,6 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>

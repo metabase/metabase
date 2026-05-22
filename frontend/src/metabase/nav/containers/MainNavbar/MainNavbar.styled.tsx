@@ -43,7 +43,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: var(--mantine-spacing-sm);
   height: 100%;
   background-color: transparent;
   overflow-x: hidden;
@@ -62,7 +61,6 @@ export const SidebarContentRoot = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: space-between;
 `;
 
 export const SidebarSection = styled(Box)<BoxProps>`
