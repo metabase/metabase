@@ -295,7 +295,6 @@
    (redux/post-complete
     (robust-fuse {:earliest   earliest
                   :latest     latest
-                  :skewness   ((keep ->millis-from-epoch) stats/skewness)
                   :mode-stats ((keep ->millis-from-epoch) mode-stats)})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused

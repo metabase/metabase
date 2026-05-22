@@ -113,6 +113,24 @@
                          (fingerprinters/fingerprinter field)
                          [#t "2013" #t "2018" #t "2015"])))))))
 
+(deftest ^:parallel temporal-fingerprint-omits-skewness-test
+  (testing "temporal fingerprints do not compute skewness (it required a costly per-value epoch-millis
+            conversion for a weak, redundant interestingness signal); the other distribution stats remain"
+    (let [result (transduce identity
+                            (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/DateTime}))
+                            [(java.time.LocalDateTime/of 2013 1 1 20 4 0 0)
+                             (java.time.LocalDateTime/of 2014 3 2 4 14 0 0)
+                             (java.time.LocalDateTime/of 2015 6 5 9 24 0 0)
+                             (java.time.LocalDateTime/of 2016 9 8 14 34 0 0)
+                             (java.time.LocalDateTime/of 2017 12 11 22 44 0 0)])
+          dt     (get-in result [:type :type/DateTime])]
+      (is (nil? (:skewness dt))
+          "skewness must not be present in temporal fingerprints")
+      (is (some? (:earliest dt)))
+      (is (some? (:latest dt)))
+      (is (some? (:mode-fraction dt)))
+      (is (some? (:top-3-fraction dt))))))
+
 (deftest ^:parallel fingerprint-numeric-values-test
   (is (= {:global {:distinct-count 99
                    :nil%           0.0}
