@@ -65,8 +65,26 @@
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
 
+(defn- bundled-sample-database?
+  "Recognize the bundled Sample Database by filename. The sample-data extractor
+   writes the SQLite file to `<plugins-dir>/sample-database.sqlite` (or to the
+   path in `MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR`); either way the basename is
+   constant. Used to carve out the only legitimate internal use of SQLite on
+   hosted Metabase without threading a dynamic var through every sync site."
+  [db]
+  (and (string? db)
+       (= "sample-database.sqlite" (-> (java.io.File. ^String db) .getName))))
+
+(defmethod driver/validate-db-details! :sqlite
+  [_driver {:keys [db]}]
+  (when (and (driver-api/is-hosted?)
+             (not (bundled-sample-database? db)))
+    (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
+                    {:status-code 400}))))
+
 (defmethod driver/can-connect? :sqlite
   [driver details]
+  (driver/validate-db-details! driver details)
   (if (confirm-file-is-sqlite (:db details))
     (sql-jdbc.conn/can-connect? driver details)
     false))
