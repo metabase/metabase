@@ -488,20 +488,22 @@
 
 (deftest read-databases-list-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}]
-      (testing "metabase://databases returns the database with its drill-in URI"
+    (mt/with-temp [:model/Database _ {:name "Test DB"}]
+      (testing "metabase://databases returns the database in MBR shape"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
           (is (str/includes? output "Test DB"))
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "\""))))))))
+          ;; MBR Database FK uses the database name as id in serdes/meta.
+          (is (str/includes? output "\"model\":\"Database\",\"id\":\"Test DB\"")))))))
 
 (deftest read-database-tables-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {t-id :id} {:db_id db-id :name "ORDERS" :active true}]
-      (testing "metabase://database/{id}/tables lists tables with drill-in URIs"
+    (mt/with-temp [:model/Database {db-id :id} {:name "TDT-DB"}
+                   :model/Table _              {:db_id db-id :name "ORDERS" :active true}]
+      (testing "metabase://database/{id}/tables lists tables in MBR shape"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://database/" db-id "/tables")]})]
           (is (str/includes? output "ORDERS"))
-          (is (str/includes? output (str "uri=\"metabase://table/" t-id "\""))))))))
+          ;; MBR Table FK serdes/meta carries [Database Schema Table] by natural name.
+          (is (str/includes? output "\"model\":\"Table\",\"id\":\"ORDERS\"")))))))
 
 (deftest read-collections-and-collection-items-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -527,10 +529,11 @@
                     :type        :model
                     :database_id db-id
                     :table_id    table-id}]
-      (testing "metabase://table/{id}/derived returns cards built on the table"
-        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://table/" table-id "/derived")]})]
+      (testing "metabase://table/{id}/derived returns cards built on the table in MBR shape"
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://table/" table-id "/derived")]})
+              card             (t2/select-one [:model/Card :entity_id] :id card-id)]
           (is (str/includes? output "Derived"))
-          (is (str/includes? output (str "uri=\"metabase://model/" card-id "\""))))))))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id card) "\""))))))))
 
 (deftest read-table-derived-narrows-transforms-by-source-db-test
   (testing "transform candidates are SQL-filtered by source_database_id (no full Transform table scan)"
@@ -612,13 +615,13 @@
         (is (str/includes? output "<list type=\"recent-items\""))))))
 
 (deftest read-list-shape-test
-  (testing "list responses always carry total/showing/truncated attrs in the rendered XML"
+  (testing "list responses always carry list-type/total/truncated keys in MBR JSON"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
-        (is (str/includes? output "<list type=\"databases\""))
-        (is (str/includes? output "total="))
-        (is (str/includes? output "showing="))
-        (is (str/includes? output "truncated="))))))
+        (is (str/includes? output "\"list-type\":\"databases\""))
+        (is (str/includes? output "\"total\":"))
+        (is (str/includes? output "\"items\":"))
+        (is (str/includes? output "\"truncated\":"))))))
 
 (deftest format-resources-test
   (testing "formats resources with content"
@@ -642,12 +645,13 @@
 (deftest read-database-detail-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:name "Detail DB" :engine :h2}]
-      (testing "metabase://database/{id} returns single-entity output with engine + uri"
+      (testing "metabase://database/{id} returns single-entity MBR output"
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://database/" db-id)]})]
           (is (str/includes? output "Detail DB"))
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "\"")))
-          (is (str/includes? output "engine=\"h2\"")))))))
+          ;; MBR Database carries its name as serdes/meta id and engine as a top-level key.
+          (is (str/includes? output "\"model\":\"Database\",\"id\":\"Detail DB\""))
+          (is (str/includes? output "\"engine\":\"h2\"")))))))
 
 (deftest read-database-models-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -656,41 +660,43 @@
                    :model/Card     _              {:type :question :database_id db-id :name "Q-Skip"}]
       (testing "metabase://database/{id}/models lists models only (not questions)"
         (let [{:keys [output]} (read-resource/read-resource
-                                {:uris [(str "metabase://database/" db-id "/models")]})]
+                                {:uris [(str "metabase://database/" db-id "/models")]})
+              card             (t2/select-one [:model/Card :entity_id] :id model-id)]
           (is (str/includes? output "M-One"))
-          (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id card) "\"")))
           (is (not (str/includes? output "Q-Skip"))))))))
 
 (deftest read-database-schemas-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Database {db-id :id} {}
+    (mt/with-temp [:model/Database {db-id :id} {:name "DBS-DB"}
                    :model/Table _ {:db_id db-id :schema "PUBLIC"  :name "t1" :active true}
                    :model/Table _ {:db_id db-id :schema "PRIVATE" :name "t2" :active true}]
-      (testing "metabase://database/{id}/schemas emits a drill-in URI per schema"
+      (testing "metabase://database/{id}/schemas emits one entry per schema"
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://database/" db-id "/schemas")]})]
           (is (str/includes? output "PUBLIC"))
           (is (str/includes? output "PRIVATE"))
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "/schemas/PUBLIC/tables\"")))
-          (is (str/includes? output (str "uri=\"metabase://database/" db-id "/schemas/PRIVATE/tables\""))))))))
+          ;; Schema items aren't first-class MBR entities — they carry the
+          ;; parent database name as `database` so the agent can build the FK.
+          (is (str/includes? output "\"database\":\"DBS-DB\"")))))))
 
 (deftest read-database-schema-tables-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {pub-id :id} {:db_id db-id :schema "PUBLIC"  :name "PUB-TABLE"  :active true}
-                   :model/Table _            {:db_id db-id :schema "PRIVATE" :name "PRIV-TABLE" :active true}]
+                   :model/Table _ {:db_id db-id :schema "PUBLIC"  :name "PUB-TABLE"  :active true}
+                   :model/Table _ {:db_id db-id :schema "PRIVATE" :name "PRIV-TABLE" :active true}]
       (testing "metabase://database/{id}/schemas/{name}/tables filters by schema"
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://database/" db-id "/schemas/PUBLIC/tables")]})]
           (is (str/includes? output "PUB-TABLE"))
-          (is (str/includes? output (str "uri=\"metabase://table/" pub-id "\"")))
+          (is (str/includes? output "\"model\":\"Table\",\"id\":\"PUB-TABLE\""))
           (is (not (str/includes? output "PRIV-TABLE"))))))))
 
 (deftest read-database-schema-tables-with-slash-in-schema-name-test
   (testing "schema names containing '/' (which Postgres/Snowflake/etc. allow) survive URI round-trip"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {weird-id :id} {:db_id db-id :schema "weird/name" :name "WEIRD-TABLE" :active true}
+                     :model/Table _              {:db_id db-id :schema "weird/name" :name "WEIRD-TABLE" :active true}
                      :model/Table _              {:db_id db-id :schema "other"      :name "OTHER-TABLE" :active true}]
         (let [emitted-uri (llm-rep/metabase-uri :database db-id "schemas" "weird/name" "tables")]
           (testing "the URI builder emits an encoded segment"
@@ -698,7 +704,7 @@
           (testing "the encoded URI dispatches and filters to the right schema"
             (let [{:keys [output]} (read-resource/read-resource {:uris [emitted-uri]})]
               (is (str/includes? output "WEIRD-TABLE"))
-              (is (str/includes? output (str "uri=\"metabase://table/" weird-id "\"")))
+              (is (str/includes? output "\"model\":\"Table\",\"id\":\"WEIRD-TABLE\""))
               (is (not (str/includes? output "OTHER-TABLE"))))))))))
 
 (deftest read-collection-detail-test

@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.warehouses.models.database :as warehouses.database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -65,6 +66,49 @@
       (when-let [n (parse-long id-str)]
         (t2/select-one toucan-model n)))))
 
+(defn resolve-database
+  "Look up a Database by name (preferred, MBR path-form) or numeric id (legacy).
+
+   Numeric-looking strings are treated as ids; everything else as a name. This
+   means a literal database named e.g. \"42\" cannot be addressed by name —
+   not a real concern since Metabase routes the database name through the UI
+   anyway."
+  [id-str]
+  (when id-str
+    (if-let [n (parse-long id-str)]
+      (t2/select-one :model/Database n)
+      (t2/select-one :model/Database :name id-str))))
+
+(defn resolve-table
+  "Look up a Table by `[db-name schema table-name]` (MBR path-form). Schemaless
+   databases pass an empty `schema` segment, which decodes to `nil` or `\"\"`.
+   We treat empty string as nil for the SQL filter."
+  [db-name schema table-name]
+  (when (and db-name table-name)
+    (let [db-id  (t2/select-one-fn :id :model/Database :name db-name)
+          schema (when (and schema (not (str/blank? schema))) schema)]
+      (when db-id
+        (t2/select-one :model/Table
+                       :db_id db-id
+                       :schema schema
+                       :name table-name
+                       :active true)))))
+
+(defn resolve-table-legacy
+  "Look up a Table by legacy numeric id (URI form `metabase://table/{id}`)."
+  [id-str]
+  (when-let [n (parse-long id-str)]
+    (t2/select-one :model/Table n)))
+
+(defn resolve-field
+  "Look up a Field by `[db-name schema table-name field-name]` (MBR path-form)."
+  [db-name schema table-name field-name]
+  (when-let [table (resolve-table db-name schema table-name)]
+    (t2/select-one :model/Field
+                   :table_id (:id table)
+                   :name field-name
+                   :active true)))
+
 (defn database-uri
   "URI for a Database addressed by its name (path-form natural key)."
   [db-name]
@@ -93,11 +137,21 @@
   (Dashboard `:tabs`/`:dashcards`, Card aliases, etc.) get their nested entities
   rendered into MBR.
 
+  For `Database`, the export pipeline normally excludes H2 instances and any
+  database-router children (gating on the `*include-h2-in-extract?*` var). For
+  read_resource we want to surface every reachable database, so we bind that
+  var true here. (`router_database_id IS NULL` is enforced at the Database
+  model's extract-query and not bypassable from outside, but the typical
+  read_resource use case won't be hitting router-children databases.)
+
   Caller is responsible for any permission check on `instance`. See
   [[extract-as-user]] for a perm-gated entry point."
   [model instance]
-  (let [pipeline (serdes/extract-all model {:where [:= :id (:id instance)]})]
-    (first (into [] pipeline))))
+  (let [pipeline (if (= model "Database")
+                   (binding [warehouses.database/*include-h2-in-extract?* true]
+                     (into [] (serdes/extract-all model {:where [:= :id (:id instance)]})))
+                   (into [] (serdes/extract-all model {:where [:= :id (:id instance)]})))]
+    (first pipeline)))
 
 (defn extract-as-user
   "Permission-gated MBR extraction.
@@ -134,11 +188,15 @@
       ;; so we trust `extract-all`'s order matches the SQL `:in` filter — which
       ;; we can't guarantee. Re-fetch via :id is the safe play: query with order
       ;; matching `ids`, then map by position.
-      (let [extracted-by-id (into {}
-                                  (map (fn [m]
-                                         (let [eid (some-> m :serdes/meta last :id)]
-                                           [eid m])))
-                                  (serdes/extract-all model {:where [:in :id ids]}))]
+      (let [extract  (fn [] (into {}
+                                   (map (fn [m]
+                                          (let [eid (some-> m :serdes/meta last :id)]
+                                            [eid m])))
+                                   (serdes/extract-all model {:where [:in :id ids]})))
+            extracted-by-id (if (= model "Database")
+                              (binding [warehouses.database/*include-h2-in-extract?* true]
+                                (extract))
+                              (extract))]
         (into [] (keep (fn [inst]
                          (let [eid (or (:entity_id inst)
                                        (some-> (serdes/generate-path model inst) last :id))]

@@ -145,16 +145,6 @@
 
 ;; ----- Item presenters (list-row shapes) -----
 
-(defn- present-database
-  "Trim a database row to a token-frugal item map for list responses."
-  [{:keys [id name engine description]}]
-  {:type        "database"
-   :id          id
-   :name        name
-   :engine      (some-> engine clojure.core/name)
-   :description description
-   :uri         (llm-rep/metabase-uri :database id)})
-
 (defn- present-table
   [{:keys [id name display_name schema db_id description]}]
   {:type         "table"
@@ -165,23 +155,6 @@
    :database_id  db_id
    :description  description
    :uri          (llm-rep/metabase-uri :table id)})
-
-(defn- present-card
-  "Cards (questions or models) — :type on a Card is :question / :model / :metric."
-  [{:keys [id name type collection_id description database_id table_id]}]
-  (let [model-type (case type
-                     :model    "model"
-                     :metric   "metric"
-                     :question "question"
-                     "question")]
-    {:type          model-type
-     :id            id
-     :name          name
-     :collection_id collection_id
-     :database_id   database_id
-     :table_id      table_id
-     :description   description
-     :uri           (llm-rep/metabase-uri (keyword model-type) id)}))
 
 (defn- present-transform
   [{:keys [id name description source_database_id]}]
@@ -227,12 +200,11 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list []
-  (let [dbs (->> (t2/select [:model/Database :id :name :engine :description :is_audit]
-                            :is_audit false
-                            {:order-by [[:%lower.name :asc]]})
-                 (filter mi/can-read?)
-                 (mapv present-database))]
-    (list-result :databases dbs)))
+  (let [dbs   (t2/select :model/Database
+                         :is_audit false
+                         {:order-by [[:%lower.name :asc]]})
+        items (mbr/extract-readable "Database" dbs)]
+    (mbr/list-result :databases items {:total (count items)})))
 
 (defn- fetch-collections-list
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all).
@@ -276,61 +248,60 @@
 ;; ----- Database drill-down -----
 
 (defn- fetch-database [id-str]
-  (let [db (api/read-check :model/Database (parse-long id-str))]
-    (entity-result (present-database db))))
+  (if-let [db (mbr/resolve-database id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Database" db))
+    {:status-code 404 :output (str "Database " id-str " not found")}))
 
 (defn- fetch-database-tables [id-str]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :active true
-                               {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-table))]
-    (list-result :database-tables tables)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        tables (t2/select :model/Table
+                          :db_id  (:id db)
+                          :active true
+                          {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
+        items  (mbr/extract-readable "Table" tables)]
+    (mbr/list-result :database-tables items {:total (count items)})))
 
 (defn- fetch-database-models [id-str]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        models (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                :collection_id :database_id :table_id]
-                               :type        :model
-                               :database_id db-id
-                               :archived    false
-                               {:order-by [[:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-card))]
-    (list-result :database-models models)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        models (t2/select :model/Card
+                          :type        :model
+                          :database_id (:id db)
+                          :archived    false
+                          {:order-by [[:%lower.name :asc]]})
+        items  (mbr/extract-readable "Card" models)]
+    (mbr/list-result :database-models items {:total (count items)})))
 
 (defn- fetch-database-schemas [id-str]
-  (let [db-id   (parse-long id-str)
-        _       (api/read-check :model/Database db-id)
+  (let [db      (mbr/resolve-database id-str)
+        _       (api/read-check db)
         rows    (t2/query
                  {:select-distinct [:schema]
                   :from            [:metabase_table]
-                  :where           [:and [:= :db_id db-id] [:= :active true]]
+                  :where           [:and [:= :db_id (:id db)] [:= :active true]]
                   :order-by        [[:schema :asc]]})
         schemas (->> rows
                      (keep :schema)
                      (mapv (fn [s]
+                             ;; Schema is not a Toucan-modeled entity — return a
+                             ;; minimal MBR-flavored shape that matches the FK
+                             ;; tuple form so the agent can drill in.
                              {:type        "schema"
                               :name        s
-                              :database_id db-id
-                              :uri         (llm-rep/metabase-uri :database db-id "schemas" s "tables")})))]
-    (list-result :database-schemas schemas)))
+                              :database    (:name db)})))]
+    (mbr/list-result :database-schemas schemas {:total (count schemas)})))
 
 (defn- fetch-database-schema-tables [id-str schema-name]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :schema schema-name
-                               :active true
-                               {:order-by [[:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-table))]
-    (list-result :database-schema-tables tables)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        tables (t2/select :model/Table
+                          :db_id  (:id db)
+                          :schema schema-name
+                          :active true
+                          {:order-by [[:%lower.name :asc]]})
+        items  (mbr/extract-readable "Table" tables)]
+    (mbr/list-result :database-schema-tables items {:total (count items)})))
 
 ;; ----- Collection drill-down -----
 
@@ -384,8 +355,20 @@
                                      :with-measures?       true
                                      :with-segments?       true}))
 
+(defn- fetch-table*
+  "Shared body for the legacy `metabase://table/{id}` and the MBR-style
+   `metabase://database/{db}/schema/{s}/table/{t}` routes — both resolve to a
+   Toucan instance and hand off to MBR extract."
+  [table]
+  (if table
+    (mbr/entity-result (mbr/extract-as-user "Table" table))
+    {:status-code 404 :output "Table not found"}))
+
 (defn- fetch-table [id-str]
-  (table-details :table (parse-long id-str) false))
+  (fetch-table* (mbr/resolve-table-legacy id-str)))
+
+(defn- fetch-table-by-path [db-name schema table-name]
+  (fetch-table* (mbr/resolve-table db-name schema table-name)))
 
 (defn- fetch-table-fields [id-str]
   (table-details :table (parse-long id-str) true))
@@ -396,17 +379,14 @@
                              :field-id    field-id
                              :limit       30}))
 
-(defn- fetch-table-derived [id-str]
-  (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+(defn- fetch-table-derived* [table]
+  (let [table-id   (:id table)
+        _          (api/read-check table)
         db-id      (:db_id table)
-        cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                    :collection_id :database_id :table_id]
-                                   :table_id table-id
-                                   :archived false
-                                   {:order-by [[:%lower.name :asc]]})
-                        (filter mi/can-read?)
-                        (mapv present-card))
+        cards      (t2/select :model/Card
+                              :table_id table-id
+                              :archived false
+                              {:order-by [[:%lower.name :asc]]})
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
         ;; tables in its source DB). Pull `:source` in the same select to extract source
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
@@ -418,8 +398,26 @@
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
-                          (mapv present-transform)))]
-    (list-result :table-derived (concat cards transforms))))
+                          (mapv present-transform)))
+        card-items (mbr/extract-readable "Card" cards)
+        items      (concat card-items transforms)]
+    (mbr/list-result :table-derived items {:total (count items)})))
+
+(defn- fetch-table-derived [id-str]
+  (fetch-table-derived* (mbr/resolve-table-legacy id-str)))
+
+(defn- fetch-table-derived-by-path [db-name schema table-name]
+  (fetch-table-derived* (mbr/resolve-table db-name schema table-name)))
+
+(defn- fetch-table-fields-by-path [db-name schema table-name]
+  (if-let [t (mbr/resolve-table db-name schema table-name)]
+    (table-details :table (:id t) true)
+    {:status-code 404 :output "Table not found"}))
+
+(defn- fetch-field-by-path [db-name schema table-name field-name]
+  (if-let [f (mbr/resolve-field db-name schema table-name field-name)]
+    (mbr/entity-result (mbr/extract-as-user "Field" f))
+    {:status-code 404 :output "Field not found"}))
 
 ;; ----- Card (model / question) -----
 
@@ -544,12 +542,24 @@
       ["collections"]                                  (fetch-collections-list query-params)
       ["user" "recent-items"]                          (fetch-user-recents)
 
-      ;; Database drill-down
+      ;; Database drill-down. `:id` accepts either a numeric DB id (legacy) or a
+      ;; database name (MBR-style). `resolve-database` discriminates.
       ["database" id]                                  (fetch-database id)
       ["database" id "tables"]                         (fetch-database-tables id)
       ["database" id "models"]                         (fetch-database-models id)
       ["database" id "schemas"]                        (fetch-database-schemas id)
+      ;; Legacy: schemas/{name}/tables. New form uses `schema/{name}/tables`
+      ;; (singular `schema`) below to align with the MBR FK path-form.
       ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema)
+      ["database" id "schema" schema "tables"]         (fetch-database-schema-tables id schema)
+
+      ;; Sync metadata (Table / Field) — MBR path-form. `database` segment must
+      ;; be a DB name (path-form is invalid with a numeric id; that maps to the
+      ;; legacy `["table" id]` route below).
+      ["database" db-name "schema" schema "table" t-name]                       (fetch-table-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "fields"]              (fetch-table-fields-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "derived"]             (fetch-table-derived-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "field" field-name]    (fetch-field-by-path db-name schema t-name field-name)
 
       ;; Collection drill-down
       ["collection" id]                                (fetch-collection id)
