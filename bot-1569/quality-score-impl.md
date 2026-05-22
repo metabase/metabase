@@ -486,7 +486,7 @@ Pure functions over the normalized struct's `:tool-events` and `:sets`.
   [normalized]
   ;; → normalized with :sets enriched (t-first-* populated) and
   ;;   :temporal {:iterations Long :thrash-events Long
-  ;;              :rediscovery-pairs Long :errors-resolved-rate Double
+  ;;              :rediscovery-r Long :errors-resolved-rate Double
   ;;              :terminal-state Keyword}
   )
 ```
@@ -530,13 +530,19 @@ Read from the persisted assistant row in priority order:
 4. Else fall back to `:model_signaled_done`.
 
 The agent loop's `finish-reason` enum (`:max-iterations`,
-`:final-response`, `:stop`) maps to:
+`:final-response`, `:stop`, plus `:empty-response` for the rare
+zero-parts exit) maps to:
 
 ```
 :max-iterations → :iter_cap
 :final-response → :final_response
 :stop           → :model_signaled_done
+:empty-response → :error                ; degenerate completion;
+                                         ; concern signal 6 treats as
+                                         ; termination failure
 ```
+
+Full mapping rationale + emission-site detail in §I.
 
 ---
 
@@ -1050,6 +1056,8 @@ persisted.
 - Unit tests in `test/metabase/metabot/agent/core_test.clj`
   - `terminal_state` data part is emitted on `:final-response`,
     `:max-iterations`, `:stop` branches
+  - `terminal_state` data part is emitted with `:empty-response`
+    reason when the LLM returns zero parts
   - Part is invisible in chat-detail
 - Kondo clean on every touched file
 
@@ -1097,7 +1105,7 @@ Pure-code phase. No score change yet.
 - Create `src/metabase/metabot/quality/temporal.clj`
 - `derive` populates `:t-first-seen` / `:t-first-used` on each set's
   atom records
-- Compute `:temporal {:iterations :thrash-events :rediscovery-pairs
+- Compute `:temporal {:iterations :thrash-events :rediscovery-r
   :errors-resolved-rate :terminal-state}`
 - Thrash detection uses normalized Levenshtein on serialized args
   (string-distance via existing `metabase.util` helper if available;
