@@ -137,9 +137,6 @@ export const createMockTokenFeatures = (
   upload_management: false,
   serialization: false,
   cache_preemptive: false,
-  ai_entity_analysis: false,
-  ai_sql_fixer: false,
-  ai_sql_generation: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
@@ -153,6 +150,7 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -278,6 +276,7 @@ export const createMockSettings = (
    * You probably don't want to set this directly in tests because it can get out
    * of sync with the database state (which should be a source of truth).
    */
+  "has-active-workspace": false,
   "has-sample-database?": undefined,
   "has-user-setup": true,
   "hide-embed-branding?": true,
@@ -386,6 +385,7 @@ export const createMockSettings = (
   "metabot-limit-unit": "tokens",
   "metabot-limit-reset-rate": "monthly",
   "metabot-quota-reached-message": null,
+  "ai-usage-max-retention-days": 180,
   "metabot-chat-system-prompt": null,
   "metabot-nlq-system-prompt": null,
   "metabot-sql-system-prompt": null,

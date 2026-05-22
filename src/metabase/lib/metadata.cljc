@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.transforming-provider :as lib.metadata.transforming-provider]
    [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -28,7 +29,9 @@
 
 (shared.ns/import-fns
  [lib.metadata.util
-  ->metadata-provider])
+  ->metadata-provider]
+ [lib.metadata.transforming-provider
+  transforming-metadata-provider])
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."

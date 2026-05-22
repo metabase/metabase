@@ -51,6 +51,23 @@ describe("VisualizationError (EE with token)", () => {
         screen.queryByText("Learn how to debug SQL errors"),
       ).not.toBeInTheDocument();
     });
+
+    it("should show the Metabot fix button", async () => {
+      const card = createMockCard({
+        dataset_query: {
+          database: database.id,
+          type: "native",
+          native: {
+            query: "SELECT * FROM ORDERS",
+          },
+        },
+      });
+      setup({ database, card });
+
+      expect(
+        await screen.findByRole("button", { name: /Have Metabot fix it/ }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("NoSQL databases", () => {
