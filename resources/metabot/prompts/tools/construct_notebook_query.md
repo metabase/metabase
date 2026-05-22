@@ -1,3 +1,5 @@
+# Construct Query Reference
+
 Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:
