@@ -34,7 +34,6 @@ import {
   Title,
   UnstyledButton,
 } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
 
 import S from "./DimensionPickerSidebar.module.css";
 import { useDimensionPickerSidebar } from "./DimensionPickerSidebarContext";
@@ -54,8 +53,10 @@ type DimensionPickerSidebarProps = {
 
 type SidebarMode = "default" | "all";
 
-function getDimensionIds(tabInfo: TabInfo | MetricsViewerTabState) {
-  return Object.values(tabInfo.dimensionMapping).filter(isNotNull).sort();
+function getDimensionMappingEntries(tabInfo: TabInfo | MetricsViewerTabState) {
+  return Object.entries(tabInfo.dimensionMapping).filter(
+    (entry): entry is [string, string] => entry[1] != null,
+  );
 }
 
 function hasSameDimensions(
@@ -66,11 +67,14 @@ function hasSameDimensions(
     return false;
   }
 
-  const itemIds = getDimensionIds(item.tabInfo);
-  const tabIds = getDimensionIds(tab);
+  const itemEntries = getDimensionMappingEntries(item.tabInfo);
+  const tabEntries = getDimensionMappingEntries(tab);
   return (
-    itemIds.length === tabIds.length &&
-    itemIds.every((id, index) => id === tabIds[index])
+    itemEntries.length === tabEntries.length &&
+    itemEntries.every(
+      ([slotIndex, dimensionId]) =>
+        tab.dimensionMapping[Number(slotIndex)] === dimensionId,
+    )
   );
 }
 
@@ -268,6 +272,7 @@ export function DimensionPickerSidebar({
         <TextInput
           classNames={{ input: S.searchInput }}
           size="sm"
+          aria-label={t`Search fields`}
           value={searchText}
           onChange={(event) => setSearchText(event.currentTarget.value)}
           placeholder={t`Search fields`}

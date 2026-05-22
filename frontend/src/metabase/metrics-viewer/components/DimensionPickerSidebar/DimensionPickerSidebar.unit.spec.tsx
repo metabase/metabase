@@ -9,6 +9,7 @@ import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "metabase/metrics-viewer/utils";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
 import { DimensionPickerSidebar } from "./DimensionPickerSidebar";
 import { DimensionPickerSidebarProvider } from "./DimensionPickerSidebarContext";
@@ -71,7 +72,15 @@ const sourceDataById: Record<MetricSourceId, SourceDisplayInfo> = {
   [SOURCE_ID]: { type: "metric", name: "Revenue" },
 };
 
-function setup({ tab = activeTab } = {}) {
+function setup({
+  tab = activeTab,
+  dimensions = availableDimensions,
+  slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
+}: {
+  tab?: MetricsViewerTabState;
+  dimensions?: AvailableDimensionsResult;
+  slots?: MetricSlot[];
+} = {}) {
   const onAddTab = jest.fn();
   const onUpdateActiveTab = jest.fn();
 
@@ -79,8 +88,8 @@ function setup({ tab = activeTab } = {}) {
     <DimensionPickerSidebarProvider>
       <DimensionPickerSidebar
         activeTab={tab}
-        availableDimensions={availableDimensions}
-        metricSlots={[{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }]}
+        availableDimensions={dimensions}
+        metricSlots={slots}
         sourceColors={{ 0: ["#509ee3"] }}
         sourceOrder={[SOURCE_ID]}
         sourceDataById={sourceDataById}
@@ -112,6 +121,44 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.queryByRole("button", { name: "Created At" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not select a swapped multi-metric dimension mapping", async () => {
+    setup({
+      tab: {
+        id: "tab-time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: { 0: "dim-created-at", 1: "dim-order-date" },
+        projectionConfig: {},
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              tabInfo: {
+                type: "time",
+                label: "Swapped dates",
+                dimensionMapping: { 0: "dim-order-date", 1: "dim-created-at" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SOURCE_ID },
+      ],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(
+      screen.getByRole("button", { name: "Swapped dates" }),
+    ).not.toHaveAttribute("data-selected");
   });
 
   it("filters dimensions with search", async () => {
