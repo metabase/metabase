@@ -107,10 +107,10 @@
             (-> query
                 (lib/limit *max-rows*)
                 (lib/filter nonempty)
-                (cond-> #_query query-filter (lib/filter query-filter))
+                (cond-> query-filter (lib/filter query-filter))
                 (lib/breakout value-column)
                 ;; add the label as a second breakout so each row is a [value label] pair
-                (cond-> #_query label-column (lib/breakout label-column))
+                (cond-> label-column (lib/breakout label-column))
                 ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
                 ;; "internal" query in the BE.
                 (assoc-in [:middleware :disable-remaps?] true))))))))
