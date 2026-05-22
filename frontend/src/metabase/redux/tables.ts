@@ -62,6 +62,7 @@ export const fetchTableForeignKeys =
       id,
       dispatch,
       tableApi.endpoints.listTableForeignKeys,
+      { forceRefetch: false },
     );
     dispatch(updateMetadata({ id, fks }, TableSchema));
     return { id, fks };
