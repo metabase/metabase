@@ -82,8 +82,10 @@ describe("AIQuestionAnalysisButton", () => {
     );
 
     await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-    const lastCall = agentSpy.mock.lastCall;
-    const body = JSON.parse(lastCall?.[1]?.body as string);
+    // The client calls `fetch(new Request(url, init))`, so the body lives on the
+    // Request object rather than a separate init arg.
+    const [request] = agentSpy.mock.lastCall ?? [];
+    const body = JSON.parse(await (request as Request).clone().text());
     expect(body.message).toBe("Analyze this chart");
   });
 

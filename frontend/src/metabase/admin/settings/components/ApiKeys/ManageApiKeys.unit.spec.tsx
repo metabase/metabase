@@ -138,7 +138,7 @@ describe("ManageApiKeys", () => {
   it("should regenerate an API key", async () => {
     await setup();
     const REGEN_URL = "path:/api/api-key/1/regenerate";
-    fetchMock.put(REGEN_URL, 200);
+    fetchMock.put(REGEN_URL, { unmasked_key: "mb_regenerated" });
 
     await userEvent.click(
       within(
