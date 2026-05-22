@@ -21,6 +21,7 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
@@ -56,8 +57,12 @@ export const getTooltipModel = (
       normalizedPercentage: slice.normalizedPercentage,
     }));
   const rowsTotal = getTotalValue(rows);
+  const adjustedPercentages = reconcilePercentagesIfNeeded(
+    rows.map((row) => row.normalizedPercentage),
+    2,
+  );
 
-  const formattedRows: EChartsTooltipRow[] = rows.map((row) => {
+  const formattedRows: EChartsTooltipRow[] = rows.map((row, index) => {
     const markerColorClass = row.color
       ? getMarkerColorClass(row.color)
       : undefined;
@@ -67,7 +72,7 @@ export const getTooltipModel = (
       name: row.name,
       values: [
         row.formatter(row.value),
-        formatPercent(row.normalizedPercentage),
+        formatPercent(adjustedPercentages[index]),
       ],
     };
   });

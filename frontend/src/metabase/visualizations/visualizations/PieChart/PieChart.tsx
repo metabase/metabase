@@ -6,7 +6,10 @@ import { isNotNull } from "metabase/utils/types";
 import { extractRemappings } from "metabase/visualizations";
 import { ChartWithLegend } from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
+import {
+  getPieChartFormatters,
+  getPiePercentDecimals,
+} from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
@@ -16,6 +19,7 @@ import {
   usePieChartValuesColorsClasses,
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
@@ -117,30 +121,34 @@ export function PieChart(props: VisualizationProps) {
     () => getArrayFromMapValues(chartModel.sliceTree),
     [chartModel.sliceTree],
   );
-  const legendTitles = useMemo(
-    () =>
-      slices
-        .filter((s) => s.includeInLegend)
-        .map((s) => {
-          const label = s.name;
+  const legendTitles = useMemo(() => {
+    const legendSlices = slices.filter((s) => s.includeInLegend);
+    const decimals = getPiePercentDecimals(chartModel, settings, "legend");
+    const rawPercentages = legendSlices.map((s) => s.normalizedPercentage);
+    const adjustedPercentages =
+      decimals !== undefined
+        ? reconcilePercentagesIfNeeded(rawPercentages, decimals)
+        : [...rawPercentages];
 
-          // Hidden slices don't have a percentage
-          const sliceHidden = s.normalizedPercentage === 0;
-          const percentDisabled =
-            settings["pie.percent_visibility"] !== "legend" &&
-            settings["pie.percent_visibility"] !== "both";
+    return legendSlices.map((s, index) => {
+      const label = s.name;
 
-          if (sliceHidden || percentDisabled) {
-            return [label];
-          }
+      // Hidden slices don't have a percentage
+      const sliceHidden = s.normalizedPercentage === 0;
+      const percentDisabled =
+        settings["pie.percent_visibility"] !== "legend" &&
+        settings["pie.percent_visibility"] !== "both";
 
-          return [
-            label,
-            formatters.formatPercent(s.normalizedPercentage, "legend"),
-          ];
-        }),
-    [formatters, settings, slices],
-  );
+      if (sliceHidden || percentDisabled) {
+        return [label];
+      }
+
+      return [
+        label,
+        formatters.formatPercent(adjustedPercentages[index], "legend"),
+      ];
+    });
+  }, [chartModel, formatters, settings, slices]);
 
   const hiddenSlicesLegendIndices = slices
     .filter((s) => s.includeInLegend)

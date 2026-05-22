@@ -51,6 +51,7 @@ import type {
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import {
   hasClickBehavior,
   isRemappedToString,
@@ -728,26 +729,33 @@ export const getStackedTooltipModel = (
   const formattedSeriesRows: EChartsTooltipRow[] = signs
     .map((sign) => {
       const slice = stackSeriesRowsBySign[sign];
+      const visibleRows = slice.series.filter((row) => row.value != null);
+      const rawPercentages = visibleRows.map((row) =>
+        slice.total ? (getPercent(slice.total, row.value) ?? 0) : 0,
+      );
+      const adjustedPercentages = reconcilePercentagesIfNeeded(
+        // Stacked cartesian chart can have negative percentages, but reconcilePercentagesIfNeeded works
+        // with non-negative numbers, so take absolute before passing numbers to the function
+        rawPercentages.map((percent) => Math.abs(percent)),
+        2,
+      );
       return [
-        ...slice.series
-          .filter((row) => row.value != null)
-          .map((tooltipRow) => {
-            return {
-              isFocused: tooltipRow.isFocused,
-              name: tooltipRow.name,
-              markerColorClass: tooltipRow.color
-                ? getMarkerColorClass(tooltipRow.color)
-                : undefined,
-              values: [
-                formatter(tooltipRow.value),
-                formatPercent(
-                  slice.total
-                    ? (getPercent(slice.total, tooltipRow.value) ?? 0)
-                    : 0,
-                ),
-              ],
-            };
-          }),
+        ...visibleRows.map((tooltipRow, index) => {
+          return {
+            isFocused: tooltipRow.isFocused,
+            name: tooltipRow.name,
+            markerColorClass: tooltipRow.color
+              ? getMarkerColorClass(tooltipRow.color)
+              : undefined,
+            values: [
+              formatter(tooltipRow.value),
+              formatPercent(
+                // Restore sign based on original percentage value
+                Math.sign(rawPercentages[index]) * adjustedPercentages[index],
+              ),
+            ],
+          };
+        }),
         ...(hasPositivesAndNegatives
           ? [
               {

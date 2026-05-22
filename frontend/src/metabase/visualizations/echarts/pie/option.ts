@@ -3,6 +3,7 @@ import type { EChartsOption, SunburstSeriesOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/ui/colors";
 import { checkNotNull } from "metabase/utils/types";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import { CHAR_ELLIPSES, truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,
@@ -10,7 +11,7 @@ import type {
 } from "metabase/visualizations/types";
 
 import { DIMENSIONS, OPTION_NAME_SEPERATOR, getTotalText } from "./constants";
-import type { PieChartFormatters } from "./format";
+import { type PieChartFormatters, getPiePercentDecimals } from "./format";
 import type { PieChartModel, SliceTreeNode } from "./model/types";
 import { getArrayFromMapValues, getSliceTreeNodesFromPath } from "./util";
 import {
@@ -162,6 +163,7 @@ function getRadiusOption(sideLength: number, chartModel: PieChartModel) {
 
 function getSliceLabel(
   slice: SliceTreeNode,
+  percentage: number,
   settings: ComputedVisualizationSettings,
   formatters: PieChartFormatters,
 ) {
@@ -169,7 +171,7 @@ function getSliceLabel(
   const percent =
     settings["pie.percent_visibility"] === "inside" ||
     settings["pie.percent_visibility"] === "both"
-      ? formatters.formatPercent(slice.normalizedPercentage, "chart")
+      ? formatters.formatPercent(percentage, "chart")
       : undefined;
 
   if (name != null && percent != null) {
@@ -195,6 +197,7 @@ function getSeriesDataFromSlices(
   fontSize: number,
 ): SunburstSeriesOption["data"] {
   const labelsPosition = chartModel.numRings > 1 ? "radial" : "horizontal";
+  const chartDecimals = getPiePercentDecimals(chartModel, settings, "chart");
 
   function getSeriesData(
     slices: SliceTreeNode[],
@@ -205,7 +208,13 @@ function getSeriesDataFromSlices(
       return [];
     }
 
-    return slices.map((s) => {
+    const slicePercentages = slices.map((s) => s.normalizedPercentage);
+    const adjustedPercentages =
+      chartDecimals !== undefined
+        ? reconcilePercentagesIfNeeded(slicePercentages, chartDecimals)
+        : [...slicePercentages];
+
+    return slices.map((s, index) => {
       const ringRadiuses = calcInnerOuterRadiusesForRing(
         innerRadius,
         outerRadius,
@@ -216,7 +225,12 @@ function getSeriesDataFromSlices(
         s.color,
         renderingContext.getColor,
       );
-      const label = getSliceLabel(s, settings, formatters);
+      const label = getSliceLabel(
+        s,
+        adjustedPercentages[index],
+        settings,
+        formatters,
+      );
       const availableSpace =
         calcAvailableDonutSliceLabelLength(
           ringRadiuses.inner,

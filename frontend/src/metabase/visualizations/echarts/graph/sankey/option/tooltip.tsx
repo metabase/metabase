@@ -12,6 +12,7 @@ import {
   getMarkerColorClass,
   getTooltipBaseOption,
 } from "metabase/visualizations/echarts/tooltip";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
@@ -58,7 +59,12 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   );
   const formattedNodeValue = formatters.value(nodeValue);
 
-  rows = Array.from(node.outputLinkByTarget.values()).map((link) => {
+  const links = Array.from(node.outputLinkByTarget.values());
+  const adjustedPercentages = reconcilePercentagesIfNeeded(
+    links.map((link) => getPercent(nodeValue, link.value) ?? 0),
+    2,
+  );
+  rows = links.map((link, index) => {
     const color = chartModel.nodeColors[String(link.targetNode.rawName)];
     const isFocused = params.dataType === "edge" && data.target === link.target;
     return {
@@ -66,7 +72,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
       name: formatters.target(link.targetNode.displayName),
       values: [
         formatters.value(link.value),
-        formatPercent(getPercent(nodeValue, link.value) ?? 0),
+        formatPercent(adjustedPercentages[index]),
       ],
       markerColorClass: getMarkerColorClass(color),
     };

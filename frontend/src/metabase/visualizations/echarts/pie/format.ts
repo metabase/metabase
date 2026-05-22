@@ -52,33 +52,44 @@ export function getPieChartFormatters(
       }),
     );
 
-  const formatPercent = (value: unknown, location: "legend" | "chart") => {
-    let decimals = settings["pie.decimal_places"];
-    if (decimals == null) {
-      const percentages =
-        location === "chart"
-          ? getAllSlicePercentages(chartModel.sliceTree)
-          : getArrayFromMapValues(chartModel.sliceTree).map(
-              (s) => s.normalizedPercentage,
-            );
-
-      decimals = computeMaxDecimalsForValues(percentages, {
-        style: "percent",
-        maximumSignificantDigits: location === "legend" ? 3 : 2,
-      });
-    }
-
-    return String(
+  const formatPercent = (value: unknown, location: "legend" | "chart") =>
+    String(
       formatValue(value, {
         column: metricColSettings.column,
         number_separators: metricColSettings.number_separators as string,
         number_style: "percent",
-        decimals,
+        decimals: getPiePercentDecimals(chartModel, settings, location),
       }),
     );
-  };
 
   return { formatMetric, formatPercent };
+}
+
+/**
+ * Number of decimal places used when formatting pie percentages, honoring the
+ * `pie.decimal_places` setting and otherwise auto-computing from the slices.
+ */
+export function getPiePercentDecimals(
+  chartModel: PieChartModel,
+  settings: ComputedVisualizationSettings,
+  location: "legend" | "chart",
+): number | undefined {
+  const decimals = settings["pie.decimal_places"];
+  if (decimals != null) {
+    return decimals;
+  }
+
+  const percentages =
+    location === "chart"
+      ? getAllSlicePercentages(chartModel.sliceTree)
+      : getArrayFromMapValues(chartModel.sliceTree).map(
+          (s) => s.normalizedPercentage,
+        );
+
+  return computeMaxDecimalsForValues(percentages, {
+    style: "percent",
+    maximumSignificantDigits: location === "legend" ? 3 : 2,
+  });
 }
 
 export function getDimensionFormatter(

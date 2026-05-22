@@ -1,7 +1,11 @@
 import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
-import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
+import {
+  type PieChartFormatters,
+  getPiePercentDecimals,
+} from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import { getArrayFromMapValues } from "metabase/visualizations/echarts/pie/util";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import { Legend } from "../Legend";
@@ -13,25 +17,31 @@ export function getPieChartLegend(
   formatters: PieChartFormatters,
   settings: ComputedVisualizationSettings,
 ) {
+  const legendSlices = getArrayFromMapValues(chartModel.sliceTree).filter(
+    (s) => s.includeInLegend,
+  );
+  const adjustedPercentages = reconcilePercentagesIfNeeded(
+    legendSlices.map((s) => s.normalizedPercentage),
+    getPiePercentDecimals(chartModel, settings, "legend") ?? NaN,
+  );
+
   const {
     height: legendHeight,
     width: legendWidth,
     items,
   } = calculateLegendRowsWithColumns({
-    items: getArrayFromMapValues(chartModel.sliceTree)
-      .filter((s) => s.includeInLegend)
-      .map((s) => {
-        return {
-          name: s.name,
-          percent:
-            settings["pie.percent_visibility"] === "legend" ||
-            settings["pie.percent_visibility"] === "both"
-              ? formatters.formatPercent(s.normalizedPercentage, "legend")
-              : undefined,
-          color: s.color,
-          key: String(s.key),
-        };
-      }),
+    items: legendSlices.map((s, index) => {
+      return {
+        name: s.name,
+        percent:
+          settings["pie.percent_visibility"] === "legend" ||
+          settings["pie.percent_visibility"] === "both"
+            ? formatters.formatPercent(adjustedPercentages[index], "legend")
+            : undefined,
+        color: s.color,
+        key: String(s.key),
+      };
+    }),
     width: DIMENSIONS.maxSideLength,
     horizontalPadding: DIMENSIONS.padding.side,
   });

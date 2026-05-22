@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { Box, Stack } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { reconcilePercentagesIfNeeded } from "metabase/visualizations/lib/percent";
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
@@ -55,6 +56,22 @@ const StackedDataTooltip = ({
     hasColorIndicators ? color("text-tertiary") : undefined,
   );
 
+  const displayedRows = [...sortedHeaderRows, ...trimmedBodyRows];
+  const displayedPercents = displayedRows.map((row) =>
+    getPercent(rowsTotal, row.value),
+  );
+  const adjustedPercents = showPercentages
+    ? reconcilePercentagesIfNeeded(
+        displayedPercents.map((percent) => percent ?? 0),
+        2,
+      )
+    : undefined;
+  // Preserve `undefined` (hidden percent cell) for rows without a numeric value.
+  const getDisplayPercent = (index: number) =>
+    displayedPercents[index] === undefined
+      ? undefined
+      : adjustedPercents?.[index];
+
   return (
     <Stack gap={0} pt="md">
       {headerTitle && (
@@ -77,9 +94,7 @@ const StackedDataTooltip = ({
             <TooltipRow
               key={index}
               isHeader
-              percent={
-                showPercentages ? getPercent(rowsTotal, row.value) : undefined
-              }
+              percent={getDisplayPercent(index)}
               {...row}
             />
           ))}
@@ -90,9 +105,7 @@ const StackedDataTooltip = ({
             {trimmedBodyRows.map((row, index) => (
               <TooltipRow
                 key={index}
-                percent={
-                  showPercentages ? getPercent(rowsTotal, row.value) : undefined
-                }
+                percent={getDisplayPercent(sortedHeaderRows.length + index)}
                 {...row}
               />
             ))}
