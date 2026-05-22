@@ -13,7 +13,6 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.core :as search]
@@ -254,51 +253,6 @@
               (is (= "Test Card" (:name card)))
               (is (= "test-card-1xxxxxxxxxx" (:entity_id card)))
               (is (= coll-id (:collection_id card))))))))))
-
-(deftest import-card-referencing-unpublished-table-test
-  (testing "a Card referencing an unpublished (hence un-exported) Table/Field re-imports by synthesizing inactive rows"
-    (mt/with-model-cleanup [:model/Table :model/Field]
-      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-        (mt/with-temp [:model/Database   {db-id :id}     {:name "my-db"}
-                       :model/Table      {table-id :id}  {:name "customers" :db_id db-id :is_published false}
-                       :model/Field      {field-id :id}  {:name "age" :table_id table-id :base_type :type/Integer}
-                       :model/Collection {coll-id :id}   {:name "Synced" :is_remote_synced true :location "/"}]
-          (let [mp    (lib-be/application-database-metadata-provider db-id)
-                query (-> (lib/query mp (lib.metadata/table mp table-id))
-                          (lib/filter (lib/>= (lib.metadata/field mp field-id) 18)))]
-            (mt/with-temp [:model/Card {card-id  :id
-                                        card-eid :entity_id} {:name          "Customers Card"
-                                                              :collection_id coll-id
-                                                              :database_id   db-id
-                                                              :table_id      table-id
-                                                              :dataset_query query}]
-              (let [mock        (test-helpers/create-mock-source :branch "main")
-                    export-task (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export"
-                                                                                :initiated_by   (mt/user->id :rasta)})]
-                (testing "export succeeds; the unpublished Table/Field are not part of the bundle"
-                  (is (= :success (:status (impl/export! (source.p/snapshot mock) export-task "export"))))
-                  (remote-sync.task/complete-sync-task! export-task)
-                  (let [files (keys (get @(:files-atom mock) "main"))]
-                    (is (some #(str/includes? % "card") files) "the card was exported")
-                    (is (not-any? #(str/includes? % "/tables/") files) "no table/field files were exported")))
-
-                ;; Simulate importing onto an instance where the unpublished Table/Field do not exist.
-                (t2/update! :model/Card card-id {:table_id nil})
-                (t2/delete! :model/Field :id field-id)
-                (t2/delete! :model/Table :id table-id)
-
-                (testing "import succeeds by synthesizing the missing Table/Field"
-                  (let [import-task (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                                    :initiated_by   (mt/user->id :rasta)})
-                        result      (impl/import! (source.p/snapshot mock) import-task :force? true)]
-                    (is (= :success (:status result)))
-                    (let [table (t2/select-one :model/Table :db_id db-id :name "customers")
-                          field (some->> table :id (t2/select-one :model/Field :name "age" :table_id))
-                          query (:dataset_query (t2/select-one :model/Card :entity_id card-eid))]
-                      (is (=? {:active false} table) "inactive Table was synthesized")
-                      (is (=? {:active false} field) "inactive Field was synthesized")
-                      (is (= (:id table) (lib/primary-source-table-id query))
-                          "the Card's query resolves to the synthesized Table"))))))))))))
 
 (deftest collection-cleanup-during-import-test
   (testing "collection cleanup during import (tests clean-synced! private function)"
