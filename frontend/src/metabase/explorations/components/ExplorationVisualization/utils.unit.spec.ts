@@ -28,6 +28,8 @@ function makeQuery(
     card_id: 1,
     dimension_id: "dim-1",
     dimension_name: "Dim 1",
+    query_type: "default",
+    display: null,
     name: `q-${overrides.id}`,
     position: 0,
     status: "done" as ExplorationQueryStatus,
