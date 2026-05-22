@@ -978,7 +978,7 @@
                              upstream))]
       (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
       ;; pin exact ex-data keys — clj-http internals (:http-client, :trace-redirects, …) must not leak.
-      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))
       (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
                :status 500 :body {:error {:message "model decommissioned"}}}
@@ -995,7 +995,7 @@
                              upstream))]
       (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
       (is (str/includes? (ex-message ex) "upstream gateway timeout"))
-      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
 
   (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
@@ -1012,7 +1012,7 @@
           "the unrecognised envelope's pr-str is appended so operators see what we got")
       (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
           "the full body is still preserved in ex-data for debugging")
-      (is (= #{:status :reason-phrase :body :api-error :provider :error-code}
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
 
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
@@ -1032,6 +1032,22 @@
       (is (= "openai API request failed" (ex-message ex)))
       (is (= #{:api-error :provider :error-code :exception-class}
              (set (keys (ex-data ex)))))))
+
+  (testing "Retry-After header survives the ex-data allow-list and reaches retry-delay-ms"
+    ;; Regression test: an earlier revision allow-listed only :status/:reason-phrase/:body,
+    ;; which silently dropped :headers and made provider 429/529 retries fall back to
+    ;; exponential backoff instead of honoring the upstream Retry-After.
+    (let [upstream (ex-info "clj-http error"
+                            {:status 429 :reason-phrase "Too Many Requests"
+                             :headers {"retry-after" "3"}
+                             :body "rate limited"})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "openrouter"
+                             (constantly "OpenRouter rate limit")
+                             upstream))]
+      (is (= {"retry-after" "3"} (:headers (ex-data ex))))
+      (is (<= 3000 (#'self/retry-delay-ms 1 ex) (+ 3000 750))
+          "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception")))
 
   (testing "the full upstream body is emitted at warn level alongside provider and status"
     (let [upstream (ex-info "clj-http error"

@@ -569,8 +569,8 @@
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message and the full body is logged.
-  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:body`, plus provider tags.
-  Exceptions already tagged `:api-error true` are rethrown unchanged."
+  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`,
+  plus provider tags. Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
   (let [data (ex-data e)]
     (cond
@@ -588,8 +588,10 @@
                    provider (:status res) (pr-str (:body res)))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
+        ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header
+        ;; can still honor Retry-After on 429/529 responses.
         (throw (ex-info msg
-                        (merge (select-keys res [:status :reason-phrase :body])
+                        (merge (select-keys res [:status :reason-phrase :headers :body])
                                {:api-error  true
                                 :provider   provider
                                 :error-code :provider-api-error})
