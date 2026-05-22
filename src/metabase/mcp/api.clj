@@ -292,7 +292,7 @@
                          (Thread/sleep 30000)
                          (let [current-hash (safe-hash)]
                            (when (and current-hash last-hash (not= current-hash last-hash))
-                             (.write writer (sse-body [tools-list-changed-notification]))
+                             (.write writer ^String (sse-body [tools-list-changed-notification]))
                              (.flush writer))
                            (recur current-hash))))))]
         (compojure.response/send* resp request respond raise)))))
