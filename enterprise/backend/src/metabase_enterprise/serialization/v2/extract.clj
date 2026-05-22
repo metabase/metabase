@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -38,7 +39,10 @@
     (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
 
     (not (:no-embedding-themes opts))
-    (conj "EmbeddingTheme")))
+    (conj "EmbeddingTheme")
+
+    (not (:no-custom-viz-plugins opts))
+    (conj "CustomVizPlugin")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -207,11 +211,22 @@
                    ;; extract all non-content entities like data model and settings if necessary
                    (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
 
+(defn- needs-version?
+  "True for extracted entities that should carry a `:metabase_version` stamp."
+  [entity]
+  (and (not (instance? Exception entity))
+       (not= "Setting" (-> entity :serdes/meta last :model))))
+
+(defn- stamp-version [entity]
+  (if (needs-version? entity)
+    (assoc entity :metabase_version config/mb-version-string)
+    entity))
+
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [opts]
   (serdes.backfill/backfill-ids!)
-  (extract-subtrees opts))
+  (eduction (map stamp-version) (extract-subtrees opts)))
 
 (comment
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]

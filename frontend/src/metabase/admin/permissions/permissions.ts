@@ -12,14 +12,15 @@ import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
+  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
-import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
@@ -42,6 +43,7 @@ import type {
   PermissionsGraph,
 } from "metabase-types/api";
 
+import { selectGroupList } from "./selectors/data-permissions/groups";
 import {
   DataPermission,
   DataPermissionType,
@@ -124,7 +126,7 @@ export const initializeCollectionPermissions = createThunkAction(
   (namespace) => async (dispatch) => {
     await Promise.all([
       dispatch(loadCollectionPermissions(namespace)),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -256,7 +258,7 @@ export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
     const state = getState();
-    const allGroupIds = Object.keys(state.entities.groups);
+    const allGroupIds = selectGroupList(state).map((group) => String(group.id));
     const {
       originalDataPermissions,
       dataPermissions,
@@ -368,7 +370,7 @@ export const initializeTenantCollectionPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadTenantCollectionPermissions()),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -454,7 +456,7 @@ export const initializeTenantSpecificCollectionPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadTenantSpecificCollectionPermissions()),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -630,6 +632,17 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
         );
       }
 
+      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
+        return updatePermission(
+          state,
+          groupId,
+          entityId.databaseId,
+          DataPermission.WORKSPACES,
+          [],
+          value,
+        );
+      }
+
       if (
         permissionInfo.type === DataPermissionType.NATIVE &&
         PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -654,6 +667,14 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
+        state,
+        groupId,
+        entityId,
+        permissionInfo.permission,
+        value,
+      );
+
+      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,

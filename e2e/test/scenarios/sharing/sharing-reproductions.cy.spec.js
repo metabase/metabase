@@ -7,6 +7,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { admin } = USERS;
 const {
@@ -668,7 +669,12 @@ describe("issue 26988", () => {
     });
 
     cy.wait("@previewDashboard");
-    H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+    H.getIframeBody().findByTestId("embed-frame").should("exist");
+    H.getIframeBody().should(
+      "have.css",
+      "font-family",
+      "Lato, Arial, sans-serif",
+    );
 
     cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")
@@ -676,7 +682,11 @@ describe("issue 26988", () => {
       .click();
     H.popover().findByText("Oswald").click();
 
-    H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+    H.getIframeBody().should(
+      "have.css",
+      "font-family",
+      'Oswald, "Roboto Condensed", sans-serif',
+    );
 
     cy.get("@font-control").click();
     H.popover().findByText("Slabo 27px").click();
@@ -684,7 +694,7 @@ describe("issue 26988", () => {
     H.getIframeBody().should(
       "have.css",
       "font-family",
-      '"Slabo 27px", sans-serif',
+      '"Slabo 27px", "Roboto Slab", serif',
     );
   });
 });
@@ -1042,5 +1052,143 @@ describe("issue 49525", { tags: "@external" }, () => {
         );
       });
     });
+  });
+});
+
+describe("issue 54603", () => {
+  const FILTER_PARAMETER = {
+    id: "54603-cat",
+    name: "Category",
+    slug: "category",
+    type: "category",
+  };
+
+  const PRODUCT_CATEGORY_FIELD_REF = [
+    "field",
+    PRODUCTS.CATEGORY,
+    { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+  ];
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboard({
+      name: "Dashboard 54603",
+      parameters: [FILTER_PARAMETER],
+    }).then(({ body: dashboard }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              {
+                parameter_id: FILTER_PARAMETER.id,
+                card_id: ORDERS_QUESTION_ID,
+                target: [
+                  "dimension",
+                  PRODUCT_CATEGORY_FIELD_REF,
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          }),
+        ],
+      });
+
+      // Subscription bound to the Category filter — removing it should warn.
+      cy.request("POST", "/api/pulse", {
+        name: "Weekly Category Roundup",
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            id: ORDERS_QUESTION_ID,
+            include_csv: false,
+            include_xls: false,
+          },
+        ],
+        channels: [
+          {
+            enabled: true,
+            channel_type: "slack",
+            schedule_type: "hourly",
+          },
+        ],
+        parameters: [FILTER_PARAMETER],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("warns before removing a filter that has active subscriptions (metabase#54603)", () => {
+    H.editDashboard();
+
+    cy.findByTestId("fixed-width-filters").findByText("Category").click();
+
+    // The Remove button stays disabled until the subscriptions query resolves;
+    // Cypress retries until it's clickable.
+    H.dashboardParameterSidebar()
+      .findByRole("button", { name: "Remove" })
+      .should("be.enabled")
+      .click();
+
+    H.modal().within(() => {
+      cy.findByText("Remove this filter?").should("be.visible");
+      cy.findByText(/active subscription/i).should("be.visible");
+      cy.findByText(/archive/i).should("be.visible");
+
+      // Cancel keeps the filter.
+      cy.findByRole("button", { name: "Cancel" }).click();
+    });
+
+    cy.findByTestId("fixed-width-filters")
+      .findByText("Category")
+      .should("be.visible");
+
+    // Try again and confirm — filter is removed.
+    H.dashboardParameterSidebar()
+      .findByRole("button", { name: "Remove" })
+      .click();
+    H.modal().findByRole("button", { name: "Remove filter" }).click();
+
+    // The sidebar closes when the parameter is removed.
+    cy.findByTestId("dashboard-parameter-sidebar").should("not.exist");
+
+    // Saving triggers server-side archival of any subscription referencing
+    // the removed parameter. updateDashboard's invalidatesTags includes the
+    // subscription list so the panel reflects the archive without a refresh.
+    H.saveDashboard();
+
+    H.openDashboardMenu("Subscriptions");
+    H.sidebar().findByText("Weekly Category Roundup").should("not.exist");
+  });
+
+  it("removes a filter immediately when no subscription references it (metabase#54603)", () => {
+    // Replace the existing subscription with one that does NOT include the filter.
+    cy.request("GET", "/api/pulse").then(({ body: pulses }) => {
+      pulses.forEach((pulse) => {
+        cy.request("PUT", `/api/pulse/${pulse.id}`, {
+          ...pulse,
+          parameters: [],
+        });
+      });
+    });
+
+    H.editDashboard();
+
+    cy.findByTestId("fixed-width-filters").findByText("Category").click();
+    H.dashboardParameterSidebar()
+      .findByRole("button", { name: "Remove" })
+      .should("be.enabled")
+      .click();
+
+    // No modal — the filter is gone right away (sidebar closes too).
+    cy.findByRole("dialog", { name: /remove this filter/i }).should(
+      "not.exist",
+    );
+    cy.findByTestId("dashboard-parameter-sidebar").should("not.exist");
   });
 });

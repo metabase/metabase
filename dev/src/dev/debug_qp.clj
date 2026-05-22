@@ -17,8 +17,8 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [portal.api]
    [toucan2.core :as t2]))
 
@@ -123,7 +123,7 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (lib.util.match/replace-lite form
+           (match/replace form
              [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
                                                     (pos-int? (:source-field opts))
@@ -258,7 +258,7 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (lib.util.match/match-lite x
+  (match/match-one x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
@@ -285,7 +285,7 @@
 
 (defn- expand [form table]
   (try
-    (lib.util.match/replace-lite form
+    (match/replace form
       (:and [:field (id :guard pos-int?) nil]
             (_ :guard can-symbolize?))
       (let [[table-name field-name] (field-and-table-name id)
@@ -346,10 +346,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (lib.util.match/replace-lite x [::$ & args] (into [::no-$] args)))
+  (match/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (lib.util.match/replace-lite form
+  (match/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 

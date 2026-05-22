@@ -2,7 +2,9 @@
   {:clj-kondo/config '{:linters
                        ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
                        ;; -> connection pool stuff
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}
+                                                   metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql-jdbc.connection-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -66,13 +68,13 @@
     (testing "creating and removing specs works"
       ;; need to create a new, nonexistent h2 db
       (let [destroyed?         (atom false)
-            original-destroy   @#'sql-jdbc.conn/destroy-pool!
+            original-destroy   (mt/original-fn #'sql-jdbc.conn/destroy-pool!)
             pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
-        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
-                                                    (original-destroy id destroyed-spec)
-                                                    (reset! destroyed? true))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
+                                                                  (original-destroy id destroyed-spec)
+                                                                  (reset! destroyed? true))]
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            spec
@@ -207,33 +209,39 @@
               ;; Cleanup
                 (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
 
-(deftest invalidate-pool-clears-both-connection-types-test
+(deftest invalidate-pool-clears-all-connection-types-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (mt/with-premium-features #{:writable-connection}
-        (testing "invalidate-pool-for-db! clears both default and write pools"
+      (mt/with-premium-features #{:writable-connection :workspaces}
+        (testing "invalidate-pool-for-db! clears default, write, and admin pools"
           (let [read-details  {:db "mem:invalidate_test"}
-                write-details {:db "mem:invalidate_write_test"}]
-          ;; Use snake_case for column name since deftransforms uses snake_case keys
+                write-details {:db "mem:invalidate_write_test"}
+                admin-details {:db "mem:invalidate_admin_test"}]
+            ;; Use snake_case for column names since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
-                                                     :write_data_details write-details}]
+                                                     :write_data_details write-details
+                                                     :admin_details      admin-details}]
               (let [db-id             (u/the-id database)
                     default-cache-key [db-id :default]
-                    write-cache-key   [db-id :write-data]]
-              ;; Create both pools
+                    write-cache-key   [db-id :write-data]
+                    admin-cache-key   [db-id :admin]]
                 (sql-jdbc.conn/db->pooled-connection-spec database)
                 (driver.conn/with-write-connection
                   (sql-jdbc.conn/db->pooled-connection-spec database))
+                (driver.conn/with-admin-connection
+                  (sql-jdbc.conn/db->pooled-connection-spec database))
 
-                (testing "both pools exist before invalidation"
+                (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
 
-                (testing "invalidate-pool-for-db! removes both pools"
+                (testing "invalidate-pool-for-db! removes all pools"
                   (sql-jdbc.conn/invalidate-pool-for-db! database)
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
-                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))))))))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key))))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -729,7 +737,7 @@
           port   (config/config-int :mb-postgres-aws-iam-test-port)
           user   (config/config-str :mb-postgres-aws-iam-test-user)
           dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -755,7 +763,7 @@
           user   (config/config-str :mb-mysql-aws-iam-test-user)
           dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
           ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -959,8 +967,8 @@
                 (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
 
               ;; Mock ssh-tunnel-open? to return false for our mock session
-              (with-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
-                                                   (not= :mock-closed-session (:tunnel-session pool-spec)))]
+              (mt/with-dynamic-fn-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
+                                                                 (not= :mock-closed-session (:tunnel-session pool-spec)))]
                 ;; Next call should detect invalid pool and recreate
                 (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                   (is (= 2 @create-count) "Pool should have been recreated due to closed tunnel")

@@ -4,7 +4,6 @@
     :universe — everything (library entities + all active physical tables)
     :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -18,11 +17,13 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons.
+  "Bump when the scoring formula changes in a way that would break historical score comparisons.
+  Weight changes, new/removed components, and rollup-affecting restructures count; pure-shape changes do not.
+  Tunables in the fingerprint (`embedding-model`, `synonym-threshold`, `text-variant`, etc) don't need a bump."
+  1)
 
-  Changes to `embedding-model`, `synonym-threshold`, `text-variant`, etc don't need a bump.
-  These parameters are already captured in the fingerprint.
-  Formula versioning is reserved for cases where the actual formulas or components change."
+(def format-version
+  "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent."
   1)
 
 (def weights
@@ -35,15 +36,70 @@
    :field            1
    :repeated-measure 2})
 
-(def ^:private component->group
-  "Thematic parent per sub-component — drives the `<group>.total` + `<group>.<component>` rollup in
-  emitted keys so operators can tell `size` from `ambiguity` without SQL.
-  Must cover every key produced by [[score-catalog]] or the missing ones emit as `nil.<component>`."
-  {:entity-count      :size
-   :field-count       :size
-   :name-collisions   :ambiguity
-   :synonym-pairs     :ambiguity
-   :repeated-measures :ambiguity})
+(def complexity-bands
+  "Tree of rating bands mirroring [[score-catalog]]'s output.
+  Each node's `:bands` rates that node's `:score`; `:components` follows the same nesting as the scored catalog."
+  {:bands [{:rating "low"    :label "Low complexity"    :max 999}
+           {:rating "medium" :label "Medium complexity" :max 9999}
+           {:rating "high"   :label "High complexity"}]})
+
+(def ^:private nil-rating {:rating nil :rating-label nil})
+
+(defn- ->band-lookup
+  "Bundle `bands` with a pre-built `:rating`→presentation `:lookup` for fast rating-by-score."
+  [bands]
+  {:bands  bands
+   :lookup (u/for-map [{:keys [rating label]} bands]
+             [rating {:rating rating :rating-label label}])})
+
+(defn- compile-bands
+  "Replace each node's `:bands` in the bands tree with a precomputed `:band-lookup`."
+  [bands]
+  (cond-> {}
+    (:bands bands)
+    (assoc :band-lookup (->band-lookup (:bands bands)))
+
+    (:components bands)
+    (assoc :components (update-vals (:components bands) compile-bands))))
+
+(def ^:private compiled-bands
+  (compile-bands complexity-bands))
+
+(defn- rating-for-score
+  "Look up `score`'s rating in a preprocessed `band-lookup`, or `nil-rating` when nothing matches."
+  [{:keys [bands lookup]} score]
+  (or (when (some? score)
+        (some (fn [{:keys [rating max]}]
+                (when (or (nil? max) (<= score max))
+                  (lookup rating)))
+              bands))
+      nil-rating))
+
+(defn- decorate-with-ratings*
+  "Walk a catalog `node` and the matching `bands` subtree in parallel, merging rating fields onto every node.
+  Each node is rated against its own `:band-lookup`, or `nil-rating` when absent.
+  Error leaves carry only `:error` and are left untouched. Children recurse along `:components`."
+  [bands node]
+  (if (:error node)
+    node
+    (let [decorated (merge node (rating-for-score (:band-lookup bands) (:score node)))]
+      (cond-> decorated
+        (:components node)
+        (update :components
+                (fn [components]
+                  (reduce-kv (fn [m k child]
+                               (assoc m k (decorate-with-ratings* (get-in bands [:components k])
+                                                                  child)))
+                             {}
+                             components)))))))
+
+;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
+;; against the raw score without re-applying the bands.
+(defn decorate-with-ratings
+  "Decorate each catalog with rating fields per `complexity-bands`."
+  [score]
+  (let [decorate (partial decorate-with-ratings* compiled-bands)]
+    (reduce #(u/update-if-exists %1 %2 decorate) score [:library :universe :metabot])))
 
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
@@ -56,30 +112,36 @@
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
+(def ^:private ^:const in-clause-chunk-size
+  "Cap on the number of table-ids we put into a single `IN (...)` query. PostgreSQL prepared
+   statements top out at 65,535 parameters and we leave headroom for other clauses."
+  50000)
+
 (defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`. Single group-by query."
+  "Return `{table-id field-count}` for active fields on the given `table-ids`."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (into {}
-          (map (juxt :table_id :field_count))
-          (t2/query {:select   [:table_id [:%count.* :field_count]]
-                     :from     [:metabase_field]
-                     :where    [:and
-                                [:= :active true]
-                                [:in :table_id table-ids]]
-                     :group-by [:table_id]}))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (map (juxt :table_id :field_count)
+                       (t2/query {:select   [:table_id [:%count.* :field_count]]
+                                  :from     [:metabase_field]
+                                  :where    [:and
+                                             [:= :active true]
+                                             [:in :table_id chunk]]
+                                  :group-by [:table_id]}))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
-  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
+  A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
   [table-ids]
-  (if (empty? table-ids)
-    {}
-    (u/group-by :table_id :name
-                (t2/select [:model/Measure :table_id :name]
-                           :archived false
-                           :table_id [:in table-ids]))))
+  (into {}
+        (mapcat (fn [chunk]
+                  (u/group-by :table_id :name
+                              (t2/select [:model/Measure :table_id :name]
+                                         :archived false
+                                         :table_id [:in chunk]))))
+        (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
@@ -291,10 +353,10 @@
        :value-doesnt-matter))))
 
 (defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns nil
-   `:score`/`:measurement` plus an `:error` string so the failure cascades through aggregates
-   instead of being mistaken for a real zero. A nil `embedder` produces an empty lookup and scores
-   a real zero."
+  "Compute the synonym sub-score for `entities` using `embedder`.
+  On embedder failure returns an `{:error \"...\"}`-only leaf, so the failure cascades through aggregates
+  (their `:score` rolls up to nil) and consumers can branch on `:error` presence.
+  A nil `embedder` produces an empty lookup and scores a real zero."
   [entities embedder]
   (try
     (let [name->vec     (or (and embedder (embedder entities)) {})
@@ -312,7 +374,7 @@
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
                   msg)]
-        {:measurement nil :score nil :error err}))))
+        {:error err}))))
 
 (defn- nil-safe-sum
   "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
@@ -321,26 +383,35 @@
   (when (every? some? xs)
     (reduce + xs)))
 
-(defn score-catalog
-  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
+(defn- score-tree-leaves
+  "Pure: build the leaves-only tree of sub-score maps for one catalog.
+  Each leaf is a `{:measurement <num-or-nil> :score <num-or-nil> [:error <str>]}` map; the surrounding shape
+  defines the `:size`/`:ambiguity` grouping that [[score-catalog]] then rolls up."
   [entities embedder]
-  (let [components {:entity-count      (score-entity-count entities)
-                    :name-collisions   (score-name-collisions entities)
-                    :synonym-pairs     (score-synonym-pairs entities embedder)
-                    :field-count       (score-field-count entities)
-                    :repeated-measures (score-repeated-measures entities)}]
-    {:total      (nil-safe-sum (map (comp :score val) components))
-     :components components}))
+  {:size      {:entity-count (score-entity-count entities)
+               :field-count  (score-field-count entities)}
+   :ambiguity {:name-collisions   (score-name-collisions entities)
+               :synonym-pairs     (score-synonym-pairs entities embedder)
+               :repeated-measures (score-repeated-measures entities)}})
+
+(defn- rollup-node
+  "Recursively roll up a node's children into `{:score <sum> :components {...}}`.
+  Leaves — maps carrying `:score` (computed) or `:error` (uncomputed) — pass through unchanged.
+  `:score` cascades nil through aggregates so an uncomputed sub-score nils out everything it feeds."
+  [node]
+  (if (or (contains? node :score) (contains? node :error))
+    node
+    (let [components (update-vals node rollup-node)]
+      {:score      (nil-safe-sum (map (comp :score val) components))
+       :components components})))
+
+(defn score-catalog
+  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`.
+  Returns `{:score <sum> :components {:size {...} :ambiguity {...}}}`; see [[score-tree-leaves]] for the leaf layout."
+  [entities embedder]
+  (rollup-node (score-tree-leaves entities embedder)))
 
 ;;; ----------------------------------- public API ------------------------------------
-
-(defn- log-scores!
-  "Log the result at :info so operators see the score in app logs even when Snowplow is off."
-  [result]
-  (log/info (str "Semantic complexity score:\n"
-                 ;; `pprint` goes through `with-out-str`, not `*out*`, so the "use metabase.util.log" lint is n/a.
-                 #_{:clj-kondo/ignore [:discouraged-var]}
-                 (with-out-str (pprint/pprint result)))))
 
 (defn- snake ^String [x]
   (str/replace (name x) "-" "_"))
@@ -384,35 +455,34 @@
   [event score]
   (cond-> event (some? score) (assoc :score score)))
 
+(defn- node->events
+  "Walk one catalog and emit a Snowplow event per node.
+  Computed leaves use a `<path>` key and carry `:measurement`; error leaves use the same `<path>` key with `:error`.
+  Internal nodes use a `<path>.total` key with the rolled-up `:score` (the root emits as `total`).
+  `:score` is omitted when nil; see [[with-score]]."
+  [base catalog path node]
+  (let [;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
+        key   (apply dotted-key (if (:components node) (conj path :total) path))
+        event (cond-> (-> base
+                          (assoc :catalog catalog :key key)
+                          (with-score (:score node)))
+                (:measurement node) (assoc :measurement (:measurement node))
+                (:error node)       (assoc :error (truncate-error (:error node))))]
+    (cons event
+          (mapcat (fn [[k child]] (node->events base catalog (conj path k) child))
+                  (:components node)))))
+
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
   Returns true when they are all successfully delivered.
   Returns false when tracking is disabled or any emission failed."
   [{:keys [library universe metabot meta]}]
   (let [base   {:event           :data_complexity_scoring
+                :batch_id        (str (random-uuid))
                 :formula_version (:formula-version meta)
                 :parameters      (parameters-map meta)}
-        events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
-                     event (concat (for [[component sub] (:components result)]
-                                     ;; leaf component
-                                     (cond-> (-> base
-                                                 (assoc :catalog     catalog
-                                                        :key         (dotted-key (component->group component) component)
-                                                        :measurement (:measurement sub))
-                                                 (with-score (:score sub)))
-                                       (:error sub) (assoc :error (truncate-error (:error sub)))))
-                                   (for [[group entries] (group-by #(component->group (key %)) (:components result))]
-                                     ;; group total
-                                     (-> base
-                                         (assoc :catalog catalog
-                                                :key     (dotted-key group :total))
-                                         (with-score (nil-safe-sum (map (comp :score val) entries)))))
-                                   ;; grand total
-                                   [(-> base
-                                        (assoc :catalog catalog
-                                               :key     (dotted-key :total))
-                                        (with-score (:total result)))])]
-                 event)]
+        events (mapcat (fn [[catalog result]] (node->events base catalog [] result))
+                       [[:library library] [:universe universe] [:metabot metabot]])]
     ;; No short-circuiting - even if they are failures, attempt the rest.
     (reduce (fn [all-ok? event]
               (and (analytics/track-event! :snowplow/data_complexity event) all-ok?))
@@ -442,6 +512,7 @@
                  universe-score
                  (score-catalog metabot-entities embedder))
      :meta     (cond-> {:formula-version   formula-version
+                        :format-version    format-version
                         :synonym-threshold synonym-similarity-threshold
                         :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
@@ -464,10 +535,11 @@
 
   Returns a map of the shape:
 
-      {:library  {:total n :components {...}}
-       :universe {:total n :components {...}}
-       :metabot  {:total n :components {...}}
+      {:library  {:score n :components {...}}
+       :universe {:score n :components {...}}
+       :metabot  {:score n :components {...}}
        :meta     {:formula-version 1
+                  :format-version 1
                   :synonym-threshold 0.80
                   :embedding-model {:provider ..., :model-name ..., :model-dimensions ...}
                   :text-variant :names-split}}
@@ -484,8 +556,10 @@
                               to omit (the search-index path passes nil because its preprocessing
                               isn't a single named variant).
     `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
-                              the internal Metabot filters Cards."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope]}]
+                              the internal Metabot filters Cards.
+    `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
+      :or {emit-snowplow? true}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
   ;;; by many sub-score functions that each walk the collection, so making this reducible would
@@ -506,22 +580,23 @@
                             :universe universe-score
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
+                                               :format-version    format-version
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
-                                        text-variant         (assoc :text-variant    text-variant))}]
-        (log-scores! result)
-        (let [published? (time-phase! "publish" "all"
-                                      (fn []
-                                        (try
-                                          (emit-snowplow! result)
-                                          (catch Throwable t
-                                            (log/warn t "Failed to publish complexity score to Snowplow")
-                                            false))))]
-          ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
-          ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
-          ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
-          ;; partial failure doesn't silently mark the fingerprint as published.
-          (with-meta result {::snowplow-published? published?})))
+                                        text-variant         (assoc :text-variant    text-variant))}
+            ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
+            ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
+            ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
+            ;; partial failure doesn't silently mark the fingerprint as published.
+            published?     (time-phase! "publish" "all"
+                                        (fn []
+                                          (boolean
+                                           (when emit-snowplow?
+                                             (try
+                                               (emit-snowplow! result)
+                                               (catch Throwable t
+                                                 (log/warn t "Failed to publish complexity score to Snowplow")))))))]
+        (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms
                                       (u/since-ms total-timer))))))

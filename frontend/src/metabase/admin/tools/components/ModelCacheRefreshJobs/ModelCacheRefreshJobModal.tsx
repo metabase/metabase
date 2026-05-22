@@ -1,47 +1,30 @@
 import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  skipToken,
+  useGetPersistedInfoQuery,
+  useRefreshModelCacheMutation,
+} from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { PersistedModels } from "metabase/entities/persisted-models";
-import { connect } from "metabase/redux";
-import type { ModelCacheRefreshStatus } from "metabase-types/api";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import { parseNumberParam } from "metabase/urls";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 
-type ModelCacheRefreshJobModalOwnProps = {
-  params: {
-    jobId: string;
-  };
-  onClose: () => void;
-};
-
-type ModelCacheRefreshJobModalStateProps = {
-  onRefresh: (job: ModelCacheRefreshStatus) => void;
-};
-
-type PersistedModelsLoaderProps = {
-  persistedModel: ModelCacheRefreshStatus;
-};
-
-type ModelCacheRefreshJobModalProps = ModelCacheRefreshJobModalOwnProps &
-  ModelCacheRefreshJobModalStateProps &
-  PersistedModelsLoaderProps;
-
-const mapDispatchToProps = {
-  onRefresh: (job: ModelCacheRefreshStatus) =>
-    PersistedModels.objectActions.refreshCache(job),
-};
-
-function ModelCacheRefreshJobModalInner({
-  persistedModel,
+export function ModelCacheRefreshJobModal({
+  params,
   onClose,
-  onRefresh,
-}: ModelCacheRefreshJobModalProps) {
+}: ModalComponentProps) {
+  const jobId = parseNumberParam(params.jobId);
+  const { data: persistedModel } = useGetPersistedInfoQuery(
+    jobId !== undefined ? jobId : skipToken,
+  );
+  const [refreshModelCache] = useRefreshModelCacheMutation();
   const prevModelInfo = usePrevious(persistedModel);
 
   useEffect(() => {
@@ -60,7 +43,7 @@ function ModelCacheRefreshJobModalInner({
       return null;
     }
 
-    const onRefreshClick = () => onRefresh(persistedModel);
+    const onRefreshClick = () => refreshModelCache(persistedModel.card_id);
 
     return [
       <Button
@@ -74,7 +57,7 @@ function ModelCacheRefreshJobModalInner({
         to={`/model/${persistedModel.card_id}/query`}
       >{t`Edit model`}</Link>,
     ];
-  }, [persistedModel, onRefresh]);
+  }, [persistedModel, refreshModelCache]);
 
   return (
     <ModalContent title={t`Oh oh…`} onClose={onClose} footer={footer}>
@@ -82,12 +65,3 @@ function ModelCacheRefreshJobModalInner({
     </ModalContent>
   );
 }
-
-export const ModelCacheRefreshJobModal = _.compose(
-  connect(null, mapDispatchToProps),
-  PersistedModels.load({
-    id: (state: unknown, props: ModelCacheRefreshJobModalOwnProps) =>
-      props.params.jobId,
-    loadingAndErrorWrapper: false,
-  }),
-)(ModelCacheRefreshJobModalInner);

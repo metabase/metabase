@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is]]
    [metabase.agent-lib.mbql-integration :as mbql]
-   [metabase.agent-lib.runtime.fields :as runtime.fields]))
+   [metabase.agent-lib.runtime.fields :as runtime.fields]
+   [metabase.test :as mt]))
 
 (deftest resolve-field-in-query-prefers-chained-lineage-over-raw-exact-match-test
   (let [raw-field      {:id 300 :table-id 30 :name "name" :base-type :type/Text}
@@ -10,8 +11,8 @@
         source-column  {:id 200 :table-id 20 :name "customer_id" :base-type :type/Integer}
         fields-by-id   {200 {:id 200 :table-id 20 :fk-target-field-id 301}
                         301 {:id 301 :table-id 30}}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [raw-exact source-column])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [raw-exact source-column])]
                          (runtime.fields/resolve-field-in-query fields-by-id ::query raw-field))]
     (is (= 300 (:id resolved-field)))
     (is (= 200 (:fk-field-id resolved-field)))
@@ -29,8 +30,8 @@
                         2499 {:id 2499 :table-id 133 :name "id"}
                         2488 {:id 2488 :table-id 133 :name "customer_id" :fk-target-field-id 2456}
                         2456 {:id 2456 :table-id 127 :name "id"}}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [source-column])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [source-column])]
                          (runtime.fields/resolve-field-in-query fields-by-id ::query raw-field))]
     (is (= 2455 (:id resolved-field)))
     (is (= 2488 (:fk-field-id resolved-field)))
@@ -48,8 +49,8 @@
                         :source-field-name "order_id"}
         fields-by-id   {2488 {:id 2488 :table-id 133 :fk-target-field-id 2456}
                         2456 {:id 2456 :table-id 127}}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [source-column])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [source-column])]
                          (runtime.fields/resolve-field-in-query fields-by-id ::query raw-field))]
     (is (= 2455 (:id resolved-field)))
     (is (= 2488 (:fk-field-id resolved-field)))
@@ -69,8 +70,8 @@
                         2499 {:id 2499 :table-id 133}
                         2488 {:id 2488 :table-id 133 :fk-target-field-id 2456}
                         2456 {:id 2456 :table-id 127}}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [source-column])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [source-column])]
                          (runtime.fields/resolve-field-in-query fields-by-id ::query raw-field))]
     (is (= "order__via__order_id" (:fk-join-alias resolved-field)))
     (is (= "order__via__order_id" (:lib/original-fk-join-alias resolved-field)))))
@@ -94,8 +95,8 @@
                         2499 {:id 2499 :table-id 133 :name "id"}
                         2488 {:id 2488 :table-id 133 :name "customer_id" :fk-target-field-id 2456}
                         2456 {:id 2456 :table-id 127 :name "id"}}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [exact-partial source-column])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [exact-partial source-column])]
                          (runtime.fields/resolve-field-in-query fields-by-id ::query raw-field))]
     (is (= 2455 (:id resolved-field)))
     (is (= 2488 (:fk-field-id resolved-field)))
@@ -112,8 +113,8 @@
                         :base-type :type/Decimal
                         :effective-type :type/Decimal
                         :lib/source :source/previous-stage}
-        resolved-field (with-redefs [mbql/current-query-field-candidates
-                                     (constantly [raw-exact previous-stage])]
+        resolved-field (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                   (constantly [raw-exact previous-stage])]
                          (runtime.fields/resolve-field-in-query {} ::query raw-field))]
     (is (= previous-stage resolved-field))))
 
@@ -127,8 +128,8 @@
                             :base-type :type/Text
                             :effective-type :type/Text
                             :lib/source :source/previous-stage}
-        resolved-field     (with-redefs [mbql/current-query-field-candidates
-                                         (constantly [previous-event-uri previous-name])]
+        resolved-field     (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                       (constantly [previous-event-uri previous-name])]
                              (runtime.fields/resolve-field-in-query {} ::query raw-field))]
     (is (= previous-name resolved-field))))
 
@@ -140,6 +141,71 @@
                         :lib/source :source/previous-stage}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"not available in the current query stage"
-                          (with-redefs [mbql/current-query-field-candidates
-                                        (constantly [previous-stage])]
+                          (mt/with-dynamic-fn-redefs [mbql/current-query-field-candidates
+                                                      (constantly [previous-stage])]
                             (runtime.fields/resolve-field-in-query {} ::query raw-field))))))
+
+(deftest unavailable-field-error-enumerates-available-fields-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidate1 {:id 100 :table-id 10 :name "first_name" :base-type :type/Text}
+        candidate2 {:id 101 :table-id 10 :name "last_name" :base-type :type/Text}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates
+                    (constantly [candidate1 candidate2])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          (is (re-find #"first_name" msg))
+          (is (re-find #"id=100" msg))
+          (is (re-find #"last_name" msg))
+          (is (= [{:id 100 :name "first_name" :table-id 10}
+                  {:id 101 :name "last_name" :table-id 10}]
+                 (:available-fields data))))))))
+
+(deftest unavailable-field-error-includes-join-alias-in-summary-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidate  {:id 200 :table-id 20 :name "customer_id" :base-type :type/Integer
+                    :lib/join-alias "Customers"}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly [candidate])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg     (ex-message e)
+              data    (ex-data e)
+              summary (first (:available-fields data))]
+          (is (= "Customers" (:join-alias summary)))
+          (is (re-find #"join-alias=\"Customers\"" msg)))))))
+
+(deftest unavailable-field-error-suppresses-listing-when-no-candidates-test
+  (let [raw-field {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly [])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          (is (re-find #"No fields are visible in this stage" msg))
+          (is (not (re-find #"Fields available in this stage" msg)))
+          (is (= [] (:available-fields data))))))))
+
+(deftest unavailable-field-error-caps-listed-candidates-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidates (mapv (fn [i]
+                           {:id (+ 1000 i) :table-id 10
+                            :name (str "field_" i) :base-type :type/Text})
+                         (range 25))]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly candidates)]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          ;; all candidates captured in ex-data
+          (is (= 25 (count (:available-fields data))))
+          ;; message truncates with an "and N more" line
+          (is (re-find #"and 5 more" msg)))))))

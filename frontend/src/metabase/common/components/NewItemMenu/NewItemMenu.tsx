@@ -1,40 +1,37 @@
-import { push } from "react-router-redux";
-import _ from "underscore";
-
-import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/redux";
+import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
 
 import { NewItemMenuView } from "./NewItemMenuView";
 
-interface MenuDatabaseProps {
-  databases?: Database[];
-}
+type NewItemMenuProps = Omit<
+  React.ComponentProps<typeof NewItemMenuView>,
+  | "hasDataAccess"
+  | "hasNativeWrite"
+  | "hasDatabaseWithJsonEngine"
+  | "onCloseNavbar"
+>;
 
-const mapStateToProps = (
-  state: State,
-  { databases = [] }: MenuDatabaseProps,
-) => ({
-  hasDataAccess: canUserCreateQueries(state),
-  hasNativeWrite: canUserCreateNativeQueries(state),
-  hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
-});
+export const NewItemMenu = (props: NewItemMenuProps) => {
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = databasesResponse?.data ?? [];
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+  const hasDatabaseWithJsonEngine = getHasDatabaseWithJsonEngine(databases);
+  const dispatch = useDispatch();
 
-const mapDispatchToProps = {
-  onCloseNavbar: closeNavbar,
-  onChangeLocation: push,
+  return (
+    <NewItemMenuView
+      {...props}
+      hasDataAccess={hasDataAccess}
+      hasNativeWrite={hasNativeWrite}
+      hasDatabaseWithJsonEngine={hasDatabaseWithJsonEngine}
+      onCloseNavbar={() => dispatch(closeNavbar())}
+    />
+  );
 };
-
-export const NewItemMenu = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(NewItemMenuView);

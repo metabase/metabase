@@ -38,7 +38,7 @@
 (defn- post-events!
   "Side-effecting POST of a batch of events to the backend."
   [events]
-  (let [post-fn (.-postInternalAnalytics (js/require "metabase/utils/internal-analytics"))]
+  (let [post-fn (.-postInternalAnalytics (js/require "metabase/api/internal-analytics"))]
     (post-fn (clj->js events))))
 
 (defn- flush-buffer!

@@ -23,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
+  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
@@ -258,17 +258,21 @@
   (when (seq entity-types)
     (seq (remove allowed entity-types))))
 
+(def ^:private default-search-limit 10)
+(def ^:private max-search-limit 50)
+
 (defn- do-search
-  [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types] :as _args}]
+  [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " (sort allowed-types)) ".")}
+                  ". Allowed types: " (str/join ", " allowed-types) ".")}
     (try
       (let [results (search (merge {:semantic-queries semantic_queries
                                     :term-queries    keyword_queries
-                                    :entity-types    entity_types
+                                    :entity-types    (or (seq entity_types) (vec allowed-types))
                                     :metabot-id      shared/*metabot-id*
-                                    :limit           10}
+                                    :limit           (min max-search-limit
+                                                          (or limit default-search-limit))}
                                    search-opts))]
         {:output (format-search-output results)
          :structured-output {:result-type :search
@@ -283,14 +287,15 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
    [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
+    [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [args :- search-schema]
-  (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))
+  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -298,7 +303,8 @@
    [:keyword_queries {:optional true} [:sequential :string]]
    [:database_id :int]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model"]]]]])
+    [:maybe [:sequential [:enum "table" "model"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "sql_search.md"
@@ -306,22 +312,23 @@
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [database_id] :as args} :- sql-search-schema]
-  (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))
+  (do-search "SQL search" (sorted-set "model" "table") {:database-id database_id} args))
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
    [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
+    [:maybe [:sequential [:enum "table" "model" "metric" "question"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "nlq_search.md"
            :scope     scope/agent-search}
   nlq-search-tool
-  "Search for NLQ-queryable data sources (models, metrics, tables)."
+  "Search for NLQ-queryable data sources (tables, models, metrics, questions)."
   [args :- nlq-search-schema]
-  (do-search "NLQ search" #{"model" "metric" "table"} {:profile-id "nlq"} args))
+  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
@@ -329,7 +336,8 @@
    [:keyword_queries {:optional true} [:sequential :string]]
    [:search_native_query {:optional true} [:maybe :boolean]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
+    [:maybe [:sequential [:enum "table" "model" "transform"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "transform_search"
@@ -337,5 +345,5 @@
   transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search "transform search" #{"table" "model" "transform"}
+  (do-search "transform search" (sorted-set "model" "table" "transform")
              {:search-native-query search_native_query} args))

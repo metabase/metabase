@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -14,7 +17,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -37,6 +39,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -55,9 +58,12 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field field-id {::add/source-table (mt/id table-key)
-                          ::add/source-alias field-name
-                          ::add/desired-alias field-name}])))))
+        (sql.qp/mbql-clause-with-opts driver/*driver*
+                                      :field
+                                      {::add/source-table (mt/id table-key)
+                                       ::add/source-alias field-name
+                                       ::add/desired-alias field-name}
+                                      field-id))))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query (mt/mbql-query venues)
@@ -162,7 +168,7 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (lib.util.match/replace-lite m
+  (match/replace m
     {:source-metadata _}
     (remove-metadata (dissoc &match :source-metadata))))
 
@@ -1714,6 +1720,46 @@
           (testing "Preprocessing fails when we don't have a valid token"
             (mt/with-premium-features #{}
               (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (qp.preprocess/preprocess query))))))))))
+
+(deftest sandboxed-implicit-join-omits-hidden-columns-test
+  (testing "Implicit joins to a native-GTAP-sandboxed table must not project columns the GTAP omits (#73339)"
+    ;; Native GTAP that drops ADDRESS from People. With an FK remapping Orders.user_id → People.name,
+    ;; the add-remaps middleware causes an implicit join into the sandboxed People table even though
+    ;; the user's Orders query references no People columns. The projection for that join must not
+    ;; reference ADDRESS, or the DB errors with: Column "__mb_source.ADDRESS" not found.
+    (met/with-gtaps! {:gtaps {:people {:query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT ID, EMAIL, NAME, CITY, STATE FROM PEOPLE")}
+                              ;; Empty GTAP just to grant the sandbox group create-queries on Orders.
+                              :orders {}}
+                      :attributes {}}
+      (let [mp           (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                         (mt/id :orders :user_id)
+                                                         (mt/id :people :name))
+            base         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            fieldable    (lib/fieldable-columns base)
+            orders-id    (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "ID"})
+            orders-total (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "Total"})
+            ;; Plain Orders query — no People columns referenced. The implicit join into People
+            ;; comes from the FK remapping above, mirroring what the FE sends when "visiting" a table.
+            query        (-> base
+                             (lib/with-fields [orders-id orders-total])
+                             (lib/order-by orders-id :asc)
+                             (lib/limit 3))]
+        (testing "Preprocessed query does not project the dropped ADDRESS column"
+          (let [preprocessed (qp.preprocess/preprocess query)
+                address-id   (mt/id :people :address)
+                field-refs   (filter #(and (vector? %)
+                                           (= :field (first %))
+                                           (= address-id (nth % 2 nil)))
+                                     (tree-seq coll? seq preprocessed))]
+            (is (empty? field-refs)
+                "preprocessed query should not contain any field ref to people.address")))
+        (testing "Query executes successfully"
+          (let [result (qp/process-query query)]
+            (is (= :completed (:status result)))
+            (is (= 3 (count (mt/rows result))))))))))
 
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)

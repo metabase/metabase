@@ -329,15 +329,15 @@
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
-      (let [orig  setting/set!
+      (let [orig  (mt/original-fn #'setting/set!)
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
+        (mt/with-dynamic-fn-redefs [setting/set! (fn [& args]
+                                                   (if (zero? @calls)
+                                                     (do
+                                                       (swap! calls inc)
+                                                       (apply orig args))
+                                                     (throw (ex-info "Oops!" {}))))]
           (is (thrown-with-msg?
                Throwable
                #"Oops"
@@ -578,13 +578,13 @@
 (deftest db-stored-value-test
   (testing "should expose the raw DB/cache value through the public API"
     (is (= "raw-value"
-           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
+           (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly "raw-value")]
              (setting/db-stored-value :test-setting-1))))))
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value! [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
+  (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
@@ -826,7 +826,7 @@
         (testing setting
           (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
-    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+    (mt/with-dynamic-fn-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[setting expected] {:test-public-setting           true
                                     :test-authenticated-setting    true
@@ -1439,7 +1439,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/ns-in-test? (constantly false)]
+  (mt/with-dynamic-fn-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all
@@ -1927,3 +1927,21 @@
     (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
       (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
         (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))
+
+(deftest get-raw-value-source-test
+  (testing "Returns :default when only the default is set"
+    (mt/with-temporary-setting-values [test-setting-2 nil]
+      (is (= :default (setting/get-raw-value-source :test-setting-2)))))
+  (testing "Returns nil when no value is available from any source"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (is (nil? (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :database when set via the database"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (is (= :database (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :env when provided via env var"
+    (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+      (is (= :env (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Env var takes precedence over database value"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+        (is (= :env (setting/get-raw-value-source :test-setting-1)))))))

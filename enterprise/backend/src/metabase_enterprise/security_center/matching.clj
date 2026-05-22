@@ -127,31 +127,40 @@
    in batch.
 
    Short-circuits entirely (no query, no DB update) when the version is outside
-   every affected range and the advisory is already in a terminal state."
+   every affected range and the advisory is already in a terminal state.
+
+   Reactivation: when an acked advisory previously deemed unaffected
+   (`:resolved` / `:not_affected`) transitions to `:active` or `:error` — the
+   appdb evidence now contradicts the prior ack — the acknowledgement is
+   cleared so the next repeat-notification cycle picks it up."
   ([advisory]
    (evaluate-advisory! advisory (parse-version (:tag config/mb-version-info))))
   ([advisory instance-version]
-   (let [in-range? (affected-by-version? instance-version (:affected_versions advisory))]
-     (when-not (and (not in-range?) (#{:resolved :not_affected} (:match_status advisory)))
-       (let [match-status (evaluate-advisory in-range? (execute-matching-query! (:matching_query advisory)))]
+   (let [in-range? (affected-by-version? instance-version (:affected_versions advisory))
+         currently-unaffected (#{:resolved :not_affected} (:match_status advisory))]
+     (when (or in-range? (not currently-unaffected))
+       (let [match-status (evaluate-advisory in-range? (execute-matching-query! (:matching_query advisory)))
+             reactivated? (and (#{:active :error} match-status)
+                               currently-unaffected
+                               (some? (:acknowledged_at advisory)))]
          (t2/update! :model/SecurityAdvisory (:id advisory)
-                     {:match_status      match-status
-                      :last_evaluated_at (mi/now)}))))))
+                     (cond-> {:match_status      match-status
+                              :last_evaluated_at (mi/now)}
+                       reactivated? (assoc :acknowledged_at nil
+                                           :acknowledged_by nil))))))))
 
 (defn evaluate-all-advisories!
-  "Re-evaluate all non-acknowledged advisories, plus any acknowledged advisories
-   that are still active or in error state."
+  "Re-evaluate every advisory, including acknowledged ones — an acked
+   advisory may apply again if appdb state changes."
   []
-  (let [instance-version (parse-version (:tag config/mb-version-info))
-        advisories       (t2/select :model/SecurityAdvisory
-                                    {:where [:or
-                                             [:= :acknowledged_at nil]
-                                             [:in :match_status ["active" "error"]]]})]
-    (doseq [advisory advisories]
-      (try
-        (evaluate-advisory! advisory instance-version)
-        (catch Exception e
-          (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
-          (t2/update! :model/SecurityAdvisory (:id advisory)
-                      {:match_status      :error
-                       :last_evaluated_at (mi/now)}))))))
+  (let [instance-version (parse-version (:tag config/mb-version-info))]
+    (->>
+     (t2/reducible-select :model/SecurityAdvisory)
+     (run! (fn [advisory]
+             (try
+               (evaluate-advisory! advisory instance-version)
+               (catch Exception e
+                 (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
+                 (t2/update! :model/SecurityAdvisory (:id advisory)
+                             {:match_status      :error
+                              :last_evaluated_at (mi/now)}))))))))

@@ -1,17 +1,17 @@
 The search tool uses a hybrid semantic and keyword search strategy to find data sources that can be queried using natural language
-(models, metrics, and tables) throughout the Metabase instance.
+(tables, models, metrics, and saved questions) throughout the Metabase instance.
 
 ## When to Use
 
 This search tool is specifically designed for discovering entities that can be queried through natural language queries. Use it when:
 - Building natural language queries and need to find relevant data sources
-- Looking for curated models or pre-defined metrics
+- Looking for curated models, pre-defined metrics, or saved questions
 - Exploring available data for conversational data analysis
-- The user asks about available metrics, models, or raw tables for querying
+- The user asks about available metrics, models, saved questions, or raw tables for querying
 
 ### Core Use Cases
-- Before creating natural language queries to verify relevant models, metrics, or tables exist
-- When the user asks about available metrics or curated data models
+- Before creating natural language queries to verify relevant tables, models, metrics, or saved questions exist
+- When the user asks about available metrics, curated data models, or existing saved questions
 - To understand what data can be queried conversationally
 - When exploring analytical data sources (as opposed to pre-built visualizations)
 
@@ -43,9 +43,14 @@ Each search should focus on a single conceptual area to maximize result quality.
 - Include variations, abbreviations, and conceptual synonyms.
 
 `entity_types`:
-- Optionally filter the results to specific data source types (models, metrics, or tables).
+- Optionally filter the results to specific data source types (tables, models, metrics, or questions).
 - Leave empty to search across all queryable entity types.
 - Use filtering when the user explicitly requests a specific type or when context makes it clear which types are relevant.
+
+`limit`:
+- Optional. The maximum number of results to return. Defaults to 10 and is capped at 50.
+- Use a larger limit (20–50) for broad or generic queries where many results may be relevant (e.g. "sales", "revenue", "customer data").
+- Keep the default (10) for narrow, specific searches with clear intent (e.g. "monthly active users by region").
 
 ## Examples
 

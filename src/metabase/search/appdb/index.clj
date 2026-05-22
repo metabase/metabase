@@ -248,18 +248,27 @@
         ;; Did *we* do a rotation?
         (boolean pending)))))
 
+(defn- strip-junk-chars
+  "Replace control characters (\\p{Cc}: C0 controls including \\t \\n \\r, DEL, C1 controls) and surrogate
+   code points (\\p{Cs}) with a single space so they act as token boundaries for full-text indexing instead
+   of accidentally fusing adjacent words. Postgres also outright rejects literal NUL (0x00) in text columns,
+   so this is required to keep reindex batches from aborting. Non-string values pass through unchanged."
+  [v]
+  (cond-> v (string? v) (str/replace #"(?U)[\p{Cc}\p{Cs}]" " ")))
+
 (defn- document->entry [entity]
-  (-> entity
-      (select-keys (conj search.spec/attr-columns :model :display_data :legacy_input))
-      (set/rename-keys {:id :model_id
-                        :created_at :model_created_at
-                        :updated_at :model_updated_at})
-      (assoc :updated_at :%now)
-      (update :display_data json/encode)
-      ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
-      (update :legacy_input #(if (string? %) % (json/encode %)))
-      (dissoc :native_query)
-      (merge (specialization/extra-entry-fields entity))))
+  (let [entity (update-vals entity strip-junk-chars)]
+    (-> entity
+        (select-keys (conj search.spec/attr-columns :model :display_data :legacy_input))
+        (set/rename-keys {:id :model_id
+                          :created_at :model_created_at
+                          :updated_at :model_updated_at})
+        (assoc :updated_at :%now)
+        (update :display_data json/encode)
+        ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+        (update :legacy_input #(if (string? %) % (json/encode %)))
+        (dissoc :native_query)
+        (merge (specialization/extra-entry-fields entity)))))
 
 (defn- table-not-found-exception? [e]
   ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
@@ -279,7 +288,10 @@
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked.
+  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
+  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
+  continue so the rest of the reindex can finish and activate whatever was successfully written.
+
   We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
@@ -287,17 +299,33 @@
     (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
       (try
         (upsert! table-name)
+        (catch InterruptedException ie
+          (.interrupt (Thread/currentThread))
+          (throw ie))
         (catch Exception e
-          ;; Only suppress failures related to a legitimately non-existent table
-          (if (or (not (table-not-found-exception? e)) (exists? table-name))
-            (throw e)
+          ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
+          (if (and (table-not-found-exception? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
                 (try
                   (upsert! refreshed-table-name)
+                  (catch InterruptedException ie
+                    (.interrupt (Thread/currentThread))
+                    (throw ie))
                   (catch Exception e2
-                    (retry-upsert-ex table-type table-name refreshed-table-name e e2)))))))))))
+                    (if (table-not-found-exception? e2)
+                      (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
+                      (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
+                          (log/errorf (retry-upsert-ex table-type table-name refreshed-table-name e e2)
+                                      "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing"
+                                      (name table-type) refreshed-table-name)
+                          nil))))))
+            ;; Any other failure - log and continue so reindex can still finish.
+            (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
+                (log/errorf e "Error upserting search index batch into %s table %s; skipping batch and continuing"
+                            (name table-type) table-name)
+                nil)))))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"

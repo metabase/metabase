@@ -1,15 +1,15 @@
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useValidatePassword } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 
-import { validatePassword } from "../../actions";
 import { UserPasswordForm } from "../../components/UserPasswordForm";
 
-const mapStateToProps = (state: State) => ({
-  user: checkNotNull(getUser(state)),
-  onValidatePassword: validatePassword,
-});
+const UserPasswordApp = () => {
+  const user = checkNotNull(useSelector(getUser));
+  const validatePassword = useValidatePassword();
+  return <UserPasswordForm user={user} onValidatePassword={validatePassword} />;
+};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(UserPasswordForm);
+export default UserPasswordApp;

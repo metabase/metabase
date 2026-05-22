@@ -1,13 +1,7 @@
-import querystring from "querystring";
-
-import type { LocationDescriptor, LocationDescriptorObject } from "history";
 import _ from "underscore";
 
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
-import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
 
@@ -69,34 +63,7 @@ export function getSitePath(): string {
   return new URL(siteUrl).pathname.toLowerCase();
 }
 
-function isMetabaseUrl(url: string): boolean {
-  const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
-
-  if (!isAbsoluteUrl(url)) {
-    return true;
-  }
-
-  const pathNameWithoutSubPath = getPathnameWithoutSubPath(urlPath);
-  const isPublicLink = pathNameWithoutSubPath.startsWith("/public/");
-  const isEmbedding = pathNameWithoutSubPath.startsWith("/embed/");
-  /**
-   * (metabase#38640) We don't want to use client-side navigation for public links or embedding
-   * because public app, or embed app are built using separate routes.
-   **/
-  if (isPublicLink || isEmbedding) {
-    return false;
-  }
-
-  return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
-}
-
-function isAbsoluteUrl(url: string): boolean {
-  return ["/", "http:", "https:", "mailto:"].some((prefix) =>
-    url.startsWith(prefix),
-  );
-}
-
-function getWithSiteUrl(url: string): string {
+export function getWithSiteUrl(url: string): string {
   const siteUrl = MetabaseSettings.get("site-url");
   return url.startsWith("/") ? (siteUrl ?? "") + url : url;
 }
@@ -110,79 +77,11 @@ export function forceRedraw(domNode: HTMLElement): void {
   domNode.style.display = "";
 }
 
-// need to keep track of the latest click's state because sometimes
-// `open` is called asynchronously, thus window.event isn't the click event
-let metaKey: boolean = false;
-let ctrlKey: boolean = false;
-window.addEventListener(
-  "mouseup",
-  (e: MouseEvent) => {
-    metaKey = e.metaKey;
-    ctrlKey = e.ctrlKey;
-  },
-  true,
-);
-
-type OpenOptions = {
-  openInSameWindow?: (url: string) => void;
-  openInBlankWindow?: (url: string) => void;
-  openInSameOrigin?: (location: LocationDescriptorObject) => void;
-  ignoreSiteUrl?: boolean;
-} & ShouldOpenInBlankWindowOptions;
-
-/**
- * helper for opening links in same or different window depending on origin and
- * meta key state
- */
-export async function open(
-  url: string,
-  {
-    // custom function for opening in same window
-    openInSameWindow = (url: string) => clickLink(url, false),
-    // custom function for opening in new window
-    openInBlankWindow = (url: string) => clickLink(url, true),
-    // custom function for opening in same app instance
-    openInSameOrigin,
-    ignoreSiteUrl = false,
-    ...options
-  }: OpenOptions = {},
-): Promise<void> {
-  url = ignoreSiteUrl ? url : getWithSiteUrl(url);
-
-  // In the sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk()) {
-    const result = await handleLinkSdkPlugin(url);
-    if (result.handled) {
-      // Plugin handled the link, don't continue with default behavior
-      return;
-    }
-  }
-
-  if (shouldOpenInBlankWindow(url, options)) {
-    openInBlankWindow(url);
-  } else if (isSameOrigin(url)) {
-    if (!isMetabaseUrl(url)) {
-      clickLink(url, false);
-    } else if (openInSameOrigin) {
-      const location = getLocation(url);
-      if (isObject(location) && "pathname" in location) {
-        openInSameOrigin(location);
-      } else {
-        openInSameWindow(url);
-      }
-    } else {
-      openInSameWindow(url);
-    }
-  } else {
-    openInSameWindow(url);
-  }
-}
-
 export function openInBlankWindow(url: string): void {
   clickLink(getWithSiteUrl(url), true);
 }
 
-function clickLink(url: string, blank = false): void {
+export function clickLink(url: string, blank = false): void {
   const a = document.createElement("a");
   a.style.display = "none";
   document.body.appendChild(a);
@@ -198,64 +97,11 @@ function clickLink(url: string, blank = false): void {
   }
 }
 
-type ShouldOpenInBlankWindowOptions = {
-  event?: MouseEvent | null;
-  blank?: boolean;
-  blankOnMetaOrCtrlKey?: boolean;
-  blankOnDifferentOrigin?: boolean;
-};
-
-export function shouldOpenInBlankWindow(
-  url: string,
-  {
-    event = (typeof window !== "undefined" ? window.event : undefined) as
-      | MouseEvent
-      | undefined,
-    // always open in new window
-    blank = false,
-    // open in new window if command-click
-    blankOnMetaOrCtrlKey = true,
-    // open in new window for different origin
-    blankOnDifferentOrigin = true,
-  }: ShouldOpenInBlankWindowOptions = {},
-): boolean {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
-    return true;
-  }
-  const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
-  const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
-
-  if (blank) {
-    return true;
-  } else if (blankOnMetaOrCtrlKey && (isMetaKey || isCtrlKey)) {
-    return true;
-  } else if (blankOnDifferentOrigin && !isSameOrSiteUrlOrigin(url)) {
-    return true;
-  }
-  return false;
-}
-
 const getOrigin = (url: string): string | null => {
   try {
     return new URL(url, window.location.origin).origin;
   } catch {
     return null;
-  }
-};
-
-const getLocation = (url: string): LocationDescriptor => {
-  try {
-    const { pathname, search, hash } = new URL(url, window.location.origin);
-    const query = querystring.parse(search.substring(1));
-    return {
-      pathname: getPathnameWithoutSubPath(pathname),
-      search,
-      query,
-      hash,
-    };
-  } catch {
-    return {};
   }
 };
 
@@ -300,17 +146,6 @@ function isSiteUrlOrigin(url: string): boolean {
 // we want to open it in the same window (https://github.com/metabase/metabase/issues/24451)
 export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
-}
-
-export function getUrlTarget(
-  url: string | undefined,
-): "_self" | "_blank" | undefined {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
-    return "_blank";
-  }
-
-  return url == null || isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
 export function initializeIframeResizer(onReady = () => {}): void {

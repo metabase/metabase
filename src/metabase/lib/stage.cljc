@@ -20,11 +20,11 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.performance :refer [mapv some not-empty get-in #?(:clj for)]]))
 
@@ -167,7 +167,7 @@
          ;; Only include "late" expressions when required.
          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
          :when (or include-late-exprs?
-                   (not (lib.util.match/match-lite clause :offset clause)))]
+                   (not (match/match-one clause :offset clause)))]
      (-> col
          (assoc :lib/source :source/expressions, :lib/source-column-alias (:name col))
          (u/assoc-default :effective-type (or (:base-type col) :type/*))))))

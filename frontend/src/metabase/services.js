@@ -1,6 +1,6 @@
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isNative } from "metabase/common/utils/card";
 import { isEmbedPreview } from "metabase/embedding/config";
-import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
@@ -51,6 +51,13 @@ async function handleQueryApiError(apiPromise) {
       error.status < 500 &&
       error.data
     ) {
+      // The QP returns a structured `{ error, error_type, ... }` body, but
+      // plainer endpoints (e.g. `/api/embed/*` API-level checks) return a
+      // plain-text body. Normalize so callers can rely on a `{ error, ... }`
+      // shape and don't fall through to the empty state (EMB-1659).
+      if (typeof error.data === "string") {
+        return { error: error.data, status: error.status };
+      }
       return error.data;
     }
     // For 5xx and other errors, re-throw
@@ -62,39 +69,22 @@ async function handleQueryApiError(apiPromise) {
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
-export function maybeUsePivotEndpoint(api, card, metadata) {
+export function shouldUsePivotEndpoint(card, metadata) {
   const question = new Question(card, metadata);
-
-  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
-  // in other cases the BE extracts these options from the viz settings
-  function wrap(api) {
-    return (params, ...rest) => {
-      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
-        getPivotOptions(question);
-      return api(
-        {
-          ...params,
-          pivot_rows,
-          pivot_cols,
-          show_row_totals,
-          show_column_totals,
-        },
-        ...rest,
-      );
-    };
-  }
-
-  if (
-    question.display() !== "pivot" ||
-    isNative(card) ||
+  return (
+    question.display() === "pivot" &&
+    !isNative(card) &&
     // if we have metadata for the db, check if it supports pivots
-    (question.database() && !question.database().supportsPivots())
-  ) {
+    (!question.database() || question.database().supportsPivots())
+  );
+}
+
+export function maybeUsePivotEndpoint(api, card, metadata) {
+  if (!shouldUsePivotEndpoint(card, metadata)) {
     return api;
   }
 
   const mapping = [
-    [MetabaseApi.dataset, MetabaseApi.dataset_pivot, { wrap: true }],
     [CardApi.query, CardApi.query_pivot],
     [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
@@ -102,12 +92,66 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     [EmbedApi.cardQuery, EmbedApi.cardQueryPivot],
     [EmbedApi.dashboardCardQuery, EmbedApi.dashboardCardQueryPivot],
   ];
-  for (const [from, to, options = {}] of mapping) {
+  for (const [from, to] of mapping) {
     if (api === from) {
-      return options.wrap ? wrap(to) : to;
+      return to;
     }
   }
   return api;
+}
+
+// Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot)
+// and wires the `cancelDeferred` to RTK Query's `.abort()`. Translates aborts
+// into the `{ isCancelled: true }` shape that the legacy fetch helper threw,
+// so existing error-handling code (e.g. queryErrored) keeps working.
+let adhocDatasetQueryCounter = 0;
+export async function runAdhocDatasetQuery(
+  dispatch,
+  card,
+  metadata,
+  body,
+  cancelDeferred,
+) {
+  // Dynamic import to avoid a module-init cycle: `metabase/api/dataset` pulls
+  // in `metabase/api` → `metabase/redux/user` → `metabase/redux/query-builder`
+  // → `metabase/services` (this module). Deferring resolution until call time
+  // means the cycle closes only after every module has finished initializing.
+  const { datasetApi } = await import("metabase/api/dataset");
+  const isPivot = shouldUsePivotEndpoint(card, metadata);
+  // Disambiguate the RTK cache key so two callers running the same MBQL
+  // query get independent cache entries and abort signals. Without this,
+  // one caller cancelling would abort the shared in-flight request for
+  // every co-subscribed caller. `_refetchDeps` is stripped from the body
+  // before it hits the server.
+  const requestBody = {
+    ...(isPivot
+      ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+      : body),
+    _refetchDeps: ++adhocDatasetQueryCounter,
+  };
+  const endpoint = isPivot
+    ? datasetApi.endpoints.getAdhocPivotQuery
+    : datasetApi.endpoints.getAdhocQuery;
+
+  const action = dispatch(
+    endpoint.initiate(requestBody, { forceRefetch: true }),
+  );
+
+  let isCancelled = false;
+  cancelDeferred?.promise.then(() => {
+    isCancelled = true;
+    action.abort?.();
+  });
+
+  return action
+    .unwrap()
+    .catch((error) => {
+      if (isCancelled) {
+        throw { isCancelled: true };
+      }
+      throw error;
+    })
+    .finally(() => action.unsubscribe?.());
 }
 
 /**
@@ -117,6 +161,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 export async function runQuestionQuery(
   question,
   {
+    dispatch,
     cancelDeferred,
     isDirty = false,
     token,
@@ -158,38 +203,22 @@ export async function runQuestionQuery(
     ];
   }
 
-  const getDatasetQueryResult = (datasetQuery) => {
-    const datasetQueryWithParameters = { ...datasetQuery, parameters };
-    return handleQueryApiError(
-      maybeUsePivotEndpoint(
-        MetabaseApi.dataset,
+  return [
+    await handleQueryApiError(
+      runAdhocDatasetQuery(
+        dispatch,
         card,
         question.metadata(),
-      )(
-        datasetQueryWithParameters,
-        cancelDeferred
-          ? {
-              cancelled: cancelDeferred.promise,
-            }
-          : {},
+        { ...question.datasetQuery(), parameters },
+        cancelDeferred,
       ),
-    );
-  };
-
-  const datasetQueries = [question.datasetQuery()];
-
-  return Promise.all(datasetQueries.map(getDatasetQueryResult));
+    ),
+  ];
 }
 
 export const CardApi = {
-  get: GET("/api/card/:cardId"),
-  update: PUT("/api/card/:id"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
-  // related
-  compatibleCards: GET("/api/card/:cardId/series"),
-  parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
-  parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
 export const DashboardApi = {
@@ -254,26 +283,6 @@ export const AutoApi = {
   dashboard: GET("/api/automagic-dashboards/:subPath", {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
-  }),
-};
-
-export const MetabaseApi = {
-  db_usage_info: GET("/api/database/:dbId/usage_info"),
-  tableAppendCSV: POST("/api/table/:tableId/append-csv", {
-    formData: true,
-    fetch: true,
-  }),
-  tableReplaceCSV: POST("/api/table/:tableId/replace-csv", {
-    formData: true,
-    fetch: true,
-  }),
-  dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/dataset/pivot"),
-
-  // to support audit app  allow the endpoint to be provided in the query
-  datasetEndpoint: POST("/api/:endpoint", {
-    // this prevents the `endpoint` parameter from being URL encoded
-    raw: { endpoint: true },
   }),
 };
 
@@ -349,22 +358,6 @@ export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-};
-
-// TODO: move to all functions to RTK (metabase/api/util.ts)
-export const UtilApi = {
-  password_check: POST("/api/session/password-check"),
-  random_token: GET("/api/util/random_token"),
-  logs: GET("/api/logger/logs"),
-  bug_report_details: GET("/api/bug-reporting/details"),
-  get_connection_pool_details_url: () => {
-    // this one does not need an HTTP verb because it's opened as an external link
-    // and it can be deployed at subpath
-    const path = "/api/bug-reporting/connection-pool-details";
-    const { href } = new URL(api.basename + path, location.origin);
-
-    return href;
-  },
 };
 
 export const FrontendErrorsApi = {

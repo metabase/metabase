@@ -182,14 +182,13 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
-    isHosted?: boolean;
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
+    isConfigured?: boolean;
   } | void,
 ) {
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
-    "is-hosted?": options?.isHosted ?? false,
+    "llm-metabot-configured?": options?.isConfigured ?? true,
   });
 
   setupEnterprisePlugins();

@@ -24,14 +24,15 @@
   "Send a message through the real streaming endpoint, returning the HTTP response body.
    The LLM is mocked to return a simple text response with the given model/usage."
   [conversation-id message model prompt-tokens completion-tokens]
-  (let [mock-fn (fn [_]
-                  (mut/mock-llm-response
-                   [{:type :start :id "msg-1"}
-                    {:type :text  :text "Hello!"}
-                    {:type  :usage
-                     :model model
-                     :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
-                     :id    "msg-1"}]))]
+  (let [message-id (str (random-uuid))
+        mock-fn    (fn [_]
+                     (mut/mock-llm-response
+                      [{:type :start :id message-id}
+                       {:type :text  :text "Hello!"}
+                       {:type  :usage
+                        :model model
+                        :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
+                        :id    message-id}]))]
     (with-redefs [openrouter/openrouter mock-fn
                   claude/claude         mock-fn
                   openai/openai         mock-fn]

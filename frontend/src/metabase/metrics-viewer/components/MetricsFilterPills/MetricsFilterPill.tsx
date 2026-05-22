@@ -4,8 +4,8 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type { IconName } from "metabase/ui";
 import { Flex, Pill, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./MetricsFilterPill.module.css";
 

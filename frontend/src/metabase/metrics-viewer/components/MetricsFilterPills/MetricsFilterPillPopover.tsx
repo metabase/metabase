@@ -5,9 +5,9 @@ import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
-import type { IconName } from "metabase/ui";
 import { Badge, Flex, Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import { MetricsFilterPill } from "./MetricsFilterPill";
 import { getFilterDisplayParts } from "./utils";

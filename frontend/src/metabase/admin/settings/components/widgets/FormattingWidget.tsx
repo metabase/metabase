@@ -184,6 +184,7 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
+              searchable
               options={currencyOptions}
               onChange={(newValue) =>
                 handleChange({
@@ -225,6 +226,7 @@ function FormattingInput({
   onChange,
   options,
   inputType,
+  searchable,
 }: {
   id: string;
   label: string;
@@ -232,6 +234,7 @@ function FormattingInput({
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
   inputType: "boolean" | "select" | "radio";
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -255,6 +258,7 @@ function FormattingInput({
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
+          searchable={searchable}
         />
       )}
       {inputType === "boolean" && (

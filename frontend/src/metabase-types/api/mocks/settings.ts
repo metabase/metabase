@@ -106,6 +106,8 @@ export const createMockTokenFeatures = (
   cloud_custom_smtp: false,
   content_translation: false,
   content_verification: false,
+  "custom-viz": false,
+  "custom-viz-available": false,
   "data-complexity-score": false,
   embedding: false,
   embedding_sdk: false,
@@ -135,9 +137,6 @@ export const createMockTokenFeatures = (
   upload_management: false,
   serialization: false,
   cache_preemptive: false,
-  ai_entity_analysis: false,
-  ai_sql_fixer: false,
-  ai_sql_generation: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
@@ -151,6 +150,7 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -171,6 +171,8 @@ export const createMockSettings = (
   "analytics-uuid": "eefb3320-1d3f-4686-a22a-1d30ae729525",
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
+  "custom-viz-enabled": false,
+  "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
   "application-colors": {},
@@ -274,6 +276,7 @@ export const createMockSettings = (
    * You probably don't want to set this directly in tests because it can get out
    * of sync with the database state (which should be a source of truth).
    */
+  "has-active-workspace": false,
   "has-sample-database?": undefined,
   "has-user-setup": true,
   "hide-embed-branding?": true,
@@ -382,6 +385,7 @@ export const createMockSettings = (
   "metabot-limit-unit": "tokens",
   "metabot-limit-reset-rate": "monthly",
   "metabot-quota-reached-message": null,
+  "ai-usage-max-retention-days": 180,
   "metabot-chat-system-prompt": null,
   "metabot-nlq-system-prompt": null,
   "metabot-sql-system-prompt": null,
@@ -417,6 +421,7 @@ export const createMockSettings = (
   "last-acknowledged-version": "v1",
   "last-used-native-database-id": 1,
   "embedding-homepage": "hidden",
+  "setup-embedding-autoenabled": false,
   "setup-license-active-at-setup": false,
   "embedding-hub-test-embed-snippet-created": false,
   "embedding-hub-production-embed-snippet-created": false,
@@ -432,5 +437,6 @@ export const createMockSettings = (
   "encryption-enabled": false,
   "mcp-apps-cors-enabled-clients": [],
   "mcp-apps-cors-custom-origins": "",
+  "transforms-meter-locked": null,
   ...opts,
 });

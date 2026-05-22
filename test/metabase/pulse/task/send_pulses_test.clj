@@ -110,8 +110,8 @@
 (deftest send-pulse!*-delete-pcs-no-recipients-test
   (testing "send-pulse!* should delete PulseChannels and only send to enabled channels"
     (let [sent-channel-ids (atom #{})]
-      (with-redefs [pulse.send/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
-                                             (swap! sent-channel-ids set/union channel-ids))]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse! (fn [_pulse-id & {:keys [channel-ids]}]
+                                                           (swap! sent-channel-ids set/union channel-ids))]
         (mt/with-temp
           [:model/Pulse        {pulse :id}            {}
            :model/PulseChannel {pc :id}               (merge
@@ -212,8 +212,11 @@
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [;; run the job every second
                         u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
+                        ;; quartz scheduler threads don't inherit *local-redefs*, so we have to swap the
+                        ;; root — see dynamic-redefs.clj docstring
                         task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
                                                            (swap! sent-channel-ids set/union channel-ids))]
             (let [pc-count  (+ 2 mt.util/in-memory-scheduler-thread-count)
@@ -243,7 +246,10 @@
           (notification.tu/with-captured-channel-send!
             (let [sent-pulse-ids (atom #{})
                   send-pulse-called (atom 0)
-                  original-send-pulse!* @#'task.send-pulses/send-pulse!*]
+                  original-send-pulse!* (mt/original-fn #'task.send-pulses/send-pulse!*)]
+              ;; quartz scheduler threads don't inherit *local-redefs*, so we have to swap the
+              ;; root — see dynamic-redefs.clj docstring
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [;; run the job every second - must be before creating PulseChannel
                             u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
                             task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids]

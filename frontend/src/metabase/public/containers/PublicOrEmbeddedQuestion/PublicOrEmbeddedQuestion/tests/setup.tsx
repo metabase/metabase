@@ -27,10 +27,10 @@ import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
-const VisualizationMock = ({
+function VisualizationMock({
   onUpdateVisualizationSettings,
   rawSeries,
-}: VisualizationProps) => {
+}: VisualizationProps) {
   const [
     {
       card,
@@ -55,7 +55,7 @@ const VisualizationMock = ({
       </button>
     </div>
   );
-};
+}
 
 jest.mock(
   "metabase/visualizations/components/Visualization",

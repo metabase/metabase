@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.models.interface :as mi]
@@ -14,6 +15,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private harbormaster-conn-timeout-ms
+  2000)
+
+(def ^:private harbormaster-socket-timeout-ms
+  5000)
+
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
    Returns the HTTP response on success, or nil if the token or Store API URL is missing."
@@ -22,8 +29,10 @@
         base-url (store-api/store-api-url)]
     (when-not (or (str/blank? token) (str/blank? base-url))
       (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)}))))
+                 {:content-type   :json
+                  :conn-timeout   harbormaster-conn-timeout-ms
+                  :socket-timeout harbormaster-socket-timeout-ms
+                  :body           (json/encode feedback)}))))
 
 (defn harbormaster-payload
   "Build the Harbormaster feedback payload from the request body, the resolved
@@ -43,6 +52,20 @@
     :submission_time   (str (java.time.OffsetDateTime/now))
     :submitter_user_id submitter-user-id
     :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id submitter-user-id))}))
+
+(defn mcp-harbormaster-payload
+  "Build a Harbormaster feedback payload for MCP Apps visualization feedback.
+   MCP Apps do not create `metabot_message` rows, so this path intentionally
+   skips local `metabot_feedback` persistence and forwards the MCP context
+   supplied by the client."
+  ([body]
+   (mcp-harbormaster-payload body api/*current-user-id*))
+  ([body submitter-user-id]
+   (assoc body
+          :version config/mb-version-info
+          :submission_time (str (java.time.OffsetDateTime/now))
+          :submitter_user_id submitter-user-id
+          :is_admin (boolean (t2/select-one-fn :is_superuser :model/User :id submitter-user-id)))))
 
 (defn- resolve-rated-message
   "Return the `metabot_message` row (`:id` + `:conversation_id`) identified by
@@ -65,15 +88,25 @@
   (let [base-fields {:positive          positive
                      :issue_type        issue_type
                      :freeform_feedback freeform_feedback}]
-    (t2/with-transaction [_conn]
-      (if (t2/exists? :model/MetabotFeedback :message_id message-row-id :user_id submitter-user-id)
-        (t2/update! :model/MetabotFeedback
-                    {:message_id message-row-id :user_id submitter-user-id}
-                    (assoc base-fields :updated_at (java.time.OffsetDateTime/now)))
-        (t2/insert! :model/MetabotFeedback
-                    (assoc base-fields
-                           :message_id message-row-id
-                           :user_id    submitter-user-id))))))
+    (app-db/update-or-insert! :model/MetabotFeedback
+                              {:message_id message-row-id :user_id submitter-user-id}
+                              (fn [existing]
+                                (cond-> base-fields
+                                  existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+
+(defn- upsert-source-feedback!
+  "Insert or update the `metabot_source_feedback` row for one source, message, and submitter."
+  [message-row-id submitter-user-id {:keys [positive source_id source_type]}]
+  (let [conditions  {:message_id  message-row-id
+                     :user_id     submitter-user-id
+                     :source_id   source_id
+                     :source_type source_type}
+        base-fields {:positive positive}]
+    (app-db/update-or-insert! :model/MetabotSourceFeedback
+                              conditions
+                              (fn [existing]
+                                (cond-> base-fields
+                                  existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
 
 (defn persist-feedback!
   "Upsert a `metabot_feedback` row for the rated message and return the
@@ -87,4 +120,12 @@
   [{:keys [message_id] :as body}]
   (let [message (resolve-rated-message message_id)]
     (upsert-feedback! (:id message) api/*current-user-id* body)
+    message))
+
+(defn persist-source-feedback!
+  "Upsert a `metabot_source_feedback` row for a source used by the rated message.
+   Returns the resolved `metabot_message` row (with its `:conversation`)."
+  [{:keys [message_id] :as body}]
+  (let [message (resolve-rated-message message_id)]
+    (upsert-source-feedback! (:id message) api/*current-user-id* body)
     message))

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
@@ -765,7 +766,7 @@
   (testing "Streaming response handles cancellation gracefully without assertion errors"
     (let [mock-qp-fn (fn [rff]
                       ;; Simulate immediate cancellation
-                       (with-redefs [qp.pipeline/canceled? (constantly true)]
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly true)]
                          (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
 
       ;; Should not throw "QP unexpectedly returned nil" assertion error
@@ -776,7 +777,7 @@
   (testing "Streaming response handles nil + canceled? gracefully"
     (let [mock-qp-fn (fn [_rff]
                        ;; Return nil and set up canceled? to return truthy
-                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly ::cancel)]
                          nil))]
 
       ;; Should not throw any assertion errors

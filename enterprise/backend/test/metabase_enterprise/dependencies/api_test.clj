@@ -1368,7 +1368,11 @@
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
             products (lib.metadata/table mp (mt/id :products))]
-        (mt/with-temp [:model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
+        (mt/with-temp [:model/Table     {referenced-table-id :id} {:db_id  (mt/id)
+                                                                   :schema "PUBLIC"
+                                                                   :name   "referenced_transform_table"
+                                                                   :active true}
+                       :model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
                                                                      :source {:type :query
                                                                               :query (lib/query mp products)}
                                                                      :target {:schema "PUBLIC"
@@ -1378,24 +1382,20 @@
                                                                                 :query (lib/query mp products)}
                                                                        :target {:schema "PUBLIC"
                                                                                 :name "referenced_transform_table"}}]
-          ;; Simulate the referenced transform having been run: activate its provisional target table
+          ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph (which filters active=true).
-          (t2/update! :model/Table {:db_id (mt/id) :schema "PUBLIC" :name "referenced_transform_table"} {:active true})
+          (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
                                            :output-table "referenced_transform_table"
                                            :transform-id referenced-transform-id}})
           (deps.test/synchronously-run-backfill!)
-          (try
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
-              (is (=? {:data [{:id unreffed-transform-id
-                               :type "transform"
-                               :data {:name "Unreferenced Transform - unreftest"}}]}
-                      response)))
-            (finally
-              ;; Clean up provisional table rows created by define-before-insert
-              (t2/delete! :model/Table :db_id (mt/id) :name [:in ["referenced_transform_table" "unreferenced_transform_table"]]))))))))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
+            (is (=? {:data [{:id unreffed-transform-id
+                             :type "transform"
+                             :data {:name "Unreferenced Transform - unreftest"}}]}
+                    response))))))))
 
 (deftest ^:sequential unreferenced-snippets-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"

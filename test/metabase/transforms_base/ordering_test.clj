@@ -42,11 +42,12 @@
                                            :name   "orders_2"}
                  :model/Field _ {:table_id table
                                  :name     "foo"}
-                 :model/Transform {parent :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type     "query",
-                                                 :query    {:source-table (mt/id :orders)}}
-                                                "orders_2")
+                 :model/Transform {parent :id} (-> (make-transform
+                                                    {:database (mt/id),
+                                                     :type     "query",
+                                                     :query    {:source-table (mt/id :orders)}}
+                                                    "orders_2")
+                                                   (assoc :target_table_id table))
                  :model/Transform {child :id} (make-transform
                                                {:database (mt/id)
                                                 :type     "query"
@@ -299,11 +300,12 @@
                                               :name   "table_1"}
                    :model/Field _ {:table_id table1
                                    :name     "foo"}
-                   :model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table1}}
-                                              "table_1")]
+                   :model/Transform {t1 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table1}}
+                                                  "table_1")
+                                                 (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_1"
               :cycle     [t1]}
              (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
@@ -314,16 +316,18 @@
                    :model/Table {table2 :id} {:schema (default-schema-or-public), :name "table_2"}
                    :model/Field _ {:table_id table2
                                    :name     "foo"}
-                   :model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table1}}
-                                              "table_2")
-                   :model/Transform {t2 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table2}}
-                                              "table_1")]
+                   :model/Transform {t1 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table1}}
+                                                  "table_2")
+                                                 (assoc :target_table_id table2))
+                   :model/Transform {t2 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table2}}
+                                                  "table_1")
+                                                 (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1",
               :cycle     [t1 t2]}
              (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
@@ -340,21 +344,24 @@
                                               :name   "table_3"}
                    :model/Field _ {:table_id table3
                                    :name     "foo"}
-                   :model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table1}}
-                                              "table_2")
-                   :model/Transform {t2 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table2}}
-                                              "table_3")
-                   :model/Transform {t3 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type     "query",
-                                               :query    {:source-table table3}}
-                                              "table_1")]
+                   :model/Transform {t1 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table1}}
+                                                  "table_2")
+                                                 (assoc :target_table_id table2))
+                   :model/Transform {t2 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table2}}
+                                                  "table_3")
+                                                 (assoc :target_table_id table3))
+                   :model/Transform {t3 :id} (-> (make-transform
+                                                  {:database (mt/id),
+                                                   :type     "query",
+                                                   :query    {:source-table table3}}
+                                                  "table_1")
+                                                 (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
               :cycle     [t1 t3 t2]}
              (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))

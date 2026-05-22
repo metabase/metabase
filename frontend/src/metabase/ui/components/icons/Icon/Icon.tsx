@@ -7,10 +7,10 @@ import { forwardRef } from "react";
 
 import { ALL_COLOR_NAMES } from "metabase/ui/colors/constants/color-names";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import { Tooltip } from "../../overlays/Tooltip";
 
-import type { IconName } from "./icons";
 import { Icons } from "./icons";
 
 const PALETTE_KEYS = new Set<string>(ALL_COLOR_NAMES);
@@ -34,7 +34,7 @@ export type IconProps = Omit<SVGAttributes<SVGSVGElement>, "color"> &
     tooltipPosition?: FloatingPosition;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
-    color?: ColorName;
+    color?: ColorName | "inherit";
   };
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(

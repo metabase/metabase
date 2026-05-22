@@ -1,8 +1,10 @@
 (ns metabase.query-processor.timeseries-test
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  {:clj-kondo/config '{:hooks {:analyze-call {metabase.query-processor.timeseries-test/run-mbql-query
-                                              hooks.metabase.test.data/mbql-query}}}}
+  {:clj-kondo/config '{:hooks   {:analyze-call {metabase.query-processor.timeseries-test/run-mbql-query
+                                                hooks.metabase.test.data/mbql-query}}
+                       :linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.timeseries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.timeseries-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

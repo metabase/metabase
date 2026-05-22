@@ -26,8 +26,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Search } from "metabase/entities/search";
-import { useDispatch } from "metabase/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -220,14 +218,10 @@ const CollectionItemsTableContent = ({
   onPreviousPage,
   onUnpinnedItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const dispatch = useDispatch();
   const { data, isLoading: loadingUnpinnedItems } =
     useListCollectionItemsQuery(unpinnedQuery);
 
-  const unpinnedItems = useMemo(
-    () => data?.data.map((item) => Search.wrapEntity(item, dispatch)) ?? [],
-    [data, dispatch],
-  );
+  const unpinnedItems = data?.data ?? [];
   const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),

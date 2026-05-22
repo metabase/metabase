@@ -81,6 +81,20 @@
         #{}))
     #{}))
 
+(defn extract-card-ids-from-template-tags
+  "Extract referenced Card IDs from native query template tags. Card template
+   tags cover both saved questions and models. Returns an empty set when no
+   card tags are present."
+  [template-tags]
+  (if (map? template-tags)
+    (into #{}
+          (keep (fn [[_ tag]]
+                  (when (and (map? tag)
+                             (contains? #{"card" :card} (:type tag)))
+                    (or (:card-id tag) (:card_id tag)))))
+          template-tags)
+    #{}))
+
 ;;; ------------------------------------------ Permission-Filtered Fetch ------------------------------------------
 
 (defn- fetch-accessible-tables
@@ -101,6 +115,17 @@
                             (cond-> {:where clause}
                               with (assoc :with with)))]
       (into {} (map (juxt :id identity)) tables))))
+
+(defn get-accessible-card-ids
+  "Return readable, non-archived Card IDs from `card-ids`."
+  [card-ids]
+  (when (seq card-ids)
+    (->> (t2/select :model/Card
+                    :id [:in card-ids]
+                    :archived false)
+         (filter mi/can-read?)
+         (map :id)
+         set)))
 
 ;;; ----------------------------------------- Metadata Provider Column Fetch -----------------------------------------
 
@@ -464,7 +489,7 @@
                :tables response-tables})))))))
 
 (defn get-tables-with-columns
-  "Fetch tables with their columns for the extract-tables endpoint.
+  "Fetch tables with their columns for the extract-sources endpoint.
    Returns lightweight metadata without triggering fingerprinting or field values.
 
    Parameters:

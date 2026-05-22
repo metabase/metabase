@@ -3,7 +3,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/utils/promise";
-const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, FEEDBACK, FEEDBACK_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
@@ -1557,6 +1558,89 @@ describe("issue 63687", () => {
 
     cy.wait("@getTiles").then(({ response: tileResponse }) => {
       expect(tileResponse?.statusCode).to.equal(200);
+    });
+  });
+});
+
+describe("issue 57028", () => {
+  const lockedContainsBodyFilter = {
+    name: "locked_contains_body",
+    slug: "locked_contains_body",
+    id: "e6588080",
+    type: "string/contains",
+    sectionId: "string",
+    isMultiSelect: true,
+    values_query_type: "none",
+  };
+
+  const emailFilter = {
+    name: "Email",
+    slug: "email",
+    id: "d31e550f",
+    type: "string/=",
+    sectionId: "string",
+    values_query_type: "list",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("static embedded editable filter should load dropdown values when a string/contains locked param has multiple values (metabase#57028)", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Feedback",
+        query: { "source-table": FEEDBACK_ID },
+      },
+      dashboardDetails: {
+        parameters: [lockedContainsBodyFilter, emailFilter],
+        enable_embedding: true,
+        embedding_params: {
+          [lockedContainsBodyFilter.slug]: "locked",
+          [emailFilter.slug]: "enabled",
+        },
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      H.addOrUpdateDashboardCard({
+        dashboard_id,
+        card_id,
+        card: {
+          parameter_mappings: [
+            {
+              card_id,
+              parameter_id: lockedContainsBodyFilter.id,
+              target: ["dimension", ["field", FEEDBACK.BODY, null]],
+            },
+            {
+              card_id,
+              parameter_id: emailFilter.id,
+              target: ["dimension", ["field", FEEDBACK.EMAIL, null]],
+            },
+          ],
+        },
+      });
+
+      cy.intercept(
+        "GET",
+        `/api/embed/dashboard/*/params/${emailFilter.id}/values`,
+      ).as("emailValues");
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboard_id },
+        params: {
+          [lockedContainsBodyFilter.slug]: ["March", "damp", "somewhat"],
+        },
+      });
+    });
+
+    H.filterWidget().contains("Email").click();
+
+    cy.wait("@emailValues").its("response.statusCode").should("eq", 200);
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("be.visible");
+      cy.findAllByRole("checkbox").its("length").should("be.greaterThan", 0);
     });
   });
 });

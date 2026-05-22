@@ -1,10 +1,12 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
-import { useCreateTimelineEventMutation } from "metabase/api";
-import { Timelines } from "metabase/entities/timelines";
+import {
+  skipToken,
+  useCreateTimelineEventMutation,
+  useGetTimelineQuery,
+} from "metabase/api";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
@@ -14,23 +16,22 @@ import type {
 } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
 
-interface NewEventModalContainerProps {
-  params: ModalParams;
-  timeline: Timeline;
-}
-
-const timelineProps = {
-  id: (state: State, props: NewEventModalContainerProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
-
-function NewEventModalContainer({ timeline }: NewEventModalContainerProps) {
+function NewEventModalContainer({ params }: ModalComponentProps) {
   const dispatch = useDispatch();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const id = Urls.extractEntityId(params.timelineId);
+  const {
+    data: timeline,
+    isLoading,
+    error,
+  } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
+
+  if (isLoading || error || !timeline) {
+    return (
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+    );
+  }
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -53,4 +54,4 @@ function NewEventModalContainer({ timeline }: NewEventModalContainerProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Timelines.load(timelineProps))(NewEventModalContainer);
+export default NewEventModalContainer;

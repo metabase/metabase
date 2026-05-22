@@ -1,4 +1,4 @@
-name: Release 1a - Tag Release Artifact
+name: Release 1 - Tag Release Artifact
 run-name: Tag ${{ inputs.version }}
 
 on:
@@ -11,10 +11,16 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        type: string
+        required: true
 
 permissions:
   id-token: write
@@ -28,7 +34,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -69,7 +75,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -112,7 +118,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: |
@@ -139,6 +145,36 @@ jobs:
           || (echo "Commit not found in correct release branch" && exit 1)
         git checkout -
 
+  trigger-milestone-check:
+    # Posts a Slack FYI about issues that still need review for this release.
+    # Informational only — nothing depends on it, so it never blocks the release.
+    needs: [check-version, check-commit]
+    permissions:
+      contents: read
+      issues: read
+    uses: ./.github/workflows/release-milestone-check.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      commit: ${{ inputs.commit }}
+
+  manage-milestones:
+    # Close the milestone we're about to ship and open the next one BEFORE tagging,
+    # so any PRs that merge while the release is in flight are tagged with the next
+    # milestone (not the one about to be released).
+    #
+    # Sequenced after trigger-milestone-check so that the check sees the milestone
+    # in its open state. milestone-check is informational and must never block, so
+    # we run regardless of its outcome; only preflight failures suppress this.
+    needs: [check-version, check-commit, trigger-milestone-check]
+    if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/release-milestone-manage.yml
+    with:
+      version: ${{ inputs.version }}
+
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -149,7 +185,7 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: .github
     - name: Get correct version number
@@ -209,7 +245,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: .github
     - name: Retrieve release ee uberjar artifact
@@ -247,11 +283,9 @@ jobs:
 
   auto-publish-release:
     name: Auto-publish release ${{ inputs.version }}
-    if: ${{ inputs.auto }}
     needs: run-pre-release-tests
     uses: ./.github/workflows/release.yml
     secrets: inherit
     with:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
-      auto: ${{ inputs.auto }}

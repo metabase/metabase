@@ -3,9 +3,12 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import {
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
-import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
   PLUGIN_AUDIT,
@@ -16,7 +19,6 @@ import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
-import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { Database, Group, GroupsPermissions } from "metabase-types/api";
 
@@ -42,7 +44,7 @@ import {
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
 import { buildFieldsPermissions } from "./fields";
-import { getOrderedGroups } from "./groups";
+import { getOrderedGroups, selectGroupById, selectGroupList } from "./groups";
 import { buildSchemasPermissions } from "./schemas";
 import { buildTablesPermissions } from "./tables";
 
@@ -150,9 +152,7 @@ const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
     return null;
   }
 
-  return Groups.selectors.getObject(state, {
-    entityId: parseInt(groupId),
-  });
+  return selectGroupById(state, parseInt(groupId));
 };
 
 const hasViewDataOptions = (entities: any[]) => {
@@ -199,24 +199,37 @@ export const getShouldShowTransformPermissions = createSelector(
   },
 );
 
+export const getShouldShowWorkspacesPermissions = createSelector(
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (state: State) => getTokenFeature(state, "workspaces"),
+  (plan, workspacesFeatureEnabled) => {
+    if (plan === "oss") {
+      return false;
+    }
+    return Boolean(workspacesFeatureEnabled);
+  },
+);
+
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
   getDataPermissions,
   getOriginalDataPermissions,
   getGroup,
-  Groups.selectors.getList,
+  selectGroupList,
   getIsLoadingDatabaseTables,
   getShouldShowTransformPermissions,
+  getShouldShowWorkspacesPermissions,
   (
     metadata,
     params,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
-    group: Group,
+    group: Group | null | undefined,
     groups: Group[],
     isLoading,
     showTransformPermissions,
+    showWorkspacesPermissions,
   ): PermissionEditorType | null => {
     const { groupId, databaseId, schemaName } = params;
 
@@ -255,8 +268,7 @@ export const getDatabasesPermissionEditor = createSelector(
         ? database.getSchemas()[0]
         : (database.schema(schemaName) as Schema);
       permissionSubject = "fields";
-      entities = schema
-        .getTables()
+      entities = (schema.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
         .map((table) => {
           const entityId = getTableEntityId(table);
@@ -273,6 +285,7 @@ export const getDatabasesPermissionEditor = createSelector(
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -297,6 +310,7 @@ export const getDatabasesPermissionEditor = createSelector(
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -330,6 +344,7 @@ export const getDatabasesPermissionEditor = createSelector(
               database,
               permissionView: "group",
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -347,6 +362,7 @@ export const getDatabasesPermissionEditor = createSelector(
             groupType,
             isExternal,
             showTransformPermissions,
+            showWorkspacesPermissions,
           })
         : []),
     ]);
@@ -366,7 +382,7 @@ export const getDatabasesPermissionEditor = createSelector(
       title,
       breadcrumbs,
       description:
-        group != null
+        typeof group?.member_count === "number"
           ? ngettext(
               msgid`${group.member_count} person`,
               `${group.member_count} people`,
@@ -400,6 +416,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getOriginalDataPermissions,
     getOrderedGroups,
     getShouldShowTransformPermissions,
+    getShouldShowWorkspacesPermissions,
     (
       metadata,
       params,
@@ -407,6 +424,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       originalPermissions,
       groups,
       showTransformPermissions,
+      showWorkspacesPermissions,
     ) => {
       const { databaseId, schemaName, tableId } = params;
       const database = metadata?.database(databaseId);
@@ -458,6 +476,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               : defaultGroup,
             database,
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         } else if (schemaName != null) {
           groupPermissions = buildTablesPermissions({
@@ -474,6 +493,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               : defaultGroup,
             database,
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions({
@@ -490,6 +510,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             database,
             permissionView: "database",
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         }
 
@@ -518,6 +539,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns({
           subject: permissionSubject,
           showTransformPermissions,
+          showWorkspacesPermissions,
         }),
       ]);
 

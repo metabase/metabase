@@ -1,38 +1,36 @@
 import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
-import _ from "underscore";
+import { t } from "ttag";
 
 import {
   useGetCollectionQuery,
+  useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
+  useReorderBookmarksMutation,
 } from "metabase/api";
 import { logout } from "metabase/auth/actions";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import {
+  buildCollectionTree,
   currentUserPersonalCollections,
+  getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Modal } from "metabase/common/components/Modal";
-import { Bookmarks, getOrderedBookmarks } from "metabase/entities/bookmarks";
-import type { CollectionTreeItem } from "metabase/entities/collections";
-import {
-  Collections,
-  ROOT_COLLECTION,
-  buildCollectionTree,
-  getCollectionIcon,
-} from "metabase/entities/collections";
-import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { connect, useSelector } from "metabase/redux";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 import {
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Collection, User } from "metabase-types/api";
 
 import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";
@@ -42,56 +40,52 @@ import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
+function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
-    hasDataAccess: databases.length > 0,
-    bookmarks: getOrderedBookmarks(state),
   };
 }
 
 const mapDispatchToProps = {
   logout,
-  onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
 interface Props extends MainNavbarProps {
-  currentUser: User;
-  databases: Database[];
+  currentUser: User | null;
   selectedItems: SelectedItem[];
-  bookmarks: Bookmark[];
-  rootCollection: Collection;
-  hasDataAccess: boolean;
-  allError: boolean;
-  allFetched: boolean;
   logout: () => void;
-  onReorderBookmarks: (bookmarks: Bookmark[]) => Promise<any>;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-interface DatabaseProps {
-  databases?: Database[];
-}
-
 function MainNavbarContainer({
-  bookmarks,
   selectedItems,
   isOpen,
   currentUser,
-  rootCollection,
-  hasDataAccess,
   location,
   params,
   openNavbar,
   closeNavbar,
   logout,
   onChangeLocation,
-  onReorderBookmarks,
   ...props
 }: Props) {
+  const {
+    data: databasesResponse,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
+  const hasDataAccess = (databasesResponse?.data.length ?? 0) > 0;
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
+  const dispatch = useDispatch();
+
+  const { data: bookmarks = [] } = useListBookmarksQuery();
+  const [reorderBookmarksMutation] = useReorderBookmarksMutation();
+
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: ROOT_COLLECTION.id,
+  });
 
   const {
     data: trashCollection,
@@ -121,7 +115,7 @@ function MainNavbarContainer({
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
-      currentUser.id,
+      currentUser!.id,
     );
     const displayableCollections = collections.filter((collection) =>
       nonPersonalOrArchivedCollection(collection),
@@ -161,9 +155,24 @@ function MainNavbarContainer({
       newBookmarks.splice(oldIndex, 1);
       newBookmarks.splice(newIndex, 0, movedBookmark);
 
-      await onReorderBookmarks(newBookmarks);
+      const orderings = newBookmarks.map(({ type, item_id }) => ({
+        type,
+        item_id,
+      }));
+
+      try {
+        await reorderBookmarksMutation({ orderings }).unwrap();
+      } catch (e) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`Something went wrong`,
+          }),
+        );
+      }
     },
-    [bookmarks, onReorderBookmarks],
+    [bookmarks, reorderBookmarksMutation, dispatch],
   );
 
   const onCreateNewCollection = useCallback(() => {
@@ -187,13 +196,11 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  const allError = props.allError || !!error;
-  if (allError) {
+  if (error || databasesError) {
     return <NavbarErrorView />;
   }
 
-  const allFetched = props.allFetched && !isLoading;
-  if (!allFetched) {
+  if (isLoading || isLoadingDatabases) {
     return <NavbarLoadingView />;
   }
 
@@ -222,17 +229,7 @@ function MainNavbarContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Bookmarks.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.load({
-    id: ROOT_COLLECTION.id,
-    entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(memo(MainNavbarContainer));

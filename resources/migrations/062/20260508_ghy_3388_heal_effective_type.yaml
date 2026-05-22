@@ -1,0 +1,54 @@
+## GHY-3388 — Heal effective_type drift without coercion.
+##
+## A cloud customer (pagaleve) had many metabase_field rows in an internally
+## inconsistent state: base_type=:type/Number with effective_type=:type/Text and
+## coercion_strategy=NULL. With no coercion to justify the divergence, this state
+## is illegal under the codebase's existing rules but nothing was enforcing them.
+## The bug isn't reproducible on current code, so this is historical drift from
+## older Metabase versions that needs healing.
+##
+## Two changesets — split because the lint requires multiple SQL changes in one
+## changeset to target different dbms values, and these two heals both need to
+## run on every dialect:
+##   1. metabase_field — restrict to active rows so dead state isn't resurrected.
+##   2. metabase_field_user_settings — companion update so the user-settings
+##      overlay (sync-user-settings before-update merge) doesn't re-introduce the
+##      drift on the next field update.
+##
+## Rollback is empty — the drift these UPDATEs heal carries no recoverable
+## information (effective_type was either equal to base_type or in an illegal
+## state with no coercion to interpret it), so there's nothing to restore.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.ghy3388-field-heal
+      author: ericnormand
+      comment: GHY-3388 heal metabase_field where coercion_strategy is NULL and effective_type drifted
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET effective_type = base_type
+              WHERE active = TRUE
+                AND coercion_strategy IS NULL
+                AND effective_type IS NOT NULL
+                AND effective_type <> base_type;
+      rollback: []
+
+  - changeSet:
+      id: v62.ghy3388-user-settings-heal
+      author: ericnormand
+      comment: GHY-3388 heal metabase_field_user_settings overlay so it doesn't reintroduce drift
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET effective_type = (
+                SELECT base_type FROM metabase_field WHERE metabase_field.id = metabase_field_user_settings.field_id
+              )
+              WHERE coercion_strategy IS NULL
+                AND effective_type IS NOT NULL
+                AND effective_type <> (
+                  SELECT base_type FROM metabase_field WHERE metabase_field.id = metabase_field_user_settings.field_id
+                );
+      rollback: []

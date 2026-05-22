@@ -52,6 +52,8 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     id: initialCollection,
   });
 
+  const [newQuestionKey, setNewQuestionKey] = useState(0);
+
   useMount(() => {
     if (navigationContext.stack.length === 0) {
       // Populate the initial entry of the stack when this is the root/starting point
@@ -84,6 +86,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         .with({ type: "new-question" }, () => (
           <Box px="xl" h="100%">
             <InteractiveQuestion
+              key={newQuestionKey}
               questionId="new"
               height="100%"
               withDownloads
@@ -200,6 +203,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const handleNewQuestion = () => {
     setCurrentView({ type: "new-question" });
+    reportLocation({ type: "question", id: "new", name: "New question" });
   };
 
   // Only show "New question" button if user has write access and it's enabled
@@ -237,6 +241,12 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                   for (let i = 0; i < count; i++) {
                     navigationContext.pop();
                   }
+                } else if (item.type === "question" && item.id === "new") {
+                  // EMB-1118 / EMB-1610: bump key to remount
+                  // InteractiveQuestion so the editor reopens fresh after
+                  // Visualize, with no stale queryResults.
+                  setNewQuestionKey((previousKey) => previousKey + 1);
+                  setCurrentView({ type: "new-question" });
                 }
               }}
             />

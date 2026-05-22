@@ -1,18 +1,23 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  databaseApi,
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
-import { Schemas } from "metabase/entities/schemas";
-import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -23,6 +28,7 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
@@ -179,7 +185,6 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -440,7 +445,6 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    // indicates status of API request triggered by Search.loadList
     return this.props.loading;
   };
 
@@ -1060,59 +1064,135 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
-const DataSelector = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "allDatabases",
-  }),
-  // If there is at least one model or metric,
-  // we want to display a slightly different data picker view
-  // (see DATA_BUCKET step)
-  Search.loadList({
-    query: {
+// Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
+// query triggers. The triggers' subscriptions are tied to this wrapper's
+// lifecycle, so the cache is released when the DataSelector unmounts.
+function withSchemaFetchers(WrappedComponent) {
+  return function DataSelectorWithSchemaFetchers(props) {
+    const [triggerListSchemas] = useLazyListDatabaseSchemasQuery();
+    const [triggerListSchemaTables] = useLazyListDatabaseSchemaTablesQuery();
+
+    const fetchSchemas = useCallback(
+      (databaseId) =>
+        triggerListSchemas({ id: databaseId, "can-query": true }).unwrap(),
+      [triggerListSchemas],
+    );
+
+    const fetchSchemaTables = useCallback(
+      (schemaId) => {
+        const [dbId, schema] = parseSchemaId(schemaId);
+        return triggerListSchemaTables({
+          id: dbId,
+          schema,
+          "can-query": true,
+        }).unwrap();
+      },
+      [triggerListSchemaTables],
+    );
+
+    return (
+      <WrappedComponent
+        {...props}
+        fetchSchemas={fetchSchemas}
+        fetchSchemaTables={fetchSchemaTables}
+      />
+    );
+  };
+}
+
+// If there is at least one model or metric, we want to display a slightly
+// different data picker view (see DATA_BUCKET step). Pre-fetches available
+// models via search and exposes them as `metadata`/`loading`/`loaded` props.
+function withAvailableModels(WrappedComponent) {
+  return function DataSelectorWithAvailableModels(props) {
+    const { data: response, isLoading } = useSearchQuery({
       calculate_available_models: true,
       limit: 0,
       models: ["dataset", "metric"],
-    },
-    loadingAndErrorWrapper: false,
-  }),
+    });
+    let metadata;
+    if (response) {
+      const { data: _data, ...rest } = response;
+      metadata = rest;
+    }
+    return (
+      <WrappedComponent
+        {...props}
+        metadata={metadata}
+        loading={isLoading}
+        loaded={!isLoading && response != null}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
+  };
+}
+
+function withAllDatabases(WrappedComponent) {
+  return function DataSelectorWithAllDatabases(props) {
+    useListDatabasesQuery();
+    return <WrappedComponent {...props} />;
+  };
+}
+
+const isListDatabasesQuerySuccess = (state, query) =>
+  databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
+
+const DataSelector = _.compose(
+  withAllDatabases,
+  withAvailableModels,
+  withSchemaFetchers,
   connect(
-    (state, ownProps) => ({
-      availableModels: ownProps.metadata?.available_models ?? [],
-      metadata: getMetadata(state),
-      databases:
-        ownProps.databases ||
-        Databases.selectors.getList(state, {
-          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
-        }) ||
-        [],
-      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", "can-query": true },
-      }),
-      hasDataAccess: canUserCreateQueries(state),
-      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-      selectedQuestion: Questions.selectors.getObject(state, {
-        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-      }),
-    }),
-    {
-      fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
-      fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
-      fetchSchemaTables: (schemaId) =>
-        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
-      fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
-      fetchQuestion: (id) =>
-        Questions.actions.fetch({
-          id: getQuestionIdFromVirtualTableId(id),
+    (state, ownProps) => {
+      const databaseQuery = { ...ownProps.databaseQuery, "can-query": true };
+      const queriedDatabases =
+        databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data
+          ?.data;
+      const metadata = getMetadata(state);
+      return {
+        availableModels: ownProps.metadata?.available_models ?? [],
+        metadata,
+        databases:
+          ownProps.databases ||
+          queriedDatabases
+            ?.map(({ id }) => metadata.database(id))
+            .filter((database) => database != null) ||
+          [],
+        hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          saved: true,
+          "can-query": true,
         }),
+        hasLoadedDatabasesWithSaved: isListDatabasesQuerySuccess(state, {
+          saved: true,
+          "can-query": true,
+        }),
+        hasLoadedDatabasesWithTables: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          "can-query": true,
+        }),
+        hasDataAccess: canUserCreateQueries(state),
+        hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+        selectedQuestion: Questions.selectors.getObject(state, {
+          entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        }),
+      };
     },
+    (dispatch) => ({
+      fetchDatabases: (databaseQuery) =>
+        entityCompatibleQuery(
+          { ...databaseQuery, "can-query": true },
+          dispatch,
+          databaseApi.endpoints.listDatabases,
+          { forceRefetch: false },
+        ),
+      fetchFields: (tableId) =>
+        dispatch(Tables.actions.fetchMetadata({ id: tableId })),
+      fetchQuestion: (id) =>
+        dispatch(
+          Questions.actions.fetch({
+            id: getQuestionIdFromVirtualTableId(id),
+          }),
+        ),
+    }),
   ),
 )(UnconnectedDataSelector);

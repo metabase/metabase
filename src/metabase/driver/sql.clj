@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -14,6 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
@@ -29,31 +29,31 @@
 
 (doseq [feature [:advanced-math-expressions
                  :binning
+                 :database-routing
+                 :dependencies/native
+                 :distinct-where
+                 :distinct-where
                  :expression-aggregations
                  :expressions
+                 :expressions/date
+                 :expressions/datetime
+                 :expressions/text
+                 :expressions/today
                  :full-join
                  :inner-join
                  :left-join
+                 :metadata/key-constraints
                  :native-parameters
+                 :native-temporal-units
                  :nested-queries
                  :parameterized-sql
+                 :parameters/table-reference
                  :percentile-aggregations
                  :regex
                  :right-join
                  :standard-deviation-aggregations
-                 :metadata/key-constraints
                  :window-functions/cumulative
-                 :window-functions/offset
-                 :distinct-where
-                 :native-temporal-units
-                 :expressions/datetime
-                 :expressions/date
-                 :expressions/text
-                 :expressions/today
-                 :distinct-where
-                 :database-routing
-                 :dependencies/native
-                 :parameters/table-reference]]
+                 :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
@@ -75,7 +75,7 @@
   (let [params-map          (params.values/query->params-map inner-query)
         referenced-card-ids (params.values/referenced-card-ids params-map)
         [query params]      (-> query
-                                params.parse/parse
+                                lib/parse-parameters
                                 (sql.params.substitute/substitute params-map))]
     (cond-> (assoc inner-query
                    :query  query
@@ -120,6 +120,38 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod default-database-role :default
+  [_ _database]
+  nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Table identifier qualification                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti table-qualification-style
+  "Returns the shape of identifiers this driver emits for tables in compiled SQL. One of:
+
+   - `:table-qualification-style/table`           — bare `table` (no current driver uses this)
+   - `:table-qualification-style/schema-table`    — `schema.table` (e.g. Postgres, Redshift, H2, ClickHouse) — default
+   - `:table-qualification-style/db-table`        — `db.table` (e.g. MySQL, which calls its table-containers
+                                                    \"database\"; the default db name is fixed by the JDBC connection URL)
+   - `:table-qualification-style/db-schema-table` — `db.schema.table` (e.g. SQL Server, BigQuery)"
+  {:added "0.62.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod table-qualification-style :default
+  [_]
+  :table-qualification-style/schema-table)
+
+(defmulti db-slot-value
+  "Returns the project-id / catalog string a driver places in the `db` segment of a fully-qualified
+   table reference. Meaningful only for drivers whose [[table-qualification-style]] includes a `db`
+   segment; returns `nil` otherwise."
+  {:added "0.62.0" :arglists '([driver database])}
+  (fn [driver _] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod db-slot-value :default
   [_ _database]
   nil)
 

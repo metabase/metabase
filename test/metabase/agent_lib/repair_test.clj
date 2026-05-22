@@ -197,3 +197,28 @@
                                           ["relative-datetime" 0 "quarter"]]]]}]
     (is (= expected
            (repair/repair-program-for-context (repair/repair-program program) context)))))
+
+(deftest ^:parallel repair-program-normalizes-field-like-map-in-breakout-test
+  (let [program  {:source     {:type "table" :id 1}
+                  :operations [["breakout" {"field_id" 13 "temporal_bucket" "month"}]]}
+        expected {:source     {:type "table" :id 1}
+                  :operations [["breakout" ["with-temporal-bucket" ["field" 13] "month"]]]}]
+    (is (= expected (repair/repair-program program)))))
+
+(deftest ^:parallel repair-program-unwraps-order-by-vector-of-direction-tuples-test
+  (let [program  {:source     {:type "table" :id 1}
+                  :operations [["order-by" [["asc" {"field_id" 13 "temporal_bucket" "month"}]
+                                            ["desc" {"field_id" 14}]]]]}
+        expected {:source     {:type "table" :id 1}
+                  :operations [["order-by" ["asc" ["with-temporal-bucket" ["field" 13] "month"]]]
+                               ["order-by" ["desc" ["field" 14]]]]}]
+    (is (= expected (repair/repair-program program)))))
+
+(deftest ^:parallel repair-program-normalizes-order-by-map-with-direction-key-test
+  (let [program  {:source     {:type "table" :id 1}
+                  :operations [["order-by" {"field_id"        13
+                                            "temporal_bucket" "month"
+                                            "direction"       "asc"}]]}
+        expected {:source     {:type "table" :id 1}
+                  :operations [["order-by" ["asc" ["with-temporal-bucket" ["field" 13] "month"]]]]}]
+    (is (= expected (repair/repair-program program)))))

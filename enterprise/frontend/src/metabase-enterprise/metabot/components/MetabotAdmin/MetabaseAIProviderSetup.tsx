@@ -10,6 +10,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
@@ -51,7 +52,9 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
-export function MetabaseAIProviderSetup() {
+export function MetabaseAIProviderSetup({
+  onConnect,
+}: MetabaseAIProviderSetupProps) {
   const offerMetabaseManagedAi = !!hasPremiumFeature(
     OFFER_METABASE_MANAGED_AI_FEATURE,
   );
@@ -69,7 +72,8 @@ export function MetabaseAIProviderSetup() {
 
   const handleConnect = useCallback(async () => {
     await updateMetabotSettings({ provider: "metabase", model: "" }).unwrap();
-  }, [updateMetabotSettings]);
+    onConnect?.();
+  }, [onConnect, updateMetabotSettings]);
 
   const {
     pricing: metabaseManagedAiPricing,
@@ -98,7 +102,7 @@ export function MetabaseAIProviderSetup() {
     }
   }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
-  const onConnect = match({
+  const connectAction = match({
     hasAcceptedTerms,
     hasMetabaseManagedAiProviderFeature,
     hasDeprecatedMetabaseAiProvider,
@@ -160,8 +164,8 @@ export function MetabaseAIProviderSetup() {
     removeCloudAddOn,
   ]);
 
-  const { isLoading, handleDisconnect, resetProvider, isModal } =
-    useMetabotSetupContext(onConnect, onDisconnect);
+  const { isMutating, handleDisconnect, resetProvider, isModal } =
+    useMetabotSetupContext(connectAction, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -249,7 +253,7 @@ export function MetabaseAIProviderSetup() {
             .otherwise(() => (
               <Checkbox
                 checked={hasAcceptedTerms}
-                disabled={isLoading}
+                disabled={isMutating}
                 onChange={(event) =>
                   setHasAcceptedTerms(event.currentTarget.checked)
                 }

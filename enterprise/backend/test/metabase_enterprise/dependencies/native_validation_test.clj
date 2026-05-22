@@ -10,7 +10,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- fake-query
   ([mp query]
@@ -609,3 +613,21 @@
                                                           :display-name "My Table"
                                                           :table-id     1}}))]
       (is (empty? (deps.native-validation/validate-native-query driver query))))))
+
+(deftest ^:sequential validate-native-query-with-database-routing-test
+  (testing "native query validation works on databases with routing enabled (#74084)"
+    (mt/with-premium-features #{:database-routing}
+      (let [mp     (mt/metadata-provider)
+            driver (:engine (lib.metadata/database mp))]
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
+                                                :user_attribute "db_name"}]
+          (testing "validate-native-query doesn't throw"
+            ;; Without the fix, this would throw:
+            ;; "Anonymous users cannot access a database with routing enabled."
+            (is (set? (deps.native-validation/validate-native-query
+                       driver
+                       (lib/native-query mp "SELECT * FROM ORDERS")))))
+          (testing "native-query-deps doesn't throw (backfill path)"
+            (is (set? (deps.native-validation/native-query-deps
+                       driver
+                       (lib/native-query mp "SELECT * FROM ORDERS"))))))))))

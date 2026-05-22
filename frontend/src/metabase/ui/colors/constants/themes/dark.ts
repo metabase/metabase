@@ -78,6 +78,7 @@ export const METABASE_DARK_THEME: MetabaseThemeV2 = {
     "tooltip-text": baseColors.orionAlphaInverse[80],
     warning: baseColors.dubloon[30],
     "background-warning": baseColors.dubloon[90],
+    "background-warning-secondary": baseColors.dubloon[70],
     info: baseColors.orion[50],
     "background-info": baseColors.orion[90],
     white: baseColors.orion[110],

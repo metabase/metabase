@@ -2,13 +2,13 @@ import {
   DIMENSION_PREDICATES,
   getGeoSubtype,
 } from "metabase/metrics/common/utils/dimension-types";
-import type { IconName } from "metabase/ui";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getBreakoutSeriesName } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import { isCountry, isState } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
+  IconName,
   SeriesSettings,
   VisualizationSettings,
 } from "metabase-types/api";

@@ -1,45 +1,41 @@
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useCreateTimelineEventMutation } from "metabase/api";
-import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
+import {
+  useCreateTimelineEventMutation,
+  useCreateTimelineMutation,
+  useGetCollectionQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type {
   Collection,
+  CollectionId,
   CreateTimelineEventRequest,
-  Timeline,
+  CreateTimelineRequest,
   TimelineEvent,
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
   cardId?: number;
-  collectionId?: number;
+  collectionId?: CollectionId | null;
   onClose?: () => void;
-  timelines?: Timeline[];
-  collection?: Collection;
 }
 
-const timelineProps = {
-  query: { include: "events" },
-};
-
-const collectionProps = {
-  id: (state: State, props: NewEventModalContainerProps) => {
-    return props.collectionId ?? ROOT_COLLECTION.id;
-  },
-};
-
 function NewEventModalContainer({
+  collectionId,
   onClose,
-  timelines,
-  collection,
 }: NewEventModalContainerProps) {
   const dispatch = useDispatch();
+  const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId == null ? ROOT_COLLECTION.id : collectionId,
+  });
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -48,7 +44,13 @@ function NewEventModalContainer({
     if (values.timeline_id) {
       await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
     } else if (collection) {
-      await dispatch(Timelines.actions.createWithEvent(values, collection));
+      const timeline = await createTimeline(
+        getDefaultTimeline(collection) as CreateTimelineRequest,
+      ).unwrap();
+      await createTimelineEvent({
+        ...values,
+        timeline_id: timeline.id,
+      } as CreateTimelineEventRequest).unwrap();
     }
     dispatch(addUndo({ message: t`Created event` }));
   };
@@ -65,7 +67,4 @@ function NewEventModalContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelineProps),
-  Collections.load(collectionProps),
-)(NewEventModalContainer);
+export default NewEventModalContainer;

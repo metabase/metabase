@@ -3,6 +3,7 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk-bundle/types/collection";
 import type { CreateDashboardProperties } from "metabase/common/CreateDashboard/CreateDashboardForm";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type { SdkEntityId, SdkEntityToken } from "./entity";
@@ -86,4 +87,29 @@ export type CreateDashboardValues = Omit<
    * Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`.
    */
   collectionId: SdkCollectionId;
+};
+
+/**
+ * Source of a parameter-change event:
+ * - `initial-state` - first applied snapshot, fired once per dashboard load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+ *
+ * @category Dashboard
+ */
+export type ParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
+
+/**
+ * Payload passed to `onParametersChange` callback
+ *
+ * @category Dashboard
+ */
+export type ParameterChangePayload = {
+  source: ParameterChangeSource;
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+  lastUsedParameters: ParameterValues;
 };

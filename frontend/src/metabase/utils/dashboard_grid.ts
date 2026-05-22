@@ -1,6 +1,8 @@
 // NOTE: If we make changes to the algorithm or default values below we should change
 // [the backend version](https://github.com/metabase/metabase/blob/master/src/metabase/dashboards/autoplace.clj).
 
+import { DEFAULT_CARD_SIZE_JSON } from "cljs/metabase.dashboards.constants";
+
 // If you change this, please change `default-grid-width` in
 // https://github.com/metabase/metabase/blob/master/src/metabase/dashboards/autoplace.clj
 export const GRID_WIDTH = 24;
@@ -18,9 +20,8 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
-// If you change this, please change `default-card-size` in
-// https://github.com/metabase/metabase/blob/master/src/metabase/dashboards/autoplace.clj
-export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
+/** @type {{ width: number, height: number }} */
+export const DEFAULT_CARD_SIZE = DEFAULT_CARD_SIZE_JSON;
 
 export const MIN_ROW_HEIGHT = 40;
 

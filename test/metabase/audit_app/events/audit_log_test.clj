@@ -11,7 +11,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -695,6 +696,40 @@
                 :topic :glossary-delete
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
+
+(deftest ^:synchronized remote-sync-event-version-after-completion-test
+  (testing "remote-sync audit log entries include version when event is published after task completion (#73329)"
+    (mt/when-ee-evailable
+     (mt/with-current-user (mt/user->id :rasta)
+       (mt/with-temp [:model/RemoteSyncTask {task-id :id}
+                      {:sync_task_type "import"
+                       :version nil
+                       :initiated_by (mt/user->id :rasta)
+                       :started_at (t/offset-date-time 2025 9 30 14 0 0)
+                       :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
+         (testing "event published with re-fetched task after version is set"
+           (t2/update! :model/RemoteSyncTask task-id {:version "abc123"})
+           (let [completed-task (t2/select-one :model/RemoteSyncTask task-id)]
+             (events/publish-event! :event/remote-sync-import
+                                    {:object completed-task
+                                     :details {:branch "main"}
+                                     :user-id (mt/user->id :rasta)}))
+           (is (= "abc123"
+                  (:version (:details (mt/latest-audit-log-entry :remote-sync-import task-id))))
+               "version should be the git hash from the completed task"))
+         (testing "event published with original task (before version set) has nil version"
+           (mt/with-temp [:model/RemoteSyncTask {task-id-2 :id :as task-2}
+                          {:sync_task_type "import"
+                           :version nil
+                           :initiated_by (mt/user->id :rasta)
+                           :started_at (t/offset-date-time 2025 9 30 14 0 0)
+                           :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
+             (events/publish-event! :event/remote-sync-import
+                                    {:object task-2
+                                     :details {:branch "main"}
+                                     :user-id (mt/user->id :rasta)})
+             (is (nil? (:version (:details (mt/latest-audit-log-entry :remote-sync-import task-id-2))))
+                 "version is nil when event is published before task sets it"))))))))
 
 (deftest remote-sync-events-test
   (mt/when-ee-evailable

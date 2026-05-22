@@ -25,31 +25,51 @@
     :else
     (vec args)))
 
+(defn- direction-tuple?
+  [value]
+  (and (vector? value)
+       (= 2 (count value))
+       (direction-string? (first value))))
+
+(defn- unwrap-order-by-args
+  "Unwrap a single sequential argument into its elements so `[[asc ...] [desc ...]]`
+  behaves like `[asc ...] [desc ...]` passed directly. Only unwraps when the inner
+  sequence is entirely `[direction value]` tuples so we don't rewrite unrelated
+  shapes and break idempotence."
+  [args]
+  (if (and (= 1 (count args))
+           (sequential? (first args))
+           (seq (first args))
+           (every? direction-tuple? (first args)))
+    (vec (first args))
+    args))
+
 (defn repair-order-by-operations
   "Normalize one or more `order-by` arguments into canonical operations."
   [args]
-  (if (empty? args)
-    [["order-by"]]
-    (loop [remaining args
-           repaired  []]
-      (if (empty? remaining)
-        repaired
-        (let [[first-arg second-arg & tail] remaining]
-          (cond
-            (and (vector? first-arg)
-                 (= 2 (count first-arg))
-                 (direction-string? (first first-arg)))
-            (recur (vec (rest remaining))
-                   (conj repaired ["order-by" [(normalize-direction (first first-arg))
-                                               (second first-arg)]]))
+  (let [args (unwrap-order-by-args args)]
+    (if (empty? args)
+      [["order-by"]]
+      (loop [remaining args
+             repaired  []]
+        (if (empty? remaining)
+          repaired
+          (let [[first-arg second-arg & tail] remaining]
+            (cond
+              (and (vector? first-arg)
+                   (= 2 (count first-arg))
+                   (direction-string? (first first-arg)))
+              (recur (vec (rest remaining))
+                     (conj repaired ["order-by" [(normalize-direction (first first-arg))
+                                                 (second first-arg)]]))
 
-            (direction-string? second-arg)
-            (recur (vec tail)
-                   (conj repaired ["order-by" first-arg (normalize-direction second-arg)]))
+              (direction-string? second-arg)
+              (recur (vec tail)
+                     (conj repaired ["order-by" first-arg (normalize-direction second-arg)]))
 
-            :else
-            (recur (vec (rest remaining))
-                   (conj repaired ["order-by" first-arg]))))))))
+              :else
+              (recur (vec (rest remaining))
+                     (conj repaired ["order-by" first-arg])))))))))
 
 (defn repair-repeated-single-arg-op
   "Expand repeated top-level single-arg operations."

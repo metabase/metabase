@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -34,7 +35,12 @@ import { PaletteResults } from "../../PaletteResults";
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
       disabled: false,
       locationQuery: props.location.query,
     });
@@ -53,7 +59,8 @@ const TestComponent = withRouter(
         locationQuery={props.location.query}
         searchRequestId={searchRequestId}
         searchResults={searchResults}
-        searchTerm={searchTerm}
+        liveSearchTerm={liveSearchTerm}
+        debouncedSearchTerm={debouncedSearchTerm}
       />
     );
   },
@@ -128,6 +135,9 @@ export const commonSetup = ({
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints(recents);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
   const adminState = isAdmin
     ? createMockAdminState({
         app: createMockAdminAppState({

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.dashboards-rest.api-test
   "Tests for /api/dashboard endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.dashboards-rest.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.dashboards-rest.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -15,6 +17,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -44,6 +47,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -2953,7 +2957,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2961,7 +2965,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
@@ -3023,7 +3027,7 @@
               ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
               ;; but 200 on calls that we could just use the cache.
               ;; It's not ideal and we definitely need to have a consistent behavior
-              (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+              (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
                 (is (= {:values          [["African"] ["American"] ["Artisan"]]
                         :has_more_values false}
                        (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -3487,7 +3491,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (mt/with-dynamic-fn-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3657,6 +3661,48 @@
                                                                 "_text_"
                                                               ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
+
+(deftest field-filter-uuid-operator-dashboard-test
+  (testing "Dashboard ID filter with operator parameter type on a UUID native field filter (#73758)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                                     :test/uuids-in-create-table-statements)
+      (mt/dataset uuid-dogs
+        (let [uuid-value "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+          (doseq [param-type ["string/=" "number/="]]
+            (testing (str "param type " (pr-str param-type))
+              (mt/with-temp
+                [:model/Card {card-id :id}
+                 {:dataset_query {:database (mt/id)
+                                  :type     :native
+                                  :native   (assoc (mt/count-with-field-filter-query
+                                                    driver/*driver* :people :id uuid-value)
+                                                   :template-tags
+                                                   {"id" {:name         "id"
+                                                          :display-name "id"
+                                                          :type         :dimension
+                                                          :widget-type  :id
+                                                          :dimension    [:field (mt/id :people :id) nil]}})}}
+                 :model/Dashboard {dashboard-id :id}
+                 {:parameters [{:name "id" :slug "id" :id "_id_" :type param-type}]}
+                 :model/DashboardCard {dashcard-id :id}
+                 {:dashboard_id       dashboard-id
+                  :card_id            card-id
+                  :parameter_mappings [{:parameter_id "_id_"
+                                        :card_id      card-id
+                                        :target       [:dimension [:template-tag "id"]]}]}]
+                ;; In production, malli checks are switched off (see metabase.util.malli.fn/instrument-ns?), and
+                ;; this code path produces a non-final intermediate value that doesn't satisfy the legacy
+                ;; ::mbql.s/Filter schema. We disable enforcement here to match production runtime.
+                (mu/disable-enforcement
+                  (is (=? {:row_count 1
+                           :data      {:rows [[1]]}}
+                          (mt/user-http-request :rasta :post 202
+                                                (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                        dashboard-id dashcard-id card-id)
+                                                {:parameters [{:id    "_id_"
+                                                               :type  param-type
+                                                               :target [:dimension [:template-tag "id"]]
+                                                               :value [uuid-value]}]}))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -4929,7 +4975,7 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+  (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
                          {:tables     [{} {}]
@@ -4953,10 +4999,10 @@
           (reset! uncached-calls (call-count-fn))))
       (testing "cached requests"
         (let [provider-counts (atom {})]
-          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
-                        (fn [database-id]
-                          (swap! provider-counts update database-id (fnil inc 0))
-                          (original-admp database-id))]
+          (mt/with-dynamic-fn-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+                                      (fn [database-id]
+                                        (swap! provider-counts update database-id (fnil inc 0))
+                                        (original-admp database-id))]
             (t2/with-call-count [call-count-fn]
               (let [load-id (str (random-uuid))]
                 (is (=? expected

@@ -15,10 +15,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
@@ -80,7 +80,7 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [param]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
-        field-ref (or (lib.util.match/match-lite target
+        field-ref (or (match/match-one target
                         [#{:field :expression} & _]
                         (lib/->mbql5 &match))
                       (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
