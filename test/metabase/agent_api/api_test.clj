@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -318,7 +319,19 @@
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
-              execute-resp)))))
+              execute-resp))))
+
+  (testing "Rejects native queries with 400; force callers onto /v1/execute-sql"
+    ;; The scope `agent:query:execute` gates /v1/execute; `agent:sql:execute` gates
+    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying :type :native,
+    ;; a token with only the broader scope could run raw SQL, defeating the scope split.
+    (let [native-query {:database (mt/id)
+                        :type     "native"
+                        :native   {:query "select 1"}}
+          base64-query (u/encode-base64 (json/encode native-query))
+          resp         (mt/user-http-request :rasta :post 400 "agent/v1/execute"
+                                             {:query base64-query})]
+      (is (re-find #"Native queries are not supported" (str resp))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -487,7 +500,35 @@
                  :collection_id coll-id
                  :description   "A test question"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp))))))
+        (t2/delete! :model/Card :id (:id create-resp)))))
+
+  (testing "Returns 403 when caller cannot run the proposed query"
+    ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
+    ;; to save a card whose query references data the user cannot run.
+    (mt/with-restored-data-perms!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Create-Q"}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                     {:source     {:type "table" :id (mt/id :orders)}
+                                                      :operations [["limit" 10]]})]
+            (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                  {:name          "Should Not Save"
+                                   :query         (:query construct-resp)
+                                   :collection_id writable-id}))))))
+
+  (testing "Returns 403 when caller cannot write to target collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
+        ;; rasta has data perms by default in test setup, but no write on `locked-id`.
+        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                   {:source     {:type "table" :id (mt/id :orders)}
+                                                    :operations [["limit" 10]]})]
+          (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                {:name          "Should Not Save"
+                                 :query         (:query construct-resp)
+                                 :collection_id locked-id}))))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
@@ -685,7 +726,34 @@
                                               :display       :table}]
       ;; The Malli enum on ::card-display should reject "potato" with a validation error.
       (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
-                            {:display "potato"}))))
+                            {:display "potato"})))
+
+  (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
+    ;; Guard against the gap retro identified in branch review:
+    ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
+    ;; REST's `check-allowed-to-modify-query` runs in the REST wrapper above `queries/update-card!`;
+    ;; the agent endpoint calls `update-card!` directly, so we have to gate it ourselves.
+    (mt/with-restored-data-perms!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Q-Swap"}
+                       :model/Card       {card-id :id}     {:name          "Card With Allowed Query"
+                                                            :dataset_query (orders-count-query)
+                                                            :display       :table
+                                                            :collection_id writable-id}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+          ;; Block data access on the sample DB for the All Users group.
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (let [products-id  (mt/id :products)
+                new-query    (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                   {:source     {:type "table" :id products-id}
+                                                    :operations [["limit" 5]]})
+                base64-query (:query new-query)]
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                                  {:query base64-query}))
+          ;; Persisted query unchanged.
+          (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+                "dataset_query should not have been swapped")))))))
 
 ;;; ---------------------------------------------- Update Dashboard Tests ------------------------------------------
 

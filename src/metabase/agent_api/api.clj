@@ -25,6 +25,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -490,14 +491,15 @@
   (let [query (-> encoded-query
                   u/decode-base64
                   json/decode+kw)]
-    ;; The `mcp-execute-sql-enabled` setting is meant to let an admin turn off LLM-driven
-    ;; raw SQL. `execute_sql` honors it directly; `/v1/execute` accepts an opaque base64
-    ;; payload that could carry `:type :native`, so refuse those here too rather than only
-    ;; gating the dedicated tool name.
-    (when (and (= :native (:type query))
-               (not (agent-api.settings/mcp-execute-sql-enabled)))
-      (throw (ex-info "Native query execution is disabled on this instance"
-                      {:status-code 403})))
+    ;; `/v1/execute` is gated by the `agent:query:execute` scope and is intended for MBQL.
+    ;; The opaque base64 payload could carry `:type :native`, but `execute_sql` is gated by
+    ;; a distinct `agent:sql:execute` scope - allowing native here would let a token with
+    ;; only the broader scope run raw SQL, defeating the scope distinction. Force callers
+    ;; to use `/v1/execute-sql` (correctly scoped) for native execution. Compare via the
+    ;; normalized type since the decoded payload may carry the type as a string or keyword.
+    (when (= :native (some-> query :type keyword))
+      (throw (ex-info "Native queries are not supported on /v1/execute; use execute_sql instead."
+                      {:status-code 400})))
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
 
@@ -629,20 +631,28 @@
    {:keys [query display description collection_id visualization_settings]
     question-name :name}
    :- ::create-question-request]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        card          (queries/create-card!
-                       {:name                   question-name
-                        :dataset_query          dataset-query
-                        :display                (keyword (or display "table"))
-                        :description            description
-                        :collection_id          collection_id
-                        :visualization_settings (or visualization_settings {})}
-                       {:id api/*current-user-id*})]
-    {:id            (:id card)
-     :name          (:name card)
-     :display       (name (:display card))
-     :collection_id (:collection_id card)
-     :description   (:description card)}))
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)]
+    ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
+    ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
+    ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
+    ;; user cannot run, and (b) plant the card in a collection they cannot write to.
+    ;; (REST also calls `check-if-card-can-be-saved`, which only fires for `card-type :metric`;
+    ;; this endpoint always creates a question, so we omit it.)
+    (query-perms/check-run-permissions-for-query dataset-query)
+    (api/create-check :model/Card {:collection_id collection_id})
+    (let [card (queries/create-card!
+                {:name                   question-name
+                 :dataset_query          dataset-query
+                 :display                (keyword (or display "table"))
+                 :description            description
+                 :collection_id          collection_id
+                 :visualization_settings (or visualization_settings {})}
+                {:id api/*current-user-id*})]
+      {:id            (:id card)
+       :name          (:name card)
+       :display       (name (:display card))
+       :collection_id (:collection_id card)
+       :description   (:description card)})))
 
 ;;; ------------------------------------------------- Update Question ------------------------------------------------
 
@@ -703,13 +713,19 @@
                              (assoc :dataset_query
                                     (-> (:query body) u/decode-base64 json/decode+kw)))
         ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived).
-        ;; The REST endpoint at queries_rest/api/card.clj:686 runs this on every update; we
-        ;; need it too so LLM-archived cards behave the same as UI-archived ones.
+        ;; The REST endpoint runs this in `update-card!` on every update; we need it too so
+        ;; LLM-archived cards behave the same as UI-archived ones.
         card-updates       (api/updates-with-archived-directly card-before-update raw-updates)
         ;; A move (or archive that retargets the collection) requires write on BOTH the source
         ;; and the target collection. `api/write-check :model/Card` above only covered the source
         ;; entity. Mirror the REST endpoint's `check-allowed-to-move` gate.
         _                  (collection/check-allowed-to-change-collection card-before-update card-updates)
+        ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires
+        ;; data perms to run the *new* query, otherwise a user with collection write on a card
+        ;; can repoint it at data they cannot query. `queries/update-card!` does NOT run this
+        ;; check itself, so we have to run it before calling in.
+        _                  (when (api/column-will-change? :dataset_query card-before-update card-updates)
+                             (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
         _                  (queries/update-card! {:card-before-update    card-before-update
                                                   :card-updates          card-updates
                                                   :actor                 @api/*current-user*

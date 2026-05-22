@@ -167,6 +167,7 @@
               llm
               metabot
               queries
+              query-permissions
               query-processor
               request
               server
