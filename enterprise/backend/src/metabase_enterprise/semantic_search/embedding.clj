@@ -267,7 +267,7 @@
 ;;;; Embedding-service provider
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set 
+  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set
   the ai service proxying is assumed. In that case premium-embedding-token is used for authentication."
   []
   (let [base-url (semantic-settings/ee-embedding-service-base-url)
