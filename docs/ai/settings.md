@@ -193,37 +193,11 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
-## Privacy
-
-### Data sent to the Metabase AI service
-
-When using the Metabase AI service, we don't send the _results_ of your queries to a third-party AI provider, and we don't look at them ourselves.
-
-What we send:
-
-- Your prompts.
-- Metadata (like table and field names), so Metabot knows what to query.
-- A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- The data plotted in a chart when you ask Metabot to analyze a visualization — the points drawn on the chart, not the underlying row-level query results. What's sent depends on the chart type.
-
-We, Metabase the company, also collect some of this metadata to gauge usage and improve the AI integration.
-
-### Data sent to your own AI provider
-
-If you're using your own API key, everything listed above is sent to your selected AI provider. Review your provider's data handling and privacy policies.
-
-### Data sent to the MCP client
-
-When using the [MCP server](./mcp.md), query _results_ are sent to the connected MCP client.
-
-### Data sent when submitting feedback
-
-If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, the context for that conversation, including metadata and your prompts, might be sent to Metabase the company, and may contain sensitive data.
-
 ## Further reading
 
 - [Using Metabot](metabot.md)
 - [MCP server](mcp.md)
+- [AI privacy](privacy.md)
 - [AI access and usage controls](usage-controls.md)
 - [AI usage auditing](usage-auditing.md)
 - [Metabot customization](customization.md)
