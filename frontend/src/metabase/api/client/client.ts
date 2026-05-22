@@ -60,13 +60,13 @@ type ResponseErrorInfo = {
 type EventMap = {
   401: [string];
   403: [string];
+  responseError: [ResponseErrorInfo];
 };
 
 export class ApiClient extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
-  onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
@@ -315,9 +315,8 @@ export class ApiClient extends EventEmitter<EventMap> {
       const status = getResponseStatus(response, body);
 
       if (status < 200 || status > 299) {
-        this.onResponseError?.({
-          metabaseVersion: response.headers.get("X-Metabase-Version"),
-        });
+        const metabaseVersion = response.headers.get("X-Metabase-Version");
+        this.emit("responseError", { metabaseVersion });
 
         throw { status, data: body };
       }
