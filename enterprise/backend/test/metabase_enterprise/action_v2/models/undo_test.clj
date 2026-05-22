@@ -145,8 +145,8 @@
             (let [user-1     (mt/user->id :crowberto)
                   test-scope {:table-id table-id}]
 
-             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
-             ;; If we improve the semantics, we'll need to improve this test!
+              ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
+              ;; If we improve the semantics, we'll need to improve this test!
 
               (write-sequence! table-id {:id 2} [[user-1 {:name "Moomintroll" :power 3}]
                                                  [user-1 {:name "Moomintroll" :power 9001}]

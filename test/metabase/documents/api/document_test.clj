@@ -302,7 +302,7 @@
                                     :put 403 (format "document/%s" document-id)
                                     {:collection_id collection2-id})
 
-                                                          ;; Verify nothing changed
+              ;; Verify nothing changed
               (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -897,7 +897,7 @@
                                                        :dataset_query (mt/mbql-query users)
                                                        :display :bar
                                                        :visualization_settings {}}]
-        ;; Update the document with both cards
+      ;; Update the document with both cards
       (let [result (mt/user-http-request :crowberto
                                          :put 200 (format "document/%s" document-id)
                                          {:document {:type "doc"
@@ -1191,7 +1191,7 @@
                                                     :dataset_query (mt/mbql-query venues)
                                                     :display :table
                                                     :visualization_settings {}}]
-        ;; First update - should clone the card
+      ;; First update - should clone the card
       (mt/user-http-request :crowberto
                             :put 200 (format "document/%s" document-id)
                             {:document {:type "doc"
@@ -1204,7 +1204,7 @@
         (testing "first update creates one clone"
           (is (= 1 (count first-cloned-cards))))
 
-          ;; Second update with the already-cloned card ID - should NOT create another clone
+        ;; Second update with the already-cloned card ID - should NOT create another clone
         (let [second-result (mt/user-http-request :crowberto
                                                   :put 200 (format "document/%s" document-id)
                                                   {:document {:type "doc"
@@ -1228,13 +1228,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-          ;; Set up permissions for :rasta user
+        ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-            ;; Grant read-only access to read-only-col
+          ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write-col
+          ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-            ;; No permissions for no-access-col (implicitly)
+          ;; No permissions for no-access-col (implicitly)
 
           (testing "POST /api/document/ - :rasta can create documents in collections with write access"
             (mt/with-model-cleanup [:model/Document]
@@ -1268,13 +1268,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-          ;; Set up permissions for :rasta user
+        ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-            ;; Grant read-only access to read-only-col
+          ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write-col
+          ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-            ;; No permissions for no-access-col (implicitly)
+          ;; No permissions for no-access-col (implicitly)
 
           (testing "PUT /api/document/:id - :rasta can update documents in collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"
@@ -1311,13 +1311,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {destination-col :id} {:name "Destination Collection"}]
 
-          ;; Set up permissions for :rasta user
+        ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-            ;; Grant read-only access to read-only-col
+          ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write-col
+          ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-            ;; Grant write access to destination-col
+          ;; Grant write access to destination-col
           (perms/grant-collection-readwrite-permissions! group destination-col)
 
           (testing "PUT /api/document/:id - :rasta can move documents between collections with write access to both"
@@ -1329,7 +1329,7 @@
                                                  {:collection_id destination-col})]
                 (is (= doc-id (:id result)))
                 (is (= destination-col (:collection_id result)))
-                  ;; Verify document was actually moved
+                ;; Verify document was actually moved
                 (is (= destination-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))
 
           (testing "PUT /api/document/:id - :rasta cannot move documents from collections without write access"
@@ -1339,7 +1339,7 @@
               (mt/user-http-request :rasta
                                     :put 403 (format "document/%s" doc-id)
                                     {:collection_id destination-col})
-                ;; Verify document wasn't moved
+              ;; Verify document wasn't moved
               (is (= read-only-col (:collection_id (t2/select-one :model/Document :id doc-id))))))
 
           (testing "PUT /api/document/:id - :rasta cannot move documents to collections without write access"
@@ -1349,7 +1349,7 @@
               (mt/user-http-request :rasta
                                     :put 403 (format "document/%s" doc-id)
                                     {:collection_id read-only-col})
-                ;; Verify document wasn't moved
+              ;; Verify document wasn't moved
               (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
 (deftest rasta-document-read-permissions-test
@@ -1359,13 +1359,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-          ;; Set up permissions for :rasta user
+        ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-            ;; Grant read-only access to read-only-col
+          ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write-col
+          ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-            ;; No permissions for no-access-col (implicitly)
+          ;; No permissions for no-access-col (implicitly)
 
           (testing "GET /api/document/:id - :rasta can read documents from collections with write access"
             (mt/with-temp [:model/Document {doc-id :id} {:name "Write Access Document"
@@ -1403,13 +1403,13 @@
                      :model/Collection {write-col :id} {:name "Write Collection"}
                      :model/Collection {no-access-col :id} {:name "No Access Collection"}]
 
-          ;; Set up permissions for :rasta user
+        ;; Set up permissions for :rasta user
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
-            ;; Grant read-only access to read-only-col
+          ;; Grant read-only access to read-only-col
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write-col
+          ;; Grant write access to write-col
           (perms/grant-collection-readwrite-permissions! group write-col)
-            ;; No permissions for no-access-col (implicitly)
+          ;; No permissions for no-access-col (implicitly)
 
           (testing "GET /api/document - :rasta only sees documents from accessible collections"
             (mt/with-temp [:model/Document _ {:name "Doc in Write Collection"
@@ -1448,7 +1448,7 @@
                                            {:archived true})]
           (is (true? (:archived result)))
 
-            ;; Verify document is actually archived in database
+          ;; Verify document is actually archived in database
           (is (true? (:archived (t2/select-one :model/Document :id doc-id))))))
 
       (testing "archived document doesn't appear in normal listings"
@@ -1461,7 +1461,7 @@
                                            {:archived false})]
           (is (false? (:archived result)))
 
-            ;; Verify document is actually unarchived in database
+          ;; Verify document is actually unarchived in database
           (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
 
 (deftest document-archive-with-cards-test
@@ -1487,14 +1487,14 @@
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
 
-          ;; Verify document is archived
+        ;; Verify document is archived
         (is (true? (:archived (t2/select-one :model/Document :id doc-id))))
 
-          ;; Verify associated cards are archived
+        ;; Verify associated cards are archived
         (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
 
-          ;; Verify non-associated card is NOT archived
+        ;; Verify non-associated card is NOT archived
         (is (false? (:archived (t2/select-one :model/Card :id other-card-id)))))
 
       (testing "unarchiving document unarchives associated cards"
@@ -1502,14 +1502,14 @@
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
 
-          ;; Verify document is unarchived
+        ;; Verify document is unarchived
         (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
 
-          ;; Verify associated cards are unarchived
+        ;; Verify associated cards are unarchived
         (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
 
-          ;; Verify other card remains unchanged
+        ;; Verify other card remains unchanged
         (is (false? (:archived (t2/select-one :model/Card :id other-card-id))))))))
 
 (deftest document-archive-permissions-test
@@ -1525,9 +1525,9 @@
                                                          :collection_id write-col}]
 
         (mt/with-group-for-user [group :rasta]
-            ;; Grant read-only access to read-only collection
+          ;; Grant read-only access to read-only collection
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write collection
+          ;; Grant write access to write collection
           (perms/grant-collection-readwrite-permissions! group write-col)
 
           (testing "user with write permissions can archive document"
@@ -1541,7 +1541,7 @@
                                   :put 403 (format "document/%s" read-only-doc-id)
                                   {:archived true})
 
-              ;; Verify document wasn't archived
+            ;; Verify document wasn't archived
             (is (false? (:archived (t2/select-one :model/Document :id read-only-doc-id)))))
 
           (testing "user with write permissions can unarchive document"
@@ -1576,16 +1576,16 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived true})
 
-          ;; Verify collection is archived
+        ;; Verify collection is archived
         (is (true? (:archived (t2/select-one :model/Collection :id coll-id))))
 
-          ;; Verify documents are archived (not directly)
+        ;; Verify documents are archived (not directly)
         (is (true? (:archived (t2/select-one :model/Document :id doc1-id))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id doc1-id))))
         (is (true? (:archived (t2/select-one :model/Document :id doc2-id))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id doc2-id))))
 
-          ;; Verify all cards are archived (not directly)
+        ;; Verify all cards are archived (not directly)
         (is (true? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived_directly (t2/select-one :model/Card :id card1-id))))
         (is (true? (:archived (t2/select-one :model/Card :id card2-id))))
@@ -1598,14 +1598,14 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-          ;; Verify collection is unarchived
+        ;; Verify collection is unarchived
         (is (false? (:archived (t2/select-one :model/Collection :id coll-id))))
 
-          ;; Verify documents are unarchived
+        ;; Verify documents are unarchived
         (is (false? (:archived (t2/select-one :model/Document :id doc1-id))))
         (is (false? (:archived (t2/select-one :model/Document :id doc2-id))))
 
-          ;; Verify cards are unarchived
+        ;; Verify cards are unarchived
         (is (false? (:archived (t2/select-one :model/Card :id card1-id))))
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
         (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
@@ -1645,7 +1645,7 @@
           (is (false? (:archived card)))
           (is (false? (:archived_directly card)))))
 
-        ;; Archive via collection to test indirect archiving
+      ;; Archive via collection to test indirect archiving
       (testing "indirectly archiving via collection sets archived_directly=false"
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
@@ -1659,7 +1659,7 @@
           (is (false? (:archived_directly card)))))
 
       (testing "directly archived documents stay archived when collection is unarchived"
-          ;; First, directly archive the document
+        ;; First, directly archive the document
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
@@ -1667,12 +1667,12 @@
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
 
-          ;; Then unarchive the collection
+        ;; Then unarchive the collection
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-          ;; Document should remain archived because it was archived directly
+        ;; Document should remain archived because it was archived directly
         (let [doc (t2/select-one :model/Document :id doc-id)
               card (t2/select-one :model/Card :id card-id)]
           (is (true? (:archived doc)))
@@ -1698,10 +1698,10 @@
           (is (not (contains? document-names "Archived Document")))))
 
       (testing "GET /api/document/:id returns 200 for archived documents"
-          ;; Active document should be accessible
+        ;; Active document should be accessible
         (mt/user-http-request :crowberto :get 200 (format "document/%s" active-doc-id))
 
-          ;; Archived document should return 404
+        ;; Archived document should return 404
         (mt/user-http-request :crowberto :get 200 (format "document/%s" archived-doc-id)))
 
       (testing "Collection items endpoint excludes archived documents"
@@ -1724,7 +1724,7 @@
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived true})
 
-                ;; Should have published document-archive event
+              ;; Should have published document-archive event
               (is (some #(= :event/document-delete (:topic %)) @events))))))
 
       (testing "unarchiving document publishes update event"
@@ -1736,7 +1736,7 @@
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
 
-                ;; Should have published document-update event (not archive event)
+              ;; Should have published document-update event (not archive event)
               (is (some #(= :event/document-update (:topic %)) @events))
               (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
 
@@ -1748,7 +1748,7 @@
                                               :document_id doc-id
                                               :dataset_query (mt/mbql-query venues)}]
 
-        ;; Simulate a failure during card archiving
+      ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (with-redefs [t2/update! (fn [model id updates]
                                    (if (and (= model :model/Card) (:archived updates))
@@ -1758,7 +1758,7 @@
                                 :put 500 (format "document/%s" doc-id)
                                 {:archived true})
 
-            ;; Verify document wasn't archived due to rollback
+          ;; Verify document wasn't archived due to rollback
           (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
           (is (false? (:archived (t2/select-one :model/Card :id card-id)))))))))
 
@@ -1787,15 +1787,15 @@
                               :put 200 (format "collection/%s" coll-id)
                               {:archived false})
 
-          ;; Directly archived document should remain archived
+        ;; Directly archived document should remain archived
         (is (true? (:archived (t2/select-one :model/Document :id directly-archived-doc))))
         (is (true? (:archived_directly (t2/select-one :model/Document :id directly-archived-doc))))
 
-          ;; Collection archived document should be unarchived
+        ;; Collection archived document should be unarchived
         (is (false? (:archived (t2/select-one :model/Document :id collection-archived-doc))))
         (is (false? (:archived_directly (t2/select-one :model/Document :id collection-archived-doc))))
 
-          ;; Active document should remain active
+        ;; Active document should remain active
         (is (false? (:archived (t2/select-one :model/Document :id active-doc))))))))
 
 (deftest document-archive-edge-cases-test
@@ -1825,7 +1825,7 @@
         (mt/with-temp [:model/Document {doc-id :id} {:name "Document in Trash"
                                                      :document (documents.test-util/text->prose-mirror-ast "In trash")
                                                      :collection_id trash-collection-id}]
-            ;; Should be able to archive document in trash
+          ;; Should be able to archive document in trash
           (let [result (mt/user-http-request :crowberto
                                              :put 200 (format "document/%s" doc-id)
                                              {:archived true})]
@@ -1838,7 +1838,7 @@
                                            :put 200 (format "document/%s" doc-id)
                                            {:archived true})]
           (is (true? (:archived result)))
-            ;; Should not fail even with no associated cards
+          ;; Should not fail even with no associated cards
           (is (zero? (t2/count :model/Card :document_id doc-id))))))
 
     (testing "archiving and updating other fields simultaneously"
@@ -1861,7 +1861,7 @@
       (testing "can delete archived document"
         (mt/user-http-request :crowberto :delete (format "document/%s" doc-id))
 
-          ;; Verify document is actually deleted from database
+        ;; Verify document is actually deleted from database
         (is (nil? (t2/select-one :model/Document :id doc-id))))
 
       (testing "cannot delete same document twice"
@@ -1875,7 +1875,7 @@
       (testing "returns 400 error when trying to delete non-archived document"
         (mt/user-http-request :crowberto :delete 400 (format "document/%s" doc-id))
 
-          ;; Verify document still exists
+        ;; Verify document still exists
         (is (some? (t2/select-one :model/Document :id doc-id)))))))
 
 (deftest delete-document-permissions-test
@@ -1893,21 +1893,21 @@
                                                          :archived true}]
 
         (mt/with-group-for-user [group :rasta]
-            ;; Grant read-only access to read-only collection
+          ;; Grant read-only access to read-only collection
           (perms/grant-collection-read-permissions! group read-only-col)
-            ;; Grant write access to write collection
+          ;; Grant write access to write collection
           (perms/grant-collection-readwrite-permissions! group write-col)
 
           (testing "user with write permissions can delete archived document"
             (mt/user-http-request :rasta :delete (format "document/%s" write-doc-id))
 
-              ;; Verify document is deleted
+            ;; Verify document is deleted
             (is (nil? (t2/select-one :model/Document :id write-doc-id))))
 
           (testing "user without write permissions cannot delete archived document"
             (mt/user-http-request :rasta :delete 403 (format "document/%s" read-only-doc-id))
 
-              ;; Verify document still exists
+            ;; Verify document still exists
             (is (some? (t2/select-one :model/Document :id read-only-doc-id)))))))))
 
 (deftest delete-document-with-cards-test
@@ -1934,14 +1934,14 @@
       (testing "deleting document also deletes associated cards via cascade"
         (mt/user-http-request :crowberto :delete (format "document/%s" doc-id))
 
-          ;; Verify document is deleted
+        ;; Verify document is deleted
         (is (nil? (t2/select-one :model/Document :id doc-id)))
 
-          ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
+        ;; Verify associated cards are deleted (assuming CASCADE DELETE in schema)
         (is (nil? (t2/select-one :model/Card :id card1-id)))
         (is (nil? (t2/select-one :model/Card :id card2-id)))
 
-          ;; Verify non-associated card still exists
+        ;; Verify non-associated card still exists
         (is (some? (t2/select-one :model/Card :id other-card-id)))))))
 
 (deftest delete-document-nonexistent-test
@@ -1958,7 +1958,7 @@
                                               (swap! events conj {:topic topic :event event}))]
           (mt/user-http-request :crowberto :delete 204 (format "document/%s" doc-id))
 
-            ;; Should have published document-delete event
+          ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
             (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
@@ -2344,11 +2344,11 @@
            (t2/update! :model/Card card-id {:document_id doc-id})
 
            (let [all-users-group (perms/all-users-group)]
-              ;; Grant collection read permissions so user can access the document
+             ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
 
              (testing "User without download permissions yields permissions error"
-                ;; Set download permissions to :no (no downloads allowed) for All Users group
+               ;; Set download permissions to :no (no downloads allowed) for All Users group
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
 
                (is (malli= [:map
@@ -2610,7 +2610,7 @@
                                                 {:collection_id remote-synced-id})]
              (is (= "Uses content that is not remote synced." (:message response)))
 
-              ;; Verify document was NOT moved
+             ;; Verify document was NOT moved
              (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
                  "Document should remain in regular collection"))))))))
 

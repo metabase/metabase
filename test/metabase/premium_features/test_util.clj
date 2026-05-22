@@ -13,9 +13,9 @@
   [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-             ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
-             ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
-             ;; See [[with-premium-features-test]] below.
+      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
+      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
+      ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
                     (binding [token-check/*token-features* (constantly features)]
                       (thunk)))]

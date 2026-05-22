@@ -116,14 +116,14 @@
   (let [match-target-types? (fn [ttype]
                               (contains? types (str/lower-case ttype)))]
     (cond
-     ;; a createTable or addColumn change; see if it adds a target-type col
+      ;; a createTable or addColumn change; see if it adds a target-type col
       (or (:createTable change) (:addColumn change))
       (let [op (cond (:createTable change) :createTable (:addColumn change) :addColumn)]
         (some (fn [col-def]
                 (match-target-types? (get-in col-def [:column :type] "")))
               (get-in change [op :columns])))
 
-     ;; a modifyDataType change; see if it change a column to target-type
+      ;; a modifyDataType change; see if it change a column to target-type
       (and (:modifyDataType change)
            (match-target-types? (get-in change [:modifyDataType :newDataType] "")))
       true)))

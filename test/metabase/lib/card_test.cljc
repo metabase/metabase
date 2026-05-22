@@ -688,7 +688,7 @@
           model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
-               ;; intentionally omitting `:dataset-query`
+              ;; intentionally omitting `:dataset-query`
               {:cards [{:id              model-id
                         :type            :model
                         :database-id     (meta/id)

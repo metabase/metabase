@@ -221,7 +221,7 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                       ;; registered claims should not be synced as login attributes
+                                                    ;; registered claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}

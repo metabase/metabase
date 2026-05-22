@@ -183,8 +183,8 @@
                       (if-let [aggregation (first (lib/aggregations metric-query))]
                         [(:id card-metadata)
                          {:query metric-query
-                              ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                              ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                          ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                          ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
                           :aggregation aggregation
                           :name metric-name}]
                         (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
@@ -291,9 +291,9 @@
                    stage-a-source
                    (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
                    (= (:type metric-metadata) :metric)
-                    ;; This indicates this stage has not been processed
-                    ;; because metrics must have aggregations
-                    ;; if it is missing, then it has been removed in this process
+                   ;; This indicates this stage has not been processed
+                   ;; because metrics must have aggregations
+                   ;; if it is missing, then it has been removed in this process
                    (:aggregation stage-a))
               [idx-a metric-metadata])))
         (partition-all 2 1 (m/indexed expanded-stages))))

@@ -124,8 +124,8 @@
      (u.date/extract-units unit)
      :type/Integer
 
-       ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
-       ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
+     ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
+     ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
      (isa? (or effective-type base-type) :type/Temporal)
      :type/DateTime
 

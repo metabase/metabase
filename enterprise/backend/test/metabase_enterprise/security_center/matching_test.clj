@@ -184,9 +184,9 @@
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
-  ;; The matching_query in these tests would throw if executed — that's how we
-  ;; verify the short-circuit actually avoids running the query.
+    ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
+    ;; The matching_query in these tests would throw if executed — that's how we
+    ;; verify the short-circuit actually avoids running the query.
     (let [past #t "2020-01-01T00:00:00Z"]
       (testing "out-of-range + already :resolved → skip entirely (query not run, timestamp preserved)"
         (mt/with-temp [:model/SecurityAdvisory advisory
@@ -238,9 +238,9 @@
         (is (=? {:match_status      :resolved
                  :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
-  ;; must never produce :active — we cannot claim an instance is affected when
-  ;; we can't even compare its version to the affected ranges.
+    ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
+    ;; must never produce :active — we cannot claim an instance is affected when
+    ;; we can't even compare its version to the affected ranges.
     (doseq [tag ["vLOCAL_DEV" "vUNKNOWN"]]
       (testing (str "unparseable instance version " (pr-str tag) " never yields :active")
         (is (nil? (matching/parse-version tag)))
@@ -250,7 +250,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                      ;; Range that would normally match any realistic version.
+                        ;; Range that would normally match any realistic version.
                         :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "unknown"

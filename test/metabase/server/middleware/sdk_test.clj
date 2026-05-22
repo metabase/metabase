@@ -78,7 +78,7 @@
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]
     (with-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
-       ;; has X-Metabase-Client header, but it's not the SDK, so we don't track it
+      ;; has X-Metabase-Client header, but it's not the SDK, so we don't track it
       (let [request (mock-request {:client "my-client"})
             good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))

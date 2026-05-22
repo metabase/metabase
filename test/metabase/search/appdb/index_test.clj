@@ -76,14 +76,14 @@
   (let [fulltext? (= :postgres (mdb/db-type))]
     (with-index
       (testing "The index is updated when models change"
-       ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
 
-       ;; Delete hooks are remove for now, over performance concerns.
+        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
         #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
@@ -107,10 +107,10 @@
   (with-index
     (with-fulltext-filtering
       (testing "It does not match partial words"
-      ;; does not include revenue
+        ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
 
-    ;; no longer works without using the english dictionary
+      ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
@@ -133,7 +133,7 @@
         (is (<= 1 (index-hits "user"))))
       (testing "But stop words are skipped"
         (is (= 0 (index-hits "or")))
-      ;; stop words depend on a dictionary
+        ;; stop words depend on a dictionary
         (is (= #_0 3 (index-hits "its the satisfaction of it"))))
       (testing "We can combine the individual results"
         (is (= (+ (index-hits "satisfaction")

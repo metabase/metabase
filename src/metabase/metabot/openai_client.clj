@@ -53,7 +53,7 @@
        (catch Exception e
          (log/warnf "Exception when calling function: %s" (.getMessage e))
          (throw
-           ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
+          ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
           (if-some [status (:status (ex-data e))]
             (let [{:keys [body]} (ex-data e)
                   {:keys [error]} (json/decode+kw body)
@@ -68,7 +68,7 @@
                 401 (ex-info
                      "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                      {:message     "Credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
-                        ;; Don't actually produce a 401 because you'll get redirect do the home page.
+                      ;; Don't actually produce a 401 because you'll get redirect do the home page.
                       :status-code 400})
                 429 (if (= error-type "insufficient_quota")
                       (ex-info
@@ -79,12 +79,12 @@
                        "Server is under heavy load and cannot process your request at this time.\nPlease try again."
                        {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
                         :status-code status}))
-                 ;; Just re-throw it until we get a better handle on
+                ;; Just re-throw it until we get a better handle on
                 (ex-info
                  "Error calling remote server.\nPlease try again."
                  {:message     "The server is under heavy load and cannot process your request at this time.\nPlease try again."
                   :status-code 500})))
-             ;; If there's no ex-data, we'll assume it's some other issue and generate a 400
+            ;; If there's no ex-data, we'll assume it's some other issue and generate a 400
             (ex-info
              (ex-message e)
              {:exception-data (ex-data e)

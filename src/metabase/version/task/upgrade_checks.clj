@@ -62,6 +62,6 @@
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; run twice a day
+                  ;; run twice a day
                   (cron/cron-schedule (format "0 %d %d,%d * * ? *" rand-minute rand-hour-1 rand-hour-2))))]
     (task/schedule-task! job trigger)))

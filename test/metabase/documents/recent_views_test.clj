@@ -159,10 +159,10 @@
                      :model/Document {doc-id :id} {:name "Test Document"
                                                    :collection_id coll-id
                                                    :archived false}]
-      ;; Add document to recent views
+        ;; Add document to recent views
         (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
 
-      ;; Call the API
+        ;; Call the API
         (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
           (is (some #(and (= (:model %) "document")
                           (= (:id %) doc-id)

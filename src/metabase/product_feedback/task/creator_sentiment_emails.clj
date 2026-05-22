@@ -116,6 +116,6 @@
                  (triggers/with-identity (triggers/key creator-sentiment-emails-trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; Fire at 2am every saturday
+                  ;; Fire at 2am every saturday
                   (cron/cron-schedule "0 0 2 ? * 7")))]
     (task/schedule-task! job trigger)))

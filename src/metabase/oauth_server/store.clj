@@ -115,8 +115,8 @@
           config    (-> client-config
                         (assoc :client-id client-id)
                         (cond->
-                          ;; The library pre-hashes the registration-access-token before calling
-                          ;; register-client; map it to the DB column name.
+                         ;; The library pre-hashes the registration-access-token before calling
+                         ;; register-client; map it to the DB column name.
                          (:registration-access-token client-config)
                           (-> (assoc :registration-access-token-hash (:registration-access-token client-config))
                               (dissoc :registration-access-token))

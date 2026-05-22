@@ -196,7 +196,7 @@
                        :model/Metabot unverified-metabot {:name "unverified metabot"
                                                           :collection_id (:id metabot-coll)
                                                           :use_verified_content false}]
-        ;; Mark some content as verified
+          ;; Mark some content as verified
           (moderation/create-review! {:moderated_item_id (:id verified-model)
                                       :moderated_item_type "card"
                                       :moderator_id (mt/user->id :crowberto)
