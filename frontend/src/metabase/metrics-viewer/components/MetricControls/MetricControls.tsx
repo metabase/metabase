@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useDimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import type {
   MetricSourceId,
   MetricsViewerDisplayType,
@@ -9,8 +10,6 @@ import type {
 import {
   type AvailableDimensionsResult,
   type DimensionFilterValue,
-  type SourceDisplayInfo,
-  type TabInfo,
   getProjectionInfo,
   getTabConfig,
 } from "metabase/metrics-viewer/utils";
@@ -26,8 +25,6 @@ import {
 } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
-
-import { AddDimensionPopover } from "../MetricsViewerTabs/AddDimensionPopover";
 
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
@@ -53,14 +50,10 @@ type MetricControlsProps = {
   allFilterDimensions?: DimensionMetadata[];
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
-  canAddScalarTab: boolean;
   onDisplayTypeChange: (displayType: MetricsViewerDisplayType) => void;
   onDimensionFilterChange: (value: DimensionFilterValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
   onBinningChange: (binningStrategy: string | undefined) => void;
-  onAddTab: (tabInfo: TabInfo) => void;
   canToggleColumnLabels?: boolean;
   showColumnLabels?: boolean;
   onShowColumnLabelsChange?: (show: boolean) => void;
@@ -80,14 +73,10 @@ export function MetricControls({
   allFilterDimensions,
   availableDimensions,
   sourceOrder,
-  sourceDataById,
-  hasMultipleSources,
-  canAddScalarTab,
   onDisplayTypeChange,
   onDimensionFilterChange,
   onTemporalUnitChange,
   onBinningChange,
-  onAddTab,
   canToggleColumnLabels,
   showColumnLabels = true,
   onShowColumnLabelsChange,
@@ -95,6 +84,7 @@ export function MetricControls({
   visualizationSettings,
   onVisualizationSettingsChange,
 }: MetricControlsProps) {
+  const { open: openDimensionPickerSidebar } = useDimensionPickerSidebar();
   const projectionInfo = useMemo(
     () => getProjectionInfo(definition),
     [definition],
@@ -162,30 +152,20 @@ export function MetricControls({
             <Divider orientation="vertical" className={S.divider} mx="xs" />
             {hasAvailableDimensions && (
               <>
-                <AddDimensionPopover
-                  availableDimensions={availableDimensions}
-                  sourceOrder={sourceOrder}
-                  sourceDataById={sourceDataById}
-                  hasMultipleSources={hasMultipleSources}
-                  onAddTab={onAddTab}
-                  canAddScalarTab={canAddScalarTab}
-                  renderTrigger={({ toggle }) => (
-                    <Button
-                      w={184}
-                      justify="space-between"
-                      fw="bold"
-                      py="xs"
-                      px="sm"
-                      aria-label={t`Change column`}
-                      variant="subtle"
-                      color="text-primary"
-                      rightSection={<Icon name="chevrondown" size={12} />}
-                      onClick={toggle}
-                    >
-                      {columnPickerLabel}
-                    </Button>
-                  )}
-                />
+                <Button
+                  w={184}
+                  justify="space-between"
+                  fw="bold"
+                  py="xs"
+                  px="sm"
+                  aria-label={t`Change column`}
+                  variant="subtle"
+                  color="text-primary"
+                  rightSection={<Icon name="chevrondown" size={12} />}
+                  onClick={openDimensionPickerSidebar}
+                >
+                  {columnPickerLabel}
+                </Button>
                 <Divider orientation="vertical" className={S.divider} mx="xs" />
               </>
             )}

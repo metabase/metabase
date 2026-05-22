@@ -15,8 +15,6 @@ import type {
 import {
   type AvailableDimensionsResult,
   type DimensionFilterValue,
-  type SourceDisplayInfo,
-  type TabInfo,
   buildDimensionItemsFromDefinitions,
   getProjectionInfo,
   getTabConfig,
@@ -48,13 +46,9 @@ type MetricsViewerTabContentProps = {
   sourceColors: SourceColorMap;
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
-  canAddScalarTab: boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
   onDimensionRemove: (slotIndex: number) => void;
-  onAddTab: (tabInfo: TabInfo) => void;
 };
 
 export function MetricsViewerTabContent({
@@ -70,13 +64,9 @@ export function MetricsViewerTabContent({
   sourceColors,
   availableDimensions,
   sourceOrder,
-  sourceDataById,
-  hasMultipleSources,
-  canAddScalarTab,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
-  onAddTab,
 }: MetricsViewerTabContentProps) {
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
@@ -263,14 +253,10 @@ export function MetricsViewerTabContent({
             allFilterDimensions={allFilterDimensions}
             availableDimensions={availableDimensions}
             sourceOrder={sourceOrder}
-            sourceDataById={sourceDataById}
-            hasMultipleSources={hasMultipleSources}
-            canAddScalarTab={canAddScalarTab}
             onDisplayTypeChange={handleDisplayTypeChange}
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
-            onAddTab={onAddTab}
             showStackSeries={showStackSeries}
             canToggleColumnLabels={!hideDimensionPill}
             showColumnLabels={showColumnLabels}

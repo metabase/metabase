@@ -8,6 +8,11 @@ import {
 } from "metabase/metrics-viewer/analytics";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import {
+  DimensionPickerSidebar,
+  DimensionPickerSidebarProvider,
+  useDimensionPickerSidebar,
+} from "metabase/metrics-viewer/components/DimensionPickerSidebar";
+import {
   MetricsViewerEmptyState,
   MetricsViewerNoTabsEmptyState,
 } from "metabase/metrics-viewer/components/EmptyState";
@@ -24,12 +29,20 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
+  return (
+    <DimensionPickerSidebarProvider>
+      <MetricsViewerPageContent {...props} />
+    </DimensionPickerSidebarProvider>
+  );
+}
+
+function MetricsViewerPageContent(props: MetricsViewerPageProps) {
+  const { isOpen: isDimensionPickerSidebarOpen } = useDimensionPickerSidebar();
   const useMetricsViewerResult = useMetricsViewer(props);
 
   const {
     definitions,
     formulaEntities,
-    tabs,
     activeTab,
     initialLoadComplete,
     queriesAreLoading,
@@ -43,7 +56,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     selectedMetrics,
     sourceOrder,
     sourceDataById,
-    availableDimensions,
+    activeTabAvailableDimensions,
+    sidebarAvailableDimensions,
     addMetric,
     swapMetric,
     removeMetric,
@@ -85,7 +99,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     (entry) => entry.definition != null,
   );
   const hasMultipleSources = sourceOrder.length > 1;
-  const canAddScalarTab = !tabs.some((tab) => tab.type === "scalar");
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
@@ -129,11 +142,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   series={series}
                   cardIdToEntityIndex={cardIdToEntityIndex}
                   sourceColors={sourceColors}
-                  availableDimensions={availableDimensions}
+                  availableDimensions={activeTabAvailableDimensions}
                   sourceOrder={sourceOrder}
-                  sourceDataById={sourceDataById}
-                  hasMultipleSources={hasMultipleSources}
-                  canAddScalarTab={canAddScalarTab}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(slotIndex, dim) =>
                     changeTabDimension(activeTab.id, slotIndex, dim)
@@ -141,19 +151,33 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   onDimensionRemove={(slotIndex) =>
                     removeTabDimension(activeTab.id, slotIndex)
                   }
-                  onAddTab={addAndSelectTab}
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoTabsEmptyState />
               ) : null}
             </Flex>
-            {activeTab?.type !== "scalar" && (
-              <BreakoutLegend
-                formulaEntities={formulaEntities}
-                definitions={definitions}
-                activeBreakoutColors={activeBreakoutColors}
-              />
-            )}
+            {activeTab &&
+              activeTab.type !== "scalar" &&
+              (isDimensionPickerSidebarOpen ? (
+                <DimensionPickerSidebar
+                  activeTab={activeTab}
+                  availableDimensions={sidebarAvailableDimensions}
+                  allFieldsAvailableDimensions={activeTabAvailableDimensions}
+                  metricSlots={metricSlots}
+                  sourceColors={sourceColors}
+                  sourceOrder={sourceOrder}
+                  sourceDataById={sourceDataById}
+                  hasMultipleSources={hasMultipleSources}
+                  onAddTab={addAndSelectTab}
+                  onUpdateActiveTab={updateActiveTab}
+                />
+              ) : (
+                <BreakoutLegend
+                  formulaEntities={formulaEntities}
+                  definitions={definitions}
+                  activeBreakoutColors={activeBreakoutColors}
+                />
+              ))}
           </Flex>
         </Stack>
       </Flex>
