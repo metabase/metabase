@@ -16,6 +16,7 @@ export const setupUserKeyValueEndpoints = ({
     `path:/api/user-key-value/namespace/${namespace}/key/${key}`,
     new Response(JSON.stringify(value), {
       status: 200,
+      headers: { "Content-Type": "application/json" },
     }),
     {
       name: getName,
