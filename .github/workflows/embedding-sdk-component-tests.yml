@@ -52,7 +52,7 @@ jobs:
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
@@ -223,7 +223,7 @@ jobs:
         run: ./bin/build.sh
 
       - name: Retrieve Embedding SDK dist artifact built from the current commit N
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk

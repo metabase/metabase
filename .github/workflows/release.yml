@@ -182,7 +182,7 @@ jobs:
           .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -221,7 +221,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar

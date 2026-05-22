@@ -95,7 +95,7 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Download failed test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         if: github.run_attempt != '1'
         continue-on-error: true
         id: failed-specs

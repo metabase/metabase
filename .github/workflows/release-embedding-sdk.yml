@@ -103,7 +103,7 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - name: Retrieve build scripts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build-scripts
           path: release/dist/
@@ -140,7 +140,7 @@ jobs:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     steps:
       - name: Retrieve build scripts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build-scripts
           path: release/dist/
@@ -370,7 +370,7 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: metabase-sdk
           path: sdk
