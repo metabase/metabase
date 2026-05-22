@@ -97,7 +97,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "openai" "openrouter" "google"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -112,7 +112,8 @@
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
-  {"anthropic"                       default-anthropic-llm-metabot-model
+  {"anthropic"                            default-anthropic-llm-metabot-model
+   "google"                               "gemini-3.5-flash"
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -241,6 +242,7 @@
     "anthropic"  (llm.settings/llm-anthropic-api-key)
     "openai"     (llm.settings/llm-openai-api-key)
     "openrouter" (llm.settings/llm-openrouter-api-key)
+    "google"     (llm.settings/llm-google-api-key)
     nil))
 
 (defn- llm-provider-configured?

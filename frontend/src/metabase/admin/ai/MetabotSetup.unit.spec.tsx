@@ -90,6 +90,16 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  google: {
+    value: "google/gemini-3.5-flash",
+    models: [
+      {
+        id: "gemini-3.5-flash",
+        value: "google/gemini-3.5-flash",
+        display_name: "Gemini 3.5 Flash",
+      },
+    ],
+  },
 };
 
 type MetabotUsageQuota = {
@@ -107,7 +117,8 @@ type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-openai-api-key"
-  | "llm-openrouter-api-key";
+  | "llm-openrouter-api-key"
+  | "llm-google-api-key";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
@@ -189,6 +200,7 @@ async function setup({
     anthropic: "**********45",
     openai: null,
     openrouter: null,
+    google: null,
     ...apiKeyValues,
   };
 
@@ -239,6 +251,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-google-api-key": createMockSettingDefinition({
+      key: "llm-google-api-key",
+      value: mergedApiKeyValues.google ?? undefined,
     }),
   };
 

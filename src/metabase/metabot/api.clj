@@ -320,7 +320,8 @@
   (case provider
     "anthropic"  :llm-anthropic-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "google"     :llm-google-api-key))
 
 (defn- non-blank-string
   [value]

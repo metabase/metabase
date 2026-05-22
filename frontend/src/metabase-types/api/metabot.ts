@@ -208,7 +208,8 @@ export type MetabotProvider =
   | "metabase"
   | "anthropic"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "google";
 
 export interface MetabotSettingsResponse {
   value: string | null;

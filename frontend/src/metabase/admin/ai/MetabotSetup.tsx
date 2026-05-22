@@ -243,6 +243,7 @@ export function MetabotSetupInner({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-google-api-key",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -510,6 +511,7 @@ const AIProviderSetup = ({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-google-api-key",
   ] as const);
 
   const selectedApiKeySetting =

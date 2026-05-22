@@ -26,6 +26,28 @@
         (llm.settings/llm-anthropic-api-key! "")
         (is (nil? (llm.settings/llm-anthropic-api-key)))))))
 
+;;; ------------------------------------------- llm-google-api-key Setter Tests -------------------------------------------
+
+(deftest llm-google-api-key-setter-test
+  (testing "accepts valid AIza key and trims whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-google-api-key nil]
+      (mt/discard-setting-changes [llm-google-api-key]
+        (llm.settings/llm-google-api-key! "  AIzaSyABC123  ")
+        (is (= "AIzaSyABC123" (llm.settings/llm-google-api-key))))))
+
+  (testing "rejects keys without AIza prefix"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid Google API key format"
+         (llm.settings/llm-google-api-key! "invalid-key"))))
+
+  (testing "empty/nil clears the setting"
+    (mt/with-temp-env-var-value! [mb-llm-google-api-key nil]
+      (mt/discard-setting-changes [llm-google-api-key]
+        (llm.settings/llm-google-api-key! "AIzaSyABC123")
+        (llm.settings/llm-google-api-key! "")
+        (is (nil? (llm.settings/llm-google-api-key)))))))
+
 ;;; ------------------------------------------- llm-anthropic-api-key-configured? Tests -------------------------------------------
 
 (deftest llm-anthropic-api-key-configured?-test
