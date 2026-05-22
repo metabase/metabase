@@ -433,13 +433,16 @@ export class UnconnectedDataSelector extends Component {
     // schema list arrives asynchronously *after* we already switched to the schema
     // step (e.g. a freshly selected Mongo database in the native editor), that
     // auto-selection ran against stale state and didn't advance, leaving us
-    // stranded on the schema step. Retry it now that the schema is available.
+    // stranded on the schema step. Retry it now that the schema is available,
+    // but only if schema selection is truly missing in both controlled and
+    // uncontrolled usage.
     const onStepMissingOnlySchemaSelection =
       activeStep === SCHEMA_STEP &&
       !selectedSchema &&
       this.props.useOnlyAvailableSchema &&
       !this.props.readOnly &&
       this.props.selectedSchemaId == null &&
+      this.state.selectedSchemaId == null &&
       schemas.length === 1;
 
     if (invalidSchema || onStepMissingSchemaAndTable) {
