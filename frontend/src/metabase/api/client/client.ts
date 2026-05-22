@@ -15,63 +15,20 @@ import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
+import type {
+  EventMap,
+  MethodCreator,
+  RequestClientInfo,
+  RequestInit,
+  RequestOptions,
+} from "./types";
 import {
   appendQueryParameters,
-  getResponseBody,
-  getResponseStatus,
   relativeUrl as relativePath,
   substituteUrlTags,
 } from "./utils";
 
 const MAX_RETRIES = 10;
-
-type ResponseTransformer<T = unknown> = (opts: {
-  /**
-   * A cloned, unread `Response` for callers that need raw headers or stream.
-   */
-  response: Response;
-}) => T;
-
-type RequestOptions<T = unknown> = {
-  noEvent?: boolean;
-  transformResponse?: ResponseTransformer<T>;
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
-};
-
-type RequestClientInfo = string | { name: string; version: string | null };
-
-/**
- * Legacy API method. Consumers across the codebase pass concrete request shapes
- * (e.g. `CreateDashboardRequest`) and rely on destructuring a concrete response,
- * so we use broad `any` types here to match the JS version's behaviour.
- */
-type ApiMethod = (
-  rawData?: any,
-  invocationOptions?: RequestOptions,
-) => Promise<any>;
-
-type MethodCreator = (
-  urlTemplate: string,
-  methodOptions?: RequestOptions,
-) => ApiMethod;
-
-type ResponseErrorInfo = {
-  metabaseVersion: string | null;
-};
-
-type EventMap = {
-  401: [string];
-  403: [string];
-  responseError: [ResponseErrorInfo];
-};
-
-type RequestInit<T> = {
-  method: RequestMethod;
-  url: URL;
-  body?: BodyInit;
-  headers?: Record<string, string>;
-} & RequestOptions<T>;
 
 export class ApiClient extends EventEmitter<EventMap> {
   basename = "";
