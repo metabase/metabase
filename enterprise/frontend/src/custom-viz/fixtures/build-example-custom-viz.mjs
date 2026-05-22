@@ -22,9 +22,29 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "../../../../..");
 const E2E_ASSETS = resolve(REPO_ROOT, "e2e/support/assets");
 
-await buildDemoViz();
+const visualizations = [
+  {
+    index: "index.tsx",
+    manifest: "demo-viz.json",
+    out: "example_custom_viz_plugin.tgz",
+  },
+  {
+    index: "index.tsx",
+    manifest: "demo-viz-2.json",
+    out: "example_custom_viz_plugin_2.tgz",
+  },
+  {
+    index: "index-widget-security.tsx",
+    manifest: "demo-viz-security.json",
+    out: "example_custom_viz_plugin_widget_security.tgz",
+  },
+];
 
-async function buildDemoViz() {
+for (const { index, manifest, out } of visualizations) {
+  await buildDemoViz(index, manifest, out);
+}
+
+async function buildDemoViz(index, manifest, out) {
   const root = resolve(__dirname, "example_custom_viz_plugin");
   const stage = resolve(root, ".stage");
 
@@ -35,7 +55,7 @@ async function buildDemoViz() {
   // itself: real customer plugins also self-contain React, and the
   // sandbox doesn't expose a host React on `__METABASE_VIZ_API__`.
   await build({
-    entryPoints: [resolve(root, "src/index.tsx")],
+    entryPoints: [resolve(root, "src", index)],
     bundle: true,
     format: "iife",
     globalName: "__customVizPlugin__",
@@ -57,36 +77,19 @@ async function buildDemoViz() {
     minify: true,
   });
 
-  // Pack one tarball per manifest variant. The bundle byte-content is
-  // identical between demo-viz and demo-viz-2 — the existing fixtures we
-  // replaced have the same property — only the manifest's `name` and
-  // `metabase.version` differ.
-  const variants = [
-    {
-      manifest: "demo-viz.json",
-      out: "example_custom_viz_plugin.tgz",
-    },
-    {
-      manifest: "demo-viz-2.json",
-      out: "example_custom_viz_plugin_2.tgz",
-    },
-  ];
+  cpSync(
+    resolve(root, "manifests", manifest),
+    resolve(stage, "metabase-plugin.json"),
+  );
 
-  for (const { manifest, out } of variants) {
-    cpSync(
-      resolve(root, "manifests", manifest),
-      resolve(stage, "metabase-plugin.json"),
-    );
-
-    const outPath = resolve(E2E_ASSETS, out);
-    execFileSync(
-      "tar",
-      ["-czf", outPath, "-C", stage, "metabase-plugin.json", "dist"],
-      { stdio: "inherit" },
-    );
-    const { size } = statSync(outPath);
-    console.log(`Packed ${out} (${(size / 1024).toFixed(1)} KiB)`);
-  }
+  const outPath = resolve(E2E_ASSETS, out);
+  execFileSync(
+    "tar",
+    ["-czf", outPath, "-C", stage, "metabase-plugin.json", "dist"],
+    { stdio: "inherit" },
+  );
+  const { size } = statSync(outPath);
+  console.log(`Packed ${out} (${(size / 1024).toFixed(1)} KiB)`);
 
   rmSync(stage, { recursive: true, force: true });
 }
