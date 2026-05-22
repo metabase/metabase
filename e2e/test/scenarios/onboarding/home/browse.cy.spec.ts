@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 const verifiedFilterToggleButton = () =>
   cy
@@ -407,5 +407,34 @@ describe("issue 37907", () => {
 
     H.tableInteractive().findByTextEnsureVisible("Discount ($)").realHover();
     H.popover().should("include.text", "Discount amount.");
+  });
+});
+
+describe("issue 74433", () => {
+  const LONG_TABLE_NAME =
+    "thisisaverylongtablenamewithoutspacesthatshouldoverflowthetooltipboxbecausetherearenospacesforbreakingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ORDERS_ID}`, {
+      display_name: LONG_TABLE_NAME,
+    });
+  });
+
+  it("table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByRole("heading", { name: LONG_TABLE_NAME }).realHover();
+
+    H.tooltip()
+      .should("be.visible")
+      .and(($tooltip) => {
+        const tooltip = $tooltip[0];
+        expect(
+          tooltip.scrollWidth,
+          "tooltip content fits within its box",
+        ).to.be.lte(tooltip.clientWidth);
+      });
   });
 });
