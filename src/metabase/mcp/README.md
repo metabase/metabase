@@ -57,6 +57,8 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:construct` | `construct_query`                       |
 | `agent:query`           | `query`                                 |
 | `agent:query:execute`   | `execute_query`                         |
+| `agent:question:create` | `create_question`                       |
+| `agent:dashboard:create`| `create_dashboard`                      |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
@@ -82,6 +84,8 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `construct_query`         | Construct a query against a table or metric. Accepts the user's original `prompt` when available. Returns an opaque `query_handle` for use with `execute_query` or `visualize_query`. |
 | `execute_query`           | Execute a previously constructed query and return results with column metadata.                                                                                                       |
 | `query`                   | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                        |
+| `create_question`         | Save a constructed query as a named question (card). Takes the base64 `query` from `construct_query`, plus optional `display`, `description`, `collection_id`, `visualization_settings`. |
+| `create_dashboard`        | Create a dashboard, optionally populated with saved questions via `question_ids`. Cards are auto-positioned on the grid by display type.                                              |
 
 Query results are limited to 200 rows per request. When more rows are available, the response includes a
 `continuation_token` that can be passed back to fetch the next page.
