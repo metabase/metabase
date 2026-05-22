@@ -268,6 +268,11 @@
                          (default-select driver honeysql-form))]
     (assoc honeysql-form :select (select-with-top select value))))
 
+(defmethod sql.qp/preprocess :teradata
+  [driver mbql5-query]
+  (let [parent-method (get-method sql.qp/preprocess :sql)]
+    (sql.qp/fix-order-bys-in-subqueries (parent-method driver mbql5-query))))
+
 (defmethod sql.qp/apply-top-level-clause [:teradata :page] [_ _ honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (:raw (format "QUALIFY ROW_NUMBER() OVER (%s) BETWEEN %d AND %d"
                                              (first (format (select-keys honeysql-form [:order-by])
