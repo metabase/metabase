@@ -17,6 +17,13 @@ export type RetryOptions = {
    * (1s, 2s, 4s, 8s, ...).
    */
   delayMs?: (attempt: number) => number;
+  /**
+   * When provided, aborting short-circuits the loop: an in-flight backoff
+   * wait ends early and the loop throws the signal's abort reason (an
+   * `AbortError` by default) instead of making another attempt. An
+   * already-aborted signal throws before `fn` is ever called.
+   */
+  signal?: AbortSignal;
 };
 
 /**
@@ -39,16 +46,19 @@ const DEFAULT_DELAY_MS = exponentialBackoff();
  */
 export async function retry<T>(
   fn: () => Promise<T>,
-  { maxRetries, shouldRetry, delayMs = DEFAULT_DELAY_MS }: RetryOptions,
+  { maxRetries, shouldRetry, delayMs = DEFAULT_DELAY_MS, signal }: RetryOptions,
 ): Promise<T> {
   for (let attempt = 0; ; attempt++) {
+    // Bail before each attempt if aborted — including right after an
+    // interrupted backoff — rather than making another call to `fn`.
+    signal?.throwIfAborted();
     try {
       return await fn();
     } catch (error) {
       if (!shouldRetry(error, attempt) || attempt >= maxRetries) {
         throw error;
       }
-      await delay(delayMs(attempt));
+      await delay(delayMs(attempt), signal);
     }
   }
 }

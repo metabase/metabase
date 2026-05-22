@@ -122,6 +122,51 @@ describe("retry", () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
+  it("ends the backoff early and throws the abort reason instead of retrying", async () => {
+    const error = new Error("flaky");
+    const fn = jest.fn().mockRejectedValue(error);
+    const controller = new AbortController();
+
+    const promise = retry(fn, {
+      maxRetries: 5,
+      shouldRetry: () => true,
+      delayMs: () => 1000,
+      signal: controller.signal,
+    });
+    const resultPromise = promise.catch((e: unknown) => e);
+
+    // First attempt fails and schedules a 1000ms backoff.
+    await Promise.resolve();
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    // Aborting ends the backoff early and stops the loop without another
+    // attempt; the signal's abort reason is thrown.
+    controller.abort();
+    await jest.runAllTimersAsync();
+
+    const result = await resultPromise;
+    expect(result).toBeInstanceOf(DOMException);
+    expect((result as DOMException).name).toBe("AbortError");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws without ever calling fn when the signal is already aborted", async () => {
+    const fn = jest.fn().mockResolvedValue("ok");
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      retry(fn, {
+        maxRetries: 5,
+        shouldRetry: () => true,
+        delayMs: () => 0,
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(DOMException);
+
+    expect(fn).not.toHaveBeenCalled();
+  });
+
   it("waits delayMs(attempt) between attempts", async () => {
     const fn = jest
       .fn()
