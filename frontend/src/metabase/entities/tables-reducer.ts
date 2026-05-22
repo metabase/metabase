@@ -48,8 +48,9 @@ export function tablesReducer(
     const virtualTableId = getQuestionVirtualTableId(card.id);
 
     if (card.archived && state[virtualTableId]) {
-      delete state[virtualTableId];
-      return state;
+      const nextState = { ...state };
+      delete nextState[virtualTableId];
+      return nextState;
     }
 
     if (state[virtualTableId]) {
