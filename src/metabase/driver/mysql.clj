@@ -1329,7 +1329,7 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
+              (throw (driver.u/scrub-exceptions t [password escaped-password])))))))
     {:schema           db-name
      ;; Intentionally omit `:db` from `:database_details`: when the workspace
      ;; loader merges these over the canonical Database's `:details`, we must
