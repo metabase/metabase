@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Remove test results comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { owner, repo } = context.repo;
@@ -98,7 +98,7 @@ jobs:
       - name: Merge split timings
         id: merge
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

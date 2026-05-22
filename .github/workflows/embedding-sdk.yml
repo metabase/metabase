@@ -192,7 +192,7 @@ jobs:
       needs: ${{ toJson(needs) }}
     steps:
       - name: Check embedding SDK job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

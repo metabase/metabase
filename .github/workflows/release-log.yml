@@ -45,7 +45,7 @@ jobs:
       - name: Install tsx
         run: npm i -g tsx
       - name: Get version number
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const {

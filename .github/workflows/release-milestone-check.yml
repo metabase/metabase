@@ -37,7 +37,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Prepare build scripts
         run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         env:
           GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
