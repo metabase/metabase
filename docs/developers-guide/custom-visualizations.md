@@ -7,13 +7,13 @@ summary: Use the Custom Visualizations SDK to build, develop, and package your o
 
 {% include plans-blockquote.html feature="Custom visualizations" %}
 
-A custom visualization is a Metabase chart type that you build with React and TypeScript and ship as a plugin. You scaffold a project with the `@metabase/custom-viz` package, write your visualization, package it into a `.tgz` bundle, and an admin uploads it to Metabase. For how to enable the feature and upload bundles, see [Custom visualizations](../questions/visualizations/custom-visualizations.md).
+A custom visualization is a Metabase chart type that you build with React and TypeScript and ship as a plugin. You scaffold a project with the `@metabase/custom-viz` package, write your visualization, package it into a `.tgz` bundle, and an admin uploads it to Metabase. For how to enable the feature and upload bundles, see [Custom visualizations](../questions/visualizations/custom.md).
 
 Plugin code runs in a locked-down sandbox — no network requests, no Metabase APIs, no browser storage — so a visualization works entirely from the query results and settings Metabase hands it. See [Sandbox restrictions](#sandbox-restrictions) for the full list.
 
 ## Prerequisites
 
-- Node.js 20 or newer.
+- Node.js 22 or newer.
 - Familiarity with React and TypeScript.
 - A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing/) to load your plugin into.
 
@@ -46,6 +46,7 @@ public/
     icon.svg            # Visualization icon (shown in the chart type picker)
     ...                 # Any other static assets
 vite.config.ts          # Build configuration — don't edit
+pack.mjs                # Packages the build into a .tgz — don't edit
 tsconfig.json
 ```
 
@@ -224,7 +225,7 @@ settings: {
   threshold: defineSetting({
     id: "threshold",
     title: "Threshold",
-    section: "Display",
+    getSection: () => "Display",
     widget: "number",
     getDefault: () => 0,
     getProps: () => ({
@@ -243,7 +244,7 @@ Settings can depend on each other. `getDefault`, `getValue`, `getProps`, and `is
 | ------------------------------ | ----------------------------------------------------------------------------------- |
 | `id`                           | Unique key — has to match the key in your `Settings` type.                          |
 | `title`                        | Label shown in the sidebar.                                                         |
-| `section`                      | Top-level section (for example, `"Data"`, `"Display"`, `"Axes"`).                   |
+| `getSection()`                 | Function returning the section the setting appears under (for example, `"Data"` or `"Display"`). |
 | `group`                        | Sub-heading within a section for grouping related settings.                         |
 | `index`                        | Display order within a group.                                                       |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (handy for `"toggle"`). |
@@ -333,7 +334,7 @@ npm run build
 
 This compiles `src/` to `dist/` and packages the result into `<name>-<version>.tgz` at the project root. The archive contains `metabase-plugin.json`, `dist/index.js`, and any whitelisted `dist/assets/*` files, and has to come in under 5 MB. You don't need to commit `dist/`.
 
-Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations** > **Add**. See [Custom visualizations](../questions/visualizations/custom-visualizations.md) for more on uploading and managing plugins.
+Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** > **Manage visualizations** > **Add**. See [Custom visualizations](../questions/visualizations/custom.md) for more on uploading and managing plugins.
 
 ## Versioning and compatibility
 
@@ -355,6 +356,6 @@ Plugins also don't render in static visualizations: dashboard subscriptions sent
 
 ## Further reading
 
-- [Custom visualizations](../questions/visualizations/custom-visualizations.md)
+- [Custom visualizations](../questions/visualizations/custom.md)
 - [`@metabase/custom-viz` on npm](https://www.npmjs.com/package/@metabase/custom-viz)
 - [Visualization overview](../questions/visualizations/visualizing-results.md)

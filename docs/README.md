@@ -97,7 +97,7 @@ Metabase's reference documentation.
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
-- [Custom visualizations](./questions/visualizations/custom-visualizations.md)
+- [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)

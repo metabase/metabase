@@ -62,7 +62,7 @@ Cache query results for faster loading times.
 
 Upload custom maps to your Metabase.
 
-## [Custom visualizations](../questions/visualizations/custom-visualizations.md)
+## [Custom visualizations](../questions/visualizations/custom.md)
 
 Add your own chart types by uploading visualization plugins.
 
