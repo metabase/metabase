@@ -350,6 +350,7 @@ function DashCardInner({
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
+            [CS.overflowHidden]: !isEditing,
           },
           className,
         )}
