@@ -17,7 +17,7 @@
     the same query shape and sources or template-tags the same upstream card on each pass.
   - Treats `:metric` refs as cards for recursion. Enqueueing their `:dataset_query` collapses metric references down
     to their underlying source tables alongside questions and models.
-  - For native stages, runs the macaw parser via [[metabase.metabot.query-analyzer/tables-for-native]] to recover
+  - For native stages, runs the sql parser via [[metabase.metabot.query-analyzer/tables-for-native]] to recover
     tables inside raw SQL text.
   - Visited card ids are tracked to break cycles."
   (:require
@@ -81,7 +81,7 @@
       nil)))
 
 (defn- native-tables
-  "If `query` is native, run macaw against it and return its underlying table ids."
+  "If `query` is native, run `tables-for-native` against it and return its underlying table ids."
   [query]
   (if (lib/native? query)
     (try
@@ -101,7 +101,7 @@
   "Walk one query and return `{:tables #{table-id ...} :cards #{card-id ...}}`.
 
   `:tables` includes `:source-table` ids, template-tag table ids, the parent tables of implicitly-joined field refs,
-  and any tables found by macaw in native stages.
+  and any tables found by `native-tables`.
 
   `:cards` includes `:source-card`, template-tag `:card-id`, and `:metric` ref ids."
   [query]
@@ -290,10 +290,10 @@
   false)
 
 (defonce ^:private executor
-  ;; Small fixed pool of daemon threads, isolated from `metabase.util.quick-task` so a slow
-  ;; extraction can't queue behind table syncs/fingerprinting (or vice versa). Two threads give
-  ;; some headroom for the multi-second BFS+macaw walk when several turns finalize at once; rows
-  ;; are keyed by distinct `message_id`, so concurrent inserts don't contend.
+  ;; Small fixed pool of daemon threads, isolated from `metabase.util.quick-task` so a slow extraction can't queue
+  ;; behind table syncs/fingerprinting (or vice versa). Two threads give some headroom for the (usually fast, but
+  ;; potentially slow) BFS+sql parse when several turns finalize at once; rows are keyed by distinct `message_id`, so
+  ;; concurrent inserts don't contend.
   (delay (Executors/newFixedThreadPool
           2
           (reify ThreadFactory

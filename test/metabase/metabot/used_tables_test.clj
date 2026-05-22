@@ -371,8 +371,8 @@
 
 ;;; ---------------------------------------- native (SQL) ----------------------------------------
 
-(deftest ^:parallel sql-extracts-macaw-tables-test
-  (testing "native SQL is parsed by macaw and the underlying tables come through"
+(deftest ^:parallel sql-extracts-native-tables-test
+  (testing "native SQL is parsed and the underlying tables come through"
     (let [order-id (meta/id :orders)
           sql      "SELECT * FROM orders"]
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _]
@@ -398,8 +398,8 @@
                            :table_id   (meta/id :orders)})
                     rows)))))))
 
-(deftest ^:parallel sql-template-tag-native-card-recurses-macaw-test
-  (testing "template tag pointing at a native-query Card recurses and macaw parses the inner SQL"
+(deftest ^:parallel sql-template-tag-native-card-test
+  (testing "template tag pointing at a native-query card recurses and parses the inner SQL"
     (let [orders-id    (meta/id :orders)
           people-id    (meta/id :people)
           inner-sql    "SELECT * FROM people"
@@ -423,7 +423,7 @@
                                 {:database_id (meta/id) :sql_query outer-sql})
                      (sql-output "s1" outer-sql (meta/id) (native-query mp outer-sql))]
               rows  (#'used-tables/extract-used-tables mp 99 parts)]
-          (is (true? @inner-tables) "macaw was invoked on the inner card's native SQL")
+          (is (true? @inner-tables) "sql parser was invoked on the inner card's native SQL")
           (is (= #{orders-id people-id}
                  (table-ids rows))
               "outer and inner native tables both make it into the result"))))))
@@ -439,14 +439,14 @@
           (is (= [] (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)))
           (is (some #(re-find #"tables-for-native error" (:message %)) (logs))))))))
 
-;;; ---------------------------------------- native (SQL) — real macaw ----------------------------------------
+;;; ---------------------------------------- native (SQL) — real tables-for-native ----------------------------------
 ;;;
-;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the macaw
-;;; parser. These two tests run the real parser end-to-end against the H2 test-data DB so we catch
-;;; integration issues. They need the real application DB metadata provider, so they cannot be `^:parallel`.
+;;; The tests above all stub `nqa/tables-for-native` to isolate the extractor logic from the sql parser. These two
+;;; tests run the real parser end-to-end against the H2 test-data DB so we catch integration issues. They need the
+;;; real application DB metadata provider, so they cannot be `^:parallel`.
 
-(deftest sql-real-macaw-join-with-where-test
-  (testing "real macaw against a plain JOIN + WHERE: both tables come through end-to-end"
+(deftest sql-real-tables-for-native-join-with-where-test
+  (testing "real tables-for-native against a plain JOIN + WHERE: both tables come through end-to-end"
     (let [sql   "SELECT o.id FROM orders o JOIN products p ON o.product_id = p.id WHERE p.category = 'Widget'"
           mp    (mt/metadata-provider)
           parts [(sql-input "s1" "create_sql_query" {:database_id (mt/id) :sql_query sql})
@@ -455,8 +455,8 @@
       (is (= #{(mt/id :orders) (mt/id :products)}
              (table-ids rows))))))
 
-(deftest sql-real-macaw-with-card-template-tag-test
-  (testing "real macaw against SQL that references a saved card via {{#card-id}} template tag"
+(deftest sql-real-tables-for-native-with-card-template-tag-test
+  (testing "real tables-for-native against SQL that references a saved card via {{#card-id}} template tag"
     (mt/with-temp [:model/Card {card-id :id}
                    {:type          :question
                     :database_id   (mt/id)
@@ -523,8 +523,8 @@
                                 :thinking  "x"
                                 :message   "Transform Python updated successfully."}}})
 
-(deftest ^:parallel transform-sql-extracts-macaw-tables-from-structured-output-test
-  (testing "write_transform_sql walks the suggested transform's native query through macaw"
+(deftest ^:parallel transform-sql-extracts-tables-from-structured-output-test
+  (testing "write_transform_sql walks the suggested transform's native query"
     (let [orders-id (meta/id :orders)
           sql       "SELECT * FROM orders"]
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
@@ -549,7 +549,7 @@
               rows  (#'used-tables/extract-used-tables meta/metadata-provider 99 parts)]
           (is (= #{orders-id people-id}
                  (table-ids rows))
-              "macaw-derived `orders` and arg-declared `people` both surface, deduped")
+              "sql parsed `orders` and arg-declared `people` both surface, deduped")
           (is (= 2 (count rows))))))))
 
 (deftest ^:parallel transform-sql-errored-output-skipped-test
