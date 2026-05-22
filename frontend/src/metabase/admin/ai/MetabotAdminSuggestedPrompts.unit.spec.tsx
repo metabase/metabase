@@ -309,12 +309,15 @@ describe("suggested prompts", () => {
     it("does not show a toast on the happy path", async () => {
       await setupForRegenerate({ status: "generated", prompt_count: 3 });
       await clickRegenerate();
-      // Give any toast a chance to render, then assert none of the empty-state copy is visible.
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/No models or metrics to summarize/),
-        ).not.toBeInTheDocument();
+      // Anchor on the mutation actually settling — the button's loading text ("Regenerating ...")
+      // is replaced by the idle text only after `isRegenerating` flips back to false, which is
+      // the same render where any empty-state toast would have appeared if the switch was wrong.
+      await screen.findByRole("button", {
+        name: "Regenerate suggested prompts",
       });
+      expect(
+        screen.queryByText(/No models or metrics to summarize/),
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByText(/AI didn't generate any prompts/),
       ).not.toBeInTheDocument();
