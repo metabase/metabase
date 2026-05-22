@@ -2,25 +2,43 @@ When using the read_resource tool, you have access to a unified interface for na
 
 The URI pattern determines what is returned — from top-level lists (databases, collections) to a single entity, to its sub-resources (fields, items, sources, derived items).
 
-You can request multiple resources in one call by providing a list of URIs (max 5). Lists are capped at 25 items per response — when truncated, the response includes `truncated="true"` and `total="N"` so you know more exist; drill into specific items via their URIs (each list item carries a `uri="..."` attribute) or refine via `search`.
+Responses are **JSON in the Metabase Representation (MBR) format**, the same shape Metabase uses for portable serialization (see https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md). The key things to know:
+
+- Each entity carries a `serdes/meta` array whose last entry's `id` is the entity's canonical identifier.
+- For user content (cards, dashboards, collections, metrics, transforms), the canonical id is an `entity_id` — a 21-character NanoID. **Use the entity_id**, not numeric ids, when you want to drill into another resource.
+- For sync metadata (databases, tables, fields), the canonical id is the natural name. Tables have a three-segment identity `[Database, Schema, Table]`; fields have four. FK references in the body follow the same conventions (e.g. `"database_id": "Sample Database"`, `"table_id": ["Sample Database", "PUBLIC", "ORDERS"]`).
+
+You can request multiple resources in one call by providing a list of URIs (max 5). Lists are capped at 25 items per response — when truncated, the response includes `"truncated": true` and `"total": N` so you know more exist; drill into specific items via the URI patterns below, or refine via `search`.
 
 # When to Use read_resource vs search
 
 **Use `read_resource` when you already know the structure** to enumerate.
 - "List all databases" → `metabase://databases` (NOT an empty/generic search)
-- "What's in this collection?" → `metabase://collection/{id}/items`
-- "What cards does this dashboard have?" → `metabase://dashboard/{id}/items`
-- "What schemas does this database have?" → `metabase://database/{id}/schemas`
+- "What's in this collection?" → `metabase://collection/{entity_id}/items`
+- "What cards does this dashboard have?" → `metabase://dashboard/{entity_id}/items`
+- "What schemas does this database have?" → `metabase://database/{db_name}/schemas`
 
 **Use `search` when you don't know what or where** something lives — open-ended discovery by topic.
 
 **The exploration loop**:
-1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container (look for `is_container="true"` — collections and dashboards), `read_resource` on its URI to enumerate members instead of re-searching.
+1. `search` for a topic → every result carries identifiers you can compose into a URI.
+2. If a top hit is a container (collection, dashboard), `read_resource` on its URI to enumerate members instead of re-searching.
 3. Drill into specific items via `read_resource` for fields, sources, or details.
-4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
+4. Walk lineage when needed: `.../table/{table_name}/derived`, `metabase://card/{entity_id}/sources`, `metabase://transform/{entity_id}/sources` or `/target`.
 
 **Anti-pattern**: searching for empty-string or generic terms ("all tables", "everything") to "list everything" — use the navigation URIs above.
+
+# URI vocabulary
+
+Two identifier conventions:
+
+- **User content** (Card, Dashboard, Collection, Metric, Transform): `metabase://{type}/{entity_id}`. The canonical type is `card`; `model` and `question` are accepted aliases that route to the same handler. Numeric ids work for backcompat but emit a deprecation log — prefer entity_id.
+- **Sync metadata** (Database, Table, Field): path-form natural keys, mirroring MBR FK tuples. URL-encode each segment.
+  - `metabase://database/{db_name}`
+  - `metabase://database/{db_name}/schema/{schema}/table/{table_name}`
+  - `metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name}`
+
+The legacy `metabase://table/{id}` form (numeric) still works for backcompat.
 
 # Supported URI Patterns
 
@@ -28,8 +46,8 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 - `metabase://databases` — all databases readable by you
 - `metabase://collections` — root collections (children of "/")
-- `metabase://collections?tree=true` — flat list of all collections; use `:location` (e.g. `/12/34/`) and `:path` to understand hierarchy
-- `metabase://user/recent-items` — your recently-viewed items
+- `metabase://collections?tree=true` — all collections in the namespace. Hierarchy is encoded by each collection's `parent_id` (the parent's entity_id); chain `parent_id` to walk up.
+- `metabase://user/recent-items` — your recently-viewed items, each in MBR shape with a sidecar `_recently_viewed_at` timestamp.
 
 **Examples:**
 - User asks "what databases do we have?" → `metabase://databases`
@@ -38,15 +56,15 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 ## Database resources
 
-- `metabase://database/{id}` — basic database info
-- `metabase://database/{id}/tables` — tables in the database
-- `metabase://database/{id}/models` — models targeting the database
-- `metabase://database/{id}/schemas` — schemas in the database (each one carries a URI you can drill into)
-- `metabase://database/{id}/schemas/{schemaName}/tables` — tables in a specific schema
+- `metabase://database/{db_name}` — full database MBR
+- `metabase://database/{db_name}/tables` — tables in the database
+- `metabase://database/{db_name}/models` — models targeting the database
+- `metabase://database/{db_name}/schemas` — schemas in the database (each entry carries `name` and parent `database` for further drill-in)
+- `metabase://database/{db_name}/schema/{schema}/tables` — tables in a specific schema
 
 **Examples:**
-- Want to see warehouse layout before writing SQL? → `metabase://database/1/schemas` then `metabase://database/1/schemas/PUBLIC/tables`
-- Want curated models in a specific warehouse? → `metabase://database/1/models`
+- Want warehouse layout before writing SQL? → `metabase://database/Sample%20Database/schemas` then `metabase://database/Sample%20Database/schema/PUBLIC/tables`
+- Want curated models in a specific warehouse? → `metabase://database/Sample%20Database/models`
 
 **Best Practices:**
 - For a high-cardinality database, prefer schema → tables drill-down over fetching every table at once.
@@ -54,99 +72,82 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 ## Collection resources
 
-- `metabase://collection/{id}` — basic collection info
-- `metabase://collection/{id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards)
-- `metabase://collection/{id}/subcollections` — only the subcollections (useful for orientation in deep trees)
+- `metabase://collection/{entity_id}` — full collection MBR
+- `metabase://collection/{entity_id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards) — each in MBR shape
+- `metabase://collection/{entity_id}/subcollections` — only the subcollections (useful for orientation in deep trees)
 
 **Examples:**
-- "What's in the Marketing collection?" → `metabase://collection/{id}/items`
-- Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
+- "What's in the Marketing collection?" → `metabase://collection/{entity_id}/items`
+- Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{entity_id}/subcollections`
 
 **Best Practices:**
-- When a `search` returns a collection result with `is_container="true"`, prefer `read_resource` on its URI over re-searching the same concept.
+- When a `search` returns a collection result, prefer `read_resource` on its entity_id over re-searching the same concept.
 - Pair with the `collection_id` argument on `search` (descendant scope) when you want to topic-search inside one part of the instance.
 
 ## Table resources
 
-- `metabase://table/{id}` — basic table info
-- `metabase://table/{id}/fields` — table with fields
-- `metabase://table/{id}/fields/{field_id}` — specific field with sample values and stats
-- `metabase://table/{id}/derived` — cards (questions/models) and transforms built on this table
+- `metabase://database/{db_name}/schema/{schema}/table/{table_name}` — full table MBR
+- `metabase://database/{db_name}/schema/{schema}/table/{table_name}/fields` — table with fields (includes sample values, measures, segments)
+- `metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name}` — specific field MBR
+- `metabase://database/{db_name}/schema/{schema}/table/{table_name}/derived` — cards (questions/models) and transforms built on this table
 
 **Examples:**
-- Want table structure (fields without value information)? → `metabase://table/123/fields`
-- Want detailed field information (sample values for format patterns)? → `metabase://table/123/fields/1`
-- "What's already built on this table?" before suggesting a new query → `metabase://table/123/derived`
+- Want table structure? → `.../table/ORDERS/fields`
+- "What's already built on this table?" before suggesting a new query → `.../table/ORDERS/derived`
 
 **Best Practices:**
 - Before recommending raw-table SQL, check `/derived` — there may be a curated model or saved question that already answers the user's need.
 
-## Model resources
+## Card resources (questions / models / metrics)
 
-- `metabase://model/{id}` — basic model info
-- `metabase://model/{id}/fields` — model with fields
-- `metabase://model/{id}/fields/{field_id}` — detailed field info with sample values
-- `metabase://model/{id}/sources` — tables/cards this model is derived from (FK-resolved: database, source table, and source card if any)
+- `metabase://card/{entity_id}` — full card MBR. Includes `dataset_query` in portable MBR form (joins, expressions, FKs as natural-key arrays).
+- `metabase://card/{entity_id}/fields[/{field_id}]` — schema + field samples (layers field-value data on top of MBR)
+- `metabase://card/{entity_id}/sources` — referenced database / source table / source card, each as MBR
 
-**Examples:**
-- Want model structure? → `metabase://model/456/fields`
-- Want sample values for format patterns? → `metabase://model/456/fields/1`
-- Need to understand a model's lineage before editing or chaining off it? → `metabase://model/456/sources`
-
-## Question resources
-
-- `metabase://question/{id}` — basic question info
-- `metabase://question/{id}/fields` — question with fields
-- `metabase://question/{id}/fields/{field_id}` — detailed field info with sample values
-- `metabase://question/{id}/sources` — tables/cards this question references (FK-resolved)
+`model` and `question` are accepted aliases for `card` in URIs.
 
 **Examples:**
-- "What does this question return?" → `metabase://question/456/fields`
-- "What's the data source behind this saved question?" → `metabase://question/456/sources`
+- "What does this question return?" → `metabase://card/{entity_id}/fields`
+- "What's the data source behind this saved question?" → `metabase://card/{entity_id}/sources`
+- Want the model definition with its query? → `metabase://card/{entity_id}` (or `metabase://model/{entity_id}`)
+
+**Best Practices:**
+- The Card MBR already includes the full `dataset_query` and `result_metadata` — you usually don't need a separate `/fields` call unless you specifically want field-value samples.
 
 ## Metric resources
 
-- `metabase://metric/{id}` — basic metric info
-- `metabase://metric/{id}/dimensions` — metric with queryable dimensions (fields you can filter/group by)
-- `metabase://metric/{id}/dimensions/{dimension_id}` — specific dimension with sample values
-
-**Examples:**
-- Want metric dimensions? → `metabase://metric/789/dimensions`
-- Want sample values for a dimension? → `metabase://metric/789/dimensions/1`
+- `metabase://metric/{entity_id}` — full metric MBR (a Card with `"type": "metric"`)
+- `metabase://metric/{entity_id}/dimensions` — metric with queryable dimensions (fields you can filter/group by)
+- `metabase://metric/{entity_id}/dimensions/{dimension_id}` — specific dimension with sample values
 
 ## Transform resources
 
-- `metabase://transform/{id}` — transform details and configuration
-- `metabase://transform/{id}/sources` — source database and tables this transform reads from
-- `metabase://transform/{id}/target` — target database and table this transform writes to
-
-**Examples:**
-- Want to inspect a transform's SQL or Python source before editing it? → `metabase://transform/42`
-- "What does this transform read?" → `metabase://transform/42/sources`
-- "Where does this transform write?" → `metabase://transform/42/target`
+- `metabase://transform/{entity_id}` — full transform MBR (source query, target table, tags)
+- `metabase://transform/{entity_id}/sources` — source database and tables this transform reads from
+- `metabase://transform/{entity_id}/target` — target database and table this transform writes to
 
 **Best Practices:**
-- Fetch a transform's details before modifying it so you have the current source query and target configuration.
-- Use the returned source type (`query` or `python`) to decide which write tool to call (`write_transform_sql` or `write_transform_python`).
+- Fetch a transform before modifying it so you have the current source and target.
+- Use the source's `type` (`query` or `python`) to decide which write tool to call.
 - Walk `/sources` and `/target` to understand lineage before recommending downstream changes.
 
 ## Dashboard resources
 
-- `metabase://dashboard/{id}` — dashboard details
-- `metabase://dashboard/{id}/items` — cards on the dashboard (each rendered as a `metabase://question/{id}` URI you can drill into)
+- `metabase://dashboard/{entity_id}` — full dashboard MBR including `tabs` and `dashcards` (parameter mappings, viz settings, layout)
+- `metabase://dashboard/{entity_id}/items` — cards on the dashboard in MBR shape
 
 **Examples:**
-- Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
-- User asks "what's on this dashboard?" → `metabase://dashboard/158/items`
+- Want to understand what a dashboard contains? → `metabase://dashboard/{entity_id}`
+- User asks "what's on this dashboard?" → `metabase://dashboard/{entity_id}/items`
 
 **Best Practices:**
-- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
-- Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
-- Prefer verified dashboards when they match the user's request.
+- The dashboard MBR already includes `dashcards` with full layout + parameter mapping — you typically don't need a separate `/items` call.
+- Treat dashboards as containers — drill into them rather than re-searching their topic.
 
 # General Best Practices
 
-- **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
+- **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its identifier into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
-- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25 — consider scoping (`metabase://database/{id}/...`) or refining via `search` with `database_id`/`collection_id` instead of paging blindly.
+- **Honor truncation.** If a list response carries `"truncated": true`, the most-relevant items aren't guaranteed to be in the first 25 — consider scoping (`metabase://database/{db_name}/...`) or refining via `search` with `database_id`/`collection_id` instead of paging blindly.
+- **URL-encode segments.** Sync metadata names can contain spaces, slashes, or punctuation — percent-encode each segment.
 - **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_library_member` flags — when you have a choice, drill into the curated item rather than the raw one.

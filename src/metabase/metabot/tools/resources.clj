@@ -5,51 +5,23 @@
   token-efficient references to resources that can be fetched on-demand at the
   appropriate level of detail.
 
-  URI dispatch uses [[metabase.util.match/match-one]] — every supported URI shape lives
-  in the [[dispatch]] match table, and each fetch-* handler takes only the IDs/names it
-  needs. Adding a new URI = adding one match clause + one focused fn.
+  Output bodies are JSON in the Metabase Representation (MBR) format per core-spec v1
+  (https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md). Each
+  entity carries `serdes/meta` (an identity path) and is built by reusing the same
+  `serdes/extract-all` pipeline used for portable serialization — so MBR-shape FK refs,
+  `dataset_query` portability, nested entities, etc. come for free.
 
-  Supported URI patterns:
+  URI dispatch uses [[metabase.util.match/match-one]]. Two identifier tiers:
 
-  Navigation (top-level lists, no id):
-  - metabase://databases - list databases
-  - metabase://collections - list root collections
-  - metabase://collections?tree=true - flat list of all collections (hierarchy via :location)
-  - metabase://user/recent-items - current user's recent items
+  - User content: `metabase://{type}/{entity_id}`. Numeric ids accepted for backcompat
+    via [[metabase.metabot.tools.shared.mbr/resolve-user-entity]].
+  - Sync metadata: `metabase://database/{db_name}[/schema/{schema}/table/{table_name}[/field/{field_name}]]`,
+    via [[metabase.metabot.tools.shared.mbr/resolve-database]] and
+    [[metabase.metabot.tools.shared.mbr/resolve-table]]. The legacy
+    `metabase://table/{id}` form still routes through
+    [[metabase.metabot.tools.shared.mbr/resolve-table-legacy]].
 
-  Database drill-down:
-  - metabase://database/{id} - one database
-  - metabase://database/{id}/tables - tables in the database
-  - metabase://database/{id}/models - models targeting the database
-  - metabase://database/{id}/schemas - schemas in the database
-  - metabase://database/{id}/schemas/{schemaName}/tables - tables in a schema
-
-  Collection drill-down:
-  - metabase://collection/{id} - one collection
-  - metabase://collection/{id}/items - direct children (subcollections + leaves)
-  - metabase://collection/{id}/subcollections - just subcollections
-
-  Entity drill-down:
-  - metabase://table/{id} - basic table info
-  - metabase://table/{id}/fields - table with fields
-  - metabase://table/{id}/fields/{field_id} - specific field details
-  - metabase://table/{id}/derived - cards/transforms derived from this table
-  - metabase://model/{id} - basic model info
-  - metabase://model/{id}/fields - model with fields
-  - metabase://model/{id}/fields/{field_id} - specific field details
-  - metabase://model/{id}/sources - tables/models this model is derived from
-  - metabase://question/{id} - basic question info
-  - metabase://question/{id}/fields - question with fields
-  - metabase://question/{id}/fields/{field_id} - specific field details
-  - metabase://question/{id}/sources - tables/models this question references
-  - metabase://metric/{id} - basic metric info
-  - metabase://metric/{id}/dimensions - metric with dimensions
-  - metabase://metric/{id}/dimensions/{dimension_id} - specific dimension details
-  - metabase://transform/{id} - transform details
-  - metabase://transform/{id}/sources - tables/databases this transform reads from
-  - metabase://transform/{id}/target - table this transform writes to
-  - metabase://dashboard/{id} - dashboard details
-  - metabase://dashboard/{id}/items - cards on the dashboard"
+  Supported URI patterns are exhaustively listed in [[read-resource-tool]]'s docstring."
   (:require
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
@@ -645,37 +617,60 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. Output is JSON in the Metabase Representation
+  (MBR) format — the same shape Metabase uses for portable serialization
+  (https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md). URIs returned
+  by `search` and other read_resource calls can be fed directly back here.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items; if
   truncated, drill into individual items via their URIs or refine via `search`.
 
+  URI vocabulary (two-tier identifier scheme):
+
+  - User content (Card, Dashboard, Collection, Metric, Transform): identified by
+    `entity_id` (NanoID), the same id that appears in each MBR's `serdes/meta`. Use
+    `metabase://{type}/{entity_id}`. Numeric ids work too for backcompat but the canonical
+    form is entity_id.
+  - Sync metadata (Database, Table, Field): no entity_id — addressed by natural-key path,
+    matching MBR FK tuples. `metabase://database/{db_name}`,
+    `metabase://database/{db_name}/schema/{schema}/table/{table_name}`, and
+    `.../field/{field_name}`. URL-encode each segment.
+
   NAVIGATION (top-level lists):
   - metabase://databases - all databases
   - metabase://collections - root collections
-  - metabase://collections?tree=true - flat list of all collections (use :location for hierarchy)
+  - metabase://collections?tree=true - all collections (hierarchy via each collection's parent_id)
   - metabase://user/recent-items - your recently-viewed items
 
   DATABASE DRILL-DOWN:
-  - metabase://database/{id}
-  - metabase://database/{id}/tables
-  - metabase://database/{id}/models
-  - metabase://database/{id}/schemas
-  - metabase://database/{id}/schemas/{schemaName}/tables
+  - metabase://database/{db_name}                                — single database
+  - metabase://database/{db_name}/tables                         — all tables
+  - metabase://database/{db_name}/models                         — models targeting this DB
+  - metabase://database/{db_name}/schemas                        — list schemas
+  - metabase://database/{db_name}/schema/{schema}/tables         — tables in one schema
 
-  COLLECTION DRILL-DOWN:
-  - metabase://collection/{id}
-  - metabase://collection/{id}/items - subcollections + leaves
-  - metabase://collection/{id}/subcollections
+  COLLECTION DRILL-DOWN (entity_id from serdes/meta):
+  - metabase://collection/{entity_id}
+  - metabase://collection/{entity_id}/items                      — subcollections + leaves
+  - metabase://collection/{entity_id}/subcollections
 
-  ENTITY DRILL-DOWN:
-  - metabase://table/{id}[/fields[/{field_id}]] [/derived]
-  - metabase://model/{id}[/fields[/{field_id}]] [/sources]
-  - metabase://question/{id}[/fields[/{field_id}]] [/sources]
-  - metabase://metric/{id}[/dimensions[/{dim_id}]]
-  - metabase://transform/{id}[/sources|/target]
-  - metabase://dashboard/{id}[/items]"
+  ENTITY DRILL-DOWN (entity_id from serdes/meta):
+  - metabase://card/{entity_id}                                  — canonical for cards (model/question/metric)
+  - metabase://model/{entity_id} | metabase://question/{entity_id}  — backcompat aliases for card
+  - metabase://card/{entity_id}/fields[/{field_id}]              — schema + field samples
+  - metabase://card/{entity_id}/sources                          — referenced database/table/source-card
+  - metabase://metric/{entity_id}                                — single metric
+  - metabase://metric/{entity_id}/dimensions[/{dim_id}]          — dimensions + samples
+  - metabase://transform/{entity_id}                             — single transform
+  - metabase://transform/{entity_id}/sources|/target             — input tables / output table
+  - metabase://dashboard/{entity_id}                             — full MBR with tabs + dashcards
+  - metabase://dashboard/{entity_id}/items                       — cards on the dashboard
+
+  TABLE / FIELD (path-form):
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}                — single table
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/fields         — schema + field samples
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/derived        — cards + transforms built on this table
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name} — single field"
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
