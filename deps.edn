@@ -773,10 +773,9 @@
   ;;    ./bin/mage cljfmt-all
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
-  :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.16.4"}}
-   :ns-default cljfmt.tool
-   :exec-fn    cljfmt.tool/fix}
+  ;;
+  ;; (this doc was here because we previously had a `:cljfmt` alias here, now specified in `bb.edn`, but leaving these
+  ;; dox here in case anyone comes looking for it -- Cam
 
 ;;; building Uberjar, build and release scripts
 
