@@ -97,6 +97,43 @@
                              (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
   :doc              false)
 
+;;; -------------------------------------------------- Google ---------------------------------------------------
+
+(defsetting llm-google-api-key
+  (deferred-tru "The Google AI Studio (Gemini) API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-prefixed-api-key!
+                       :llm-google-api-key
+                       "AIza"
+                       (deferred-tru "Invalid Google API key format. Key must start with ''AIza''.")))
+
+(defsetting llm-google-api-key-configured?
+  "Whether a Google API key has been configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(some? (llm-google-api-key))
+  :doc        false)
+
+(defsetting llm-google-model
+  (deferred-tru "The Google Gemini model to use.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "gemini-3.5-flash"
+  :export?    false
+  :doc        false)
+
+(defsetting llm-google-api-base-url
+  (deferred-tru "The Google Generative Language API base URL.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://generativelanguage.googleapis.com"
+  :export?    false
+  :doc        false)
+
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
 (defsetting llm-openrouter-api-base-url

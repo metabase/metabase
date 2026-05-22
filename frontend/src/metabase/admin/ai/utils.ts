@@ -62,6 +62,14 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    google: {
+      value: "google",
+      label: "Google",
+      apiKey: {
+        placeholder: "AIza...",
+        addKeyUrl: "https://aistudio.google.com/apikey",
+      },
+    },
   };
 }
 
@@ -83,16 +91,22 @@ export function isApiKeyMetabotProvider(
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" || provider === "metabase" || provider === "google"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-google-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  google: "llm-google-api-key",
 };
 
 export function parseProviderAndModel(value: string | null | undefined) {

@@ -16,6 +16,7 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.usage :as usage]
@@ -31,6 +32,7 @@
     "anthropic"  claude/claude
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "google"     google/google
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
@@ -40,6 +42,7 @@
     "anthropic"  claude/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "google"     google/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
