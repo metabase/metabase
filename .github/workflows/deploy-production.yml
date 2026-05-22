@@ -98,9 +98,10 @@ jobs:
             if [ "$LEGACY_COMPOSE" = "true" ]; then
               # docker-compose v1 can crash with KeyError: ContainerConfig when
               # recreating containers from newer images. Remove the old service
-              # container first so `up` creates it cleanly.
-              $COMPOSE stop metabase || true
-              $COMPOSE rm -f metabase || true
+              # containers first so `up` creates them cleanly. Named volumes
+              # are preserved because we do not use `down -v`.
+              $COMPOSE stop metabase caddy || true
+              $COMPOSE rm -f metabase caddy || true
             fi
             $COMPOSE up -d --remove-orphans
             docker image prune -f
