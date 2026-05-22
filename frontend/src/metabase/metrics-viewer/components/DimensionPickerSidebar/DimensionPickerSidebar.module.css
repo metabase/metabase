@@ -34,14 +34,14 @@
 
 .item[data-selected],
 .categoryItem[data-selected] {
+  background-color: var(--mb-color-background-selected);
   border-radius: 0.5rem;
-  background-color: rgba(5, 114, 210, 0.07);
-  color: #358cd9;
+  color: var(--mb-color-text-brand);
 }
 
 .item[data-selected]:hover,
 .categoryItem[data-selected]:hover {
-  background-color: rgba(5, 114, 210, 0.1);
+  background-color: var(--mb-color-background-hover);
 }
 
 .categoryRow {
@@ -62,7 +62,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  background-color: rgba(7, 23, 34, 0.05);
+  background-color: var(--mb-color-background-info);
   color: var(--mb-color-icon-primary);
 }
 
@@ -72,13 +72,8 @@
 
 .settingsButton.settingsButton:hover,
 .settingsButton.settingsButton[data-expanded="true"] {
-  background-color: rgba(5, 114, 210, 0.1);
-  color: #358cd9;
-}
-
-.settingsButton.settingsButton:hover .settingsIcon,
-.settingsButton.settingsButton[data-expanded="true"] .settingsIcon {
-  color: #358cd9;
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-brand);
 }
 
 .settingsIcon {
@@ -105,7 +100,7 @@
   height: 2rem;
   padding-inline: 0.5rem;
   border-radius: 0.375rem;
-  color: #1871bf;
+  color: var(--mb-color-text-brand);
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1rem;
