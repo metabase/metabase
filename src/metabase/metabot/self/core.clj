@@ -534,18 +534,19 @@
     (catch Throwable _ nil)))
 
 (def ^:private max-body-slurp-chars
-  "Cap on how many chars we read off an upstream InputStream body when decoding for
-  error surfacing. Large enough to cover any realistic JSON error envelope; small
-  enough to bound the pathological multi-MB case."
+  "Cap on how many chars we read off an upstream InputStream body when decoding for error surfacing."
+  ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
+  ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
   1000000)
 
 (defn- decode-bounded-body
   "Decode a clj-http response map's `:body` for error surfacing.
-  Bound-slurps InputStream bodies first so a giant upstream payload doesn't get
-  pulled fully into memory. The bounded string is then handed to `json/decode-body`;
-  on parse failure (e.g. the cap truncated us mid-envelope) the raw bounded string
-  is kept as `:body` so [[body-preview]] can still surface *something*."
+  Returns the response map with `:body` set to the decoded value, or — on parse failure —
+  to the raw bounded string so [[body-preview]] still has something to surface."
   [res]
+  ;; Bound-slurp InputStream bodies first so a giant upstream payload doesn't get pulled
+  ;; fully into memory. On parse failure (e.g. the cap truncated us mid-envelope) we keep
+  ;; the bounded string in :body rather than nil-ing it out.
   (let [bounded (cond-> res
                   (instance? InputStream (:body res))
                   (update :body #(or (slurp-bounded % max-body-slurp-chars) "")))]
@@ -555,8 +556,8 @@
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
-  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`
-  and emit a warn. Nil/empty bodies return nil."
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn.
+  Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
                     (nil? body)        nil
@@ -584,8 +585,8 @@
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message and the full body is logged.
-  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`,
-  plus provider tags. Exceptions already tagged `:api-error true` are rethrown unchanged."
+  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
+  Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
   (let [data (ex-data e)]
     (cond
