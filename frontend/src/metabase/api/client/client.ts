@@ -150,9 +150,9 @@ export class ApiClient extends EventEmitter<EventMap> {
           {
             url: urlTemplate,
             method: methodTemplate,
-            options: {
-              ...methodOptions,
-              ...invocationOptions,
+            headers: {
+              ...methodOptions.headers,
+              ...invocationOptions.headers,
             },
             // this will transform arrays to objects with numeric keys
             // we shouldn't be using top level-arrays in the API
@@ -161,11 +161,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         );
 
         const { method, data } = middlewareResult;
-        const options = {
-          ...methodOptions,
-          ...invocationOptions,
-          ...middlewareResult.options,
-        };
+        const options = { ...methodOptions, ...invocationOptions };
 
         // Method-derived placement: POST/PUT/DELETE put data in body, GET
         // puts it in the querystring. Callers wanting RTK-style explicit
@@ -173,7 +169,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         const url = this.buildUrl(middlewareResult.url, data);
         let body: string | undefined = undefined;
 
-        const headers = this.getClientHeaders(options.headers);
+        const headers = this.getClientHeaders(middlewareResult.headers);
 
         if (method === "GET") {
           // GET cannot carry a body: fold any body content into the querystring.
@@ -219,7 +215,8 @@ export class ApiClient extends EventEmitter<EventMap> {
     url: urlTemplate,
     body: requestBody,
     params,
-    ...invocationOptions
+    headers: headersFromArg,
+    ...options
   }: {
     method: RequestMethod;
     url: string;
@@ -235,19 +232,15 @@ export class ApiClient extends EventEmitter<EventMap> {
       {
         url: urlTemplate,
         method: methodTemplate,
-        options: invocationOptions,
+        headers: headersFromArg,
         data: { ...params },
       },
     );
 
     const { method, data } = middlewareResult;
-    const options = {
-      ...invocationOptions,
-      ...middlewareResult.options,
-    };
 
     const url = this.buildUrl(middlewareResult.url, data);
-    const headers = this.getClientHeaders(options.headers);
+    const headers = this.getClientHeaders(middlewareResult.headers);
     let body: string | FormData | URLSearchParams | undefined = undefined;
 
     // Leftover params (post URL-tag substitution) always go to the querystring.

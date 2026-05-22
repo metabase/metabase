@@ -29,13 +29,10 @@ const reactSdkEmbedReferrerHandler = async (
   config: OnBeforeRequestHandlerConfig,
 ): Promise<OnBeforeRequestHandlerConfig | void> => ({
   ...config,
-  options: {
-    ...config.options,
-    headers: {
-      ...config.options.headers,
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-      "X-Metabase-Embed-Referrer": window.location.href,
-    },
+  headers: {
+    ...config.headers,
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+    "X-Metabase-Embed-Referrer": window.location.href,
   },
 });
 

@@ -7,7 +7,7 @@ describe("apiRequestManipulationMiddleware", () => {
     const inputData = {
       method: "GET" as const,
       url: "/api/test",
-      options: {},
+      headers: {},
       data: {},
     };
 
@@ -19,7 +19,7 @@ describe("apiRequestManipulationMiddleware", () => {
     const inputData = {
       method: "POST" as const,
       url: "/api/test",
-      options: { headers: { "X-Test": "value" } },
+      headers: { "X-Test": "value" },
       data: {},
     };
 
@@ -38,7 +38,7 @@ describe("apiRequestManipulationMiddleware", () => {
     const inputData = {
       method: "GET" as const,
       url: "/api/original",
-      options: {},
+      headers: {},
       data: {},
     };
 
@@ -59,18 +59,18 @@ describe("apiRequestManipulationMiddleware", () => {
     });
   });
 
-  it("should update method, url, and options when handler returns full modification", async () => {
+  it("should update method, url, and headers when handler returns full modification", async () => {
     const inputData = {
       method: "GET" as const,
       url: "/api/original",
-      options: {},
+      headers: {},
       data: {},
     };
 
     const modifications = {
       method: "POST" as const,
       url: "/api/modified",
-      options: { custom: "value" },
+      headers: { "X-Custom": "value" },
     };
 
     const handler = jest.fn(async function () {
@@ -82,13 +82,11 @@ describe("apiRequestManipulationMiddleware", () => {
     expect(result).toEqual({ ...inputData, ...modifications });
   });
 
-  it("should merge options properly when handler returns partial options", async () => {
+  it("should merge headers properly when handler returns partial headers", async () => {
     const inputData = {
       method: "POST" as const,
       url: "/api/test",
-      options: {
-        headers: { "X-Original": "value" },
-      },
+      headers: { "X-Original": "value" },
       data: {},
     };
 
@@ -98,18 +96,16 @@ describe("apiRequestManipulationMiddleware", () => {
       data: OnBeforeRequestHandlerConfig,
     ) {
       return {
-        options: {
-          headers: {
-            ...data.options.headers,
-            ...newHeaders,
-          },
+        headers: {
+          ...data.headers,
+          ...newHeaders,
         },
       };
     });
 
     const result = await apiRequestManipulationMiddleware([handler], inputData);
 
-    expect(result.options.headers).toEqual({
+    expect(result.headers).toEqual({
       "X-Original": "value",
       "X-Modified": "new-value",
     });
@@ -119,8 +115,8 @@ describe("apiRequestManipulationMiddleware", () => {
     const inputData = {
       method: "GET" as const,
       url: "/api/start",
-      options: { value: 0 },
-      data: {},
+      headers: {},
+      data: { value: 0 },
     };
 
     const executionOrder: number[] = [];
@@ -130,8 +126,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step1",
-        // @ts-expect-error: the type of options is unknown
-        options: { ...data.options, value: data.options.value + 2 },
+        data: { ...data.data, value: (data.data.value as number) + 2 },
       };
     });
 
@@ -140,8 +135,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step2",
-        // @ts-expect-error: the type of options is unknown
-        options: { ...data.options, value: data.options.value * 10 },
+        data: { ...data.data, value: (data.data.value as number) * 10 },
       };
     });
 
@@ -150,8 +144,7 @@ describe("apiRequestManipulationMiddleware", () => {
       return {
         ...data,
         url: data.url + "/step3",
-        // @ts-expect-error: the type of options is unknown
-        options: { ...data.options, value: data.options.value - 4 },
+        data: { ...data.data, value: (data.data.value as number) - 4 },
       };
     });
 
@@ -162,7 +155,7 @@ describe("apiRequestManipulationMiddleware", () => {
 
     expect(executionOrder).toEqual([1, 2, 3]);
     expect(result.url).toBe("/api/start/step1/step2/step3");
-    expect(result.options.value).toBe(16); // = ((0 + 2) * 10) - 4
+    expect(result.data.value).toBe(16); // = ((0 + 2) * 10) - 4
     expect(handler1).toHaveBeenCalledWith(
       expect.objectContaining({ url: "/api/start" }),
     );
@@ -174,18 +167,12 @@ describe("apiRequestManipulationMiddleware", () => {
     );
   });
 
-  it("should preserve all original options when handler does not modify them", async () => {
-    const complexOptions = {
-      headers: { "X-Custom": "header" },
-      noEvent: false,
-      transformResponse: jest.fn(),
-    };
-
+  it("should preserve the original headers and data when handler does not modify them", async () => {
     const inputData = {
       method: "POST" as const,
       url: "/api/complex",
-      options: complexOptions,
-      data: {},
+      headers: { "X-Custom": "header" },
+      data: { keepMe: true },
     };
 
     const handler = jest.fn(async function () {
@@ -197,9 +184,7 @@ describe("apiRequestManipulationMiddleware", () => {
     const result = await apiRequestManipulationMiddleware([handler], inputData);
 
     expect(result.url).toBe("/api/modified-url");
-    expect(result.options).toEqual(complexOptions);
-    expect(result.options.transformResponse).toBe(
-      complexOptions.transformResponse,
-    );
+    expect(result.headers).toEqual(inputData.headers);
+    expect(result.data).toEqual(inputData.data);
   });
 });

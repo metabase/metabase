@@ -4,9 +4,7 @@ import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 export type OnBeforeRequestHandlerConfig = {
   method: RequestMethod;
   url: string;
-  options: {
-    headers?: Record<string, string>;
-  } & Record<string, unknown>;
+  headers?: Record<string, string>;
   data: Record<string, unknown>;
 };
 

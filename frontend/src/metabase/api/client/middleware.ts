@@ -54,10 +54,10 @@ function merge(
   if (next?.url) {
     result.url = next.url;
   }
-  if (next?.options) {
-    result.options = {
-      ...result.options,
-      ...next.options,
+  if (next?.headers) {
+    result.headers = {
+      ...result.headers,
+      ...next.headers,
     };
   }
   if (next?.data) {
