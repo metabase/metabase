@@ -90,7 +90,7 @@ async function setup({
   );
 
   // manually dispatch the location event that would otherwise be done for us with react-router-redux
-  await dispatchLocationChange({ store, initialRoute: true, pathname });
+  dispatchLocationChange({ store, initialRoute: true, pathname });
 
   await waitForLoaderToBeRemoved();
 
@@ -128,14 +128,14 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should hide when visiting a question", async () => {
     const store = await setup({ pathname: "/" });
     await expectNavbarOpen();
-    await dispatchLocationChange({ store, pathname: "/question/1" });
+    dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
   });
 
   it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
     const store = await setup({ pathname: "/reference/databases/1" });
     await expectNavbarOpen();
-    await dispatchLocationChange({
+    dispatchLocationChange({
       store,
       pathname: "/reference/databases/1/tables/2/questions",
     });
@@ -145,9 +145,9 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should hide when visiting a question and stay hidden when returning to collection", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
-    await dispatchLocationChange({ store, pathname: "/question/1" });
+    dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
-    await dispatchLocationChange({ store, pathname: "/collection/1" });
+    dispatchLocationChange({ store, pathname: "/collection/1" });
     await expectNavbarClosed();
   });
 
@@ -155,7 +155,7 @@ describe("nav > containers > Navbar > Core App", () => {
     const store = await setup({ isOpen: true });
     await expectNavbarOpen();
     // act(...) flushes the connected Navbar re-render caused by the dispatch
-    await act(async () => {
+    act(() => {
       store.dispatch({
         type: "@@router/LOCATION_CHANGE",
         payload: {
@@ -170,25 +170,25 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should preserve state when navigating collections", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
-    await dispatchLocationChange({ store, pathname: "/collection/2" });
+    dispatchLocationChange({ store, pathname: "/collection/2" });
     await expectNavbarOpen();
-    await dispatchLocationChange({ store, pathname: "/question/1" });
+    dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
-    await dispatchLocationChange({ store, pathname: "/collection/3" });
+    dispatchLocationChange({ store, pathname: "/collection/3" });
     await expectNavbarClosed();
-    await dispatchLocationChange({ store, pathname: "/collection/4" });
+    dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarClosed();
     // act(...) flushes the connected Navbar re-render caused by the dispatch
-    await act(async () => {
+    act(() => {
       store.dispatch({ type: OPEN_NAVBAR });
     });
     await expectNavbarOpen();
-    await dispatchLocationChange({ store, pathname: "/collection/5" });
+    dispatchLocationChange({ store, pathname: "/collection/5" });
     await expectNavbarOpen();
-    await act(async () => {
+    act(() => {
       store.dispatch({ type: CLOSE_NAVBAR });
     });
-    await dispatchLocationChange({ store, pathname: "/collection/6" });
+    dispatchLocationChange({ store, pathname: "/collection/6" });
     await expectNavbarClosed();
   });
 
@@ -285,15 +285,15 @@ interface DispatchLocationChangeParams {
   pathname: string;
 }
 
-async function dispatchLocationChange({
+function dispatchLocationChange({
   store,
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
   // The dispatch synchronously re-renders the connected Navbar; wrap it in
-  // act(...) so React's state updates (and any async effects they trigger)
-  // are flushed within the test instead of leaking past it.
-  await act(async () => {
+  // act(...) so React's state updates are flushed within the test instead
+  // of leaking past it.
+  act(() => {
     store.dispatch({
       type: "@@router/LOCATION_CHANGE",
       payload: {

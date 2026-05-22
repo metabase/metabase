@@ -776,7 +776,7 @@ describe("StringFilterValuePicker", () => {
       await userEvent.type(input, "a@b.com");
       // blurring commits the typed value; wrap it so the resulting state
       // updates in MultiAutocomplete are flushed inside act()
-      await act(async () => {
+      act(() => {
         input.blur();
       });
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
