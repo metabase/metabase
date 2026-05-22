@@ -58,7 +58,14 @@
         (t2/update! :model/Metabot id metabot-updates)
         (when-not (metabot.usage/managed-free-limit-reached?)
           (metabot.suggested-prompts/delete-all-metabot-prompts id)
-          (metabot.suggested-prompts/generate-sample-prompts id)))
+          (try
+            (metabot.suggested-prompts/generate-sample-prompts id)
+            ;; Best-effort: if the managed-AI lock kicks in between the pre-check above and the
+            ;; canonical check inside `generate-sample-prompts`, swallow the 402 so a PUT to
+            ;; update Metabot settings doesn't fail just because prompt regeneration was raced.
+            (catch clojure.lang.ExceptionInfo e
+              (when-not (= "metabase_ai_managed_locked" (:error-code (ex-data e)))
+                (throw e))))))
       (t2/select-one :model/Metabot :id id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
@@ -73,8 +80,10 @@
    Returns a single-tag discriminated union so the UI can `switch` on `:status` to distinguish a
    successful regeneration from the various 'no error, but nothing produced' cases.
 
-   The managed-free-limit case isn't in the union: [[metabot.usage/check-metabase-managed-free-limit!]]
-   throws a 402 before we ever call into [[metabot.suggested-prompts/generate-sample-prompts]].
+   The managed-free-limit case isn't in the union: both this endpoint and
+   [[metabot.suggested-prompts/generate-sample-prompts]] throw a 402 via
+   [[metabot.usage/check-metabase-managed-free-limit!]], so the locked state always surfaces as
+   a 402 error rather than a 200 with a status — no TOCTOU race between checks.
 
    Response shape: see [[metabase.metabot.suggested-prompts/generate-sample-prompts]]."
   [{:keys [id]} :- [:map [:id pos-int?]]]

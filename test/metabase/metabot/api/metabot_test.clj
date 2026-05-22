@@ -8,6 +8,7 @@
    [metabase.metabot.example-question-generator :as metabot.example-question-generator]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
@@ -299,6 +300,33 @@
               (is (nil? (:collection_id response)))
               (is (= #{prompt-id}
                      (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id))))))))))
+
+(deftest metabot-put-swallows-managed-locked-toctou-from-generate-sample-prompts-test
+  (testing "if the managed-AI lock flips between the pre-check and `generate-sample-prompts`,
+            the PUT still succeeds (best-effort regeneration) — the 402 is swallowed."
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection"}
+                   :model/Metabot {metabot-id :id} {:name "Test Metabot"
+                                                    :collection_id collection-id}]
+      (with-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                    metabot.suggested-prompts/generate-sample-prompts
+                    (fn [& _]
+                      (throw (ex-info "locked" {:status-code 402
+                                                :error-code  "metabase_ai_managed_locked"})))]
+        (let [response (mt/user-http-request :crowberto :put 200
+                                             (format "metabot/metabot/%d" metabot-id)
+                                             {:collection_id nil})]
+          (is (nil? (:collection_id response))))))
+    (testing "non-locked ex-info from generate-sample-prompts still propagates"
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection"}
+                     :model/Metabot {metabot-id :id} {:name "Test Metabot"
+                                                      :collection_id collection-id}]
+        (with-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                      metabot.suggested-prompts/generate-sample-prompts
+                      (fn [& _]
+                        (throw (ex-info "boom" {:status-code 500})))]
+          (mt/user-http-request :crowberto :put 500
+                                (format "metabot/metabot/%d" metabot-id)
+                                {:collection_id nil}))))))
 
 (deftest metabot-prompt-regenerate-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/dataset test-data
