@@ -2240,6 +2240,37 @@
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
+(deftest transform-with-null-source-database-extract-test
+  (testing "A transform whose source database has been deleted serializes with a nil source_database_id (GDGT-2447)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Soon-to-be-deleted DB"}
+                           :model/Transform {transform-id :id transform-eid :entity_id}
+                           {:name "Orphan Transform"
+                            :entity_id "orphanXxxxxxxxxxxxxxx"
+                            :source {:type "query"
+                                     :query {:database db-id
+                                             :type "native"
+                                             :native {:query "SELECT 1"}}}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "orphan_target"}}]
+          ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
+          (t2/delete! :model/Database db-id)
+          (let [reloaded (t2/select-one :model/Transform :id transform-id)
+                ser (serdes/extract-one "Transform" {} reloaded)]
+            (is (nil? (:source_database_id reloaded))
+                "Database deletion should have nulled the column")
+            (testing "exported YAML carries no resolvable source_database_id"
+              (is (=? {:serdes/meta [{:model "Transform" :id transform-eid}]
+                       :name "Orphan Transform"}
+                      ser))
+              (is (nil? (:source_database_id ser))))
+            (testing "Transform/dependencies does not emit a Database dep when source_database_id is nil"
+              (is (not-any? #(some (fn [{:keys [model]}] (= "Database" model)) %)
+                            (serdes/dependencies (assoc reloaded :tags [])))))))))))
+
 (deftest table-with-transform-id-dependency-test
   (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"
     (mt/with-premium-features #{:transforms-basic}
