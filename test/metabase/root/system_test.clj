@@ -147,14 +147,23 @@
                                   (fn []
                                     (deliver bound-thread-entered true)
                                     (is (true? (deref writes-done 1000 ::timed-out)))
-                                    (testing "k1 shows the innermost override"
-                                      (is (= :inner-k1 (mc/current k1-handle))))
-                                    (testing "the writer's root updates to k2 and k3 read through both binding layers"
-                                      (is (= :updated-k2 (mc/current k2-handle)))
-                                      (is (= :updated-k3 (mc/current k3-handle))))
-                                    (testing "`root` also reflects the writer's updates"
-                                      (is (= :updated-k2 (mc/root k2-handle)))
-                                      (is (= :updated-k3 (mc/root k3-handle))))))))
+                                    (testing "inside the inner binding"
+                                      (testing "k1 shows the innermost override"
+                                        (is (= :inner-k1 (mc/current k1-handle))))
+                                      (testing "the writer's root updates to k2 and k3 read through both binding layers"
+                                        (is (= :updated-k2 (mc/current k2-handle)))
+                                        (is (= :updated-k3 (mc/current k3-handle))))
+                                      (testing "`root` also reflects the writer's updates"
+                                        (is (= :updated-k2 (mc/root k2-handle)))
+                                        (is (= :updated-k3 (mc/root k3-handle)))))))
+                      (testing "back in the outer binding after the inner pops, the root cascade still flows through"
+                        (is (= :outer-k1 (mc/current k1-handle)))
+                        (is (= :updated-k2 (mc/current k2-handle)))
+                        (is (= :updated-k3 (mc/current k3-handle))))))
+        (testing "after both bindings unwind, root reads reflect the writer's updates"
+          (is (= :root-k1 (mc/current k1-handle)))
+          (is (= :updated-k2 (mc/current k2-handle)))
+          (is (= :updated-k3 (mc/current k3-handle))))
         (finally
           @writer)))))
 
