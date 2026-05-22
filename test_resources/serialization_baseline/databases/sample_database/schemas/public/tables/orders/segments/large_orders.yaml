@@ -21,10 +21,6 @@ definition:
   lib/type: mbql/query
 entity_id: OaFXAvEzPvu9ZXW5PUMRa
 name: Large Orders
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 serdes/meta:
 - id: OaFXAvEzPvu9ZXW5PUMRa
   label: large_orders

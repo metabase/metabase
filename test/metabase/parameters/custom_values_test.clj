@@ -1,4 +1,5 @@
 (ns metabase.parameters.custom-values-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.custom-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.custom-values :as custom-values]

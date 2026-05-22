@@ -1,5 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-queries-test
   "Tests for handling queries with nested expressions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.nested-queries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-queries-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -365,10 +368,10 @@
                                        (count long-col-full-name)))
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            native-sub-query   (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                             (fn mock-truncate-alias
-                                               ([ss] ss)
-                                               ([ss _] ss))]
+            native-sub-query   (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                                           (fn mock-truncate-alias
+                                                             ([ss] ss)
+                                                             ([ss _] ss))]
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people
                                          {:source-table $$people

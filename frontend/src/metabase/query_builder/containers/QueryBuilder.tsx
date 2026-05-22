@@ -8,7 +8,12 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListTimelinesQuery } from "metabase/api";
+import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useListBookmarksQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
@@ -16,7 +21,6 @@ import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
@@ -56,11 +60,7 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type {
-  BookmarkId,
-  Bookmark as BookmarkType,
-  Series,
-} from "metabase-types/api";
+import type { Series } from "metabase-types/api";
 
 import {
   cancelQuery,
@@ -131,7 +131,6 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getIsAnySidebarOpen,
-  getIsBookmarked,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
@@ -173,20 +172,7 @@ import { useCreateQuestion } from "./use-create-question";
 import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
-type BookmarkListLoaderOutput = {
-  bookmarks: BookmarkType[];
-  reloadBookmarks: () => void;
-};
-
-type EntityListLoaderMergedProps = {
-  allLoading: boolean;
-  allLoaded: boolean;
-  allFetched: boolean;
-  allError: boolean;
-  reload: () => void;
-} & BookmarkListLoaderOutput;
-
-const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
+const mapStateToProps = (state: State) => {
   return {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
@@ -224,7 +210,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
-    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
@@ -349,24 +334,23 @@ const mapDispatchToProps = {
   // other
   closeNavbar,
   onChangeLocation: push,
-  createBookmark: (id: BookmarkId) =>
-    Bookmarks.actions.create({ id, type: "card" }),
-  deleteBookmark: (id: BookmarkId) =>
-    Bookmarks.actions.delete({ id, type: "card" }),
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
 type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps &
-  EntityListLoaderMergedProps & {
+  WithRouterProps & {
     route: Route;
   };
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useFavicon({ favicon: props.pageFavicon ?? null });
   useListTimelinesQuery({ include: "events" });
+  const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
+    useListBookmarksQuery();
+  const [createBookmarkMutation] = useCreateBookmarkMutation();
+  const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
 
   const {
     question,
@@ -382,10 +366,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    isBookmarked,
-    createBookmark,
-    deleteBookmark,
-    allLoaded,
     showTimelinesForCollection,
     card,
     isAdmin,
@@ -398,6 +378,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     documentTitle,
     queryStartTime,
   } = props;
+
+  const isBookmarked = bookmarks.some(
+    (bookmark) => bookmark.type === "card" && bookmark.item_id === card?.id,
+  );
 
   usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
     titleIndex: 1,
@@ -460,15 +444,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const onClickBookmark = () => {
     const { card } = props;
-
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    if (!card) {
+      return;
+    }
 
     if (!isBookmarked) {
       trackCardBookmarkAdded(card);
-    }
-
-    if (card) {
-      toggleBookmark(card.id.toString());
+      createBookmarkMutation({ id: card.id, type: "card" });
+    } else {
+      deleteBookmarkMutation({ id: card.id, type: "card" });
     }
   };
 
@@ -526,10 +510,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   ]);
 
   useEffect(() => {
-    if (allLoaded && hasQuestion) {
+    if (areBookmarksLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
-  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
+  }, [
+    areBookmarksLoaded,
+    hasQuestion,
+    collectionId,
+    showTimelinesForCollection,
+  ]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -627,6 +616,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onSave={handleSave}
         onCreate={handleCreate}
         handleResize={forceUpdateDebounced}
+        isBookmarked={isBookmarked}
         toggleBookmark={onClickBookmark}
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
@@ -643,7 +633,4 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 }
 
-export const QueryBuilder = _.compose(
-  Bookmarks.loadList(),
-  connector,
-)(QueryBuilderInner);
+export const QueryBuilder = connector(QueryBuilderInner);

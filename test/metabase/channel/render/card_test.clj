@@ -1,4 +1,5 @@
 (ns metabase.channel.render.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.render.card-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]

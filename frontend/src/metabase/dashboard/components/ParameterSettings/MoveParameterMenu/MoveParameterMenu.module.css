@@ -4,12 +4,9 @@
   cursor: pointer;
   color: transparent;
 
-  &:hover {
+  &[data-variant="default"]:hover:not(:disabled) {
+    border-color: var(--mb-color-border);
     background-color: var(--mb-color-background-hover);
-
-    &::placeholder {
-      color: var(--mb-color-brand);
-    }
   }
 }
 
@@ -26,6 +23,10 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
   }
+
+  &:hover::after {
+    color: var(--mb-color-text-hover);
+  }
 }
 
 .MoveParameterMenuOptionIcon {
@@ -39,6 +40,6 @@
 .MoveParameterMenuOption[aria-selected="true"] {
   .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--mb-color-text-selected);
   }
 }

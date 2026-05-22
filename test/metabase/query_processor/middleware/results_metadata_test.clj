@@ -2,7 +2,10 @@
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since it's checking whether we actually save stuff to the
                        ;; app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var  {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.results-metadata-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -191,11 +194,11 @@
           (middleware.results-metadata/store-previous-result-metadata!
            {:result_metadata cols-1})
           (let [call-count      (atom 0)
-                t2-update!-orig t2/update!]
-            (with-redefs [t2/update! (fn [modelable & args]
-                                       (when (= :model/Card modelable)
-                                         (swap! call-count inc))
-                                       (apply t2-update!-orig modelable args))]
+                t2-update!-orig (mt/original-fn #'t2/update!)]
+            (mt/with-dynamic-fn-redefs [t2/update! (fn [modelable & args]
+                                                     (when (= :model/Card modelable)
+                                                       (swap! call-count inc))
+                                                     (apply t2-update!-orig modelable args))]
               (let [result (qp/process-query
                             (qp/userland-query
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})

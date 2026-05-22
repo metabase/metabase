@@ -8,6 +8,11 @@ on:
         description: 'Metabase version (e.g. v0.46.3)'
         type: string
         required: true
+      slackChannel:
+        description: 'Optional Slack channel to upload the markdown to (e.g. writing). When unset, the markdown is only available as a workflow artifact.'
+        type: string
+        required: false
+        default: ''
 
 jobs:
   preview-release-notes:
@@ -60,3 +65,24 @@ jobs:
         name: release-notes-preview-${{inputs.version}}.md
         path: |
           ${{ github.workspace }}/release-notes-preview-*.md
+
+    - name: Post release notes preview to Slack
+      if: ${{ inputs.slackChannel != '' }}
+      uses: actions/github-script@v7
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      with:
+        script: | # js
+          const fs = require('fs');
+          const { uploadFileToSlack } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+          const fileName = `release-notes-preview-${version}.md`;
+          const file = fs.readFileSync(`${{ github.workspace }}/${fileName}`);
+
+          await uploadFileToSlack({
+            channelName: '${{ inputs.slackChannel }}',
+            fileName,
+            file,
+            message: `:page_with_curl: Release notes preview for *${version}* — ready for editing.`,
+          });

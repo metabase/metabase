@@ -59,7 +59,7 @@
 (deftest generate-example-questions-shape-test
   (testing "returns correct shape with mock LLM"
     (let [mock-response {:questions ["q1" "q2" "q3" "q4" "q5"]}]
-      (with-redefs [native-generator/call-llm (constantly mock-response)]
+      (mt/with-dynamic-fn-redefs [native-generator/call-llm (constantly mock-response)]
         (let [payload {:tables  [{:name "Orders"
                                   :description "Customer orders"
                                   :fields [{:name "total" :type "number"}
@@ -74,7 +74,7 @@
 
 (deftest generate-example-questions-empty-payload-test
   (testing "handles empty tables and metrics"
-    (with-redefs [native-generator/call-llm (fn [_] (throw (ex-info "should not be called" {})))]
+    (mt/with-dynamic-fn-redefs [native-generator/call-llm (fn [_] (throw (ex-info "should not be called" {})))]
       (is (=? {:table_questions  []
                :metric_questions []}
               (native-generator/generate-example-questions {:tables [] :metrics []}))))))
@@ -82,10 +82,10 @@
 (deftest generate-example-questions-parallel-test
   (testing "processes multiple items"
     (let [call-count (atom 0)]
-      (with-redefs [native-generator/call-llm
-                    (fn [_]
-                      (swap! call-count inc)
-                      {:questions [(str "q" @call-count)]})]
+      (mt/with-dynamic-fn-redefs [native-generator/call-llm
+                                  (fn [_]
+                                    (swap! call-count inc)
+                                    {:questions [(str "q" @call-count)]})]
         (let [payload {:tables  [{:name "T1" :fields [{:name "a" :type "number"}]}
                                  {:name "T2" :fields [{:name "b" :type "string"}]}]
                        :metrics [{:name "M1"
@@ -99,7 +99,7 @@
 
 (deftest generate-example-questions-validation-failure-throws-test
   (testing "invalid LLM response propagates as exception"
-    (with-redefs [native-generator/call-llm (constantly {:bad "response"})]
+    (mt/with-dynamic-fn-redefs [native-generator/call-llm (constantly {:bad "response"})]
       (is (thrown-with-msg?
            Exception #"Invalid LLM response shape"
            (native-generator/generate-example-questions
@@ -112,12 +112,12 @@
     ;; self/call-llm-structured and parse-provider-model.
     (let [captured-opts (atom [])]
       (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
-        (with-redefs [openrouter/openrouter (fn [opts]
-                                              (swap! captured-opts conj opts)
-                                              [{:type :start :messageId "msg-1"}
-                                               {:type :tool-input-start :toolCallId "call-1" :toolName "json"}
-                                               {:type :tool-input-delta :toolCallId "call-1"
-                                                :inputTextDelta "{\"questions\":[\"q1\",\"q2\"]}"}])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [opts]
+                                                            (swap! captured-opts conj opts)
+                                                            [{:type :start :messageId "msg-1"}
+                                                             {:type :tool-input-start :toolCallId "call-1" :toolName "json"}
+                                                             {:type :tool-input-delta :toolCallId "call-1"
+                                                              :inputTextDelta "{\"questions\":[\"q1\",\"q2\"]}"}])]
           (testing "returns questions from openrouter responses"
             (is (=? {:table_questions  [{:questions ["q1" "q2"]}]
                      :metric_questions [{:questions ["q1" "q2"]}]}
@@ -150,11 +150,11 @@
     (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/test-model"]
       (let [labels {:model "openrouter/test-model" :source "example-question-generation"}]
         (testing "increments llm-requests and observes duration on success"
-          (with-redefs [openrouter/openrouter
-                        (constantly (test-util/mock-llm-response
-                                     [{:type :start :id "m1"}
-                                      {:type :tool-input :id "call-1" :function "json"
-                                       :arguments {:questions ["q1"]}}]))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (constantly (test-util/mock-llm-response
+                                                   [{:type :start :id "m1"}
+                                                    {:type :tool-input :id "call-1" :function "json"
+                                                     :arguments {:questions ["q1"]}}]))]
             (#'native-generator/call-llm "test prompt"))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))))))
@@ -165,13 +165,13 @@
   (testing "fires token_usage snowplow event for call-llm"
     (let [rasta-id (mt/user->id :rasta)]
       (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/test-model"]
-        (with-redefs [openrouter/openrouter
-                      (constantly (test-util/mock-llm-response
-                                   [{:type :start :id "msg-1"}
-                                    {:type :tool-input :id "call-1" :function "json"
-                                     :arguments {:questions ["q1"]}}
-                                    {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                     :model "test-model" :id "msg-1"}]))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (constantly (test-util/mock-llm-response
+                                                 [{:type :start :id "msg-1"}
+                                                  {:type :tool-input :id "call-1" :function "json"
+                                                   :arguments {:questions ["q1"]}}
+                                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                                   :model "test-model" :id "msg-1"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (#'native-generator/call-llm "test prompt")

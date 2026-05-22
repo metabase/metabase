@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
   type EntityType,
   canonicalCollectionId,
@@ -20,9 +21,7 @@ import {
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Collections } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
@@ -85,16 +84,12 @@ function FormCollectionPicker({
 
   const [openCollectionId] = useState<CollectionId>("root");
 
-  const openCollection = useSelector((state) =>
-    Collections.selectors.getObject(state, {
-      entityId: openCollectionId,
-    }),
-  );
+  const { data: openCollection } = useGetCollectionQuery({
+    id: openCollectionId,
+  });
 
-  const selectedCollection = useSelector((state) =>
-    Collections.selectors.getObject(state, {
-      entityId: value,
-    }),
+  const { data: selectedCollection } = useGetCollectionQuery(
+    value != null ? { id: value } : skipToken,
   );
 
   const [collectionNamespace, setCollectionNamespace] =

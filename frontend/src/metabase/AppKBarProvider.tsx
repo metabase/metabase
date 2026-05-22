@@ -21,7 +21,7 @@ const AppPaletteActions = () => {
   const { searchQuery } = useKBar((state) => ({
     searchQuery: state.searchQuery,
   }));
-  const hasQuery = searchQuery.length > 0;
+  const hasQuery = searchQuery.trim().length > 0;
 
   const adminActions = useMemo<PaletteAction[]>(() => {
     const adminSubpaths = isAdmin

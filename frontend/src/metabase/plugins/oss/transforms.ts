@@ -34,6 +34,7 @@ export type PythonTransformEditorProps = {
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
 };

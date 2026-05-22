@@ -7,9 +7,8 @@ import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Schema from "metabase-lib/v1/metadata/Schema";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -17,10 +16,10 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
-  Collection as ApiCollection,
+  Table as ApiTable,
   Card,
+  Measure,
   Metric,
-  NormalizedCollection,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -96,7 +95,6 @@ const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
-const getNormalizedCollections = (state: State) => state.entities.collections;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -117,7 +115,6 @@ export const getMetadata: (
     getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
-    getNormalizedCollections,
     getSettings,
   ],
   (
@@ -130,7 +127,6 @@ export const getMetadata: (
     metrics,
     questions,
     snippets,
-    collections,
     settings,
   ) => {
     const metadata = new Metadata({ settings });
@@ -153,7 +149,7 @@ export const getMetadata: (
       Object.values(segments).map((s) => [s.id, createSegment(s)]),
     );
     metadata.measures = Object.fromEntries(
-      Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
     );
     metadata.metrics = Object.fromEntries(
       Object.values(metrics).map((m) => [m.id, createMetric(m)]),
@@ -169,7 +165,7 @@ export const getMetadata: (
       database.tables = hydrateDatabaseTables(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.database = hydrateSchemaDatabase(schema, metadata);
+      schema.database = hydrateSchemaDatabase(schemas[schema.id], metadata);
     });
     Object.values(metadata.tables).forEach((table) => {
       table.db = hydrateTableDatabase(table, metadata);
@@ -184,13 +180,10 @@ export const getMetadata: (
       database.schemas = hydrateDatabaseSchemas(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.tables = hydrateSchemaTables(schema, metadata);
+      schema.tables = hydrateSchemaTables(schema, schemas[schema.id], metadata);
     });
     Object.values(metadata.measures).forEach((measure) => {
-      measure.table = hydrateMeasureTable(measure, metadata);
-    });
-    Object.values(metadata.metrics).forEach((metric) => {
-      metric.collection = hydrateMetricCollection(metric, collections);
+      measure.table = hydrateMeasureTable(measure, tables);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -233,9 +226,8 @@ function createDatabase(
 }
 
 function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const instance = new Schema(schema);
-  instance.metadata = metadata;
-  return instance;
+  const { database: _database, tables: _tables, ...rest } = schema;
+  return { ...rest, metadata };
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata): Table {
@@ -269,13 +261,9 @@ function createSegment(segment: NormalizedSegment): Segment {
   return rest;
 }
 
-function createMeasure(
-  measure: NormalizedMeasure,
-  metadata: Metadata,
-): Measure {
-  const instance = new Measure(measure);
-  instance.metadata = metadata;
-  return instance;
+function createMeasure(measure: NormalizedMeasure): Measure {
+  const { table: _normalizedTableId, ...rest } = measure;
+  return rest;
 }
 
 function createMetric(metric: NormalizedMetric): Metric {
@@ -317,15 +305,18 @@ function hydrateDatabaseSchemas(
 }
 
 function hydrateSchemaDatabase(
-  schema: Schema,
+  normalized: NormalizedSchema,
   metadata: Metadata,
 ): Database | undefined {
-  const databaseId = schema.getPlainObject().database;
-  return metadata.database(databaseId) ?? undefined;
+  return metadata.database(normalized.database) ?? undefined;
 }
 
-function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
-  const tableIds = schema.getPlainObject().tables;
+function hydrateSchemaTables(
+  schema: Schema,
+  normalized: NormalizedSchema,
+  metadata: Metadata,
+): Table[] {
+  const tableIds = normalized.tables;
   if (tableIds) {
     return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
   } else if (schema.database && schema.database.getTables().length > 0) {
@@ -430,22 +421,23 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
 
 function hydrateMeasureTable(
   measure: Measure,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(measure.table_id) ?? undefined;
-}
-
-function hydrateMetricCollection(
-  metric: Metric,
-  collections: Record<string, NormalizedCollection>,
-): ApiCollection | null {
-  if (metric.collection_id == null) {
-    return null;
-  }
-  const normalized = collections[metric.collection_id];
+  tables: Record<string, NormalizedTable>,
+): ApiTable | undefined {
+  const normalized = tables[measure.table_id];
   if (!normalized) {
-    return null;
+    return undefined;
   }
-  const { items: _items, ...rest } = normalized;
-  return rest;
+  const {
+    db: _db,
+    fields: _fields,
+    fks: _fks,
+    segments: _segments,
+    measures: _measures,
+    metrics: _metrics,
+    schema: _schema,
+    schema_name,
+    original_fields: _original_fields,
+    ...rest
+  } = normalized;
+  return { ...rest, schema: schema_name ?? "" };
 }

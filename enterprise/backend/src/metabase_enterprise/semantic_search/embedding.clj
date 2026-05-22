@@ -9,7 +9,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
@@ -187,20 +188,29 @@
    (when (string? model-name)
      (str/starts-with? model-name "text-embedding-3"))))
 
-(defn- openai-compatible-get-embeddings-batch
+(mu/defn- openai-compatible-get-embeddings-batch
   "Call an OpenAI-compatible /v1/embeddings endpoint. Shared implementation for both
   the `ai-service` and `openai` providers.
 
-  `provider`   — label for analytics (e.g. \"ai-service\", \"openai\")
-  `endpoint`   — full URL including /v1/embeddings
-  `api-key`    — Bearer token
-  `model-name` — model identifier sent in the request body
-  `texts`      — collection of input strings
-  `opts`       — keyword opts; `:type` is forwarded to token tracking,
-                 `:extra-body` is merged into the request body (e.g. {:dimensions 1024}),
-                 `:snowplow?` when true fires a Snowplow token_usage event"
-  [provider endpoint api-key model-name texts
-   & {:keys [extra-body snowplow?] :as opts}]
+  `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
+  `:endpoint`        — full URL including /v1/embeddings
+  `:api-key`         — Bearer token
+  `:model-name`      — model identifier sent in the request body
+  `:texts`           — collection of input strings
+  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
+  `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
+  `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
+  `:type`            — optional; forwarded to the token-tracking row"
+  [{:keys [provider endpoint api-key model-name texts record-tokens? extra-body snowplow?] :as opts}
+   :- [:map
+       [:provider       :string]
+       [:endpoint       :string]
+       [:api-key        :string]
+       [:model-name     :string]
+       [:texts          [:sequential :string]]
+       [:record-tokens? :boolean]
+       [:snowplow?      {:optional true} [:maybe :boolean]]
+       [:extra-body     {:optional true} [:maybe :map]]]]
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
@@ -231,7 +241,8 @@
           :estimated-costs-usd 0.0
           :duration-ms         (long (u/since-ms start-ms))
           :tag                 "embedding_generation"}))
-      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
+      (when record-tokens?
+        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
       (decode-embeddings data))
     (catch ConnectException e
       (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
@@ -258,17 +269,31 @@
                       {:setting "ee-embedding-service-api-key"})))
     [(str base-url "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "ai-service" [{:keys [model-name]} text & {:as opts}]
+(defmethod get-embedding "ai-service"
+  [{:keys [model-name]} text & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
-            "ai-service" endpoint api-key model-name [text]
-            (assoc opts :snowplow? true)))))
+            {:provider       "ai-service"
+             :endpoint       endpoint
+             :api-key        api-key
+             :model-name     model-name
+             :texts          [text]
+             :snowplow?      true
+             :record-tokens? record-tokens?
+             :type           type}))))
 
-(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts & {:as opts}]
+(defmethod get-embeddings-batch "ai-service"
+  [{:keys [model-name]} texts & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     "ai-service" endpoint api-key model-name texts
-     (assoc opts :snowplow? true))))
+     {:provider       "ai-service"
+      :endpoint       endpoint
+      :api-key        api-key
+      :model-name     model-name
+      :texts          texts
+      :snowplow?      true
+      :record-tokens? record-tokens?
+      :type           type})))
 
 (defmethod pull-model "ai-service" [_]
   (log/debug "ai-service provider does not require pulling a model"))
@@ -283,19 +308,33 @@
       (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
     [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "openai" [embedding-model text & {:as opts}]
+(defmethod get-embedding "openai"
+  [embedding-model text & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
-            "openai" endpoint api-key (:model-name embedding-model) [text]
-            (assoc opts :extra-body (when (supports-dimensions? embedding-model)
-                                      {:dimensions (:vector-dimensions embedding-model)}))))))
+            {:provider       "openai"
+             :endpoint       endpoint
+             :api-key        api-key
+             :model-name     (:model-name embedding-model)
+             :texts          [text]
+             :record-tokens? record-tokens?
+             :extra-body     (when (supports-dimensions? embedding-model)
+                               {:dimensions (:vector-dimensions embedding-model)})
+             :type           type}))))
 
-(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}]
+(defmethod get-embeddings-batch "openai"
+  [embedding-model texts & {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     "openai" endpoint api-key (:model-name embedding-model) texts
-     (assoc opts :extra-body (when (supports-dimensions? embedding-model)
-                               {:dimensions (:vector-dimensions embedding-model)})))))
+     {:provider       "openai"
+      :endpoint       endpoint
+      :api-key        api-key
+      :model-name     (:model-name embedding-model)
+      :texts          texts
+      :record-tokens? record-tokens?
+      :extra-body     (when (supports-dimensions? embedding-model)
+                        {:dimensions (:vector-dimensions embedding-model)})
+      :type           type})))
 
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))

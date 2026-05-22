@@ -7,6 +7,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";
@@ -23,21 +24,18 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { useSetArchive } from "metabase/common/hooks";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
   FixedSizeIcon,
   Flex,
   Icon,
-  type IconName,
   Menu,
   Repeat,
   Skeleton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { SortingOptions } from "metabase-types/api";
+import type { IconName, SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 
@@ -350,8 +348,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -366,7 +362,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           });
 
           trackMetricBookmarked();
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }

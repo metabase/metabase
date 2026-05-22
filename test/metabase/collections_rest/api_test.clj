@@ -1,5 +1,6 @@
 (ns metabase.collections-rest.api-test
   "Tests for /api/collection endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections-rest.api-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -287,7 +288,7 @@
           (is (= expected-lucky-tree
                  (collection-tree-view ids response-lucky))))
         (testing "Mocking having one user still returns a correct result"
-          (with-redefs [t2/select-fn-set (constantly nil)]
+          (mt/with-dynamic-fn-redefs [t2/select-fn-set (constantly nil)]
             (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))

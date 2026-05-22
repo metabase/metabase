@@ -21,6 +21,8 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   dataPicker: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  sqlParameters: Yup.mixed().optional(),
+  onSqlParametersChange: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
   isSaveEnabled: Yup.mixed().optional(),
   onBeforeSave: Yup.mixed().optional(),
@@ -48,8 +50,10 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),
   withChartTypeSelector: Yup.mixed().optional(),
+  withEditorButton: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
+  onDrillThrough: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 

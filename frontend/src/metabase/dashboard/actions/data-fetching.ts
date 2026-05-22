@@ -4,7 +4,7 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
@@ -27,18 +27,19 @@ import {
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
-  CardApi,
   DashboardApi,
   EmbedApi,
-  MetabaseApi,
   PublicApi,
   maybeUsePivotEndpoint,
+  runAdhocDatasetQuery,
+  shouldUsePivotEndpoint,
 } from "metabase/services";
 import {
   getDashboardType,
@@ -379,11 +380,13 @@ export const fetchCardDataAction = createAsyncThunk<
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
+        runAdhocDatasetQuery(
+          dispatch,
           card,
           metadata,
-        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          deferred,
+        ),
       )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -402,28 +405,42 @@ export const fetchCardDataAction = createAsyncThunk<
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = shouldUseCardQueryEndpoint
-        ? CardApi.query
-        : DashboardApi.cardQuery;
-
-      const requestBody = shouldUseCardQueryEndpoint
-        ? { cardId: card.id, ignore_cache: ignoreCache }
-        : {
-            dashboardId: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: datasetQuery.parameters,
-            ignore_cache: ignoreCache,
-            dashboard_id: dashcard.dashboard_id,
-            dashboard_load_id: dashboardLoadId,
-          };
-      result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          endpoint,
-          card,
-          metadata,
-        )(requestBody, queryOptions),
-      )) as Dataset | { error: unknown };
+      if (shouldUseCardQueryEndpoint) {
+        const cardQueryEndpoint = shouldUsePivotEndpoint(card, metadata)
+          ? cardApi.endpoints.getCardQueryPivot
+          : cardApi.endpoints.getCardQuery;
+        const queryAction = dispatch(
+          cardQueryEndpoint.initiate(
+            { cardId: card.id, ignore_cache: ignoreCache },
+            { forceRefetch: true },
+          ),
+        );
+        deferred.promise.then(() => queryAction.abort());
+        try {
+          result = (await fetchDataOrError(queryAction.unwrap())) as
+            | Dataset
+            | { error: unknown };
+        } finally {
+          queryAction.unsubscribe?.();
+        }
+      } else {
+        const requestBody = {
+          dashboardId: dashcard.dashboard_id,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          parameters: datasetQuery.parameters,
+          ignore_cache: ignoreCache,
+          dashboard_id: dashcard.dashboard_id,
+          dashboard_load_id: dashboardLoadId,
+        };
+        result = (await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            DashboardApi.cardQuery,
+            card,
+            metadata,
+          )(requestBody, queryOptions),
+        )) as Dataset | { error: unknown };
+      }
     }
 
     // If the request was not previously cancelled, then clear the defer for the card
@@ -813,7 +830,11 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(addFields(Object.values(result.param_fields).flat()));
+        await dispatch(
+          updateMetadata(Object.values(result.param_fields).flat(), [
+            FieldSchema,
+          ]),
+        );
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
@@ -825,6 +846,7 @@ export const fetchDashboard = createAsyncThunk(
         result.param_fields,
         metadata,
       );
+
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(

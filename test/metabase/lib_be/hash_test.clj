@@ -1,4 +1,5 @@
 (ns metabase.lib-be.hash-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.lib-be.hash-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]

@@ -1,14 +1,14 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
-import { Dashboards } from "metabase/entities/dashboards";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import { Questions } from "metabase/entities/questions";
-import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   ClickBehavior,
   CustomDestinationClickBehavior,
   DatasetColumn,
   EntityCustomDestinationClickBehavior,
+  IconName,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -38,7 +38,7 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
   if (clickBehavior.linkType === "dashboard") {
     return (
       <Quoted key="link-dashboard">
-        <Dashboards.Name id={targetId} />
+        <DashboardName id={targetId} />
       </Quoted>
     );
   }

@@ -6,8 +6,11 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import type { IconName } from "metabase/ui";
-import type { Database, ListDatabasesResponse } from "metabase-types/api";
+import type {
+  Database,
+  IconName,
+  ListDatabasesResponse,
+} from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 

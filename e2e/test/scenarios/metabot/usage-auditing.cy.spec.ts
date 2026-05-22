@@ -94,20 +94,14 @@ const ROBERT_CHART_LABELS: CompleteChartLabels = {
   ip: ["10.0.0.3", "10.0.0.4", "10.0.0.5"],
 };
 
-const DATE_FILTER_SHORTCUTS = [
-  "Today",
-  "Yesterday",
-  "Previous week",
-  "Previous 7 days",
-  "Previous 30 days",
-  "Previous month",
-  "Previous 3 months",
-  "Previous 12 months",
-] as const;
-
-type DateFilterLabel = (typeof DATE_FILTER_SHORTCUTS)[number];
-
-const DATE_FILTER_BUTTON_LABEL = new RegExp(DATE_FILTER_SHORTCUTS.join("|"));
+type DateFilterLabel =
+  | "Today"
+  | "Yesterday"
+  | "Last 7 days"
+  | "Last 30 days"
+  | "Previous month"
+  | "Previous 3 months"
+  | "Previous 12 months";
 
 const TODAY_CHART_LABELS: CompleteChartLabels = {
   source: ["Slackbot", "Metabot"],
@@ -118,7 +112,7 @@ const TODAY_CHART_LABELS: CompleteChartLabels = {
 
 const PREVIOUS_WEEK_CHART_LABELS: CompleteChartLabels = {
   source: ["Metabot"],
-  profile: ["NLQ"],
+  profile: ["Slackbot"],
   user: ["Bobby Tables"],
   ip: ["10.0.0.1"],
 };
@@ -139,7 +133,7 @@ const DATE_FILTER_CASES: Array<{
   chartLabels: ChartLabels;
 }> = [
   { label: "Today", chartLabels: TODAY_CHART_LABELS },
-  { label: "Previous week", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
+  { label: "Last 7 days", chartLabels: PREVIOUS_WEEK_CHART_LABELS },
 ];
 
 const MAIN_PROFILE_LABELS: string[] = [
@@ -540,9 +534,11 @@ function selectDateFilter(
   dateLabel: DateFilterLabel,
   waitAlias = "@dataset",
 ): void {
-  H.main().findByRole("button", { name: DATE_FILTER_BUTTON_LABEL }).realClick();
-  H.popover().findByRole("button", { name: dateLabel }).realClick();
-  H.main().findByRole("button", { name: dateLabel }).should("be.visible");
+  H.main().findByTestId("conversation-filters-date-select").realClick();
+  H.selectDropdown().findByText(dateLabel).realClick();
+  H.main()
+    .findByTestId("conversation-filters-date-select")
+    .should("have.value", dateLabel);
   cy.wait(waitAlias);
 }
 

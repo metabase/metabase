@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.impersonation.driver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.impersonation.driver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.impersonation.driver-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -710,7 +712,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
-               #"(?s)SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))"
+               #"(?s)(?:SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))|Cannot perform SELECT)"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 
@@ -764,6 +766,30 @@
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
+
+(deftest native-model-persistence-works-when-impersonation-enabled-test
+  ;; Test explicitly with postgres since it supports persistence, impersonation, and impersonated native-query
+  ;; validation.
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation_role"}}
+            (request/as-admin
+              (mt/with-temp [:model/Card model {:type            :model
+                                                :database_id     (mt/id)
+                                                :query_type      :native
+                                                :dataset_query   (mt/native-query {:query "SELECT 1 AS id"})
+                                                :result_metadata [{:name      "id"
+                                                                   :base_type :type/Integer}]}]
+                (persist-models!)
+                (is (=? {:state  "persisted"
+                         :active true
+                         :error  nil}
+                        (t2/select-one [:model/PersistedInfo :state :active :error]
+                                       :database_id (mt/id)
+                                       :card_id (:id model))))))))))))
 
 (deftest resilient-connection-options-test
   (testing "resilient connections have the correct role set"
