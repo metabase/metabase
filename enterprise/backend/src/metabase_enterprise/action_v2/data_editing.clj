@@ -31,12 +31,12 @@
 
 (def ^:private ^:dynamic *invalidate-select-batch-size*
   "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
-   clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
   500)
 
 (defn- batch-invalidate-field-values!
   "Recalculate the field values for the given fields. Groups by table and uses the UNION-distinct
-   path (one warehouse query per table) on SQL drivers."
+  path (one warehouse query per table) on SQL drivers."
   [field-batches]
   (let [field-ids (into #{} cat field-batches)
         fields    (when (seq field-ids)
