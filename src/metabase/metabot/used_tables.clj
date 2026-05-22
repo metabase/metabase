@@ -249,15 +249,17 @@
    (lib-be/with-metadata-provider-cache
      (extract-used-tables lib-be/application-database-metadata-provider message-id parts)))
   ([metadata-providerable message-id parts]
-   (let [outputs-by-id (->> parts
-                            (filter #(= :tool-output (:type %)))
-                            (into {} (map (juxt :id identity))))
-         pairs         (->> parts
-                            (filter #(= :tool-input (:type %)))
-                            (keep (fn [input]
-                                    (let [output (get outputs-by-id (:id input))]
-                                      (when (successful-tracked-output? input output)
-                                        [input output])))))
+   (let [outputs-by-id (into {}
+                             (comp (filter #(= :tool-output (:type %)))
+                                   (map (juxt :id identity)))
+                             parts)
+         pairs         (into []
+                             (comp (filter #(= :tool-input (:type %)))
+                                   (keep (fn [input]
+                                           (let [output (get outputs-by-id (:id input))]
+                                             (when (successful-tracked-output? input output)
+                                               [input output])))))
+                             parts)
          {:keys [queries tables]}
          (reduce (fn [acc [input output]]
                    (let [seeds (pair->seeds metadata-providerable input output)]
