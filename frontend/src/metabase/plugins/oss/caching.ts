@@ -50,6 +50,11 @@ export interface MetricSettingsPageProps {
   showDataStudioLink?: boolean;
 }
 
+export interface MetricCachingModalProps {
+  card: Card;
+  onClose: () => void;
+}
+
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -69,6 +74,8 @@ const getDefaultPluginCaching = () => ({
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
   MetricCachingPage:
     PluginPlaceholder as ComponentType<MetricSettingsPageProps>,
+  MetricCachingModal:
+    PluginPlaceholder as ComponentType<MetricCachingModalProps>,
 });
 
 export const PLUGIN_CACHING = getDefaultPluginCaching();

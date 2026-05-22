@@ -7,7 +7,6 @@ import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfig
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { MetricPageShell } from "metabase/metrics/components/MetricPageShell";
@@ -88,7 +87,7 @@ export function MetricCachingPage({
             shouldAllowInvalidation
             shouldShowName={false}
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
-            classNames={{ formBox: CS.pt4 }}
+            formBoxProps={{ pt: "xl" }}
           />
           {confirmationModal}
         </Card>
