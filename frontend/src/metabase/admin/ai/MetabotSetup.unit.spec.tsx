@@ -404,6 +404,17 @@ async function setup({
     );
   }
 
+  // When a configured API-key provider is mounted, the form fires a
+  // /api/metabot/settings query. Wait for the resulting UI to settle (the
+  // model picker leaves its "Loading models..." state, surfaces an error, or
+  // disappears entirely) so its async state updates stay wrapped in act.
+  await waitFor(() => {
+    const modelSelect = screen.queryByLabelText("Model");
+    expect(modelSelect?.getAttribute("placeholder")).not.toBe(
+      "Loading models...",
+    );
+  });
+
   return {
     ...view,
     onClose,
@@ -524,7 +535,17 @@ describe("MetabotSetup", () => {
     expect(disconnect).toBeEnabled();
     expect(disconnect).not.toHaveAttribute("data-loading", "true");
 
+    // Resolve the deferred refetch, then wait for the form to settle back into
+    // its interactive state so the resulting re-render stays wrapped in act.
     sessionPropertiesDeferred.resolve({});
+
+    await waitFor(() => {
+      expect(disconnect).toBeEnabled();
+      expect(disconnect).not.toHaveAttribute("data-loading", "true");
+    });
+
+    expect(apiKey).toBeEnabled();
+    expect(model).toBeEnabled();
   });
 
   it("shows the connected badge with the saved provider and model", async () => {

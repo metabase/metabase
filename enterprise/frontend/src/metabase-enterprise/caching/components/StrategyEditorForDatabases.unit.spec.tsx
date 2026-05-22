@@ -25,8 +25,11 @@ function setup(opts: SetupOpts = {}) {
 }
 
 describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup();
+    // Wait for the initial database/cache-config fetches to settle so their
+    // async state updates don't leak past the test body as act(...) warnings.
+    await screen.findByText("Default policy");
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -290,13 +293,16 @@ describe("StrategyEditorForDatabases", () => {
 });
 
 describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup({
       tokenFeatures: createMockTokenFeatures({
         cache_granular_controls: true,
         cache_preemptive: true,
       }),
     });
+    // Wait for the initial database/cache-config fetches to settle so their
+    // async state updates don't leak past the test body as act(...) warnings.
+    await screen.findByText("Default policy");
   });
 
   // The preemptive caching switch only renders for question/dashboard targets.

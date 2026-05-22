@@ -8,7 +8,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
@@ -148,7 +148,7 @@ interface SetupOpts {
   upsellDismissed?: boolean;
 }
 
-export const setup = ({
+export const setup = async ({
   onCancel,
   remoteSyncEnabled = false,
   remoteSyncUrl = "",
@@ -190,5 +190,16 @@ export const setup = ({
         remoteSyncType,
       }),
     },
+  );
+
+  // The sync-mode radio is only checked once the settings query resolves and
+  // populates the form's initial values. Waiting for it lets the mount-time
+  // queries settle inside `act` before the test makes assertions.
+  await waitFor(() =>
+    expect(
+      screen.getByLabelText(
+        remoteSyncType === "read-write" ? "Read-write" : "Read-only",
+      ),
+    ).toBeChecked(),
   );
 };

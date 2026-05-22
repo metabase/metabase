@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -83,7 +83,7 @@ type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
 };
 
-export function setup({
+export async function setup({
   segment = TEST_SEGMENT,
   table = TEST_TABLE,
   isAdmin = true,
@@ -142,6 +142,13 @@ export function setup({
       storeInitialState: state,
     },
   );
+
+  // The breadcrumbs stay hidden until their database-schemas query resolves;
+  // wait for them to become visible so that resulting store update is wrapped
+  // in act instead of leaking after the test.
+  await waitFor(() => {
+    expect(screen.getByTestId("data-studio-breadcrumbs")).toBeVisible();
+  });
 
   return { onRemove };
 }

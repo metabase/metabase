@@ -7,8 +7,8 @@ import { TEST_TABLE, setup } from "./setup";
 describe("SegmentDetailPage", () => {
   describe("readonly state", () => {
     describe("when remote sync is read-only and table is published", () => {
-      beforeEach(() => {
-        setup({
+      beforeEach(async () => {
+        await setup({
           remoteSyncType: "read-only",
           enterprisePlugins: ["remote_sync"],
           tokenFeatures: { remote_sync: true },
@@ -43,7 +43,7 @@ describe("SegmentDetailPage", () => {
 
     describe("when remote sync is read-only and table is not published", () => {
       it("does not show elements as read-only", async () => {
-        setup({
+        await setup({
           remoteSyncType: "read-only",
           table: { ...TEST_TABLE, is_published: false },
         });

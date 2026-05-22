@@ -1,5 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Table, TableId } from "metabase-types/api";
@@ -57,7 +57,7 @@ interface SetupOpts {
   table?: Table;
 }
 
-function setup({ id, table }: SetupOpts) {
+async function setup({ id, table }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
       tables: table ? [table] : [],
@@ -78,12 +78,19 @@ function setup({ id, table }: SetupOpts) {
     { storeInitialState: state },
   );
 
+  // `TableInfoInner` fetches dependent metadata in an effect and flips a
+  // `hasFetchedMetadata` flag once the promise resolves, which fades out the
+  // loading spinner. Wait for that so the state update is observed in `act()`.
+  await waitFor(() => {
+    expect(screen.getByTestId("loading-indicator")).not.toBeVisible();
+  });
+
   return { fetchMetadata, fetchForeignKeys };
 }
 
 describe("TableInfo", () => {
-  it("should fetch table metadata if fields are missing", () => {
-    const { fetchMetadata, fetchForeignKeys } = setup({
+  it("should fetch table metadata if fields are missing", async () => {
+    const { fetchMetadata, fetchForeignKeys } = await setup({
       id: TABLE_ID,
       table: TABLE_WITH_FKS,
     });
@@ -93,8 +100,8 @@ describe("TableInfo", () => {
     expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
 
-  it("should fetch table metadata if the table is undefined", () => {
-    const { fetchMetadata, fetchForeignKeys } = setup({
+  it("should fetch table metadata if the table is undefined", async () => {
+    const { fetchMetadata, fetchForeignKeys } = await setup({
       id: TABLE_ID,
       table: undefined,
     });
@@ -107,8 +114,8 @@ describe("TableInfo", () => {
     });
   });
 
-  it("should fetch fks if fks are undefined on table", () => {
-    const { fetchMetadata, fetchForeignKeys } = setup({
+  it("should fetch fks if fks are undefined on table", async () => {
+    const { fetchMetadata, fetchForeignKeys } = await setup({
       id: TABLE_ID,
       table: TABLE_WITH_FIELDS,
     });
@@ -117,8 +124,8 @@ describe("TableInfo", () => {
     expect(fetchForeignKeys).toHaveBeenCalledWith({ id: TABLE_ID });
   });
 
-  it("should not send requests fetching table metadata when metadata is already present", () => {
-    const { fetchMetadata, fetchForeignKeys } = setup({
+  it("should not send requests fetching table metadata when metadata is already present", async () => {
+    const { fetchMetadata, fetchForeignKeys } = await setup({
       id: TABLE_ID,
       table: TABLE,
     });
@@ -128,7 +135,7 @@ describe("TableInfo", () => {
   });
 
   it("should display a placeholder if table has no description", async () => {
-    setup({
+    await setup({
       id: TABLE_ID,
       table: TABLE_WITHOUT_DESCRIPTION,
     });
@@ -137,18 +144,18 @@ describe("TableInfo", () => {
   });
 
   describe("after metadata has been fetched", () => {
-    it("should display the given table's description", () => {
-      setup({ id: TABLE_ID, table: TABLE });
+    it("should display the given table's description", async () => {
+      await setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText(TABLE.description ?? "")).toBeInTheDocument();
     });
 
-    it("should show a count of columns on the table", () => {
-      setup({ id: TABLE_ID, table: TABLE });
+    it("should show a count of columns on the table", async () => {
+      await setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText("1 column")).toBeInTheDocument();
     });
 
-    it("should list connected tables", () => {
-      setup({ id: TABLE_ID, table: TABLE });
+    it("should list connected tables", async () => {
+      await setup({ id: TABLE_ID, table: TABLE });
       expect(screen.getByText("Connected Table")).toBeInTheDocument();
     });
   });

@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
@@ -337,6 +337,15 @@ describe("AggregationPicker", () => {
   });
 
   describe("custom expressions", () => {
+    // The expression editor formats its initial value asynchronously; wait for
+    // it to finish so the resulting state update stays wrapped in act.
+    const waitForEditorToBeReady = () =>
+      waitFor(() =>
+        expect(
+          screen.getByTestId("custom-expression-query-editor"),
+        ).toHaveProperty("readOnly", false),
+      );
+
     it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup({ allowCustomExpressions: true });
 
@@ -344,6 +353,7 @@ describe("AggregationPicker", () => {
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));
+      await waitForEditorToBeReady();
       await userEvent.type(
         screen.getByTestId("custom-expression-query-editor"),
         expression,
@@ -361,6 +371,7 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+      await waitForEditorToBeReady();
     });
 
     it("should open the editor when a named expression with operator is used", async () => {
@@ -368,6 +379,7 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
+      await waitForEditorToBeReady();
     });
 
     it("shouldn't be available if database doesn't support custom expressions", () => {
@@ -398,7 +410,7 @@ describe("AggregationPicker", () => {
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
 
-    it("should open the editor even if `allowCustomExpressions` prop is false if expression is used", () => {
+    it("should open the editor even if `allowCustomExpressions` prop is false if expression is used", async () => {
       setup({
         query: createQueryWithInlineExpression(),
         allowCustomExpressions: false,
@@ -406,6 +418,7 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+      await waitForEditorToBeReady();
     });
   });
 });

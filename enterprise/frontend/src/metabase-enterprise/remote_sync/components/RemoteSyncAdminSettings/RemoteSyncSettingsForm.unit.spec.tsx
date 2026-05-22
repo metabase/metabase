@@ -12,7 +12,7 @@ import {
 
 describe("RemoteSyncSettingsForm", () => {
   it("should display Git settings section with URL and Token fields", async () => {
-    setup();
+    await setup();
 
     expect(screen.getByText("Git settings")).toBeInTheDocument();
     expect(screen.getByLabelText(/Repository URL/i)).toBeInTheDocument();
@@ -20,7 +20,7 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   it("should display Sync Mode section with radio options", async () => {
-    setup();
+    await setup();
 
     expect(screen.getByText("Sync mode for this instance")).toBeInTheDocument();
     expect(screen.getByLabelText("Read-only")).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   it("should show set up help link", async () => {
-    setup();
+    await setup();
     expect(
       screen.getByRole("link", { name: "setup guide" }),
     ).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("conditional branch section", () => {
     it("should show branch settings when read-only mode is selected", async () => {
-      setup({ remoteSyncType: "read-only" });
+      await setup({ remoteSyncType: "read-only" });
 
       expect(screen.getByText("Branch to sync with")).toBeInTheDocument();
       expect(
@@ -46,7 +46,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should hide branch settings when read-write mode is selected", async () => {
-      setup({ remoteSyncType: "read-write" });
+      await setup({ remoteSyncType: "read-write" });
 
       // Wait for the form to be fully rendered
       await waitFor(() => {
@@ -61,7 +61,7 @@ describe("RemoteSyncSettingsForm", () => {
     it("should show the 'Save changes' button", async () => {
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncEnabled: true,
@@ -76,8 +76,8 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   describe("submit behavior - read-only mode", () => {
-    beforeEach(() => {
-      setup({
+    beforeEach(async () => {
+      await setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "",
         remoteSyncEnabled: false,
@@ -102,8 +102,8 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   describe("cancel behavior", () => {
-    it("does not show the cancel button if onCancel is not set", () => {
-      setup({
+    it("does not show the cancel button if onCancel is not set", async () => {
+      await setup({
         onCancel: undefined,
         remoteSyncUrl: "https://github.com/test/repo.git",
       });
@@ -115,7 +115,7 @@ describe("RemoteSyncSettingsForm", () => {
     it("should close modal when Cancel is clicked", async () => {
       const onCancel = jest.fn();
 
-      setup({
+      await setup({
         onCancel,
         remoteSyncUrl: "https://github.com/test/repo.git",
       });
@@ -133,7 +133,7 @@ describe("RemoteSyncSettingsForm", () => {
         { id: 1, name: "Test Card", model: "card", sync_status: "update" },
       ];
 
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         remoteSyncEnabled: true,
         dirty,
@@ -148,7 +148,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("settings-modal variant", () => {
     it("should not show set up help link", async () => {
-      setup({ variant: "settings-modal" });
+      await setup({ variant: "settings-modal" });
       expect(
         screen.queryByRole("link", { name: "setup guide" }),
       ).not.toBeInTheDocument();
@@ -157,7 +157,7 @@ describe("RemoteSyncSettingsForm", () => {
     it("should show 'Content to sync' section when read-write mode is selected", async () => {
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         variant: "settings-modal",
         libraryCollection,
@@ -171,7 +171,7 @@ describe("RemoteSyncSettingsForm", () => {
     it("should not show 'Content to sync' section when read-only mode is selected", async () => {
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-      setup({
+      await setup({
         remoteSyncType: "read-only",
         variant: "settings-modal",
         libraryCollection,
@@ -191,7 +191,7 @@ describe("RemoteSyncSettingsForm", () => {
           name: "Library",
         });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection,
@@ -211,7 +211,7 @@ describe("RemoteSyncSettingsForm", () => {
           is_remote_synced: false,
         });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: false,
           variant: "settings-modal",
@@ -233,7 +233,7 @@ describe("RemoteSyncSettingsForm", () => {
           is_remote_synced: false,
         });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: true,
           remoteSyncUrl: "https://github.com/test/repo.git",
@@ -255,7 +255,7 @@ describe("RemoteSyncSettingsForm", () => {
           name: "Library",
         });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection,
@@ -275,7 +275,7 @@ describe("RemoteSyncSettingsForm", () => {
 
     describe("library toggle when library does not exist", () => {
       it("should show library toggle even when library collection does not exist", async () => {
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection: null,
@@ -290,7 +290,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       it("should have library toggle checked by default when library does not exist", async () => {
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: false,
           variant: "settings-modal",
@@ -306,7 +306,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       it("should allow toggling library sync state when library does not exist", async () => {
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection: null,
@@ -333,7 +333,7 @@ describe("RemoteSyncSettingsForm", () => {
         PLUGIN_TRANSFORMS.isEnabled = true;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection,
@@ -350,7 +350,7 @@ describe("RemoteSyncSettingsForm", () => {
         PLUGIN_TRANSFORMS.isEnabled = false;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection,
@@ -369,7 +369,7 @@ describe("RemoteSyncSettingsForm", () => {
         PLUGIN_TRANSFORMS.isEnabled = true;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: false,
           remoteSyncTransforms: false,
@@ -389,7 +389,7 @@ describe("RemoteSyncSettingsForm", () => {
         PLUGIN_TRANSFORMS.isEnabled = true;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           remoteSyncEnabled: true,
           remoteSyncUrl: "https://github.com/test/repo.git",
@@ -410,7 +410,7 @@ describe("RemoteSyncSettingsForm", () => {
         PLUGIN_TRANSFORMS.isEnabled = true;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-        setup({
+        await setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
           libraryCollection,
@@ -434,8 +434,8 @@ describe("RemoteSyncSettingsForm", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
     });
 
-    it("should not display transforms toggle when transforms feature is disabled", () => {
-      setup({
+    it("should not display transforms toggle when transforms feature is disabled", async () => {
+      await setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -449,7 +449,7 @@ describe("RemoteSyncSettingsForm", () => {
     it("should display transforms row in collections list when transforms feature is enabled", async () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      setup({
+      await setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -467,7 +467,7 @@ describe("RemoteSyncSettingsForm", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 
-      setup({
+      await setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -488,7 +488,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("URL validation", () => {
     it("should show a validation error for non-HTTPS URLs", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "",
         remoteSyncEnabled: false,
@@ -508,7 +508,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not show a validation error for HTTPS URLs", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "",
         remoteSyncEnabled: false,
@@ -531,7 +531,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("save error handling", () => {
     it("should show backend error message in toast when save fails", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "",
         remoteSyncEnabled: false,
@@ -567,7 +567,7 @@ describe("RemoteSyncSettingsForm", () => {
         can_write: true,
       });
 
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncEnabled: true,
@@ -610,7 +610,7 @@ describe("RemoteSyncSettingsForm", () => {
         can_write: true,
       });
 
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncEnabled: true,
@@ -644,7 +644,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("environment variable overrides", () => {
     it("should disable both sync mode radio options and show env var description when remote-sync-type is set by env", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-write",
         envSettings: ["remote-sync-type"],
       });
@@ -657,7 +657,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not disable sync mode radio options when remote-sync-type is not set by env", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-write",
       });
 
@@ -670,7 +670,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should hide the disable button when remote-sync-enabled is set by env", async () => {
-      setup({
+      await setup({
         remoteSyncEnabled: true,
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncType: "read-write",
@@ -687,7 +687,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should make URL and token fields read-only when set by env", async () => {
-      setup({
+      await setup({
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncToken: "ghp_abc123",
         envSettings: ["remote-sync-url", "remote-sync-token"],
@@ -708,7 +708,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should make branch field read-only when remote-sync-branch is set by env", async () => {
-      setup({
+      await setup({
         remoteSyncType: "read-only",
         remoteSyncBranch: "main",
         envSettings: ["remote-sync-branch"],
@@ -728,7 +728,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("DevInstanceUpsell", () => {
     it("should show the upsell when not a dev instance and upsell has not been dismissed", async () => {
-      setup({ isDevInstance: false, upsellDismissed: false });
+      await setup({ isDevInstance: false, upsellDismissed: false });
 
       await waitFor(() => {
         expect(
@@ -738,7 +738,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not show the upsell when it has been dismissed", async () => {
-      setup({ isDevInstance: false, upsellDismissed: true });
+      await setup({ isDevInstance: false, upsellDismissed: true });
 
       await waitFor(() => {
         expect(screen.getByText("Git settings")).toBeInTheDocument();
@@ -750,7 +750,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not show the upsell when it is a dev instance", async () => {
-      setup({ isDevInstance: true, upsellDismissed: false });
+      await setup({ isDevInstance: true, upsellDismissed: false });
 
       await waitFor(() => {
         expect(screen.getByText("Git settings")).toBeInTheDocument();
@@ -764,7 +764,7 @@ describe("RemoteSyncSettingsForm", () => {
 
   describe("collections to sync section", () => {
     it("should display collections section in admin variant when read-write mode is selected during initial setup", async () => {
-      setup({
+      await setup({
         remoteSyncEnabled: false,
         remoteSyncType: "read-write",
       });
@@ -778,7 +778,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not display collections section in modal variant when read-write mode is selected", async () => {
-      setup({
+      await setup({
         remoteSyncEnabled: false,
         remoteSyncType: "read-write",
         variant: "settings-modal",
@@ -794,7 +794,7 @@ describe("RemoteSyncSettingsForm", () => {
     });
 
     it("should not display collections section in modal variant even when remote sync is enabled", async () => {
-      setup({
+      await setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",

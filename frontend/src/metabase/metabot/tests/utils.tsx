@@ -61,6 +61,12 @@ export const enterChatMessage = async (message: string, send = true) => {
   fireEvent.input(editor, {
     target: { textContent: message },
   });
+  // Tiptap's editor processes the input event and fires onChange, which
+  // updates MetabotProvider state via a deferred re-render. Wait for it to
+  // settle so the update stays wrapped in act instead of leaking.
+  await waitFor(() => {
+    expect(editor).toHaveTextContent(message);
+  });
   if (send) {
     await userEvent.type(await input(), "{Enter}");
   }

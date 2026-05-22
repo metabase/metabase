@@ -281,7 +281,9 @@ describe("TokenField", () => {
       type("Doohickey");
       await userEvent.clear(input());
       type("");
-      input().blur();
+      act(() => {
+        input().blur();
+      });
       expect(values()).toHaveTextContent("");
       expect(input().value).toEqual("");
     });
@@ -443,7 +445,9 @@ describe("TokenField", () => {
         />,
       );
       type("asdf");
-      input().focus();
+      act(() => {
+        input().focus();
+      });
       await userEvent.tab();
       expect(input()).not.toHaveFocus();
     });

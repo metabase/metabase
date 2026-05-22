@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
 
 import {
@@ -43,7 +45,7 @@ describe("metabot > message", () => {
 
     await enterChatMessage("Who is your favorite?", false);
     expect(await input()).toHaveTextContent("Who is your favorite?");
-    (await sendMessageButton()).click();
+    await userEvent.click(await sendMessageButton());
 
     expect(
       await screen.findByText("You, but don't tell anyone."),

@@ -122,7 +122,7 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete
       await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/settings"),
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/settings"),
       );
 
       // Give middleware time to process
@@ -151,7 +151,7 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete
       await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/settings"),
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/settings"),
       );
 
       // Give middleware time to process
@@ -179,7 +179,7 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete
       await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/settings"),
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/settings"),
       );
 
       // Give middleware time to process
@@ -237,7 +237,7 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to fail
       await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/import"),
       );
 
       // Give middleware time to process the rejection
@@ -265,7 +265,7 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to fail
       await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/current-task"),
       );
 
       expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
@@ -306,7 +306,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // Dispatch the create collection mutation
@@ -319,7 +319,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for the request to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("create-collection"),
+          fetchMock.callHistory.called("create-collection"),
         );
 
         // Give middleware time to process and trigger invalidation
@@ -352,7 +352,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // Give a moment for RTK Query to settle
@@ -372,7 +372,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for the request to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("create-collection"),
+          fetchMock.callHistory.called("create-collection"),
         );
 
         // Give middleware time to process
@@ -404,7 +404,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // Dispatch the create collection mutation
@@ -417,7 +417,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for the request to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("create-collection"),
+          fetchMock.callHistory.called("create-collection"),
         );
 
         // Give middleware time to process and trigger invalidation
@@ -447,7 +447,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // Dispatch the create collection mutation
@@ -459,7 +459,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for the request to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("create-collection"),
+          fetchMock.callHistory.called("create-collection"),
         );
 
         // Give middleware time to process
@@ -494,7 +494,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // Dispatch the update collection mutation
@@ -507,7 +507,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for the request to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("update-collection-100"),
+          fetchMock.callHistory.called("update-collection-100"),
         );
 
         // Give middleware time to process
@@ -541,7 +541,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for initial dirty query to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("remote-sync-dirty"),
+          fetchMock.callHistory.called("remote-sync-dirty"),
         );
 
         // First, fetch the collection to populate the cache
@@ -551,7 +551,7 @@ describe("remote-sync-listener-middleware", () => {
 
         // Wait for fetch to complete
         await waitForCondition(() =>
-          fetchMock.callHistory.done("get-collection-100"),
+          fetchMock.callHistory.called("get-collection-100"),
         );
 
         // Now delete the collection

@@ -87,11 +87,14 @@ describe("StatusListing", () => {
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
-  it("should give an alert if a user navigates away from the page during an upload", () => {
+  it("should give an alert if a user navigates away from the page during an upload", async () => {
     const mockEventListener = jest.spyOn(window, "addEventListener");
 
     const mockUpload = createMockUpload();
     setup({ isAdmin: true, upload: { [mockUpload.id]: mockUpload } });
+
+    // wait for the upload status to render so async state updates settle
+    expect(await screen.findByText(/Uploading data to/)).toBeInTheDocument();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toEqual(
@@ -103,7 +106,8 @@ describe("StatusListing", () => {
   it("should not give an alert if a user navigates away from the page while no uploads are in progress", () => {
     const mockEventListener = jest.spyOn(window, "addEventListener");
 
-    setup({ isAdmin: true });
+    // a non-admin renders no async database status, so nothing to settle
+    setup();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toBeUndefined();

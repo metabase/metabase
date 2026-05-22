@@ -1,5 +1,6 @@
 import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { routerReducer as routing } from "react-router-redux";
 import type { Action } from "redux-actions";
 
 import * as entities from "metabase/redux/entities";
@@ -26,6 +27,9 @@ export function getStore(
       state: RequestsStateTree | undefined,
       action: Action<undefined>,
     ) => requestsReducer(entities.requestsReducer(state, action), action),
+    // tests pass `createMockState()` (which always includes `routing`) as
+    // `initialState`; mirror the real app store so redux doesn't warn about it
+    routing,
     ...reducers,
   }) as unknown as Reducer<State>;
 

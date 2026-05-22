@@ -40,6 +40,13 @@ describe("UserNameDisplay", () => {
       userIdList: [TEST_USER_LIST_RESULTS[0].id],
     });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
+
+    // Wait for the in-flight request to settle so the useAsync update stays
+    // wrapped in act. Can't use waitForLoaderToBeRemoved: it keys on the
+    // "loading-indicator" test id, but this renders plain "Loading…" text.
+    await waitFor(() => {
+      expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    });
   });
 
   it("should initially display title when user list is empty", async () => {
