@@ -3,7 +3,9 @@
    [clj-async-profiler.core :as prof]
    [clojure.test :refer :all]
    [metabase.root.mutable-component :as mc]
-   [metabase.root.system :as system]))
+   [metabase.root.system :as system])
+  (:import
+   (java.util.concurrent CyclicBarrier)))
 
 (set! *warn-on-reflection* true)
 
@@ -137,21 +139,23 @@
     (mc/alter-root k3-handle :root-k3)
     (mc/alter-root k4-handle :root-k4)
     (mc/alter-root k5-handle :root-k5)
-    (let [bound-thread-entered (promise)
-          writes-done          (promise)
+    (let [start-line  (CyclicBarrier. 2)
+          writes-done (promise)
           writer (future
-                   (deref bound-thread-entered 1000 ::timed-out)
+                   (.await start-line)
                    (mc/swap! k2-handle (constantly :updated-k2))
                    (mc/reset! k3-handle :updated-k3)
                    (deliver writes-done true))]
       (try
         (mc/binding k1-handle :outer-k1
                     (fn []
-                      (deliver bound-thread-entered true)
-                      (is (true? (deref writes-done 1000 ::timed-out)))
-                      ;; Outer-level shadows: visible to inner reads, but never reach root.
+                      ;; Both threads wait on the barrier so that the writer's root
+                      ;; writes for k2/k3 race against these outer-level shadows on
+                      ;; k4/k5. Different atoms, but in-flight at the same time.
+                      (.await start-line)
                       (mc/swap!  k4-handle (constantly :outer-shadow-k4))
                       (mc/reset! k5-handle :outer-shadow-k5)
+                      (is (true? (deref writes-done 1000 ::timed-out)))
                       (mc/binding k1-handle :inner-k1
                                   (fn []
                                     (testing "inside the inner binding"
