@@ -3,6 +3,7 @@
   off a separate `response` module."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -60,6 +61,7 @@ x.com")
                                         (setting/string->boolean new-value)
                                         new-value))]
                   (when (and disabling?
+                             config/ee-available?
                              (when-let [custom-viz-enabled?
                                         (requiring-resolve
                                          'metabase-enterprise.custom-viz-plugin.settings/custom-viz-enabled)]
