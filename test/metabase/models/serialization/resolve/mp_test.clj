@@ -117,42 +117,43 @@
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
 (deftest import-table-fk-error-test
-  (testing "unknown table name in a valid schema → :unknown-table with substring candidates"
+  (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
         (resolve/import-table-fk r ["Sample" "PUBLIC" "NOPE"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
+          (let [d   (ex-data e)
+                msg (.getMessage e)]
             (is (= :unknown-table (:error d)))
             (is (= 400 (:status-code d)))
-            (is (true? (:agent-error? d))))))))
-  (testing "fuzzy substring match surfaces closest table(s) on unknown-table"
-    ;; `ORDER` is a prefix of real `ORDERS` - we should name it.
-    (let [r (resolve.mp/import-resolver mp-simple)]
-      (try
-        (resolve/import-table-fk r ["Sample" "PUBLIC" "ORDER"])
-        (is false "expected throw")
-        (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
-            (is (= :unknown-table (:error d)))
-            (is (contains? (set (:candidates d)) "PUBLIC.ORDERS")
-                "expected the real ORDERS table to appear in candidates"))))))
-  (testing "schema does not exist in DB → :unknown-schema with available-schemas listed"
-    ;; mp-simple only has schema PUBLIC; asking for OTHER must not be reported as unknown-table.
+            (is (true? (:agent-error? d)))
+            (is (= ["Sample" "PUBLIC" "NOPE"] (:path d)))
+            (testing "ex-data carries only the rejected path — no candidates / schemas"
+              (is (nil? (:candidates d)))
+              (is (nil? (:available-schemas d))))
+            (testing "message points the LLM at entity_details for self-correction"
+              (is (re-find #"entity_details" msg))))))))
+  (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"
+    ;; Pre-S1 this returned :unknown-schema + the full schema list. Post-S1 we collapse to
+    ;; :unknown-table with no schema enumeration so a sandboxed user can't enumerate
+    ;; schemas they lack perms on.
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
         (resolve/import-table-fk r ["Sample" "OTHER" "ORDERS"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
-            (is (= :unknown-schema (:error d)))
+          (let [d   (ex-data e)
+                msg (.getMessage e)]
+            (is (= :unknown-table (:error d)))
             (is (true? (:agent-error? d)))
-            (is (= ["PUBLIC"] (:available-schemas d))))))))
-  (testing "table exists in OTHER schemas → :unknown-table naming them"
-    ;; In mp-ambiguous-by-schema ORDERS lives in RAW and CLEAN. Asking for schema BOGUS
-    ;; won't even match case 1 (BOGUS !∈ schemas), so we hit case 1 (unknown-schema).
-    ;; Use a schema that DOES exist but where ORDERS is absent - we need a fixture for that.
+            (is (nil? (:available-schemas d)))
+            (testing "message must not enumerate schemas"
+              (is (not (re-find #"PUBLIC" msg)))
+              (is (not (re-find #"Available schemas" msg)))))))))
+  (testing "table exists in other schemas → :unknown-table, no cross-schema leak"
+    ;; A sandboxed user with no perms on schema RAW must not learn that RAW.ORDERS exists
+    ;; just by hallucinating CLEAN.ORDERS at the agent.
     (let [mp (lib.tu/mock-metadata-provider
               {:database {:id 5 :name "DW2"}
                :tables   [{:id 50 :name "ORDERS"   :schema "RAW"   :db-id 5}
@@ -162,10 +163,12 @@
         (resolve/import-table-fk r ["DW2" "CLEAN" "ORDERS"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
+          (let [d   (ex-data e)
+                msg (.getMessage e)]
             (is (= :unknown-table (:error d)))
-            (is (= ["RAW.ORDERS"] (:candidates d))
-                "expected the wrong-schema table to be surfaced as a candidate"))))))
+            (is (nil? (:candidates d)))
+            (testing "message must not name RAW.ORDERS as a candidate"
+              (is (not (re-find #"RAW" msg)))))))))
   (testing "database name mismatch"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
@@ -176,32 +179,21 @@
             (is (= :unknown-table (:error d)))
             (is (= "Sample" (:expected-db d)))
             (is (true? (:agent-error? d))))))))
-  (testing "token-level fuzzy match surfaces tables with shared stems across schemas"
-    ;; Reproduces the benchmark failure where the LLM asked for `brex_enriched.fct_cards`
-    ;; (a data-warehouse convention name) while the real tables are `brex_data.card` and
-    ;; `brex_enriched.int_brex_card_dim`. Raw substring match only catches the former; we
-    ;; also want the schema-matched `int_brex_card_dim` so the LLM can recover on the next
-    ;; turn without another round of invention.
-    (let [mp (lib.tu/mock-metadata-provider
-              {:database {:id 6 :name "Warehouse"}
-               :tables   [{:id 60 :name "card"              :schema "brex_data"     :db-id 6}
-                          {:id 61 :name "int_brex_card_dim" :schema "brex_enriched" :db-id 6}
-                          {:id 62 :name "int_brex_user_dim" :schema "brex_enriched" :db-id 6}]})
-          r  (resolve.mp/import-resolver mp)]
+  (testing "fuzzy substring suggestions are NOT surfaced (info-leak guard)"
+    ;; Pre-S1 the resolver would surface `PUBLIC.ORDERS` as a "closest tables" candidate
+    ;; for an `ORDER` hallucination. Post-S1 nothing is suggested.
+    (let [r (resolve.mp/import-resolver mp-simple)]
       (try
-        (resolve/import-table-fk r ["Warehouse" "brex_enriched" "fct_cards"])
+        (resolve/import-table-fk r ["Sample" "PUBLIC" "ORDER"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)
-                cands (set (:candidates d))]
+          (let [d   (ex-data e)
+                msg (.getMessage e)]
             (is (= :unknown-table (:error d)))
-            (is (contains? cands "brex_enriched.int_brex_card_dim")
-                "token-level fuzzy + schema boost must surface the real sibling table")
-            (is (contains? cands "brex_data.card")
-                "raw substring / cross-schema match must still be included")
-            (testing "same-schema candidate is ranked first (schema boost)"
-              (is (= "brex_enriched.int_brex_card_dim"
-                     (first (:candidates d)))))))))))
+            (is (nil? (:candidates d)))
+            (testing "message must not name any other table in the database"
+              (is (not (re-find #"PUBLIC\.ORDERS" msg)))
+              (is (not (re-find #"Closest tables" msg))))))))))
 
 ;;; ============================================================
 ;;; import-field-fk
@@ -246,25 +238,26 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :invalid-field-fk (:error (ex-data e)))))))))
 
-(deftest import-field-fk-surfaces-fk-candidate-hint-test
-  (testing "when the missing column exists on an FK-reachable table, the error message
-           includes the candidate portable path so the LLM can self-correct via the implicit join"
-    ;; Regression: LLM kept writing `[db, schema, <source>, name]` / `[… email]` when the
-    ;; column actually lived on an FK target. Raw "No column" / "unknown-field" was not
-    ;; actionable; now we look up outbound FKs and surface any candidates by portable path.
+(deftest import-field-fk-no-fk-candidate-leak-test
+  (testing "an unknown field that lives on an FK-reachable table MUST NOT surface that table"
+    ;; Pre-S1 the resolver helpfully suggested `[Sample PUBLIC PRODUCTS CATEGORY]` as a
+    ;; candidate when the LLM asked for `[Sample PUBLIC ORDERS CATEGORY]`. That leaks the
+    ;; existence of PRODUCTS to anyone whose data perms exclude that table.
     (let [r (resolve.mp/import-resolver mp-with-fk)]
       (try
         (resolve/import-field-fk r ["Sample" "PUBLIC" "ORDERS" "CATEGORY"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
+          (let [d   (ex-data e)
+                msg (.getMessage e)]
             (is (= :unknown-field (:error d)))
             (is (true? (:agent-error? d)))
-            (is (= [["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]] (:fk-candidates d)))
-            (is (re-find #"FK-linked tables" (.getMessage e)))
-            (is (re-find #"PRODUCTS" (.getMessage e))))))))
+            (is (nil? (:fk-candidates d)) "ex-data must not carry FK candidates")
+            (testing "message must not name PRODUCTS or FK-linked tables"
+              (is (not (re-find #"PRODUCTS" msg)))
+              (is (not (re-find #"FK-linked" msg)))))))))
 
-  (testing "when no FK-reachable table has the column, no misleading hint is attached"
+  (testing "unknown field also doesn't leak when no FK-reachable table has the column"
     (let [r (resolve.mp/import-resolver mp-with-fk)]
       (try
         (resolve/import-field-fk r ["Sample" "PUBLIC" "ORDERS" "NOT_ANYWHERE"])

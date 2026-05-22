@@ -37,13 +37,10 @@
         index, an in-memory test fixture, or a snapshot) can be supplied to make import usable
         without an application database."
   (:require
-   [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [potemkin.types :as p.types]
    [toucan2.core :as t2]))
@@ -68,125 +65,26 @@
                                           :name     #{table-name}})
        (filter #(= (:schema %) schema))))
 
-(defn- fqn [t]
-  (str (:schema t) "." (:name t)))
-
-(defn- tokenize
-  "Split `s` into lower-case tokens on non-alphanumeric boundaries. Filters tokens shorter than
-  3 chars and normalizes trailing `s` (crude plural → singular: `cards` → `card`, `orders` →
-  `order`) so that `fct_cards` and `int_brex_card_dim` share the token `card`."
-  [s]
-  (when s
-    (into #{}
-          (comp (map (fn [tok]
-                       (let [lc (u/lower-case-en tok)]
-                         (cond-> lc
-                           (and (> (count lc) 3) (str/ends-with? lc "s"))
-                           (subs 0 (dec (count lc)))))))
-                (filter #(>= (count %) 3)))
-          (str/split s #"[^A-Za-z0-9]+"))))
-
-(defn- candidate-score
-  "Score a table against `needle-tokens` and optional `preferred-schema`. Higher = closer match.
-
-  Token-level Jaccard on `(schema, name)` tokens (so `int_brex_card_dim` lights up for
-  `fct_cards` via the shared `card` token). Tables in the preferred schema get a fixed
-  boost so that - when the LLM got the schema right but invented the table name - the real
-  sibling tables surface first."
-  [table needle-tokens preferred-schema]
-  (let [table-tokens (into (tokenize (:schema table))
-                           (tokenize (:name table)))
-        overlap      (count (set/intersection needle-tokens table-tokens))
-        schema-boost (if (and preferred-schema (= (:schema table) preferred-schema)) 1 0)]
-    (+ (* 10 overlap) schema-boost)))
-
-(defn- substring-table-candidates
-  "Rank up to 5 tables that plausibly match `needle` given the user wrote `preferred-schema`.
-  Primary signal: token-level overlap (plural-normalized). Secondary: same-schema boost.
-  Fallback: raw substring match for the single-word / no-underscore case.
-
-  Returns a vector of `\"schema.name\"` strings - LLM-friendly and short enough to inline in
-  the error message."
-  [all-tables needle preferred-schema]
-  (when (seq needle)
-    (let [needle-tokens (tokenize needle)
-          token-hits    (->> all-tables
-                             (keep (fn [t]
-                                     (let [s (candidate-score t needle-tokens preferred-schema)]
-                                       (when (pos? s) [s t]))))
-                             (sort-by (fn [[s t]] [(- s) (count (:name t))]))
-                             (take 5)
-                             (mapv (comp fqn second)))]
-      (if (seq token-hits)
-        token-hits
-        ;; Fallback: raw substring (handles tables with single-word names and no `_`).
-        (let [needle-lc (u/lower-case-en needle)]
-          (->> all-tables
-               (filter (fn [t]
-                         (when-let [n (:name t)]
-                           (let [n-lc (u/lower-case-en n)]
-                             (or (str/includes? n-lc needle-lc)
-                                 (str/includes? needle-lc n-lc))))))
-               (sort-by #(count (:name %)))
-               (take 5)
-               (mapv fqn)))))))
-
 (defn- unknown-table-ex-info
-  "Build an agent-facing `:unknown-table` / `:unknown-schema` error for a miss on portable FK
+  "Build an agent-facing `:unknown-table` error for a miss on portable FK
   `[db schema name]`.
 
-  The message is tiered so the LLM gets the most specific signal it can act on:
-    1. If `schema` isn't in the database at all → `:unknown-schema` + the real schema list.
-       (Addresses the observed `public` hallucination: Postgres warehouses in Metabase
-       rarely use `public` - real schemas come from domain names like `customerio_data`.)
-    2. If a table named `name` exists in _other_ schemas → `:unknown-table` naming them.
-    3. Otherwise → `:unknown-table` with up to 5 substring candidates."
-  [metadata-provider [path-db-name path-schema path-table-name :as path]]
-  (let [all-tables (lib.metadata.protocols/tables metadata-provider)
-        schemas    (->> all-tables (map :schema) (remove nil?) distinct sort)
-        same-name  (filter #(= (:name %) path-table-name) all-tables)]
-    (cond
-      ;; Case 1: schema isn't in the DB at all (and we know what a schema looks like
-      ;; in this DB - i.e. the DB has any non-nil schema).
-      (and (some? path-schema)
-           (seq schemas)
-           (not (contains? (set schemas) path-schema)))
-      (ex-info (tru "No schema {0} in database {1}. Available schemas: {2}. Do not invent schema names; pick one from this list."
-                    (pr-str path-schema)
-                    (pr-str path-db-name)
-                    (str/join ", " schemas))
-               {:status-code      400
-                :error            :unknown-schema
-                :agent-error?     true
-                :path             path
-                :available-schemas (vec schemas)})
+  Deliberately does NOT enumerate schemas, sibling tables, or fuzzy candidates. The metadata
+  provider here is un-sandboxed (it exposes every table in the warehouse regardless of the
+  caller's data perms), and any string included in this ex-info message is relayed verbatim
+  to the LLM via `:agent-error? true`, and from there to the end user. A sandboxed user who
+  prompts the agent with a hallucinated `source-table:` would otherwise receive a list of
+  schemas / tables they cannot otherwise see.
 
-      ;; Case 2: there IS a table by that name, just in different schema(s).
-      (seq same-name)
-      (ex-info (tru "No table {0} in database {1}. A table named {2} does exist in: {3}. Use one of those fully-qualified names (or pick a different base table)."
-                    (pr-str path)
-                    (pr-str path-db-name)
-                    (pr-str path-table-name)
-                    (str/join ", " (map fqn same-name)))
-               {:status-code  400
-                :error        :unknown-table
-                :agent-error? true
-                :path         path
-                :candidates   (mapv fqn same-name)})
-
-      ;; Case 3: fuzzy / substring candidates on name (boosted by same-schema).
-      :else
-      (let [subs (substring-table-candidates all-tables path-table-name path-schema)]
-        (ex-info (tru "No table found matching portable FK {0}.{1}"
-                      (pr-str path)
-                      (if (seq subs)
-                        (str " Closest tables in this database: " (str/join ", " subs) ".")
-                        ""))
-                 {:status-code  400
-                  :error        :unknown-table
-                  :agent-error? true
-                  :path         path
-                  :candidates   (vec subs)})))))
+  The LLM can still self-correct in one turn by calling `entity_details` on the parent
+  database; the message points it at that path."
+  [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
+  (ex-info (tru "No table found matching portable FK {0}. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
+                (pr-str path))
+           {:status-code  400
+            :error        :unknown-table
+            :agent-error? true
+            :path         path}))
 
 (defn- find-table
   "Resolve `[db-name, schema, table-name]` to a `:metadata/table` or throw with context.
@@ -217,8 +115,6 @@
                        :path         path
                        :candidates   (mapv (juxt :schema :name :id) candidates)})))))
 
-(declare outbound-fks-from-table)
-
 (defn- find-field
   "Resolve a field path `[db schema table field …]` to a `:metadata/column` or throw with context.
 
@@ -235,50 +131,21 @@
         columns    (lib.metadata.protocols/metadatas-for-table metadata-provider
                                                                :metadata/column
                                                                (:id table-meta))
-        ;; For root-level "column does not exist" errors, offer a hint if the same
-        ;; column name lives on an FK-reachable table - LLM typically guesses
-        ;; `[db, schema, <source-table>, name]` when it actually wants
-        ;; `[db, schema, <fk-target-table>, name]` via an implicit join. Surfacing the
-        ;; candidate path lets the LLM self-correct in one turn instead of giving up.
-        fk-field-hints
-        (fn [segment]
-          (try
-            (->> (outbound-fks-from-table metadata-provider (:id table-meta))
-                 (keep (fn [{:keys [target-table-id]}]
-                         (when-let [tgt-tbl (lib.metadata.protocols/table metadata-provider target-table-id)]
-                           (let [tgt-cols (lib.metadata.protocols/metadatas-for-table
-                                           metadata-provider :metadata/column target-table-id)]
-                             (when (some #(and (= (:name %) segment)
-                                               (nil? (:parent-id %)))
-                                         tgt-cols)
-                               [(db-name metadata-provider)
-                                (:schema tgt-tbl)
-                                (:name tgt-tbl)
-                                segment])))))
-                 (take 5)
-                 vec)
-            (catch Exception _ [])))
+        ;; Deliberately do NOT enumerate FK-linked tables that happen to carry the same
+        ;; column name. The metadata provider is un-sandboxed, the `:agent-error?` flag
+        ;; relays this message verbatim to the user, and a leaked FK-candidate path would
+        ;; reveal table names the caller may not be permitted to see. The LLM can recover
+        ;; by calling `entity_details` on the parent table to list its columns.
         unknown-field-ex
         (fn [segment]
-          (let [hints (fk-field-hints segment)
-                base  (tru "No column {0} on table {1}.{2}.{3}."
-                           (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
-                msg   (if (seq hints)
-                        (str base
-                             " "
-                             (tru "It exists on FK-linked tables: {0}."
-                                  (str/join ", " (map pr-str hints)))
-                             " "
-                             (tru "If you meant the related field, use that full path - the query processor will fill in the implicit join via the foreign key."))
-                        base)]
-            (ex-info msg
-                     (cond-> {:status-code   400
-                              :error         :unknown-field
-                              :path          full-path
-                              :segment       segment
-                              :table-id      (:id table-meta)
-                              :agent-error?  true}
-                       (seq hints) (assoc :fk-candidates hints)))))
+          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `entity_details` on this table to list its columns."
+                        (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
+                   {:status-code  400
+                    :error        :unknown-field
+                    :path         full-path
+                    :segment      segment
+                    :table-id     (:id table-meta)
+                    :agent-error? true}))
         ;; Walk nested fields parent-first. At each level, match `:name` and `:parent-id`.
         walk       (fn walk [parent-id [segment & more]]
                      (let [candidates (filter #(and (= (:name %) segment)
@@ -366,8 +233,13 @@
     "Return the segment row for the given numeric id, or nil. Same contract as
     `measure-by-id`."))
 
-(def app-db-content-store
-  "Default [[ContentStore]] backed by the Metabase application database via
+(def unchecked-app-db-content-store
+  "**Unchecked.** No `api/read-check`; appropriate for serdes import / background tasks /
+  tests / dev REPL only. **Any HTTP or tool path that runs under an authenticated user must
+  wrap this with `metabase.metabot.tools.shared.content-store/read-checked`** (or use
+  `shared.content-store/default-store`, which is the wrapped form).
+
+  Default [[ContentStore]] backed by the Metabase application database via
   `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
   different store implementation when running without one (checker, isolated tests).
 
@@ -659,9 +531,11 @@
   "Build a `SerdesImportResolver` backed by `metadata-provider` (warehouse metadata) and
   `content-store` (Metabase content / assets).
 
-  The 1-arity form uses [[app-db-content-store]] - i.e. it goes through `serdes/lookup-by-id`
-  for content lookups and therefore requires the application database. Pass an explicit
-  `content-store` to use this resolver without an app DB (checker, in-memory tests, etc.).
+  The 1-arity form uses [[unchecked-app-db-content-store]] - i.e. it goes through
+  `serdes/lookup-by-id` for content lookups and therefore requires the application database.
+  **Note the \"unchecked\" prefix:** the default store does NOT apply `api/read-check`. HTTP /
+  tool paths that run under an authenticated user must pass an explicit content-store wrapped
+  with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
     * `import-table-fk`, `import-field-fk` (Phase 1).
@@ -671,7 +545,7 @@
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
-   (import-resolver metadata-provider app-db-content-store))
+   (import-resolver metadata-provider unchecked-app-db-content-store))
   ([metadata-provider content-store]
    (reify resolve/SerdesImportResolver
      (import-fk       [_ eid model]
@@ -708,7 +582,7 @@
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
-   (export-resolver metadata-provider app-db-content-store))
+   (export-resolver metadata-provider unchecked-app-db-content-store))
   ([metadata-provider content-store]
    (reify resolve/SerdesExportResolver
      (export-fk       [_ id model]

@@ -325,3 +325,28 @@
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 99999}]}]
       (is (nil? (repr.resolve/try-export-query mp bogus))))))
+
+(deftest export-query-3-arity-threads-content-store-test
+  (testing (str "export-query / try-export-query accept an explicit content-store as their "
+                "third argument. The store is used for Card / Measure / Segment id → "
+                "entity_id lookups (the N1 chokepoint). Pass an erroring store and the "
+                "export-side `:export-fk` lookups should fail through that store, not "
+                "through the default unchecked one. We use a basic 1-stage query (no card "
+                "ref) so we can prove the 3-arity wiring works regardless of whether the "
+                "particular query needs a content-store lookup.")
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}
+          q (repr.resolve/resolve-query mp parsed)]
+      (testing "3-arity export-query mirrors 2-arity for queries with no Card / Measure / Segment refs"
+        (is (= (repr.resolve/export-query mp q)
+               (repr.resolve/export-query mp q
+                                          @(requiring-resolve
+                                            'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)))))
+      (testing "3-arity try-export-query likewise"
+        (is (= (repr.resolve/try-export-query mp q)
+               (repr.resolve/try-export-query mp q
+                                              @(requiring-resolve
+                                                'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store))))))))

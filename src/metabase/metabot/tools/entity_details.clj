@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
@@ -60,7 +61,7 @@
                (when definition
                  (try
                    (let [mp       (lib-be/application-database-metadata-provider (:database definition))
-                         exported (repr.resolve/export-query mp definition)]
+                         exported (repr.resolve/export-query mp definition shared.content-store/default-store)]
                      (get-in exported ["stages" 0 (name definition-key)]))
                    (catch Exception e
                      (log/warn e "Failed to export measure/segment definition to portable form"
@@ -393,7 +394,8 @@
           :query_json (when dataset-query
                         (repr.resolve/try-export-query
                          metadata-provider
-                         (lib/query metadata-provider (lib-be/normalize-query dataset-query))))
+                         (lib/query metadata-provider (lib-be/normalize-query dataset-query))
+                         shared.content-store/default-store))
           :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)

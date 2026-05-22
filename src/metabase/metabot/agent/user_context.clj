@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
@@ -266,7 +267,7 @@
               database-id (:database normalized)
               mp (when database-id
                    (lib-be/application-database-metadata-provider database-id))
-              exported (some->> mp (#(repr.resolve/try-export-query % normalized)))]
+              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
           (if exported
             (str "```json\n" (json/encode exported {:pretty true}) "\n```")
             (u/pprint-to-str normalized)))

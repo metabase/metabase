@@ -297,7 +297,7 @@
                     repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
                     resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
                     mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
-                    cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/app-db-content-store)
+                    cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
                     portable  (repr fresh-query)
                     repaired  (repair mp portable cs)
                     resolved  (resolve-q mp repaired cs)]
@@ -334,7 +334,7 @@
                 repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
                 resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
                 mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
-                cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/app-db-content-store)
+                cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
                 portable  (repr fresh-query)
                 repaired  (repair mp portable cs)
                 resolved  (resolve-q mp repaired cs)]

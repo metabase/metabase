@@ -80,7 +80,7 @@
   Throws with informative ex-info on missing / ambiguous FK lookups (via the resolver) or on
   lib.schema normalization failures."
   ([metadata-provider parsed-repr]
-   (resolve-query metadata-provider parsed-repr resolve.mp/app-db-content-store))
+   (resolve-query metadata-provider parsed-repr resolve.mp/unchecked-app-db-content-store))
   ([metadata-provider parsed-repr content-store]
    (let [kw-form  (keywordize-query parsed-repr)
          resolver (resolve.mp/import-resolver metadata-provider content-store)
@@ -126,22 +126,36 @@
 
   This is the inverse of [[resolve-query]] for the agent/tool output path: table/field/card IDs
   are exported to portable FK paths / entity_ids, lib's normalized keyworded form is converted
-  back to the string-keyed YAML representation, and internal `:lib/metadata` is dropped."
-  [metadata-provider pmbql-query]
-  (let [resolver (resolve.mp/export-resolver metadata-provider)]
-    (->> pmbql-query
-         (resolve/export-mbql resolver)
-         portable-repr-form)))
+  back to the string-keyed YAML representation, and internal `:lib/metadata` is dropped.
+
+  The optional `content-store` is used for Metabase-content lookups (Card / Measure / Segment
+  by id) on the export side. Agent-facing callers should pass a permission-aware store —
+  typically `metabase.metabot.tools.shared.content-store/default-store` — so that
+  entity_ids of referenced cards / measures / segments do not leak through the export to a
+  user who can't read them. The 2-arity form keeps the default app-DB-backed unchecked
+  resolver for non-HTTP / test callers."
+  ([metadata-provider pmbql-query]
+   (export-query metadata-provider pmbql-query resolve.mp/unchecked-app-db-content-store))
+  ([metadata-provider pmbql-query content-store]
+   (let [resolver (resolve.mp/export-resolver metadata-provider content-store)]
+     (->> pmbql-query
+          (resolve/export-mbql resolver)
+          portable-repr-form))))
 
 (defn try-export-query
   "Best-effort wrapper around [[export-query]] that returns `nil` instead of throwing when the
   export pipeline fails or `pmbql-query` is nil/blank. Used in LLM context-building paths where
   an unusual or partially-broken existing `dataset_query` should gracefully drop out of the
-  payload rather than break the whole tool response."
-  [metadata-provider pmbql-query]
-  (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
-    (try
-      (export-query metadata-provider pmbql-query)
-      (catch Exception e
-        (log/warn e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
-        nil))))
+  payload rather than break the whole tool response.
+
+  Like [[export-query]], the 3-arity form accepts an explicit `content-store`; agent callers
+  pass `metabase.metabot.tools.shared.content-store/default-store` for read-checking."
+  ([metadata-provider pmbql-query]
+   (try-export-query metadata-provider pmbql-query resolve.mp/unchecked-app-db-content-store))
+  ([metadata-provider pmbql-query content-store]
+   (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
+     (try
+       (export-query metadata-provider pmbql-query content-store)
+       (catch Exception e
+         (log/warn e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
+         nil)))))

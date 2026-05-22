@@ -11,10 +11,10 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
-   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
@@ -114,40 +114,12 @@
     (when (string? eid) eid)))
 
 (def ^:private permission-aware-content-store
-  "ContentStore for agent query construction.
-
-  The generic serdes resolver can look up content (cards, measures, segments) by portable id
-  without checking the current user. Agent-authored representations run inside an
-  authenticated request/tool context, so every lookup (source-card, metric / measure
-  aggregation, segment filter, etc.) goes through the normal `api/read-check` path. Unknown
-  ids still return nil so the resolver can produce its existing `:unknown-…` agent errors.
-
-  Gated on `serdes.resolve/entity-id?` for the same reason as
-  [[resolve.mp/app-db-content-store]]: a malformed (non-NanoID) value from the LLM would
-  otherwise trigger a full-table scan via `find-by-identity-hash`."
-  (reify resolve.mp/ContentStore
-    (card-by-entity-id [_ entity-id]
-      (when (serdes.resolve/entity-id? entity-id)
-        (some-> (serdes/lookup-by-id 'Card entity-id)
-                api/read-check)))
-    (measure-by-entity-id [_ entity-id]
-      (when (serdes.resolve/entity-id? entity-id)
-        (some-> (serdes/lookup-by-id 'Measure entity-id)
-                api/read-check)))
-    (segment-by-entity-id [_ entity-id]
-      (when (serdes.resolve/entity-id? entity-id)
-        (some-> (serdes/lookup-by-id 'Segment entity-id)
-                api/read-check)))
-    ;; The export direction doesn't need a permission check — the agent already constructed
-    ;; this query (and passed read-checks on the way in); we're just turning numeric ids back
-    ;; into portable entity_ids for the LLM-facing :query-json output. Delegate to a simple
-    ;; toucan lookup.
-    (measure-by-id [_ measure-id]
-      (when measure-id
-        (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
-    (segment-by-id [_ segment-id]
-      (when segment-id
-        (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id)))))
+  "ContentStore for agent query construction. Alias for
+  [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
+  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
+  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
+  avoid a full-table scan via `find-by-identity-hash`."
+  shared.content-store/default-store)
 
 (defn- check-first-stage-source-table-query-permissions!
   "Ensure the current user can query the table named by `stages[0].source-table`.
@@ -299,7 +271,7 @@
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
-            exported-repr (repr.resolve/export-query mp pmbql-query)
+            exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id

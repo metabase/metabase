@@ -1463,20 +1463,33 @@
     @found?))
 
 (defn- aggregation-uuid->column-name
-  "Build a `{uuid → column-name}` map for the stage's aggregation vector. Returns `nil` if
-  any aggregation fails to produce a column name - signal to the caller that auto-split
-  isn't safe and a diagnostic should be emitted instead."
+  "Build a `{uuid → column-name}` map for the stage's aggregation vector. Returns `nil` when
+  auto-split isn't safe — the caller emits the `:post-agg-filter-needs-multi-stage`
+  diagnostic and the LLM must author two stages explicitly.
+
+  Two unsafe conditions:
+
+  * Any aggregation fails to produce a column name (e.g. a `metric` head whose name needs
+    the metadata provider, or a custom head not in the static table).
+
+  * Two aggregations produce the **same** output column name. lib would dedupe these via
+    `unique-name-generator` (`sum` / `sum_2` / …) which depends on field order; our static
+    table can't replicate that without recreating the generator. Picking either name in
+    the cross-stage `[\"field\" {} <name>]` rewrite would silently filter against the
+    wrong column."
   [aggs]
-  (reduce
-   (fn [acc agg]
-     (let [uuid (get-in agg [1 "lib/uuid"])]
-       (if (and (string? uuid) (not= uuid ""))
-         (if-let [col-name (aggregation-clause-column-name agg)]
-           (assoc acc uuid col-name)
-           (reduced nil))
-         acc)))
-   {}
-   aggs))
+  (let [m (reduce
+           (fn [acc agg]
+             (let [uuid (get-in agg [1 "lib/uuid"])]
+               (if (and (string? uuid) (not= uuid ""))
+                 (if-let [col-name (aggregation-clause-column-name agg)]
+                   (assoc acc uuid col-name)
+                   (reduced nil))
+                 acc)))
+           {}
+           aggs)]
+    (when (and m (= (count m) (count (set (vals m)))))
+      m)))
 
 (defn- rewrite-agg-refs-to-cross-stage-fields
   "Postwalk: replace every `[aggregation, opts, <uuid>]` clause whose uuid is in
@@ -1498,9 +1511,16 @@
    form))
 
 (defn- split-post-agg-filter-stage
-  "Detect post-agg-filter shape in `stage`. Return a vector of stages: `[stage]` if no
-  split is needed, or `[stage' new-stage]` if the stage was split. Throws `:agent-error?`
-  ex-info when split is required but column-names can't be derived."
+  "Detect post-agg-filter shape in `stage`. Return `[stage]` if no split is needed, or
+  `[stage' new-stage]` if the stage was split. Throws `:agent-error?` ex-info when split is
+  required but unsafe to perform automatically.
+
+  Auto-fix is intentionally narrow: it moves the offending filter(s) into a second stage and
+  rewrites their agg-refs to cross-stage `[\"field\" {} \"<col-name>\"]` clauses. It does
+  NOT move `order-by` / `limit` / `fields` — those frequently reference pre-aggregation
+  columns that don't survive the split, and silently relocating them produces either a
+  hard-to-diagnose 'no matching field' error or, worse, a different-row-count query. When
+  any of those keys is present we refuse and ask the LLM to author two stages explicitly."
   [stage]
   (let [aggs              (get stage "aggregation")
         same-stage-uuids  (collect-stage-agg-uuids stage)]
@@ -1509,27 +1529,32 @@
       (let [filters             (get stage "filters")
             offending-filter?   (fn [f] (form-references-stage-agg? f same-stage-uuids))
             offending-filters   (when (vector? filters) (filterv offending-filter? filters))]
-        (if (empty? offending-filters)
+        (cond
+          (empty? offending-filters)
           [stage]
+
+          (or (seq (get stage "order-by"))
+              (some? (get stage "limit"))
+              (seq (get stage "fields")))
+          (throw (ex-info
+                  (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. pMBQL requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
+                  {:agent-error? true
+                   :error        :post-agg-filter-with-trailing-clauses
+                   :stage        stage}))
+
+          :else
           (if-let [uuid->col (aggregation-uuid->column-name aggs)]
-            (let [keep-filters    (vec (remove offending-filter? filters))
-                  rewrite         #(rewrite-agg-refs-to-cross-stage-fields % uuid->col)
-                  moved-filters   (mapv rewrite offending-filters)
-                  moved-order-by  (some->> (get stage "order-by") (mapv rewrite))
-                  moved-limit     (get stage "limit")
-                  moved-fields    (some->> (get stage "fields") (mapv rewrite))
-                  s0              (cond-> stage
-                                    true                  (assoc "filters" keep-filters)
-                                    (empty? keep-filters) (dissoc "filters")
-                                    true                  (dissoc "order-by" "limit" "fields"))
-                  s1              (cond-> {"lib/type" "mbql.stage/mbql"
-                                           "filters"  moved-filters}
-                                    (seq moved-order-by) (assoc "order-by" moved-order-by)
-                                    (some? moved-limit)  (assoc "limit" moved-limit)
-                                    (seq moved-fields)   (assoc "fields" moved-fields))]
+            (let [keep-filters  (vec (remove offending-filter? filters))
+                  rewrite       #(rewrite-agg-refs-to-cross-stage-fields % uuid->col)
+                  moved-filters (mapv rewrite offending-filters)
+                  s0            (cond-> stage
+                                  true                  (assoc "filters" keep-filters)
+                                  (empty? keep-filters) (dissoc "filters"))
+                  s1            {"lib/type" "mbql.stage/mbql"
+                                 "filters"  moved-filters}]
               [s0 s1])
             (throw (ex-info
-                    (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). pMBQL requires this in a separate stage. Auto-fix could not derive the aggregation''s output column name (likely a `metric` reference or unknown head); please refactor to multi-stage manually and reference the column via a cross-stage `field` clause whose third slot is the column''s output name.")
+                    (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). pMBQL requires this in a separate stage. Auto-fix is unsafe here — either an aggregation''s output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names.")
                     {:agent-error? true
                      :error        :post-agg-filter-needs-multi-stage
                      :stage        stage}))))))))
@@ -2344,7 +2369,7 @@
   agent callers pass a permission-aware store so source-card/metric metadata is not read via
   the default app-DB resolver."
   ([mp parsed]
-   (repair mp parsed resolve.mp/app-db-content-store))
+   (repair mp parsed resolve.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
    (-> parsed
        normalize-shape*

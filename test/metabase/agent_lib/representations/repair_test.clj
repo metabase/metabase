@@ -2075,8 +2075,11 @@
         (is (= [[">" {} ["field" {} "count"] 10]]
                (get-in stages [1 "filters"])))))))
 
-(deftest split-post-agg-moves-order-by-and-limit-test
-  (testing "when split happens, order-by and limit move to the new stage so semantics are preserved"
+(deftest split-post-agg-refuses-when-order-by-present-test
+  (testing (str "post-agg filter + `order-by` in the same stage is refused with a clean "
+                ":agent-error? — auto-relocating ordering is unsafe (the order-by may "
+                "reference a pre-agg column that doesn't survive the split, and forcing the "
+                "LLM to author two stages explicitly preserves the user's intent)")
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -2084,18 +2087,69 @@
                           "aggregation"  [["count" {}]]
                           "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
                           "filters"      [[">" {} ["aggregation" {} 0] 10]]
-                          "order-by"     [["desc" {} ["aggregation" {} 0]]]
-                          "limit"        5}]}
-          stages (get (repair/repair trivial-mp q) "stages")]
-      (is (= 2 (count stages)))
-      (testing "order-by/limit removed from stage 0"
-        (is (not (contains? (nth stages 0) "order-by")))
-        (is (not (contains? (nth stages 0) "limit"))))
-      (testing "order-by moved to stage 1 with cross-stage rewrite"
-        (is (= [["desc" {} ["field" {} "count"]]]
-               (get-in stages [1 "order-by"]))))
-      (testing "limit moved to stage 1 unchanged"
-        (is (= 5 (get-in stages [1 "limit"])))))))
+                          "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (true? (:agent-error? data)))
+            (is (= :post-agg-filter-with-trailing-clauses (:error data)))
+            (testing "diagnostic names the offending stage shape"
+              (is (re-find #"order-by" (ex-message e))))))))))
+
+(deftest split-post-agg-refuses-when-limit-present-test
+  (testing "post-agg filter + bare `limit` in the same stage is also refused"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                          "limit"        5}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
+
+(deftest split-post-agg-refuses-when-fields-present-test
+  (testing "post-agg filter + `fields` in the same stage is also refused"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "fields"       [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
+
+(deftest split-post-agg-refuses-when-raw-column-order-by-test
+  (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
+                "as silent-intent-destruction in the prior implementation: TOTAL doesn't "
+                "survive aggregation and naively moving it to stage 1 produced either a "
+                "'no matching field' error or a silently-wrong row set. Now refused.")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100]
+                                          [">" {} ["aggregation" {} 0] 1]]
+                          "order-by"     [["desc" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                          "limit"        10}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
 (deftest split-post-agg-uses-name-override-when-present-test
   (testing "an aggregation with `name` override produces a cross-stage ref by that name"
@@ -2112,7 +2166,7 @@
              (get-in stages [1 "filters"]))))))
 
 (deftest split-post-agg-multiple-aggregations-test
-  (testing "with multiple aggregations, each gets its own column-name mapping"
+  (testing "with multiple aggregations of DIFFERENT heads, each gets its own column-name mapping"
     (let [q {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -2127,6 +2181,57 @@
       (is (= [[">" {} ["field" {} "count"] 10]
               [">" {} ["field" {} "sum"]   100]]
              (get-in stages [1 "filters"]))))))
+
+(deftest split-post-agg-refuses-on-duplicate-column-names-test
+  (testing (str "two `sum` aggregations on different fields would both map to the static "
+                "column name \"sum\"; lib's `unique-name-generator` would dedup to "
+                "`sum` / `sum_2` based on field order, which our static table cannot "
+                "replicate without recreating the generator. We refuse the split with a "
+                "clean diagnostic rather than emit a cross-stage `[\"field\" {} \"sum\"]` "
+                "ref that filters against whichever column happens to come first.")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                          ["sum" {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"] 100]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)
+                msg  (ex-message e)]
+            (is (true? (:agent-error? data)))
+            (is (= :post-agg-filter-needs-multi-stage (:error data)))
+            (testing "message names the duplicate-column-name failure mode"
+              (is (re-find #"same column name" msg)))
+            (testing "message offers the `name` opts override as a remedy"
+              (is (re-find #"name" msg)))))))))
+
+(deftest split-post-agg-same-head-with-name-overrides-test
+  (testing (str "explicit `name` opts override resolves the duplicate-name collision: the "
+                "user gets the split they intended.")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+                                                  "name"     "sum_total"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                          ["sum" {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+                                                  "name"     "sum_tax"}
+                                           ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [[">" {} ["aggregation" {} "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"] 100]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (= 2 (count stages)))
+      (testing "cross-stage ref correctly points at sum_tax (the filtered uuid), NOT sum_total"
+        (is (= [[">" {} ["field" {} "sum_tax"] 100]]
+               (get-in stages [1 "filters"])))))))
 
 (deftest split-post-agg-metric-emits-diagnostic-test
   (testing "metric aggregation we can't auto-resolve raises clean :agent-error?"
