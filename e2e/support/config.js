@@ -102,6 +102,9 @@ const defaultConfig = {
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
+    // Lets @cypress/code-coverage/support skip its hooks entirely on
+    // uninstrumented runs, instead of logging a warning on every spec.
+    coverage: isInstrumented,
   },
 
   allowCypressEnv: false,
