@@ -98,7 +98,7 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
@@ -113,7 +113,7 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
@@ -353,6 +353,46 @@
          {database-id-1
           {:perms/manage-database :no}}}))))
 
+(deftest data-permissions-graph-view-data-collapse-test
+  (testing "data-permissions-graph collapses uniform table-level :perms/view-data values to a db-level scalar (#73520)"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database         {db-id :id}    {}
+                     :model/Table            {t1 :id}       {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {t2 :id}       {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {t3 :id}       {:db_id db-id :schema "OTHER"}]
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (testing "all tables uniformly :blocked across one schema collapses to scalar"
+          (data-perms/set-table-permissions! group-id :perms/view-data {t1 :blocked t2 :blocked})
+          (is (= :blocked
+                 (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
+                         [group-id db-id :perms/view-data]))))
+        (testing "all tables uniformly :blocked across multiple schemas collapses to scalar"
+          (data-perms/set-table-permissions! group-id :perms/view-data {t3 :blocked})
+          (is (= :blocked
+                 (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
+                         [group-id db-id :perms/view-data]))))
+        (testing "mixed values within a schema do not collapse"
+          (data-perms/set-table-permissions! group-id :perms/view-data {t2 :unrestricted})
+          (is (= {"PUBLIC" {t1 :blocked t2 :unrestricted}
+                  "OTHER" {t3 :blocked}}
+                 (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
+                         [group-id db-id :perms/view-data]))))
+        (testing "uniform within each schema but different across schemas does not collapse"
+          (data-perms/set-table-permissions! group-id :perms/view-data {t2 :blocked})
+          (data-perms/set-table-permissions! group-id :perms/view-data {t3 :unrestricted})
+          (is (= {"PUBLIC" {t1 :blocked t2 :blocked}
+                  "OTHER" {t3 :unrestricted}}
+                 (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
+                         [group-id db-id :perms/view-data]))))
+        (testing "other granular perm types are not collapsed"
+          (t2/delete! :model/DataPermissions :group_id group-id)
+          (data-perms/set-table-permissions! group-id :perms/create-queries {t1 :no t2 :no t3 :no})
+          (is (= {"PUBLIC" {t1 :no t2 :no}
+                  "OTHER" {t3 :no}}
+                 (get-in (data-perms.graph/data-permissions-graph :group-id group-id)
+                         [group-id db-id :perms/create-queries]))))))))
+
 ;; ------------------------------ API Graph Tests ------------------------------
 
 (deftest ellide?-test
@@ -436,6 +476,21 @@
         (data-perms/set-table-permission! group (mt/id :categories) :perms/create-queries :query-builder)
         (is (= {(mt/id :categories) :query-builder, (mt/id :venues) :query-builder}
                (test-query-graph group)))))))
+
+(deftest api-graph-uniform-blocked-not-granular-test
+  (testing "api-graph elides :view-data when all tables are uniformly :blocked, instead of returning a map (#73520)"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Database         {db-id :id}    {}
+                     :model/Table            {t1 :id}       {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {t2 :id}       {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {t3 :id}       {:db_id db-id :schema "OTHER"}]
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permissions! group-id :perms/view-data {t1 :blocked t2 :blocked t3 :blocked})
+        (let [api-perms (get-in (data-perms.graph/api-graph :group-id group-id :db-id db-id)
+                                [:groups group-id db-id])]
+          (testing ":view-data is elided (the FE infers :blocked from absence) — not surfaced as a granular map"
+            (is (not (contains? api-perms :view-data)))))))))
 
 (deftest graph-set-blocked-permissions-for-table-test
   (let [view-data (fn view-data [group]

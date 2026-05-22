@@ -20,12 +20,15 @@
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
+;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
+;; and re-enable H2 in the extract (production keeps it filtered).
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -1507,18 +1510,92 @@
         (is (= (:name card)
                (t2/select-one-fn :name :model/Card :id (:id card)))))
 
-      (testing "Partial load does not change the database"
+      (testing "Partial load commits successful entities; failed entity does not persist"
         (t2/update! :model/Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
         (let [load-update! serdes/load-update!]
           (with-redefs [serdes/load-update! (fn [model adjusted local]
-                                              ;; Collection is loaded first
+                                              ;; Collection is loaded first, Card fails
                                               (if (= model "Card")
                                                 (throw (ex-info "oops, error" {}))
                                                 (load-update! model adjusted local)))]
             (is (thrown? clojure.lang.ExceptionInfo
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
-            (is (= (str "qwe_" (:name coll))
-                   (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
+            ;; Collection loaded successfully in its own transaction — committed despite Card failure
+            (is (= (:name coll)
+                   (t2/select-one-fn :name :model/Collection :id (:id coll))))
+            ;; Card failed — retains its pre-load value
+            (is (= (str "qwe_" (:name card))
+                   (t2/select-one-fn :name :model/Card :id (:id card))))))))))
+
+(deftest transient-db-error-retry-test
+  (testing "Import survives a transient deadlock on a single entity (issue #74412)"
+    (mt/with-empty-h2-app-db!
+      (let [coll       (ts/create! :model/Collection :name "coll")
+            card       (ts/create! :model/Card :name "card" :collection_id (:id coll))
+            serialized (atom {})]
+        (reset! serialized (->> (serdes.extract/extract {:no-settings   true
+                                                         :no-data-model true
+                                                         :targets       [["Collection" (:id coll)]]})
+                                vec))
+        (testing "A transient deadlock on one entity is retried and the import succeeds"
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-retry"})
+          (let [call-count   (atom 0)
+                load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                (when (= model "Card")
+                                                  (swap! call-count inc)
+                                                  (when (= 1 @call-count)
+                                                    ;; Simulate a deadlock: H2 error code 40001, PG SQL state 40P01.
+                                                    ;; Use H2 codes since tests run against H2 appdb.
+                                                    (throw (ex-info "load-update! failed"
+                                                                    {}
+                                                                    (java.sql.SQLException.
+                                                                     "Deadlock detected"
+                                                                     "40001"  ; SQL state
+                                                                     40001))))) ; H2 error code
+                                                (load-update! model adjusted local))]
+              (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+                  "Import should succeed after retrying the deadlocked entity")
+              (is (= (:name card)
+                     (t2/select-one-fn :name :model/Card :id (:id card)))
+                  "Card should be updated to the serialized value after retry")
+              (is (= 2 @call-count)
+                  "Card load-update! should have been called twice (first attempt deadlocked, second succeeded)"))))
+
+        (testing "Non-transient errors propagate immediately without retry"
+          (let [call-count   (atom 0)
+                load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                (when (= model "Card")
+                                                  (swap! call-count inc)
+                                                  (throw (ex-info "constraint violation" {})))
+                                                (load-update! model adjusted local))]
+              (is (thrown? clojure.lang.ExceptionInfo
+                           (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
+                  "Non-transient error should propagate")
+              (is (= 1 @call-count)
+                  "Should not retry non-transient errors"))))
+
+        (testing "Successful entities are committed even when a later entity fails"
+          (t2/update! :model/Collection {:id (:id coll)} {:name "pre-import"})
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-import"})
+          (let [load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                ;; Collection loads first and succeeds; Card fails
+                                                (if (= model "Card")
+                                                  (throw (ex-info "oops" {}))
+                                                  (load-update! model adjusted local)))]
+              (is (thrown? clojure.lang.ExceptionInfo
+                           (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
+              ;; With per-entity transactions, the Collection commit survives the Card failure.
+              ;; On master (single transaction), the Collection update is rolled back.
+              (is (= (:name coll)
+                     (t2/select-one-fn :name :model/Collection :id (:id coll)))
+                  "Collection should be committed despite later Card failure")
+              (is (= "pre-import"
+                     (t2/select-one-fn :name :model/Card :id (:id card)))
+                  "Card should retain its pre-import value"))))))))
 
 (deftest path-error-data-handles-lookup-failure-test
   (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
@@ -1872,3 +1949,37 @@
                  Exception
                  #"source-only-db|not found|Failed"
                  (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
+
+(deftest table-created-by-transform-load-test
+  (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  transform (ts/create! :model/Transform
+                                        :name "Hello Transform"
+                                        :source {:query {:database (:id db)
+                                                         :type "native"
+                                                         :native {:query "select 'hello' message"}}
+                                                 :type "query"}
+                                        :target {:database (:id db)
+                                                 :type "table"
+                                                 :schema "public"
+                                                 :name "hello_transforms_world"})]
+              (ts/create! :model/Table
+                          :name "hello_transforms_world"
+                          :db_id (:id db)
+                          :schema "public"
+                          :transform_id (:id transform))
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Hello Transform")
+                  table     (t2/select-one :model/Table :name "hello_transforms_world")]
+              (is (some? transform))
+              (is (some? table))
+              (is (= (:id transform) (:transform_id table))))))))))

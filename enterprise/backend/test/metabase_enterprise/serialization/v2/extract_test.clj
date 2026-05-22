@@ -1729,7 +1729,8 @@
                        :model/Collection    {coll2-id :id} {:name "Other Collection"}
                        :model/Collection    {coll3-id :id} {:name "Third Collection"}
                        :model/Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
-                       :model/Database      {db-id :id}    {}
+                       ;; non-H2 engine so the database survives serdes extract filtering
+                       :model/Database      {db-id :id}    {:engine :postgres}
                        :model/Card          {card1-id :id} {:name "Some Card", :database_id db-id}
                        :model/DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        :model/Card          _              {:name          "Dependent Card"
@@ -1822,6 +1823,15 @@
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{} (ids-by-model "Collection" ser)))))))
+
+(deftest skip-h2-databases-test
+  (testing "H2 databases must not be extracted because import rejects them (see GHY-3633)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _h2-db   {:name "H2 DB"        :engine :h2}
+                     :model/Database _non-h2  {:name "Postgres DB"  :engine :postgres}]
+        (let [ser (extract/extract {:no-settings true})]
+          (is (= #{"Postgres DB"} (ids-by-model "Database" ser))
+              "Only non-H2 databases should appear in the extract"))))))
 
 (deftest xray-of-analytics-model-export-test
   (testing "X-rays of analytics models can be exported without errors"
@@ -2346,6 +2356,41 @@
           (testing "transform is extracted"
             (is (= #{transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
+
+(deftest table-with-transform-id-dependency-test
+  (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database
+                           {db-id :id}
+                           {:name "My Database"}
+
+                           :model/Transform
+                           {transform-id :id
+                            transform-eid :entity_id}
+                           {:name "Transform Creating Table"
+                            :entity_id "transformCreatingTblx"
+                            :source {:query {:database db-id
+                                             :type "native"
+                                             :native {:query "select 1 as x"}}
+                                     :type "query"}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "transform_output"}}
+
+                           :model/Table
+                           {table-id :id}
+                           {:name "transform_output"
+                            :db_id db-id
+                            :schema "public"
+                            :transform_id transform-id}]
+          (let [ser (ts/extract-one "Table" table-id)]
+            (testing "transform_id is transformed to entity_id"
+              (is (= transform-eid (:transform_id ser))))
+            (testing "depends on the transform"
+              (is (contains? (set (serdes/dependencies ser))
+                             [{:model "Transform" :id transform-eid}])))))))))
 
 (deftest transform-job-extraction-test
   (testing "TransformJob extraction and serialization"
