@@ -10,7 +10,9 @@
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture])
+  (:import
+   (java.util.concurrent Executors)))
 
 (set! *warn-on-reflection* true)
 
@@ -677,7 +679,8 @@
   [:metabase-metabot/used-tables-extraction-total
    :metabase-metabot/used-tables-extraction-errors
    :metabase-metabot/used-tables-extraction-duration-ms
-   :metabase-metabot/used-tables-extraction-warnings])
+   :metabase-metabot/used-tables-extraction-warnings
+   :metabase-metabot/used-tables-extraction-dropped])
 
 (deftest extraction-metrics-test
   (mt/with-prometheus-system! [_ system]
@@ -711,4 +714,14 @@
           (is (= [] (#'used-tables/extract-used-tables mp 99 parts)))
           (is (= 0.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-warnings
-                                      {:reason :card-missing}))))))))
+                                      {:reason :card-missing})))))
+      (reset!)
+      (testing "record-used-tables! drops the task (counter + warning, no throw) when the executor rejects it"
+        ;; A shutdown executor rejects every submission with RejectedExecutionException (default AbortPolicy),
+        ;; exercising the same drop path as a full bounded queue without having to saturate it.
+        (let [rejecting (doto (Executors/newFixedThreadPool 1) .shutdownNow)]
+          (with-redefs [used-tables/executor (delay rejecting)]
+            (log.capture/with-log-messages-for-level [messages [metabase.metabot.used-tables :warn]]
+              (is (nil? (used-tables/record-used-tables! 7 [])))
+              (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-dropped)))
+              (is (some #(re-find #"queue full" (:message %)) (messages))))))))))

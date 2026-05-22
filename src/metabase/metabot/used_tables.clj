@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ExecutorService ThreadFactory)))
+   (java.util.concurrent ArrayBlockingQueue Callable ExecutorService RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -296,13 +296,21 @@
   immediately after a turn is finalized, and so the work participates in the test's rollback transaction."
   false)
 
+(def ^:private executor-queue-capacity
+  "Max number of extraction tasks allowed to sit in [[executor]]'s queue. Beyond this, new submissions are dropped.
+  256 caps worst-case retained heap in the low hundreds of MiB; the intention is that the queue is normally
+  ~empty (extraction is far faster than turns arrive), and this only kicks in under a regression/stall/abuse."
+  256)
+
 (defonce ^:private executor
-  ;; Small fixed pool of daemon threads, isolated from `metabase.util.quick-task` so a slow extraction can't queue
-  ;; behind table syncs/fingerprinting (or vice versa). Two threads give some headroom for the (usually fast, but
-  ;; potentially slow) BFS+sql parse when several turns finalize at once; rows are keyed by distinct `message_id`, so
-  ;; concurrent inserts don't contend.
-  (delay (Executors/newFixedThreadPool
-          2
+  ;; Small fixed pool of daemon threads. Four threads give headroom for the (usually fast, but potentially slow)
+  ;; BFS+sql parse when several turns finalize at once; rows are keyed by distinct `message_id`, so concurrent inserts
+  ;; don't contend. The queue is bounded; the default `AbortPolicy` throws `RejectedExecutionException` when it's
+  ;; full, which `record-used-tables!` catches to drop the task.
+  (delay (ThreadPoolExecutor.
+          4 4
+          0 TimeUnit/MILLISECONDS
+          (ArrayBlockingQueue. (int executor-queue-capacity))
           (reify ThreadFactory
             (newThread [_ r]
               (doto (Thread. r)
@@ -330,9 +338,17 @@
   and returns immediately. Callers must already have committed the message row so the `message_id` FK is
   valid.
 
+  When the background executor's bounded queue is full, the task is dropped (logged + counted), rather than blocking
+  turn finalization or growing the queue without bound.
+
   Binding [[*run-synchronously?*]] true runs the work inline on the calling thread instead (used in tests)."
   [message-id parts]
   (if *run-synchronously?*
     (extract-and-insert! message-id parts)
-    (.submit ^ExecutorService @executor
-             ^Callable (bound-fn* #(extract-and-insert! message-id parts)))))
+    (try
+      (.submit ^ExecutorService @executor
+               ^Callable (bound-fn* #(extract-and-insert! message-id parts)))
+      (catch RejectedExecutionException _
+        (analytics/inc! :metabase-metabot/used-tables-extraction-dropped)
+        (log/warnf "used-tables extraction queue full (capacity %d); dropping extraction for message %s"
+                   executor-queue-capacity message-id)))))

@@ -649,6 +649,8 @@
    (prometheus/counter :metabase-metabot/used-tables-extraction-warnings
                        {:description "Number of used-table extraction failures caught and logged (may be >1 per invocation)."
                         :labels [:reason]})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-dropped
+                       {:description "Number of used-tables extraction tasks dropped because the background executor's queue was full."})
    (prometheus/histogram :metabase-metabot/used-tables-extraction-duration-ms
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
