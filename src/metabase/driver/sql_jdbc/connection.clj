@@ -290,7 +290,7 @@
   them and removing from cache."
   [database]
   (let [db-id           (u/the-id database)
-        canonical-keys  [[db-id :default] [db-id :write-data]]
+        canonical-keys  [[db-id :default] [db-id :write-data] [db-id :transform]]
         pool-map        @pool-cache-key->connection-pool
         canonical-count (count (filter pool-map canonical-keys))
         ;; Find all swapped pool keys for this database (keys are [db-id, details-hash] tuples)
