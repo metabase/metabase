@@ -80,8 +80,6 @@ See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
 
 Off by default. When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
 
-This setting must be on before you can enable [Custom Visualizations](../visualizations/custom-visualizations.md), because custom viz plugins run third-party code in your Metabase origin and an unrestricted `img-src` policy could allow a malicious plugin to exfiltrate data through image URLs. Once Custom Visualizations are enabled, this setting cannot be turned off until you disable them.
-
 ## Allowed domains for images
 
 Domains that images can load from in dashboard text cards, entity descriptions (like question and dashboard descriptions), and custom visualizations, when the [Restrict image domains](#restrict-image-domains) setting is on. If that setting is off, this allowlist is not enforced and images from any domain are allowed.
