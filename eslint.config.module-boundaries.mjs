@@ -84,7 +84,8 @@ export default defineConfig([
       "boundaries/ignore": [
         "**/*.unit.spec.*",
         "**/e2e/**",
-        "*.stories.*",
+        "**/*.stories.*",
+        "**/*.stories-utils.*",
         "test/**",
       ],
       "import-x/resolver": {

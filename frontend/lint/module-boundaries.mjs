@@ -53,6 +53,41 @@ const elements = [
   // basic
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api", enforceOutgoing: true }),
+  // embedding-features (more specific than shared/embedding, must come first)
+  createElement({
+    type: "app",
+    name: "eajs",
+    pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/**",
+  }),
+  createElement({
+    type: "app",
+    name: "mcp",
+    pattern: "frontend/src/metabase/embedding/mcp/**",
+  }),
+  createElement({
+    type: "embedding-features",
+    name: "eajs-ee",
+    pattern:
+      "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/**",
+    mode: "full",
+  }),
+  createElement({
+    type: "embedding-features",
+    name: "sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/**",
+  }),
+  createElement({
+    type: "embedding-features",
+    name: "sdk-ee",
+    pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+    mode: "full",
+  }),
+  createElement({
+    type: "app",
+    name: "sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
+    mode: "full",
+  }),
   // shared
   createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
@@ -129,12 +164,6 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding/**",
     enforceOutgoing: true,
   }),
-  createElement({
-    type: "shared",
-    name: "embedding-sdk-package",
-    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
-    enforceOutgoing: true,
-  }),
   // feature
   createElement({ type: "feature", name: "dashboard", enforceOutgoing: true }),
   createElement({
@@ -156,6 +185,7 @@ const elements = [
   ...[
     "frontend/src/metabase/app.js",
     "frontend/src/metabase/app-embed-sdk.tsx",
+    "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
@@ -217,8 +247,9 @@ const rules = [
   },
   {
     from: ["feature/enterprise"],
-    allow: ["feature/*"],
-    message: "Enterprise module can import from all feature modules",
+    allow: ["feature/*", "embedding-features/*"],
+    message:
+      "Enterprise module can import from all feature and embedding-features modules",
   },
   {
     from: ["feature/public"],
@@ -226,8 +257,26 @@ const rules = [
     message: "Public module can import from all feature modules",
   },
   {
+    from: ["embedding-features/*"],
+    allow: [
+      "lib/*",
+      "basic/*",
+      "shared/*",
+      "feature/*",
+      "embedding-features/*",
+    ],
+    message: "Embedding-features can import features and below",
+  },
+  {
     from: ["app/*"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+    allow: [
+      "lib/*",
+      "basic/*",
+      "shared/*",
+      "feature/*",
+      "embedding-features/*",
+      "app/*",
+    ],
   },
 ];
 
@@ -267,7 +316,14 @@ function buildEnforcedRules(elements, rules) {
       ? [
           {
             from: [...nonEnforcedTypes],
-            allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+            allow: [
+              "lib/*",
+              "basic/*",
+              "shared/*",
+              "feature/*",
+              "embedding-features/*",
+              "app/*",
+            ],
           },
         ]
       : []),
