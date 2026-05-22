@@ -182,11 +182,6 @@ export class ApiClient extends EventEmitter<EventMap> {
     const { ok, status, body } = await handleResponse(response, rawResponse);
 
     if (!noEvent && (status === 401 || status === 403)) {
-      // We can use response.status here, and not the status from getResponseStatus,
-      // because streaming responses will never set a _status of 401 or 403.
-      //
-      // See src/metabase/server/streaming_response.clj
-      //
       // Strip basename so listeners (app-main.js) see the relative path.
       const path = relativePath(this.basename, url);
       this.emit(status, path);
