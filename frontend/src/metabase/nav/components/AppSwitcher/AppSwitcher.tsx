@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -24,6 +25,7 @@ import {
   Avatar,
   Box,
   Divider,
+  type FloatingPosition,
   Group,
   Icon,
   Menu,
@@ -45,7 +47,17 @@ const CURRENT_APP_ICON_OVERRIDES: {
   c: ColorName;
 } = { name: "check_filled", c: "brand" };
 
-export const AppSwitcher = ({ className }: { className?: string }) => {
+type AppSwitcherProps = {
+  className?: string;
+  trigger?: ReactNode;
+  menuPosition?: FloatingPosition;
+};
+
+export const AppSwitcher = ({
+  className,
+  trigger,
+  menuPosition = "bottom-end",
+}: AppSwitcherProps) => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
 
   const dispatch = useDispatch();
@@ -144,42 +156,43 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
   return (
     <>
-      <Menu position="bottom-end" shadow="md" width={200} offset={9}>
+      <Menu position={menuPosition} shadow="md" width={200} offset={9}>
         <Menu.Target>
-          {appsSection ? (
-            <ActionIcon
-              size="2.25rem"
-              p="sm"
-              variant="outline"
-              bd="1px solid var(--mb-color-border)"
-              aria-label={t`Settings`}
-              bdrs="50%"
-              className={className}
-              data-testid="app-switcher-target"
-            >
-              <Icon
-                name="mode"
-                // Need an escape hatch here for the white color in admin settings
-                style={{
-                  color:
-                    currentApp === "admin"
-                      ? "var(--mantine-color-white)"
-                      : "var(--mb-color-text-primary)",
-                }}
-                size={16}
-              />
-            </ActionIcon>
-          ) : (
-            <Avatar
-              radius="lg"
-              size={32}
-              className={S.Avatar}
-              bd="1px solid var(--mb-color-border)"
-              data-testid="app-switcher-target"
-            >
-              {user ? userInitials(user) : "?"}
-            </Avatar>
-          )}
+          {trigger ??
+            (appsSection ? (
+              <ActionIcon
+                size="2.25rem"
+                p="sm"
+                variant="outline"
+                bd="1px solid var(--mb-color-border)"
+                aria-label={t`Settings`}
+                bdrs="50%"
+                className={className}
+                data-testid="app-switcher-target"
+              >
+                <Icon
+                  name="mode"
+                  // Need an escape hatch here for the white color in admin settings
+                  style={{
+                    color:
+                      currentApp === "admin"
+                        ? "var(--mantine-color-white)"
+                        : "var(--mb-color-text-primary)",
+                  }}
+                  size={16}
+                />
+              </ActionIcon>
+            ) : (
+              <Avatar
+                radius="lg"
+                size={32}
+                className={S.Avatar}
+                bd="1px solid var(--mb-color-border)"
+                data-testid="app-switcher-target"
+              >
+                {user ? userInitials(user) : "?"}
+              </Avatar>
+            ))}
         </Menu.Target>
         <Menu.Dropdown w={320} px="0">
           {/* Avatar Stuff */}

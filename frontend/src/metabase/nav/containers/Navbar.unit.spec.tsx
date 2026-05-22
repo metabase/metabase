@@ -9,6 +9,7 @@ import {
   setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
   setupSettingEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -61,6 +62,7 @@ async function setup({
     collectionItems: [],
   });
   setupGdriveGetFolderEndpoint({ status: "active" });
+  setupUserMetabotPermissionsEndpoint();
   fetchMock.get("path:/api/bookmark", []);
 
   setupSettingEndpoint({
@@ -85,6 +87,7 @@ async function setup({
       initialRoute: pathname,
       withRouter: true,
       withDND: true,
+      withKBar: true,
     },
   );
 

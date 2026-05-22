@@ -27,15 +27,9 @@ describe("nav > containers > MainNavbar", () => {
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();
-      const link = screen.getByRole("link", { name: /Home/i });
+      const link = screen.getByTestId("main-logo-link");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/");
-    });
-
-    it("should be highlighted if selected", async () => {
-      await setup({ pathname: "/" });
-      const link = screen.getByRole("listitem", { name: /Home/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
     });
   });
 

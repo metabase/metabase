@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,7 +13,6 @@ import {
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
-import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
 import {
@@ -40,6 +38,7 @@ import {
   SidebarSection,
   TrashSidebarSection,
 } from "../MainNavbar.styled";
+import { NavbarTopRow } from "../NavbarTopRow";
 import { SidebarCollectionLink } from "../SidebarItems";
 import {
   trackAddDataModalOpened,
@@ -95,7 +94,6 @@ export function MainNavbarView({
     "expand-collections-in-nav",
   );
 
-  const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const currentUser = useSelector(getUser);
   const useTenants = useSetting("use-tenants");
@@ -118,18 +116,6 @@ export function MainNavbarView({
       handleCloseNavbar();
     }
   }, [handleCloseNavbar]);
-
-  const handleHomeClick = useCallback(
-    (event: MouseEvent) => {
-      // Prevent navigating to the dashboard homepage when a user is already there
-      // https://github.com/metabase/metabase/issues/43800
-      if (isAtHomepageDashboard) {
-        event.preventDefault();
-      }
-      onItemSelect();
-    },
-    [isAtHomepageDashboard, onItemSelect],
-  );
 
   const { regularCollections, trashCollection, examplesCollection } =
     useMemo(() => {
@@ -179,18 +165,8 @@ export function MainNavbarView({
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
+        <NavbarTopRow onItemSelect={onItemSelect} />
         <div>
-          <SidebarSection>
-            <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
-              onClick={handleHomeClick}
-              url="/"
-            >
-              {t`Home`}
-            </PaddedSidebarLink>
-          </SidebarSection>
-
           {shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>

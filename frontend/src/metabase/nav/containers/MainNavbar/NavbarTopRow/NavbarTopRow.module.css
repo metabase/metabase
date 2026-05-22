@@ -1,0 +1,51 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md)
+    var(--mantine-spacing-sm) var(--mantine-spacing-xl);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-brand);
+  line-height: 0;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.logoLink:focus-visible {
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: 2px;
+}
+
+.instanceButton {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.instanceButton :global(.mantine-Button-label) {
+  min-width: 0;
+}
+
+.instanceName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

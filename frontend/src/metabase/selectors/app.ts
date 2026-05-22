@@ -135,93 +135,6 @@ export const getIsNavBarEnabled = createSelector(
   },
 );
 
-const getIsEmbeddedAppBarVisible = createSelector(
-  [
-    getEmbedOptions,
-    getIsQuestionLineageVisible,
-    getIsCollectionPathVisible,
-    getIsNavBarEnabled,
-  ],
-  (
-    embedOptions,
-    isQuestionLineageVisible,
-    isCollectionPathVisible,
-    isNavBarEnabled,
-  ) => {
-    const anyEmbeddedAppBarElementVisible =
-      isNavBarEnabled ||
-      embedOptions.search ||
-      embedOptions.new_button ||
-      embedOptions.logo ||
-      isQuestionLineageVisible ||
-      isCollectionPathVisible;
-    return embedOptions.top_nav && anyEmbeddedAppBarElementVisible;
-  },
-);
-
-export const getIsAppBarVisible = createSelector(
-  [
-    getUser,
-    getRouterPath,
-    getRouterHash,
-    getIsAdminApp,
-    getIsDataStudioApp,
-    getIsEditingDashboard,
-    getIsEmbeddingIframe,
-    getIsEmbeddedAppBarVisible,
-  ],
-  (
-    currentUser,
-    path,
-    hash,
-    isAdminApp,
-    isDataStudioApp,
-    isEditingDashboard,
-    isEmbedded,
-    isEmbeddedAppBarVisible,
-  ) => {
-    const isFullscreen = hash.includes("fullscreen");
-
-    if (
-      !currentUser ||
-      (isEmbedded && !isEmbeddedAppBarVisible) ||
-      isAdminApp ||
-      isDataStudioApp ||
-      isEditingDashboard ||
-      isFullscreen
-    ) {
-      return false;
-    }
-    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
-  },
-);
-
-export const getIsLogoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.logo;
-  },
-);
-
-export const getIsSearchVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.search;
-  },
-);
-
-export const getIsNewButtonVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.new_button;
-  },
-);
-
-export const getIsAppSwitcherVisible = createSelector(
-  [getIsEmbeddingIframe],
-  (isEmbeddingIframe) => !isEmbeddingIframe,
-);
-
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
@@ -271,16 +184,15 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   [
     getIsEmbeddingIframe,
     getEmbedOptions,
-    getIsAppBarVisible,
     (state: State) => state.app.isNavbarOpen,
   ],
-  (isEmbeddingIframe, embedOptions, isAppBarVisible, isNavbarOpen) => {
-    // in an embedded instance, when the app bar is hidden, but the nav bar is not
-    // we need to force the sidebar to be open or else it will be totally inaccessible
+  (isEmbeddingIframe, embedOptions, isNavbarOpen) => {
+    // in an embedded instance with side_nav on and top_nav off, force the
+    // sidebar open — otherwise there's no navigation surface at all
     if (
       isEmbeddingIframe &&
       embedOptions.side_nav === true &&
-      !isAppBarVisible
+      embedOptions.top_nav === false
     ) {
       return true;
     }
