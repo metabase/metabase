@@ -9,7 +9,7 @@ import { t } from "ttag";
 
 import type { CustomVizPluginId } from "metabase-types/api";
 
-import { stampPluginWidget } from "./widget-mount";
+import { wrapPluginWidget } from "./widget-mount";
 
 /**
  * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
@@ -44,7 +44,7 @@ export function sanitizePluginSettings(
       const Widget = value.widget as ComponentType<Record<string, unknown>>;
       sanitizedSettings[settingId] = {
         ...value,
-        widget: stampPluginWidget(
+        widget: wrapPluginWidget(
           (container, initialProps) => mount(Widget, container, initialProps),
           pluginId,
         ),

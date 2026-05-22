@@ -13,7 +13,7 @@ import {
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
-import { isTrustedWidgetMount } from "./widget-mount";
+import { isWidgetMount } from "./widget-mount";
 
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
@@ -27,7 +27,7 @@ export function initializePlugin() {
       getPluginAssetUrl,
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
-      isTrustedWidgetMount,
+      isWidgetMount,
       CustomVizSettingWidget,
     });
   }

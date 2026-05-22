@@ -47,7 +47,7 @@ const getDefaultPluginCustomViz = () => ({
   /**
    *  Always false in OSS as there is no plugin to produce a mount handle.
    */
-  isTrustedWidgetMount: (_value: unknown): _value is WidgetMount => false,
+  isWidgetMount: (_value: unknown): _value is WidgetMount => false,
 
   CustomVizSettingWidget: PluginPlaceholder<{
     mount: WidgetMount;

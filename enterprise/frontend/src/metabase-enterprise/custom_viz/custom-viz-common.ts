@@ -12,9 +12,10 @@ import { sanitizePluginSettings } from "./custom-viz-settings";
  * `vizDef.settings` arrives as a near-membrane proxy from the plugin
  * sandbox. Before the host visualization layer can read setting widget
  * values, every function-shaped `widget` must be re-wrapped in a
- * host-allocated `WidgetMount` so the host can later distinguish
- * mount-driven widgets from plain React components without trusting
- * plugin-controlled brands.
+ * host-allocated `WidgetMount`. Because the host always allocates this
+ * wrapper itself, its plugin-id marker is host-controlled by construction —
+ * letting the host later distinguish mount-driven widgets from plain React
+ * components.
  */
 export function applyDefaultVisualizationProps(
   Component: Visualization,

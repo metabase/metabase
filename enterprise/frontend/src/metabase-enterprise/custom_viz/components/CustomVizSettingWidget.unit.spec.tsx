@@ -3,7 +3,7 @@ import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
-import { stampPluginWidget } from "../widget-mount";
+import { wrapPluginWidget } from "../widget-mount";
 
 import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
 
@@ -48,7 +48,7 @@ function prepareWidget(pluginId = 1) {
     widgetContainer = container;
     return pluginMount(container, initialProps);
   };
-  const mount = stampPluginWidget(widgetMount, pluginId);
+  const mount = wrapPluginWidget(widgetMount, pluginId);
   return {
     mount,
     getMountCalls: () => mountCalls,

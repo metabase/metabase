@@ -19,11 +19,10 @@ export type WidgetMountHandle<TProps> = {
 /**
  * Mount adapter for a custom-component setting widget.
  *
- * When a setting's `widget` is a React component, the SDK stamps the
- * `widget` with a host trusted field that forces it to render within the plugin's sandbox.
- * The host gives the plugin a container element;
- * the plugin renders into it using its own React instance and returns a
- * handle the host can `update` / `unmount`.
+ * When a setting's `widget` is a React component, the host wraps it into a
+ * `WidgetMount` so it renders within the plugin's sandbox. The host gives the
+ * plugin a container element; the plugin renders into it using its own React
+ * instance and returns a handle the host can `update` / `unmount`.
  */
 export type WidgetMount<TProps = Record<string, unknown>> = (
   container: Element,
