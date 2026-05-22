@@ -18,6 +18,7 @@ frontend/test/          # Jest unit tests
 - **State**: Redux Toolkit
 - **Styling**: CSS Modules (preferred) > Emotion styled-components
 - **UI**: `metabase/ui` components built with Mantine v8
+- **Package manager**: Bun
 - **Build**: Rspack (primary), Webpack (legacy)
 - **Testing**: Jest + React Testing Library, Cypress
 

@@ -35,7 +35,7 @@ jobs:
 
       - name: how many backports?
         id: how-many-backports
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const labels = [
@@ -58,7 +58,7 @@ jobs:
 
       - name: get release versions
         id: get-latest-release-version
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const currentVersion = Number(${{ vars.CURRENT_VERSION }});

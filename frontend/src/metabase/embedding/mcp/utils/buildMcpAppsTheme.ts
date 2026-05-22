@@ -20,7 +20,6 @@ const MCP_HOST_VAR_TO_SDK_COLOR: Record<
   "--color-text-primary": "text-primary",
   "--color-text-secondary": "text-secondary",
   "--color-text-tertiary": "text-tertiary",
-  "--color-border-secondary": "border",
 };
 
 export function buildMcpAppsTheme(

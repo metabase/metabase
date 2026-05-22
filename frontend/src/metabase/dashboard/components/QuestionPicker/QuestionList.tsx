@@ -14,7 +14,7 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
-import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -56,6 +56,7 @@ export function QuestionList({
   const isVisualizerModalOpen = !!visualizerModalCardId;
 
   const selectedTabId = useSelector(getSelectedTabId);
+  const dashboardId = useSelector(getDashboardId);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -188,6 +189,7 @@ export function QuestionList({
       {isVisualizerModalOpen && (
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
+          dashboardId={dashboardId ?? undefined}
           onSave={(visualization) => {
             dispatch(
               addCardWithVisualization({ visualization, tabId: selectedTabId }),

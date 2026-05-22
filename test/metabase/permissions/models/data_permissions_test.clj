@@ -409,6 +409,7 @@
                                  {table-id-3 :one-million-rows}}
                                 :perms/manage-database :yes
                                 :perms/transforms :no
+                                :perms/workspaces :no
                                 :perms/create-queries :no}}}
                (data-perms.graph/data-permissions-graph :group-id group-id-1)))
 

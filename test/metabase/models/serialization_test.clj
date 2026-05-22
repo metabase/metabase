@@ -5,23 +5,52 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.models.serialization :as serdes]))
 
+(defn- fake-uuid
+  "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
+  [n]
+  (format "00000000-0000-0000-0000-%012d" n))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
     (is (= [:field {} :metabase.models.serialization-test/field-id]
-           (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
-    (binding [serdes/*required-lib-uuids-for-export* #{"00000000-0000-0000-0000-000000000001"}]
-      (is (= [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} :metabase.models.serialization-test/field-id]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
+           (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
+    (binding [serdes/*required-lib-uuids-for-export* #{(fake-uuid 1)}]
+      (is (= [:field {:lib/uuid (fake-uuid 1)} :metabase.models.serialization-test/field-id]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
       (is (= [:field {} :metabase.models.serialization-test/field-id]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]))))))
+             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 2)} 1]))))))
+
+(deftest ^:parallel drop-mbql-5-uuids-from-string-id-refs-test
+  (testing "field refs with string column names (e.g. source-card joins) should still have lib/uuid stripped"
+    (is (= [:field {} "name"]
+           (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} "name"])))
+    (testing "and other opts are preserved"
+      (is (= [:field {:base-type :type/Integer} "count"]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)
+                                                :base-type :type/Integer} "count"])))))
+  (testing "metric/segment/measure refs with non-integer ids (e.g. after re-export) still strip lib/uuid"
+    (is (= [:metric {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:metric {:lib/uuid (fake-uuid 1)}
+                                      "already-exported-eid"])))
+    (is (= [:segment {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:segment {:lib/uuid (fake-uuid 1)}
+                                      "already-exported-eid"])))
+    (is (= [:measure {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:measure {:lib/uuid (fake-uuid 1)}
+                                      "already-exported-eid"]))))
+  (testing "required lib/uuids are preserved even for string-id refs"
+    (binding [serdes/*required-lib-uuids-for-export* #{(fake-uuid 1)}]
+      (is (= [:field {:lib/uuid (fake-uuid 1)} "name"]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)}
+                                        "name"]))))))
 
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test-2
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/filter (lib/= (meta/field-metadata :venues :id) 1))
                   (lib/aggregate (-> (lib/count)
-                                     (lib/update-options assoc :lib/uuid "00000000-0000-0000-0000-000000000000")))
+                                     (lib/update-options assoc :lib/uuid (fake-uuid 0))))
                   (as-> $query (lib/order-by $query (first (lib/aggregations-metadata $query)))))]
-    (is (= #{"00000000-0000-0000-0000-000000000000"}
+    (is (= #{(fake-uuid 0)}
            (#'serdes/collect-required-lib-uuids query)))
     (binding [serdes/*export-database-fk* (constantly "DATABASE")
               serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
@@ -36,14 +65,14 @@
                                            {:effective-type :type/BigInteger, :base-type :type/BigInteger}
                                            ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
                                           1]]
-                          :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                          :aggregation  [[:count {:lib/uuid (fake-uuid 0)}]]
                           :order-by     [[:asc
                                           {}
                                           [:aggregation
                                            {:base-type       :type/Integer
                                             :effective-type  :type/Integer
                                             :lib/source-name "count"}
-                                           "00000000-0000-0000-0000-000000000000"]]]}]}
+                                           (fake-uuid 0)]]]}]}
              (serdes/export-mbql query))))))
 
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test
@@ -58,13 +87,13 @@
                                             {:effective-type "type/BigInteger", :base-type "type/BigInteger"}
                                             ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
                                            1]]
-                           :aggregation  [["count" {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                           :aggregation  [["count" {:lib/uuid (fake-uuid 0)}]]
                            :order-by     [["asc"
                                            {}
                                            [:aggregation {:base-type       "type/Integer"
                                                           :effective-type  "type/Integer"
                                                           :lib/source-name "count"}
-                                            "00000000-0000-0000-0000-000000000000"]]]}]}]
+                                            (fake-uuid 0)]]]}]}]
     (binding [serdes/*import-database-fk* (constantly 1)
               serdes/*import-table-fk*    (constantly 2)
               serdes/*import-field-fk*    (constantly 3)]
@@ -80,14 +109,14 @@
                                              :base-type      :type/BigInteger}
                                             3]
                                            1]]
-                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                           :aggregation  [[:count {:lib/uuid (fake-uuid 0)}]]
                            :order-by     [[:asc
                                            {:lib/uuid string?}
                                            [:aggregation
                                             {:base-type       :type/Integer
                                              :effective-type  :type/Integer
                                              :lib/source-name "count"}
-                                            "00000000-0000-0000-0000-000000000000"]]]}]}
+                                            (fake-uuid 0)]]]}]}
               (serdes/import-mbql query))))))
 
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2

@@ -19,7 +19,7 @@ jobs:
         run: npm install @slack/web-api
 
       - name: Check disabled drivers and notify Slack
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
