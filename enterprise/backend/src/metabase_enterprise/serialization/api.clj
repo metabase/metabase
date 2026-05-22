@@ -322,13 +322,21 @@
   query parameters — they all default to `false`. The response is streamed for efficiency
   with large schemas.
 
+  By default inactive tables/fields, hidden tables, and sensitive fields are excluded. Set
+  `include-inactive` to include inactive tables and fields, and `include-hidden` to include
+  hidden tables and sensitive fields (matching `include_hidden` on
+  `GET /api/database/:id/metadata`). Returned tables and fields carry `active` only when
+  inactive (`active=false`) and `visibility_type` only when set.
+
   Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
   `Query builder and native`) permissions on each database and table."
   [_route-params
    query-params :- [:map
-                    [:with-databases {:default false} [:maybe :boolean]]
-                    [:with-tables    {:default false} [:maybe :boolean]]
-                    [:with-fields    {:default false} [:maybe :boolean]]]]
+                    [:with-databases   {:default false} [:maybe :boolean]]
+                    [:with-tables      {:default false} [:maybe :boolean]]
+                    [:with-fields      {:default false} [:maybe :boolean]]
+                    [:include-inactive {:default false} [:maybe :boolean]]
+                    [:include-hidden   {:default false} [:maybe :boolean]]]]
   (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
                                              :is-superuser? api/*is-superuser?*})]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]

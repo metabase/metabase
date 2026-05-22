@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-05-22T00:00:00
+      author: ranquild
+      comment: Add active + visibility_type to metabase_table_import staging table
+      changes:
+        - addColumn:
+            tableName: metabase_table_import
+            columns:
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+                  remarks: Wire :active — clobbered onto metabase_table.active on merge. Defaults true (the export omits :active when the table is active).
+              - column:
+                  name: visibility_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Wire :visibility_type — clobbered onto metabase_table.visibility_type on merge. NULL means the table is visible.
+  - changeSet:
+      id: v62.2026-05-22T00:00:01
+      author: ranquild
+      comment: Add active + visibility_type to metabase_field_import staging table
+      changes:
+        - addColumn:
+            tableName: metabase_field_import
+            columns:
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+                  remarks: Wire :active — clobbered onto metabase_field.active on merge. Defaults true (the export omits :active when the field is active).
+              - column:
+                  name: visibility_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Wire :visibility_type — clobbered onto metabase_field.visibility_type on merge. NULL is coalesced to 'normal' (the field column is NOT NULL).

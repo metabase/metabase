@@ -14,19 +14,24 @@
 (mr/def ::export-metadata-options
   "Options accepted by the metadata export pipeline:
 
-  - `:user-info`       — caller identity for permission filtering.
-  - `:with-databases`  — include the `databases` section.
-  - `:with-tables`     — include the `tables` section.
-  - `:with-fields`     — include the `fields` section.
-  - `:database-ids`    — restrict databases to these ids.
-  - `:schema-ids`      — `{db-id [\"schema\" ...]}` — restrict tables to these (db, schema) pairs.
-  - `:table-ids`       — restrict tables to these ids.
-  - `:field-ids`       — restrict fields to these ids."
+  - `:user-info`        — caller identity for permission filtering.
+  - `:with-databases`   — include the `databases` section.
+  - `:with-tables`      — include the `tables` section.
+  - `:with-fields`      — include the `fields` section.
+  - `:include-inactive` — include inactive tables/fields (excluded by default).
+  - `:include-hidden`   — include hidden tables and sensitive fields (excluded by default),
+                          matching `include_hidden` on `GET /api/database/:id/metadata`.
+  - `:database-ids`     — restrict databases to these ids.
+  - `:schema-ids`       — `{db-id [\"schema\" ...]}` — restrict tables to these (db, schema) pairs.
+  - `:table-ids`        — restrict tables to these ids.
+  - `:field-ids`        — restrict fields to these ids."
   [:map
    [:user-info ::user-info]
-   [:with-databases {:optional true} [:maybe :boolean]]
-   [:with-tables    {:optional true} [:maybe :boolean]]
-   [:with-fields    {:optional true} [:maybe :boolean]]
+   [:with-databases   {:optional true} [:maybe :boolean]]
+   [:with-tables      {:optional true} [:maybe :boolean]]
+   [:with-fields      {:optional true} [:maybe :boolean]]
+   [:include-inactive {:optional true} [:maybe :boolean]]
+   [:include-hidden   {:optional true} [:maybe :boolean]]
    [:database-ids   {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]
    [:schema-ids     {:optional true} [:maybe [:map-of ::lib.schema.id/database
                                               [:sequential :string]]]]
@@ -44,6 +49,8 @@
    [:id ::lib.schema.id/table]
    [:db_id ::lib.schema.id/database]
    [:name :string]
+   [:active {:optional true} :boolean]
+   [:visibility_type {:optional true} :string]
    [:schema {:optional true} :string]
    [:description {:optional true} :string]])
 
@@ -52,6 +59,8 @@
    [:id ::lib.schema.id/field]
    [:table_id ::lib.schema.id/table]
    [:name :string]
+   [:active {:optional true} :boolean]
+   [:visibility_type {:optional true} :string]
    [:base_type :string]
    [:description {:optional true} :string]
    [:database_type {:optional true} :string]

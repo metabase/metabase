@@ -474,13 +474,19 @@
                    :schema      "PUBLIC"
                    :description "A test table"}
                   test-table))
-          (is (=? {:id            f-id
-                   :table_id      t-id
-                   :name          f-name
+          (testing "an active, visible table omits :active and :visibility_type"
+            (is (not (contains? test-table :active)))
+            (is (not (contains? test-table :visibility_type))))
+          (is (=? {:id              f-id
+                   :table_id        t-id
+                   :name            f-name
+                   :visibility_type "normal"
                    :base_type     "type/Integer"
                    :database_type "BIGINT"
                    :semantic_type "type/PK"}
-                  test-field)))))))
+                  test-field))
+          (testing "an active field omits :active"
+            (is (not (contains? test-field :active)))))))))
 
 (deftest metadata-export-optional-properties-test
   (testing "POST /api/ee/serialization/metadata/export — effective_type, coercion_strategy and description are emitted when set"
@@ -568,13 +574,23 @@
                                                                     :base_type :type/Integer}
                      :model/Field    {hidden-f-id  :id}            {:table_id hidden-id
                                                                     :base_type :type/Integer}]
-        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
-                                                            "ee/serialization/metadata/export"
-                                                            :with-tables true :with-fields true)]
-          (is (some     (comp #{visible-id}   :id) tables))
-          (is (not-any? (comp #{hidden-id}    :id) tables))
-          (is (some     (comp #{visible-f-id} :id) fields))
-          (is (not-any? (comp #{hidden-f-id}  :id) fields)))))))
+        (testing "excluded by default"
+          (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
+                                                              "ee/serialization/metadata/export"
+                                                              :with-tables true :with-fields true)]
+            (is (some     (comp #{visible-id}   :id) tables))
+            (is (not-any? (comp #{hidden-id}    :id) tables))
+            (is (some     (comp #{visible-f-id} :id) fields))
+            (is (not-any? (comp #{hidden-f-id}  :id) fields))))
+        (testing "included with include-hidden, with :visibility_type on the hidden table"
+          (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
+                                                              "ee/serialization/metadata/export"
+                                                              :with-tables true :with-fields true
+                                                              :include-hidden true)]
+            (is (=? {:id hidden-id :visibility_type "hidden"}
+                    (m/find-first (comp #{hidden-id} :id) tables)))
+            (is (some (comp #{visible-f-id} :id) fields))
+            (is (some (comp #{hidden-f-id}  :id) fields))))))))
 
 (deftest metadata-export-inactive-table-test
   (testing "POST /api/ee/serialization/metadata/export — inactive tables and all of their fields are excluded"
@@ -587,12 +603,27 @@
                      :model/Field    {inactive-f-id :id} {:table_id t-id
                                                           :base_type :type/Integer
                                                           :active false}]
-        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
-                                                            "ee/serialization/metadata/export"
-                                                            :with-tables true :with-fields true)]
-          (is (not-any? (comp #{t-id}          :id) tables))
-          (is (not-any? (comp #{active-f-id}   :id) fields))
-          (is (not-any? (comp #{inactive-f-id} :id) fields)))))))
+        (testing "excluded by default"
+          (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
+                                                              "ee/serialization/metadata/export"
+                                                              :with-tables true :with-fields true)]
+            (is (not-any? (comp #{t-id}          :id) tables))
+            (is (not-any? (comp #{active-f-id}   :id) fields))
+            (is (not-any? (comp #{inactive-f-id} :id) fields))))
+        (testing "included with include-inactive, carrying :active false"
+          (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
+                                                              "ee/serialization/metadata/export"
+                                                              :with-tables true :with-fields true
+                                                              :include-inactive true)]
+            (is (=? {:id t-id :active false}
+                    (m/find-first (comp #{t-id} :id) tables)))
+            ;; active-f-id is active but lives on an inactive table, so it only surfaces with
+            ;; include-inactive; being active, its :active key is omitted
+            (let [active-f (m/find-first (comp #{active-f-id} :id) fields)]
+              (is (some? active-f))
+              (is (not (contains? active-f :active))))
+            (is (=? {:id inactive-f-id :active false}
+                    (m/find-first (comp #{inactive-f-id} :id) fields)))))))))
 
 (deftest metadata-export-sensitive-field-test
   (testing "POST /api/ee/serialization/metadata/export — sensitive fields are excluded"
@@ -602,11 +633,19 @@
                      :model/Field    {email-id  :id}  {:table_id t-id :base_type :type/Text}
                      :model/Field    {secret-id :id}  {:table_id t-id :base_type :type/Text
                                                        :visibility_type :sensitive}]
-        (let [{:keys [fields]} (mt/user-http-request :crowberto :post 202
-                                                     "ee/serialization/metadata/export"
-                                                     :with-fields true)]
-          (is (some     (comp #{email-id}  :id) fields))
-          (is (not-any? (comp #{secret-id} :id) fields)))))))
+        (testing "excluded by default"
+          (let [{:keys [fields]} (mt/user-http-request :crowberto :post 202
+                                                       "ee/serialization/metadata/export"
+                                                       :with-fields true)]
+            (is (some     (comp #{email-id}  :id) fields))
+            (is (not-any? (comp #{secret-id} :id) fields))))
+        (testing "included with include-hidden, matching GET /api/database/:id/metadata"
+          (let [{:keys [fields]} (mt/user-http-request :crowberto :post 202
+                                                       "ee/serialization/metadata/export"
+                                                       :with-fields true :include-hidden true)]
+            (is (some (comp #{email-id}  :id) fields))
+            (is (=? {:id secret-id :visibility_type "sensitive"}
+                    (m/find-first (comp #{secret-id} :id) fields)))))))))
 
 (deftest metadata-export-inactive-field-test
   (testing "POST /api/ee/serialization/metadata/export — inactive fields are excluded; their active sibling and table still appear"
@@ -618,12 +657,21 @@
                      :model/Field    {inactive-f-id :id} {:table_id t-id
                                                           :base_type :type/Integer
                                                           :active false}]
-        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
-                                                            "ee/serialization/metadata/export"
-                                                            :with-tables true :with-fields true)]
-          (is (some     (comp #{t-id}          :id) tables))
-          (is (some     (comp #{active-f-id}   :id) fields))
-          (is (not-any? (comp #{inactive-f-id} :id) fields)))))))
+        (testing "inactive field excluded by default"
+          (let [{:keys [tables fields]} (mt/user-http-request :crowberto :post 202
+                                                              "ee/serialization/metadata/export"
+                                                              :with-tables true :with-fields true)]
+            (is (some     (comp #{t-id}          :id) tables))
+            (is (some     (comp #{active-f-id}   :id) fields))
+            (is (not-any? (comp #{inactive-f-id} :id) fields))))
+        (testing "inactive field included with include-inactive"
+          (let [{:keys [fields]} (mt/user-http-request :crowberto :post 202
+                                                       "ee/serialization/metadata/export"
+                                                       :with-fields true :include-inactive true)]
+            (let [active-f (m/find-first (comp #{active-f-id} :id) fields)]
+              (is (some? active-f))
+              (is (not (contains? active-f :active))))
+            (is (=? {:id inactive-f-id :active false} (m/find-first (comp #{inactive-f-id} :id) fields)))))))))
 
 (deftest metadata-export-db-routing-test
   (testing "POST /api/ee/serialization/metadata/export — router (mirror) databases are excluded"

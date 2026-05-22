@@ -147,8 +147,8 @@
   (str "INSERT INTO metabase_table_import"
        ;; `schema` is a reserved word in MySQL/MariaDB
        " (source_id, source_db_id, db_name, " (mdb/quote-for-application-db "schema")
-       ", name, description, display_name)"
-       " VALUES (?, ?, ?, ?, ?, ?, ?)"))
+       ", name, description, display_name, active, visibility_type)"
+       " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"))
 
 (defn fields-insert-sql
   "Parameterized INSERT for `metabase_field_import`. Column order matches the
@@ -157,8 +157,8 @@
   (str "INSERT INTO metabase_field_import"
        " (source_id, source_table_id, source_parent_id, source_fk_target_id,"
        "  name, base_type, database_type, effective_type, semantic_type,"
-       "  coercion_strategy, description, nfc_path)"
-       " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+       "  coercion_strategy, description, nfc_path, active, visibility_type)"
+       " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
 
 (defn- set-int-or-null! [^PreparedStatement ps ^long idx v]
   (if v
@@ -170,6 +170,9 @@
     (.setString ps idx (str v))
     (.setNull ps idx Types/VARCHAR)))
 
+(defn- set-boolean! [^PreparedStatement ps ^long idx v]
+  (.setBoolean ps idx (boolean v)))
+
 (defn drain-tables-batch-jdbc!
   "Per-batch handler for `:tables` that binds rows onto `ps` and flushes via
   `executeBatch`. Validates each row first; throws on schema failure.
@@ -180,7 +183,9 @@
   (doseq [[ln line] batch]
     (validate-line! ::schemas/table-info ln line {:source-id (:id line)}))
   (when (seq batch)
-    (doseq [[_ {:keys [id db_id schema name description]}] batch]
+    ;; `:active` is absent in the wire row when the table is active, so default true.
+    (doseq [[_ {:keys [id db_id schema name description visibility_type] :as line}] batch
+            :let [active (get line :active true)]]
       (.setInt ps 1 (int id))
       (.setInt ps 2 (int db_id))
       (.setString ps 3 (str (get databases-by-source-id db_id)))
@@ -188,6 +193,8 @@
       (.setString ps 5 (str name))
       (set-string-or-null! ps 6 description)
       (.setString ps 7 (humanization/name->human-readable-name name))
+      (set-boolean! ps 8 active)
+      (set-string-or-null! ps 9 visibility_type)
       (.addBatch ps))
     (.executeBatch ps)))
 
@@ -201,10 +208,12 @@
   (doseq [[ln line] batch]
     (validate-line! ::schemas/field-info ln line {:source-id (:id line)}))
   (when (seq batch)
+    ;; `:active` is absent in the wire row when the field is active, so default true.
     (doseq [[_ {:keys [id table_id parent_id fk_target_field_id
                        name base_type database_type
                        effective_type semantic_type
-                       coercion_strategy description nfc_path]}] batch]
+                       coercion_strategy description nfc_path visibility_type] :as line}] batch
+            :let [active (get line :active true)]]
       (.setInt ps 1 (int id))
       (.setInt ps 2 (int table_id))
       (set-int-or-null! ps 3 parent_id)
@@ -217,6 +226,8 @@
       (set-string-or-null! ps 10 coercion_strategy)
       (set-string-or-null! ps 11 description)
       (set-string-or-null! ps 12 (encode-path-or-nil nfc_path))
+      (set-boolean! ps 13 active)
+      (set-string-or-null! ps 14 visibility_type)
       (.addBatch ps))
     (.executeBatch ps)))
 
@@ -232,7 +243,8 @@
   "PostgreSQL COPY statement for `metabase_table_import`. Column order matches
   the TSV emitted by [[table-tsv-line]]."
   (str "COPY metabase_table_import"
-       " (source_id, source_db_id, db_name, schema, name, description, display_name)"
+       " (source_id, source_db_id, db_name, schema, name, description, display_name,"
+       "  active, visibility_type)"
        " FROM STDIN"))
 
 (def fields-copy-sql
@@ -241,7 +253,7 @@
   (str "COPY metabase_field_import"
        " (source_id, source_table_id, source_parent_id, source_fk_target_id,"
        "  name, base_type, database_type, effective_type, semantic_type,"
-       "  coercion_strategy, description, nfc_path)"
+       "  coercion_strategy, description, nfc_path, active, visibility_type)"
        " FROM STDIN"))
 
 (defn- tsv-escape ^String [^String s]
@@ -259,20 +271,24 @@
     :else        (tsv-escape (str v))))
 
 (defn- table-tsv-line ^String [row databases-by-source-id]
-  (let [{:keys [id db_id schema name description]} row]
+  (let [{:keys [id db_id schema name description visibility_type]} row
+        active (get row :active true)]
     (str (tsv-cell id) "\t"
          (tsv-cell db_id) "\t"
          (tsv-cell (get databases-by-source-id db_id)) "\t"
          (tsv-cell schema) "\t"
          (tsv-cell name) "\t"
          (tsv-cell description) "\t"
-         (tsv-cell (humanization/name->human-readable-name name)) "\n")))
+         (tsv-cell (humanization/name->human-readable-name name)) "\t"
+         (tsv-cell active) "\t"
+         (tsv-cell visibility_type) "\n")))
 
 (defn- field-tsv-line ^String [row]
   (let [{:keys [id table_id parent_id fk_target_field_id
                 name base_type database_type
                 effective_type semantic_type
-                coercion_strategy description nfc_path]} row]
+                coercion_strategy description nfc_path visibility_type]} row
+        active (get row :active true)]
     (str (tsv-cell id) "\t"
          (tsv-cell table_id) "\t"
          (tsv-cell parent_id) "\t"
@@ -284,7 +300,9 @@
          (tsv-cell semantic_type) "\t"
          (tsv-cell coercion_strategy) "\t"
          (tsv-cell description) "\t"
-         (tsv-cell (encode-path-or-nil nfc_path)) "\n")))
+         (tsv-cell (encode-path-or-nil nfc_path)) "\t"
+         (tsv-cell active) "\t"
+         (tsv-cell visibility_type) "\n")))
 
 (defn drain-tables-batch-pg-copy!
   "Per-batch handler for `:tables` that streams TSV rows over PG's COPY wire
@@ -310,11 +328,12 @@
   "Set `metabase_table_import.target_id` to the int id of the matching
   `metabase_table` row for every staging row whose match key resolves. The
   match key is `(db_name, schema, name)` against `(d.name, t.schema, t.name)`,
-  restricted to active, non-defective live rows.
+  restricted to non-defective live rows.
 
-  Rows that do not match keep `target_id` NULL. Inactive matches are
-  deliberately not resolved so a re-import after a deactivation creates a
-  fresh active row.
+  Rows that do not match keep `target_id` NULL. Matching is independent of the
+  live row's `active` state: the file now carries `:active`, so an inactive live
+  table still matches and the merge clobbers its `active`/`visibility_type` from
+  the file (rather than leaving inactive rows unmatched and inserting duplicates).
 
   Idempotent — running again with the same staging contents produces the
   same assignments."
@@ -334,8 +353,19 @@
                        [:= [:coalesce :t.schema [:inline ""]]
                         [:coalesce :metabase_table_import.schema [:inline ""]]]
                        [:= :t.name :metabase_table_import.name]
-                       [:= :t.is_defective_duplicate [:inline false]]
-                       [:= :t.active [:inline true]]]}}}))
+                       [:= :t.is_defective_duplicate [:inline false]]]}}}))
+
+(defn- table-clobber-subquery
+  "Correlated subquery yielding `staging-col`'s value from the staging row
+  that resolved to this `metabase_table`."
+  [staging-col]
+  {;; ORDER BY + LIMIT 1: two staging rows can resolve to the same `target_id`
+   ;; (GHY-3549); pick one deterministically rather than erroring.
+   :select   [(keyword (str "it." (name staging-col)))]
+   :from     [[:metabase_table_import :it]]
+   :where    [:= :it.target_id :metabase_table.id]
+   :order-by [[:it.source_id :asc]]
+   :limit    1})
 
 ;; UPDATE before INSERT: on a clean-schema import the UPDATE matches nothing
 ;; (fast no-op) and the INSERT then writes each row exactly once.
@@ -362,32 +392,31 @@
                 (t2/query {:select [:source_id]
                            :from   [:metabase_table_import]
                            :where  [:= :target_id nil]}))]
-      ;; UPDATE matched rows first (clobber description, bump updated_at).
-      ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
-      ;; description actually differs (NULL-safe via COALESCE-with-empty-
-      ;; string), so a re-import with identical description is a true no-op
-      ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
-      ;; in the predicate (otherwise the UPDATE would always fire,
-      ;; defeating the optimization).
+      ;; UPDATE matched rows first (clobber description / active / visibility_type,
+      ;; bump updated_at). Skip-if-unchanged: the EXISTS subquery additionally
+      ;; requires that one of those columns actually differs (NULL-safe via
+      ;; COALESCE-with-sentinel), so a re-import with identical values is a true
+      ;; no-op — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
+      ;; in the predicate (otherwise the UPDATE would always fire, defeating the
+      ;; optimization).
       (t2/query
        {:update :metabase_table
-        :set    {:description {;; ORDER BY + LIMIT 1: two staging rows can
-                               ;; resolve to the same `target_id` (GHY-3549).
-                               :select   [:it.description]
-                               :from     [[:metabase_table_import :it]]
-                               :where    [:= :it.target_id :metabase_table.id]
-                               :order-by [[:it.source_id :asc]]
-                               :limit    1}
-                 :updated_at :%now}
+        :set    {:description     (table-clobber-subquery :description)
+                 :active          (table-clobber-subquery :active)
+                 :visibility_type (table-clobber-subquery :visibility_type)
+                 :updated_at      :%now}
         :where  [:and
                  [:= :metabase_table.is_defective_duplicate [:inline false]]
-                 [:= :metabase_table.active [:inline true]]
                  [:exists {:select [[[:inline 1]]]
                            :from   [[:metabase_table_import :it]]
                            :where  [:and
                                     [:= :it.target_id :metabase_table.id]
-                                    [:!= [:coalesce :metabase_table.description [:inline ""]]
-                                     [:coalesce :it.description             [:inline ""]]]]}]]})
+                                    [:or
+                                     [:!= [:coalesce :metabase_table.description [:inline ""]]
+                                      [:coalesce :it.description             [:inline ""]]]
+                                     [:!= :metabase_table.active :it.active]
+                                     [:!= [:coalesce :metabase_table.visibility_type [:inline ""]]
+                                      [:coalesce :it.visibility_type             [:inline ""]]]]]}]]})
       ;; INSERT bypasses :model/Table's :after-insert hook — that hook
       ;; schedules per-DB Quartz triggers we don't want and fires
       ;; `set-new-table-permissions!` once per row. The JOIN on db_name
@@ -395,11 +424,11 @@
       (t2/query
        {:insert-into
         [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
-                           :active :show_in_getting_started :is_defective_duplicate
+                           :visibility_type :active :show_in_getting_started :is_defective_duplicate
                            :created_at :updated_at]]
          {:select [:d.id :it.schema :it.name :it.description :it.display_name
                    [[:inline "internal"]]
-                   [[:inline true]] [[:inline false]] [[:inline false]]
+                   :it.visibility_type :it.active [[:inline false]] [[:inline false]]
                    :%now :%now]
           :from   [[:metabase_table_import :it]]
           :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
@@ -629,17 +658,23 @@
   [:base_type :database_type :description
    :effective_type :semantic_type :coercion_strategy :nfc_path])
 
-(defn- target-id-clobber-subquery
-  "Correlated subquery yielding `staging-col`'s value from the staging row
-  that resolved to this `metabase_field`."
-  [staging-col]
-  {:select   [(keyword (str "fi." (name staging-col)))]
+(defn- target-id-clobber-subquery*
+  "Correlated subquery yielding `select-expr` from the staging row that resolved
+  to this `metabase_field`."
+  [select-expr]
+  {:select   [select-expr]
    :from     [[:metabase_field_import :fi]]
    :where    [:= :fi.target_id :metabase_field.id]
    ;; ORDER BY + LIMIT 1: two staging rows can resolve to the same target_id
    ;; (GHY-3549); pick one deterministically rather than erroring.
    :order-by [[:fi.source_id :asc]]
    :limit    1})
+
+(defn- target-id-clobber-subquery
+  "Correlated subquery yielding `staging-col`'s value from the staging row
+  that resolved to this `metabase_field`."
+  [staging-col]
+  (target-id-clobber-subquery* (keyword (str "fi." (name staging-col)))))
 
 (def ^:private field-payload-changed-predicate
   "True when a matched `metabase_field` row's observable payload differs from
@@ -659,8 +694,12 @@
    [:!= [:coalesce :metabase_field.nfc_path          [:inline ""]]   [:coalesce :fi.nfc_path          [:inline ""]]]
    ;; staging's FK column is `target_fk_target_id`, not `fk_target_field_id`.
    [:!= [:coalesce :metabase_field.fk_target_field_id [:inline -1]]  [:coalesce :fi.target_fk_target_id [:inline -1]]]
-   ;; `active` compares against TRUE — the merge SET always sets it TRUE.
-   [:!= :metabase_field.active                       [:inline true]]])
+   ;; `active` is clobbered from the file (staging's column is NOT NULL).
+   [:!= :metabase_field.active                       :fi.active]
+   ;; `visibility_type` coalesces NULL→'normal' on both sides — the column is
+   ;; NOT NULL with default 'normal', so a file NULL is equivalent to 'normal'.
+   [:!= [:coalesce :metabase_field.visibility_type [:inline "normal"]]
+    [:coalesce :fi.visibility_type             [:inline "normal"]]]])
 
 (defn resolve-target-table-ids-for-fields-in-staging!
   "Populate `metabase_field_import.target_table_id` by joining through
@@ -759,7 +798,11 @@
     ;; part of the natural-key match, so a matched field's FK can drift.
     :set    (-> (into {} (map (fn [c] [c (target-id-clobber-subquery c)])) field-clobber-cols)
                 (assoc :fk_target_field_id (target-id-clobber-subquery :target_fk_target_id)
-                       :active             [:inline true]
+                       ;; `active` is clobbered from the file rather than forced TRUE.
+                       :active             (target-id-clobber-subquery :active)
+                       ;; coalesce NULL→'normal' since metabase_field.visibility_type is NOT NULL.
+                       :visibility_type    (target-id-clobber-subquery*
+                                            [:coalesce :fi.visibility_type [:inline "normal"]])
                        :updated_at         :%now))
     :where  [:and
              [:= :metabase_field.is_defective_duplicate [:inline false]]
@@ -794,12 +837,14 @@
    {:insert-into
     [[:metabase_field [:table_id :name :base_type :database_type :description
                        :effective_type :semantic_type :coercion_strategy
-                       :nfc_path :parent_id :fk_target_field_id
+                       :nfc_path :parent_id :fk_target_field_id :visibility_type
                        :is_defective_duplicate :active :created_at :updated_at]]
      {:select [:fi.target_table_id :fi.name :fi.base_type :fi.database_type :fi.description
                :fi.effective_type :fi.semantic_type :fi.coercion_strategy
                :fi.nfc_path :fi.target_parent_id :fi.target_fk_target_id
-               [[:inline false]] [[:inline true]] :%now :%now]
+               ;; coalesce NULL→'normal' since metabase_field.visibility_type is NOT NULL.
+               [:coalesce :fi.visibility_type [:inline "normal"]]
+               [[:inline false]] :fi.active :%now :%now]
       :from   [[:metabase_field_import :fi]]
       :where  [:and
                [:= :fi.depth d]

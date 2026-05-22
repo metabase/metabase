@@ -33,14 +33,18 @@
    [:engine :string]])
 
 (mr/def ::table-info
-  "Table row. `:id`, `:db_id`, and `:name` always present. `:schema` and
-  `:description` are optional and may be nil."
+  "Table row. `:id`, `:db_id`, and `:name` always present. `:schema`,
+  `:description`, `:active`, and `:visibility_type` are optional and may be nil.
+  The export omits `:active` when the table is active (so absent ≡ true) and
+  `:visibility_type` when the table is visible (so absent ≡ nil)."
   [:map
    [:id :int]
    [:db_id :int]
    [:name :string]
    [:schema {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:active {:optional true} [:maybe :boolean]]
+   [:visibility_type {:optional true} [:maybe :string]]])
 
 (mr/def ::field-info
   "Field row. Five required keys + several optional, per the export's
@@ -57,6 +61,8 @@
    [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
    [:coercion_strategy {:optional true} [:maybe :string]]
+   [:active {:optional true} [:maybe :boolean]]
+   [:visibility_type {:optional true} [:maybe :string]]
    [:nfc_path {:optional true}
     [:maybe
      [:fn {:error/message "must be a sequence of strings"}

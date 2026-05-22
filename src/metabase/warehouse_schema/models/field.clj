@@ -517,6 +517,8 @@
    {:select [[:f.id :id]
              [:f.table_id :table_id]
              [:f.name :name]
+             [:f.active :active]
+             [:f.visibility_type :visibility_type]
              [:f.parent_id :parent_id]
              [:f.fk_target_field_id :fk_target_field_id]
              [:f.description :description]
@@ -535,17 +537,20 @@
              (serdes/metadata-query-filter model :f opts)]}))
 
 (defmethod serdes/metadata-query-filter :model/Field
-  [_model alias {:keys [field-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :active) true]
-           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
-    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
+  [_model alias {:keys [field-ids include-inactive include-hidden]}]
+  (let [visibility (u/qualified-key alias :visibility_type)]
+    (cond-> [:and]
+      (not include-inactive) (conj [:= (u/qualified-key alias :active) true])
+      (not include-hidden)   (conj [:or [:= visibility nil] [:<> visibility "sensitive"]])
+      (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids]))))
 
 (defmethod serdes/metadata-query-format :model/Field
-  [_model {:keys [base_type effective_type nfc_path] :as row}]
+  [_model {:keys [base_type effective_type nfc_path active] :as row}]
   (-> row
       (assoc :effective_type (when (not= base_type effective_type) effective_type))
       (assoc :nfc_path (cond-> nfc_path
                          (string? nfc_path) json/decode
                          nfc_path           seq))
+      ;; `active` is the common case, so only emit it when the field is inactive
+      (cond-> (true? active) (dissoc :active))
       u/remove-nils))

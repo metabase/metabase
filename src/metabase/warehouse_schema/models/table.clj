@@ -650,6 +650,8 @@
    {:select [[:t.id :id]
              [:t.db_id :db_id]
              [:t.name :name]
+             [:t.active :active]
+             [:t.visibility_type :visibility_type]
              [:t.schema :schema]
              [:t.description :description]]
     :from   [[(t2/table-name model) :t]]
@@ -659,20 +661,27 @@
              (serdes/metadata-query-filter model :t opts)]}))
 
 (defmethod serdes/metadata-query-filter :model/Table
-  [_model alias {:keys [user-info table-ids schema-ids]}]
+  [_model alias {:keys [user-info table-ids schema-ids include-inactive include-hidden]}]
   (let [perm-mapping {:perms/view-data      :unrestricted
                       :perms/create-queries :query-builder}]
     (cond-> [:and
-             [:= (u/qualified-key alias :active) true]
-             [:= (u/qualified-key alias :visibility_type) nil]
              [:in (u/qualified-key alias :id)
               (perms/visible-table-filter-select :id user-info perm-mapping)]]
+      (not include-inactive) (conj [:= (u/qualified-key alias :active) true])
+      (not include-hidden)   (conj [:= (u/qualified-key alias :visibility_type) nil])
       (seq schema-ids) (conj (into [:or]
                                    (for [[db-id schemas] schema-ids]
                                      [:and
                                       [:= (u/qualified-key alias :db_id) db-id]
                                       [:in (u/qualified-key alias :schema) schemas]])))
       (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
+
+(defmethod serdes/metadata-query-format :model/Table
+  [_model {:keys [active] :as row}]
+  (-> row
+      ;; `active` is the common case, so only emit it when the table is inactive
+      (cond-> (true? active) (dissoc :active))
+      u/remove-nils))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
