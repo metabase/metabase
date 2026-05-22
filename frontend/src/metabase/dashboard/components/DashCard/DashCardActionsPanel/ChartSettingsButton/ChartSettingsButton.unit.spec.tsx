@@ -14,7 +14,7 @@ import {
 
 registerVisualizations();
 
-const rows = [["John", "John Smith Jr"]];
+const rows = [["John", 42]];
 const MOCK_SERIES = [
   createMockSingleSeries(
     { display: "line" },
@@ -23,14 +23,14 @@ const MOCK_SERIES = [
         rows,
         cols: [
           createMockColumn({
-            base_type: "string",
-            name: "Short name",
-            display_name: "Short name",
+            base_type: "type/Text",
+            name: "Name",
+            display_name: "Name",
           }),
           createMockColumn({
-            base_type: "string",
-            name: "Long name",
-            display_name: "Long name",
+            base_type: "type/Integer",
+            name: "Count",
+            display_name: "Count",
             visibility_type: "normal",
           }),
         ],

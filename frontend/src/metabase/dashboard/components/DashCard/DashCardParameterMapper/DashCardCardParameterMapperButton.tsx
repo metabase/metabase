@@ -72,7 +72,11 @@ export const DashCardCardParameterMapperButton = ({
           buttonVariant: "invalid",
           buttonText: t`Unknown Field`,
           buttonIcon: (
+            // rendered as a span: this control sits inside the outer
+            // `<Flex component="button">`, where a nested <button> is invalid
             <Button
+              as="span"
+              role="button"
               icon="close"
               iconSize={12}
               className={S.CloseIconButton}
@@ -101,7 +105,10 @@ export const DashCardCardParameterMapperButton = ({
           buttonTooltip: null,
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
+            // rendered as a span: this control sits inside the outer
+            // `<Flex component="button">`, where a nested <button> is invalid
             <Button
+              as="span"
               icon="close"
               className={S.CloseIconButton}
               role="button"

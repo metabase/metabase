@@ -311,14 +311,18 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should show sharing button", () => {
+    it("should show sharing button", async () => {
       setup({ isEditing: false });
-      expect(screen.getByTestId("sharing-menu-button")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("sharing-menu-button"),
+      ).toBeInTheDocument();
     });
 
-    it("should not show editing-related buttons", () => {
+    it("should not show editing-related buttons", async () => {
       setup({ isEditing: false });
-      const buttons = screen.getAllByTestId("dashboard-header-row-button");
+      const buttons = await screen.findAllByTestId(
+        "dashboard-header-row-button",
+      );
 
       const validActions = DASHBOARD_EDITING_ACTIONS.filter(
         (action) => action !== DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
@@ -349,8 +353,11 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should not show regular dashboard action menu", () => {
+    it("should not show regular dashboard action menu", async () => {
       setup({ isEditing: false, isAnalyticsDashboard: true });
+
+      // the analytics header buttons render once async mount effects settle
+      await screen.findAllByTestId("dashboard-header-row-button");
 
       expect(
         screen.queryByLabelText(

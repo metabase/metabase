@@ -115,7 +115,8 @@ const parseAllowedAttribuesFromIframe = (
     result.allow = allow;
   }
   if (allowFullscreen != null) {
-    result.allowFullscreen = allowFullscreen;
+    // `allowfullscreen` is an HTML boolean attribute — its presence means true
+    result.allowFullScreen = true;
   }
 
   return result;
@@ -163,7 +164,8 @@ export const getIframeDomainName = (
 export type AllowedIframeAttributes = {
   src?: string;
   allow?: string;
-  allowFullscreen?: string;
+  // React's camelCased prop name, so the object can be spread onto an <iframe>
+  allowFullScreen?: boolean;
 };
 
 export const getAllowedIframeAttributes = (

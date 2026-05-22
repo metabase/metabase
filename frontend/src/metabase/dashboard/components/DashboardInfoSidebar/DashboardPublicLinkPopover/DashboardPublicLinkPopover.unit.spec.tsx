@@ -38,7 +38,7 @@ const TestComponent = ({
   );
 };
 
-const setup = ({
+const setup = async ({
   hasPublicLink = true,
   isAdmin = true,
 }: {
@@ -67,25 +67,40 @@ const setup = ({
       storeInitialState: state,
     },
   );
+
+  // The PublicLinkPopover opens on mount and runs its useAsync hook, which
+  // flips a loading state once it settles. Wait for that loading state to
+  // clear (the input drops its "Loading…" placeholder) so the async state
+  // update stays wrapped in act.
+  if (hasPublicLink) {
+    await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`);
+  } else {
+    await waitFor(() => {
+      expect(screen.getByTestId("public-link-input")).not.toHaveAttribute(
+        "placeholder",
+        "Loading…",
+      );
+    });
+  }
 };
 
 describe("DashboardPublicLinkPopover", () => {
   it("should display a dashboard-specific public url", async () => {
-    setup();
+    await setup();
 
     expect(
       await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`),
     ).toBeInTheDocument();
   });
 
-  it("should not display extensions for the public link", () => {
-    setup();
+  it("should not display extensions for the public link", async () => {
+    await setup();
 
     expect(screen.queryByTestId("extension-option")).not.toBeInTheDocument();
   });
 
   it("should call Dashboard public link API when creating link", async () => {
-    setup({ hasPublicLink: false });
+    await setup({ hasPublicLink: false });
 
     await waitFor(() => {
       expect(
@@ -100,20 +115,30 @@ describe("DashboardPublicLinkPopover", () => {
   });
 
   it("should call the Dashboard public link API when deleting link", async () => {
-    setup({ hasPublicLink: true });
+    await setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
-        {
-          method: "DELETE",
-        },
-      ),
-    ).toHaveLength(1);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+          {
+            method: "DELETE",
+          },
+        ),
+      ).toHaveLength(1);
+    });
+    // Removing the link closes the popover; wait for it to disappear so the
+    // resulting state update stays wrapped in act.
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("public-link-popover-content"),
+      ).not.toBeInTheDocument();
+    });
   });
 
-  it("should not show non-admins the option to remove a public link", () => {
-    setup({ isAdmin: false });
+  it("should not show non-admins the option to remove a public link", async () => {
+    await setup({ isAdmin: false });
 
     expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
   });

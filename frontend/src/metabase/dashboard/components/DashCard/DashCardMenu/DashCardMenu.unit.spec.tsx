@@ -166,6 +166,8 @@ const setup = ({
       />
       <Route path="question/:slug" component={() => <div />} />
       <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="model/:slug/query" component={() => <div />} />
+      <Route path="metric/:slug/query" component={() => <div />} />
     </>,
     {
       storeInitialState,

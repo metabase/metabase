@@ -33,10 +33,16 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const [isOpen, { open: onOpen, close: _onClose }] = useDisclosure(false);
   const ref = useRef<HTMLInputElement>(null);
 
-  const dashcards = useSelector((state) =>
-    getCurrentDashcards(state).filter(
-      (dashcard) => isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
-    ),
+  // select the (memoized) dashcard list, then filter in useMemo — filtering
+  // inside the selector would return a new array reference on every render
+  const allDashcards = useSelector(getCurrentDashcards);
+  const dashcards = useMemo(
+    () =>
+      allDashcards.filter(
+        (dashcard) =>
+          isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
+      ),
+    [allDashcards],
   );
 
   const parameterDashcard = useSelector((state) => {
