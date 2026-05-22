@@ -646,17 +646,27 @@
     (driver-api/system-timezone-id)
     "UTC"))
 
-(defn- build-bigquery-request [^String sql parameters]
-  (.build
-   (doto (QueryJobConfiguration/newBuilder sql)
-      ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-     (bigquery.params/set-parameters! parameters)
-      ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
-      ;; effect for RPC (a.k.a. "fast") calls
-      ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
-      ;; realizing more rows as per the maximum result size
-     (.setMaxResults *page-size*))))
+(defn- build-bigquery-request [^String sql parameters database-details]
+  (let [builder (doto (QueryJobConfiguration/newBuilder sql)
+                    ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                  (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+                  (bigquery.params/set-parameters! parameters)
+                    ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
+                    ;; effect for RPC (a.k.a. "fast") calls
+                    ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
+                    ;; realizing more rows as per the maximum result size
+                  (.setMaxResults *page-size*))]
+    (when-let [max-bytes (let [v (:maximum-bytes-billed database-details)]
+                           (cond
+                             (integer? v) v
+                             (string? v)  (when-let [s (not-empty v)]
+                                            (try
+                                              (Long/parseLong s)
+                                              (catch NumberFormatException _
+                                                (log/warnf "Ignoring non-numeric :maximum-bytes-billed value %s" (pr-str s))
+                                                nil)))))]
+      (.setMaximumBytesBilled builder max-bytes))
+    (.build builder)))
 
 (defn- reducible-bigquery-results
   [^TableResult page cancel-chan attempt-job-cancel-fn]
@@ -739,7 +749,7 @@
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
         result-promise   (promise)
-        request          (build-bigquery-request sql parameters)
+        request          (build-bigquery-request sql parameters database-details)
         _                (driver.conn/track-connection-acquisition! database-details)
         job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
         job-id           (.getJobId job)
