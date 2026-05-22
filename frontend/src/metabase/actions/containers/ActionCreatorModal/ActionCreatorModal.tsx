@@ -4,6 +4,7 @@ import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -104,15 +105,15 @@ function ActionCreatorModalLoader({
   ...dispatchProps
 }: ModalComponentProps & DispatchProps) {
   const modelId = Urls.extractEntityId(params.slug);
-  const { isLoading } = useGetCardQuery(
+  const { isLoading, error } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,
   );
   const model = useSelector((state) =>
     modelId != null ? getMetadata(state).question(modelId) : undefined,
   );
 
-  if (!model) {
-    return null;
+  if (isLoading || error != null || !model) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
