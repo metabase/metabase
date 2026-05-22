@@ -76,6 +76,7 @@ export const canUseCustomSource = (parameter: Parameter) => {
     case "location":
     case "category":
     case "number":
+    case "id":
       return true;
     default:
       return false;
