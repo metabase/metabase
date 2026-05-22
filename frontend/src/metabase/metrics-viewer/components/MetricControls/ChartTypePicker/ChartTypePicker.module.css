@@ -3,7 +3,7 @@
 }
 
 .root button:not(.selected):hover {
-  background: var(--mb-color-background-hover);
+  background-color: rgba(7, 23, 34, 0.05);
 }
 
 .selected {

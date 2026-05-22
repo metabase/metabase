@@ -1,4 +1,6 @@
 .root {
+  --control-hover-color: rgba(7, 23, 34, 0.05);
+
   position: relative;
   width: 100%;
   height: 2.5rem;
@@ -42,8 +44,9 @@
   padding-inline: 1rem;
   border-radius: 0.5rem;
 
-  &:hover {
-    background: var(--mb-color-background-hover);
+  &.controlButton:hover {
+    color: var(--mb-color-text-primary);
+    background-color: var(--control-hover-color);
   }
 }
 
@@ -52,7 +55,7 @@
   height: 2rem;
   border-radius: 0.5rem;
 
-  &:hover {
-    background: var(--mb-color-background-hover);
+  &.optionsButton:hover {
+    background-color: var(--control-hover-color);
   }
 }
