@@ -167,14 +167,14 @@ function getExplorationDocumentTree(
   exploration: Exploration,
 ): ITreeNodeItem<ExplorationTreeDocument>[] {
   return (exploration.threads ?? []).flatMap((thread) => {
-    const autoInsightsId = thread.auto_insights_document_id;
-    // sort the documents so the auto insights document is first within each thread
+    const aiSummaryId = thread.ai_summary_document_id;
+    // sort the documents so the AI Summary document is first within each thread
     const documents = [...(thread.documents ?? [])].sort((a, b) => {
-      if (autoInsightsId == null) {
+      if (aiSummaryId == null) {
         return 0;
       }
-      const aIsAuto = a.id === autoInsightsId;
-      const bIsAuto = b.id === autoInsightsId;
+      const aIsAuto = a.id === aiSummaryId;
+      const bIsAuto = b.id === aiSummaryId;
       if (aIsAuto === bIsAuto) {
         return 0;
       }
@@ -189,7 +189,7 @@ function getExplorationDocumentTree(
           type: "document",
           id: document.id,
           status:
-            document.id === thread.auto_insights_document_id &&
+            document.id === thread.ai_summary_document_id &&
             thread.started_at != null &&
             thread.completed_at == null
               ? "running"

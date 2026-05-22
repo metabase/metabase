@@ -704,7 +704,7 @@ describe("scenarios > explorations > detail page", () => {
         ],
       };
 
-      // Force the auto-insights doc into the "running" state
+      // Force the AI Summary doc into the "running" state
       // (`completed_at: null` + placeholder body) until we flip
       // the flag, regardless of what the BE has actually written.
       // Without LLM configured, the BE's task runner sets
@@ -715,7 +715,7 @@ describe("scenarios > explorations > detail page", () => {
         req.continue((res) => {
           const body = res.body as {
             threads?: Array<{
-              auto_insights_document_id: number | null;
+              ai_summary_document_id: number | null;
               completed_at: string | null;
               documents?: Array<{ id: number; document?: unknown }>;
             }>;
@@ -726,7 +726,7 @@ describe("scenarios > explorations > detail page", () => {
               ? (thread.completed_at ?? new Date().toISOString())
               : null,
             documents: (thread.documents ?? []).map((doc) =>
-              doc.id === thread.auto_insights_document_id
+              doc.id === thread.ai_summary_document_id
                 ? {
                     ...doc,
                     document: state.completed ? completedDoc : placeholderDoc,
@@ -739,7 +739,7 @@ describe("scenarios > explorations > detail page", () => {
 
       H.visitExploration(id);
 
-      // Expand the `Findings` sidebar heading so the auto-insights
+      // Expand the `Findings` sidebar heading so the AI Summary
       // doc row is in the DOM. (It starts collapsed; the heading
       // is named after the user-doc, which shares the literal
       // string — only the heading button has aria-expanded.)
@@ -760,16 +760,16 @@ describe("scenarios > explorations > detail page", () => {
         .findByLabelText("Loading…")
         .should("be.visible");
 
-      // Look up the auto-insights doc id so we can target the
+      // Look up the AI Summary doc id so we can target the
       // doc-fetch intercept precisely.
       cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
         const autoDocId = (body.threads ?? [])
           .map(
-            (t: { auto_insights_document_id: number | null }) =>
-              t.auto_insights_document_id,
+            (t: { ai_summary_document_id: number | null }) =>
+              t.ai_summary_document_id,
           )
           .find((d: number | null) => d != null);
-        expect(autoDocId, "BE set auto_insights_document_id").to.be.a("number");
+        expect(autoDocId, "BE set ai_summary_document_id").to.be.a("number");
 
         cy.intercept("GET", `/api/document/${autoDocId}`, (req) => {
           req.continue((res) => {
@@ -791,12 +791,12 @@ describe("scenarios > explorations > detail page", () => {
 
         // Toast appears with the success message + a `View`
         // action button (the user is not currently viewing the
-        // auto-insights doc, so the action renders).
+        // AI Summary doc, so the action renders).
         cy.findByText("AI Summary ready", { timeout: 10000 }).should(
           "be.visible",
         );
 
-        // Sidebar icon flips: the auto-insights doc row now
+        // Sidebar icon flips: the AI Summary doc row now
         // exposes the `Ready` aria-label instead of `Loading…`.
         cy.findByText("AI Summary")
           .closest('[role="listitem"]')
@@ -804,7 +804,7 @@ describe("scenarios > explorations > detail page", () => {
           .should("be.visible");
 
         // Click the toast's `View` action → navigates to the
-        // auto-insights doc page.
+        // AI Summary doc page.
         cy.findByRole("button", { name: "View" }).click();
 
         cy.url().should(

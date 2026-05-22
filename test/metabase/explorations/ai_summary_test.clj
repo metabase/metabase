@@ -334,8 +334,8 @@
               (is (= :skip-no-permission outcome))
               (is (zero? @adapter-calls)
                   "LLM provider adapter must not be reached when creator lacks :permission/metabot-other-tools")
-              (let [transcript (:auto_insights_transcript
-                                (t2/select-one [:model/ExplorationThread :auto_insights_transcript]
+              (let [transcript (:ai_summary_transcript
+                                (t2/select-one [:model/ExplorationThread :ai_summary_transcript]
                                                :id (:id t)))]
                 (is (= :skip-no-permission (:outcome transcript))
                     "transcript records the skip outcome")))))))))
@@ -361,8 +361,8 @@
               (is (= :skip-usage-limit outcome))
               (is (zero? @adapter-calls)
                   "LLM provider adapter must not be reached when usage limit is hit")
-              (let [transcript (:auto_insights_transcript
-                                (t2/select-one [:model/ExplorationThread :auto_insights_transcript]
+              (let [transcript (:ai_summary_transcript
+                                (t2/select-one [:model/ExplorationThread :ai_summary_transcript]
                                                :id (:id t)))]
                 (is (= :skip-usage-limit (:outcome transcript)))))))))))
 
@@ -384,8 +384,8 @@
               (is (= :skip-metabot-disabled outcome))
               (is (zero? @adapter-calls)
                   "LLM provider adapter must not be reached when Metabot is disabled")
-              (let [transcript (:auto_insights_transcript
-                                (t2/select-one [:model/ExplorationThread :auto_insights_transcript]
+              (let [transcript (:ai_summary_transcript
+                                (t2/select-one [:model/ExplorationThread :ai_summary_transcript]
                                                :id (:id t)))]
                 (is (= :skip-metabot-disabled (:outcome transcript))
                     "transcript records the skip outcome")))))))))
@@ -446,9 +446,13 @@
                                       metabase.metabot.scope/resolve-user-permissions
                                       (constantly metabase.metabot.scope/all-yes-permissions)
                                       metabot.self/call-llm-structured-with-trace
-                                      (fn [_model messages _schema _temp _max-tokens _opts]
-                                        (let [user-msg (->> messages (filter #(= "user" (:role %))) first :content)]
-                                          (if (str/includes? user-msg "CHART POOL")
+                                      (fn [_model _messages schema _temp _max-tokens _opts]
+                                        ;; Phase 1 (curation) is the call whose JSON schema asks for
+                                        ;; `top_tier`; Phase 2 (analysis) asks for `document`. Branch
+                                        ;; on the schema contract rather than prompt wording so the
+                                        ;; stub doesn't silently break when prompt copy changes.
+                                        (let [curation? (some? (get-in schema [:properties :top_tier]))]
+                                          (if curation?
                                             (do (swap! curation-call inc)
                                                 {:result {:top_tier       [(:id query)]
                                                           :awareness_tier []

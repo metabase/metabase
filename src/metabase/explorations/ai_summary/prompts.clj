@@ -20,7 +20,7 @@
   [filename]
   (let [path (str template-dir filename)]
     (or (some-> (io/resource path) slurp)
-        (do (log/error "Auto-insights prompt template not found:" path)
+        (do (log/error "AI Summary prompt template not found:" path)
             nil))))
 
 (defn- cached-template

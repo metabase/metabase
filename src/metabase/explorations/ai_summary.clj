@@ -19,7 +19,7 @@
 
   Both phases use extended thinking, both have one repair retry on validation
   failure, both have their prompt / response / reasoning persisted to the
-  thread's `auto_insights_transcript` column for after-the-fact debugging.
+  thread's `ai_summary_transcript` column for after-the-fact debugging.
   If either phase fails validation after repair, the document is replaced
   with a minimal *error document* that explains the failure — we never
   silently fall back to a different selection strategy. This is intentional
@@ -173,7 +173,7 @@
   [thread-id transcript]
   (try
     (t2/update! :model/ExplorationThread thread-id
-                {:auto_insights_transcript transcript})
+                {:ai_summary_transcript transcript})
     (catch Throwable e
       (log/warnf e "Failed to save AI Summary transcript for thread %d" thread-id))))
 
@@ -222,7 +222,7 @@
                                               :collection_id         collection-id
                                               :exploration_thread_id thread-id}))]
     (t2/update! :model/ExplorationThread thread-id
-                {:auto_insights_document_id (:id doc)})
+                {:ai_summary_document_id (:id doc)})
     doc))
 
 (defn- find-placeholder-doc
@@ -243,8 +243,8 @@
   no transcript has been written yet. Includes pool info, both phase prompts
   and attempts, the curation, the final document, and the outcome keyword."
   [thread-id]
-  (:auto_insights_transcript
-   (t2/select-one [:model/ExplorationThread :id :auto_insights_transcript]
+  (:ai_summary_transcript
+   (t2/select-one [:model/ExplorationThread :id :ai_summary_transcript]
                   :id thread-id)))
 
 (defn- attempt-reasonings
@@ -440,7 +440,7 @@
   or model behavior, and someone should look.
 
   Shared with `metabase.explorations.query-plan` so a planning failure can
-  swap the same Auto-Insights placeholder doc to an error body."
+  swap the same AI Summary placeholder doc to an error body."
   [{:keys [phase thread-id final-errors detail]}]
   (let [phase-label (case phase
                       :phase-1     "Phase 1 — Chart curation"
@@ -612,8 +612,8 @@
   `:metabot/permission-denied` / `:metabot/usage-limit-reached`, which we map to the
   matching skip outcomes; any other exception bubbles to the outer `try` in
   [[generate-ai-summary!]]."
-  [{:keys [thread-id thread creator-id coll-id done-queries prepped prepped-by-id
-           pool-ids selections timelines preamble]}]
+  [{:keys [thread-id thread creator-id coll-id done-queries prepped
+           selections timelines preamble]}]
   (request/with-current-user creator-id
     (try
       (let [placeholder-doc (or (find-placeholder-doc thread-id)
@@ -758,7 +758,7 @@
   user's working space and is left untouched. The full transcript (both phase
   prompts, every LLM response, validation errors, extended-thinking traces,
   the validated document) is persisted to
-  `exploration_thread.auto_insights_transcript` on every outcome (including
+  `exploration_thread.ai_summary_transcript` on every outcome (including
   skips and failures) for after-the-fact debugging — `(debug-transcript
   <thread-id>)` to inspect.
 
@@ -806,7 +806,6 @@
                                                                   :metric-description metric_description
                                                                   :chart-description  chart_description})))
                                           pool-queries))
-                  prepped-by-id (into {} (map (juxt :exploration-query-id identity)) prepped)
                   pool-ids     (mapv :exploration-query-id prepped)
                   selections   (selection-context thread-id)
                   timelines    (load-timeline-events thread-id)
@@ -836,8 +835,6 @@
                               :coll-id       (:collection_id exploration)
                               :done-queries  done-queries
                               :prepped       prepped
-                              :prepped-by-id prepped-by-id
-                              :pool-ids      pool-ids
                               :selections    selections
                               :timelines     timelines
                               :preamble      preamble})))))))

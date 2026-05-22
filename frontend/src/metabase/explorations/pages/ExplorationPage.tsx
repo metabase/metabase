@@ -28,7 +28,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import {
   ExplorationDocument as ExplorationDocumentComponent,
-  type ExplorationDocumentWithIsAutoInsights,
+  type ExplorationDocumentWithIsAiSummary,
 } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import {
@@ -69,7 +69,7 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   //   (a) any individual query is still running, OR
   //   (b) the thread has been started but isn't fully complete yet — the
   //       backend's `completed_at` is set only after the post-query
-  //       auto-insights handler has written its document. While the handler
+  //       AI Summary handler has written its document. While the handler
   //       runs we want the placeholder "Analysis underway" doc to get
   //       swapped for the real one in the sidebar, which only happens via
   //       a poll refresh. Draft threads (no `started_at`) don't trigger
@@ -197,16 +197,16 @@ export function ExplorationPage({
     return pickInitialSidebarEntity(exploration?.threads);
   }, [params.entityType, params.entityId, exploration]);
 
-  // Auto-insights generates its document asynchronously: the FE shows a
+  // AI Summary generates its document asynchronously: the FE shows a
   // placeholder "Analysis underway…" Document while the worker runs, and
   // the worker UPDATES that same Document in place when generation
   // finishes. Polling the exploration is enough to see the thread's
   // `completed_at` flip, but the cached document body (served by RTKQ's
   // `getDocument`) is independent of that response — so a user already
-  // viewing the auto-insights doc would otherwise keep seeing the
+  // viewing the AI Summary doc would otherwise keep seeing the
   // placeholder until they hard-refreshed. Watch for the null → non-null
   // transition on `completed_at` for each thread and:
-  //   1. Invalidate the Automatic Insights document tag. RTKQ refetches
+  //   1. Invalidate the AI Summary document tag. RTKQ refetches
   //      the body for an active subscription (the open editor) and marks
   //      inactive cache entries stale.
   //   2. Always surface a toast that the analysis is ready — even when the
@@ -228,7 +228,7 @@ export function ExplorationPage({
         continue;
       }
       const autoDoc = thread.documents?.find(
-        (d) => d.id === thread.auto_insights_document_id,
+        (d) => d.id === thread.ai_summary_document_id,
       );
       if (!autoDoc) {
         continue;
@@ -359,7 +359,7 @@ export function ExplorationPage({
 
   const documentIdToDocument: Map<
     DocumentId,
-    ExplorationDocumentWithIsAutoInsights
+    ExplorationDocumentWithIsAiSummary
   > = useMemo(() => {
     return new Map(
       (exploration?.threads ?? []).flatMap((thread) =>
@@ -367,7 +367,7 @@ export function ExplorationPage({
           document.id,
           {
             ...document,
-            isAutoInsights: document.id === thread.auto_insights_document_id,
+            isAiSummary: document.id === thread.ai_summary_document_id,
           },
         ]),
       ),

@@ -43,13 +43,13 @@ import type { ExplorationDocument, ExplorationId } from "metabase-types/api";
 import S from "./ExplorationDocument.module.css";
 import { ExplorationDocumentSkeleton } from "./ExplorationDocumentSkeleton";
 
-export type ExplorationDocumentWithIsAutoInsights = ExplorationDocument & {
-  isAutoInsights: boolean;
+export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
+  isAiSummary: boolean;
 };
 
 interface ExplorationDocumentProps {
   explorationId: ExplorationId;
-  document: ExplorationDocumentWithIsAutoInsights;
+  document: ExplorationDocumentWithIsAiSummary;
   isCommentsSidebarOpen: boolean;
   childTargetId?: string;
   route: Route;
@@ -153,7 +153,7 @@ export function ExplorationDocument({
               fw="bold"
               fz="h3"
               lh="h3"
-              isDisabled={!canWrite || isSaving || document.isAutoInsights}
+              isDisabled={!canWrite || isSaving || document.isAiSummary}
               p={0}
               flex={1}
               maxLength={DOCUMENT_TITLE_MAX_LENGTH}
@@ -205,7 +205,7 @@ export function ExplorationDocument({
               onQuestionSelect={handleQuestionSelect}
               initialContent={documentContent}
               onChange={handleChange}
-              editable={canWrite && !isSaving && !document.isAutoInsights}
+              editable={canWrite && !isSaving && !document.isAiSummary}
               isLoading={isDocumentLoading}
               editorContainerRef={editorContainerRef}
             />

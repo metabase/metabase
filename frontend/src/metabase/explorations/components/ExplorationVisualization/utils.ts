@@ -389,6 +389,6 @@ export function getDocumentsForDocumentMenu(
   explorationThread: ExplorationThread,
 ): ExplorationDocument[] {
   return (explorationThread.documents ?? []).filter(
-    (d) => d.id !== explorationThread.auto_insights_document_id,
+    (d) => d.id !== explorationThread.ai_summary_document_id,
   );
 }

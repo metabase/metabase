@@ -481,7 +481,7 @@
         ;; see the throw and route to a skip outcome.
         (let [{ex-type :type parts :parts} (ex-data e)]
           (if (and parts (not (#{:metabot/permission-denied :metabot/usage-limit-reached} ex-type)))
-            (do (log/warnf "Auto-insights LLM call did not produce a tool call (tag=%s); falling back to repair loop" tag)
+            (do (log/warnf "AI Summary LLM call did not produce a tool call (tag=%s); falling back to repair loop" tag)
                 {:response nil :parts parts})
             (throw e)))))))
 

@@ -227,7 +227,7 @@
    [:prompt                     {:optional true} [:maybe :string]]
    [:position                   ms/IntGreaterThanOrEqualToZero]
    [:started_at                 {:optional true} [:maybe :any]]
-   [:auto_insights_document_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:ai_summary_document_id     {:optional true} [:maybe ms/PositiveInt]]
    [:metrics                    {:optional true} [:maybe [:sequential :map]]]
    [:dimensions                 {:optional true} [:maybe [:sequential :map]]]
    [:timelines                  {:optional true} [:maybe [:sequential :map]]]

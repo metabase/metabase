@@ -5,20 +5,20 @@ import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor"
 
 import {
   ExplorationDocument,
-  type ExplorationDocumentWithIsAutoInsights,
+  type ExplorationDocumentWithIsAiSummary,
 } from "./ExplorationDocument";
 
 jest.mock("metabase/documents/hooks/use-document-editor", () => ({
   useDocumentEditor: jest.fn(),
 }));
 
-const mockDocument: ExplorationDocumentWithIsAutoInsights = {
+const mockDocument: ExplorationDocumentWithIsAiSummary = {
   id: 1,
   exploration_thread_id: 1,
   name: "Test document",
   creator_id: 1,
   content_type: "application/json+vnd.prose-mirror",
-  isAutoInsights: false,
+  isAiSummary: false,
 };
 
 function setup(

@@ -1131,64 +1131,64 @@ databaseChangeLog:
   - changeSet:
       id: v62.aitranscript
       author: nvoxland
-      comment: Capture the LLM transcript used to generate the Automatic Insights document
+      comment: Capture the LLM transcript used to generate the AI Summary document
       changes:
         - addColumn:
             tableName: exploration_thread
             columns:
               - column:
-                  name: auto_insights_transcript
+                  name: ai_summary_transcript
                   type: ${text.type}
-                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's Automatic Insights doc. Debug-only — not surfaced to the user.
+                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's AI Summary doc. Debug-only — not surfaced to the user.
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v62.j5tdfdg
       author: nvoxland
-      comment: Add exploration_thread.auto_insights_document_id
+      comment: Add exploration_thread.ai_summary_document_id
       changes:
         - addColumn:
             tableName: exploration_thread
             columns:
               - column:
-                  name: auto_insights_document_id
+                  name: ai_summary_document_id
                   type: int
-                  remarks: FK to the Automatic Insights doc for this thread.
+                  remarks: FK to the AI Summary doc for this thread.
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v62.t4fsce
       author: nvoxland
-      comment: FK exploration_thread.auto_insights_document_id -> document.id
+      comment: FK exploration_thread.ai_summary_document_id -> document.id
       changes:
         - addForeignKeyConstraint:
             baseTableName: exploration_thread
-            baseColumnNames: auto_insights_document_id
+            baseColumnNames: ai_summary_document_id
             referencedTableName: document
             referencedColumnNames: id
-            constraintName: fk_exploration_thread_auto_insights_document_id
+            constraintName: fk_exploration_thread_ai_summary_document_id
             onDelete: SET NULL
 
   - changeSet:
       id: v62.864345s
       author: nvoxland
-      comment: Backfill exploration_thread.auto_insights_document_id from the existing 'Automatic Insights' document on each thread, if any.
+      comment: Backfill exploration_thread.ai_summary_document_id from the existing 'AI Summary' document on each thread, if any.
       changes:
         - sql:
             sql: >-
               UPDATE exploration_thread
-              SET auto_insights_document_id = (
+              SET ai_summary_document_id = (
                 SELECT d.id
                 FROM document d
                 WHERE d.exploration_thread_id = exploration_thread.id
-                  AND d.name = 'Automatic Insights'
+                  AND d.name = 'AI Summary'
                   AND d.archived = FALSE
                 ORDER BY d.id ASC
                 LIMIT 1
               )
-              WHERE auto_insights_document_id IS NULL
+              WHERE ai_summary_document_id IS NULL
       rollback:
 
   - changeSet:
