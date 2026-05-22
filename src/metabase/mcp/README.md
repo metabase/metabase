@@ -97,7 +97,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 
 | Resource URI                         | Description                                                                                                        |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query` — sources, operations, operator forms, worked examples, pitfalls. |
+| `metabase://docs/construct-query.md` | Format reference for `construct_query` and `query` — top-level / stage shape, field references, filter / aggregation / temporal operators, joins, expressions, multi-stage queries, worked examples, pitfalls. |
 
 ## Supported JSON-RPC methods
 
