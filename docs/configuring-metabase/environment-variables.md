@@ -129,7 +129,7 @@ Allowed iframe hosts.
 - [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
 - [Configuration file name](./config-file.md): `csp-img-enabled`
 
-When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be on to enable [Custom Visualizations](../visualizations/custom-visualizations.md).
+When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be turned on to enable [Custom Visualizations](../visualizations/custom-visualizations.md).
 
 ### `MB_CSP_IMG_ALLOWED_HOSTS`
 
