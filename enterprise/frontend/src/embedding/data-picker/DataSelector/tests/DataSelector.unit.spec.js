@@ -332,7 +332,7 @@ describe("DataSelector", () => {
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -344,8 +344,10 @@ describe("DataSelector", () => {
       />,
     );
 
+    // findBy* waits out componentDidMount's async step-loading chain so its
+    // state updates stay wrapped in act()
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 
@@ -397,7 +399,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -407,8 +409,12 @@ describe("DataSelector", () => {
       />,
     );
 
+    // findBy* waits out componentDidMount's async step-loading chain so its
+    // state updates stay wrapped in act()
     expect(
-      screen.getByText("To pick some data, you'll need to add some first"),
+      await screen.findByText(
+        "To pick some data, you'll need to add some first",
+      ),
     ).toBeInTheDocument();
   });
 });

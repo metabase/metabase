@@ -80,10 +80,14 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay (simple embedding)", () => {
   it("does not show an error when a license exists and is enabled", async () => {
-    await setup({
+    setup({
       hasSimpleEmbeddingFeature: true,
       isSimpleEmbeddingEnabled: true,
     });
+
+    // No usage problem renders here, so wait for the embedded content itself
+    // to settle before asserting the indicator stays absent.
+    expect(await screen.findByText("hello!")).toBeInTheDocument();
 
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
@@ -93,11 +97,11 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
   });
 
   it("shows an error when used without a license", async () => {
-    await setup({
+    setup({
       hasSimpleEmbeddingFeature: false,
     });
 
-    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+    await userEvent.click(await screen.findByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(within(card).getByText("Error")).toBeInTheDocument();
@@ -119,12 +123,12 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
   });
 
   it("shows an error when simple embedding is disabled", async () => {
-    await setup({
+    setup({
       hasSimpleEmbeddingFeature: true,
       isSimpleEmbeddingEnabled: false,
     });
 
-    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+    await userEvent.click(await screen.findByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
 

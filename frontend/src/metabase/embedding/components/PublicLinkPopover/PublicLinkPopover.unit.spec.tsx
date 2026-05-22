@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { ExportFormat } from "metabase/common/types/export";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -129,24 +129,37 @@ describe("PublicLinkPopover", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render `Remove public link` for non-admins", () => {
+    it("should not render `Remove public link` for non-admins", async () => {
       setup({ isAdmin: false });
 
       expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
+      // the link input settles once the link-loading effect resolves
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
     });
   });
 
   describe("when creating public links", () => {
-    it("should call createPublicLink when uuid is null and isOpen is true", () => {
+    it("should call createPublicLink when uuid is null and isOpen is true", async () => {
       const { createPublicLink } = setup({ hasUUID: false });
 
       expect(createPublicLink).toHaveBeenCalledTimes(1);
+      // the input drops its loading placeholder once the effect resolves
+      await waitFor(() =>
+        expect(screen.getByTestId("public-link-input")).not.toHaveAttribute(
+          "placeholder",
+        ),
+      );
     });
 
-    it("should not call createPublicLink when isOpen is false", () => {
+    it("should not call createPublicLink when isOpen is false", async () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
 
       expect(createPublicLink).not.toHaveBeenCalled();
+      // the closed popover keeps only the target rendered while the
+      // link-loading effect resolves
+      expect(await screen.findByTestId("target")).toBeInTheDocument();
     });
 
     it("should call createPublicLink when uuid is null and the popover is opened", async () => {

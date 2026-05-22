@@ -121,6 +121,19 @@ export async function setup({
     );
   }
 
+  // StaticEmbedSetupPane computes the signed preview URL in a useAsync hook
+  // that flips a state value once it resolves. Wait for that result to be
+  // reflected in the DOM so the state update stays wrapped in act.
+  if (activeTab === "Parameters" || activeTab === "Look and Feel") {
+    // These tabs render the live preview, whose iframe only appears once the
+    // signed URL has been computed.
+    await screen.findByTestId("embed-preview-iframe");
+  } else {
+    // The Overview tab has no live preview; wait for the generated embed code
+    // to be present, which settles the pane's mount-time async work.
+    await screen.findAllByTestId("text-editor-mock");
+  }
+
   return {
     ...view,
     onUpdateEmbeddingParams,

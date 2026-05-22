@@ -5,6 +5,7 @@ import {
   findRequests,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -12,7 +13,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
@@ -25,7 +26,7 @@ import {
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
-export const setup = (options?: {
+export const setup = async (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
   showSimpleEmbedTerms?: boolean;
@@ -60,6 +61,9 @@ export const setup = (options?: {
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
+  // The setup flow's DatabaseRoutingWarning calls useListDatabasesQuery on
+  // mount, so a databases endpoint must always be mocked.
+  setupDatabasesEndpoints([mockDatabase]);
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
@@ -90,6 +94,14 @@ export const setup = (options?: {
       }),
     },
   );
+
+  // The setup flow fires several queries (databases, dashboard, search,
+  // recents) on mount. Wait for the rendered UI to settle - the step content
+  // and the modal footer button only render once the provider has consumed
+  // those queries - so their state updates stay wrapped in act instead of
+  // leaking after the test body finishes.
+  await screen.findByTestId("sdk-iframe-embed-setup-modal-content");
+  await screen.findByRole("button", { name: /Next|Get code/ });
 };
 
 export async function waitForUpdateSetting(settingKey: string, value: any) {

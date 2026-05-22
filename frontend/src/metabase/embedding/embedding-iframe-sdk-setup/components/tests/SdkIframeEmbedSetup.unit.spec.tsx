@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
@@ -16,16 +15,16 @@ import {
 import { setup } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
-  it("shows the embed experience step as the first step", () => {
-    setup();
+  it("shows the embed experience step as the first step", async () => {
+    await setup();
 
     expect(
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
   });
 
-  it("selects the dashboard experience by default", () => {
-    setup();
+  it("selects the dashboard experience by default", async () => {
+    await setup();
 
     const dashboardRadio = screen.getByRole("radio", { name: /Dashboard/ });
     expect(dashboardRadio).toBeChecked();
@@ -42,7 +41,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates forward through the embed flow", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    await setup({ simpleEmbeddingEnabled: true });
 
     expect(screen.getByText("Authentication")).toBeInTheDocument();
 
@@ -73,7 +72,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates backward to the previous step", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    await setup({ simpleEmbeddingEnabled: true });
 
     // Select embed type > select resource > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -96,7 +95,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("skips the 'select resource' step for exploration", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    await setup({ simpleEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
@@ -110,8 +109,8 @@ describe("Embed flow > forward and backward navigation", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("disables next and back buttons when simple embedding is disabled", () => {
-    setup({ simpleEmbeddingEnabled: false });
+  it("disables next and back buttons when simple embedding is disabled", async () => {
+    await setup({ simpleEmbeddingEnabled: false });
 
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(
@@ -123,7 +122,6 @@ describe("Embed flow > forward and backward navigation", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -132,7 +130,7 @@ describe("Embed flow > forward and backward navigation", () => {
       }),
     );
 
-    setup({
+    await setup({
       simpleEmbeddingEnabled: true,
       initialState: {
         resourceType: "question",
@@ -151,11 +149,10 @@ describe("Embed flow > forward and backward navigation", () => {
 });
 
 describe("Embed flow > Pro feature upsell indicators", () => {
-  it("disables Pro checkboxes for OSS users (question)", () => {
+  it("disables Pro checkboxes for OSS users (question)", async () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -164,7 +161,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
       }),
     );
 
-    setup({
+    await setup({
       simpleEmbeddingEnabled: false,
       initialState: {
         resourceType: "question",
@@ -197,7 +194,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
-    setupDatabasesEndpoints([mockDatabase]);
     setupCardEndpoints(mockCard);
     setupCardQueryMetadataEndpoint(
       mockCard,
@@ -206,7 +202,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
       }),
     );
 
-    setup({
+    await setup({
       simpleEmbeddingEnabled: true,
       hasEmailSetup: true,
       initialState: {
@@ -237,10 +233,8 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
-  it("disables Pro checkboxes for OSS users (dashboard)", () => {
-    setupDatabasesEndpoints([createMockDatabase()]);
-
-    setup({
+  it("disables Pro checkboxes for OSS users (dashboard)", async () => {
+    await setup({
       simpleEmbeddingEnabled: false,
       initialState: {
         resourceType: "dashboard",
@@ -264,7 +258,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
   it("enables Pro checkboxes for Pro users (dashboard)", async () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
-    setup({
+    await setup({
       simpleEmbeddingEnabled: true,
       hasEmailSetup: true,
     });

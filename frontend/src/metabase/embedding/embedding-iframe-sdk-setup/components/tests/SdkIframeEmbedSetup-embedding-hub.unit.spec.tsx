@@ -26,7 +26,7 @@ describe("Embed flow > embedding hub step completion tracking", () => {
   ])(
     "updates setting on $trigger with $authMethod",
     async ({ useExistingUserSession, trigger }) => {
-      setup({
+      await setup({
         jwtReady: !useExistingUserSession,
         simpleEmbeddingEnabled: true,
         showSimpleEmbedTerms: false,

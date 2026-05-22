@@ -16,6 +16,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { screen, waitFor } from "__support__/ui";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
@@ -198,7 +199,7 @@ export const setup = async () => {
 
   const state = setupSdkState({ currentUser: createMockUser() });
 
-  return renderWithSDKProviders(
+  const result = renderWithSDKProviders(
     <SdkBreadcrumbsProvider>
       <BreadcrumbsTestComponent />
     </SdkBreadcrumbsProvider>,
@@ -209,4 +210,13 @@ export const setup = async () => {
       storeInitialState: state,
     },
   );
+
+  // Wait for the collection browser to finish loading. This also lets the SDK
+  // `LocaleProvider`'s async `loadLocalization()` settle, so its state update
+  // is observed inside `act()` instead of escaping it.
+  await waitFor(() => {
+    expect(screen.getByText("Last edited by")).toBeInTheDocument();
+  });
+
+  return result;
 };
