@@ -15,7 +15,7 @@
   (:import
    (java.io FileNotFoundException)
    (java.net URL)
-   (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException
+   (java.nio.file CopyOption Files FileSystem
                   FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
    (java.util Collections)
@@ -109,13 +109,31 @@
   (when url
     (str/includes? (.getFile url) ".jar!/")))
 
+(defn nio-fs
+  "Open a fresh NIO zip filesystem for the file at `path`.
+
+  Uses the Path-based `FileSystems/newFileSystem` overload, NOT the URI-based one. NIO maintains a JVM-global cache of
+  zip filesystems keyed by URI; the URI-based overload registers in that cache, so other code can obtain the cached
+  instance via `FileSystems/getFileSystem` and close it inside a `with-open` block, tearing the filesystem down out
+  from under any other thread still using it. The Path-based overload bypasses that cache, giving an independent
+  instance whose lifecycle the caller fully controls."
+  ^FileSystem [^String path]
+  (-> (Path/of path (u/varargs String))
+      (FileSystems/newFileSystem Collections/EMPTY_MAP)))
+
+(defn- jar-path-from-url
+  "Extract the jar file path from a `jar:file:...!/entry` URL, e.g.
+  `jar:file:/path/metabase.jar!/frontend_client/app` -> `/path/metabase.jar`."
+  ^String [^URL url]
+  (let [file (str/replace-first (.getFile url) #"^file:" "")
+        bang (str/index-of file "!/")]
+    (java.net.URLDecoder/decode (subs file 0 bang) "UTF-8")))
+
 (defn- jar-file-system-from-url ^FileSystem [^URL url]
-  (let [uri (.toURI url)]
-    (try
-      (FileSystems/newFileSystem uri Collections/EMPTY_MAP)
-      (catch FileSystemAlreadyExistsException _
-        (log/info "File system at" uri "already exists")
-        (FileSystems/getFileSystem uri)))))
+  ;; Always open a private, caller-owned filesystem via `nio-fs`. The previous implementation used the URI-based
+  ;; `FileSystems/newFileSystem` overload, which returns a JVM-globally-cached, shared instance; closing it in a
+  ;; `with-open` block could tear it down for concurrent readers of the same jar.
+  (nio-fs (jar-path-from-url url)))
 
 (defn do-with-open-path-to-resource
   "Impl for `with-open-path-to-resource`."
