@@ -348,13 +348,8 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Collection, and anything referenced in the query (including :database)"
+          (testing "cards depend on their Collection and the query's Database (not the Tables/Fields it references)"
             (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]
                      [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))
 
@@ -373,17 +368,10 @@
           (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
           (is (contains? ser :database_id) "database_id kept when query is empty")
 
-          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings refs"
+          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings card refs (not the Fields)"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id coll-eid}]
-                     [{:model "Card" :id c1-eid}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Schema" :id "PUBLIC"}
-                      {:model "Table" :id "Schema'd Table"}
-                      {:model "Field" :id "Other Field"}]}
+                     [{:model "Card" :id c1-eid}]}
                    (set (serdes/dependencies ser))))))
 
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
@@ -416,16 +404,9 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Database (kept, query empty), Collection, and visualization_settings refs"
+          (testing "cards depend on their Database (kept, query empty) and Collection (not the Fields in visualization_settings)"
             (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Schema" :id "PUBLIC"}
-                      {:model "Table" :id "Schema'd Table"}
-                      {:model "Field" :id "Other Field"}]}
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser)))))))
 
       (testing "Cards can be based on other cards"
@@ -476,16 +457,10 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "and depend on all referenced cards and actions, including those in visualization_settings"
+          (testing "and depend on all referenced cards and actions, plus the Database of fields referenced in visualization_settings"
             (is (= #{[{:model "Card" :id c2-eid}]
                      [{:model "Action" :id action-eid}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Schema" :id "PUBLIC"}
-                      {:model "Table" :id "Schema'd Table"}
-                      {:model "Field" :id "Other Field"}]
+                     [{:model "Database" :id "My Database"}]
                      [{:model "Collection" :id dave-coll-eid}]}
                    (set (serdes/dependencies ser)))))))
 
@@ -503,9 +478,8 @@
                   ser))
           (is (= #{[{:model "Collection" :id dave-coll-eid}]
                    [{:model "Card" :id c1-eid}]
-                   [{:model "Database", :id "My Database"}
-                    {:model "Table", :id "Schemaless Table"}
-                    {:model "Field", :id "Some Field"}]}
+                   ;; the parameter's value_field references a Field, but only its Database is a dependency
+                   [{:model "Database", :id "My Database"}]}
                  (set (serdes/dependencies ser))))))
 
       (testing "Cards with parameters where the source is a card"
@@ -522,9 +496,8 @@
                   ser))
           (is (= #{[{:model "Collection" :id dave-coll-eid}]
                    [{:model "Card" :id c1-eid}]
-                   [{:model "Database", :id "My Database"}
-                    {:model "Table", :id "Schemaless Table"}
-                    {:model "Field", :id "Some Field"}]}
+                   ;; the parameter's value_field references a Field, but only its Database is a dependency
+                   [{:model "Database", :id "My Database"}]}
                  (set (serdes/dependencies ser))))))
 
       (testing "collection filtering based on :user option"
@@ -636,9 +609,8 @@
             (is (= [dim1-eid]
                    (->> ser :dimensions (map :entity_id)))))
 
-          (testing "which depend on just the table"
-            (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}]}
+          (testing "depend only on the Database; the Table is synthesized on import if missing"
+            (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
@@ -662,18 +634,8 @@
                       :created_at              string?}]
                     (:dimensions ser))))
 
-          (testing "which depend on the Table and both real and human-readable foreign Fields"
-            (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Orders"}]
-                     [{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Customers"}
-                      {:model "Field"      :id "id"}]
-                     [{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Customers"}
-                      {:model "Field"      :id "name"}]}
+          (testing "depend only on the Database; the Table, FK target and human-readable Fields are synthesized on import if missing"
+            (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest native-query-snippets-test
@@ -903,13 +865,8 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend on the Database, the Table and any fields from the definition"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}
-                      {:model "Field" :id "Some Field"}]}
+          (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
+            (is (= #{[{:model "Database" :id "My Database"}]}
                    (set (serdes/dependencies ser))))))))))
 
 (defn- mbql5-measure-definition
@@ -949,13 +906,8 @@
                        :created_at  string?}
                       ser))
               (is (not (contains? ser :id)))
-              (testing "depend on the Database, the Table and any fields from the definition"
-                (is (= #{[{:model "Database" :id "My Database"}]
-                         [{:model "Database" :id "My Database"}
-                          {:model "Table" :id "Schemaless Table"}]
-                         [{:model "Database" :id "My Database"}
-                          {:model "Table" :id "Schemaless Table"}
-                          {:model "Field" :id "Some Field"}]}
+              (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
+                (is (= #{[{:model "Database" :id "My Database"}]}
                        (set (serdes/dependencies ser))))))))))))
 
 (deftest measure-referencing-measure-test
@@ -1200,10 +1152,8 @@
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
 
-          (testing "depend on the parent Field"
-            (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}
-                      {:model "Field"      :id "Some Field"}]}
+          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
+            (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
@@ -1236,10 +1186,8 @@
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
 
-          (testing "depend on the parent Field"
-            (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}
-                      {:model "Field"      :id "Some Field"}]}
+          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
+            (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/dependencies ser)))))))
       (testing "extract-metabase behavior"
         (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
@@ -1296,12 +1244,11 @@
                    :values_source_config {:card_id card-eid-1,
                                           :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
                  (:parameters ser)))
+          ;; The parameter's value_field references a Field, but Tables/Fields are not dependencies — only their
+          ;; Database is.
           (is (= #{[{:model "Database"   :id "My Database"}]
                    [{:model "Collection" :id coll-eid-2}]
-                   [{:model "Card"       :id card-eid-1}]
-                   [{:model "Database"   :id "My Database"}
-                    {:model "Table"      :id "Schemaless Table"}
-                    {:model "Field"      :id "A Field"}]}
+                   [{:model "Card"       :id card-eid-1}]}
                  (set (serdes/dependencies ser))))))
       (testing "Nullable transformations are omitted"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
@@ -2400,11 +2347,12 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include collection, source table, and tags"
+            (testing "dependencies include collection, source database, and tags (the source Table itself is not a dependency)"
               (let [deps (set (serdes/dependencies ser))]
                 (is (contains? deps [{:model "Collection" :id coll-eid}]))
-                (is (contains? deps [{:model "Database" :id "My Database"}
-                                     {:model "Table" :id "Schemaless Table"}]))
+                (is (contains? deps [{:model "Database" :id "My Database"}]))
+                (is (not (contains? deps [{:model "Database" :id "My Database"}
+                                          {:model "Table" :id "Schemaless Table"}])))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
@@ -2866,9 +2814,10 @@
           ;; Database dep comes from mbql-deps on the query's :database key
           (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
               "Database dependency should come from the query")
-          ;; Table dep comes from mbql-deps on the query's :source-table
-          (is (some #(some (fn [step] (= "Table" (:model step))) %) deps)
-              "Table dependency should come from the query"))))))
+          ;; Tables/Fields are intentionally not dependencies — they're synthesized as inactive rows on import
+          ;; if missing, and upserted otherwise.
+          (is (not-any? #(some (fn [step] (#{"Table" "Field"} (:model step))) %) deps)
+              "Table/Field should not be dependencies"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"

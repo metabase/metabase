@@ -197,11 +197,10 @@
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes a Table dependency"
-    (is (contains? (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})
-                   [{:model "Database" :id "DB"}
-                    {:model "Schema" :id "SCHEMA"}
-                    {:model "Table" :id "TABLE"}]))))
+  (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
+            dependency (it's synthesized on import if missing)"
+    (is (= #{[{:model "Database" :id "DB"}]}
+           (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})))))
 
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]

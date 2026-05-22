@@ -404,10 +404,7 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source)
-    (for [{:keys [table_id]} (:source-tables source)
-          :when (vector? table_id)]
-      (serdes/table->path table_id)))))
+    (serdes/mbql-deps source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))
