@@ -24,6 +24,7 @@ import type {
 } from "./types";
 import {
   appendQueryParameters,
+  handleResponse,
   relativeUrl as relativePath,
   substituteUrlTags,
 } from "./utils";
@@ -177,7 +178,12 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     updateAntiCsrfToken(response);
 
-    if (!noEvent && (response.status === 401 || response.status === 403)) {
+    const { ok, status, body } = await handleResponse<T>(
+      response,
+      transformResponse,
+    );
+
+    if (!noEvent && (status === 401 || status === 403)) {
       // We can use response.status here, and not the status from getResponseStatus,
       // because streaming responses will never set a _status of 401 or 403.
       //
@@ -185,27 +191,16 @@ export class ApiClient extends EventEmitter<EventMap> {
       //
       // Strip basename so listeners (app-main.js) see the relative path.
       const path = relativePath(this.basename, url);
-      this.emit(response.status, path);
+      this.emit(status, path);
     }
 
-    const unreadResponse = response.clone();
-    const responseBody = await getResponseBody(response);
-    const status = getResponseStatus(response, responseBody);
-
-    if (status < 200 || status > 299) {
+    if (!ok) {
       const metabaseVersion = response.headers.get("X-Metabase-Version");
       this.emit("responseError", { metabaseVersion });
-
-      throw { status, data: responseBody };
+      throw { status, data: body };
     }
 
-    // If a transformer is given its return value IS `T`. Otherwise the raw
-    // body is `unknown`; we trust the caller's `T` annotation.
-    if (transformResponse) {
-      return transformResponse({ response: unreadResponse });
-    }
-
-    return responseBody as T;
+    return body;
   }
 
   /**

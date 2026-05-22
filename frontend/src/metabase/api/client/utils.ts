@@ -1,3 +1,5 @@
+import type { ResponseTransformer } from "./types";
+
 // Basename can be a path prefix ("/metabase") or a full URL with an optional
 // subpath ("http://localhost/mb"). The status-code emit needs the path portion
 // only, listeners expect "/api/..." regardless of how the host is wired.
@@ -79,6 +81,11 @@ function isJson(response: Response): boolean {
   );
 }
 
+/**
+ * Resolve a response's real status. A streaming endpoint commits a 202 before
+ * its work can fail, then signals the true status in a `{_status: N}` body; this
+ * recovers it, falling back to the HTTP status for every other response.
+ */
 export function getResponseStatus(response: Response, body: unknown): number {
   if (
     response.status === 202 &&
@@ -92,6 +99,63 @@ export function getResponseStatus(response: Response, body: unknown): number {
   }
 
   return response.status;
+}
+
+/**
+ * Interpret a fetched `Response` into a `{ ok, status, body }` result, without
+ * emitting or throwing — the caller decides what to do with a non-ok status.
+ *
+ * The body is only read when it'll actually be used — as the result of a normal
+ * request, as error data, or to recover the real status of a 202 streaming
+ * response (whose status hides in a `{_status}` body). A transformResponse
+ * caller that got a successful non-202 response (e.g. a binary map tile) gets
+ * the `Response` back unread, skipping the parse.
+ */
+export async function handleResponse<T>(
+  response: Response,
+  transformResponse?: ResponseTransformer<T>,
+) {
+  // Hand the raw Response to a transformResponse caller only when the request
+  // succeeded. A failure falls through below so its body can be read as error
+  // data; a 202 counts as ok here and is sorted out next.
+  if (transformResponse && response.ok) {
+    if (response.status === 202) {
+      // A 202's HTTP status can't be trusted (a streamed export commits it
+      // before the work can fail), so read the body to learn the real status.
+      // The caller still needs an unread Response, so clone before reading.
+      const unreadResponse = response.clone();
+      const info = await readBody<T>(response);
+      if (!info.ok) {
+        return info;
+      }
+      return { ...info, body: transformResponse({ response: unreadResponse }) };
+    }
+
+    // A non-202 status is authoritative, so skip reading the body entirely and
+    // pass the untouched Response to the transformer — this is what keeps a
+    // binary payload like a map tile from being decoded as text.
+    return {
+      ok: true,
+      status: response.status,
+      body: transformResponse({ response }),
+    };
+  }
+
+  // Either there's no transformer (the parsed body IS the result) or the request
+  // failed (the body is the error payload). Read it and let the caller inspect.
+  return await readBody<T>(response);
+}
+
+/**
+ * Read and parse the response body, returning it with the resolved status and
+ * whether that status is 2xx. Does not throw on a non-2xx status — the caller
+ * inspects `ok`.
+ */
+async function readBody<T>(response: Response) {
+  const body = await getResponseBody(response);
+  const status = getResponseStatus(response, body);
+  const ok = 200 <= status && status <= 299;
+  return { ok, status, body: body as T };
 }
 
 // URL template tags:
