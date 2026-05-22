@@ -113,6 +113,7 @@ describe("DimensionPickerSidebar", () => {
 
     expect(screen.getByText("Group by")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search fields")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search fields")).toBeInTheDocument();
     expect(screen.queryByText("Totals")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute(
       "data-selected",

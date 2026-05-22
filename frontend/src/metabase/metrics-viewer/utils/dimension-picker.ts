@@ -133,17 +133,11 @@ export function getAvailableDimensionsForPicker(
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
 
-  const sourceIdToSlotIndices = metricSlots.reduce(
-    (acc, slot) => {
-      if (acc[slot.sourceId]) {
-        acc[slot.sourceId].push(slot.slotIndex);
-      } else {
-        acc[slot.sourceId] = [slot.slotIndex];
-      }
-      return acc;
-    },
-    {} as Record<MetricSourceId, number[]>,
-  );
+  const sourceIdToSlotIndices: Record<MetricSourceId, number[]> = {};
+  for (const slot of metricSlots) {
+    const slotIndices = (sourceIdToSlotIndices[slot.sourceId] ??= []);
+    slotIndices.push(slot.slotIndex);
+  }
 
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
