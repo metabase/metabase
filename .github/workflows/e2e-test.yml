@@ -208,7 +208,7 @@ jobs:
         id: extract-timings
         if: inputs.split_index >= 0 && github.ref == 'refs/heads/master'
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -251,7 +251,7 @@ jobs:
 
       - name: Publish Summary
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const {

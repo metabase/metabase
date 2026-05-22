@@ -34,7 +34,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Build sample app compatibility data
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         id: build-sample-apps-data
         with:
           script: | # js
