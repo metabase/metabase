@@ -290,7 +290,7 @@
                 (testing "import succeeds by synthesizing the missing Table/Field"
                   (let [import-task (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
                                                                                     :initiated_by   (mt/user->id :rasta)})
-                        result      (impl/import! (source.p/snapshot mock) import-task)]
+                        result      (impl/import! (source.p/snapshot mock) import-task :force? true)]
                     (is (= :success (:status result)))
                     (let [table (t2/select-one :model/Table :db_id db-id :name "customers")
                           field (some->> table :id (t2/select-one :model/Field :name "age" :table_id))
