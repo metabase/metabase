@@ -67,19 +67,10 @@ export async function getResponseBody(response: Response): Promise<unknown> {
     return null;
   }
 
-  try {
+  if (isJson(response)) {
     return JSON.parse(text);
-  } catch (error) {
-    if (isJson(response)) {
-      // if the response claims it is JSON and it's not empty,
-      // surface the parse error rather than swallowing it.
-      throw error;
-    }
-
-    // Non-JSON bodies (text/plain 503 "still initializing", HTML errors) are read
-    // as text so they can surface as error.data.
-    return text;
   }
+  return text;
 }
 
 function isJson(response: Response): boolean {
