@@ -127,21 +127,28 @@
                    (.put completions {::status :succeeded ::transform transform})
                    (catch Throwable t
                      (log/errorf t "Transform %s in run %s failed" (pr-str tid) (pr-str run-id))
-                     ;; Record the failure (with as much debugging context as we can) before doing
-                     ;; anything else, so the coordinator always sees the completion and can unwind.
+                     ;; Record the failure with as much debugging context as we can; the coordinator
+                     ;; preserves these fields onto :failures. We catch Throwable (not just
+                     ;; Exception) so a non-Exception Error — e.g. OutOfMemoryError — is still
+                     ;; reported as a transform failure and lets the coordinator unwind cleanly,
+                     ;; rather than vanishing into the worker's FutureTask. `::fatal` flags that case
+                     ;; so consumers can distinguish it. (We don't rethrow: under `.submit` the
+                     ;; FutureTask would just swallow it, so a rethrow would be a silent no-op.)
                      (.put completions {::status    :failed
                                         ::transform transform
                                         ::message   (or (ex-message t) (str t))
                                         ::ex-data   (ex-data t)
                                         ::throwable t
-                                        ::fatal     (not (instance? Exception t))})
-                     ;; A non-Exception Error (OutOfMemoryError, StackOverflowError, …) leaves the
-                     ;; JVM in an unknown state. Rethrow so this worker thread dies and the error
-                     ;; surfaces via the thread's uncaught-exception handler, instead of being
-                     ;; quietly downgraded to an ordinary transform failure.
-                     (when-not (instance? Exception t)
-                       (throw t))))))]
+                                        ::fatal     (not (instance? Exception t))})))))]
     (.submit executor ^Runnable task)))
+
+(defn- transform-target-key
+  "A coarse identity for a transform's output table, used to keep two transforms that write the
+  same target table from being dispatched concurrently. Returns nil when the transform has no
+  resolved target (in which case it isn't subject to the co-writer guard)."
+  [transform]
+  (when-let [{:keys [database schema name]} (:target transform)]
+    [database schema name]))
 
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
@@ -167,59 +174,93 @@
                       :py  {:executor py-executor  :capacity 1}}
         lane-for     (fn [t] (if (transforms-base.u/python-transform? t) :py :sql))
         completions  (ArrayBlockingQueue. (max 2 (inc n)))
-        state        (volatile! {:succeeded #{}
-                                 :failed    #{}
-                                 :failures  []
-                                 :in-flight {:sql #{} :py #{}}})
+        state        (volatile! {:succeeded         #{}
+                                 :failed            #{}
+                                 :failures          []
+                                 :in-flight         {:sql #{} :py #{}}
+                                 ;; target tables currently being written by an in-flight transform
+                                 :in-flight-targets #{}})
         busy?        (fn [{:keys [in-flight]}] (some seq (vals in-flight)))
         ;; Plan is topo-sorted, so a single pass propagates the full cascade of dep-failures.
         dispatch!    (fn [st]
                        (reduce
-                        (fn [{:keys [succeeded failed] :as st'} t]
+                        (fn [{:keys [succeeded failed in-flight-targets] :as st} t]
                           (let [id            (:id t)
                                 dep-ids       (get deps id)
                                 lane-key      (lane-for t)
                                 {:keys [^ExecutorService executor capacity]} (get lanes lane-key)
-                                in-flight-now (get-in st' [:in-flight lane-key])]
+                                in-flight-now (get-in st [:in-flight lane-key])
+                                tkey          (transform-target-key t)]
                             (cond
                               (or (succeeded id) (failed id) (in-flight-now id))
-                              st'
+                              st
 
                               (some failed dep-ids)
-                              (-> st'
+                              (-> st
                                   (update :failed conj id)
                                   (update :failures conj
                                           {::transform t
                                            ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
 
+                              ;; Defer if another in-flight transform is already writing this target
+                              ;; table. `transform-ordering` builds DAG edges from table *reads*, not
+                              ;; co-*writes*, so two transforms sharing a target are independent in
+                              ;; the DAG and would otherwise dispatch concurrently — producing
+                              ;; nondeterministic DDL. This shouldn't happen in a well-formed config;
+                              ;; the guard just stops a misconfiguration from racing. Retried on a
+                              ;; later pass once the in-flight writer completes (something is always
+                              ;; in-flight while a target is held, so the loop won't exit early).
+                              (and tkey (contains? in-flight-targets tkey))
+                              st
+
                               (and (every? succeeded dep-ids)
                                    (< (count in-flight-now) capacity))
-                              (do (submit-transform! executor completions run-id run-method user-id t)
-                                  (update-in st' [:in-flight lane-key] conj id))
+                              (try
+                                (submit-transform! executor completions run-id run-method user-id t)
+                                (cond-> (update-in st [:in-flight lane-key] conj id)
+                                  tkey (update :in-flight-targets conj tkey))
+                                (catch java.util.concurrent.RejectedExecutionException e
+                                  ;; The pool was shut down out from under us (abnormal-exit window).
+                                  ;; Record the failure so the run reflects the partial dispatch
+                                  ;; rather than silently dropping this transform.
+                                  (-> st
+                                      (update :failed conj id)
+                                      (update :failures conj
+                                              {::transform t
+                                               ::message (or (ex-message e) (str e))}))))
 
-                              :else st')))
+                              :else st)))
                         st
                         plan))]
     (when start-promise (deliver start-promise :started))
     (try
       (vreset! state (dispatch! @state))
       (while (busy? @state)
-        (let [{::keys [transform status message]} (.take completions)
+        (let [completion (.take completions)
+              {::keys [transform status]} completion
               id       (:id transform)
-              lane-key (lane-for transform)]
+              lane-key (lane-for transform)
+              tkey     (transform-target-key transform)]
           (vswap! state
                   (fn [st]
-                    (let [st' (update-in st [:in-flight lane-key] disj id)]
+                    (let [st' (cond-> (update-in st [:in-flight lane-key] disj id)
+                                tkey (update :in-flight-targets disj tkey))]
                       (case status
                         :succeeded (update st' :succeeded conj id)
+                        ;; Preserve the full failure context the worker attached (::message plus
+                        ;; ::ex-data / ::throwable / ::fatal) so downstream consumers — notifications
+                        ;; and logs — can surface it. dispatch!'s dep-failure path produces a subset
+                        ;; of the same shape, and consumers only read ::transform / ::message.
                         :failed    (-> st'
                                        (update :failed conj id)
-                                       (update :failures conj
-                                               {::transform transform ::message message}))))))
+                                       (update :failures conj (dissoc completion ::status)))))))
           (vreset! state (dispatch! @state))))
       (finally
-        (.shutdown sql-executor)
-        (.shutdown py-executor)))
+        ;; shutdownNow (not shutdown): on the happy path the in-flight set is already drained, so
+        ;; this is equivalent to shutdown; on an abnormal exit (e.g. an interrupted take) it also
+        ;; interrupts any workers still running against a run that has already been failed.
+        (.shutdownNow sql-executor)
+        (.shutdownNow py-executor)))
     (if (seq (:failures @state))
       {::status :failed ::failures (:failures @state)}
       {::status :succeeded})))
