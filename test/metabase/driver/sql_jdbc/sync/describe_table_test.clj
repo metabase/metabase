@@ -479,9 +479,9 @@
 
 (mt/defdataset long-json
   [["long_json_table"
-     ;; `short_json` and `long_json` have the same schema,
-     ;; in the first row, both have an "a" key.
-     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    ;; `short_json` and `long_json` have the same schema,
+    ;; in the first row, both have an "a" key.
+    ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/encode {:a "x"}) (json/encode {:a "x"})]

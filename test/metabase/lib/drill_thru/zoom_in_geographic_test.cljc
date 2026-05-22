@@ -144,7 +144,7 @@
   (testing "If there are already breakouts on lat/lon, we should update them rather than append new ones (#34874)"
     (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                              (lib/aggregate (lib/count))
-                               ;; make sure we don't remove other, irrelevant breakouts.
+                             ;; make sure we don't remove other, irrelevant breakouts.
                              (lib/breakout (meta/field-metadata :people :name))
                              (lib/breakout (meta/field-metadata :people :state))
                              (lib/breakout (-> (meta/field-metadata :people :latitude)

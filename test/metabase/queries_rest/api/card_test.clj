@@ -902,7 +902,7 @@
 (deftest create-card-disallow-setting-embedding-type-test
   (testing "POST /api/card"
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-                    ;; should be ignored regardless of the value of the `embedding-type` Setting.
+      ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
           (mt/with-model-cleanup [:model/Card]
@@ -2857,7 +2857,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-      ;; testing that we aren't just adding a nil moderation each time we update a card
+        ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3637,8 +3637,8 @@
                                            {:source-table (str "card__" (u/the-id model))
                                             :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
-                                                   ;; The FE sometimes used a field id instead of field by name - we need
-                                                   ;; to handle this
+                                         ;; The FE sometimes used a field id instead of field by name - we need
+                                         ;; to handle this
                                          :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                              :columns [],
                                                                                              :values  ["sum"]},
@@ -4348,7 +4348,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                ;; regardless of the `delete_old_dashcards` value, same response
+                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
@@ -4367,7 +4367,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                ;; regardless of the `delete_old_dashcards` value, same response
+                 ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"

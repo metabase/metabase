@@ -15,7 +15,7 @@
   (testing "Prod + ETag match → 304 with Cache-Control, ETag, Vary, TAO; no Content-Type"
     (with-redefs [config/is-prod? true
                   response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                         ;; with-etag returns a 304 response with an ETag
+                  ;; with-etag returns a 304 response with an ETag
                   lib.etag-cache/with-etag (fn [_base _req]
                                              {:status 304
                                               :headers {"ETag" "\"abc\""}
@@ -33,7 +33,7 @@
   (testing "Prod + ETag miss → 200 with Cache-Control, ETag, Content-Type, Vary, TAO"
     (with-redefs [config/is-prod? true
                   response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                                ;; with-etag returns a 200 response with an ETag applied
+                  ;; with-etag returns a 200 response with an ETag applied
                   lib.etag-cache/with-etag (fn [base _req]
                                              (update base :headers assoc "ETag" "\"abc\""))]
       (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
@@ -49,7 +49,7 @@
     (testing "Dev skips with-etag and sets no-store + Content-Type, no prod-only headers"
       (with-redefs [config/is-prod? false
                     response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
-                                         ;; If it were called in dev, we’d see this exception
+                    ;; If it were called in dev, we’d see this exception
                     lib.etag-cache/with-etag (fn [& _]
                                                (throw (ex-info "with-etag should not be called in dev" {})))]
         (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)

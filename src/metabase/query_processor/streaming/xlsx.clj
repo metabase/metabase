@@ -168,8 +168,8 @@
                            "milliseconds"
                            "h:mm:ss.000"
 
-                               ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
-                               ;; defaulting to "minutes"
+                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                           ;; defaulting to "minutes"
                            nil
                            nil)]
     (when base-time-format

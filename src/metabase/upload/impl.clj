@@ -528,7 +528,7 @@
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
           {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
                                                           :display_name display-name})
@@ -538,8 +538,8 @@
                                                                         :is_writable    true})
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
-        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
                                       (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]

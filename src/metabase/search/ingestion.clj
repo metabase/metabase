@@ -313,7 +313,7 @@
                            query->documents)
             passed-documents (map extract-model-and-id updates)
             ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-              ;; The eduction will replay the streaming query when passed to update!.
+            ;; The eduction will replay the streaming query when passed to update!.
             indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
             ;; TODO: The list of documents to delete is not completely accurate.
             ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.

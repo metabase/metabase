@@ -75,5 +75,5 @@
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))))
 
-            ;; Reset metabot state
+              ;; Reset metabot state
               (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false}))))))))

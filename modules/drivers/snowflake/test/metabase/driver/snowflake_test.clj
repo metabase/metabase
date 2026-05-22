@@ -494,7 +494,7 @@
            {:user some?
             :password some?
             :private_key_file complement}
-            ;; Before `use-password` password took precedence over a key file
+           ;; Before `use-password` password took precedence over a key file
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
       (is (=?
            {:user some?
@@ -657,13 +657,13 @@
     :snowflake
     (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
-         ;; User with default role PULIC. To access the db custom role has to be used.
+          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
           private-key-value (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB custom"
                              :engine  :snowflake
-                            ;; Details as collected from `api handler POST / database` are used.
+                             ;; Details as collected from `api handler POST / database` are used.
                              :details {:role                nil
                                        :warehouse           warehouse
                                        :db                  db
@@ -675,7 +675,7 @@
                                        :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
-     ;; TODO: We should make those message returned when role is incorrect more descriptive!
+      ;; TODO: We should make those message returned when role is incorrect more descriptive!
       (testing "Database can not be accessed with `nil` default role"
         (is (= "Looks like the Database name is incorrect."
                (:message (mt/user-http-request :crowberto :post 400 "database"
@@ -685,7 +685,7 @@
                (:message (mt/user-http-request :crowberto :post 400 "database"
                                                (assoc-in database [:details :role] "PUBLIC"))))))
       (testing "Database can be created using specified role"
-       ;; Map containing :details is expected to be database, hence considering request successful.
+        ;; Map containing :details is expected to be database, hence considering request successful.
         (is (contains? (mt/user-http-request :crowberto :post 200 "database"
                                              (assoc-in database [:details :role]
                                                        (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
@@ -705,7 +705,7 @@
                  (mt/rows (qp/process-query {:database (:id db)
                                              :type :query
                                              :query {:source-table (:id table)}})))))
-       ;; Cleanup
+        ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
@@ -716,13 +716,13 @@
     :snowflake
     (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
-         ;; User with default role PULIC. To access the db custom role has to be used.
+          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
           private-key-value (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB default"
                              :engine  :snowflake
-                            ;; Details as collected from `api handler POST / database` are used.
+                             ;; Details as collected from `api handler POST / database` are used.
                              :details {:role                nil
                                        :warehouse           warehouse
                                        :db                  db
@@ -735,7 +735,7 @@
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
-       ;; Map containing :details is expected to be database, hence considering request successful.
+        ;; Map containing :details is expected to be database, hence considering request successful.
         (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
                        :details))
         ;; As the request is asynchronous, wait for sync to complete.
@@ -753,7 +753,7 @@
                  (mt/rows (qp/process-query {:database (:id db)
                                              :type :query
                                              :query {:source-table (:id table)}})))))
-       ;; Cleanup
+        ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))

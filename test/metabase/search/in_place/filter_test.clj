@@ -198,7 +198,7 @@
   (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
     (are [created-at expected-where]
          (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))
-         ;; absolute datetime
+      ;; absolute datetime
       "Q1-2023"                                 [:and [:>= [:cast :card.created_at :date] #t "2023-01-01"]
                                                  [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
       "2016-04-18~2016-04-23"                   [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
@@ -213,7 +213,7 @@
                                                  [:< :card.created_at  #t "2016-04-23T10:01"]]
       "2016-04-18T10:30:00~"                    [:> :card.created_at #t "2016-04-18T10:30"]
       "~2016-04-18T10:30:00"                    [:< :card.created_at #t "2016-04-18T10:31"]
-         ;; relative datetime
+      ;; relative datetime
       "past3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
                                                  [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
       "past3days~"                              [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]

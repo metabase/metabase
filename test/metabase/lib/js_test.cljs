@@ -36,8 +36,8 @@
                                              #js ["field" 5 nil]
                                              #js ["field" 6 nil]
                                              #js ["field" 7 nil]]}}
-            ;; Note that the order is not relevant; they get grouped.
-            ;; Duplicates are okay, and are tracked.
+          ;; Note that the order is not relevant; they get grouped.
+          ;; Duplicates are okay, and are tracked.
           field-ids #js [1 2 6 7 3 5 4 4 4]]
       (is (not (lib.js/query= q1 q2))
           "the field-ids must be provided to populate q1")
@@ -411,15 +411,15 @@
         true true
         false false
 
-           ;; Objects
+        ;; Objects
         #js {:foo "bar"}
         #js {:foo "bar"}
         #js {:foo "bar", :baz "quux"}
         #js {:foo "bar", :baz "quux"}
-           ;; Arrays
+        ;; Arrays
         #js ["foo" #js [1 2 3]]
         #js ["foo" #js [1 2 3]]
-           ;; Nesting
+        ;; Nesting
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))
 
@@ -433,19 +433,19 @@
         true false
         false 7
 
-           ;; Objects
+        ;; Objects
         #js {:foo "bar"} #js {:foo "baz"} ; Different value
         #js {:foo "bar"} #js {}           ; Missing an a key in b
         #js {}           #js {:foo "bar"} ; Missing a b key in a
         #js {:foo nil}   #js {}           ; Missing is not the same as present-but-nil
         #js {}           #js {:foo nil}   ; And likewise in reverse
 
-           ;; Arrays
+        ;; Arrays
         #js ["foo" "bar"] #js ["foo" "baz"] ; Different values
         #js ["foo" "bar"] #js ["foo"]       ; Different lengths
         #js ["foo"]       #js ["foo" "bar"]
 
-           ;; Nesting
+        ;; Nesting
         #js [#js {:foo "bar", :baz #js [4 5 6]}, #js [1 2 3]]
         #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))))
 

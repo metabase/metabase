@@ -293,7 +293,7 @@
           :started_at (t/minus now (t/hours 1))
           :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
 
-           ;; task b
+         ;; task b
          :model/TaskHistory
          _
          {:status :failed
@@ -306,7 +306,7 @@
           :task "b"
           :started_at (t/zoned-date-time)}
 
-           ;; task c
+         ;; task c
          :model/TaskHistory
          _
          {:status :started
@@ -370,7 +370,7 @@
           :started_at (t/minus now (t/hours 1))
           :ended_at (t/plus (t/minus now (t/hours 1)) (t/seconds 30))}
 
-          ;; task b
+         ;; task b
          :model/TaskHistory
          _
          {:status :failed

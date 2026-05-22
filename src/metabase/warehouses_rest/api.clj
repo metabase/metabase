@@ -914,9 +914,9 @@
                                     (nil? (test-database-connection engine details-with-ssl :log-exception false)))
                            details-with-ssl)]
     (or
-      ;; Opportunistic SSL
+     ;; Opportunistic SSL
      details-with-ssl
-      ;; Try with original parameters
+     ;; Try with original parameters
      (some-> (test-database-connection engine details)
              (assoc :valid false))
      details)))
@@ -1156,10 +1156,10 @@
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
                   :when                  (and (some? new-value)
-                             ;; Allow explicit default value as well (typically this is what FE will actually do)
-                             ;; Should we translate this into setting it to NULL? That seems too opinionated.
+                                              ;; Allow explicit default value as well (typically this is what FE will actually do)
+                                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
                                               (not= new-value (try (setting/default-value setting-kw)
-                                                  ;; fallback to a redundant nil check
+                                                                   ;; fallback to a redundant nil check
                                                                    (catch Exception _)))
                                               (not= new-value (get existing-settings setting-kw)))]
             (try
@@ -1167,8 +1167,8 @@
               (catch Exception e
                 (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
         (t2/update! :model/Database id updates)
-       ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-       ;; with the advanced-config feature enabled.
+        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
 
@@ -1407,9 +1407,9 @@
                           (not include-workspace?) (conj [:or
                                                           [:= :schema nil]
                                                           [:not
-                                                          ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
+                                                           ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
                                                            [:like :schema "mb__isolation_%"]
-                                                          ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
+                                                           ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
                                                            #_[:exists {:select [1]
                                                                        :from   [[(t2/table-name :model/Workspace) :w]]
                                                                        :where  [:and

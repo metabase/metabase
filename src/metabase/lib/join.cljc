@@ -524,7 +524,7 @@
   [home-cols cond-fields]
   (when (seq cond-fields)
     (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
-          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
           ;; otherwise the leftmost home column in the condition
           (first cond-home-cols)
