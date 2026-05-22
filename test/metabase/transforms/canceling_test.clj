@@ -25,7 +25,7 @@
   ;; Consolidated into a single `with-prometheus-system!` boot — registry boot is expensive. Each block calls
   ;; `prometheus/clear!` on the metric(s) it will touch, so every assertion runs against a known zero baseline
   ;; and blocks are independent of ordering.
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :audit-app}
     (mt/with-prometheus-system! [_ system]
 
       (testing "mark-cancel-started-run! bumps {status=error} when DB writes throw"
@@ -94,7 +94,14 @@
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "timeout"}))))
-          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id run-id)))))
+          (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id run-id)))
+          (let [audit (t2/select-one :model/AuditLog
+                                     :topic "transform-run-canceled"
+                                     :model_id run-id
+                                     {:order-by [[:id :desc]]})]
+            (is (some? audit))
+            (is (= "canceled" (get-in audit [:details :status])))
+            (is (= "timeout"  (get-in audit [:details :outcome]))))))
 
       (testing "cancel-old-transform-runs! does not count rows already transitioned by another path"
         ;; Race guard: SELECT FOR UPDATE inside `cancel-old-canceling-runs!` returns only still-active rows,

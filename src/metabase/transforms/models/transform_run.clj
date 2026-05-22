@@ -159,9 +159,8 @@
   (t2/with-transaction [_conn]
     (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
           times  (into {} (map (juxt :run_id :time))
-                       (t2/select :model/TransformRunCancelation
-                                  {:select [:run_id :time]
-                                   :where  [:< :time cutoff]}))
+                       (t2/select [:model/TransformRunCancelation :run_id :time]
+                                  :time [:< cutoff]))
           locked (when (seq times)
                    (t2/select :model/TransformRun
                               {:where [:and [:= :is_active true] [:in :id (keys times)]]
@@ -175,7 +174,9 @@
                      :is_active nil
                      :message   "Canceled by user but could not guarantee run stopped."})
         (cancel/delete-old-canceling-runs!))
-      (mapv #(assoc % :request_time (times (:id %))) locked))))
+      (mapv #(assoc % :request_time (times (:id %)))
+            (when (seq locked)
+              (t2/select :model/TransformRun :id [:in (mapv :id locked)]))))))
 
 (defn running-run-for-transform-id
   "Return a single active transform run or nil."

@@ -62,8 +62,7 @@
   `metabase.app-db.jdbc-protocols/read-column` for `Types/TIMESTAMP_WITH_TIMEZONE` and the mysql `Types/TIMESTAMP`
   branch) normalizes that column to `java.time.OffsetDateTime` on every supported app DB."
   [request-time]
-  (when request-time
-    (u/since-ms-wall-clock (.toEpochMilli (.toInstant ^OffsetDateTime request-time)))))
+  (some-> ^OffsetDateTime request-time .toInstant .toEpochMilli u/since-ms-wall-clock))
 
 (defn- record-completion!
   "Emit metrics + audit event for a cancelation completion. `outcome` ∈ #{\"success\" \"timeout\" \"error\"}.
@@ -90,19 +89,18 @@
 
   Callers own the fetching of `run` since the full row is needed for instrumentation & audit logging of this
   operation which changes state."
-  [run request-time]
-  (let [run-id (:id run)]
-    (tracing/with-span :tasks "task.transform.cancel" {:run/id       run-id
-                                                       :transform/id (:transform_id run)}
-      (try
-        (when (chan-signal-cancel! run-id)
-          (let [result (transform-run/cancel-run! run-id)]
-            (log/infof "Canceled transform run %s" run-id)
-            (record-completion! run-id run request-time "success")
-            result))
-        (catch Throwable t
-          (record-completion! run-id run request-time "error")
-          (throw t))))))
+  [{run-id :id :as run} request-time]
+  (tracing/with-span :tasks "task.transform.cancel" {:run/id       run-id
+                                                     :transform/id (:transform_id run)}
+    (try
+      (when (chan-signal-cancel! run-id)
+        (let [result (transform-run/cancel-run! run-id)]
+          (log/infof "Canceled transform run %s" run-id)
+          (record-completion! run-id run request-time "success")
+          result))
+      (catch Throwable t
+        (record-completion! run-id run request-time "error")
+        (throw t)))))
 
 (defn- cancel-old-transform-runs! [_ctx]
   ;; `cancel-old-canceling-runs!` does a transactional select-then-update-by-id under row locks, so it returns
@@ -110,15 +108,14 @@
   ;; (cancel-run!, timeout-run!) had already finished. "timeout" here = the *cancelation attempt* exceeded 2 min;
   ;; distinct from transform-execution timeout (`timeout-run!`), which never reaches this counter.
   (try
-    (let [transitioned (transform-run/cancel-old-canceling-runs! 2 :minute)]
-      (when (seq transitioned)
-        (log/infof "Force-canceled %d transform run(s) that were canceling for more than 2 minutes."
-                   (count transitioned))
-        (doseq [{run-id :id request-time :request_time :as run} transitioned]
-          (try
-            (record-completion! run-id run request-time "timeout")
-            (catch Throwable t
-              (log/error t (str "Error recording completion for transform run " run-id)))))))
+    (when-let [transitioned (not-empty (transform-run/cancel-old-canceling-runs! 2 :minute))]
+      (log/infof "Force-canceled %d transform run(s) that were canceling for more than 2 minutes."
+                 (count transitioned))
+      (doseq [{run-id :id request-time :request_time :as run} transitioned]
+        (try
+          (record-completion! run-id run request-time "timeout")
+          (catch Throwable t
+            (log/error t (str "Error recording completion for transform run " run-id))))))
     (catch Throwable t
       (log/error t "Error force-canceling stale transform runs.")
       ;; Transaction rolled back — the row count is unrecoverable, so emit one aggregate error so the failure
@@ -154,8 +151,7 @@
   (.scheduleAtFixedRate scheduler
                         #(try
                            (run! (fn [cancelation]
-                                   (let [id (:run_id cancelation)
-                                         request-time (:time cancelation)]
+                                   (let [{id :run_id request-time :time} cancelation]
                                      (try
                                        ;; Skip silently if the run was deleted between cancelation insert and now
                                        ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
