@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.lib.core :as lib]
@@ -92,7 +93,10 @@
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
    content (the JSON-decoded text from the first content block).
-   Records test failures if the response status is not 200 or the tool returns an error."
+   Records test failures if the response status is not 200 or the tool returns an error.
+   Also enforces the MCP spec contract: every successful tool result with content
+   must include `structuredContent` (because every tool in our manifest declares
+   `outputSchema`, and the spec mandates structuredContent for those)."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
@@ -103,6 +107,9 @@
     (is (not (:isError result))
         (str "Tool " tool-name " error: " (some-> result :content first :text)))
     (when-not (:isError result)
+      (is (contains? result :structuredContent)
+          (str "Tool " tool-name " declared an outputSchema in tools/list but did "
+               "not return structuredContent — MCP spec violation."))
       (json/decode+kw (:text (first (:content result)))))))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
@@ -113,6 +120,38 @@
                                                 (jsonrpc-request "initialize"))]
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
+
+(deftest origin-validation-test
+  (testing "cross-origin browser requests are rejected when the origin is not configured"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "mbtest.poom.dev"
+                                 "origin" "http://127.0.0.1:6274"})]
+      (is (= 403 (:status response)))
+      (is (= "Origin not allowed" (get-in response [:body :error :message])))))
+  (testing "cross-origin browser requests are accepted for configured MCP client origins"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "http://127.0.0.1:6274"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))
+  (testing "same-origin requests with bracketed IPv6 hosts are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "[::1]:3000"
+                                 "origin" "http://[::1]:3000"})]
+      (is (= 200 (:status response)))))
+  (testing "same-origin requests with mixed-case host/origin are accepted"
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host"   "Example.com"
+                                 "origin" "https://example.COM"})]
+      (is (= 200 (:status response)))))
+  (testing "approved MCP origins match the Origin header case-insensitively"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "HTTPS://example.com"})]
+        (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
 
 (deftest mcp-enabled-setting-test
   (testing "external MCP requests return 403 when disabled"
@@ -170,6 +209,68 @@
       (is (= 200 (:status delete-response)))
       (is (= 200 (:status post-response))))))
 
+(deftest tools-list-all-tools-declare-required-hints-test
+  (testing "every tool advertises readOnlyHint, destructiveHint, openWorldHint (some MCP clients reject tools that omit them)"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (seq tools) "tools/list should return at least one tool")
+      (doseq [{:keys [name annotations]} tools]
+        (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
+        (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
+        (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
+(deftest text-content-includes-structured-content-for-maps-test
+  (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
+    (let [text-content (var-get #'mcp.tools/text-content)]
+      (testing "map → both content and structuredContent"
+        (let [result (text-content {:foo "bar"})]
+          (is (= {:foo "bar"} (:structuredContent result)))
+          (is (= "{\"foo\":\"bar\"}" (-> result :content first :text)))))
+      (testing "sequential → structuredContent is the collection"
+        (is (= [1 2 3] (:structuredContent (text-content [1 2 3])))))
+      (testing "string → no structuredContent (nothing to structure)"
+        (let [result (text-content "ok")]
+          (is (not (contains? result :structuredContent)))
+          (is (= "ok" (-> result :content first :text))))))))
+
+(deftest tool-result-emits-structured-content-test
+  (testing "tools that declare outputSchema emit structuredContent — guards the regression where Claude Desktop got 500s because we declared outputSchema without matching structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "get_table"
+                                                        :arguments {:id (mt/id :orders)}})
+                                      {"mcp-session-id" session-id})
+          result         (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (not (:isError result))
+          (str "get_table should succeed: " (some-> result :content first :text)))
+      (is (contains? result :structuredContent)
+          "get_table declares outputSchema → MUST emit structuredContent")
+      (is (map? (:structuredContent result))
+          "structuredContent should be the parsed response object, not a string")
+      (is (= "ORDERS" (-> result :structuredContent :name))
+          "structuredContent should mirror the endpoint response shape"))))
+
+(deftest tools-list-strict-shape-test
+  (testing "no tool's inputSchema uses JSON-Schema constructs that ChatGPT's strict MCP validator rejects"
+    ;; Pins the strict-shape guarantee across the whole exposed tool surface. `construct_query` had
+    ;; this asserted before; broadening it to every tool catches drift in any wire schema (e.g.
+    ;; `query`'s `:multi` body referencing agent-lib `:tuple` schemas) that would silently leak
+    ;; `:allOf`/`:prefixItems`/`items:false` constructs into a tool that worked before the regression.
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])]
+      (is (pos? (count tools)))
+      (doseq [{:keys [name inputSchema]} tools]
+        (let [schema-keys (atom #{})]
+          (walk/postwalk (fn [x] (when (map? x) (swap! schema-keys into (keys x))) x) inputSchema)
+          (is (empty? (select-keys (frequencies @schema-keys) [:allOf :prefixItems]))
+              (str "Tool " name " inputSchema contains :allOf or :prefixItems"))
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq inputSchema) (filter map?))))
+              (str "Tool " name " inputSchema contains `items: false` (tuple closure)")))))))
+
 (deftest tools-list-test
   (testing "tools/list returns the 10 agent tools"
     (let [[session-id _] (initialize!)
@@ -205,7 +306,24 @@
           (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
-          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
+      (testing "construct_query inputSchema is ChatGPT-strict (no allOf/prefixItems/items:false)"
+        (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
+              construct-query-schema (:inputSchema (get tools-by-name "construct_query"))
+              schema-keys            (atom #{})]
+          (walk/postwalk (fn [x]
+                           (when (map? x)
+                             (swap! schema-keys into (keys x)))
+                           x)
+                         construct-query-schema)
+          (is (= false (:additionalProperties construct-query-schema)))
+          ;; ChatGPT's MCP validator rejects exactly these JSON-Schema constructs.
+          (is (empty? (select-keys (frequencies @schema-keys)
+                                   [:allOf :prefixItems])))
+          ;; `items: false` (tuple closure) must not appear either.
+          (is (not (some #(false? (:items %))
+                         (->> (tree-seq coll? seq construct-query-schema)
+                              (filter map?))))))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
