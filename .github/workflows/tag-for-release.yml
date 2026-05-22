@@ -42,7 +42,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send build start message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -83,7 +83,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: canonical_version
       with:
         script: | # js
@@ -127,7 +127,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Branch
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: release_branch
       with:
         result-encoding: string
@@ -227,7 +227,7 @@ jobs:
       run: sha256sum ./metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |
@@ -255,7 +255,7 @@ jobs:
         edition: ee
         release: "true"
     - name: Determine the upload path
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: version_path
       with:
         result-encoding: string

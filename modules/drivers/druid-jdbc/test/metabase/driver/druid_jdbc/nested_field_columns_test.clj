@@ -132,11 +132,11 @@
       json
       (let [database (t2/select-one :model/Database :id (mt/id))]
         (testing "When json_unfolding is disabled at the DB level on the first sync"
-        ;; Create a new database with the same details as the json dataset, with json unfolding disabled
+          ;; Create a new database with the same details as the json dataset, with json unfolding disabled
           (mt/with-temp [:model/Database database {:engine driver/*driver*
                                                    :details (assoc (:details database) :json-unfolding false)}]
             (mt/with-db database
-            ;; Sync the new database
+              ;; Sync the new database
               (sync/sync-database! database)
               (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
@@ -159,7 +159,7 @@
                   (set-json-unfolding-for-field! false)
                   (set-json-unfolding-for-db! true)
                   (set-json-unfolding-for-field! true)
-                ;; Wait for the sync to finish
+                  ;; Wait for the sync to finish
                   (Thread/sleep 500)
                   (is (seq (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled for the DB"
@@ -178,12 +178,12 @@
     :druid-jdbc
     (mt/dataset
       json
-    ;; Create a new database with the same details as the json dataset, with json unfolding enabled
+      ;; Create a new database with the same details as the json dataset, with json unfolding enabled
       (let [database (t2/select-one :model/Database :id (mt/id))]
         (mt/with-temp [:model/Database database {:engine driver/*driver*
                                                  :details (assoc (:details database) :json-unfolding true)}]
           (mt/with-db database
-          ;; Sync the new database
+            ;; Sync the new database
             (sync/sync-database! database)
             (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
                   get-database (fn [] (t2/select-one :model/Database :id (mt/id)))

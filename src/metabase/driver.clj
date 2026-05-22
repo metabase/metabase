@@ -191,12 +191,12 @@
   that for you."
   {:added "0.32.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver)
-  ;; VERY IMPORTANT: Unlike all other driver multimethods, we DO NOT use the driver hierarchy for dispatch here. Why?
-  ;; We do not want a driver to inherit parent drivers' implementations and have those implementations end up getting
-  ;; called multiple times. If a driver does not implement `initialize!`, *always* fall back to the default no-op
-  ;; implementation.
-  ;;
-  ;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
+;; VERY IMPORTANT: Unlike all other driver multimethods, we DO NOT use the driver hierarchy for dispatch here. Why?
+;; We do not want a driver to inherit parent drivers' implementations and have those implementations end up getting
+;; called multiple times. If a driver does not implement `initialize!`, *always* fall back to the default no-op
+;; implementation.
+;;
+;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
 
 (defmethod initialize! :default [_]) ; no-op
 
@@ -861,6 +861,11 @@
 
     ;; Does this driver support creating a java.sql.Statement via a Connection?
     :jdbc/statements
+
+    ;; Can `Statement.setQueryTimeout` be called safely on this driver's statements? Defaults to true; set to
+    ;; false for drivers where calling it poisons the underlying session (e.g. SparkSQL, where the call closes the
+    ;; Thrift transport on the server side, causing subsequent statement close() to throw).
+    :jdbc/set-query-timeout
 
     ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
     :describe-default-expr

@@ -407,7 +407,7 @@
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
   [:map {:closed true}
    [:original-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; return at most the lesser of `limit` (if specified) and `max-results`.
+   ;; return at most the lesser of `limit` (if specified) and `max-results`.
    [:limit {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private max-results 1000)
@@ -658,9 +658,9 @@
       (some? remapping-field)
       (unremapped-chain-filter remapping-field constraints (assoc options :original-field-id field-id))
 
-     ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
-     ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
-     ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
+      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
+      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
+      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
       (some? v->human-readable)
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
@@ -670,8 +670,8 @@
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
 
-     ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
-     ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
+      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
       (some? @remapping)
       (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)

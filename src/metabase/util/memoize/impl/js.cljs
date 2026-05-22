@@ -88,12 +88,12 @@
     (let [ckey (or (ckey-fn args) [])
           cs   (swap! cache-atom through* f args ckey)
           val  (cache/lookup cs ckey ::not-found)]
-       ;; If `lookup` returns `(delay ::not-found)`, it's likely that
-       ;; we ran into a timing issue where eviction and access
-       ;; are happening at about the same time. Therefore, we retry
-       ;; the `swap!` (potentially several times).
-       ;;
-       ;; metabase.util.memoize currently wraps all of its values in a `delay`.
+      ;; If `lookup` returns `(delay ::not-found)`, it's likely that
+      ;; we ran into a timing issue where eviction and access
+      ;; are happening at about the same time. Therefore, we retry
+      ;; the `swap!` (potentially several times).
+      ;;
+      ;; metabase.util.memoize currently wraps all of its values in a `delay`.
       (when val
         (loop [n 0 v @val]
           (if (= ::not-found v)

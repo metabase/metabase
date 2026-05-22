@@ -59,7 +59,7 @@ describe("getDefaultSdkIframeEmbedSettings", () => {
     {
       experience: "metabot",
       componentName: "metabase-metabot",
-      expectedProps: {},
+      expectedProps: { isSaveEnabled: false },
     },
   ])(
     "$experience experience",

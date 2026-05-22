@@ -32,7 +32,7 @@
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
-      ;; Should have more tools than embedding_next profile
+        ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))

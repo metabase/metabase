@@ -353,7 +353,6 @@
 (defn- delete-seeded-usage-auditing-data!
   []
   (t2/delete! :model/AiUsageLog {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
-  (t2/delete! :model/MetabotMessage {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
   (t2/delete! :model/MetabotConversation {:where [:in :id e2e-usage-auditing-conversation-ids]}))
 
 (defn- insert-seeded-usage-auditing-conversation!
