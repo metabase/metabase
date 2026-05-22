@@ -12,7 +12,6 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
@@ -381,19 +380,40 @@
 
   Closed map: any extra top-level keys (notably the legacy `source_entity` /
   `referenced_entities` envelope from before the repr migration) are rejected with a 400 so
-  callers don't silently send fields the server ignores."
+  callers don't silently send fields the server ignores.
+
+  The inner `:query` value is intentionally typed as a plain `:map` at this boundary rather
+  than `::lib.schema/external-query`. Reasons:
+
+  1. Deep MBQL-shape validation runs inside the representations pipeline
+     (`metabot.tools.construct/execute-representations-query` calls `repr/validate-query`
+     after the repair pass), so the boundary check would be redundant.
+
+  2. The strict-tool manifest lint (`assert-optional-fields-nullable!`) walks every map
+     reachable from the tool input schema. `::external-query` references `::query`, which
+     carries several `:optional` keys (`:lib/metadata`, `:database`, `:settings`, …) that
+     are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
+     them would force a wide schema change just to satisfy the lint at the agent boundary."
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query in the canonical portable "
                                    "representations format (JSON object matching "
                                    "::lib.schema/external-query). See the "
                                    "construct_notebook_query tool documentation for the format "
                                    "reference.")}
-    ::lib.schema/external-query]])
+    :map]
+   ;; The user's original message, when available, captured so `visualize_query` can later
+   ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
+   ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
+   ;; Bounded at 10000 chars to match the constraint master enforced on the legacy program path.
+   [:prompt {:optional true} [:maybe [:string {:min 1 :max 10000}]]]])
 
 (mr/def ::construct-query-response
-  "Response containing a base64-encoded MBQL query for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional
+  `:prompt` echoes the request's prompt back so the MCP layer can store it with the
+  handle (see `metabase.mcp.tools/make-store-construct-query-result`)."
   [:map
-   [:query ms/NonBlankString]])
+   [:query  ms/NonBlankString]
+   [:prompt {:optional true} [:maybe ms/NonBlankString]]])
 
 (defn- evaluate-external-query-to-live-query
   "Run the representations pipeline (validate → convert → repair → resolve) on a request body
@@ -421,18 +441,54 @@
   executed via /v1/execute or paginated via /v2/query."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a Metabase query from a portable MBQL 5 representations "
-                             "JSON payload. The body is `{\"query\": <external-query>}`; see "
-                             "the construct_notebook_query tool for the JSON format reference "
-                             "(operators, joins, expressions, multi-stage queries, portable "
-                             "FKs). Returns an opaque query string that can be executed with "
-                             "execute_query.")
+           ;; Condensed inline summary so LLMs see the shape directly in `tools/list` without
+           ;; having to fetch the resource. Full grammar (operators, joins, expressions,
+           ;; multi-stage queries, FK details) lives in `metabase://docs/construct-query.md`
+           ;; \u2014 keep this string short; substantive guidance belongs in the resource.
+           :description
+           (str "Construct a Metabase MBQL 5 query in the portable representations JSON format. "
+                "Pass the body `{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` "
+                "to feed `execute_query` or `visualize_query`.\n"
+                "\n"
+                "Workflow: use search / entity_details first to discover the exact database, "
+                "schema, table, and column NAMES (not numeric IDs). Never invent identifiers.\n"
+                "\n"
+                "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
+                "map at position 1. Every field reference is "
+                "`[\"field\", {}, [<db-name>, <schema-or-null>, <table-name>, <column-name>]]` "
+                "(4-segment portable FK string array, NOT a numeric id). Cross-stage refs use "
+                "a bare column-name string in the third slot: `[\"field\", {}, \"count\"]`.\n"
+                "\n"
+                "Top level: `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage has "
+                "`\"lib/type\": \"mbql.stage/mbql\"` plus either `source-table` (portable FK) "
+                "or `source-card` (entity_id string) on the FIRST stage only; later stages "
+                "implicitly read the previous stage's output. Per-stage clause keys: "
+                "`filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, "
+                "`order-by`, `limit`.\n"
+                "\n"
+                "Minimal example (count of orders by month):\n"
+                "```\n"
+                "{\"query\": {\"lib/type\": \"mbql/query\",\n"
+                "             \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
+                "                          \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "                          \"aggregation\": [[\"count\", {}]],\n"
+                "                          \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
+                "                                        [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
+                "```\n"
+                "\n"
+                "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
+                "ids where a portable FK is required; (3) putting a post-aggregation filter "
+                "(`[\">\", {}, [\"aggregation\", {}, 0], 10]`) alongside `order-by` / `limit` "
+                "in the same stage \u2014 split into two stages explicitly. Read "
+                "`metabase://docs/construct-query.md` for the full grammar, operator catalog, "
+                "joins, expressions, and multi-stage examples.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   body :- ::construct-query-request]
+   {:keys [prompt] :as body} :- ::construct-query-request]
   (let [query (evaluate-external-query-for-execution body)]
-    {:query (-> query json/encode u/encode-base64)}))
+    (cond-> {:query (-> query json/encode u/encode-base64)}
+      prompt (assoc :prompt prompt))))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 

@@ -326,14 +326,16 @@
                                                               :source-table [(db-name) "PUBLIC" "NOT_A_TABLE"]}]}})]
       (is (=? {:error "unknown-table"} response))))
 
-  (testing "Schema validation rejects a non-aggregation in the aggregation slot with a 400"
-    ;; The endpoint validates the request body against `::lib.schema/external-query`. A field
-    ;; clause where an aggregation clause is expected fails the per-stage `:aggregation`
-    ;; sequence schema and surfaces a humanized error map under `:errors`.
+  (testing "Rejects a non-aggregation in the aggregation slot with a 400"
+    ;; The endpoint's wire schema is intentionally permissive (`:query :map`); deep
+    ;; validation happens inside the representations pipeline. A `field` clause where an
+    ;; aggregation clause is expected is caught by the E1 friendly-error pass and surfaced
+    ;; as `:aggregation-entry-not-aggregation` with `:agent-error? true`, so the LLM gets
+    ;; a clean diagnostic instead of a generic schema error.
     (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
                                          {:query (orders-query
                                                   :aggregation [(orders-field-ref "ID")])})]
-      (is (some? (get-in response [:errors :query]))))))
+      (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
