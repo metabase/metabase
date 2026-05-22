@@ -167,13 +167,25 @@
    #"META-INF/license.*"
    #"META-INF/LICENSE.*"])
 
+(def ^:private gson-conflict-handler
+  "vertica-jdbc (and potentially other fat JARs) bundle their own copy of gson classes.
+   When these overwrite the correct version from com.google.code.gson/gson, BigQuery's
+   error-handling path crashes with NoSuchMethodError on JsonWriter.value(float),
+   introduced in gson 2.9.0. This handler ensures the pinned gson version always wins
+   regardless of JAR processing order. See #73736."
+  {"com/google/gson/.*"
+   (fn [{:keys [lib path in]}]
+     (if (= lib 'com.google.code.gson/gson)
+       {:write {path {:stream in}}}
+       nil))})
+
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (b/uber {:class-dir         class-dir
                :uber-file         uberjar-filename
-               ;; merge Log4j2Plugins.dat files. (#50721)
-               :conflict-handlers log4j2-conflict-handler
+               :conflict-handlers (merge log4j2-conflict-handler
+                                         gson-conflict-handler)
                :basis             basis
                :exclude           dependency-ignore-patterns})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
