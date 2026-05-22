@@ -199,6 +199,40 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.log("the selected value is shown remapped to its label");
       H.filterWidget().findByText("Rustic Paper Wallet").should("be.visible");
     });
+
+    it("should remap an id value to a string label (id/string)", () => {
+      H.createNativeQuestion(numberLabelSource, { wrapId: true });
+      H.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
+
+      H.editDashboard();
+      H.setFilter("ID");
+
+      mapFilterToQuestion("ID");
+      H.setFilterQuestionSource({
+        question: "Number label source",
+        field: "ID",
+        labelField: "TITLE",
+      });
+      H.saveDashboard();
+
+      cy.log(
+        "the dropdown shows the product titles instead of the numeric ids",
+      );
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Rustic Paper Wallet").should("be.visible");
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.log("the selected value and the remapped label are shown");
+      H.filterWidget().findByText("- 1").should("be.visible");
+      H.filterWidget().findByText("Rustic Paper Wallet").should("be.visible");
+    });
   });
 
   describe("native question source", () => {
