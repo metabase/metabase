@@ -680,10 +680,11 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading: isMetadataLoading, error } = useGetTableQueryMetadataQuery(
-    virtualTableId != null ? { id: virtualTableId } : skipToken,
-  );
-  const { isLoading: isCardLoading } = useGetCardQuery(
+  const { isLoading: isMetadataLoading, error: metadataError } =
+    useGetTableQueryMetadataQuery(
+      virtualTableId != null ? { id: virtualTableId } : skipToken,
+    );
+  const { isLoading: isCardLoading, error: cardError } = useGetCardQuery(
     card_id != null ? { id: card_id } : skipToken,
   );
   const question = useSelector((state) =>
@@ -695,7 +696,7 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   return (
     <ModalLoadingAndErrorWrapper
       loading={isMetadataLoading || isCardLoading}
-      error={error}
+      error={metadataError ?? cardError}
       noWrapper
     >
       <ValuesSourceTypeModalConnected {...props} question={question} />
