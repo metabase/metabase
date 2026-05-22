@@ -33,21 +33,26 @@
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (and (api/is-data-analyst?)
-        (transforms.u/source-tables-readable? instance)
-        (transforms.u/check-feature-enabled instance)))
+   (and (transforms.u/check-feature-enabled instance)
+        (or api/*is-superuser?*
+            (and (api/is-data-analyst?)
+                 (transforms.u/source-tables-readable? instance)))))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (and (mi/can-read? instance)
-        (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
-        (remote-sync/transforms-editable?)))
+   (and (remote-sync/transforms-editable?)
+        (transforms.u/check-feature-enabled instance)
+        (or api/*is-superuser?*
+            (and (mi/can-read? instance)
+                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))))))
   ([_model pk]
-   (when-let [transform (t2/select-one :model/Transform :id pk)]
-     (mi/can-write? transform))))
+   (and (remote-sync/transforms-editable?)
+        (or api/*is-superuser?*
+            (when-let [transform (t2/select-one :model/Transform :id pk)]
+              (mi/can-write? transform))))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
@@ -61,12 +66,13 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
-    (and (or api/*is-superuser?*
+  (and (remote-sync/transforms-editable?)
+       (transforms.u/check-feature-enabled instance)
+       (or api/*is-superuser?*
+           (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
-                  (transforms.u/source-tables-readable? instance)))
-         (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
-         (remote-sync/transforms-editable?))))
+                  (transforms.u/source-tables-readable? instance)
+                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
 
 (defn transform-source-out
   "Deserialize a transform source map from JSON storage format.
@@ -98,7 +104,7 @@
   #{:transforms})
 
 (t2/define-before-insert :model/Transform
-  [{:keys [source collection_id source_database_id] :as transform}]
+  [{:keys [source collection_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
@@ -111,10 +117,10 @@
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
-         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
+         :source_database_id (transforms-base.i/source-db-id transform)))))
 
 (t2/define-before-update :model/Transform
-  [{:keys [source source_database_id] :as transform}]
+  [{:keys [source] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
@@ -128,7 +134,7 @@
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
-             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+             :source_database_id (transforms-base.i/source-db-id transform))
 
       target-changed?
       (assoc :target_db_id target-db-id)
@@ -144,6 +150,33 @@
   (if source
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
+  "Add can_read to transforms."
+  [_model k transforms]
+  (mi/instances-with-hydrated-data
+   transforms k
+   #(u/index-by :id mi/can-read? transforms)
+   :id
+   {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
+  "Add can_write to transforms."
+  [_model k transforms]
+  (mi/instances-with-hydrated-data
+   transforms k
+   #(u/index-by :id mi/can-write? transforms)
+   :id
+   {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
+  "Add can_execute to transforms. Executing a transform requires write permission."
+  [_model k transforms]
+  (mi/instances-with-hydrated-data
+   transforms k
+   #(u/index-by :id mi/can-write? transforms)
+   :id
+   {:default false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),

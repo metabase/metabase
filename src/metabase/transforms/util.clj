@@ -47,13 +47,16 @@
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
-  source database (for query transforms)."
+  source database (for query transforms). Returns false if the referenced source database
+  no longer exists."
   [transform]
   (let [source (:source transform)]
     (case (keyword (:type source))
       :query
       (if-let [db-id (get-in source [:query :database])]
-        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
+        (if-let [db (t2/select-one :model/Database db-id)]
+          (boolean (mi/can-query? db))
+          false)
         false)
 
       :python
