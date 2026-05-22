@@ -61,9 +61,7 @@
     (into []
           (comp (filter #(scope-matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       {:name        (:name tool)
-                        :description (:description tool)
-                        :inputSchema (:inputSchema tool)})))
+                       (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations]))))
           tools)))
 
 (defn- build-tool-index
@@ -116,9 +114,13 @@
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
-  "Wrap a value as MCP text content."
+  "Wrap a value as an MCP tool-call result.
+   Map/sequential values are surfaced as `structuredContent` — MCP spec requires this for any tool that
+   declares an `outputSchema`.
+   The `content` array carries a text serialization for clients that don't consume structuredContent."
   [v]
-  {:content [{:type "text" :text (if (string? v) v (json/encode v))}]})
+  (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
+    (or (map? v) (sequential? v)) (assoc :structuredContent v)))
 
 (defn- error-content
   "Wrap an error message as MCP error content."
@@ -220,17 +222,43 @@
         api-path              (strip-api-prefix resolved-path)]
     (invoke-agent-api method api-path token-scopes remaining-args)))
 
+;; --- Design note: centralized null-stripping at the MCP boundary --------------------------------
+;; The MCP inputSchema we publish makes every optional field required-and-nullable, because strict
+;; MCP clients (notably ChatGPT) cannot represent absent fields — they always send every property
+;; the schema declares, with `null` for the ones the agent doesn't want to populate. We strip
+;; those nulls here so each downstream tool handler can use ordinary Clojure idioms (destructure
+;; `:or` defaults, `(when foo …)`, etc.) and treat missing and null identically.
+;;
+;; The alternative is per-tool auditing: every endpoint handler would need to coerce nil into the
+;; right default, and every wire schema's dispatch logic would need to tolerate explicit nulls. We
+;; chose centralization because (a) it's the layer that creates the strict-validator artifact, and
+;; (b) the codex review found that `query`'s `:multi` dispatch on `:continuation_token` already
+;; mishandled a client-sent `null`, so per-tool handling is easy to miss.
+;;
+;; TRADE-OFF: as a consequence, a top-level `null` argument is indistinguishable from omitted at
+;; the MCP boundary. If we ever expose a tool whose semantics genuinely require `null` to mean
+;; something different from "missing" (e.g. \"clear this field\" semantics), it must either model
+;; the distinction with a sentinel value (`{:clear true}`) or do the bespoke handling before this
+;; normalization runs (e.g. as a pre-processing step inside `call-tool`).
+(defn- drop-nil-args
+  "Strip nil-valued top-level keys from MCP tool arguments.
+   Nested values are left alone — the strict-tool transform only rewrites top-level properties."
+  [arguments]
+  (when arguments
+    (into {} (remove (comp nil? val)) arguments)))
+
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are preserved.
    Returns MCP content maps (text-content on success, error-content on failure)."
   [token-scopes tool-name arguments]
-  (if-let [tool-def (get (tool-index) tool-name)]
-    (if-not (scope-matches? token-scopes (:scope tool-def))
-      (error-content (str "Insufficient scope to call tool: " tool-name))
-      (try
-        (dispatch-via-agent-api tool-def arguments token-scopes)
-        (catch Exception e
-          (error-content (or (ex-message e) "Internal error")))))
-    (error-content (str "Unknown tool: " tool-name))))
+  (let [arguments (drop-nil-args arguments)]
+    (if-let [tool-def (get (tool-index) tool-name)]
+      (if-not (scope-matches? token-scopes (:scope tool-def))
+        (error-content (str "Insufficient scope to call tool: " tool-name))
+        (try
+          (dispatch-via-agent-api tool-def arguments token-scopes)
+          (catch Exception e
+            (error-content (or (ex-message e) "Internal error")))))
+      (error-content (str "Unknown tool: " tool-name)))))
