@@ -1,5 +1,6 @@
 (ns build
   (:require
+   [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.uberjar :as uberjar]
    [build.version-properties :as version-properties]
@@ -87,7 +88,7 @@
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
                    (build-licenses! edition))
-   #_#_:drivers  (fn [{:keys [edition]}]
+   :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))

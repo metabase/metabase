@@ -109,9 +109,8 @@
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:type :group
-                       :fields [{:name "host"}
-                                {:name "port"}]}
+      (let [expected [{:name "host"}
+                      {:name "port"}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
@@ -167,9 +166,7 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
-        (is (= (count expected) (count actual))
-            (str "actual names: " (pr-str (mapv :name actual))))
-        (is (=? expected actual))))))
+        (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"

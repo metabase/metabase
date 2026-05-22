@@ -1,0 +1,74 @@
+info:
+  name: Metabase Oracle Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Oracle databases.
+driver:
+  name: oracle
+  display-name: Oracle
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 1521
+    - name: sid
+      display-name: Oracle system ID (SID)
+      placeholder: Usually something like ORCL or XE. Optional if using service name
+    - name: service-name
+      display-name: Oracle service name
+      placeholder: Optional TNS alias
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - required: false
+    - cloud-ip-address-info
+    - ssl
+    - name: ssl-use-keystore
+      display-name: Use SSL server certificate?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-keystore
+      display-name: Keystore (PKCS12 or JKS)
+      type: secret
+      secret-kind: keystore
+      placeholder: /path/to/keystore
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-keystore-password
+      display-name: Keystore password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-use-truststore
+      display-name: Use SSL truststore?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-truststore
+      display-name: Truststore (PKCS12 or JKS)
+      type: secret
+      secret-kind: keystore
+      placeholder: /path/to/truststore
+      visible-if:
+        ssl-use-truststore: true
+    - name: ssl-truststore-password
+      display-name: Truststore password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-truststore: true
+    - ssh-tunnel
+    - advanced-options-start
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.oracle
+  - step: register-jdbc-driver
+    class: oracle.jdbc.OracleDriver
