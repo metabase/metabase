@@ -90,7 +90,15 @@
                                             :mentioned_refs       []}]}
                            {:total_tokens pos-int?
                             :role         :assistant
-                            :data         [{:type "text" :text "Hello from native agent!"}]}]
+                            ;; Assistant row's `:data` now carries the
+                            ;; `terminal_state` data part alongside the text
+                            ;; reply — it's persistable (not the `state` type
+                            ;; that's salvaged onto the conversation row) and
+                            ;; is read by the quality-score temporal layer.
+                            :data         [{:type "text" :text "Hello from native agent!"}
+                                           {:type      "data"
+                                            :data-type "terminal_state"
+                                            :data      {:reason "model_signaled_done"}}]}]
                           messages)))))))))))
 
 (defn ^:private sse-event

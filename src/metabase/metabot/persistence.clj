@@ -7,6 +7,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.quality.core :as quality.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -396,7 +397,19 @@
                            :finished     (boolean finished?)
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                    channel-id   (assoc :channel_id channel-id))))))
+                    channel-id   (assoc :channel_id channel-id)))
+      ;; Quality-score pipeline (BOT-1515). Runs in the same transaction so
+      ;; a scoring UPDATE failure rolls back atomically with the message
+      ;; UPDATE rather than leaving the conversation row half-updated; the
+      ;; outer try/catch is defense-in-depth for any throw that escapes the
+      ;; inner guard in `score-conversation!` (e.g. a Throwable raised
+      ;; before the guard's try block is entered). Log-only at MVP — see
+      ;; `notes/bot-1569/quality-score-impl.md` §H.
+      (try
+        (quality.core/score-conversation! conversation-id)
+        (catch Throwable t
+          (log/error t "score-conversation! escaped the inner guard"
+                     {:conversation-id conversation-id}))))))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
@@ -447,7 +460,12 @@
        :status "ended"}
 
       ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
-      (= "data" block-type)
+      ;; The `terminal_state` data type is persistence-only (read by the
+      ;; quality-score temporal layer) and has no FE rendering, so we skip it
+      ;; here rather than emitting a `data_part` chat message the FE's
+      ;; exhaustive pattern-match would warn on.
+      (and (= "data" block-type)
+           (not= streaming/terminal-state-type (:data-type block)))
       (cond-> {:id   (str (random-uuid))
                :role "agent"
                :type "data_part"

@@ -12,6 +12,7 @@
   (derive :metabase/model))
 
 (t2/deftransforms :model/MetabotMessage
-  {:usage mi/transform-json
-   :data  mi/transform-json
-   :role  mi/transform-keyword})
+  {:usage               mi/transform-json
+   :data                mi/transform-json
+   :role                mi/transform-keyword
+   :quality_attribution mi/transform-json})

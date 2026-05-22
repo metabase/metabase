@@ -170,6 +170,61 @@
                             (map? (:data %)))
                       result))))))))
 
+(defn- terminal-state-parts
+  "Filter the agent-loop result stream down to terminal_state data parts.
+  Encapsulates the predicate so tests don't have to repeat the typed-data-part
+  shape."
+  [result]
+  (filter #(and (= :data (:type %))
+                (= "terminal_state" (:data-type %)))
+          result))
+
+(deftest loop-step-emits-terminal-state-on-text-only-response-test
+  (testing "text-only LLM response → :stop branch → terminal_state with
+            \"model_signaled_done\" appears in the streamed parts before the
+            final state data part"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (mut/mock-llm-response
+                                                             [{:type :text :text "Hello"}]))]
+          (let [result    (into [] (agent/run-agent-loop
+                                    {:messages   [{:role :user :content "Hi"}]
+                                     :state      {}
+                                     :profile-id :embedding_next
+                                     :context    {}}))
+                terminals (terminal-state-parts result)
+                terminal  (first terminals)]
+            (is (= 1 (count terminals))
+                "exactly one terminal_state part per loop exit")
+            (is (= {:reason "model_signaled_done"} (:data terminal)))
+            (testing "ordering: terminal_state precedes the final state data part"
+              (let [terminal-idx (.indexOf ^java.util.List result terminal)
+                    state-idx    (.indexOf ^java.util.List result
+                                           (first (filter #(and (= :data (:type %))
+                                                                (= "state" (:data-type %)))
+                                                          result)))]
+                (is (and (pos? terminal-idx) (pos? state-idx)
+                         (< terminal-idx state-idx))
+                    "terminal_state must arrive before the final state part so
+                     downstream readers can sequence them deterministically")))))))))
+
+(deftest loop-step-emits-terminal-state-on-empty-response-test
+  (testing "LLM returns zero parts → empty-parts :done branch → terminal_state
+            with \"error\" (the categorical for the degenerate completion)"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (mut/mock-llm-response []))]
+          (let [result    (into [] (agent/run-agent-loop
+                                    {:messages   [{:role :user :content "Hi"}]
+                                     :state      {}
+                                     :profile-id :embedding_next
+                                     :context    {}}))
+                terminals (terminal-state-parts result)]
+            (is (= 1 (count terminals)))
+            (is (= {:reason "error"} (:data (first terminals))))))))))
+
 ;;; Query and Chart extraction tests
 
 (deftest extract-queries-test
@@ -328,6 +383,8 @@
                          {:type :text}
                      ;; Cumulative usage after iteration 3: 300+300=600 prompt, 50+10=60 completion
                          {:type :usage :usage {:promptTokens 600 :completionTokens 60}}
+                     ;; Terminal-state precedes the final state part on every successful loop exit.
+                         {:type :data :data-type "terminal_state" :data {:reason "model_signaled_done"}}
                          {:type      :data
                           :data-type "state"
                           :data      {:queries map?
@@ -432,6 +489,8 @@
                                                                 (mut/mock-llm-response
                                                                  [{:type :text :text "Hello after retry"}])))]
             (is (=? [{:type :text :text "Hello after retry"}
+                     ;; Terminal-state precedes the final state part on every successful loop exit.
+                     {:type :data :data-type "terminal_state" :data {:reason "model_signaled_done"}}
                      {:type :data :data-type "state"}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
                       (into [] (metabot.persistence/combine-text-parts-xf)

@@ -95,7 +95,20 @@
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks})))))
 
   (testing "nil :data yields no messages"
-    (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil})))))
+    (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil}))))
+
+  (testing "terminal_state data parts are persistence-only — they're read by
+            the quality-score temporal layer and must not surface in the chat
+            stream (the FE pattern-matches data part types exhaustively and
+            would log a warning on an unknown type)"
+    (let [blocks [{:type "text" :text "hi" :id "b1"}
+                  {:type "data" :data-type "terminal_state" :version 1
+                   :data {:reason "model_signaled_done"}}]
+          result (metabot-persistence/message->chat-messages
+                  {:role :assistant :data blocks})]
+      (is (= 1 (count result))
+          "the terminal_state data part is dropped; only the text block renders")
+      (is (= "text" (:type (first result)))))))
 
 (deftest messages->chat-messages-flattens-across-messages-test
   (let [result (metabot-persistence/messages->chat-messages

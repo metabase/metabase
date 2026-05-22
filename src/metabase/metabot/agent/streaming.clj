@@ -20,6 +20,13 @@
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def terminal-state-type
+  "AI-SDK data type for agent loop terminal state. Persisted on every
+  successful loop exit; read by the quality-score temporal layer
+  (`metabase.metabot.quality.temporal`). Distinct from `metabot_message.error`
+  — the error column captures *why* a turn failed, while terminal-state
+  captures *how* the loop exited."
+  "terminal_state")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -135,6 +142,37 @@
    :data-type static-viz-type
    :version 1
    :data value})
+
+(def ^:private finish-reason->terminal-state
+  "Map the agent loop's `finish-reason` keyword to the persisted
+  terminal-state categorical consumed by the quality-score temporal layer.
+  See `notes/bot-1569/quality-score-impl.md` §I (Terminal-state plumbing)
+  for the rationale behind each projection.
+
+  `:empty-response` represents the rare degenerate case where the LLM call
+  returned zero AISDK parts; treated as `:error` for concern-signal
+  purposes."
+  {:max-iterations :iter_cap
+   :final-response :final_response
+   :stop           :model_signaled_done
+   :empty-response :error})
+
+(defn terminal-state-part
+  "Create a TERMINAL_STATE data part. `reason` is the raw agent-loop
+  `finish-reason` keyword (`:max-iterations` / `:final-response` /
+  `:stop` / `:empty-response`); this function projects it to the
+  persisted categorical (`iter_cap` / `final_response` /
+  `model_signaled_done` / `error`) consumed by the quality-score
+  temporal layer.
+
+  Unknown / future reasons fall through to `error`, the conservative
+  classification for concern-signal #6 (Termination)."
+  [reason]
+  (let [terminal (get finish-reason->terminal-state reason :error)]
+    {:type      :data
+     :data-type terminal-state-type
+     :version   1
+     :data      {:reason (name terminal)}}))
 
 ;;; Reaction Conversion
 

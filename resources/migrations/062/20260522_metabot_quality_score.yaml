@@ -1,0 +1,48 @@
+## BOT-1515 — Persisted columns for the Metabot conversation quality score.
+## See notes/bot-1569/quality-score-impl.md §Schema additions.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-05-22T10:00:00
+      author: tylerplude
+      comment: Add quality_score column to metabot_conversation
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_score
+                  type: double
+                  remarks: Quality score composite in [0, 1], 1 = healthy. NULL = not yet scored.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.2026-05-22T10:00:01
+      author: tylerplude
+      comment: Add quality_breakdown JSON column to metabot_conversation
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_breakdown
+                  type: ${text.type}
+                  remarks: JSON-encoded breakdown of the composite — version, subscore vector (incl. N/A markers), per-concern-signal magnitudes, set cardinalities, termination, context. Shape defined in notes/bot-1569/quality-score-impl.md §Storage formats.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.2026-05-22T10:00:02
+      author: tylerplude
+      comment: Add quality_attribution JSON column to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: quality_attribution
+                  type: ${text.type}
+                  remarks: JSON-encoded per-turn attribution of the conversation breakdown onto this row. Overwritten each finalize-assistant-turn!; the conversation's last assistant row's value is canonical.
+                  constraints:
+                    nullable: true
