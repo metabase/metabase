@@ -1843,6 +1843,10 @@
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+(defn init-workspace-isolation
+  [driver database workspace]
+  (try (init-workspace-isolation! driver database workspace)
+       (catch Exception e (scrub-exception e (secrets-of workspace)))))
 
 (defmulti destroy-workspace-isolation!
   "Destroy all database resources created for workspace isolation.
