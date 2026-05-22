@@ -458,6 +458,80 @@ Row limits:
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 
+### POST /v1/question
+
+Save a previously constructed query as a named question (card).
+
+Request:
+
+```json
+{
+  "name": "Q3 Revenue by Region",
+  "query": "eyJkYXRhYmFzZSI6MSwi...",
+  "display": "bar",
+  "description": "Sum of order totals grouped by region",
+  "collection_id": 7,
+  "visualization_settings": {}
+}
+```
+
+| Field                  | Required | Description                                                                                  |
+|------------------------|----------|----------------------------------------------------------------------------------------------|
+| name                   | yes      | Question name                                                                                |
+| query                  | yes      | Base64-encoded query string returned by /v2/construct-query                                  |
+| display                | no       | Visualization type (`table`, `bar`, `line`, `pie`, etc.). Defaults to `table`.               |
+| description            | no       | Free-text description                                                                        |
+| collection_id          | no       | Target collection. Omit / null to save at the user's personal-collection root.               |
+| visualization_settings | no       | Map of viz settings                                                                          |
+
+Response:
+
+```json
+{
+  "id": 42,
+  "name": "Q3 Revenue by Region",
+  "display": "bar",
+  "collection_id": 7,
+  "description": "Sum of order totals grouped by region"
+}
+```
+
+### POST /v1/dashboard
+
+Create a new dashboard, optionally populated with existing saved questions.
+When `question_ids` is provided, cards are auto-placed on the grid based on
+their display type.
+
+Request:
+
+```json
+{
+  "name": "Q3 Revenue Overview",
+  "description": "Top-line Q3 metrics",
+  "collection_id": 7,
+  "question_ids": [42, 43, 44]
+}
+```
+
+| Field         | Required | Description                                                                |
+|---------------|----------|----------------------------------------------------------------------------|
+| name          | yes      | Dashboard name                                                             |
+| description   | no       | Free-text description                                                      |
+| collection_id | no       | Target collection. Omit / null to save at the user's personal-collection root. |
+| question_ids  | no       | Existing card IDs to add as dashcards. User must have read access to each. |
+
+Response:
+
+```json
+{
+  "id": 11,
+  "name": "Q3 Revenue Overview",
+  "collection_id": 7,
+  "description": "Top-line Q3 metrics",
+  "dashcard_ids": [101, 102, 103]
+}
+```
+
 ## Typical workflow
 
 1. **Search** — POST /v1/search to find relevant tables or metrics
@@ -471,6 +545,8 @@ Row limits:
 5. **Execute** — POST /v1/execute with the base64-encoded query, or use
    POST /v2/query to construct and execute in one round-trip with pagination
 6. **Iterate** — Adjust the query and repeat steps 4-5
+7. **Save (optional)** — POST /v1/question to persist the query as a card, and
+   POST /v1/dashboard to assemble saved cards into a dashboard
 
 ## Error handling
 

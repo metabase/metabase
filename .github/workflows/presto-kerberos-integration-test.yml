@@ -88,7 +88,7 @@ jobs:
         run: mba --mb . --data-db postgres-data -n example.com compose config > mba-compose.yml
 
       - name: Adjust generated docker-compose config
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const fs = require("fs");

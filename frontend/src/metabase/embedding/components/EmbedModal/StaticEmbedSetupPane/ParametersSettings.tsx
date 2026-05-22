@@ -82,6 +82,7 @@ export const ParametersSettings = ({
     <>
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Configuring parameters`}
+        data-testid="parameters-container"
       >
         <Stack gap="1rem">
           <Text>{t`Parameters are disabled by default, which also makes them hidden from end-users. Make them editable so that end-users can see and modify them. Make them locked so that they are hidden from end-users but you can set their values from your app.`}</Text>

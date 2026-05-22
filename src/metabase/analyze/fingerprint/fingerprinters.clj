@@ -253,21 +253,28 @@
     (/ (double (reduce + 0.0 (take n (sort > (vals counts)))))
        (double total))))
 
+(deftype ^:private ModeStatsTracker [^:volatile-mutable counts, ^:volatile-mutable ^long total]
+  ;; Save the trouble of introducing a dedicated protocol/interface to interact with mutable fields by implementing
+  ;; two arities of IFn interface.
+  clojure.lang.IFn
+  (invoke [_]
+    {:mode-fraction  (top-n-fraction counts total 1)
+     :top-3-fraction (top-n-fraction counts total 3)})
+  (invoke [this x]
+    (set! total (inc total))
+    (when-not (nil? x)
+      (cond (contains? counts x)                        (set! counts (update counts x inc))
+            (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts x 1))))
+    this))
+
 (defn- mode-stats
   "Reducer that tracks value frequencies (bounded at `mode-stats-max-distinct` entries)
   and, on completion, returns {:mode-fraction, :top-3-fraction}. High mode-fraction
   signals single-value dominance; high top-3-fraction with moderate mode-fraction signals
   bimodal / few-real-categories distributions."
-  ([] [{} 0])
-  ([[counts total]]
-   {:mode-fraction  (top-n-fraction counts total 1)
-    :top-3-fraction (top-n-fraction counts total 3)})
-  ([[counts total] x]
-   (cond
-     (nil? x)                                    [counts (inc total)]
-     (contains? counts x)                        [(update counts x inc) (inc total)]
-     (< (count counts) mode-stats-max-distinct)  [(assoc counts x 1) (inc total)]
-     :else                                       [counts (inc total)])))
+  ([] (->ModeStatsTracker {} 0))
+  ([tracker] (tracker))
+  ([tracker x] (tracker x)))
 
 (defn- ->millis-from-epoch
   "Coerce a `java.time.temporal.Temporal` (as produced by `->temporal`) to long epoch millis.

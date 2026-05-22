@@ -3,17 +3,20 @@ import { t } from "ttag";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
-import { UPSELL_CAMPAIGN_EXPERIENCE } from "../analytics";
-import { getEmbedExperiences } from "../constants";
-import { useSdkIframeEmbedSetupContext } from "../context";
-import { useHandleExperienceChange } from "../hooks/use-handle-experience-change";
-import type { SdkIframeEmbedSetupExperience } from "../types";
+import { getEmbedExperiences } from "../../../constants";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { useHandleExperienceChange } from "../../../hooks/use-handle-experience-change";
+import type { SdkIframeEmbedSetupExperience } from "../../../types";
+import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
+import { SetupSsoAlert } from "../../Common/SetupSsoAlert";
 
-import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
-
-export const SelectEmbedExperienceStep = () => {
-  const { isSimpleEmbedFeatureAvailable, experience, settings } =
-    useSdkIframeEmbedSetupContext();
+export const ExperienceCard = () => {
+  const {
+    isSimpleEmbedFeatureAvailable,
+    isSsoEnabledAndConfigured,
+    experience,
+    settings,
+  } = useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
   const isMetabotAvailable = useMetabotEnabledEmbeddingAware({
@@ -26,10 +29,13 @@ export const SelectEmbedExperienceStep = () => {
     isMetabotAvailable,
   });
 
+  const showSsoNotConfiguredWarning =
+    !isSsoEnabledAndConfigured && !hasAuthToSelect(experience);
+
   return (
-    <>
-      <Card p="md" mb="md">
-        <Text size="lg" fw="bold" mb="md">
+    <Card p="md">
+      <Stack gap="md">
+        <Text size="lg" fw="bold">
           {t`Select your embed experience`}
         </Text>
 
@@ -60,9 +66,9 @@ export const SelectEmbedExperienceStep = () => {
             ))}
           </Stack>
         </Radio.Group>
-      </Card>
 
-      <EmbeddingUpsell campaign={UPSELL_CAMPAIGN_EXPERIENCE} />
-    </>
+        {showSsoNotConfiguredWarning && <SetupSsoAlert />}
+      </Stack>
+    </Card>
   );
 };

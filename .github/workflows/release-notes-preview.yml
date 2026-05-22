@@ -34,7 +34,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       env:
         DOCKERHUB_OWNER: test_owner
         DOCKERHUB_REPO: test_repo
@@ -68,7 +68,7 @@ jobs:
 
     - name: Post release notes preview to Slack
       if: ${{ inputs.slackChannel != '' }}
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       with:
