@@ -5,7 +5,9 @@ summary: What data Metabase sends to AI providers and MCP clients when you use A
 
 # AI privacy
 
-Using [AI features](./settings.md) in Metabase means sending some data outside your instance. This page covers what gets sent, and to whom.
+AI in Metabase is optional.
+
+If you do use AI (which you can set up in [AI settings](./settings.md), we need to send some data outside of your Metabase. This page covers what gets sent, and to whom.
 
 ## Data sent to the Metabase AI service
 
