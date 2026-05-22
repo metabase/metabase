@@ -25,10 +25,6 @@ export const Sidebar = styled.aside<{
   background-color: var(--mb-color-background-primary);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
-  ${(props) =>
-    props.side === "left"
-      ? "border-inline-end: 1px solid var(--mb-color-border);"
-      : "border-inline-start: 1px solid var(--mb-color-border);"}
 
   ${breakpointMaxSmall} {
     width: 90vw;

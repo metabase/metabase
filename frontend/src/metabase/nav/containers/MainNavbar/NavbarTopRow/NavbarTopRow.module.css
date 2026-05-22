@@ -5,7 +5,6 @@
   gap: var(--mantine-spacing-xs);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md)
     var(--mantine-spacing-sm) var(--mantine-spacing-xl);
-  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .left {

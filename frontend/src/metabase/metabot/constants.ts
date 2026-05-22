@@ -30,11 +30,6 @@ export const METABOT_PROFILES = {
       return t`Embedding`;
     },
   },
-  nlq: {
-    get label() {
-      return t`NLQ`;
-    },
-  },
   sql: {
     get label() {
       return t`SQL`;

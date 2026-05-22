@@ -16,7 +16,6 @@ import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks"
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import {
   ActionIcon,
@@ -95,13 +94,11 @@ const MetabotQueryBuilderInner = () => {
 
   const handleSubmitPrompt = async (prompt: string) => {
     if (!hasMessages) {
-      // Start a fresh NLQ conversation for the first prompt from this page.
       resetConversation();
     }
     setHasError(false);
 
     const action = await submitInput(prompt, {
-      profile: "nlq",
       preventOpenSidebar: true,
       suppressNavigateTo: true,
     });
@@ -127,21 +124,6 @@ const MetabotQueryBuilderInner = () => {
       setVisible(false);
     },
     [setVisible],
-  );
-
-  const { router, routes } = useRouter();
-  const currentRoute = routes.at(-1);
-  useEffect(
-    function cancelRequestOnRouteLeave() {
-      return router.setRouteLeaveHook(currentRoute, () => {
-        if (isDoingScience) {
-          cancelRequest();
-          resetConversation(); // clear any partial response and reset profile
-        }
-        return true;
-      });
-    },
-    [router, currentRoute, cancelRequest, resetConversation, isDoingScience],
   );
 
   const promptInput = (

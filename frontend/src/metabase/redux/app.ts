@@ -69,6 +69,9 @@ const PATH_WITH_COLLAPSED_NAVBAR =
   /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
+  if (pathname === "/question/ask") {
+    return prevState;
+  }
   return (
     !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
   );
