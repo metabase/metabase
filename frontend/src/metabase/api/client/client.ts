@@ -21,6 +21,7 @@ import type {
   RequestClientInfo,
   RequestInit,
   RequestOptions,
+  ResponseFor,
 } from "./types";
 import {
   appendQueryParameters,
@@ -127,7 +128,7 @@ export class ApiClient extends EventEmitter<EventMap> {
   }
 
   private async _dispatch<T = unknown>(
-    init: RequestInit<T>,
+    init: RequestInit,
     withRetries: boolean = false,
   ): Promise<T> {
     if (!isRequestMethod(init.method)) {
@@ -136,13 +137,13 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     try {
       if (withRetries) {
-        return await retry(() => this._makeRequest(init), {
+        return await retry(() => this._makeRequest<T>(init), {
           maxRetries: MAX_RETRIES,
           shouldRetry: isRetriableError,
           signal: init.signal,
         });
       }
-      return await this._makeRequest(init);
+      return await this._makeRequest<T>(init);
     } catch (error) {
       if (init.signal?.aborted) {
         throw { isCancelled: true };
@@ -162,9 +163,9 @@ export class ApiClient extends EventEmitter<EventMap> {
   private async _makeRequest<T = unknown>({
     url,
     noEvent,
-    transformResponse,
+    rawResponse,
     ...init
-  }: RequestInit<T>): Promise<T> {
+  }: RequestInit): Promise<T> {
     // We wrap the fetch args in an explicit `Request` (instead of just calling
     // `fetch(url, init)`) so fetch-mock populates `call.request` on every
     // recorded call. `findRequests()` in our Jest helpers reads `call.request`
@@ -178,10 +179,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     updateAntiCsrfToken(response);
 
-    const { ok, status, body } = await handleResponse<T>(
-      response,
-      transformResponse,
-    );
+    const { ok, status, body } = await handleResponse(response, rawResponse);
 
     if (!noEvent && (status === 401 || status === 403)) {
       // We can use response.status here, and not the status from getResponseStatus,
@@ -200,7 +198,7 @@ export class ApiClient extends EventEmitter<EventMap> {
       throw { status, data: body };
     }
 
-    return body;
+    return body as T;
   }
 
   /**
@@ -236,7 +234,9 @@ export class ApiClient extends EventEmitter<EventMap> {
           body = JSON.stringify(data);
         }
 
-        return this._dispatch(
+        // GET/POST/etc. are intentionally `any`-typed (see ApiMethod); the raw
+        // vs parsed distinction is resolved by MethodCreator's `Raw` parameter.
+        return this._dispatch<any>(
           {
             ...options,
             url,
@@ -259,14 +259,14 @@ export class ApiClient extends EventEmitter<EventMap> {
    *
    * No method-derived guesswork about whether data is body or querystring.
    */
-  async request<T = unknown>(
+  async request<T = unknown, Raw extends boolean = false>(
     options: {
       method: RequestMethod;
       url: string;
       body?: unknown;
       params?: Record<string, unknown>;
-    } & RequestOptions<T>,
-  ): Promise<T> {
+    } & RequestOptions<Raw>,
+  ): Promise<ResponseFor<T, Raw>> {
     if (Array.isArray(options.body)) {
       throw new Error("API bodies must be plain objects, not arrays");
     }
@@ -302,7 +302,13 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     // RTK callers don't retry; matches the prior behavior where apiQuery never
     // opted into retries.
-    return this._dispatch({ ...options, url, method, headers, body });
+    return this._dispatch<ResponseFor<T, Raw>>({
+      ...options,
+      url,
+      method,
+      headers,
+      body,
+    });
   }
 }
 
