@@ -12,6 +12,8 @@ interface SidebarProps {
   onRemove?: () => void;
   isCloseDisabled?: boolean;
   closeTooltip?: string;
+  isRemoveDisabled?: boolean;
+  removeTooltip?: string;
   "data-testid"?: string;
 }
 
@@ -23,6 +25,8 @@ export function Sidebar({
   onCancel,
   onRemove,
   closeTooltip,
+  isRemoveDisabled,
+  removeTooltip,
   "data-testid": dataTestId,
 }: SidebarProps) {
   return (
@@ -45,16 +49,22 @@ export function Sidebar({
           className={S.ButtonContainer}
         >
           {onRemove && (
-            <Button
-              leftSection={<Icon name="trash" />}
-              variant="subtle"
-              color="error"
-              onClick={onRemove}
-              style={{ paddingLeft: 0, paddingRight: 0 }}
-              size="compact-md"
-              role="button"
-              aria-label={t`Remove`}
-            >{t`Remove`}</Button>
+            <Tooltip label={removeTooltip} disabled={!removeTooltip}>
+              {/* without a div we will need hacks to make tooltip work */}
+              <div>
+                <Button
+                  leftSection={<Icon name="trash" />}
+                  variant="subtle"
+                  color="error"
+                  disabled={isRemoveDisabled}
+                  onClick={onRemove}
+                  style={{ paddingLeft: 0, paddingRight: 0 }}
+                  size="compact-md"
+                  role="button"
+                  aria-label={t`Remove`}
+                >{t`Remove`}</Button>
+              </div>
+            </Tooltip>
           )}
           {onCancel && (
             <Button
@@ -65,7 +75,7 @@ export function Sidebar({
             >{t`Cancel`}</Button>
           )}
           {onClose && (
-            <Tooltip label={closeTooltip} hidden={!closeTooltip}>
+            <Tooltip label={closeTooltip} disabled={!closeTooltip}>
               {/* without a div we will need hacks to make tooltip work */}
               <div>
                 <Button
