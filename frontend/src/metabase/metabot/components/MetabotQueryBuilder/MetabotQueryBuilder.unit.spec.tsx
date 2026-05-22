@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentType } from "react";
 import { Route } from "react-router";
 
@@ -9,6 +10,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import type { MetabotChatMessage } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { MetabotQueryBuilder } from "./MetabotQueryBuilder";
@@ -32,12 +34,16 @@ type SetupOptions = {
   showIllustrations?: boolean;
   prompt?: string;
   suggestedPrompts?: { prompt: string }[];
+  messages?: MetabotChatMessage[];
+  submitInput?: jest.Mock;
 };
 
 function setup({
   showIllustrations = true,
   prompt = "",
   suggestedPrompts = [],
+  messages = [],
+  submitInput = jest.fn().mockResolvedValue({ payload: { success: true } }),
 }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
     hasNlqAccess: true,
@@ -46,17 +52,23 @@ function setup({
 
   setupBookmarksEndpoints([]);
 
-  jest.mocked(useMetabotAgent).mockReturnValue({
+  const metabot = {
     setVisible: jest.fn(),
     resetConversation: jest.fn(),
-    submitInput: jest.fn(),
+    submitInput,
+    retryMessage: jest.fn(),
     cancelRequest: jest.fn(),
     setPrompt: jest.fn(),
     metabotId: "default",
     isDoingScience: false,
+    isLongConversation: false,
+    activeToolCalls: [],
+    debugMode: false,
+    messages,
     prompt,
     promptInputRef: { current: null },
-  } as any);
+  } as any;
+  jest.mocked(useMetabotAgent).mockReturnValue(metabot);
   jest.mocked(useGetSuggestedMetabotPromptsQuery).mockReturnValue({
     currentData: { prompts: suggestedPrompts },
   } as any);
@@ -65,10 +77,12 @@ function setup({
     "metabot-show-illustrations": showIllustrations,
   });
 
-  return renderWithProviders(<Route path="/" component={TestSubject} />, {
+  const view = renderWithProviders(<Route path="/" component={TestSubject} />, {
     withRouter: true,
     storeInitialState: createMockState({ settings }),
   });
+
+  return { ...view, metabot };
 }
 
 describe("MetabotQueryBuilder", () => {
@@ -107,5 +121,42 @@ describe("MetabotQueryBuilder", () => {
   it("enables the send button when the prompt is non-empty", () => {
     setup({ prompt: "anything" });
     expect(screen.getByTestId("metabot-send-message")).toBeEnabled();
+  });
+
+  it("renders the conversation inline when messages exist", () => {
+    setup({
+      messages: [
+        { id: "1", role: "user", type: "text", message: "Show me orders" },
+        {
+          id: "2",
+          role: "agent",
+          type: "text",
+          message: "Here are the orders.",
+        },
+      ],
+      suggestedPrompts: [{ prompt: "A suggested prompt" }],
+    });
+
+    expect(
+      screen.getByTestId("metabot-query-builder-chat-messages"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Show me orders")).toBeInTheDocument();
+    expect(screen.getByText("Here are the orders.")).toBeInTheDocument();
+    expect(screen.queryByText("A suggested prompt")).not.toBeInTheDocument();
+  });
+
+  it("submits prompts without opening the sidebar or navigating to generated questions", async () => {
+    const submitInput = jest.fn().mockResolvedValue({
+      payload: { success: true },
+    });
+    setup({ prompt: "Show me orders", submitInput });
+
+    await userEvent.click(screen.getByTestId("metabot-send-message"));
+
+    expect(submitInput).toHaveBeenCalledWith("Show me orders", {
+      profile: "nlq",
+      preventOpenSidebar: true,
+      suppressNavigateTo: true,
+    });
   });
 });

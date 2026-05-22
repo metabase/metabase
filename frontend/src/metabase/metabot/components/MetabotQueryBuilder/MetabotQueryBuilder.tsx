@@ -1,9 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
-import { isFulfilled, isRejected } from "@reduxjs/toolkit";
+import { isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useEffect, useState } from "react";
-import { push } from "react-router-redux";
-import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,9 +9,13 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
+import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import {
@@ -25,7 +27,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
@@ -49,16 +50,6 @@ const getTitleText = () => {
   ]);
 };
 
-type SubmitInputResult = Awaited<
-  ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
->;
-
-const responseHasNavigateTo = (action: SubmitInputResult) =>
-  isFulfilled(action) &&
-  action.payload.data?.processedResponse.data?.some(
-    isMatching({ type: "navigate_to" }),
-  );
-
 const MetabotQueryBuilderInner = () => {
   const { canUseNlq } = useUserMetabotPermissions();
   const [
@@ -69,16 +60,20 @@ const MetabotQueryBuilderInner = () => {
     },
   ] = useDisclosure(false);
 
-  const dispatch = useDispatch();
   const {
     setVisible,
     resetConversation,
     metabotId,
     isDoingScience,
+    messages,
+    activeToolCalls,
+    debugMode,
+    isLongConversation,
     prompt,
     setPrompt,
     promptInputRef,
     submitInput,
+    retryMessage,
     cancelRequest,
   } = useMetabotAgent();
 
@@ -93,23 +88,23 @@ const MetabotQueryBuilderInner = () => {
   });
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
   const suggestedPromptCount = suggestedPrompts?.length ?? 0;
+  const hasMessages = messages.length > 0;
+  const showConversation = hasMessages || isDoingScience;
+  const { scrollContainerRef, headerRef, fillerRef } =
+    useScrollManager(showConversation);
 
   const handleSubmitPrompt = async (prompt: string) => {
-    // start new nlq convo
-    resetConversation();
+    if (!hasMessages) {
+      // Start a fresh NLQ conversation for the first prompt from this page.
+      resetConversation();
+    }
     setHasError(false);
 
-    // work around to show prompt during loading state - this is due to
-    // normally we want the prompt to be cleared in a conversation
-    // but in this case we want to show it in the input while responding
-    // so it looks like we're processing the prompt / suggested prompt
-    const req = submitInput(prompt, {
+    const action = await submitInput(prompt, {
       profile: "nlq",
       preventOpenSidebar: true,
+      suppressNavigateTo: true,
     });
-    setPrompt(prompt);
-    const action = await req;
-    setPrompt("");
 
     if (isRejected(action)) {
       return setHasError(true);
@@ -120,22 +115,6 @@ const MetabotQueryBuilderInner = () => {
         setPrompt(prompt);
       }
       return setHasError(true);
-    }
-
-    // as a fallback, if we receive no new query, we'll take the user
-    // to an empty notebook query and show the chat sidebar as it's
-    // highly likely the chat contains a response asking for clarification
-    if (!responseHasNavigateTo(action)) {
-      dispatch(
-        push(
-          Urls.newQuestion({
-            mode: "notebook",
-            creationType: "custom_question",
-            cardType: "question",
-          }),
-        ),
-      );
-      setVisible(true);
     }
   };
 
@@ -154,120 +133,145 @@ const MetabotQueryBuilderInner = () => {
   const currentRoute = routes.at(-1);
   useEffect(
     function cancelRequestOnRouteLeave() {
-      return router.setRouteLeaveHook(currentRoute, (nextLocation) => {
-        const isNavigatingToQuestion =
-          nextLocation?.pathname.startsWith("/question");
+      return router.setRouteLeaveHook(currentRoute, () => {
         if (isDoingScience) {
-          if (isNavigatingToQuestion) {
-            // we want to open the sidebar at this point as the agent could be sending a
-            // navigate_to before the response has been fully completed
-            setVisible(true);
-          } else {
-            cancelRequest();
-            resetConversation(); // clear any partial response and reset profile
-          }
+          cancelRequest();
+          resetConversation(); // clear any partial response and reset profile
         }
         return true;
       });
     },
-    [
-      router,
-      currentRoute,
-      setVisible,
-      cancelRequest,
-      resetConversation,
-      isDoingScience,
-    ],
+    [router, currentRoute, cancelRequest, resetConversation, isDoingScience],
+  );
+
+  const promptInput = (
+    <Paper
+      className={cx(
+        S.inputContainer,
+        isDoingScience && S.inputContainerLoading,
+      )}
+    >
+      <Box className={S.editorWrapper}>
+        {!canUseNlq ? (
+          <AIProviderConfigurationNotice
+            py="0.5rem"
+            featureName={t`AI exploration`}
+            inline
+            onConfigureAi={openAiProviderConfigurationModal}
+          />
+        ) : (
+          <MetabotPromptInput
+            ref={promptInputRef}
+            value={prompt}
+            autoFocus
+            disabled={isDoingScience}
+            placeholder={t`Ask about your data, and type @ to mention an item`}
+            onChange={setPrompt}
+            onSubmit={handleEditorSubmit}
+            onStop={cancelRequest}
+            suggestionConfig={{
+              suggestionModels: [...defaultSuggestionModels],
+            }}
+          />
+        )}
+      </Box>
+      <Box className={S.inputActions}>
+        {hasError ? (
+          <Text c="error" ta="center">
+            {t`Something went wrong. Please try again.`}
+          </Text>
+        ) : (
+          <div />
+        )}
+        <ActionIcon
+          className={S.sendButton}
+          variant="filled"
+          size="2rem"
+          disabled={!canUseNlq || inputDisabled}
+          loading={isDoingScience}
+          onClick={handleEditorSubmit}
+          data-testid="metabot-send-message"
+          aria-label={t`Send`}
+        >
+          <Icon name="arrow_up" />
+        </ActionIcon>
+      </Box>
+    </Paper>
   );
 
   return (
     <Box className={S.page}>
-      <Box className={S.centeredContainer}>
-        <Box className={S.greeting}>
-          {showIllustrations && <MetabotLogo className={S.greetingIcon} />}
-          <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-primary">
-            {title}
-          </Text>
-        </Box>
-
-        <Stack gap="lg" className={S.inputWrapper}>
-          <Paper
-            className={cx(
-              S.inputContainer,
-              isDoingScience && S.inputContainerLoading,
-            )}
-          >
-            <Box className={S.editorWrapper}>
-              {!canUseNlq ? (
-                <AIProviderConfigurationNotice
-                  py="0.5rem"
-                  featureName={t`AI exploration`}
-                  inline
-                  onConfigureAi={openAiProviderConfigurationModal}
-                />
-              ) : (
-                <MetabotPromptInput
-                  ref={promptInputRef}
-                  value={prompt}
-                  autoFocus
-                  disabled={isDoingScience}
-                  placeholder={t`Ask about your data, and type @ to mention an item`}
-                  onChange={setPrompt}
-                  onSubmit={handleEditorSubmit}
-                  onStop={cancelRequest}
-                  suggestionConfig={{
-                    suggestionModels: [...defaultSuggestionModels],
-                  }}
-                />
-              )}
-            </Box>
-            <Box className={S.inputActions}>
-              {hasError ? (
-                <Text c="error" ta="center">
-                  {t`Something went wrong. Please try again.`}
-                </Text>
-              ) : (
-                <div />
-              )}
-              <ActionIcon
-                className={S.sendButton}
-                variant="filled"
-                size="2rem"
-                disabled={!canUseNlq || inputDisabled}
-                loading={isDoingScience}
-                onClick={handleEditorSubmit}
-                data-testid="metabot-send-message"
-                aria-label={t`Send`}
-              >
-                <Icon name="arrow_up" />
-              </ActionIcon>
-            </Box>
-          </Paper>
-
-          <Box className={S.promptSuggestionsContainer}>
-            {canUseNlq
-              ? suggestedPrompts?.map(({ prompt: suggestedPrompt }, index) => (
-                  <UnstyledButton
-                    key={index}
-                    className={cx(S.promptSuggestion, {
-                      [S.promptSuggestionShow]: !isDoingScience,
-                      [S.promptSuggestionHide]: isDoingScience,
-                    })}
-                    style={{
-                      animationDelay: isDoingScience
-                        ? `${(suggestedPromptCount - index - 1) * 50}ms`
-                        : `${index * 75}ms`,
-                    }}
-                    onClick={() => handleSubmitPrompt(suggestedPrompt)}
-                    disabled={isDoingScience}
-                  >
-                    <Text>{suggestedPrompt}</Text>
-                  </UnstyledButton>
-                ))
-              : null}
+      {showConversation ? (
+        <Box className={S.conversationContainer}>
+          <Box ref={headerRef} className={S.conversationHeader}>
+            <Text fz="sm" c="text-secondary">
+              {t`Metabot isn't perfect. Double-check results.`}
+            </Text>
           </Box>
-        </Stack>
-      </Box>
+          <Box
+            ref={scrollContainerRef}
+            className={S.messagesContainer}
+            data-testid="metabot-query-builder-chat-messages"
+          >
+            <Box className={S.messages}>
+              <Messages
+                messages={messages}
+                onRetryMessage={retryMessage}
+                isDoingScience={isDoingScience}
+                debug={debugMode}
+              />
+              {isDoingScience && (
+                <MetabotThinking toolCalls={activeToolCalls} />
+              )}
+              <div ref={fillerRef} data-testid="metabot-message-filler" />
+              {isLongConversation && (
+                <MetabotResetLongChatButton
+                  onResetConversation={resetConversation}
+                />
+              )}
+            </Box>
+          </Box>
+          <Box className={S.bottomInputContainer}>{promptInput}</Box>
+        </Box>
+      ) : (
+        <Box className={S.centeredContainer}>
+          <Box className={S.greeting}>
+            {showIllustrations && <MetabotLogo className={S.greetingIcon} />}
+            <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-primary">
+              {title}
+            </Text>
+          </Box>
+
+          <Stack gap="lg" className={S.inputWrapper}>
+            {promptInput}
+
+            <Box className={S.promptSuggestionsContainer}>
+              {canUseNlq
+                ? suggestedPrompts?.map(
+                    ({ prompt: suggestedPrompt }, index) => (
+                      <UnstyledButton
+                        key={index}
+                        className={cx(S.promptSuggestion, {
+                          [S.promptSuggestionShow]: !isDoingScience,
+                          [S.promptSuggestionHide]: isDoingScience,
+                        })}
+                        style={{
+                          animationDelay: isDoingScience
+                            ? `${(suggestedPromptCount - index - 1) * 50}ms`
+                            : `${index * 75}ms`,
+                        }}
+                        onClick={() => handleSubmitPrompt(suggestedPrompt)}
+                        disabled={isDoingScience}
+                      >
+                        <Text>{suggestedPrompt}</Text>
+                      </UnstyledButton>
+                    ),
+                  )
+                : null}
+            </Box>
+          </Stack>
+        </Box>
+      )}
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}
         onClose={closeAiProviderConfigurationModal}

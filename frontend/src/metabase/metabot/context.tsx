@@ -62,6 +62,7 @@ export type MetabotCtx = {
   promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
 
   getChatContext: () => Promise<MetabotChatContext>;
+  chatContextProviderVersion: number;
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;
@@ -84,6 +85,7 @@ export const defaultContext: MetabotCtx = {
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       capabilities: [],
     }),
+  chatContextProviderVersion: 0,
   registerChatContextProvider: () => () => {},
 
   suggestionActions: null,
@@ -155,6 +157,8 @@ export const MetabotProvider = ({
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
+  const [chatContextProviderVersion, setChatContextProviderVersion] =
+    useState(0);
   const store = useStore();
 
   const getChatContext = useCallback(async () => {
@@ -193,7 +197,13 @@ export const MetabotProvider = ({
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {
       providerFnsRef.current.add(providerFn);
-      return () => providerFnsRef.current.delete(providerFn);
+      setChatContextProviderVersion((version) => version + 1);
+
+      return () => {
+        if (providerFnsRef.current.delete(providerFn)) {
+          setChatContextProviderVersion((version) => version + 1);
+        }
+      };
     },
     [],
   );
@@ -205,6 +215,7 @@ export const MetabotProvider = ({
         setPrompt,
         promptInputRef,
         getChatContext,
+        chatContextProviderVersion,
         registerChatContextProvider,
         suggestionActions,
         setSuggestionActions,

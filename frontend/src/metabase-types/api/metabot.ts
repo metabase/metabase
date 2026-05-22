@@ -110,9 +110,22 @@ export type MetabotChartConfig = {
   image_base_64?: string;
   title?: string | null;
   description?: string | null;
+  selected_data?: {
+    label?: string;
+    value?: RowValue;
+    column?: MetabotColumnInfo;
+    dimensions?: Array<{
+      column: MetabotColumnInfo;
+      value: RowValue;
+    }>;
+    row?: {
+      columns: Array<MetabotColumnInfo>;
+      values: RowValue[];
+    };
+  };
   data?: Array<{
     columns: Array<MetabotColumnInfo>;
-    rows: Array<Array<string | number>>;
+    rows: Array<RowValue[]>;
   }>;
   series?: Record<string, MetabotSeriesConfig>;
   timeline_events?: Array<{
@@ -127,6 +140,7 @@ export type MetabotChartConfig = {
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
+  name?: string;
   chart_configs?: Array<MetabotChartConfig>;
   query?: DatasetQuery;
   error?: any;
@@ -135,10 +149,12 @@ export type MetabotCardInfo = {
 export type MetabotDashboardInfo = {
   type: "dashboard";
   id: DashboardId;
+  name?: string;
 };
 
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
+  name?: string;
   chart_configs?: Array<MetabotChartConfig>;
   query?: DatasetQuery;
   error?: any;
@@ -147,6 +163,7 @@ export type MetabotAdhocQueryInfo = {
 export type MetabotDocumentInfo = {
   type: "document";
   id: number;
+  name?: string;
 };
 
 export type MetabotTransformInfo =

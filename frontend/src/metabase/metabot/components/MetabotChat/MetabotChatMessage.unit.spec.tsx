@@ -1,7 +1,119 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { MetabotAgentChatMessage } from "metabase/metabot/state";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
+
+const mockSetPrompt = jest.fn();
+const mockFocusPrompt = jest.fn();
+let mockPrompt = "";
+let mockChatContextProvider: (() => Promise<unknown>) | undefined;
+
+jest.mock("metabase/metabot", () => ({
+  useMetabotContext: () => ({
+    prompt: mockPrompt,
+    setPrompt: mockSetPrompt,
+    promptInputRef: { current: { focus: mockFocusPrompt } },
+  }),
+  useRegisterMetabotContextProvider: (provider: () => Promise<unknown>) => {
+    mockChatContextProvider = provider;
+  },
+}));
+
+const mockQuestion = {
+  displayName: () => "Revenue by month",
+  description: () => null,
+  datasetQuery: () => ({ type: "query", database: 1, query: {} }),
+  display: () => "bar",
+};
+
+jest.mock("metabase/common/components/AdHocQuestionLoader", () => ({
+  AdHocQuestionLoader: ({
+    children,
+  }: {
+    children: (state: any) => JSX.Element;
+  }) =>
+    children({
+      question: mockQuestion,
+      loading: false,
+      error: null,
+    }),
+}));
+
+jest.mock("metabase/common/components/QuestionResultLoader", () => ({
+  QuestionResultLoader: ({
+    children,
+  }: {
+    children: (state: any) => JSX.Element;
+  }) =>
+    children({
+      result: {
+        data: {
+          cols: [
+            {
+              name: "CREATED_AT",
+              display_name: "Created At",
+              base_type: "type/DateTime",
+            },
+            {
+              name: "REVENUE",
+              display_name: "Revenue",
+              base_type: "type/Float",
+            },
+          ],
+          rows: [["2026-01-01", 123]],
+        },
+      },
+      rawSeries: [],
+      loading: false,
+      error: null,
+    }),
+}));
+
+jest.mock("metabase/querying/components/QueryVisualization", () => ({
+  QueryVisualization: ({ handleVisualizationClick }: any) => (
+    <button
+      data-testid="embedded-question"
+      onClick={() =>
+        handleVisualizationClick?.({
+          value: 123,
+          column: {
+            name: "REVENUE",
+            display_name: "Revenue",
+            base_type: "type/Float",
+          },
+          dimensions: [
+            {
+              value: "2026-01-01",
+              column: {
+                name: "CREATED_AT",
+                display_name: "Created At",
+                base_type: "type/DateTime",
+              },
+            },
+          ],
+          origin: {
+            cols: [
+              {
+                name: "CREATED_AT",
+                display_name: "Created At",
+                base_type: "type/DateTime",
+              },
+              {
+                name: "REVENUE",
+                display_name: "Revenue",
+                base_type: "type/Float",
+              },
+            ],
+            row: ["2026-01-01", 123],
+          },
+        })
+      }
+    />
+  ),
+}));
 
 const setup = (message: MetabotAgentChatMessage) =>
   renderWithProviders(
@@ -17,6 +129,83 @@ const setup = (message: MetabotAgentChatMessage) =>
   );
 
 describe("AgentMessage", () => {
+  beforeEach(() => {
+    mockPrompt = "";
+    mockSetPrompt.mockClear();
+    mockFocusPrompt.mockClear();
+    mockChatContextProvider = undefined;
+  });
+
+  it("renders navigate_to responses as embedded question cards", () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      role: "agent",
+      type: "data_part",
+      part: { type: "navigate_to", version: 1, value: `/question#${cardHash}` },
+    });
+
+    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+    expect(screen.queryByText(/generated question/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("embedded-question")).toBeInTheDocument();
+  });
+
+  it("mentions clicked chart values and makes them available to Metabot", async () => {
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      role: "agent",
+      type: "data_part",
+      part: { type: "navigate_to", version: 1, value: `/question#${cardHash}` },
+    });
+
+    await userEvent.click(screen.getByTestId("embedded-question"));
+
+    expect(mockSetPrompt).toHaveBeenCalledWith(
+      "this data point: Created At: 2026-01-01, Revenue: 123",
+    );
+    expect(mockFocusPrompt).toHaveBeenCalled();
+
+    const context = await mockChatContextProvider?.();
+    expect(context).toEqual({
+      user_is_viewing: [
+        expect.objectContaining({
+          type: "adhoc",
+          name: "Revenue by month",
+          chart_configs: [
+            expect.objectContaining({
+              selected_data: expect.objectContaining({
+                label: "Created At: 2026-01-01, Revenue: 123",
+                value: 123,
+                row: expect.objectContaining({
+                  values: ["2026-01-01", 123],
+                }),
+              }),
+            }),
+          ],
+        }),
+      ],
+    });
+  });
+
   it("hides the action bar on the last agent message while processing", () => {
     renderWithProviders(
       <Messages

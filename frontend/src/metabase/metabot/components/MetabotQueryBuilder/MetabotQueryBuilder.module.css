@@ -39,6 +39,43 @@
   max-width: 42rem;
 }
 
+.conversationContainer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.conversationHeader {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.5rem 0.5rem;
+}
+
+.messagesContainer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 1rem 1.5rem;
+}
+
+.messages {
+  display: flex;
+  width: 100%;
+  max-width: 54rem;
+  flex-direction: column;
+  margin: 0 auto;
+  padding-inline: 0.5rem;
+}
+
+.bottomInputContainer {
+  width: 100%;
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 1.5rem;
+}
+
 .inputContainer {
   display: flex;
   flex-direction: column;
