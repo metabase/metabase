@@ -62,24 +62,22 @@ export async function getResponseBody(response: Response): Promise<unknown> {
     }
   }
 
-  // Off the 202 path the backend only sets application/json when the body
-  // is valid JSON. The one exception is an empty body (e.g. 204 No Content),
-  // which we surface as null. A genuine parse failure here means the backend
-  // broke that invariant, so let it throw rather than masking it as data.
-  if (isJson(response)) {
-    try {
-      return await response.json();
-    } catch (error) {
-      return "";
-    }
+  const text = await response.text();
+  if (text === "") {
+    return null;
   }
 
-  // Non-JSON bodies (text/plain 503 "still initializing", HTML errors) are read
-  // as text so they can surface as error.data. An empty body is no content.
-  const text = await response.text();
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (error) {
+    if (isJson(response)) {
+      // if the response claims it is JSON and it's not empty,
+      // surface the parse error rather than swallowing it.
+      throw error;
+    }
+
+    // Non-JSON bodies (text/plain 503 "still initializing", HTML errors) are read
+    // as text so they can surface as error.data.
     return text;
   }
 }
