@@ -87,9 +87,13 @@ Whether AI features are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
 - [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
 
-Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
-Sets the maximum number of days Metabase preserves rows in the `ai_usage_log` table.
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `ai_usage_log`
+- `metabot_conversation`
+- `metabot_message`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows.
@@ -2198,7 +2202,9 @@ The timeout for a transform job, in minutes.
 
 Controls the timeout for transform runs, including the queries they execute. This takes precedence
   over MB_DB_QUERY_TIMEOUT_MINUTES for queries executed inside a transform, so transforms can run longer than regular
-  Metabase queries.
+  Metabase queries. Enforced per-statement via `Statement.setQueryTimeout`; transforms also use a separate JDBC
+  connection pool whose c3p0 leak-detector tolerates this longer runtime, so non-transform connections continue to
+  use the shorter `MB_DB_QUERY_TIMEOUT_MINUTES` leak-detector.
 
 ### `MB_TRANSFORMS_ENABLED`
 
