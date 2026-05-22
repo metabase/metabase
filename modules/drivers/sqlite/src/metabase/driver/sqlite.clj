@@ -9,6 +9,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -65,20 +66,13 @@
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
 
-(defn- bundled-sample-database?
-  "Recognize the bundled Sample Database by filename. The sample-data extractor
-   writes the SQLite file to `<plugins-dir>/sample-database.sqlite` (or to the
-   path in `MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR`); either way the basename is
-   constant. Used to carve out the only legitimate internal use of SQLite on
-   hosted Metabase without threading a dynamic var through every sync site."
-  [db]
-  (and (string? db)
-       (= "sample-database.sqlite" (-> (java.io.File. ^String db) .getName))))
-
 (defmethod driver/validate-db-details! :sqlite
-  [_driver {:keys [db]}]
+  [_driver _details]
+  ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database. The internal flows that need to test
+  ;; connections to that DB (sync, schema refresh, fingerprinting, etc.) wrap their calls in
+  ;; `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`. Mirrors the H2 pattern.
   (when (and (driver-api/is-hosted?)
-             (not (bundled-sample-database? db)))
+             (not driver.settings/*allow-testing-sqlite-connections*))
     (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
                     {:status-code 400}))))
 

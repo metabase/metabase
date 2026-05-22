@@ -1188,7 +1188,8 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (driver.conn/default-details db) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -1552,7 +1553,8 @@
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [driver.settings/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true
+              driver.settings/*allow-testing-sqlite-connections* true]
       (if-let [err-map (warehouses/test-database-connection engine connection-details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))
