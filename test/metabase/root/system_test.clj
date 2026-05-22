@@ -139,53 +139,63 @@
     (mc/alter-root k3-handle :root-k3)
     (mc/alter-root k4-handle :root-k4)
     (mc/alter-root k5-handle :root-k5)
-    (let [start-line  (CyclicBarrier. 2)
-          writes-done (promise)
-          writer (future
-                   (.await start-line)
-                   (mc/swap! k2-handle (constantly :updated-k2))
-                   (mc/reset! k3-handle :updated-k3)
-                   (deliver writes-done true))]
+    (let [start-line        (CyclicBarrier. 3)
+          root-writer-done  (promise)
+          outer-writer-done (promise)
+          ;; Spawned at root, so the future's conveyed *system* is the root view
+          ;; and its writes land on the root atom.
+          root-writer (future
+                        (.await start-line)
+                        (mc/swap! k2-handle (constantly :updated-k2))
+                        (mc/reset! k3-handle :updated-k3)
+                        (deliver root-writer-done true))]
       (try
         (mc/binding k1-handle :outer-k1
                     (fn []
-                      ;; Both threads wait on the barrier so that the writer's root
-                      ;; writes for k2/k3 race against these outer-level shadows on
-                      ;; k4/k5. Different atoms, but in-flight at the same time.
-                      (.await start-line)
-                      (mc/swap!  k4-handle (constantly :outer-shadow-k4))
-                      (mc/reset! k5-handle :outer-shadow-k5)
-                      (is (true? (deref writes-done 1000 ::timed-out)))
-                      (mc/binding k1-handle :inner-k1
-                                  (fn []
-                                    (testing "inside the inner binding"
-                                      (testing "k1 shows the innermost override"
-                                        (is (= :inner-k1 (mc/current k1-handle))))
-                                      (testing "writer's root updates to k2 and k3 cascade through both layers"
-                                        (is (= :updated-k2 (mc/current k2-handle)))
-                                        (is (= :updated-k3 (mc/current k3-handle))))
-                                      (testing "outer-level shadows on k4 and k5 are visible from the inner binding"
-                                        (is (= :outer-shadow-k4 (mc/current k4-handle)))
-                                        (is (= :outer-shadow-k5 (mc/current k5-handle))))
-                                      (testing "`root` bypasses both bindings — sees writer's updates and ignores outer-level shadows"
-                                        (is (= :updated-k2 (mc/root k2-handle)))
-                                        (is (= :updated-k3 (mc/root k3-handle)))
-                                        (is (= :root-k4 (mc/root k4-handle)))
-                                        (is (= :root-k5 (mc/root k5-handle)))))))
+                      ;; Spawned inside the outer binding, so binding conveyance
+                      ;; gives this future the outer-level *system* and its writes
+                      ;; land on the outer atom — not on root.
+                      (let [outer-writer (future
+                                           (.await start-line)
+                                           (mc/swap!  k4-handle (constantly :outer-shadow-k4))
+                                           (mc/reset! k5-handle :outer-shadow-k5)
+                                           (deliver outer-writer-done true))]
+                        (mc/binding k1-handle :inner-k1
+                                    (fn []
+                                      ;; The main thread sits inside the inner binding
+                                      ;; while both writers race.
+                                      (.await start-line)
+                                      (is (true? (deref root-writer-done 1000 ::timed-out)))
+                                      (is (true? (deref outer-writer-done 1000 ::timed-out)))
+                                      (testing "inside the inner binding"
+                                        (testing "k1 shows the innermost override"
+                                          (is (= :inner-k1 (mc/current k1-handle))))
+                                        (testing "root writer's updates to k2 and k3 cascade through both layers"
+                                          (is (= :updated-k2 (mc/current k2-handle)))
+                                          (is (= :updated-k3 (mc/current k3-handle))))
+                                        (testing "outer-level shadows on k4 and k5 (written from the outer writer thread) are visible from the inner binding"
+                                          (is (= :outer-shadow-k4 (mc/current k4-handle)))
+                                          (is (= :outer-shadow-k5 (mc/current k5-handle))))
+                                        (testing "`root` bypasses both bindings — sees root writer's updates and ignores outer-level shadows"
+                                          (is (= :updated-k2 (mc/root k2-handle)))
+                                          (is (= :updated-k3 (mc/root k3-handle)))
+                                          (is (= :root-k4 (mc/root k4-handle)))
+                                          (is (= :root-k5 (mc/root k5-handle)))))))
+                        @outer-writer)
                       (testing "back in the outer binding after the inner pops, outer-level shadows and root cascade are both still visible"
                         (is (= :outer-k1 (mc/current k1-handle)))
                         (is (= :updated-k2 (mc/current k2-handle)))
                         (is (= :updated-k3 (mc/current k3-handle)))
                         (is (= :outer-shadow-k4 (mc/current k4-handle)))
                         (is (= :outer-shadow-k5 (mc/current k5-handle))))))
-        (testing "after both bindings unwind, outer-level shadows are gone and writer's root updates remain"
+        (testing "after both bindings unwind, outer-level shadows are gone and root writer's updates remain"
           (is (= :root-k1 (mc/current k1-handle)))
           (is (= :updated-k2 (mc/current k2-handle)))
           (is (= :updated-k3 (mc/current k3-handle)))
           (is (= :root-k4 (mc/current k4-handle)))
           (is (= :root-k5 (mc/current k5-handle))))
         (finally
-          @writer)))))
+          @root-writer)))))
 
 (comment
   (let [iterations 100]
