@@ -59,8 +59,10 @@
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -194,15 +196,6 @@
      :table_id      table_id
      :description   description
      :uri           (llm-rep/metabase-uri (keyword model-type) id)}))
-
-(defn- present-dashboard
-  [{:keys [id name collection_id description]}]
-  {:type          "dashboard"
-   :id            id
-   :name          name
-   :collection_id collection_id
-   :description   description
-   :uri           (llm-rep/metabase-uri :dashboard id)})
 
 (defn- present-transform
   [{:keys [id name description source_database_id]}]
@@ -362,44 +355,37 @@
 ;; ----- Collection drill-down -----
 
 (defn- fetch-collection [id-str]
-  (let [coll (api/read-check :model/Collection (parse-long id-str))]
-    (entity-result (present-collection coll))))
+  (let [coll (t2/select-one :model/Collection (parse-long id-str))]
+    (mbr/entity-result (mbr/extract-as-user "Collection" coll))))
 
 (defn- fetch-collection-items [id-str]
   (let [coll-id        (parse-long id-str)
         coll           (api/read-check :model/Collection coll-id)
-        cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                        :collection_id :database_id :table_id]
-                                       {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                        :order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                        :description :personal_owner_id]
-                                       :location (str (:location coll) coll-id "/")
-                                       :archived false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        items          (concat (map present-collection subcollections)
-                               (map present-card cards)
-                               (map present-dashboard dashboards))]
-    (list-result :collection-items items)))
+        cards          (t2/select :model/Card
+                                  {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
+                                   :order-by [[:%lower.name :asc]]})
+        dashboards     (t2/select :model/Dashboard
+                                  :collection_id coll-id
+                                  :archived      false
+                                  {:order-by [[:%lower.name :asc]]})
+        subcollections (t2/select :model/Collection
+                                  :location (str (:location coll) coll-id "/")
+                                  :archived false
+                                  {:order-by [[:%lower.name :asc]]})
+        items          (concat (mbr/extract-readable "Collection" subcollections)
+                               (mbr/extract-readable "Card" cards)
+                               (mbr/extract-readable "Dashboard" dashboards))]
+    (mbr/list-result :collection-items items {:total (count items)})))
 
 (defn- fetch-collection-subcollections [id-str]
   (let [coll-id (parse-long id-str)
         coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                 :description :personal_owner_id]
-                                :location (str (:location coll) coll-id "/")
-                                :archived false
-                                {:order-by [[:%lower.name :asc]]})
-                     (filter mi/can-read?)
-                     (mapv present-collection))]
-    (list-result :collection-subcollections subs)))
+        subs    (t2/select :model/Collection
+                           :location (str (:location coll) coll-id "/")
+                           :archived false
+                           {:order-by [[:%lower.name :asc]]})
+        items   (mbr/extract-readable "Collection" subs)]
+    (mbr/list-result :collection-subcollections items {:total (count items)})))
 
 ;; ----- Table -----
 
@@ -637,7 +623,12 @@
 
 (defn- format-content
   "Format a tool result as an LLM-ready string.
-   Dispatches to the right llm-rep formatter based on :result-type.
+
+   MBR-shaped results (`:mbr-entity`, `:mbr-list`) JSON-encode to a string for
+   inclusion in the :output payload. Legacy XML-shaped results (`:entity`,
+   `:metabot-list`, `:metabot-entity`) render via the llm-rep formatters during
+   per-entity migration to MBR.
+
    Returns the :output string directly for error results (404s etc.)."
   [content]
   (if-let [structured (:structured-output content)]
@@ -646,6 +637,8 @@
       :field-metadata (format-with-instructions
                        (llm-rep/field-metadata->xml structured)
                        instructions/field-metadata-instructions)
+      :mbr-entity     (json/encode (:entity structured))
+      :mbr-list       (json/encode (select-keys structured [:list-type :items :total :truncated]))
       :entity         (llm-rep/entity->xml structured)
       :metabot-list   (llm-rep/metabot-list->xml structured)
       :metabot-entity (llm-rep/metabot-entity->xml structured)

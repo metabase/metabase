@@ -511,10 +511,12 @@
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
 
-      (testing "metabase://collection/{id}/items lists members with drill-in URIs"
-        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
+      (testing "metabase://collection/{id}/items lists members as MBR with entity_id references"
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})
+              card             (t2/select-one [:model/Card :entity_id] :id card-id)]
           (is (str/includes? output "Sales report"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          ;; MBR shape: cards reference each other by entity_id in serdes/meta and as the canonical id.
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id card) "\""))))))))
 
 (deftest read-table-derived-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -713,9 +715,10 @@
                    :model/Collection {child-id :id}  {:name "Child"  :location (str "/" parent-id "/")}]
       (testing "metabase://collection/{id}/subcollections lists direct children only"
         (let [{:keys [output]} (read-resource/read-resource
-                                {:uris [(str "metabase://collection/" parent-id "/subcollections")]})]
+                                {:uris [(str "metabase://collection/" parent-id "/subcollections")]})
+              child            (t2/select-one [:model/Collection :entity_id] :id child-id)]
           (is (str/includes? output "Child"))
-          (is (str/includes? output (str "uri=\"metabase://collection/" child-id "\"")))
+          (is (str/includes? output (str "\"entity_id\":\"" (:entity_id child) "\"")))
           (is (not (str/includes? output "Parent"))))))))
 
 (deftest read-collections-tree-test
