@@ -81,7 +81,7 @@ describe("computeDefaultTabs", () => {
 
 function createMockAvailableDimension(label: string): AvailableDimension {
   return {
-    icon: "string",
+    icon: "label",
     tabInfo: {
       type: "category",
       label,

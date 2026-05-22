@@ -57,7 +57,7 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     },
   },
   {
-    icon: "string",
+    icon: "label",
     group: undefined,
     canListValues: false,
     isPreferred: true,
@@ -104,7 +104,7 @@ const ORDERS_DIMENSIONS: AvailableDimension[] = [
     },
   },
   {
-    icon: "string",
+    icon: "label",
     group: undefined,
     canListValues: false,
     isPreferred: true,
@@ -186,7 +186,7 @@ describe("getAvailableDimensionsForPicker", () => {
             },
           },
           {
-            icon: "string",
+            icon: "label",
             group: undefined,
             canListValues: false,
             isPreferred: true,
@@ -321,7 +321,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
         bySource: {
           [REVENUE_SOURCE_ID]: [
             {
-              icon: "string",
+              icon: "label",
               isPreferred: false,
               tabInfo: {
                 type: "category",
@@ -330,7 +330,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
               },
             },
             {
-              icon: "string",
+              icon: "label",
               isPreferred: true,
               tabInfo: {
                 type: "category",

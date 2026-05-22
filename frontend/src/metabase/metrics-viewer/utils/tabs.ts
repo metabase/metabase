@@ -40,21 +40,22 @@ export function getDimensionIcon(dimension: DimensionMetadata): IconName {
     return "calendar";
   }
   if (
-    LibMetric.isCategory(dimension) ||
-    LibMetric.isStringOrStringLike(dimension)
-  ) {
-    return "string";
-  }
-  if (LibMetric.isNumeric(dimension) || LibMetric.isCoordinate(dimension)) {
-    return "int";
-  }
-  if (
     LibMetric.isState(dimension) ||
     LibMetric.isCountry(dimension) ||
     LibMetric.isCity(dimension) ||
-    LibMetric.isLocation(dimension)
+    LibMetric.isLocation(dimension) ||
+    LibMetric.isCoordinate(dimension)
   ) {
     return "location";
+  }
+  if (
+    LibMetric.isCategory(dimension) ||
+    LibMetric.isStringOrStringLike(dimension)
+  ) {
+    return "label";
+  }
+  if (LibMetric.isNumeric(dimension)) {
+    return "int";
   }
   return "unknown";
 }
