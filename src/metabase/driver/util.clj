@@ -286,9 +286,9 @@
 (mu/defn- supported-in-environment?
   "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
   sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
-  [driver :- :keyword]
-  (or (not (premium-features/is-hosted?))
-      (not= :sqlite (keyword driver))))
+  ; TODO explain this better. Should we just delete this entirely now that SQLite is used for sample data?
+  [_driver :- :keyword]
+  true)
 
 (defn available-drivers
   "Return a set of all currently available drivers."
