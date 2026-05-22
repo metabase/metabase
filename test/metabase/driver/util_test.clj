@@ -495,8 +495,8 @@
     (testing "includes sqlite in non-hosted environment"
       (is (contains? (driver.u/available-drivers) :sqlite)))
     (mt/with-premium-features #{:hosting}
-      (testing "does not include sqlite in hosted environment"
-        (is (not (contains? (driver.u/available-drivers) :sqlite)))))))
+      (testing "include sqlite in hosted environment"
+        (is (contains? (driver.u/available-drivers) :sqlite))))))
 
 (deftest ^:parallel process-connection-prop-test
   (testing "process-connection-prop handles different property types"
