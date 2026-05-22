@@ -120,7 +120,13 @@ export function multiLevelPivot(data, settings) {
 }
 
 // This is the pivot function used in the normal table visualization.
-export function pivot(data, normalCol, pivotCol, cellCol) {
+export function pivot(
+  data,
+  normalCol,
+  pivotCol,
+  cellCol,
+  dateFormattingOptions,
+) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
     pivotCol,
@@ -164,7 +170,11 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
         ...data.cols[cellCol],
         // `name` must be the same for conditional formatting, but put the
         // formatted pivotted value in the `display_name`
-        display_name: formatValue(value, { column: data.cols[pivotCol] }) || "",
+        display_name:
+          formatValue(value, {
+            column: data.cols[pivotCol],
+            ...dateFormattingOptions,
+          }) || "",
         // for onVisualizationClick:
         _dimension: {
           value: value,
