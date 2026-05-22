@@ -52,6 +52,7 @@
     Field$Mode
     FieldValue
     FieldValueList
+    Job
     JobInfo
     QueryJobConfiguration
     Schema
@@ -743,7 +744,7 @@
         _                (driver.conn/track-connection-acquisition! database-details)
         ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
         ;; in the UI. (#71558)
-        job              (try
+        ^Job job         (try
                            (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
                            (catch Throwable t
                              (handle-bigquery-exception t sql parameters)))
