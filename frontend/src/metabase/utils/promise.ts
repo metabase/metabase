@@ -26,11 +26,6 @@ export function defer<T>(): Deferred<T> {
 
 export function delay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    if (signal?.aborted) {
-      resolve();
-      return;
-    }
-
     const onAbort = () => {
       clearTimeout(timeoutId);
       resolve();
@@ -42,5 +37,11 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
     }, duration(ms));
 
     signal?.addEventListener("abort", onAbort, { once: true });
+
+    // Register the listener before checking `aborted`, so an abort can never
+    // slip through the gap and leave the timeout running to completion.
+    if (signal?.aborted) {
+      onAbort();
+    }
   });
 }
