@@ -429,29 +429,31 @@
       ;; legacy test -- don't hardcode driver names in new tests going forward.
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (mt/test-driver :postgres
+        ;; TODO (Cam 7/16/25) -- rework this to use metadata providers -- we support model persisted info directly from
+        ;; the metadata provider
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
-            ;; `with-temp` needed here because this tests model persistence
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
                                               :dataset_query mbql-query
-                                              :database_id   (meta/id)}]
+                                              :database_id   (mt/id)}]
               (persist-models!)
               (testing "tag uses persisted table"
-                (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
+                (let [pi (t2/select-one :model/PersistedInfo :card_id (u/the-id model))]
                   (is (= "persisted" (:state pi)))
                   (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
                                   (:query
                                    (value-for-tag
+                                    (mt/metadata-provider)
                                     {:name         "card-template-tag-test"
                                      :display-name "Card template tag test"
                                      :type         :card
                                      :card-id      (:id model)}
                                     []))))
                   (testing "query hits persisted table"
-                    (let [persisted-schema (ddl.i/schema-name {:id (meta/id)}
+                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
                                                               (system/site-uuid))
                           update-query     (format "update %s.%s set name = name || ' from cached table'"
                                                    persisted-schema (:table_name pi))
@@ -468,7 +470,7 @@
                               ["Wine Bar" "Wine Bar from cached table"]
                               ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
                              (mt/rows (qp/process-query
-                                       {:database (meta/id)
+                                       {:database (mt/id)
                                         :type     :native
                                         :native   {:query model-query
                                                    :template-tags
