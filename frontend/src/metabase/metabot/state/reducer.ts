@@ -61,6 +61,7 @@ export const metabot = createSlice({
         messages: MetabotChatMessage[];
         history: MetabotHistory;
         state: any;
+        expanded?: boolean;
       }>,
     ) => {
       const {
@@ -70,6 +71,7 @@ export const metabot = createSlice({
         messages,
         history,
         state: snapshotState,
+        expanded,
       } = action.payload;
       if (state.conversations[agentId]) {
         return;
@@ -81,7 +83,7 @@ export const metabot = createSlice({
       convo.messages = messages;
       convo.history = history ?? [];
       convo.state = snapshotState ?? {};
-      convo.expanded = true;
+      convo.expanded = expanded ?? false;
       state.conversations[agentId] = castDraft(convo);
     },
     destroyAgent: (state, action: ConvoPayloadAction) => {

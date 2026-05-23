@@ -65,6 +65,50 @@
           (is (some? found))
           (is (= 2 (:message_count found))))))))
 
+(deftest list-conversations-includes-title-test
+  (testing "GET /api/metabot/conversations returns title (nil when unset)"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {with-title :id}    {:user_id user-id :title "Titled chat"}
+                     :model/MetabotMessage      _                   {:conversation_id with-title :user_id user-id}
+                     :model/MetabotConversation {without-title :id} {:user_id user-id}
+                     :model/MetabotMessage      _                   {:conversation_id without-title :user_id user-id}]
+        (let [by-id (into {} (map (juxt :conversation_id identity))
+                          (:data (mt/user-http-request :rasta :get 200 "metabot/conversations")))]
+          (is (= "Titled chat" (:title (get by-id with-title))))
+          (is (nil? (:title (get by-id without-title)))))))))
+
+(deftest list-conversations-orders-by-latest-message-activity-test
+  (testing "GET /api/metabot/conversations sorts by last_message_at desc, even if the older conversation has the newer message"
+    (let [user-id (mt/user->id :rasta)
+          t0      (java.time.OffsetDateTime/parse "2020-01-01T00:00:00Z")
+          t1      (java.time.OffsetDateTime/parse "2020-02-01T00:00:00Z")
+          t2      (java.time.OffsetDateTime/parse "2020-03-01T00:00:00Z")
+          t3      (java.time.OffsetDateTime/parse "2020-04-01T00:00:00Z")]
+      (mt/with-temp [:model/MetabotConversation {older :id} {:user_id user-id :created_at t0}
+                     :model/MetabotConversation {newer :id} {:user_id user-id :created_at t1}
+                     ;; `newer` got a message before `older` got its more-recent one,
+                     ;; so `older` should sort first.
+                     :model/MetabotMessage _ {:conversation_id newer :user_id user-id :created_at t2}
+                     :model/MetabotMessage _ {:conversation_id older :user_id user-id :created_at t3}]
+        (let [ids (->> (mt/user-http-request :rasta :get 200 "metabot/conversations")
+                       :data
+                       (map :conversation_id)
+                       (filter #{older newer}))]
+          (is (= [older newer] ids)))))))
+
+(deftest list-conversations-empty-conversation-sorts-by-conversation-created-at-test
+  (testing "GET /api/metabot/conversations includes message-less conversations, sorted by the conversation's own created_at"
+    (let [user-id (mt/user->id :rasta)
+          t-old   (java.time.OffsetDateTime/parse "2020-01-01T00:00:00Z")
+          t-new   (java.time.OffsetDateTime/parse "2020-02-01T00:00:00Z")]
+      (mt/with-temp [:model/MetabotConversation {old-empty :id} {:user_id user-id :created_at t-old}
+                     :model/MetabotConversation {new-empty :id} {:user_id user-id :created_at t-new}]
+        (let [ids (->> (mt/user-http-request :rasta :get 200 "metabot/conversations")
+                       :data
+                       (map :conversation_id)
+                       (filter #{old-empty new-empty}))]
+          (is (= [new-empty old-empty] ids)))))))
+
 (deftest get-conversation-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id returns the conversation to any participant"
     (let [user-id (mt/user->id :rasta)]

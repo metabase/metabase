@@ -8,7 +8,9 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { metabotApi } from "metabase/api/metabot";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -36,6 +38,7 @@ import {
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
+  getMetabotState,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
@@ -637,5 +640,35 @@ export const resetConversation = createAsyncThunk(
   (payload: { agentId: MetabotAgentId }, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(payload.agentId));
     dispatch(metabot.actions.resetConversation(payload));
+  },
+);
+
+export const resumeChatConversation = createAsyncThunk<
+  { agentId: MetabotAgentId },
+  { conversationId: string }
+>(
+  "metabase/metabot/resumeChatConversation",
+  async ({ conversationId }, { dispatch, getState }) => {
+    const agentId: MetabotAgentId = `chat_${conversationId}`;
+    const alreadyMounted = !!getMetabotState(getState()).conversations[agentId];
+    if (!alreadyMounted) {
+      const detail = await dispatch(
+        metabotApi.endpoints.getMetabotChatConversation.initiate(
+          conversationId,
+        ),
+      ).unwrap();
+      dispatch(
+        hydrateChatConversation({
+          agentId,
+          conversationId: detail.conversation_id,
+          title: detail.title,
+          messages: normalizeFetchedChatMessages(detail.chat_messages ?? []),
+          history: detail.history,
+          state: detail.state,
+        }),
+      );
+    }
+    dispatch(setVisible({ agentId, visible: true }));
+    return { agentId };
   },
 );

@@ -446,3 +446,22 @@ export type MetabotConversationDetail = {
   chat_messages: any[];
   history: MetabotHistory;
 };
+
+/* Metabot conversations list (GET /api/metabot/conversations/) */
+
+export type MetabotChatConversationSummary = {
+  conversation_id: string;
+  created_at: string;
+  summary: string | null;
+  title: string | null;
+  user_id: number | null;
+  message_count: number;
+  last_message_at: string | null;
+};
+
+export type ListMetabotChatConversationsResponse = {
+  data: MetabotChatConversationSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+};
