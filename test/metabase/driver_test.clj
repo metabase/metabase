@@ -249,15 +249,15 @@
       (testing "The formatted JSON-like string is equivalent to the query"
         (is (= query (json/decode formatted-query))))
 
-        ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
+      ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
       (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
-              ;; This is a corner case since the system should always be using the right driver
+            ;; This is a corner case since the system should always be using the right driver
             weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
         (testing "The wrong formatter will change the format..."
           (is (not= query weird-formatted-query)))
         (testing "...but the resulting data is still the same"
-            ;; Bottom line - Use the right driver, but if you use the wrong
-            ;; one it should be harmless but annoying
+          ;; Bottom line - Use the right driver, but if you use the wrong
+          ;; one it should be harmless but annoying
           (is (= query
                  (json/decode weird-formatted-query))))))))
 

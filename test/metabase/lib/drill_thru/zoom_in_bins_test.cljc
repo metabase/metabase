@@ -170,7 +170,7 @@
       :custom-row     {"count"      100
                        "QUANTITY"   10
                        "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
-        ;; TODO: Clicking on breakout columns in table views doesn't work properly.
+      ;; TODO: Clicking on breakout columns in table views doesn't work properly.
       :column-name    "count"
       :drill-type     :drill-thru/zoom-in.binning
       :expected       {:type        :drill-thru/zoom-in.binning

@@ -51,6 +51,6 @@
                  (jobs/with-identity generator-job-key))
         trigger (triggers/build
                  (triggers/with-identity generator-trigger-key)
-                  ;; Start the job a moment after startup.
+                 ;; Start the job a moment after startup.
                  (triggers/start-at (Date/from (.plusSeconds (Instant/now) 10))))]
     (task/schedule-task! job trigger)))

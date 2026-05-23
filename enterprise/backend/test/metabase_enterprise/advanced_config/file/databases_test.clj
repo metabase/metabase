@@ -152,7 +152,7 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-columns crufted-field-setting}})]
         (is (future? sync-future))
-         ;; wait for the sync to finish or crash out after 5 seconds
+        ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
         (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
         (is (= 1 (t2/count :model/Database :name test-db-name)))

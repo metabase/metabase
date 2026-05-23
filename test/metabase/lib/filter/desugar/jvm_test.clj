@@ -56,14 +56,14 @@
 
 (deftest ^:parallel subdomain-regex-on-urls-test
   (are [subdomain url] (= subdomain (re-find @#'lib.filter.desugar.jvm/subdomain-regex url))
-       ;; Blanks. "www" doesn't count.
+    ;; Blanks. "www" doesn't count.
     nil "cdbaby.com"
     nil "https://fema.gov"
     nil "http://www.geocities.jp"
     nil "usa.gov/some/page.cgi.htm"
     nil "va.gov"
 
-       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
+    ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
     "sub"        "sub.jalbum.net"
     "subdomains" "subdomains.go.here.jalbum.net"
     "log"        "log.stuff.gmpg.org"
@@ -71,22 +71,22 @@
     "log"        "log.stuff.gmpg.org/some/path"
     "log"        "log.stuff.gmpg.org?search=yes"
 
-       ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
-       ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
-       ;; fragments like .co.uk - see below.
+    ;; Oops, we miss these! This is the reverse of the problem when picking the domain.
+    ;; We can't tell without maintaining a huge list that va and ne are the real domains, and not the trailing
+    ;; fragments like .co.uk - see below.
     nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
     nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
 
-       ;; Sometimes the second-last part is a short suffix.
-       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
-       ;; we use a best-effort matcher that gets the domain right most of the time.
+    ;; Sometimes the second-last part is a short suffix.
+    ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+    ;; we use a best-effort matcher that gets the domain right most of the time.
     nil         "telegraph.co.uk"
     nil         "https://telegraph.co.uk"
     nil         "telegraph.co.uk/some/article.php"
     "local"     "local.news.telegraph.co.uk"
     nil         "bbc.co.uk#fragment"
     "video"     "video.bbc.co.uk"
-       ;; "www" is disregarded as a possible subdomain.
+    ;; "www" is disregarded as a possible subdomain.
     nil         "www.usa.gov"
     nil         "www.dot.va.gov"
     "licensing" "www.licensing.dot.va.gov"))

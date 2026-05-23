@@ -7,7 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.test :as mt]))
 
 (deftest format-current-time-test
@@ -263,10 +263,10 @@
                                                                                        :name          "Jane Doe"
                                                                                        :email-address "jane@example.com"
                                                                                        :glossary      {"ARR" "Annual Recurring Revenue"}}})]
-      (is (= (llm-rep/user->xml {:id       1
-                                 :name     "Jane Doe"
-                                 :email    "jane@example.com"
-                                 :glossary {"ARR" "Annual Recurring Revenue"}})
+      (is (= (llm-shape/user->xml {:id       1
+                                   :name     "Jane Doe"
+                                   :email    "jane@example.com"
+                                   :glossary {"ARR" "Annual Recurring Revenue"}})
              (user-context/format-current-user-info {})))))
 
   (testing "returns nil when there is no current user"
@@ -331,7 +331,7 @@
   (testing "table viewing context includes measures and segments when present"
     (mt/with-dynamic-fn-redefs [entity-details/get-table-details
                                 (fn [{:keys [table-id with-measures? with-segments?]}]
-                    ;; Verify that with-measures? and with-segments? are requested
+                                  ;; Verify that with-measures? and with-segments? are requested
                                   (is (true? with-measures?) "should request measures")
                                   (is (true? with-segments?) "should request segments")
                                   {:structured-output
@@ -459,3 +459,35 @@
         "Formatting result should contain the native query string")
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
+
+(deftest format-transform-source-mbql-renders-repr-json-test
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp     (mt/metadata-provider)
+              source {:type  "query"
+                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/limit 5))}
+              text   (user-context/format-transform-source
+                      (assoc source :transform-source-type :query))]
+          (is (string? text))
+          (is (re-find #"```json" text)
+              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+          (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
+          (is (re-find #"\"source-table\"" text))
+          (is (not (re-find #"lib/metadata" text))
+              "the metadata-provider handle never leaks to the LLM-facing payload"))))))
+
+(deftest format-transform-source-native-renders-repr-json-test
+  (testing "native transform sources also go through the repr export so template-tags stay portable"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [source {:type  "query"
+                      :query {:database (mt/id)
+                              :type     :native
+                              :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}
+              text   (user-context/format-transform-source
+                      (assoc source :transform-source-type :native))]
+          (is (string? text))
+          (is (re-find #"\"mbql.stage/native\"" text))
+          (is (re-find #"SELECT \* FROM VENUES" text)))))))
