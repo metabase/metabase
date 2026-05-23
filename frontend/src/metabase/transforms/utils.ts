@@ -80,6 +80,13 @@ export function validateDatabase(database: Database): DatabaseValidationResult {
       message: t`Transforms can't be enabled on the Usage Analytics database.`,
     };
   }
+  if (database.is_attached_dwh) {
+    return {
+      isValid: false,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- "Metabase Cloud Storage" is a product name and this only shows for admins.
+      message: t`Transforms can't be enabled on Metabase Cloud Storage.`,
+    };
+  }
   if (database.router_user_attribute || database.router_database_id) {
     return {
       isValid: false,

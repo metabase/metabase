@@ -136,6 +136,25 @@ describe("TransformSectionLayout", () => {
 
       await assertInApp();
     });
+
+    it("should allow you into transforms when a supported database coexists with an attached data warehouse", async () => {
+      setup({
+        transformsEnabled: true,
+        databases: [
+          createTransformSupportedDatabase({
+            id: 1,
+            transforms_permissions: "write",
+          }),
+          createTransformSupportedDatabase({
+            id: 2,
+            transforms_permissions: "write",
+            is_attached_dwh: true,
+          }),
+        ],
+      });
+
+      await assertInApp();
+    });
   });
 
   describe("Pro Self Hosted", () => {
@@ -204,6 +223,21 @@ describe("TransformSectionLayout", () => {
             id: 4,
             transforms_permissions: "write",
             is_audit: true,
+          }),
+        ],
+      });
+
+      await assertNoWritableDatabasesEmptyState();
+    });
+
+    it("should show empty state when the only writable database is an attached data warehouse", async () => {
+      setup({
+        transformsEnabled: true,
+        databases: [
+          createTransformSupportedDatabase({
+            id: 1,
+            transforms_permissions: "write",
+            is_attached_dwh: true,
           }),
         ],
       });

@@ -52,6 +52,15 @@ describe("validateDatabase", () => {
       message: "Transforms can't be enabled on the Usage Analytics database.",
     },
     {
+      label: "attached DWH database",
+      database: createMockDatabase({
+        is_attached_dwh: true,
+        features: ["transforms/table"],
+      }),
+      isValid: false,
+      message: "Transforms can't be enabled on Metabase Cloud Storage.",
+    },
+    {
       label: "database with router_user_attribute",
       database: createMockDatabase({
         router_user_attribute: "attr",

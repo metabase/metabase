@@ -30,6 +30,8 @@
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
+    (api/check-400 (not (:is_attached_dwh database))
+                   (deferred-tru "Cannot run transforms on Metabase Cloud Storage."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
     (api/check-400 (not (database-routing/db-routing-enabled? database))

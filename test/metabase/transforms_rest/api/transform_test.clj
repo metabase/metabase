@@ -95,6 +95,36 @@
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))))))))))
 
+(deftest transforms-disabled-on-attached-dwh-test
+  (testing "Transforms cannot be created or updated on an attached DWH (Metabase Cloud Storage), but existing ones can still be deleted"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-cleanup! [table-name "attached_dwh_products"]
+                (let [body {:name   "Attached DWH Products"
+                            :source {:type  "query"
+                                     :query (make-query "Gadget")}
+                            :target {:type   "table"
+                                     :schema (get-test-schema)
+                                     :name   table-name}}]
+                  (testing "POST is rejected when the target database is an attached DWH"
+                    (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_attached_dwh true}
+                      (is (= "Cannot run transforms on Metabase Cloud Storage."
+                             (mt/user-http-request :lucky :post 400 "transform" body)))))
+                  (let [transform-id (:id (mt/user-http-request :lucky :post 200 "transform" body))]
+                    (testing "PUT is rejected once the target database becomes an attached DWH"
+                      (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_attached_dwh true}
+                        (is (= "Cannot run transforms on Metabase Cloud Storage."
+                               (mt/user-http-request :lucky :put 400
+                                                     (format "transform/%d" transform-id)
+                                                     {:name "Renamed"})))))
+                    (testing "DELETE still succeeds for an existing transform on an attached DWH"
+                      (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_attached_dwh true}
+                        (mt/user-http-request :lucky :delete 204 (format "transform/%d" transform-id))
+                        (is (nil? (t2/select-one :model/Transform transform-id)))))))))))))))
+
 (deftest update-transform-without-schema-test
   (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
     (mt/with-premium-features #{}

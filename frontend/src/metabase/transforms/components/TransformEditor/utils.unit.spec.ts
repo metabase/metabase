@@ -5,6 +5,8 @@ import { getEditorOptions } from "./utils";
 const DB_ROUTING_TOOLTIP =
   "Transforms can't be enabled when database routing is enabled.";
 const UNSUPPORTED_DB_TOOLTIP = "Transforms can't be enabled on this database.";
+const ATTACHED_DWH_TOOLTIP =
+  "Transforms can't be enabled on Metabase Cloud Storage.";
 
 function createTransformCapableDatabase(opts = {}) {
   return createMockDatabase({
@@ -62,6 +64,22 @@ describe("getEditorOptions", () => {
       expect(tooltip).toBe(UNSUPPORTED_DB_TOOLTIP);
     });
 
+    it("returns a tooltip for an attached data warehouse database item", () => {
+      const database = createTransformCapableDatabase({
+        id: 6,
+        is_attached_dwh: true,
+      });
+      const options = getEditorOptions([database]);
+
+      const tooltip = options.getDataPickerItemTooltip?.({
+        model: "database",
+        id: 6,
+        name: "Metabase Cloud Storage",
+      });
+
+      expect(tooltip).toBe(ATTACHED_DWH_TOOLTIP);
+    });
+
     it("returns undefined for a transform-capable database", () => {
       const database = createTransformCapableDatabase({ id: 4 });
       const options = getEditorOptions([database]);
@@ -115,6 +133,63 @@ describe("getEditorOptions", () => {
       });
 
       expect(tooltip).toBeUndefined();
+    });
+  });
+
+  describe("shouldDisableDataPickerItem", () => {
+    it("disables an attached data warehouse but keeps other transform-capable databases usable", () => {
+      const supportedDatabase = createTransformCapableDatabase({ id: 1 });
+      const attachedDwh = createTransformCapableDatabase({
+        id: 2,
+        is_attached_dwh: true,
+      });
+      const options = getEditorOptions([supportedDatabase, attachedDwh]);
+
+      expect(
+        options.shouldDisableDataPickerItem?.({
+          model: "database",
+          id: 1,
+          name: "Supported DB",
+        }),
+      ).toBe(false);
+      expect(
+        options.shouldDisableDataPickerItem?.({
+          model: "database",
+          id: 2,
+          name: "Metabase Cloud Storage",
+        }),
+      ).toBe(true);
+    });
+
+    it("disables a table whose database is an attached data warehouse", () => {
+      const attachedDwh = createTransformCapableDatabase({
+        id: 2,
+        is_attached_dwh: true,
+      });
+      const options = getEditorOptions([attachedDwh]);
+
+      expect(
+        options.shouldDisableDataPickerItem?.({
+          model: "table",
+          id: 10,
+          database_id: 2,
+          name: "My Table",
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe("shouldDisableDatabasePickerItem", () => {
+    it("disables an attached data warehouse but keeps other transform-capable databases usable", () => {
+      const supportedDatabase = createTransformCapableDatabase({ id: 1 });
+      const attachedDwh = createTransformCapableDatabase({
+        id: 2,
+        is_attached_dwh: true,
+      });
+      const options = getEditorOptions([supportedDatabase, attachedDwh]);
+
+      expect(options.shouldDisableDatabasePickerItem?.({ id: 1 })).toBe(false);
+      expect(options.shouldDisableDatabasePickerItem?.({ id: 2 })).toBe(true);
     });
   });
 });
