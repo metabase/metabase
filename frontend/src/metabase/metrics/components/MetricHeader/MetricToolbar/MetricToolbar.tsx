@@ -278,7 +278,11 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
       );
     case "caching":
       return (
-        <PLUGIN_CACHING.MetricCachingModal card={card} onClose={onClose} />
+        <PLUGIN_CACHING.MetricCachingModal
+          cardId={card.id}
+          cardName={card.name}
+          onClose={onClose}
+        />
       );
     default:
       return null;

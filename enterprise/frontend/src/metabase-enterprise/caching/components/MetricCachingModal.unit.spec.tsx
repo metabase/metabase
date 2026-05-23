@@ -7,9 +7,7 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Card } from "metabase-types/api";
 import {
-  createMockCard,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -17,19 +15,11 @@ import {
 import { MetricCachingModal } from "./MetricCachingModal";
 
 interface SetupOpts {
-  card?: Partial<Card>;
+  cardId?: number;
+  cardName?: string;
 }
 
-function setup({ card: cardOverrides }: SetupOpts = {}) {
-  const card = createMockCard({
-    id: 19,
-    name: "Number of Orders",
-    type: "metric",
-    can_write: true,
-    last_query_start: "2024-01-01T00:00:00Z",
-    ...cardOverrides,
-  });
-
+function setup({ cardId = 19, cardName = "Number of Orders" }: SetupOpts = {}) {
   const settings = mockSettings(
     createMockSettings({
       "token-features": createMockTokenFeatures({
@@ -50,12 +40,18 @@ function setup({ card: cardOverrides }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => <MetricCachingModal card={card} onClose={onClose} />}
+      component={() => (
+        <MetricCachingModal
+          cardId={cardId}
+          cardName={cardName}
+          onClose={onClose}
+        />
+      )}
     />,
     { storeInitialState, withRouter: true, initialRoute: "/" },
   );
 
-  return { card, onClose };
+  return { cardId, cardName, onClose };
 }
 
 describe("MetricCachingModal", () => {
@@ -106,6 +102,24 @@ describe("MetricCachingModal", () => {
     expect(
       fetchMock.callHistory.called("path:/api/cache", { method: "PUT" }),
     ).toBe(false);
+  });
+
+  it("prompts before discarding when the close button is pressed with a dirty form", async () => {
+    const { onClose } = setup();
+
+    // Dirty the form
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /^Duration$/i }),
+    );
+
+    // Trigger Modal.onClose (the X button), not Cancel/reset
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+
+    expect(
+      await screen.findByRole("heading", { name: /Discard your changes\?/i }),
+    ).toBeInTheDocument();
+    // onClose isn't called until the user confirms the discard
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("renders the Clear cache button labelled for the metric", async () => {

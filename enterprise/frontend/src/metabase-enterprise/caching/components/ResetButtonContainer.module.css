@@ -1,0 +1,6 @@
+/* Metabase's shared `Button.module.css` paints a transparent background on
+ * `&[data-variant="subtle"]:hover` (specificity 0,2,1). Match the same
+ * structure and double the class to push past that without `!important`. */
+.highlightOnHover.highlightOnHover[data-variant="subtle"]:hover {
+  background-color: var(--mb-color-background-error);
+}

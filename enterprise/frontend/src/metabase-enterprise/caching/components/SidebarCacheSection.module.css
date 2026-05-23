@@ -1,0 +1,8 @@
+/* Mantine Anchor's default hover adds an underline and keeps the same color;
+ * the caching sidebar wants the link to feel like a button — flip color to
+ * brand and drop the underline on hover/active. */
+.formLauncher:hover,
+.formLauncher:active {
+  color: var(--mb-color-brand);
+  text-decoration: none;
+}

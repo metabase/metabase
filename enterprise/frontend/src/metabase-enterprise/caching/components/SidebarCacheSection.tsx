@@ -6,9 +6,9 @@ import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfig
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Anchor, Flex } from "metabase/ui";
 
-import { FormLauncher } from "./SidebarCacheSection.styled";
+import S from "./SidebarCacheSection.module.css";
 import { getItemId } from "./utils";
 
 /** Displays the current cache invalidation strategy and provides a button that opens the cache configuration form */
@@ -39,13 +39,15 @@ export const SidebarCacheSection = ({
     <DelayedLoadingAndErrorWrapper delay={0} loading={isLoading} error={error}>
       <Flex align="center" justify="space-between">
         <span id={labelId}>{t`When to get new results`}</span>
-        <FormLauncher
+        <Anchor
           role="button"
+          fw="bold"
+          className={S.formLauncher}
           onClick={() => setPage("caching")}
           aria-labelledby={labelId}
         >
           {shortStrategyLabel}
-        </FormLauncher>
+        </Anchor>
       </Flex>
     </DelayedLoadingAndErrorWrapper>
   );

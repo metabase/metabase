@@ -7,7 +7,9 @@ export type UpdateTargetId = (
   isFormDirty: boolean,
 ) => void;
 
-export type StrategyLabel = string | ((model?: CacheableModel) => string);
+export type StrategyLabel =
+  | string
+  | ((model?: CacheableModel) => string | undefined);
 
 export type StrategyData = {
   /**

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -6,6 +7,7 @@ import {
 } from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
+import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -44,6 +46,10 @@ interface SetupOpts {
   isAdmin?: boolean;
   showDataStudioLink?: boolean;
   collectionType?: CollectionType | null;
+  /** Opt in to the wiring required for the Caching modal to actually mount
+   * (matched route + cache-config endpoints). Default `false` keeps existing
+   * menu-shape tests untouched. */
+  withModal?: boolean;
 }
 
 function setup({
@@ -52,6 +58,7 @@ function setup({
   isAdmin = false,
   showDataStudioLink = false,
   collectionType = null,
+  withModal = false,
 }: SetupOpts = {}) {
   setupEnterpriseOnlyPlugin("library");
 
@@ -83,14 +90,23 @@ function setup({
 
   setupBookmarksEndpoints([]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
+  if (withModal) {
+    setupPerformanceEndpoints([]);
+  }
 
-  renderWithProviders(
+  const toolbar = (
     <MetricToolbar
       card={card}
       urls={mockUrls}
       showDataStudioLink={showDataStudioLink}
-    />,
-    { storeInitialState: state },
+    />
+  );
+
+  renderWithProviders(
+    withModal ? <Route path="/" component={() => toolbar} /> : toolbar,
+    withModal
+      ? { storeInitialState: state, withRouter: true, initialRoute: "/" }
+      : { storeInitialState: state },
   );
 
   return { card };
@@ -226,6 +242,23 @@ describe("MetricToolbar", () => {
       await openMenu();
 
       expect(screen.queryByText("Caching")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Caching menu interaction", () => {
+    it("opens the Caching modal when the Caching menu item is clicked", async () => {
+      setup({ withModal: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Caching"));
+
+      // The modal lives outside the menu; find it via its title.
+      expect(
+        await screen.findByRole("dialog", { name: /Caching/i }),
+      ).toBeInTheDocument();
+      // The strategy radios confirm the modal body actually mounted.
+      expect(
+        await screen.findByRole("radio", { name: /^Default$/i }),
+      ).toBeInTheDocument();
     });
   });
 });
