@@ -8,7 +8,7 @@
 }
 
 .header {
-  padding: 0.5rem 0.25rem 0.5rem 1rem;
+  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -34,7 +34,7 @@
 }
 
 .messagesContainer {
-  padding: 1rem 1rem 1.5rem;
+  padding: 1rem 0.75rem 0.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -75,7 +75,7 @@
 }
 
 .messageUser {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 1rem;
   background: var(--mb-color-background-tertiary);
   max-width: 100%;
@@ -111,7 +111,7 @@
 
 .navigateToQuestionHeader {
   min-height: 2.75rem;
-  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  padding: 0.5rem 0.75rem 0.5rem 0.75rem;
 }
 
 .navigateToQuestionVisualization {
@@ -162,5 +162,5 @@
 }
 
 .textInputContainer {
-  padding: 0 1rem 0.25rem;
+  padding: 0 0.75rem 0.25rem;
 }

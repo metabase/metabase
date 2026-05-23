@@ -7,7 +7,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import {
+  useGetMetabotChatConversationQuery,
+  useGetSuggestedMetabotPromptsQuery,
+} from "metabase/api";
 import { MetabotProvider } from "metabase/metabot/context";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -17,6 +20,7 @@ import { MetabotPage } from "./MetabotPage";
 jest.mock("metabase/api", () => ({
   ...jest.requireActual("metabase/api"),
   useGetSuggestedMetabotPromptsQuery: jest.fn(),
+  useGetMetabotChatConversationQuery: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
@@ -36,12 +40,18 @@ jest.mock("metabase/metabot/state", () => {
   };
 });
 
+type ConversationQueryState =
+  | { data?: undefined; isLoading?: true; isError?: false; error?: undefined }
+  | { data: any; isLoading?: false; isError?: false; error?: undefined }
+  | { data?: undefined; isLoading?: false; isError: true; error?: unknown };
+
 type SetupOptions = {
   canUseNlq?: boolean;
   showIllustrations?: boolean;
   suggestedPrompts?: { prompt: string }[];
   initialRoute?: string;
   seedAgentId?: string;
+  conversationQuery?: ConversationQueryState;
 };
 
 function setup({
@@ -50,6 +60,7 @@ function setup({
   suggestedPrompts = [],
   initialRoute = "/",
   seedAgentId,
+  conversationQuery = { isLoading: true },
 }: SetupOptions = {}) {
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
     hasNlqAccess: canUseNlq,
@@ -60,6 +71,10 @@ function setup({
   jest.mocked(useGetSuggestedMetabotPromptsQuery).mockReturnValue({
     currentData: { prompts: suggestedPrompts },
   } as any);
+
+  jest
+    .mocked(useGetMetabotChatConversationQuery)
+    .mockReturnValue(conversationQuery as any);
 
   setupBookmarksEndpoints([]);
   setupDatabasesEndpoints([]);
@@ -172,19 +187,73 @@ describe("MetabotPage at /chat/:conversationId", () => {
     jest.clearAllMocks();
   });
 
-  it("renders an empty page when no Redux conversation exists for the URL id", () => {
-    setup({ initialRoute: "/chat/missing-id" });
+  it("renders an empty page while the conversation is loading", () => {
+    setup({
+      initialRoute: "/chat/missing-id",
+      conversationQuery: { isLoading: true },
+    });
     expect(
       screen.queryByTestId("metabot-send-message"),
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId("metabot-page-title")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("We couldn't load this conversation."),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders the chat surface when a conversation exists for the URL id", () => {
+  it("renders a not-found placeholder when the conversation fetch errors", () => {
+    setup({
+      initialRoute: "/chat/missing-id",
+      conversationQuery: { isError: true },
+    });
+    expect(
+      screen.getByText("We couldn't load this conversation."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-send-message"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hydrates Redux and renders the chat surface when the conversation loads", async () => {
+    setup({
+      initialRoute: "/chat/loaded-id",
+      conversationQuery: {
+        data: {
+          conversation_id: "loaded-id",
+          created_at: "2026-05-23T00:00:00Z",
+          summary: null,
+          title: "Hydrated chat",
+          user_id: 1,
+          state: {},
+          chat_messages: [
+            {
+              id: "chat-1",
+              role: "user",
+              type: "text",
+              message: "hello",
+            },
+          ],
+          history: [{ role: "user", content: "hello" }],
+        },
+      },
+    });
+    expect(await screen.findByTestId("metabot-page-title")).toHaveTextContent(
+      "Hydrated chat",
+    );
+    expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
+  });
+
+  it("renders the chat surface and skips the fetch when the conversation is already in Redux", () => {
     setup({
       initialRoute: "/chat/live-id",
       seedAgentId: "chat_live-id",
+      conversationQuery: { isLoading: true },
     });
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
+    // skip option means the underlying hook is called but does not fire a request;
+    // verify the component asked the hook to skip.
+    const lastCall = jest.mocked(useGetMetabotChatConversationQuery).mock
+      .calls[0];
+    expect(lastCall?.[1]).toEqual({ skip: true });
   });
 });

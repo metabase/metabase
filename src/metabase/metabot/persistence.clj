@@ -506,17 +506,91 @@
      (->> (if include-errored? active (drop-errored-pairs active))
           (into [] (mapcat message->chat-messages))))))
 
+(defn- ensure-arguments-string
+  "`::metabot.schema/message` requires `:arguments` on each `:tool_calls` entry
+  to be a JSON-encoded string. Persisted tool-input blocks may have stored
+  arguments as a structured map or as a string — normalize both to a string."
+  [arguments]
+  (cond
+    (string? arguments) arguments
+    (nil? arguments)    "{}"
+    :else               (json/encode arguments)))
+
+(defn- tool-output->content-string
+  "Reduce a persisted tool-output `:result` map down to the single string the
+  LLM expects on a `:role :tool` message. Tool results are trimmed in
+  `strip-tool-output-bloat`, so the canonical text lives under `:output`."
+  [result]
+  (cond
+    (string? result) result
+    (nil? result)    ""
+    (map? result)    (or (:output result) (pr-str result))
+    :else            (str result)))
+
+(defn- message->history-entries
+  "Convert one persisted `MetabotMessage` row's `:data` parts back into the
+  `::metabot.schema/messages` wire shape that the FE sends as `history` on
+  the next agent turn. Assistant rows expand into one `:role :assistant`
+  message (text + tool_calls) followed by one `:role :tool` message per
+  tool-output."
+  [{:keys [role data]}]
+  (let [blocks (or data [])]
+    (case role
+      :user      (into []
+                       (keep (fn [b]
+                               (when (= "user" (:role b))
+                                 {:role :user :content (or (:content b) "")})))
+                       blocks)
+      :assistant (let [text         (->> blocks
+                                         (filter #(= "text" (:type %)))
+                                         (map :text)
+                                         (apply str))
+                       tool-inputs  (->> blocks
+                                         (filter #(= "tool-input" (:type %)))
+                                         (mapv (fn [b]
+                                                 {:id        (:id b)
+                                                  :name      (:function b)
+                                                  :arguments (ensure-arguments-string (:arguments b))})))
+                       tool-outputs (->> blocks
+                                         (filter #(= "tool-output" (:type %)))
+                                         (mapv (fn [b]
+                                                 {:role         :tool
+                                                  :tool_call_id (:id b)
+                                                  :content      (tool-output->content-string (:result b))})))
+                       assistant    (cond-> {:role :assistant}
+                                      (seq text)        (assoc :content text)
+                                      (seq tool-inputs) (assoc :tool_calls tool-inputs))]
+                   (cond-> []
+                     (or (seq text) (seq tool-inputs)) (conj assistant)
+                     :always                           (into tool-outputs)))
+      [])))
+
+(defn messages->history
+  "Convert a seq of `MetabotMessage` model instances into the LLM-history wire
+  shape (`::metabot.schema/messages`) the FE sends back as `history` on the
+  next agent turn. Mirrors the filtering applied by [[messages->chat-messages]]:
+  in-flight placeholders are dropped, and errored user/assistant pairs are
+  removed."
+  [messages]
+  (->> messages
+       (remove placeholder-still-active?)
+       drop-errored-pairs
+       (into [] (mapcat message->history-entries))))
+
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found."
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
-    {:conversation_id (:id conv)
-     :created_at      (:created_at conv)
-     :summary         (:summary conv)
-     :user_id         (:user_id conv)
-     :chat_messages   (messages->chat-messages
-                       (t2/select :model/MetabotMessage
-                                  {:where    [:and
-                                              [:= :conversation_id conversation-id]
-                                              [:= :deleted_at nil]]
-                                   :order-by [[:created_at :asc] [:id :asc]]}))}))
+    (let [rows (t2/select :model/MetabotMessage
+                          {:where    [:and
+                                      [:= :conversation_id conversation-id]
+                                      [:= :deleted_at nil]]
+                           :order-by [[:created_at :asc] [:id :asc]]})]
+      {:conversation_id (:id conv)
+       :created_at      (:created_at conv)
+       :summary         (:summary conv)
+       :title           (:title conv)
+       :user_id         (:user_id conv)
+       :state           (or (:state conv) {})
+       :chat_messages   (messages->chat-messages rows)
+       :history         (messages->history rows)})))

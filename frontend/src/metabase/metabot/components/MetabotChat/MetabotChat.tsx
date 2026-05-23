@@ -4,9 +4,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
@@ -87,7 +85,6 @@ export const MetabotChat = ({
   );
   const metabotName = useMetabotName();
   const { isConfigured } = useUserMetabotPermissions();
-  const showIllustrations = useSetting("metabot-show-illustrations");
 
   const hasMessages = metabot.messages.length > 0;
 
@@ -131,7 +128,7 @@ export const MetabotChat = ({
       {/* header */}
       <Box ref={headerRef} className={Styles.header}>
         <Flex align-items="center" miw={0} style={{ flex: 1, minWidth: 0 }}>
-          <Text lh={1} fz="sm" c="text-primary" truncate>
+          <Text lh={1} fz="0.8125rem" fw="bold" c="text-primary" truncate>
             {metabot.title}
           </Text>
         </Flex>
@@ -182,22 +179,21 @@ export const MetabotChat = ({
               justify="center"
               data-testid="metabot-empty-chat-info"
             >
-              {showIllustrations && (
+              {/* {showIllustrations && (
                 <Box component={EmptyDashboardBot} w="6rem" />
-              )}
+              )} */}
               {!isConfigured ? (
                 <AIProviderConfigurationNotice
                   featureName={metabotName}
                   onConfigureAi={openAiProviderConfigurationModal}
                 />
-              ) : (
-                <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
-                  {config?.emptyText ??
-                    (showIllustrations
-                      ? t`I can help you explore your metrics and models.`
-                      : t`Explore your metrics and models with AI.`)}
-                </Text>
-              )}
+              ) : // <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
+              //   {config?.emptyText ??
+              //     (showIllustrations
+              //       ? t`I can help you explore your metrics and models.`
+              //       : t`Explore your metrics and models with AI.`)}
+              // </Text>
+              null}
             </Flex>
             {isConfigured && !config?.hideSuggestedPrompts && (
               <Stack

@@ -72,6 +72,7 @@ export const {
   updateSuggestedTransformId,
   createAgent,
   destroyAgent,
+  hydrateChatConversation,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setExpanded,

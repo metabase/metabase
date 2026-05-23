@@ -253,7 +253,7 @@ export const MetabotChatEditor = forwardRef<
               const nextAttachedContextsKey = nextAttachedContexts
                 .map((item) => {
                   const attachedEntity = getAttachedEntity(item);
-                  return `${attachedEntity?.model}-${attachedEntity?.id}-${attachedEntity?.name}`;
+                  return `${attachedEntity?.model}-${attachedEntity?.id}-${attachedEntity?.fallbackName}`;
                 })
                 .join(",");
 

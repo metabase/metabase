@@ -53,6 +53,37 @@ export const metabot = createSlice({
         console.warn("Conversation already exists for agentId: ", agentId);
       }
     },
+    hydrateChatConversation: (
+      state,
+      action: ConvoPayloadAction<{
+        conversationId: string;
+        title: string | null;
+        messages: MetabotChatMessage[];
+        history: MetabotHistory;
+        state: any;
+      }>,
+    ) => {
+      const {
+        agentId,
+        conversationId,
+        title,
+        messages,
+        history,
+        state: snapshotState,
+      } = action.payload;
+      if (state.conversations[agentId]) {
+        return;
+      }
+      const convo = createConversation(agentId, { conversationId });
+      if (title) {
+        convo.title = title;
+      }
+      convo.messages = messages;
+      convo.history = history ?? [];
+      convo.state = snapshotState ?? {};
+      convo.expanded = true;
+      state.conversations[agentId] = castDraft(convo);
+    },
     destroyAgent: (state, action: ConvoPayloadAction) => {
       const { agentId } = action.payload;
       delete state.conversations[agentId];

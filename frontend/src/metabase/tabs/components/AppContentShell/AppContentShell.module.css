@@ -6,7 +6,7 @@
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  padding: 0 10px 4px 8px;
+  padding: 0 10px 4px 0;
   gap: 4px;
 }
 
