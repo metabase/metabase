@@ -13,6 +13,7 @@ import {
   cancelInflightAgentRequests,
   focusPromptInput as focusPromptInputAction,
   getActiveToolCalls,
+  getConversationTitle,
   getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
@@ -177,6 +178,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
 
   return {
     prompt,
+    title: useSelector((state) => getConversationTitle(state, agentId)),
     setPrompt,
     focusPromptInput,
     visible,

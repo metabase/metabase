@@ -28,7 +28,8 @@
     "oss-sql-gen"
     "sql-gen"
     "unknown"
-    "user-intent-classification"})
+    "user-intent-classification"
+    "conversation-title"})
 
 (def ^:private known-profile-ids
   #{"internal"

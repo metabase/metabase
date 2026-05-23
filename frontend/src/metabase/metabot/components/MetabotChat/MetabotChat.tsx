@@ -108,13 +108,13 @@ export const MetabotChat = ({
     <Box className={Styles.container} data-testid="metabot-chat">
       {/* header */}
       <Box ref={headerRef} className={Styles.header}>
-        <Flex align-items="center">
-          <Text lh={1} fz="sm" c="text-secondary">
-            {t`${metabotName} isn't perfect. Double-check results.`}
+        <Flex align-items="center" miw={0} style={{ flex: 1, minWidth: 0 }}>
+          <Text lh={1} fz="sm" c="text-primary" truncate>
+            {metabot.title}
           </Text>
         </Flex>
 
-        <Flex gap="sm">
+        <Flex gap="xs">
           {!config?.preventClose && (
             <Tooltip label={t`Minimize`} position="bottom">
               <ActionIcon
@@ -247,6 +247,9 @@ export const MetabotChat = ({
               suggestionConfig={{ suggestionModels }}
             />
           </Paper>
+          <Text fz="xs" c="text-tertiary" ta="center" pt={0}>
+            {t`${metabotName} isn't perfect. Double-check results.`}
+          </Text>
         </Box>
       )}
       <AIProviderConfigurationModal

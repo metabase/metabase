@@ -42,7 +42,6 @@ export function MetabotBar() {
   const handleAskMetabot = useCallback(() => {
     if (visibleAgentId) {
       setAgentVisible(visibleAgentId, false);
-      return;
     }
     const newId: MetabotAgentId = `tab_${uuid()}`;
     createAgent({ agentId: newId, visible: true });

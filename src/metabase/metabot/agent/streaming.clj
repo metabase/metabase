@@ -20,6 +20,7 @@
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def conversation-title-type "AI-SDK data type for the conversation's display title." "conversation_title")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -135,6 +136,15 @@
    :data-type static-viz-type
    :version 1
    :data value})
+
+(defn conversation-title-part
+  "Create a CONVERSATION_TITLE data part for streaming.
+  `title` is a short LLM-generated string that names the conversation."
+  [title]
+  {:type :data
+   :data-type conversation-title-type
+   :version 1
+   :data title})
 
 ;;; Reaction Conversion
 
