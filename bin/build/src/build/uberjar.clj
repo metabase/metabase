@@ -169,40 +169,30 @@
    #"META-INF/license.*"
    #"META-INF/LICENSE.*"])
 
+(defn- prefer-lib
+  "Returns a conflict handler fn that ensures `preferred` lib's classes always win.
+   The returned fn writes when the incoming class is from `preferred`, skips otherwise."
+  [preferred]
+  (fn prefer-lib' [{:keys [lib path in]}]
+    (when (= lib preferred)
+      {:write {path {:stream in}}})))
+
+;; hive-jdbc bundles javax.activation classes with package-private visibility on LogSupport.
+;; When these overwrite jakarta.activation's public versions, javax.mail (postal) fails with
+;; IllegalAccessError.
 (def ^:private activation-conflict-handler
-  "hive-jdbc bundles its own copy of javax.activation classes with package-private visibility on
-   LogSupport. When these overwrite the correct public versions from jakarta.activation, javax.mail
-   (postal) fails at runtime with IllegalAccessError. This handler ensures jakarta.activation's
-   versions always win regardless of JAR processing order."
-  (let [prefer-jakarta-activation
-        (fn [{:keys [lib path in]}]
-          (if (= lib 'com.sun.activation/jakarta.activation)
-            {:write {path {:stream in}}}
-            nil))]
-    {"com/sun/activation/.*" prefer-jakarta-activation
-     "javax/activation/.*"  prefer-jakarta-activation}))
+  (let [from-com-sun-activation (prefer-lib 'com.sun.activation/jakarta.activation)]
+    {"com/sun/activation/.*" from-com-sun-activation
+     "javax/activation/.*"   from-com-sun-activation}))
 
+;; vertica-jdbc bundles unshaded gson 2.8.9. When these overwrite the pinned 2.12.1,
+;; BigQuery crashes with NoSuchMethodError on JsonWriter.value(float). See #73736.
 (def ^:private gson-conflict-handler
-  "vertica-jdbc (and potentially other fat JARs) bundle their own copy of gson classes.
-   When these overwrite the correct version from com.google.code.gson/gson, BigQuery's
-   error-handling path crashes with NoSuchMethodError on JsonWriter.value(float),
-   introduced in gson 2.9.0. This handler ensures the pinned gson version always wins
-   regardless of JAR processing order. See #73736."
-  {"com/google/gson/.*"
-   (fn [{:keys [lib path in]}]
-     (if (= lib 'com.google.code.gson/gson)
-       {:write {path {:stream in}}}
-       nil))})
+  {"com/google/gson/.*" (prefer-lib 'com.google.code.gson/gson)})
 
+;; avatica (Hive transitive dep) bundles the entire SLF4J API unshaded.
 (def ^:private slf4j-conflict-handler
-  "avatica (Hive transitive dep) bundles the entire SLF4J API unshaded. When those
-   classes overwrite the real SLF4J, logging can break or produce 'multiple providers'
-   warnings. This handler ensures org.slf4j/slf4j-api always wins."
-  {"org/slf4j/.*"
-   (fn [{:keys [lib path in]}]
-     (if (= lib 'org.slf4j/slf4j-api)
-       {:write {path {:stream in}}}
-       nil))})
+  {"org/slf4j/.*" (prefer-lib 'org.slf4j/slf4j-api)})
 
 (def conflict-handlers
   "Merged conflict handlers for the uberjar build. Handles Log4j2 plugin merging,
@@ -314,8 +304,8 @@
   (u/step (format "Audit %s uberjar class file conflicts" edition)
     (let [basis     (create-basis edition)
           conflicts (detect-class-conflicts basis)]
-      (u/announce "=== %d class file conflicts detected ===" (count conflicts))
       (when (seq conflicts)
+        (u/announce "=== %d class file conflicts detected ===" (count conflicts))
         (let [report-file "target/conflict-report.txt"]
           (spit report-file
                 (str/join "\n"
