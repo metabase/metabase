@@ -74,4 +74,4 @@ export const StyledLauncher = styled.div<
     align-items: stretch;
     gap: 0.5rem;
   }
-`; // FIXME, make this into CSS modules
+`;
