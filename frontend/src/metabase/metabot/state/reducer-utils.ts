@@ -2,6 +2,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
@@ -60,6 +61,7 @@ export const createConversation = (
   const overrides = merge(agentOverrides, conversationOverrides);
 
   return {
+    title: t`New chat`,
     prompt: "",
     promptFocusToken: 0,
     isProcessing: false,

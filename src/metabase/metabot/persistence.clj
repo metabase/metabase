@@ -1,11 +1,13 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -112,6 +114,33 @@
              (do (vreset! pending part)
                  (if prev (rf result prev) result)))))))))
 
+(def ^:private title-system-prompt
+  "You generate concise titles for chat conversations. Given a user's opening message, respond with a 3 to 6 word title that captures the topic. Output the title only — no quotes, no trailing punctuation, no preamble.")
+
+(def ^:private title-max-length 120)
+
+(defn generate-conversation-title!
+  "One-shot LLM call to produce a short title from the user's opening message.
+  Returns the title string or nil on any failure (caller should treat nil as
+  'leave it; the FE will keep showing the default')."
+  [provider-and-model user-message-text]
+  (when (and provider-and-model (string? user-message-text) (seq user-message-text))
+    (try
+      (let [parts (into []
+                        (filter #(= :text (:type %)))
+                        (metabot.self/call-llm
+                         provider-and-model
+                         title-system-prompt
+                         [{:role :user :content user-message-text}]
+                         {}
+                         {:tag "conversation-title"}))
+            text  (->> parts (map :text) (str/join "") str/trim)]
+        (when (seq text)
+          (subs text 0 (min title-max-length (count text)))))
+      (catch Throwable e
+        (log/warn e "Failed to generate conversation title")
+        nil))))
+
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
   and insert a placeholder assistant row. The placeholder's `created_at` is pinned
@@ -139,11 +168,13 @@
      `api/*current-user-id*` when omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
 
-  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str>}`."
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :title <string-or-nil>}`.
+  `:title` is non-nil only on the very first turn of a conversation when title
+  generation succeeded; callers can use it to stream the title to the client."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
-             user-id ai-proxy?]}]
+             user-id ai-proxy? model]}]
   (let [;; Originator: explicit `:user-id` wins; otherwise fall back to the
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
@@ -151,7 +182,12 @@
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
                                  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
-        assistant-external-id  (str (random-uuid))]
+        assistant-external-id  (str (random-uuid))
+        existing-row           (t2/select-one [:model/MetabotConversation :id :title] :id conversation-id)
+        new-title              (when (nil? existing-row)
+                                 (generate-conversation-title!
+                                  (or model (metabot.settings/llm-metabot-provider))
+                                  (:content user-message)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     ;; The user-message and assistant-placeholder rows share `created_at` because
@@ -164,6 +200,8 @@
                                   (cond-> {}
                                     (nil? existing)
                                     (assoc :user_id originator-id)
+                                    (and (nil? existing) new-title)
+                                    (assoc :title new-title)
                                     (and hostname (nil? (:embedding_hostname existing)))
                                     (assoc :embedding_hostname hostname)
                                     (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
@@ -206,7 +244,8 @@
                   user-id    (assoc :user_id user-id)
                   channel-id (assoc :channel_id channel-id)))]
         {:assistant-msg-id      pk
-         :assistant-external-id assistant-external-id}))))
+         :assistant-external-id assistant-external-id
+         :title                 (or new-title (:title existing-row))}))))
 
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final

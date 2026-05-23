@@ -209,6 +209,11 @@ export const metabot = createSlice({
         state.prompt = action.payload.prompt;
       },
     ),
+    setConversationTitle: convoReducer(
+      (state, action: ConvoPayloadAction<{ title: string }>) => {
+        state.title = action.payload.title;
+      },
+    ),
     focusPromptInput: convoReducer((state) => {
       state.promptFocusToken += 1;
     }),

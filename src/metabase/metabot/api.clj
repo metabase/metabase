@@ -13,6 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.streaming :as metabot.streaming]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -98,10 +99,14 @@
   `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
   line protocol so the client can correlate streamed messages with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id model state debug?
-           assistant-msg-id external-id database-id]}]
+           assistant-msg-id external-id database-id title]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+      (when title
+        (let [line (self.core/format-data-line (metabot.streaming/conversation-title-part title))]
+          (.write os (.getBytes (str line "\n") "UTF-8"))
+          (.flush os)))
       (let [parts-atom (atom [])
             canceled?  (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
@@ -185,10 +190,11 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (let [{:keys [assistant-msg-id assistant-external-id]}
+    (let [{:keys [assistant-msg-id assistant-external-id title]}
           (metabot.persistence/start-turn! conversation_id profile-id message
                                            :hostname hostname
-                                           :pii-info pii-info)]
+                                           :pii-info pii-info
+                                           :model    model)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -202,7 +208,8 @@
         :debug?           debug?
         :database-id      database_id
         :assistant-msg-id assistant-msg-id
-        :external-id      assistant-external-id}))))
+        :external-id      assistant-external-id
+        :title            title}))))
 
 (defn- legacy->modern-query
   [query]

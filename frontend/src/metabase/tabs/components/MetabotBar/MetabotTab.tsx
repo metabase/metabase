@@ -3,7 +3,7 @@ import type { MouseEvent } from "react";
 
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { MetabotAgentId } from "metabase/metabot/state";
-import { Icon, Loader } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import S from "./MetabotBar.module.css";
 
@@ -20,13 +20,18 @@ export const MetabotTab = ({
   onSelect,
   onRemove,
 }: MetabotTabProps) => {
-  const { messages, isDoingScience } = useMetabotAgent(agentId);
+  const { messages, isDoingScience, title } = useMetabotAgent(agentId);
 
   if (messages.length === 0) {
     return null;
   }
 
-  const title = agentId;
+  const lastAgentMessage = [...messages]
+    .reverse()
+    .find((m) => m.role === "agent");
+  const hasError = lastAgentMessage?.type === "turn_errored";
+
+  const dotStatus = isDoingScience ? "pending" : hasError ? "error" : "success";
 
   const handleRemove = (e: MouseEvent) => {
     e.stopPropagation();
@@ -43,11 +48,13 @@ export const MetabotTab = ({
       title={title}
     >
       <span className={S.tabStatus} aria-hidden>
-        {isDoingScience ? (
-          <Loader size={10} />
-        ) : (
-          <Icon name="check" size={10} c="success" />
-        )}
+        <span
+          className={cx(S.statusDot, {
+            [S.statusDotSuccess]: dotStatus === "success",
+            [S.statusDotError]: dotStatus === "error",
+            [S.statusDotPending]: dotStatus === "pending",
+          })}
+        />
       </span>
       <span className={S.tabTitle}>{title}</span>
       <span

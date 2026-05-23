@@ -30,19 +30,19 @@
   font-size: 11px;
   color: var(--mb-color-text-primary);
   cursor: pointer;
+  opacity: 0.5;
 }
 
 .tab:hover {
-  background-color: var(--mb-color-background-tertiary);
+  opacity: 0.8;
 }
 
 .tabActive {
-  background-color: var(--mb-color-brand-lighter);
-  border-color: var(--mb-color-brand);
+  opacity: 1;
 }
 
 .tabActive:hover {
-  background-color: var(--mb-color-brand-lighter);
+  opacity: 1;
 }
 
 .tabTitle {
@@ -57,6 +57,40 @@
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--mb-color-text-tertiary);
+}
+
+.statusDotSuccess {
+  background-color: var(--mb-color-success);
+}
+
+.statusDotError {
+  background-color: var(--mb-color-error);
+}
+
+.statusDotPending {
+  background-color: var(--mb-color-brand);
+  animation: metabot-tab-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes metabot-tab-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .tabClose {

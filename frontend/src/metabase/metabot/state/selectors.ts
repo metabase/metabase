@@ -122,6 +122,11 @@ export const getPrompt = createSelector(
   (convo) => convo.prompt,
 );
 
+export const getConversationTitle = createSelector(
+  getMetabotConversation,
+  (convo) => convo.title,
+);
+
 export const getPromptFocusToken = createSelector(
   getMetabotConversation,
   (convo) => convo.promptFocusToken,

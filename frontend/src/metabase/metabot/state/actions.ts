@@ -60,6 +60,7 @@ export const {
   setProfileOverride,
   setSelectedDatabaseId,
   setPrompt,
+  setConversationTitle,
   focusPromptInput,
   toolCallStart,
   toolCallEnd,
@@ -454,6 +455,9 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "static_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "conversation_title" }, (part) => {
+                dispatch(setConversationTitle({ agentId, title: part.value }));
               })
               .exhaustive();
           },

@@ -20,6 +20,7 @@ export const knownDataPartTypes = [
   "transform_suggestion",
   "adhoc_viz",
   "static_viz",
+  "conversation_title",
 ];
 
 export type AdhocVizValue = {
@@ -40,7 +41,8 @@ export type KnownDataPart =
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
-  | { type: "static_viz"; version: 1; value: StaticVizValue };
+  | { type: "static_viz"; version: 1; value: StaticVizValue }
+  | { type: "conversation_title"; version: 1; value: string };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
