@@ -395,15 +395,37 @@
 
 ;;; Main loop
 
+(def ^:private database-scoped-disabled-tools
+  "Tool names removed from the agent's toolbox when the conversation is scoped to a
+  single database — the agent should call `get_database_schema` for the table list
+  and `list_available_fields` to inspect specific tables, rather than searching."
+  #{"search"
+    "list_available_data_sources"
+    "read_resource"})
+
+(defn- scope-tools-to-database
+  "When `database-id` is set, drop entity-search/listing tools and add the
+  database-scoped tools. `list_available_fields` and `get_field_values` are
+  added so the agent can drill into specific tables after seeing the table list.
+  Otherwise return tools unchanged."
+  [tools database-id]
+  (if database-id
+    (-> (apply dissoc tools database-scoped-disabled-tools)
+        (assoc "get_database_schema"   #'tools/get-database-schema-tool
+               "list_available_fields" #'tools/list-available-fields-tool
+               "get_field_values"      #'tools/get-field-values-tool))
+    tools))
+
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id model context tracking-opts]}]
+  [{:keys [messages state metabot-id profile-id model context tracking-opts database-id]}]
   (let [context      (assign-context-ids context)
         profile      (cond-> (or (profiles/get-profile profile-id)
                                  (throw (ex-info "Unknown profile" {:profile-id profile-id})))
                        model (assoc :model model))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
+        base-tools   (-> (profiles/get-tools-for-profile profile-id capabilities)
+                         (scope-tools-to-database database-id))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
@@ -415,7 +437,7 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id database-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -590,6 +612,7 @@
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
+            [:database-id {:optional true} [:maybe pos-int?]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)

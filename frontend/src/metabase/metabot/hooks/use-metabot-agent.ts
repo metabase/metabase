@@ -23,11 +23,13 @@ import {
   getMetabotVisible,
   getModelOverride,
   getPrompt,
+  getSelectedDatabaseId,
   resetConversation as resetConversationAction,
   retryPrompt,
   setModelOverride as setModelOverrideAction,
   setProfileOverride as setProfileOverrideAction,
   setPrompt as setPromptAction,
+  setSelectedDatabaseId as setSelectedDatabaseIdAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -76,6 +78,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const setModelOverride = useCallback(
     (model: string | undefined) => {
       dispatch(setModelOverrideAction({ agentId, model }));
+    },
+    [dispatch, agentId],
+  );
+
+  const setSelectedDatabaseId = useCallback(
+    (databaseId: number | undefined) => {
+      dispatch(setSelectedDatabaseIdAction({ agentId, databaseId }));
     },
     [dispatch, agentId],
   );
@@ -175,6 +184,10 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     modelOverride: useSelector((state) => getModelOverride(state, agentId)),
     setModelOverride,
     setProfileOverride,
+    selectedDatabaseId: useSelector((state) =>
+      getSelectedDatabaseId(state, agentId),
+    ),
+    setSelectedDatabaseId,
     resetConversation,
     submitInput,
     retryMessage,

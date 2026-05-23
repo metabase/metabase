@@ -3,19 +3,22 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-input-ids 5)
+(def ^:private max-input-ids 20)
 
 (defn- validate-id-count
   [ids label]
@@ -182,3 +185,65 @@
                                     :field-id field_id
                                     :limit nil})
    format-field-metadata-output))
+
+;;; get_database_schema — used only when the conversation is scoped to a single
+;;; database. The active database id is read from `shared/*scoped-database-id*`,
+;;; so the LLM doesn't need to pass it (and can't change it). Returns just the
+;;; table list — the agent should call `list_available_fields` to dig into
+;;; specific tables.
+
+(def ^:private get-database-schema-schema
+  [:map {:closed true}])
+
+(defn- format-table-line
+  [{:keys [id name display_name description schema]}]
+  (let [qualified  (if (str/blank? schema) name (str schema "." name))
+        nice-name  (when (and display_name (not= display_name name))
+                     display_name)
+        desc       (some-> description str/trim not-empty)
+        suffix     (cond
+                     (and nice-name desc) (str " — " nice-name ": " desc)
+                     nice-name            (str " — " nice-name)
+                     desc                 (str " — " desc)
+                     :else                "")]
+    (str "- [" id "] " qualified suffix)))
+
+(defn- format-database-schema-markdown
+  [database tables]
+  (let [by-schema (group-by (fn [t] (or (not-empty (:schema t)) "")) tables)
+        sections  (for [[schema schema-tables] (sort-by key by-schema)]
+                    (let [header (if (str/blank? schema)
+                                   "## (no schema)"
+                                   (str "## " schema))
+                          lines  (map format-table-line
+                                      (sort-by :name schema-tables))]
+                      (str header "\n" (str/join "\n" lines))))]
+    (str "# " (:name database) "\n\n"
+         "Tables in this database. Each line is `- [table_id] schema.name — description`. "
+         "Call `list_available_fields` with the table_id(s) you want to inspect to see columns.\n\n"
+         (str/join "\n\n" sections))))
+
+(mu/defn ^{:tool-name "get_database_schema"
+           :scope     scope/agent-metadata-read}
+  get-database-schema-tool
+  "Return the list of tables in the database the conversation is scoped to. Use `list_available_fields` to get columns."
+  [_args :- get-database-schema-schema]
+  (try
+    (let [db-id shared/*scoped-database-id*]
+      (when-not db-id
+        (throw (ex-info (tru "No database is currently scoped for this conversation.")
+                        {:agent-error? true})))
+      (api/read-check :model/Database db-id)
+      (let [database (t2/select-one [:model/Database :id :name :engine] :id db-id)
+            tables   (->> (t2/select [:model/Table :id :name :display_name :schema :db_id
+                                      :description :active :visibility_type]
+                                     :db_id db-id
+                                     :active true
+                                     {:order-by [[:%lower.schema :asc]
+                                                 [:%lower.name :asc]]})
+                          (filter #(nil? (:visibility_type %)))
+                          (filter mi/can-read?))]
+        {:output (format-database-schema-markdown database tables)}))
+    (catch Exception e
+      (log/error e "Failed to fetch database schema" {:db-id shared/*scoped-database-id*})
+      {:output (or (ex-message e) "Failed to fetch database schema")})))

@@ -98,7 +98,7 @@
   `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
   line protocol so the client can correlate streamed messages with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id model state debug?
-           assistant-msg-id external-id]}]
+           assistant-msg-id external-id database-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
@@ -125,7 +125,8 @@
                                :model         model
                                :context       enriched-context
                                :tracking-opts {:session-id conversation-id}}
-                        debug? (assoc :debug? true))))
+                        debug?      (assoc :debug? true)
+                        database-id (assoc :database-id database-id))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
@@ -171,7 +172,8 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state model debug]}
+  [{:keys [metabot_id profile_id message context history conversation_id state model debug
+           database_id]}
    request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
@@ -198,6 +200,7 @@
         :model            model
         :state            state
         :debug?           debug?
+        :database-id      database_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id}))))
 
@@ -243,6 +246,7 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
+            [:database_id {:optional true} [:maybe ms/PositiveInt]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

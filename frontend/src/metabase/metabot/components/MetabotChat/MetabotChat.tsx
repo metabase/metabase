@@ -237,9 +237,11 @@ export const MetabotChat = ({
               autoFocus
               isResponding={metabot.isDoingScience}
               modelOverride={metabot.modelOverride}
+              selectedDatabaseId={metabot.selectedDatabaseId}
               placeholder={t`How can I help? Type @ to mention items.`}
               onChange={metabot.setPrompt}
               onModelOverrideChange={metabot.setModelOverride}
+              onSelectedDatabaseIdChange={metabot.setSelectedDatabaseId}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
               suggestionConfig={{ suggestionModels }}

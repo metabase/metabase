@@ -11,6 +11,7 @@ import { useSetting } from "metabase/common/hooks";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { MetabotDatabaseSelect } from "metabase/metabot/components/MetabotChat/MetabotDatabaseSelect";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { MetabotThinking } from "metabase/metabot/components/MetabotChat/MetabotThinking";
 import { useScrollManager } from "metabase/metabot/components/MetabotChat/hooks";
@@ -78,6 +79,8 @@ const MetabotQueryBuilderInner = () => {
     submitInput,
     retryMessage,
     cancelRequest,
+    selectedDatabaseId,
+    setSelectedDatabaseId,
   } = useMetabotAgent();
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
   usePromptInputFocusEffect(
@@ -167,13 +170,18 @@ const MetabotQueryBuilderInner = () => {
         )}
       </Box>
       <Box className={S.inputActions}>
+        <Box>
+          <MetabotDatabaseSelect
+            value={selectedDatabaseId}
+            onChange={setSelectedDatabaseId}
+            disabled={isDoingScience}
+          />
+        </Box>
         {hasError ? (
           <Text c="error" ta="center">
             {t`Something went wrong. Please try again.`}
           </Text>
-        ) : (
-          <div />
-        )}
+        ) : null}
         <ActionIcon
           className={S.sendButton}
           variant="filled"
