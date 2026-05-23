@@ -720,7 +720,7 @@
         ;; A shutdown executor rejects every submission with RejectedExecutionException (default AbortPolicy),
         ;; exercising the same drop path as a full bounded queue without having to saturate it.
         (let [rejecting (doto (Executors/newFixedThreadPool 1) .shutdownNow)]
-          (with-redefs [used-tables/executor (delay rejecting)]
+          (with-redefs [used-tables/waiter-executor (delay rejecting)]
             (log.capture/with-log-messages-for-level [messages [metabase.metabot.used-tables :warn]]
               (is (nil? (used-tables/record-used-tables! 7 [])))
               (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-dropped)))

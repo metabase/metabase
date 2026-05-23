@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent ArrayBlockingQueue Callable ExecutorService RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeoutException TimeUnit)))
+   (java.util.concurrent ArrayBlockingQueue Callable ExecutionException ExecutorService Future RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeoutException TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -288,20 +288,78 @@
   extraction should not take more than a few seconds."
   (* 15 1000))
 
+(def ^:private executor-queue-capacity
+  "Max number of tasks allowed to sit in either pool's queue. Beyond this, new submissions are rejected.
+  256 caps worst-case retained heap in the low hundreds of MiB; the intention is that the queues are normally
+  ~empty (extraction is far faster than turns arrive), and this only kicks in under a regression/stall/abuse."
+  256)
+
+(def ^:private pool-size
+  "Threads in each of [[waiter-executor]] and [[worker-executor]]. Caps concurrent extractions:
+  every [[waiter-executor]] has a matching [[worker-executor]]."
+  4)
+
+(defn- new-fixed-daemon-pool
+  "Fixed pool of [[pool-size]] daemon threads named `thread-name`.
+
+  Backed by a bounded queue of [[executor-queue-capacity]]. The default `AbortPolicy` throws
+  `RejectedExecutionException` once the queue is full."
+  ^ThreadPoolExecutor [thread-name]
+  (ThreadPoolExecutor.
+   (int pool-size)
+   (int pool-size)
+   0 TimeUnit/MILLISECONDS
+   (ArrayBlockingQueue. (int executor-queue-capacity))
+   (reify ThreadFactory
+     (newThread [_ r]
+       (doto (Thread. r)
+         (.setName thread-name)
+         (.setDaemon true))))))
+
+(defonce ^:private waiter-executor
+  ;; Outer pool: runs the `extract-and-insert!` tasks submitted by `record-used-tables!`. Each task blocks waiting
+  ;; (with a timeout) on the result of an extraction submitted to `worker-executor`. Bounding this pool caps how many
+  ;; turns we process concurrently; the bounded queue caps how many pending requests we retain. The default
+  ;; `AbortPolicy` rejects beyond that, which `record-used-tables!` catches to drop the task. Keeping the work on
+  ;; these bounded pools (rather than `u/with-timeout`'s unbounded shared `future` pool) means a stall can't spill
+  ;; onto threads shared with the rest of the app.
+  (delay (new-fixed-daemon-pool "metabot-used-tables-waiter")))
+
+(defonce ^:private worker-executor
+  ;; Inner pool: runs the (usually fast, but potentially slow) BFS+sql parse. Kept separate from `waiter-executor` so
+  ;; a burst of waiters can never starve the workers doing the extractions. Sized to match `waiter-executor` so every
+  ;; waiter has a worker. Rows are keyed by distinct `message_id`, so concurrent inserts don't contend.
+  (delay (new-fixed-daemon-pool "metabot-used-tables-worker")))
+
+(defn- extract-used-tables-async-with-timeout
+  "Run [[extract-used-tables]] on [[worker-executor]] and block the calling [[waiter-executor]] thread on the result for
+  up to [[extraction-timeout-ms]]. On timeout the work is cancelled and a `TimeoutException` is thrown. Any extraction
+  failure is unwrapped from its `ExecutionException` and rethrown."
+  [message-id parts]
+  (let [fut ^Future (.submit ^ExecutorService @worker-executor
+                             ^Callable (bound-fn* #(extract-used-tables message-id parts)))]
+    (try
+      (.get fut extraction-timeout-ms TimeUnit/MILLISECONDS)
+      (catch ExecutionException e
+        (throw (.getCause e)))
+      (catch TimeoutException e
+        (.cancel fut true)
+        (throw e)))))
+
 (defn- extract-used-tables-with-timing
   "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics and caps runtime at
-  [[extraction-timeout-ms]]. Returns nil (persisting no rows) and counts a failure if the cap is exceeded.
+  [[extraction-timeout-ms]]. Returns nil (persisting no rows) and counts a timeout if the cap is exceeded.
 
-  The timeout is skipped when [[*run-synchronously?*]] is set (tests), so extraction stays on the calling thread and
-  inside the test transaction rather than running on a [[u/with-timeout]] future thread."
+  When not running synchronously the work is handed off via [[extract-used-tables-async-with-timeout]]. The
+  timeout/handoff is skipped when [[*run-synchronously?*]] is set (tests), so extraction stays on the calling thread
+  and inside the test transaction."
   [message-id parts]
   (let [start (u/start-timer)]
     (analytics/inc! :metabase-metabot/used-tables-extraction-total)
     (try
       (let [result (if *run-synchronously?*
                      (extract-used-tables message-id parts)
-                     (u/with-timeout extraction-timeout-ms
-                       (extract-used-tables message-id parts)))]
+                     (extract-used-tables-async-with-timeout message-id parts))]
         (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
         result)
       (catch TimeoutException _
@@ -314,32 +372,6 @@
         (analytics/inc! :metabase-metabot/used-tables-extraction-errors)
         (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
         (throw t)))))
-
-(def ^:private executor-queue-capacity
-  "Max number of extraction tasks allowed to sit in [[executor]]'s queue. Beyond this, new submissions are dropped.
-  256 caps worst-case retained heap in the low hundreds of MiB; the intention is that the queue is normally
-  ~empty (extraction is far faster than turns arrive), and this only kicks in under a regression/stall/abuse."
-  256)
-
-(defonce ^:private executor
-  ;; Small fixed pool of daemon threads. Four threads give headroom for the (usually fast, but potentially slow)
-  ;; BFS+sql parse when several turns finalize at once; rows are keyed by distinct `message_id`, so concurrent inserts
-  ;; don't contend. The queue is bounded. The default `AbortPolicy` throws `RejectedExecutionException` when it's
-  ;; full, which `record-used-tables!` catches to drop the task.
-  ;;
-  ;; NOTE: the `u/with-timeout` in `extract-used-tables-with-timing` runs the body in a `future`, so the actual
-  ;; extraction executes on the shared `clojure.core/future` thread pool (the unbounded agent soloExecutor), not on
-  ;; our [[executor]]'s worker thread. The worker thread only blocks on the deref and is freed at the timeout. On
-  ;; timeout the future is cancelled, but work that doesn't observe interrupts may linger on that shared pool.
-  (delay (ThreadPoolExecutor.
-          4 4
-          0 TimeUnit/MILLISECONDS
-          (ArrayBlockingQueue. (int executor-queue-capacity))
-          (reify ThreadFactory
-            (newThread [_ r]
-              (doto (Thread. r)
-                (.setName "metabot-used-tables-worker")
-                (.setDaemon true)))))))
 
 (defn- extract-and-insert!
   "Extract used tables from `parts` and insert `metabot_used_table` rows for `message-id`.
@@ -358,9 +390,9 @@
 (defn record-used-tables!
   "Extract used tables from `parts` and persist `metabot_used_table` rows for `message-id`.
 
-  The extraction can be slow for large native queries, so by default this is handed off to a background [[executor]]
-  and returns immediately. Callers must already have committed the message row so the `message_id` FK is
-  valid.
+  The extraction can be slow for large native queries, so by default this is handed off to a background
+  [[waiter-executor]] and returns immediately. Callers must already have committed the message row so the
+  `message_id` FK is valid.
 
   When the background executor's bounded queue is full, the task is dropped (logged + counted), rather than blocking
   turn finalization or growing the queue without bound.
@@ -370,7 +402,7 @@
   (if *run-synchronously?*
     (extract-and-insert! message-id parts)
     (try
-      (.submit ^ExecutorService @executor
+      (.submit ^ExecutorService @waiter-executor
                ^Callable (bound-fn* #(extract-and-insert! message-id parts)))
       (catch RejectedExecutionException _
         (analytics/inc! :metabase-metabot/used-tables-extraction-dropped)
