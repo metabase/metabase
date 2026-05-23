@@ -117,6 +117,16 @@ export const getMetabotVisible = createSelector(
   (convo) => convo.visible,
 );
 
+export const getPrompt = createSelector(
+  getMetabotConversation,
+  (convo) => convo.prompt,
+);
+
+export const getPromptFocusToken = createSelector(
+  getMetabotConversation,
+  (convo) => convo.promptFocusToken,
+);
+
 export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,

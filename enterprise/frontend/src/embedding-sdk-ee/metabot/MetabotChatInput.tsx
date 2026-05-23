@@ -1,8 +1,11 @@
 import cx from "classnames";
-import type { LegacyRef } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  usePromptInputFocusEffect,
+} from "metabase/metabot/hooks";
 import {
   Flex,
   Icon,
@@ -17,6 +20,11 @@ import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatInput() {
   const metabot = useMetabotAgent();
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  usePromptInputFocusEffect(
+    "omnibot",
+    useCallback(() => promptInputRef.current?.focus(), []),
+  );
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
@@ -47,7 +55,7 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
-        ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
+        ref={promptInputRef}
         autoFocus
         value={metabot.prompt}
         readOnly={metabot.isDoingScience}

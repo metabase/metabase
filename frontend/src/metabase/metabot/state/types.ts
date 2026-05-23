@@ -111,6 +111,8 @@ export type MetabotReactionsState = {
 
 export interface MetabotConverstationState {
   conversationId: string;
+  prompt: string;
+  promptFocusToken: number;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;

@@ -204,6 +204,14 @@ export const metabot = createSlice({
         state.visible = action.payload.visible;
       },
     ),
+    setPrompt: convoReducer(
+      (state, action: ConvoPayloadAction<{ prompt: string }>) => {
+        state.prompt = action.payload.prompt;
+      },
+    ),
+    focusPromptInput: convoReducer((state) => {
+      state.promptFocusToken += 1;
+    }),
     setMetabotReqIdOverride: convoReducer(
       (state, action: ConvoPayloadAction<{ id: string | undefined }>) => {
         state.experimental.metabotReqIdOverride = action.payload.id;

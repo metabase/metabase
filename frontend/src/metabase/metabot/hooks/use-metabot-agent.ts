@@ -11,6 +11,7 @@ import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
   cancelInflightAgentRequests,
+  focusPromptInput as focusPromptInputAction,
   getActiveToolCalls,
   getDebugMode,
   getIsLongMetabotConversation,
@@ -21,18 +22,29 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getModelOverride,
+  getPrompt,
   resetConversation as resetConversationAction,
   retryPrompt,
   setModelOverride as setModelOverrideAction,
   setProfileOverride as setProfileOverrideAction,
+  setPrompt as setPromptAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
 
 export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const dispatch = useDispatch();
-  const { prompt, setPrompt, promptInputRef, getChatContext } =
-    useMetabotContext();
+  const { getChatContext } = useMetabotContext();
+
+  const prompt = useSelector((state) => getPrompt(state, agentId));
+  const setPrompt = useCallback(
+    (prompt: string) => dispatch(setPromptAction({ agentId, prompt })),
+    [dispatch, agentId],
+  );
+  const focusPromptInput = useCallback(
+    () => dispatch(focusPromptInputAction({ agentId })),
+    [dispatch, agentId],
+  );
 
   const metabotRequestId = useSelector((state) =>
     getMetabotRequestId(state, agentId),
@@ -47,11 +59,11 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   const prepareRetryIfUnsuccesful = useCallback(
     (result: MetabotPromptSubmissionResult) => {
       if (!result.success && result.shouldRetry) {
-        promptInputRef?.current?.focus();
         setPrompt(result.prompt);
+        focusPromptInput();
       }
     },
-    [promptInputRef, setPrompt],
+    [focusPromptInput, setPrompt],
   );
 
   const setProfileOverride = useCallback(
@@ -85,7 +97,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       }
 
       if (options?.focusInput) {
-        promptInputRef?.current?.focus();
+        focusPromptInput();
       }
 
       const action = await dispatch(
@@ -117,7 +129,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       setVisible,
       visible,
       agentId,
-      promptInputRef,
+      focusPromptInput,
       setPrompt,
     ],
   );
@@ -157,7 +169,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
   return {
     prompt,
     setPrompt,
-    promptInputRef,
+    focusPromptInput,
     visible,
     setVisible,
     modelOverride: useSelector((state) => getModelOverride(state, agentId)),

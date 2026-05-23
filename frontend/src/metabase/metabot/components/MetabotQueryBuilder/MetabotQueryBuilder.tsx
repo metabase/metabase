@@ -1,13 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { isRejected } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
+import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
@@ -27,7 +28,11 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import {
+  useMetabotAgent,
+  usePromptInputFocusEffect,
+  useUserMetabotPermissions,
+} from "../../hooks";
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 
 import S from "./MetabotQueryBuilder.module.css";
@@ -70,11 +75,15 @@ const MetabotQueryBuilderInner = () => {
     isLongConversation,
     prompt,
     setPrompt,
-    promptInputRef,
     submitInput,
     retryMessage,
     cancelRequest,
   } = useMetabotAgent();
+  const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  usePromptInputFocusEffect(
+    "omnibot",
+    useCallback(() => promptInputRef.current?.focus(), []),
+  );
 
   const [title] = useState(getTitleText);
   const [hasError, setHasError] = useState(false);
@@ -197,6 +206,7 @@ const MetabotQueryBuilderInner = () => {
           >
             <Box className={S.messages}>
               <Messages
+                agentId="omnibot"
                 messages={messages}
                 onRetryMessage={retryMessage}
                 isDoingScience={isDoingScience}
