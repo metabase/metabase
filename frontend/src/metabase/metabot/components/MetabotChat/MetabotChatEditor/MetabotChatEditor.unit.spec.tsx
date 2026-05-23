@@ -30,6 +30,7 @@ const defaultProps = {
   onSubmit: jest.fn(),
   onStop: jest.fn(),
   onModelOverrideChange: jest.fn(),
+  onSelectedDatabaseIdChange: jest.fn(),
   suggestionConfig: {
     suggestionModels: [
       "table",

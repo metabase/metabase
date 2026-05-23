@@ -196,6 +196,7 @@ export type MetabotAgentRequest = {
   metabot_id?: string;
   model?: string;
   profile_id?: string;
+  database_id?: number;
 };
 
 export type MetabotAgentResponse = {

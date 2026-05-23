@@ -1,0 +1,44 @@
+.root {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.wrapper,
+.section {
+  min-height: 1.5rem;
+  height: 1.5rem;
+}
+
+.input {
+  border: 0;
+  background: transparent;
+  min-height: 1.5rem;
+  height: 1.5rem;
+  padding: 0 1rem 0 1.5rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  cursor: pointer;
+  field-sizing: content;
+  width: auto;
+}
+
+.section {
+  pointer-events: none;
+  color: var(--mb-color-text-tertiary);
+}
+
+.dropdown {
+  min-width: 14rem;
+}
+
+.option {
+  min-height: 2rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.engineLogo {
+  display: block;
+}

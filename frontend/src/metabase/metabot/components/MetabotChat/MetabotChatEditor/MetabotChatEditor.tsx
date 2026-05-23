@@ -21,6 +21,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { useMetabotContext } from "metabase/metabot";
+import { MetabotDatabaseSelect } from "metabase/metabot/components/MetabotChat/MetabotDatabaseSelect";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   MetabotPromptInput,
@@ -60,6 +61,8 @@ type MetabotChatEditorProps = Pick<
   isResponding?: boolean;
   modelOverride?: string;
   onModelOverrideChange: (model: string | undefined) => void;
+  selectedDatabaseId?: number;
+  onSelectedDatabaseIdChange: (databaseId: number | undefined) => void;
 };
 
 type AttachedContext = MetabotUserIsViewingContext[number];
@@ -187,7 +190,14 @@ export const MetabotChatEditor = forwardRef<
   MetabotChatEditorProps
 >(
   (
-    { isResponding = false, modelOverride, onModelOverrideChange, ...props },
+    {
+      isResponding = false,
+      modelOverride,
+      onModelOverrideChange,
+      selectedDatabaseId,
+      onSelectedDatabaseIdChange,
+      ...props
+    },
     ref,
   ) => {
     const { getChatContext, chatContextProviderVersion } = useMetabotContext();
@@ -285,8 +295,15 @@ export const MetabotChatEditor = forwardRef<
           />
         </Box>
         <Flex align="center" gap="sm" h="2.5rem">
-          <Box className={S.iconContainer} mr="auto">
+          <Box className={S.iconContainer}>
             <MetabotIcon c="brand" />
+          </Box>
+          <Box mr="auto">
+            <MetabotDatabaseSelect
+              value={selectedDatabaseId}
+              onChange={onSelectedDatabaseIdChange}
+              disabled={isResponding}
+            />
           </Box>
           {/* {showModelSelector && (
             <Select

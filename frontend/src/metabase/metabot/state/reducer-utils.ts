@@ -70,6 +70,7 @@ export const createConversation = (
     activeToolCalls: [],
     modelOverride: undefined,
     profileOverride: undefined,
+    selectedDatabaseId: undefined,
     pendingMessageExternalId: undefined,
     ...overrides,
     conversationId: overrides?.conversationId ?? uuid(),

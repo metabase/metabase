@@ -49,7 +49,8 @@
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool
-  get-field-values-tool]
+  get-field-values-tool
+  get-database-schema-tool]
  [tools.transforms
   get-transform-details-tool
   get-transform-python-library-details-tool
@@ -127,34 +128,41 @@
   values are tool definition maps (with :doc, :schema, :prompt, :fn, and
   optionally :decode keys).
 
+  When `database-id` is non-nil, `shared/*scoped-database-id*` is bound for
+  every tool invocation so scoped tools can read the active database.
+
   Tool-specific instructions are loaded from `resources/metabot/prompts/tools/`
   by `extract-tool-instructions` in `prompts.clj`, keyed by `:prompt` or
   `<tool-name>.md` by default."
-  [tools memory-atom metabot-id]
-  (reduce-kv
-   (fn [acc tool-name tool-var]
-     (let [m          (meta tool-var)
-           base-fn    (if (contains? state-dependent-tools tool-name)
-                        (fn [args]
-                          (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id]
-                            (tool-var args)))
-                        (fn [args]
-                          (binding [shared/*metabot-id* metabot-id]
-                            (tool-var args))))
-           tool-scope (:scope m)
-           tool-fn    (if tool-scope
-                        (wrap-with-scope-check base-fn tool-name tool-scope)
-                        base-fn)
-           tool-def   {:tool-name            (:tool-name m)
-                       :doc                  (:doc m)
-                       :schema               (:schema m)
-                       :prompt               (:prompt m)
-                       :decode               (:decode m)
-                       :system-instructions  (:system-instructions m)
-                       :capabilities         (:capabilities m)
-                       :scope                (:scope m)
-                       :fn                   tool-fn}]
-       (assoc acc tool-name tool-def)))
-   {}
-   tools))
+  ([tools memory-atom metabot-id]
+   (wrap-tools-with-state tools memory-atom metabot-id nil))
+  ([tools memory-atom metabot-id database-id]
+   (reduce-kv
+    (fn [acc tool-name tool-var]
+      (let [m           (meta tool-var)
+            base-fn     (if (contains? state-dependent-tools tool-name)
+                          (fn [args]
+                            (binding [shared/*memory-atom*        memory-atom
+                                      shared/*metabot-id*         metabot-id
+                                      shared/*scoped-database-id* database-id]
+                              (tool-var args)))
+                          (fn [args]
+                            (binding [shared/*metabot-id*         metabot-id
+                                      shared/*scoped-database-id* database-id]
+                              (tool-var args))))
+            tool-scope  (:scope m)
+            tool-fn     (if tool-scope
+                          (wrap-with-scope-check base-fn tool-name tool-scope)
+                          base-fn)
+            tool-def    {:tool-name            (:tool-name m)
+                         :doc                  (:doc m)
+                         :schema               (:schema m)
+                         :prompt               (:prompt m)
+                         :decode               (:decode m)
+                         :system-instructions  (:system-instructions m)
+                         :capabilities         (:capabilities m)
+                         :scope                (:scope m)
+                         :fn                   tool-fn}]
+        (assoc acc tool-name tool-def)))
+    {}
+    tools)))

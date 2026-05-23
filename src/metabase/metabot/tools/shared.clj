@@ -14,6 +14,12 @@
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+(def ^:dynamic *scoped-database-id*
+  "When non-nil, the agent loop is scoped to a single database. Bound during the agent
+   loop so tools (e.g. get_database_schema) can read the active scope without the LLM
+   having to pass it explicitly."
+  nil)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []

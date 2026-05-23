@@ -230,6 +230,14 @@ export const metabot = createSlice({
         state.modelOverride = action.payload.model;
       },
     ),
+    setSelectedDatabaseId: convoReducer(
+      (
+        state,
+        action: ConvoPayloadAction<{ databaseId: number | undefined }>,
+      ) => {
+        state.selectedDatabaseId = action.payload.databaseId;
+      },
+    ),
     // REACTIONS REDUCERS
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;

@@ -250,6 +250,11 @@ export const getModelOverride = createSelector(
   (convo) => convo.modelOverride,
 );
 
+export const getSelectedDatabaseId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.selectedDatabaseId,
+);
+
 export const getProfile = createSelector(
   [getProfileOverride, getDebugMode, getLocation],
   (profileOverride, debugMode, location): MetabotProfileId | undefined => {
@@ -273,7 +278,8 @@ export const getAgentRequestMetadata = createSelector(
   getMetabotRequestState,
   getProfile,
   getModelOverride,
-  (history, state, profile, model) => ({
+  getSelectedDatabaseId,
+  (history, state, profile, model, databaseId) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
@@ -281,6 +287,7 @@ export const getAgentRequestMetadata = createSelector(
     ),
     ...(model ? { model } : {}),
     ...(profile ? { profile_id: profile } : {}),
+    ...(databaseId != null ? { database_id: databaseId } : {}),
   }),
 );
 

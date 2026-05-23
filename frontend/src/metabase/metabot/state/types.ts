@@ -121,6 +121,7 @@ export interface MetabotConverstationState {
   activeToolCalls: MetabotToolCall[];
   modelOverride: string | undefined;
   profileOverride: MetabotProfileId | undefined;
+  selectedDatabaseId: number | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;

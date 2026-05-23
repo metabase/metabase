@@ -58,6 +58,7 @@ export const {
   setPendingMessageExternalId,
   setModelOverride,
   setProfileOverride,
+  setSelectedDatabaseId,
   setPrompt,
   focusPromptInput,
   toolCallStart,
