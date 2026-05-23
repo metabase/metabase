@@ -81,6 +81,7 @@ function setup({
       isProcessing: false,
       messages: [],
       visible: false,
+      expanded: false,
       history: [],
       state: {},
       activeToolCalls: [],
@@ -171,11 +172,12 @@ describe("MetabotPage at /chat/:conversationId", () => {
     jest.clearAllMocks();
   });
 
-  it("shows the TODO placeholder when no Redux conversation exists for the URL id", () => {
+  it("renders an empty page when no Redux conversation exists for the URL id", () => {
     setup({ initialRoute: "/chat/missing-id" });
     expect(
-      screen.getByText("TODO: load historical conversation"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("metabot-send-message"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-page-title")).not.toBeInTheDocument();
   });
 
   it("renders the chat surface when a conversation exists for the URL id", () => {

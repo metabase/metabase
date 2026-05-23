@@ -7,8 +7,8 @@ import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useMetabotAgentsManager } from "metabase/metabot/hooks/use-metabot-agents-manager";
 import {
   type MetabotAgentId,
+  getNonExpandedChatAgentIds,
   getVisibleAgentId,
-  isChatAgentId,
   setVisible,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -22,15 +22,12 @@ import { MetabotTab } from "./MetabotTab";
 export function MetabotBar() {
   const dispatch = useDispatch();
   const { hasMetabotAccess } = useUserMetabotPermissions();
-  const { activeAgentIds, createAgent, destroyAgent } = useMetabotAgentsManager(
-    [],
-  );
+  const { createAgent, destroyAgent } = useMetabotAgentsManager([]);
   const visibleAgentId = useSelector(getVisibleAgentId);
+  const chatAgentIds = useSelector(getNonExpandedChatAgentIds);
   const [askButtonEl, setAskButtonEl] = useState<HTMLButtonElement | null>(
     null,
   );
-
-  const chatAgentIds = activeAgentIds.filter(isChatAgentId);
 
   const setAgentVisible = useCallback(
     (agentId: MetabotAgentId, visible: boolean) => {

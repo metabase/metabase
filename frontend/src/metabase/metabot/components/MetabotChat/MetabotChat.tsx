@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -10,7 +11,9 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { addTab } from "metabase/tabs/tabs.slice";
 import {
   ActionIcon,
   Box,
@@ -29,7 +32,12 @@ import {
   usePromptInputFocusEffect,
   useUserMetabotPermissions,
 } from "../../hooks";
-import type { MetabotAgentId } from "../../state";
+import {
+  type MetabotAgentId,
+  isChatAgentId,
+  setExpanded,
+  setVisible,
+} from "../../state";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -70,6 +78,7 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
+  const dispatch = useDispatch();
   const metabot = useMetabotAgent(agentId);
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
   usePromptInputFocusEffect(
@@ -102,6 +111,19 @@ export const MetabotChat = ({
     metabot.setVisible(false);
   };
 
+  const canExpand = isChatAgentId(agentId);
+  const handleExpand = () => {
+    if (!canExpand) {
+      return;
+    }
+    const urlId = agentId.replace(/^chat_/, "");
+    const path = `/chat/${urlId}`;
+    dispatch(setExpanded({ agentId, expanded: true }));
+    dispatch(setVisible({ agentId, visible: false }));
+    dispatch(addTab({ path, title: metabot.title, icon: "metabot" }));
+    dispatch(push(path));
+  };
+
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
 
   return (
@@ -115,6 +137,16 @@ export const MetabotChat = ({
         </Flex>
 
         <Flex gap="xs">
+          {canExpand && (
+            <Tooltip label={t`Expand`} position="bottom">
+              <ActionIcon
+                onClick={handleExpand}
+                data-testid="metabot-expand-chat"
+              >
+                <Icon c="text-primary" name="expand" />
+              </ActionIcon>
+            </Tooltip>
+          )}
           {!config?.preventClose && (
             <Tooltip label={t`Minimize`} position="bottom">
               <ActionIcon

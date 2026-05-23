@@ -211,6 +211,11 @@ export const metabot = createSlice({
         state.visible = action.payload.visible;
       },
     ),
+    setExpanded: convoReducer(
+      (state, action: ConvoPayloadAction<{ expanded: boolean }>) => {
+        state.expanded = action.payload.expanded;
+      },
+    ),
     setPrompt: convoReducer(
       (state, action: ConvoPayloadAction<{ prompt: string }>) => {
         state.prompt = action.payload.prompt;

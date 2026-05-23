@@ -67,6 +67,7 @@ export const createConversation = (
     isProcessing: false,
     messages: [],
     visible: false,
+    expanded: false,
     history: [],
     state: {},
     activeToolCalls: [],
