@@ -12,6 +12,7 @@ import { useMetabotName } from "metabase/metabot/hooks";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentDataPartMessage,
+  MetabotAgentId,
   MetabotAgentTextChatMessage,
   MetabotAgentTurnError,
   MetabotAgentTurnErroredMessage,
@@ -166,6 +167,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
 );
 
 interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
+  agentId: MetabotAgentId;
   message: MetabotAgentChatMessage;
   debug: boolean;
   readonly: boolean;
@@ -177,6 +179,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
 }
 
 export const AgentMessage = ({
+  agentId,
   message,
   className,
   debug,
@@ -205,7 +208,12 @@ export const AgentMessage = ({
           </AIMarkdown>
         ))
         .with({ type: "data_part" }, (m) => (
-          <AgentDataPartMessage message={m} debug={debug} readonly={readonly} />
+          <AgentDataPartMessage
+            agentId={agentId}
+            message={m}
+            debug={debug}
+            readonly={readonly}
+          />
         ))
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
@@ -404,6 +412,7 @@ export const getFullAgentReply = (
 };
 
 export const Messages = ({
+  agentId,
   messages,
   onRetryMessage,
   isDoingScience,
@@ -411,6 +420,7 @@ export const Messages = ({
   readonly = false,
   onInternalLinkClick,
 }: {
+  agentId: MetabotAgentId;
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
@@ -473,6 +483,7 @@ export const Messages = ({
           <AgentMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
+            agentId={agentId}
             message={message}
             debug={debug}
             readonly={readonly}

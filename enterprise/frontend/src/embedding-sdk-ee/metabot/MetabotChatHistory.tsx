@@ -44,6 +44,7 @@ export function MetabotChatHistory() {
     >
       {hasMessages ? (
         <Messages
+          agentId="omnibot"
           messages={chatMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}

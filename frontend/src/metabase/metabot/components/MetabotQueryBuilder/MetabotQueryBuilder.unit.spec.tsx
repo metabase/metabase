@@ -66,7 +66,7 @@ function setup({
     debugMode: false,
     messages,
     prompt,
-    promptInputRef: { current: null },
+    focusPromptInput: jest.fn(),
   } as any;
   jest.mocked(useMetabotAgent).mockReturnValue(metabot);
   jest.mocked(useGetSuggestedMetabotPromptsQuery).mockReturnValue({

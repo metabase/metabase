@@ -7,19 +7,23 @@ import type { MetabotAgentChatMessage } from "metabase/metabot/state";
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 
 const mockSetPrompt = jest.fn();
-const mockFocusPrompt = jest.fn();
+const mockFocusPromptInput = jest.fn();
 let mockPrompt = "";
 let mockChatContextProvider: (() => Promise<unknown>) | undefined;
 
 jest.mock("metabase/metabot", () => ({
-  useMetabotContext: () => ({
-    prompt: mockPrompt,
-    setPrompt: mockSetPrompt,
-    promptInputRef: { current: { focus: mockFocusPrompt } },
-  }),
+  useMetabotContext: () => ({}),
   useRegisterMetabotContextProvider: (provider: () => Promise<unknown>) => {
     mockChatContextProvider = provider;
   },
+}));
+
+jest.mock("metabase/metabot/hooks", () => ({
+  useMetabotAgent: () => ({
+    prompt: mockPrompt,
+    setPrompt: mockSetPrompt,
+    focusPromptInput: mockFocusPromptInput,
+  }),
 }));
 
 const mockQuestion = {
@@ -118,6 +122,7 @@ jest.mock("metabase/querying/components/QueryVisualization", () => ({
 const setup = (message: MetabotAgentChatMessage) =>
   renderWithProviders(
     <AgentMessage
+      agentId="omnibot"
       debug={false}
       readonly={false}
       hideActions
@@ -132,7 +137,7 @@ describe("AgentMessage", () => {
   beforeEach(() => {
     mockPrompt = "";
     mockSetPrompt.mockClear();
-    mockFocusPrompt.mockClear();
+    mockFocusPromptInput.mockClear();
     mockChatContextProvider = undefined;
   });
 
@@ -182,7 +187,7 @@ describe("AgentMessage", () => {
     expect(mockSetPrompt).toHaveBeenCalledWith(
       "this data point: Created At: 2026-01-01, Revenue: 123",
     );
-    expect(mockFocusPrompt).toHaveBeenCalled();
+    expect(mockFocusPromptInput).toHaveBeenCalled();
 
     const context = await mockChatContextProvider?.();
     expect(context).toEqual({
@@ -209,6 +214,7 @@ describe("AgentMessage", () => {
   it("hides the action bar on the last agent message while processing", () => {
     renderWithProviders(
       <Messages
+        agentId="omnibot"
         messages={[
           { id: "u1", role: "user", type: "text", message: "hi" },
           { id: "a1", role: "agent", type: "text", message: "hello" },
@@ -281,6 +287,7 @@ describe("AgentMessage", () => {
     it("renders the raw error payload as a debug card when debug is true", () => {
       renderWithProviders(
         <AgentMessage
+          agentId="omnibot"
           debug
           readonly={false}
           hideActions

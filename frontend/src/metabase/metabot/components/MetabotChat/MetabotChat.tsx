@@ -1,11 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
@@ -25,6 +26,7 @@ import {
 import {
   useMetabotAgent,
   useMetabotName,
+  usePromptInputFocusEffect,
   useUserMetabotPermissions,
 } from "../../hooks";
 import type { MetabotAgentId } from "../../state";
@@ -69,6 +71,11 @@ export const MetabotChat = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(agentId);
+  const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  usePromptInputFocusEffect(
+    agentId,
+    useCallback(() => promptInputRef.current?.focus(), []),
+  );
   const metabotName = useMetabotName();
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
@@ -192,6 +199,7 @@ export const MetabotChat = ({
           >
             {/* conversation messages */}
             <Messages
+              agentId={agentId}
               messages={metabot.messages}
               onRetryMessage={
                 config?.preventRetryMessage ? undefined : metabot.retryMessage
@@ -224,7 +232,7 @@ export const MetabotChat = ({
             )}
           >
             <MetabotChatEditor
-              ref={metabot.promptInputRef}
+              ref={promptInputRef}
               value={metabot.prompt}
               autoFocus
               isResponding={metabot.isDoingScience}

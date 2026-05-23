@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import type React from "react";
 import {
-  type RefObject,
   createContext,
   useCallback,
   useContext,
@@ -57,10 +56,6 @@ export type MetabotPromptInputRef = {
 };
 
 export type MetabotCtx = {
-  prompt: string;
-  setPrompt: (prompt: string) => void;
-  promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
-
   getChatContext: () => Promise<MetabotChatContext>;
   chatContextProviderVersion: number;
   registerChatContextProvider: (
@@ -75,10 +70,6 @@ export type MetabotCtx = {
 };
 
 export const defaultContext: MetabotCtx = {
-  prompt: "",
-  setPrompt: () => {},
-  promptInputRef: undefined,
-
   getChatContext: () =>
     Promise.resolve({
       user_is_viewing: [],
@@ -149,9 +140,6 @@ export const MetabotProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  /* Metabot input */
-  const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<MetabotPromptInputRef>(null);
   const [suggestionActions, setSuggestionActions] =
     useState<MetabotSuggestionActions | null>(null);
 
@@ -211,9 +199,6 @@ export const MetabotProvider = ({
   return (
     <MetabotContext.Provider
       value={{
-        prompt,
-        setPrompt,
-        promptInputRef,
         getChatContext,
         chatContextProviderVersion,
         registerChatContextProvider,

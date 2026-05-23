@@ -9,11 +9,12 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import {
-  useMetabotContext,
-  useRegisterMetabotContextProvider,
-} from "metabase/metabot";
-import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { useMetabotAgent } from "metabase/metabot/hooks";
+import type {
+  MetabotAgentDataPartMessage,
+  MetabotAgentId,
+} from "metabase/metabot/state";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { ClickObject } from "metabase-lib";
@@ -37,6 +38,7 @@ import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 
 type AgentDataPartMessageProps = {
+  agentId: MetabotAgentId;
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
@@ -130,6 +132,7 @@ const getChartData = (result: Dataset | null): MetabotChartConfig["data"] => {
 };
 
 export const AgentDataPartMessage = ({
+  agentId,
   message,
   readonly,
   debug,
@@ -152,7 +155,7 @@ export const AgentDataPartMessage = ({
       return (
         <Stack gap="md">
           {debug && <NavigateToDataPart type={part.type} path={part.value} />}
-          <NavigateToQuestionCard path={part.value} />
+          <NavigateToQuestionCard agentId={agentId} path={part.value} />
           {sourcePills}
         </Stack>
       );
@@ -184,8 +187,14 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const NavigateToQuestionCard = ({ path }: { path: string }) => {
-  const { prompt, promptInputRef, setPrompt } = useMetabotContext();
+const NavigateToQuestionCard = ({
+  agentId,
+  path,
+}: {
+  agentId: MetabotAgentId;
+  path: string;
+}) => {
+  const { prompt, setPrompt, focusPromptInput } = useMetabotAgent(agentId);
   const [selectedContext, setSelectedContext] =
     useState<MetabotAdhocQueryInfo | null>(null);
   const { questionHash, questionName } = useMemo(() => {
@@ -245,9 +254,9 @@ const NavigateToQuestionCard = ({ path }: { path: string }) => {
         : t`this data point`;
       const trimmedPrompt = prompt.trim();
       setPrompt(trimmedPrompt ? `${trimmedPrompt} ${mention}` : mention);
-      promptInputRef?.current?.focus();
+      focusPromptInput();
     },
-    [prompt, promptInputRef, setPrompt],
+    [focusPromptInput, prompt, setPrompt],
   );
 
   return (

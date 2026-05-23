@@ -58,6 +58,8 @@ export const {
   setPendingMessageExternalId,
   setModelOverride,
   setProfileOverride,
+  setPrompt,
+  focusPromptInput,
   toolCallStart,
   toolCallEnd,
   setMetabotReqIdOverride,

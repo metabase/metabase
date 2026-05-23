@@ -60,6 +60,8 @@ export const createConversation = (
   const overrides = merge(agentOverrides, conversationOverrides);
 
   return {
+    prompt: "",
+    promptFocusToken: 0,
     isProcessing: false,
     messages: [],
     visible: false,
