@@ -1319,7 +1319,7 @@
                                      {"Lat" {:field_type [:type/Latitude], :score 90}}
                                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
                                      {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                            ;; These will be matched in our tests since this is a generic table entity.
+                ;; These will be matched in our tests since this is a generic table entity.
                 bindable-dimensions (remove
                                      #(-> % vals first :field_type first #{:entity/UserTable})
                                      dimensions)

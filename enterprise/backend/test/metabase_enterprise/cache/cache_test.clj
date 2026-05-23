@@ -228,7 +228,7 @@
                     (run-query! card1-id {:dashboard_id (:id dash)}))))
 
           (testing "but with overrides - will go through every card and mark cache invalidated"
-              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+            ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
             (is (=? {:count pos-int?}
                     (invalidate! 200 :include :overrides :database (mt/id))))
             (is (=? {:cached nil :data some?}

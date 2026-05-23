@@ -102,6 +102,8 @@
   []
   (let [days-ago -5
         ;; tracked UNION ALL untracked
+        ;; NB. currently appears that the second half never shows anything; all
+        ;; datasets currently appear to be tracked.
         query "(select name from metabase_test_tracking.PUBLIC.datasets
                 where accessed_at < dateadd(day, ?, current_timestamp()))
                UNION All
@@ -212,9 +214,9 @@
             (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
                                    dataset-name))
-           ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-           ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-           ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
             (catch Throwable e
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
@@ -283,7 +285,15 @@
   ;; intended -- Cam
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "[Snowflake] deleting old test data...")
-  (drop-old-datasets!)
+  ;; disabling this temporarily as it has caused very difficult-to-debug failures
+  ;; in CI. even tho the datasets *have* been accessed recently, they are still
+  ;; being deleted and reinserted, with race conditions that cause some data to be
+  ;; inserted three times. this does mean that if datasets change, old versions
+  ;; will not be cleaned up automatically and will need to be manually GCed.
+  ;; local testing shows that identifying old datasets works correctly, but
+  ;; sometimes randomly in CI it seems to decide that datasets are old and
+  ;; deletes them even tho they are not old.
+  ;; (drop-old-datasets!)
   (drop-orphan-isolation-schemas!)
   (drop-orphan-isolation-users!)
   (drop-orphan-isolation-roles!))
@@ -497,6 +507,7 @@
 
 (comment
   (old-dataset-names)
+  (drop-old-datasets!)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
   ;; Tracked databases ordered by age
   (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age

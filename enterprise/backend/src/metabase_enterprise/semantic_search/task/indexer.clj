@@ -42,8 +42,8 @@
                 (vreset! execution-thread-ref nil))))))))
   org.quartz.InterruptableJob
   (interrupt [_]
-   ;; locking required here to avoid racing with the unset in the finally
-   ;; and interrupting some other unintended task/work
+    ;; locking required here to avoid racing with the unset in the finally
+    ;; and interrupting some other unintended task/work
     (locking execution-thread-ref
       (when-some [^Thread execution-thread @execution-thread-ref]
         (.interrupt execution-thread)))))

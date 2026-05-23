@@ -427,7 +427,7 @@
   (let [{:keys [dispatch-fn]} (case (:payload_type notification)
                                 :notification/system-event
                                 @simple-blocking-dispatcher
-                                 ;; notification/card, notification/dashboard
+                                ;; notification/card, notification/dashboard
                                 @dedup-priority-dispatcher)]
     (dispatch-fn notification)))
 

@@ -61,7 +61,7 @@
   (testing "Custom options are merged with defaults"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
       (mt/with-dynamic-fn-redefs [http/get (fn [_url opts]
-                               ;; Verify custom opts are present alongside defaults
+                                             ;; Verify custom opts are present alongside defaults
                                              (is (= :json (:as opts)))
                                              (is (= :json (:accept opts)))
                                              (is (= 5000 (:conn-timeout opts)))

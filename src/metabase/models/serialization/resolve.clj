@@ -237,7 +237,7 @@
      (mbql-id->fully-qualified-name resolver &match)
 
      (_ :guard sequential?)
-     (mapv export-mbql &match)
+     (mapv (partial export-mbql resolver) &match)
 
      (_ :guard map?)
      (reduce-kv
