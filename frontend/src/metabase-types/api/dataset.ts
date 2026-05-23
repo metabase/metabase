@@ -149,7 +149,7 @@ export type DatasetError =
   | string
   | {
       status: number; // HTTP status code
-      data?: string;
+      data?: unknown;
     };
 
 export type DatasetErrorType =

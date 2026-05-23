@@ -23,7 +23,7 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
 import { AdminEmail } from "./components";
-import { adjustPositions, stripRemarks } from "./utils";
+import { adjustPositions, getDatasetErrorMessage, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
   className?: string;
@@ -46,36 +46,35 @@ export function VisualizationError({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
 
-  // Treat transport-level failures (server dropped connection, offline, etc.)
-  // the same as an HTTP error with a status — the user just needs to know the
-  // server isn't reachable, not see a stack trace.
-  if (
+  const errorMessage = getDatasetErrorMessage(error);
+  const isTransportError =
     error instanceof NetworkError ||
-    (typeof error === "object" && error.status != null)
-  ) {
-    // Assume if the request took more than 15 seconds it was due to a timeout
-    // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-    if (duration > VISUALIZATION_SLOW_TIMEOUT) {
-      return (
-        <ErrorMessage
-          className={className}
-          type="timeout"
-          title={t`Your question took too long`}
-          message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
-          action={<AdminEmail />}
-        />
-      );
-    } else {
-      return (
-        <ErrorMessage
-          className={className}
-          type="serverError"
-          title={t`We're experiencing server issues`}
-          message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
-          action={<AdminEmail />}
-        />
-      );
-    }
+    (typeof error === "object" && error.status != null);
+
+  // Assume if the request took more than 15 seconds it was due to a timeout
+  // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
+  if (isTransportError && duration > VISUALIZATION_SLOW_TIMEOUT) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="timeout"
+        title={t`Your question took too long`}
+        message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
+        action={<AdminEmail />}
+      />
+    );
+  }
+
+  if (isTransportError && !errorMessage) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="serverError"
+        title={t`We're experiencing server issues`}
+        message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
+        action={<AdminEmail />}
+      />
+    );
   }
 
   if (errorType === "missing-required-permissions") {
@@ -118,7 +117,7 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = typeof error === "string" ? error : error.data;
+    let processedError = errorMessage;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
     if (typeof origSql === "string" && processedError) {
       processedError = adjustPositions(processedError, origSql);
@@ -178,7 +177,7 @@ export function VisualizationError({
         <p
           className={QueryBuilderS.QueryErrorMessageText}
         >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-        <ErrorDetails className={CS.pt2} details={error} />
+        <ErrorDetails className={CS.pt2} details={errorMessage} />
       </div>
     </div>
   );
