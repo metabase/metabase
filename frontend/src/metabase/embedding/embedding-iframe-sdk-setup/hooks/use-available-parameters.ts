@@ -4,7 +4,8 @@ import { useLatest, usePrevious } from "react-use";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { useDispatch, useSelector } from "metabase/redux";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
@@ -66,7 +67,11 @@ export const useAvailableParameters = ({
     if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
-      dispatch(addFields(Object.values(resource.param_fields).flat()));
+      dispatch(
+        updateMetadata(Object.values(resource.param_fields).flat(), [
+          FieldSchema,
+        ]),
+      );
     }
   }, [resource, dispatch]);
 

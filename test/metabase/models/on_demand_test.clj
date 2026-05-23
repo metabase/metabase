@@ -15,8 +15,8 @@
   of Fields that should have been updated. Returns the set of updated Field names."
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                     (swap! updated-field-names conj (:name field)))]
+    (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values! (fn [field]
+                                                                                   (swap! updated-field-names conj (:name field)))]
       (f updated-field-names)
       @updated-field-names)))
 

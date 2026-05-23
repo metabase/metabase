@@ -10,6 +10,7 @@ import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
@@ -19,6 +20,7 @@ import {
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
+import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
 import { MetabotSetup } from "./MetabotSetup";
@@ -53,9 +55,6 @@ export function AISettingsPage() {
 
   const selectedMetabotId = getSelectedMetabotId(
     query?.[METABOT_ID_QUERY_PARAM],
-    {
-      hasEmbedding,
-    },
   );
 
   const handleAiFeaturesEnabledChange = async (checked: boolean) => {
@@ -159,42 +158,46 @@ function MetabotSettingsSection({
   selectedMetabotId: MetabotTabId;
 }) {
   const { data, isLoading, error } = useListMetabotsQuery();
-  const activeMetabot = data?.items.find((m) => m.id === selectedMetabotId);
-  const showTabs = hasEmbedding;
+  const shouldShowUpsell =
+    !hasEmbedding && selectedMetabotId === FIXED_METABOT_IDS.EMBEDDED;
+  const activeMetabot = !shouldShowUpsell
+    ? data?.items.find((m) => m.id === selectedMetabotId)
+    : null;
 
   return (
     <SettingsSection id={id} title={t`Metabot settings`}>
-      {showTabs && (
-        <Tabs value={String(selectedMetabotId)}>
-          <Tabs.List>
-            <Tabs.Tab
-              renderRoot={(props) => (
-                <Link
-                  {...props}
-                  to={getMetabotTabPath(FIXED_METABOT_IDS.DEFAULT)}
-                />
-              )}
-              value={String(FIXED_METABOT_IDS.DEFAULT)}
-            >
-              {t`Internal`}
-            </Tabs.Tab>
-            <Tabs.Tab
-              renderRoot={(props) => (
-                <Link
-                  {...props}
-                  to={getMetabotTabPath(FIXED_METABOT_IDS.EMBEDDED)}
-                />
-              )}
-              value={String(FIXED_METABOT_IDS.EMBEDDED)}
-            >
-              {t`Embedded`}
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-      )}
+      <Tabs value={String(selectedMetabotId)}>
+        <Tabs.List>
+          <Tabs.Tab
+            renderRoot={(props) => (
+              <Link
+                {...props}
+                to={getMetabotTabPath(FIXED_METABOT_IDS.DEFAULT)}
+              />
+            )}
+            value={String(FIXED_METABOT_IDS.DEFAULT)}
+          >
+            {t`Internal`}
+          </Tabs.Tab>
+          <Tabs.Tab
+            renderRoot={(props) => (
+              <Link
+                {...props}
+                to={getMetabotTabPath(FIXED_METABOT_IDS.EMBEDDED)}
+              />
+            )}
+            value={String(FIXED_METABOT_IDS.EMBEDDED)}
+            rightSection={!hasEmbedding && <UpsellGem.New size={14} />}
+          >
+            {t`Embedded`}
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
       {activeMetabot ? (
         <MetabotSettingsPanel metabot={activeMetabot} />
+      ) : shouldShowUpsell ? (
+        <EmbeddedMetabotUpsell />
       ) : (
         <LoadingAndErrorWrapper
           loading={isLoading}
@@ -262,15 +265,8 @@ function DisabledSection({
   );
 }
 
-function getSelectedMetabotId(
-  metabotId: string | undefined,
-  {
-    hasEmbedding,
-  }: {
-    hasEmbedding: boolean;
-  },
-): MetabotTabId {
-  if (metabotId === String(FIXED_METABOT_IDS.EMBEDDED) && hasEmbedding) {
+function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
+  if (metabotId === String(FIXED_METABOT_IDS.EMBEDDED)) {
     return FIXED_METABOT_IDS.EMBEDDED;
   }
 

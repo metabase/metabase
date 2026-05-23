@@ -99,9 +99,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: () => true,
   }),
   "graph.dimensions": {
-    get section() {
-      return t`Data`;
-    },
+    getSection: () => t`Data`,
     get title() {
       return t`X-axis`;
     },
@@ -159,9 +157,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.series_order"],
   },
   "graph.series_order": {
-    get section() {
-      return t`Data`;
-    },
+    getSection: () => t`Data`,
     widget: ChartSettingSeriesOrder,
     useRawSeries: true,
     getWrapperStyle: () => ({
@@ -210,9 +206,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
-    get section() {
-      return t`Data`;
-    },
+    getSection: () => t`Data`,
     get title() {
       return t`Y-axis`;
     },
@@ -265,9 +259,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
 
 export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions = {
   "scatter.bubble": {
-    get section() {
-      return t`Data`;
-    },
+    getSection: () => t`Data`,
     get title() {
       return t`Bubble size`;
     },
@@ -317,9 +309,7 @@ export const LINE_SETTINGS: VisualizationSettingsDefinitions = {
 
 export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stacking`;
     },
@@ -384,9 +374,7 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
 
 export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.split_panels": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stack series`;
     },
@@ -430,9 +418,7 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: () => true,
   },
   "graph.tooltip_columns": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Additional tooltip columns`;
     },
@@ -459,9 +445,7 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
 
 export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_trendline": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Trend line`;
     },
@@ -482,9 +466,7 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
 
 export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_values": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show values on data points`;
     },
@@ -497,9 +479,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.label_value_frequency": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Values to show`;
     },
@@ -535,9 +515,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_values"],
   },
   "graph.show_stack_values": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stack values to show`;
     },
@@ -584,9 +562,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
   "graph.label_value_formatting": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Auto formatting`;
     },
@@ -716,9 +692,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     ]) => cols[0] && getDefaultIsHistogram(cols[0]),
   },
   "graph.x_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -741,9 +715,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.y_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Scale`;
     },
@@ -762,9 +734,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.x_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -810,9 +780,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show lines and tick marks`;
     },
@@ -840,9 +808,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.unpin_from_zero": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -866,9 +832,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["series", "graph.y_axis.auto_range"],
   },
   "graph.y_axis.auto_range": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -881,9 +845,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: getYAxisAutoRangeDefault,
   },
   "graph.y_axis.min": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -897,9 +859,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.max": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -913,9 +873,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.auto_split": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -931,9 +889,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.split_panels"],
   },
   "graph.x_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -946,9 +902,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: getIsXAxisLabelEnabledDefault,
   },
   "graph.x_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -965,9 +919,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.y_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show label`;
     },
@@ -980,9 +932,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: getIsYAxisLabelEnabledDefault,
   },
   "graph.y_axis.split_number": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -996,9 +946,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     },
   },
   "graph.y_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -1030,9 +978,7 @@ const BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING: SeriesSettingDefinition<
   "fit" | "all",
   ChartSettingEnumToggleProps<"fit" | "all">
 > = {
-  get section() {
-    return t`Display`;
-  },
+  getSection: () => t`Display`,
   get title() {
     return t`Hide overlapping labels`;
   },
@@ -1049,9 +995,7 @@ const BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING: SeriesSettingDefinition<
 
 export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   "boxplot.whisker_type": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Whiskers extend to`;
     },
@@ -1065,9 +1009,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "boxplot.points_mode": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show points`;
     },
@@ -1096,9 +1038,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["boxplot.whisker_type"],
   },
   "boxplot.show_mean": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show mean`;
     },
@@ -1107,9 +1047,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
   },
   "graph.show_values": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show values on data points`;
     },
@@ -1121,9 +1059,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "boxplot.show_values_mode": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Values to display`;
     },
@@ -1163,9 +1099,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
       ChartSettingSegmentedControlProps
     >,
   "graph.label_value_formatting": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Auto formatting`;
     },

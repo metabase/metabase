@@ -82,7 +82,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -90,7 +90,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: canonical_version
       with:
         script: | # js
@@ -121,7 +121,7 @@ jobs:
           return versions;
 
     - name: Get Edition matrix
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: edition_matrix
       with:
         script: | # js
@@ -156,7 +156,7 @@ jobs:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - name: Determine the source path
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: source_path
       with:
         result-encoding: string
@@ -173,7 +173,7 @@ jobs:
           return source_path;
 
     - name: Determine upload path
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: upload_path
       with:
         result-encoding: string
@@ -270,7 +270,7 @@ jobs:
       matrix:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         fetch-depth: 0 # we want all branches and tags
@@ -308,7 +308,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -316,7 +316,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Update latest in version-info.json
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: | # js
           const { updateVersionInfoLatest } = require('${{ github.workspace }}/release/dist/index.cjs');

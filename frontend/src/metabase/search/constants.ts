@@ -22,6 +22,7 @@ export const enabledSearchTypes: EnabledSearchModel[] = [
   "table",
   "action",
   "indexed-entity",
+  "document",
 ];
 
 export const SearchContextTypes = {

@@ -61,6 +61,66 @@ describe("canCoerceFieldType", () => {
       canCoerceFieldType(createMockField({ base_type: "type/Boolean" })),
     ).toBe(false);
   });
+
+  // GHY-3388: surface the cast UI when the field is in a state the user needs
+  // to fix from the UI — even when no forward coercions exist for base_type.
+  it("should return true when coercion_strategy is set, even if base_type is not coerceable", () => {
+    expect(
+      canCoerceFieldType(
+        createMockField({
+          base_type: "type/Number",
+          effective_type: "type/Number",
+          coercion_strategy: "Coercion/String->Number",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("should return true when effective_type drifted from base_type without a coercion (the GHY-3388 broken state)", () => {
+    expect(
+      canCoerceFieldType(
+        createMockField({
+          base_type: "type/Number",
+          effective_type: "type/Text",
+          coercion_strategy: null,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("should return true for an FK field that has a stale coercion (so the user can clear it)", () => {
+    const field = createOrdersProductIdField();
+    expect(
+      canCoerceFieldType({
+        ...field,
+        coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      }),
+    ).toBe(true);
+  });
+
+  it("should return false when effective_type is missing (separate concern, GHY-3367)", () => {
+    expect(
+      canCoerceFieldType(
+        createMockField({
+          base_type: "type/Number",
+          effective_type: undefined,
+          coercion_strategy: null,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("should return false when effective_type matches base_type and no coercion", () => {
+    expect(
+      canCoerceFieldType(
+        createMockField({
+          base_type: "type/Boolean",
+          effective_type: "type/Boolean",
+          coercion_strategy: null,
+        }),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("getRawTableFieldId", () => {

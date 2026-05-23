@@ -9,7 +9,9 @@
 .editorWrapper {
   overflow: auto;
   width: 100%;
-  flex: 1 0 auto;
+  /* flex-shrink must be 1 so the wrapper fits when the topbar leaves less
+     space than the wrapper's content would claim. */
+  flex: 1 1 auto;
   max-height: 100%;
 }
 

@@ -9,8 +9,8 @@ import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
+import { ROOT_COLLECTION as ROOT } from "metabase/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import type { Collection, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,

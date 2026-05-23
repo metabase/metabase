@@ -1,4 +1,7 @@
-import { matchUrlPattern } from "./override-requests-for-embeds";
+import {
+  matchUrlPattern,
+  overrideRequests,
+} from "./override-requests-for-embeds";
 
 describe("matchUrlPattern", () => {
   it("should match URL with single parameter", () => {
@@ -89,5 +92,50 @@ describe("matchUrlPattern", () => {
         "/api/dashboard/789/params/456/remapping",
       ),
     ).toBe(true);
+  });
+});
+
+describe("overrideRequests", () => {
+  const defaultOptions = { hasBody: false };
+
+  it.each(["guest", "static", "public"] as const)(
+    "leaves /api/frontend-errors untouched in %s embed mode",
+    async (embedType) => {
+      const result = await overrideRequests({
+        embedType,
+        method: "POST",
+        url: "/api/frontend-errors",
+        options: { ...defaultOptions, hasBody: true },
+        data: { type: "component-crash" },
+      });
+
+      expect(result.url).toBe("/api/frontend-errors");
+      expect(result.method).toBe("POST");
+    },
+  );
+
+  it("still applies the default /api → /api/embed rewrite to passthrough endpoints", async () => {
+    const result = await overrideRequests({
+      embedType: "guest",
+      method: "GET",
+      url: "/api/card/THE_JWT_TOKEN",
+      options: defaultOptions,
+      data: {},
+    });
+
+    expect(result.url).toBe("/api/embed/card/THE_JWT_TOKEN");
+  });
+
+  it("still applies explicit transformations (card query → embed card query)", async () => {
+    const result = await overrideRequests({
+      embedType: "guest",
+      method: "POST",
+      url: "/api/card/123/query",
+      options: { ...defaultOptions, hasBody: true },
+      data: {},
+    });
+
+    expect(result.url).toBe("/api/embed/card/:token/query");
+    expect(result.method).toBe("GET");
   });
 });

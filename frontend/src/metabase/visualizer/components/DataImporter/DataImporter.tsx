@@ -21,7 +21,7 @@ import {
   initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerDataSource } from "metabase-types/api";
+import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
 
 import {
   trackVisualizerAddMoreDataClicked,
@@ -32,7 +32,13 @@ import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
 import { DatasetsList } from "./DatasetsList/DatasetsList";
 
-export const DataImporter = ({ className }: { className?: string }) => {
+export const DataImporter = ({
+  className,
+  dashboardId,
+}: {
+  className?: string;
+  dashboardId: DashboardId | undefined;
+}) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
   const dispatch = useDispatch();
@@ -121,6 +127,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           search={debouncedSearch}
           setDataSourceCollapsed={setDataSourceCollapsed}
           muted={!showDatasets}
+          dashboardId={dashboardId}
         />
       </Flex>
       <Flex

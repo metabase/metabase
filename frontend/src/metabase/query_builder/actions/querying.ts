@@ -161,6 +161,7 @@ export const runQuestionQuery = ({
     const cancelQueryDeferred = defer();
 
     apiRunQuestionQuery(question, {
+      dispatch,
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,

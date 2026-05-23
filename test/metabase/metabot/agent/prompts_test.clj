@@ -22,6 +22,13 @@
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
       (is (nil? template)))))
 
+(deftest construct-notebook-query-prompt-database-name-examples-test
+  (let [prompt (prompts/load-tool-prompt-template "construct_notebook_query.md")]
+    (is (some? prompt))
+    (testing "examples use the exact sample database name, not the old abbreviated portable FK"
+      (is (str/includes? prompt "Sample Database"))
+      (is (not (re-find #"\[Sample\s*," prompt))))))
+
 (deftest load-dialect-instructions-test
   (testing "loads postgresql dialect"
     (let [instructions (prompts/load-dialect-instructions "postgresql")]

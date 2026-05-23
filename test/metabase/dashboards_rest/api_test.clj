@@ -1898,7 +1898,7 @@
                                                        :size_y           4
                                                        :col              1
                                                        :row              1
-                                                      ;; initialy was in tab1, now in tab 2
+                                                       ;; initialy was in tab1, now in tab 2
                                                        :dashboard_tab_id dashtab-id-2
                                                        :card_id          card-id-1}
                                                       {:id               dashcard-id-2
@@ -2957,7 +2957,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2965,7 +2965,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
@@ -3027,7 +3027,7 @@
               ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
               ;; but 200 on calls that we could just use the cache.
               ;; It's not ideal and we definitely need to have a consistent behavior
-              (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+              (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
                 (is (= {:values          [["African"] ["American"] ["Artisan"]]
                         :has_more_values false}
                        (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -3491,7 +3491,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (mt/with-dynamic-fn-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3559,11 +3559,11 @@
   ;; This test should either (1) be rehabilitated to use Lib to get the set of columns for filtering a dashcard (like
   ;; the FE); or (2) just be dropped if it's not providing value.
   #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
-    ;; FE use the id returned by /api/table/:card__id/query_metadata
-    ;; for the `values_source_config.value_field`, so we need to test to make sure
-    ;; the id is a valid field that we could use to retrieve values.
+      ;; FE use the id returned by /api/table/:card__id/query_metadata
+      ;; for the `values_source_config.value_field`, so we need to test to make sure
+      ;; the id is a valid field that we could use to retrieve values.
       (mt/with-temp
-      ;; card with agggregation and binning columns
+        ;; card with agggregation and binning columns
         [Card {mbql-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                          (mt/mbql-query venues
                                            {:limit 5
@@ -3659,7 +3659,7 @@
                   (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
                                                                 (:id dashboard)
                                                                 "_text_"
-                                                              ;; a0 is part of first 2 rows of queried table
+                                                                ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
 
 (deftest field-filter-uuid-operator-dashboard-test
@@ -4975,7 +4975,7 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+  (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
                          {:tables     [{} {}]
@@ -4999,10 +4999,10 @@
           (reset! uncached-calls (call-count-fn))))
       (testing "cached requests"
         (let [provider-counts (atom {})]
-          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
-                        (fn [database-id]
-                          (swap! provider-counts update database-id (fnil inc 0))
-                          (original-admp database-id))]
+          (mt/with-dynamic-fn-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+                                      (fn [database-id]
+                                        (swap! provider-counts update database-id (fnil inc 0))
+                                        (original-admp database-id))]
             (t2/with-call-count [call-count-fn]
               (let [load-id (str (random-uuid))]
                 (is (=? expected

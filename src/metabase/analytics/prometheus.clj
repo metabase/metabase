@@ -272,7 +272,7 @@
 
    (prometheus/histogram :metabase-remote-sync/export-duration-ms
                          {:description "Duration in milliseconds that remote-sync exports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/exports
                        {:description "Number of remote-sync export calls"})
@@ -280,7 +280,7 @@
                        {:description "Number of failed remote-sync export calls"})
    (prometheus/histogram :metabase-remote-sync/import-duration-ms
                          {:description "Duration in milliseconds that remote-sync imports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/imports
                        {:description "Number of remote-sync import calls"})
@@ -311,13 +311,13 @@
                        {:description "Total number of ms updating the index"})
    (prometheus/histogram :metabase-search/index-update-duration-ms
                          {:description "Duration in milliseconds that index update jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-search/index-reindex-ms
                        {:description "Total number of ms reindexing the index"})
    (prometheus/histogram :metabase-search/index-reindex-duration-ms
                          {:description "Duration in milliseconds that index reindex jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Number of rows in the active appdb index table."})
@@ -416,7 +416,7 @@
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
 
-;; notification metrics
+   ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})
@@ -549,12 +549,12 @@
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
-   ;; Write-connection telemetry
+   ;; Connection-type telemetry (default / write-data / admin)
    (prometheus/counter :metabase-db-connection/write-op
-                       {:description "JDBC connection pool acquisitions by connection type (default or write-data)."
+                       {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
@@ -684,7 +684,18 @@
                         :labels [:experiment]})
    (prometheus/counter :experiment/candidate-error-duration-ms
                        {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
-                        :labels [:experiment]})])
+                        :labels [:experiment]})
+   ;; security center metrics
+   (prometheus/gauge :metabase-security-center/last-sync-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
+   (prometheus/gauge :metabase-security-center/vulnerable-advisories
+                     {:description "Number of advisories where this Metabase instance is potentially affected."
+                      :labels [:severity :acknowledged]})
+
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})])
 
 (defn- quartz-collectors
   []

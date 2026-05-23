@@ -306,7 +306,7 @@
                              (string? value)                 (str value "_changed")))]
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
-           ;; do the update
+            ;; do the update
             (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
             (create-dashboard-revision! (:id dashboard) false)
 
@@ -332,7 +332,7 @@
                              (string? value) (str value "_changed")))]
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
-           ;; do the update
+            ;; do the update
             (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
             (create-dashboard-revision! (:id dashboard) false)
 
@@ -472,7 +472,7 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
-;; 1. add 2 tabs
+      ;; 1. add 2 tabs
       (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
                                                                                 :position     0
                                                                                 :dashboard_id dashboard-id}
@@ -503,7 +503,7 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
-;; 1. add 2 tabs
+      ;; 1. add 2 tabs
       (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
                                                                                 :position     0
                                                                                 :dashboard_id dashboard-id}
@@ -528,10 +528,10 @@
 
   (testing "revert deleting tabs"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
-     ;; 0. create a dashboard
+      ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
-;; 1. add 2 tabs
+      ;; 1. add 2 tabs
       (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
                                                                                 :position     0
                                                                                 :dashboard_id dashboard-id}
@@ -540,15 +540,15 @@
                                                                                 :dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
 
-       ;; 2. delete the 1st tab and re-position the second tab
+        ;; 2. delete the 1st tab and re-position the second tab
         (t2/delete! :model/DashboardTab tab-1-id)
         (t2/update! :model/DashboardTab tab-2-id {:position 0})
         (create-dashboard-revision! dashboard-id false)
 
-       ;; check to make sure we have everything setup before testing
+        ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
-       ;; revert
+        ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
@@ -624,7 +624,7 @@
                                           :size_y           4}))
       (create-dashboard-revision! dashboard-id false)
 
-     ;; revert
+      ;; revert
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (testing "tab 1 should have 2 cards"
         (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))

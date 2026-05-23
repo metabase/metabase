@@ -233,10 +233,10 @@
 
 (deftest parameters-should-include-legacy-template-tags
   (testing "parameters should get from both template-tags and card.parameters"
-     ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-     ;; because doing such migration is costly.
-     ;; so there are cards where some parameters in template-tags does not exist in card.parameters
-     ;; that why we need to keep concat both of them then dedupe by id
+    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+    ;; because doing such migration is costly.
+    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+    ;; that why we need to keep concat both of them then dedupe by id
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-card [card (public-test/card-with-embedded-params)]
         (is (= [;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
@@ -247,13 +247,13 @@
                  :target ["variable" ["template-tag" "c"]],
                  :name "c",
                  :slug "c",
-                                    ;; order importance: the default from template-tag is in the final result
+                 ;; order importance: the default from template-tag is in the final result
                  :default "C TAG"
                  :required false
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
-                                    ;; the parameter id = "d" is in template-tags, but not card.parameters,
-                                    ;; when fetching card we should get it returned
+                ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                ;; when fetching card we should get it returned
                 {:id "d",
                  :type "date/single",
                  :target ["variable" ["template-tag" "d"]],
@@ -390,7 +390,7 @@
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
                 "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
                 "saved from one that had it -- see #9831 and #10399)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-card [card {:enable_embedding true
                                :dataset_query    (assoc (mt/mbql-query venues)
@@ -779,7 +779,7 @@
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "
                 "query constraints (#10399)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (assoc (mt/mbql-query venues)
@@ -829,7 +829,7 @@
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
   (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
                                        :card     {:dataset_query (assoc (mt/mbql-query venues)

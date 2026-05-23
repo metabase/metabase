@@ -18,7 +18,7 @@
   defenterprise-schema]
 
  [metabase.premium-features.token-check
-   ;; TODO: move airgap code to a dedicated namespace?
+  ;; TODO: move airgap code to a dedicated namespace?
   assert-valid-airgap-user-count!
   assert-airgap-allows-user-creation!
   assert-has-feature
@@ -87,6 +87,7 @@
   enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

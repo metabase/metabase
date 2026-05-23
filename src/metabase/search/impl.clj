@@ -129,9 +129,9 @@
                                         {:location (:collection_location result)})
                                       :effective_ancestors)
                                      :effective_ancestors
-                                      ;; two pieces for backwards compatibility:
-                                      ;; - remove the root collection
-                                      ;; - remove the `personal_owner_id`
+                                     ;; two pieces for backwards compatibility:
+                                     ;; - remove the root collection
+                                     ;; - remove the `personal_owner_id`
                                      (remove collection.root/is-root-collection?)
                                      (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))

@@ -8,14 +8,16 @@ import CS from "metabase/css/core/index.css";
 import type {
   EmbedResourceParameter,
   EmbedResourceType,
-  EmbeddingParameterVisibility,
-  EmbeddingParameters,
   EmbeddingParametersValues,
 } from "metabase/embedding/types";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+} from "metabase-types/api";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 import type { EmbedResourceParameterWithValue } from "./types";
@@ -80,6 +82,7 @@ export const ParametersSettings = ({
     <>
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Configuring parameters`}
+        data-testid="parameters-container"
       >
         <Stack gap="1rem">
           <Text>{t`Parameters are disabled by default, which also makes them hidden from end-users. Make them editable so that end-users can see and modify them. Make them locked so that they are hidden from end-users but you can set their values from your app.`}</Text>

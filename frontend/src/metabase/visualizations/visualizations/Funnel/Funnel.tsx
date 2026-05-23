@@ -86,8 +86,7 @@ const FunnelViz: VisualizationDefinition = {
   settings: {
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("funnel.dimension", {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Column with steps`,
       dashboard: false,
@@ -103,8 +102,7 @@ const FunnelViz: VisualizationDefinition = {
       readDependencies: ["funnel.rows"],
     },
     "funnel.rows": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
         rawSeries: RawSeries,
@@ -160,8 +158,7 @@ const FunnelViz: VisualizationDefinition = {
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Data`,
+      getSection: () => t`Data`,
 
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Measure`,
@@ -174,8 +171,7 @@ const FunnelViz: VisualizationDefinition = {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Funnel type`,
 
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
-      section: t`Display`,
+      getSection: () => t`Display`,
 
       widget: "select",
       getProps: () => ({

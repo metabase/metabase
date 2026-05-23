@@ -23,6 +23,7 @@
                                             $strcasecmp $subtract $sum
                                             $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -811,9 +812,9 @@ function(bin) {
 (defmethod datetime-diff :month
   [x y _unit]
   {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
-           ;; dateDiff counts month boundaries not whole months, so we need to adjust
-           ;; if x<y but x>y in the month calendar then subtract one month
-           ;; if x>y but x<y in the month calendar then add one month
+         ;; dateDiff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
          {:$switch {:branches [{:case {:$and [{$lt [x y]}
                                               {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
                                 :then -1}
@@ -950,7 +951,10 @@ function(bin) {
   driver-api/dispatch-by-clause-name-or-class)
 
 (defmethod negate :default [clause]
-  (driver-api/negate-filter-clause clause))
+  (-> clause
+      lib/->mbql5
+      lib/negate-boolean-expression
+      lib/->legacy-MBQL))
 
 (defmethod negate :and [[_ & subclauses]] (apply vector :or  (map negate subclauses)))
 (defmethod negate :or  [[_ & subclauses]] (apply vector :and (map negate subclauses)))

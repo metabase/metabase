@@ -12,6 +12,7 @@ import {
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
+  setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
@@ -155,7 +156,20 @@ export const setup = async ({
     key: "upsell-dev_instances",
     value: true,
   });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: true,
+  });
 
+  setupNotificationChannelsEndpoints({
+    email: { configured: false } as any,
+    slack: { configured: false } as any,
+  });
+  fetchMock.get("path:/api/ee/security-center", {
+    last_checked_at: null,
+    advisories: [],
+  });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
   fetchMock.get("path:/api/ee/remote-sync/dirty", {

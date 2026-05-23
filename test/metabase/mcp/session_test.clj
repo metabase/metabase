@@ -104,28 +104,45 @@
       (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
       (is (some? (parse-uuid h2)))
       (is (not= h1 h2) "successive calls must produce distinct handles")
-      (is (= "first"  (mcp.session/read-handle session-id h1)))
-      (is (= "second" (mcp.session/read-handle session-id h2)))
-      (is (nil? (mcp.session/read-handle session-id (str (random-uuid))))
+      (is (= "first"  (mcp.session/read-handle session-id user-id h1)))
+      (is (= "second" (mcp.session/read-handle session-id user-id h2)))
+      (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))
           "read-handle returns nil for unknown handles"))))
 
-(deftest read-handle-is-scoped-to-session-test
-  (testing "read-handle does not resolve handles from another MCP session"
-    (let [user-id         (mt/user->id :crowberto)
-          owner-session   (mcp.session/create! user-id)
-          other-session   (mcp.session/create! user-id)
-          handle          (mcp.session/store-handle! owner-session user-id "payload")]
-      (is (= "payload" (mcp.session/read-handle owner-session handle)))
-      (is (nil? (mcp.session/read-handle other-session handle))))))
+(deftest read-handle-falls-back-across-the-users-sessions-test
+  (testing "read-handle resolves a handle stored in one session when called from another session of the same user"
+    (let [user-id        (mt/user->id :crowberto)
+          owner-session  (mcp.session/create! user-id)
+          rotated-session (mcp.session/create! user-id)
+          handle         (mcp.session/store-handle! owner-session user-id "payload")]
+      (testing "same session → resolves"
+        (is (= "payload" (mcp.session/read-handle owner-session user-id handle))))
+      (testing "different session, same user → still resolves (cross-session fallback)"
+        (is (= "payload" (mcp.session/read-handle rotated-session user-id handle))))))
+
+  (testing "read-handle refuses to resolve handles owned by a different user"
+    (let [owner-id    (mt/user->id :crowberto)
+          attacker-id (mt/user->id :rasta)
+          session-id  (mcp.session/create! owner-id)
+          handle      (mcp.session/store-handle! session-id owner-id "payload")]
+      (is (nil? (mcp.session/read-handle session-id attacker-id handle))))))
+
+(deftest resolve-query-handle-returns-encoded-query-and-prompt-test
+  (testing "resolve-query-handle returns the stored query and prompt"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "encoded" "what was my question")]
+      (is (= {:encoded_query "encoded" :prompt "what was my question"}
+             (mcp.session/resolve-query-handle session-id user-id handle))))))
 
 (deftest store-handle-cascades-with-core-session-test
   (testing "deleting the backing core_session cascades to its handles"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           handle     (mcp.session/store-handle! session-id user-id "payload")]
-      (is (= "payload" (mcp.session/read-handle session-id handle)))
+      (is (= "payload" (mcp.session/read-handle session-id user-id handle)))
       (t2/delete! :core_session :key_hashed (derived-hash session-id))
-      (is (nil? (mcp.session/read-handle session-id handle))
+      (is (nil? (mcp.session/read-handle session-id user-id handle))
           "cascade should reap the handle when the core_session row goes"))))
 
 (deftest delete-removes-handles-test
@@ -134,7 +151,7 @@
           session-id (mcp.session/create! user-id)
           handle     (mcp.session/store-handle! session-id user-id "payload")
           _          (mcp.session/delete! session-id user-id)]
-      (is (nil? (mcp.session/read-handle session-id handle))))))
+      (is (nil? (mcp.session/read-handle session-id user-id handle))))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"

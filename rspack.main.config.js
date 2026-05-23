@@ -4,7 +4,7 @@
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
-const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
+const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 const {
@@ -337,6 +337,9 @@ if (shouldEnableHotRefresh) {
   config.output.publicPath =
     `http://localhost:${PORT}/` + config.output.publicPath;
 
+  // Disable lazy compilation explicitly to match behavior of rspack 1.x
+  config.lazyCompilation = false;
+
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
@@ -371,9 +374,7 @@ if (shouldEnableHotRefresh) {
   };
 
   config.plugins.unshift(
-    new ReactRefreshPlugin({
-      overlay: false,
-
+    new ReactRefreshRspackPlugin({
       // app-embed-mcp runs in an isolated iframe with CSP restrictions.
       // Excluding it avoids injecting the React Refresh runtime which uses eval.
       exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],

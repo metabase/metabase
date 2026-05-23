@@ -178,7 +178,7 @@
    [:dimension     [:ref ::test-field-filter-spec]]
    [:snippet       [:ref ::test-snippet-spec]]
    [:card          [:ref ::test-source-query-spec]]
-    ;; :number, :text, :date, :boolean
+   ;; :number, :text, :date, :boolean
    [::mc/default   [:ref ::test-raw-value-spec]]])
 
 (mr/def ::test-template-tags-spec

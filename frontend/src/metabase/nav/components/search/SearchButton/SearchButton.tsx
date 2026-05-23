@@ -1,15 +1,24 @@
 import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import S from "metabase/nav/components/search/SearchButton/SearchButton.module.css";
+import type { SearchAwareLocation } from "metabase/search/types";
+import { getSearchTextFromLocation } from "metabase/search/utils";
 import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
-export const SearchButton = (props: ButtonProps) => {
+import S from "./SearchButton.module.css";
+
+type SearchButtonProps = ButtonProps & {
+  location: SearchAwareLocation;
+};
+
+const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
   const kbar = useKBar();
   const { setVisualState } = kbar.query;
+  const searchText = getSearchTextFromLocation(location);
 
   const handleClick = useCallback(() => {
     setVisualState(VisualState.showing);
@@ -34,7 +43,7 @@ export const SearchButton = (props: ButtonProps) => {
     <Button
       h="36px"
       w="240px"
-      c="text-tertiary"
+      c={searchText ? "text-primary" : "text-tertiary"}
       leftSection={<Icon name="search" c="text-primary" />}
       onClick={handleClick}
       styles={{
@@ -51,7 +60,7 @@ export const SearchButton = (props: ButtonProps) => {
       aria-label="Search"
       {...props}
     >
-      <span>{t`Search...`}</span>
+      <span>{searchText || t`Search...`}</span>
       <Flex gap="xs">
         <span className={S.shortcutText}>{METAKEY}</span>
         <span className={S.shortcutText}>{t`K`}</span>
@@ -59,3 +68,5 @@ export const SearchButton = (props: ButtonProps) => {
     </Button>
   );
 };
+
+export const SearchButton = withRouter(SearchButtonView);

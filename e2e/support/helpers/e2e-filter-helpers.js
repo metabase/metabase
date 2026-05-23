@@ -10,7 +10,7 @@ export function setSearchBoxFilterType() {
   cy.findByText("Search box").click();
 }
 
-export function setFilterQuestionSource({ question, field }) {
+export function setFilterQuestionSource({ question, field, labelField }) {
   cy.findByText("Edit").click();
 
   modal().within(() => {
@@ -27,6 +27,18 @@ export function setFilterQuestionSource({ question, field }) {
   popover().within(() => {
     cy.findByText(field).click();
   });
+
+  if (labelField) {
+    cy.log("the label selector defaults to None until a column is chosen");
+    modal().within(() => {
+      cy.findByText("Column to supply the labels").should("be.visible");
+      cy.findByText("None").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(labelField).click();
+    });
+  }
 
   modal().within(() => {
     cy.button("Done").click();

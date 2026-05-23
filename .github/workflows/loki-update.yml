@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ github.head_ref }}
@@ -55,7 +55,7 @@ jobs:
           message: No visual differences were found. All Loki snapshots are up to date.
 
       - name: Remove 'loki-update' label
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{secrets.METABASE_AUTOMATION_USER_TOKEN}}
           script: |

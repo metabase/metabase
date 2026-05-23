@@ -4,6 +4,54 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.62.0
+
+- `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and
+  `date-string->filter`, introduced in 0.61.0, have been removed; they are no longer necessary. They have been
+  replaced by a single method, `sql.params.substitution/->honeysql`, which compiles an MBQL 5 clause to HoneySQL with
+  the given options.
+
+- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
+  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
+  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
+  `metabase.lib.core/parsed-parameter?`.
+
+- The `metabase.driver.common.parameters.dates` and `metabase.driver.common.parameters.operators` namespaces,
+  deprecated in 0.57.0, have been removed. Use the equivalent QP namespaces instead:
+  `metabase.query-processor.parameters.dates` and `metabase.query-processor.parameters.operators`, respectively. These
+  namespaces return MBQL 5 clauses rather than MBQL 4; use `metabase.lib.core/->legacy-MBQL` if needed until your
+  driver has been fully updated to MBQL 5.
+
+- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
+  removed.
+
+- `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
+  `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
+  `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
+- Added `metabase.driver.sql/table-qualification-style` multimethod. Returns one of
+  `:table-qualification-style/{table,schema-table,db-table,db-schema-table}` describing the per-driver
+  SQL identifier shape. Used by workspace table remapping
+  (`metabase-enterprise.workspaces.core/engine-namespace-positions`) to decide tuple shape when
+  storing `:model/TableRemapping` rows and matching AST positions during query rewriting. Defaults
+  to `:table-qualification-style/schema-table` -- the common case, so Postgres/Redshift/H2/ClickHouse
+  need no override. Drivers that emit `db.table` (MySQL) override to
+  `:table-qualification-style/db-table`; drivers that emit `db.schema.table` (SQL Server, BigQuery)
+  override to `:table-qualification-style/db-schema-table`. Drivers that emit a bare `table` use
+  `:table-qualification-style/table`.
+
+- Added `metabase.driver.sql/db-slot-value` multimethod. Returns the `:db` AST slot string (catalog,
+  project id, etc.) for a `Database` row. Required for `:table-qualification-style/db-table` and
+  `:table-qualification-style/db-schema-table` drivers; the default returns `nil`. Overridden by
+  MySQL and SQL Server (`(:db (:details db))`) and BigQuery (`(:project-id (:details db))`).
+
+- Added `metabase.driver/qualified-name-components` multimethod. Returns the ordered subset of
+  `#{:db :schema}` identifier positions a driver populates when referencing a table in compiled
+  SQL. Defaults to `[:schema]`. Drivers that emit bare table names (Mongo) override to `[]`;
+  MySQL overrides to `[:db]` (its "database" rides on the connection but participates as the
+  `:db` AST slot for cross-DB consumers); drivers that emit a 3-part `catalog.schema.table`
+  identifier (SQL Server, BigQuery) override to `[:db :schema]`.
+
 ## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
@@ -88,6 +136,9 @@ title: Driver interface changelog
   `:bigquery-cloud-sdk` driver for example.
 
 ## Metabase 0.57.0
+
+- Added `metabase.driver/validate-db-details!` multimethod for rejecting connection details that are unsafe to
+  persist (independent of whether the database is currently reachable). The default implementation is a no-op.
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 
