@@ -98,7 +98,7 @@ export function flatten(
     return [{ ...node, level, parent }];
   }
 
-  if (addLoadingNodes && node.children.length === 0) {
+  if (addLoadingNodes && node.children.length === 0 && !(node as any).loaded) {
     const childType = CHILD_TYPES[node.type];
     if (!childType) {
       return [{ ...node, level, parent }];
