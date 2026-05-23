@@ -139,10 +139,10 @@ type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 export type MetabotAgentId =
   | FixedMetabotAgentId
   | `test_${number}`
-  | `tab_${string}`;
+  | `chat_${string}`;
 
-export const isTabAgentId = (id: MetabotAgentId): id is `tab_${string}` =>
-  id.startsWith("tab_");
+export const isChatAgentId = (id: MetabotAgentId): id is `chat_${string}` =>
+  id.startsWith("chat_");
 
 export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;

@@ -38,7 +38,7 @@ export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query" | "ask";
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
@@ -49,10 +49,6 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams) {
-  if (mode === "ask") {
-    return `/question/ask`;
-  }
-
   const q = Question.create(options);
   const url = question(q, {
     creationType,

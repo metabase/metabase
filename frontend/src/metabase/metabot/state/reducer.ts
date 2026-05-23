@@ -37,7 +37,14 @@ export const metabot = createSlice({
   initialState: getMetabotInitialState(),
   reducers: {
     // TOP-LEVEL STATE REDUCERS
-    createAgent: (state, action: ConvoPayloadAction<{ visible?: boolean }>) => {
+    createAgent: (
+      state,
+      action: ConvoPayloadAction<{
+        visible?: boolean;
+        conversationId?: string;
+        selectedDatabaseId?: number;
+      }>,
+    ) => {
       const { agentId, ...options } = action.payload;
       if (!state.conversations[agentId]) {
         const newConvo = createConversation(agentId, options);

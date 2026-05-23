@@ -4,15 +4,34 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import { MetabotPage } from "metabase/metabot/components/MetabotPage";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { getSettingsLoading } from "metabase/selectors/settings";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
 
 export const HomePage = (): JSX.Element => {
+  const { canUseNlq, isLoading: isLoadingPermissions } =
+    useUserMetabotPermissions();
+  const areSettingsLoading = useSelector(getSettingsLoading);
+
+  if (areSettingsLoading || isLoadingPermissions) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (canUseNlq) {
+    return <MetabotPage />;
+  }
+
+  return <ClassicHomePage />;
+};
+
+const ClassicHomePage = (): JSX.Element => {
   const { isLoadingDash } = useDashboardRedirect();
   if (isLoadingDash) {
     return <LoadingAndErrorWrapper loading={isLoadingDash} />;

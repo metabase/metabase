@@ -44,7 +44,7 @@ export const getVisibleAgentId = createSelector(
       if (!convo?.visible) {
         return false;
       }
-      return id.startsWith("tab_");
+      return id.startsWith("chat_");
     });
     return visible ? visible[0] : null;
   },
