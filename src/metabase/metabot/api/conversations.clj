@@ -25,6 +25,7 @@
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
    [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    ;; Wire compatibility: keep the field name `user_id`, but it now means the
    ;; conversation originator (first writer), not "the only allowed reader".
    [:user_id         [:maybe ms/PositiveInt]]
@@ -90,26 +91,27 @@
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
+        last-message-at {:select [[[:max :created_at]]]
+                         :from   [:metabot_message]
+                         :where  [:and
+                                  [:= :conversation_id :metabot_conversation.id]
+                                  [:= :deleted_at nil]]}
         rows            (t2/select :model/MetabotConversation
-                                   {:select   [:id :created_at :summary :user_id
+                                   {:select   [:id :created_at :summary :title :user_id
                                                [{:select [[[:count :*]]]
                                                  :from   [:metabot_message]
                                                  :where  [:and
                                                           [:= :conversation_id :metabot_conversation.id]
                                                           [:= :deleted_at nil]]}
                                                 :message_count]
-                                               [{:select [[[:max :created_at]]]
-                                                 :from   [:metabot_message]
-                                                 :where  [:and
-                                                          [:= :conversation_id :metabot_conversation.id]
-                                                          [:= :deleted_at nil]]}
-                                                :last_message_at]]
+                                               [last-message-at :last_message_at]]
                                     :where    visible-to-user
-                                    :order-by [[:created_at :desc] [:id :asc]]
+                                    :order-by [[[:coalesce last-message-at :metabot_conversation.created_at] :desc]
+                                               [:id :asc]]
                                     :limit    limit
                                     :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :summary :user_id :message_count :last_message_at])
+                        (select-keys [:created_at :summary :title :user_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  (t2/count :model/MetabotConversation {:where visible-to-user})

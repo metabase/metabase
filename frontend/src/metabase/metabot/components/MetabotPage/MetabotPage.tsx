@@ -110,6 +110,7 @@ export const MetabotPage = ({ params }: Props) => {
         messages: normalizeFetchedChatMessages(chat_messages ?? []),
         history,
         state,
+        expanded: true,
       }),
     );
   }, [

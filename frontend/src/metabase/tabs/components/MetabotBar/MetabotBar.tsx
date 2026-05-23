@@ -16,6 +16,7 @@ import { Button, Icon } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 
 import S from "./MetabotBar.module.css";
+import { MetabotHistoryPopover } from "./MetabotHistoryPopover";
 import { MetabotPanel } from "./MetabotPanel";
 import { MetabotTab } from "./MetabotTab";
 
@@ -106,6 +107,7 @@ export function MetabotBar() {
       >
         {t`Ask Metabot`}
       </Button>
+      <MetabotHistoryPopover />
       {visibleAgentId && askButtonEl && (
         <MetabotPanel agentId={visibleAgentId} anchorEl={askButtonEl} />
       )}

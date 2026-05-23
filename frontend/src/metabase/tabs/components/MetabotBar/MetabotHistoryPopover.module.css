@@ -1,0 +1,80 @@
+.iconButton {
+  height: 20px;
+  width: 20px;
+  min-height: 20px;
+  min-width: 20px;
+  color: var(--mb-color-text-secondary);
+}
+
+.iconButton:hover {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-hover);
+}
+
+.dropdown {
+  padding: 0;
+  width: 300px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroller {
+  overflow-y: auto;
+  max-height: 480px;
+  padding: 4px 0;
+}
+
+.bucketLabel {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mb-color-text-tertiary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.row:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.rowIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-text-secondary);
+}
+
+.rowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--mb-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSubtitle {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--mb-color-text-tertiary);
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--mb-color-text-secondary);
+}
