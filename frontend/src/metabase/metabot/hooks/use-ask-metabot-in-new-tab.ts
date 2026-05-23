@@ -16,7 +16,7 @@ export const useAskMetabotInNewTab = () => {
 
   return useCallback(
     async (prompt: string) => {
-      const agentId: MetabotAgentId = `tab_${uuid()}`;
+      const agentId: MetabotAgentId = `chat_${uuid()}`;
       dispatch(createAgent({ agentId, visible: true }));
       const context = await getChatContext();
       await dispatch(

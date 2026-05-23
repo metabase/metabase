@@ -61,6 +61,19 @@
             (google/parts->gemini-contents
              [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
 
+(deftest ^:parallel parts->gemini-contents-tool-result-from-history-test
+  (testing "tool-output reconstructed from history (no :function) recovers the name from the matching :tool-input"
+    ;; The frontend persists tool results as {:role :tool :tool_call_id ... :content ...} with no
+    ;; function name; `input-message->parts` then yields a :tool-output part with only :id.
+    ;; Gemini rejects an empty functionResponse name, so the adapter resolves it via the prior :tool-input.
+    (is (=? [{:role  "model"
+              :parts [{:functionCall {:name "search" :id "call-1"}}]}
+             {:role  "user"
+              :parts [{:functionResponse {:name "search" :id "call-1"}}]}]
+            (google/parts->gemini-contents
+             [{:type :tool-input  :id "call-1" :function "search" :arguments {:q "x"}}
+              {:type :tool-output :id "call-1" :result {:output "ok"}}])))))
+
 (deftest ^:parallel parts->gemini-contents-full-conversation-test
   (testing "full round-trip with tool call and response"
     (is (=? [{:role "user"  :parts [{:text "What time is it in Kyiv?"}]}

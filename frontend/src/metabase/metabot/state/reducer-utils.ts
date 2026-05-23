@@ -13,7 +13,7 @@ import {
   type MetabotAgentTurnError,
   type MetabotConverstationState,
   type MetabotState,
-  isTabAgentId,
+  isChatAgentId,
 } from "./types";
 import { createMessageId } from "./utils";
 
@@ -88,7 +88,7 @@ export const resetReactionState = (
   state: WritableDraft<MetabotState>,
   agentId: MetabotAgentId,
 ) => {
-  if (isTabAgentId(agentId)) {
+  if (isChatAgentId(agentId)) {
     state.reactions.navigateToPath = null;
     state.reactions.suggestedTransforms = [];
     return;

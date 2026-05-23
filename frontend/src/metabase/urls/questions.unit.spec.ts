@@ -68,7 +68,6 @@ describe("urls > questions", () => {
         `/question/notebook#${hash}`,
       );
       expect(newQuestion({ mode: "view" })).toBe(`/question/view#${hash}`);
-      expect(newQuestion({ mode: "ask" })).toBe("/question/ask");
     });
   });
 });

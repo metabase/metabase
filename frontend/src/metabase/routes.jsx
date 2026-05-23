@@ -36,7 +36,7 @@ import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
-import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
+import { MetabotPage } from "metabase/metabot/components/MetabotPage";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
@@ -273,12 +273,13 @@ export const getRoutes = (store) => {
             />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
-            <Route path="ask" component={MetabotQueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
           </Route>
+
+          <Route path="chat/:conversationId" component={MetabotPage} />
 
           {/* MODELS */}
           {getModelRoutes()}

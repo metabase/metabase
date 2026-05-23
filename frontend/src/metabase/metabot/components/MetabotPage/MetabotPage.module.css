@@ -3,18 +3,30 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background-secondary);
   position: relative;
+  overflow: hidden;
 }
 
-/* Empty state - centered layout */
+.backgroundIllustration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+
+.backgroundIllustrationFading {
+  opacity: 0;
+}
+
 .centeredContainer {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 2rem;
+  padding: 2rem 2rem 8rem;
   gap: 1.5rem;
 }
 
@@ -23,10 +35,15 @@
   align-items: center;
   flex-direction: column;
   gap: 0.75rem;
+  transition: opacity 250ms ease;
 
   @media screen and (--breakpoint-min-sm) {
     flex-direction: row;
   }
+}
+
+.greetingFading {
+  opacity: 0;
 }
 
 .greetingIcon {
@@ -37,9 +54,11 @@
 .inputWrapper {
   width: 100%;
   max-width: 42rem;
+  position: relative;
 }
 
 .conversationContainer {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -81,6 +100,7 @@
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
+  background: var(--mb-color-background-primary);
   box-shadow:
     0 0 0 1px var(--mb-color-border),
     0 4px 24px rgba(0, 0, 0, 0.08);
@@ -97,7 +117,7 @@
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background-tertiary);
   animation: pulse 5s ease-in-out 1s infinite;
 }
 
@@ -132,6 +152,11 @@
   gap: 0.25rem;
   width: 100%;
   min-height: 10.75rem;
+  transition: opacity 250ms ease;
+}
+
+.promptSuggestionsFading {
+  opacity: 0;
 }
 
 .promptSuggestion {
@@ -142,54 +167,30 @@
   border-radius: 0.5rem;
   transition:
     background 150ms ease,
-    color 150ms ease,
-    opacity 150ms ease;
+    color 150ms ease;
 
   &:hover {
-    background: var(--mb-color-background-secondary);
+    background: var(--mb-color-background-primary);
     color: var(--mb-color-text-primary);
   }
 }
 
-.promptSuggestionShow {
-  opacity: 0;
-  animation: fade-in 300ms ease forwards;
-}
-
-.promptSuggestionHide {
-  opacity: 1;
-  animation: fade-out 200ms ease forwards;
-  cursor: default;
-  user-select: none;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
+.placeholder {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
 }
 
 @keyframes pulse {
   0%,
   100% {
-    background: var(--mb-color-background-secondary);
+    background: var(--mb-color-background-tertiary);
   }
 
   50% {
-    background: var(--mb-color-background-tertiary);
+    background: var(--mb-color-background-secondary);
   }
 }

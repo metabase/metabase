@@ -8,7 +8,7 @@ import { useMetabotAgentsManager } from "metabase/metabot/hooks/use-metabot-agen
 import {
   type MetabotAgentId,
   getVisibleAgentId,
-  isTabAgentId,
+  isChatAgentId,
   setVisible,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -30,7 +30,7 @@ export function MetabotBar() {
     null,
   );
 
-  const tabAgentIds = activeAgentIds.filter(isTabAgentId);
+  const chatAgentIds = activeAgentIds.filter(isChatAgentId);
 
   const setAgentVisible = useCallback(
     (agentId: MetabotAgentId, visible: boolean) => {
@@ -43,7 +43,7 @@ export function MetabotBar() {
     if (visibleAgentId) {
       setAgentVisible(visibleAgentId, false);
     }
-    const newId: MetabotAgentId = `tab_${uuid()}`;
+    const newId: MetabotAgentId = `chat_${uuid()}`;
     createAgent({ agentId: newId, visible: true });
     trackMetabotChatOpened("header");
   }, [createAgent, setAgentVisible, visibleAgentId]);
@@ -74,10 +74,14 @@ export function MetabotBar() {
       tinykeys(window, {
         "$mod+e": (e) => {
           e.preventDefault();
-          handleAskMetabot();
+          if (visibleAgentId) {
+            setAgentVisible(visibleAgentId, false);
+          } else {
+            handleAskMetabot();
+          }
         },
       }),
-    [handleAskMetabot],
+    [handleAskMetabot, setAgentVisible, visibleAgentId],
   );
 
   if (!hasMetabotAccess) {
@@ -86,7 +90,7 @@ export function MetabotBar() {
 
   return (
     <div className={S.bar}>
-      {tabAgentIds.map((agentId) => (
+      {chatAgentIds.map((agentId) => (
         <MetabotTab
           key={agentId}
           agentId={agentId}

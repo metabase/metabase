@@ -49,7 +49,6 @@ export const NewItemMenuView = ({
 
     const aiExplorationItem = getNewMenuItemAIExploration(
       hasDataAccess,
-      collectionId,
       hasNlqAccess,
     );
     if (aiExplorationItem) {
