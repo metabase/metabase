@@ -438,3 +438,16 @@ export type MetabotTenantLimit = {
   tenant_id: number;
   max_usage: number | null;
 };
+
+/* Metabot conversation detail (GET /api/metabot/conversations/:id) */
+
+export type MetabotConversationDetail = {
+  conversation_id: string;
+  created_at: string;
+  summary: string | null;
+  title: string | null;
+  user_id: number | null;
+  state: MetabotStateContext;
+  chat_messages: any[];
+  history: MetabotHistory;
+};

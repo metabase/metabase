@@ -13,6 +13,7 @@ import {
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import type {
+  MetabotAgentId,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
@@ -85,6 +86,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     feedback,
   } = conversation;
 
+  // Synthesized for read-only analytics rendering. The chat components require
+  // an agentId, but selectors return undefined for an unknown id, so interactive
+  // affordances stay inert.
+  const agentId: MetabotAgentId = `chat_${conversation.conversation_id}`;
+
   return (
     <MetabotAdminLayout>
       <Stack gap="2.5rem">
@@ -107,6 +113,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               {feedback.map((item) => (
                 <FeedbackCard
                   key={item.id}
+                  agentId={agentId}
                   feedback={item}
                   chatMessages={chatMessages}
                 />
@@ -126,6 +133,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
+              agentId={agentId}
               messages={chatMessages}
               isDoingScience={false}
               debug
@@ -164,9 +172,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 function FeedbackCard({
+  agentId,
   feedback,
   chatMessages,
 }: {
+  agentId: MetabotAgentId;
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
 }) {
@@ -210,6 +220,7 @@ function FeedbackCard({
         )}
         {agentResponse && (
           <AgentMessage
+            agentId={agentId}
             message={agentResponse}
             debug
             readonly

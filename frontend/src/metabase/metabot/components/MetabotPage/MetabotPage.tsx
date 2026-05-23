@@ -6,7 +6,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import {
+  useGetMetabotChatConversationQuery,
+  useGetSuggestedMetabotPromptsQuery,
+} from "metabase/api";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
@@ -27,15 +30,18 @@ import {
   type MetabotAgentId,
   createAgent,
   getActiveMetabotAgentIds,
+  hydrateChatConversation,
   setExpanded,
   setVisible,
 } from "metabase/metabot/state";
+import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { removeTab, tabsSelectors } from "metabase/tabs/tabs.slice";
 import {
   ActionIcon,
   Box,
+  Center,
   Flex,
   Icon,
   Paper,
@@ -85,7 +91,46 @@ export const MetabotPage = ({ params }: Props) => {
     }
   }, [dispatch, agentId, agentExists, conversationId, isNewConversation]);
 
+  const conversationQuery = useGetMetabotChatConversationQuery(
+    urlConversationId ?? "",
+    { skip: !urlConversationId || agentExists },
+  );
+
+  useEffect(() => {
+    if (!urlConversationId || agentExists || !conversationQuery.data) {
+      return;
+    }
+    const { conversation_id, title, chat_messages, history, state } =
+      conversationQuery.data;
+    dispatch(
+      hydrateChatConversation({
+        agentId,
+        conversationId: conversation_id,
+        title,
+        messages: normalizeFetchedChatMessages(chat_messages ?? []),
+        history,
+        state,
+      }),
+    );
+  }, [
+    dispatch,
+    agentId,
+    agentExists,
+    urlConversationId,
+    conversationQuery.data,
+  ]);
+
   if (!agentExists) {
+    if (urlConversationId && conversationQuery.isError) {
+      return (
+        <Box className={S.page}>
+          {/* TODO: design a real not-found / restore-failure state */}
+          <Center h="100%">
+            <Text c="text-secondary">{t`We couldn't load this conversation.`}</Text>
+          </Center>
+        </Box>
+      );
+    }
     return <Box className={S.page} />;
   }
 
@@ -278,25 +323,27 @@ const MetabotConversation = ({
 
   return (
     <Box className={S.page}>
-      <Flex className={S.pageHeader} align="center" justify="space-between">
-        <Text
-          fz="md"
-          fw={600}
-          c="text-primary"
-          truncate
-          data-testid="metabot-page-title"
-        >
-          {conversationTitle}
-        </Text>
-        <Tooltip label={t`Collapse`} position="bottom">
-          <ActionIcon
-            onClick={handleCollapse}
-            data-testid="metabot-collapse-chat"
+      {hasMessages && (
+        <Flex className={S.pageHeader} align="center" justify="space-between">
+          <Text
+            fz="md"
+            fw={600}
+            c="text-primary"
+            truncate
+            data-testid="metabot-page-title"
           >
-            <Icon c="text-primary" name="contract" />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
+            {conversationTitle}
+          </Text>
+          <Tooltip label={t`Collapse`} position="bottom">
+            <ActionIcon
+              onClick={handleCollapse}
+              data-testid="metabot-collapse-chat"
+            >
+              <Icon c="text-primary" name="contract" />
+            </ActionIcon>
+          </Tooltip>
+        </Flex>
+      )}
 
       {!showConversation && showIllustrations && landingPageIllustration && (
         <Box

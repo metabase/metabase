@@ -68,7 +68,7 @@
 (deftest get-conversation-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id returns the conversation to any participant"
     (let [user-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "mine"}
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "mine" :title "My chat"}
                      :model/MetabotMessage _ {:conversation_id convo-id
                                               :user_id         user-id
                                               :role            "user"
@@ -77,8 +77,56 @@
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
           (is (= "mine" (:summary response)))
+          (is (= "My chat" (:title response)))
           (is (= user-id (:user_id response)))
           (is (= 1 (count (:chat_messages response)))))))))
+
+(deftest get-conversation-includes-history-test
+  (testing "GET /api/metabot/conversations/:id returns LLM-format history for the user's chat_messages"
+    (let [user-id (mt/user->id :rasta)]
+      (testing "user + assistant text only"
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "text chat"}
+                       :model/MetabotMessage _ {:conversation_id convo-id
+                                                :user_id         user-id
+                                                :role            "user"
+                                                :data            [{:role "user" :content "what is 2+2?"}]}
+                       :model/MetabotMessage _ {:conversation_id convo-id
+                                                :role            "assistant"
+                                                :finished        true
+                                                :data            [{:type "text" :text "4"}]}]
+          (let [{:keys [history title]} (mt/user-http-request :rasta :get 200
+                                                              (str "metabot/conversations/" convo-id))]
+            (is (= "text chat" title))
+            (is (= [{:role "user" :content "what is 2+2?"}
+                    {:role "assistant" :content "4"}]
+                   history)))))
+      (testing "assistant turn with tool call + tool output"
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id
+                                                :user_id         user-id
+                                                :role            "user"
+                                                :data            [{:role "user" :content "search for orders"}]}
+                       :model/MetabotMessage _ {:conversation_id convo-id
+                                                :role            "assistant"
+                                                :finished        true
+                                                :data            [{:type "text" :text "searching..."}
+                                                                  {:type      "tool-input"
+                                                                   :id        "call_1"
+                                                                   :function  "search"
+                                                                   :arguments {:q "orders"}}
+                                                                  {:type   "tool-output"
+                                                                   :id     "call_1"
+                                                                   :result {:output "Found 3 results"}}]}]
+          (let [history (:history (mt/user-http-request :rasta :get 200
+                                                        (str "metabot/conversations/" convo-id)))
+                assistant (nth history 1)
+                tool      (nth history 2)]
+            (is (= 3 (count history)))
+            (is (= "searching..." (:content assistant)))
+            (is (= [{:id "call_1" :name "search" :arguments "{\"q\":\"orders\"}"}]
+                   (:tool_calls assistant)))
+            (is (= {:role "tool" :tool_call_id "call_1" :content "Found 3 results"}
+                   tool))))))))
 
 (deftest get-conversation-second-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id is readable by any participant, not just the originator"

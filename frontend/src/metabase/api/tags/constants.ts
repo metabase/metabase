@@ -68,6 +68,7 @@ export const TAG_TYPES = [
   "user-key-value",
   "tenant",
   "metabot",
+  "metabot-conversation",
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "metabot-permissions",

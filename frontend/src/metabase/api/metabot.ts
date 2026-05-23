@@ -1,5 +1,6 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
+  MetabotConversationDetail,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -156,6 +157,18 @@ export const metabotApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("metabot-permissions")],
     }),
+    getMetabotChatConversation: builder.query<
+      MetabotConversationDetail,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}`,
+      }),
+      providesTags: (_, __, conversationId) => [
+        idTag("metabot-conversation", conversationId),
+      ],
+    }),
   }),
 });
 
@@ -172,4 +185,5 @@ export const {
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
   useGetUserMetabotPermissionsQuery,
+  useGetMetabotChatConversationQuery,
 } = metabotApi;
