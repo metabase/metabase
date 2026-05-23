@@ -55,10 +55,14 @@ export const OPEN_DATA_REFERENCE_AT_QUESTION =
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
   (id: CardId) => async (dispatch: Dispatch) => {
+    // forceRefetch: false so a permanently-forbidden card (403) is served from
+    // RTK Query's cache instead of re-hitting /api/card/:id on every open, matching
+    // the former `useCachedForbiddenError` behavior.
     const card = await entityCompatibleQuery(
       { id, ignore_error: true },
       dispatch,
       cardApi.endpoints.getCard,
+      { forceRefetch: false },
     );
     if (card) {
       return [
