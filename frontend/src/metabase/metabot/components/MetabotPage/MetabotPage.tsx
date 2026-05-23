@@ -27,16 +27,21 @@ import {
   type MetabotAgentId,
   createAgent,
   getActiveMetabotAgentIds,
+  setExpanded,
+  setVisible,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
+import { removeTab, tabsSelectors } from "metabase/tabs/tabs.slice";
 import {
   ActionIcon,
   Box,
+  Flex,
   Icon,
   Paper,
   Stack,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
@@ -80,16 +85,6 @@ export const MetabotPage = ({ params }: Props) => {
     }
   }, [dispatch, agentId, agentExists, conversationId, isNewConversation]);
 
-  if (!agentExists && !isNewConversation) {
-    return (
-      <Box className={S.page}>
-        <Box className={S.placeholder}>
-          <Text c="text-secondary">{`TODO: load historical conversation`}</Text>
-        </Box>
-      </Box>
-    );
-  }
-
   if (!agentExists) {
     return <Box className={S.page} />;
   }
@@ -118,6 +113,7 @@ const MetabotConversation = ({
   const { canUseNlq } = useUserMetabotPermissions();
   const landingPageIllustration = useSelector(getLandingPageIllustration);
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const tabs = useSelector(tabsSelectors.selectAll);
 
   const {
     metabotId,
@@ -134,7 +130,25 @@ const MetabotConversation = ({
     cancelRequest,
     selectedDatabaseId,
     setSelectedDatabaseId,
+    title: conversationTitle,
   } = useMetabotAgent(agentId);
+
+  const handleCollapse = () => {
+    dispatch(setExpanded({ agentId, expanded: false }));
+    dispatch(setVisible({ agentId, visible: true }));
+
+    const urlId = agentId.replace(/^chat_/, "");
+    const currentTab = tabs.find((tab) => tab.path === `/chat/${urlId}`);
+
+    if (currentTab && tabs.length > 1) {
+      const index = tabs.findIndex((tab) => tab.id === currentTab.id);
+      const neighbor = index > 0 ? tabs[index - 1] : tabs[index + 1];
+      dispatch(removeTab(currentTab.id));
+      dispatch(push(neighbor?.path ?? "/"));
+    } else {
+      dispatch(push("/"));
+    }
+  };
 
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
   const [hasError, setHasError] = useState(false);
@@ -151,8 +165,7 @@ const MetabotConversation = ({
   const showConversation = hasMessages || isDoingScience;
   const isFading = isNewConversation && isDoingScience;
 
-  const { scrollContainerRef, headerRef, fillerRef } =
-    useScrollManager(showConversation);
+  const { scrollContainerRef, fillerRef } = useScrollManager(showConversation);
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabotId,
@@ -265,6 +278,26 @@ const MetabotConversation = ({
 
   return (
     <Box className={S.page}>
+      <Flex className={S.pageHeader} align="center" justify="space-between">
+        <Text
+          fz="md"
+          fw={600}
+          c="text-primary"
+          truncate
+          data-testid="metabot-page-title"
+        >
+          {conversationTitle}
+        </Text>
+        <Tooltip label={t`Collapse`} position="bottom">
+          <ActionIcon
+            onClick={handleCollapse}
+            data-testid="metabot-collapse-chat"
+          >
+            <Icon c="text-primary" name="contract" />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+
       {!showConversation && showIllustrations && landingPageIllustration && (
         <Box
           className={cx(S.backgroundIllustration, {
@@ -291,11 +324,6 @@ const MetabotConversation = ({
 
       {showConversation ? (
         <Box className={S.conversationContainer}>
-          <Box ref={headerRef} className={S.conversationHeader}>
-            <Text fz="sm" c="text-secondary">
-              {t`Metabot isn't perfect. Double-check results.`}
-            </Text>
-          </Box>
           <Box
             ref={scrollContainerRef}
             className={S.messagesContainer}
@@ -320,7 +348,17 @@ const MetabotConversation = ({
               )}
             </Box>
           </Box>
-          <Box className={S.bottomInputContainer}>{promptInput}</Box>
+          <Box className={S.bottomInputContainer}>
+            {promptInput}
+            <Text
+              fz="sm"
+              c="text-secondary"
+              ta="center"
+              className={S.disclaimer}
+            >
+              {t`Metabot isn't perfect. Double-check results.`}
+            </Text>
+          </Box>
         </Box>
       ) : (
         <Box className={S.centeredContainer}>

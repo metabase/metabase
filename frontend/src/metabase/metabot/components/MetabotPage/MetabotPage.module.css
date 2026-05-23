@@ -8,6 +8,13 @@
   overflow: hidden;
 }
 
+.pageHeader {
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  gap: 0.5rem;
+  z-index: 1;
+  min-width: 0;
+}
+
 .backgroundIllustration {
   position: absolute;
   inset: 0;
@@ -65,12 +72,6 @@
   flex-direction: column;
 }
 
-.conversationHeader {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 1.5rem 0.5rem;
-}
-
 .messagesContainer {
   display: flex;
   flex: 1;
@@ -92,7 +93,11 @@
   width: 100%;
   max-width: 54rem;
   margin: 0 auto;
-  padding: 0 1.5rem 1.5rem;
+  padding: 0 1.5rem 0.5rem;
+}
+
+.disclaimer {
+  margin-top: 0.5rem;
 }
 
 .inputContainer {

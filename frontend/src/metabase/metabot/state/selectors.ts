@@ -34,6 +34,20 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
+export const getNonExpandedChatAgentIds = createSelector(
+  getMetabotState,
+  (state) =>
+    (
+      Object.entries(state.conversations) as Array<
+        [MetabotAgentId, (typeof state.conversations)[MetabotAgentId]]
+      >
+    )
+      .filter(
+        ([id, convo]) => id.startsWith("chat_") && convo?.expanded === false,
+      )
+      .map(([id]) => id),
+);
+
 export const getVisibleAgentId = createSelector(
   getMetabotState,
   (state): MetabotAgentId | null => {
@@ -115,6 +129,11 @@ export const getMetabotConversation = createSelector(
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
   (convo) => convo.visible,
+);
+
+export const getMetabotExpanded = createSelector(
+  getMetabotConversation,
+  (convo) => convo.expanded,
 );
 
 export const getPrompt = createSelector(
