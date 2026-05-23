@@ -295,26 +295,33 @@
   256)
 
 (def ^:private pool-size
-  "Threads in each of [[waiter-executor]] and [[worker-executor]]. Caps concurrent extractions:
-  every [[waiter-executor]] has a matching [[worker-executor]]."
+  "Max threads in each of [[waiter-executor]] and [[worker-executor]]. Caps concurrent extractions:
+  every [[waiter-executor]] has a matching [[worker-executor]]. Threads are created on demand and reaped
+  after [[idle-timeout-ms]]."
   4)
 
-(defn- new-fixed-daemon-pool
-  "Fixed pool of [[pool-size]] daemon threads named `thread-name`.
+(def ^:private idle-timeout-ms
+  "How long an idle thread lives before being reaped. With `allowCoreThreadTimeOut`, this applies to every thread,
+  so a pool that has been idle this long scales back down to zero threads."
+  (* 5 60 1000))
+
+(defn- thread-pool-executor
+  "Pool of up to [[pool-size]] daemon threads named `thread-name`, created on demand.
 
   Backed by a bounded queue of [[executor-queue-capacity]]. The default `AbortPolicy` throws
-  `RejectedExecutionException` once the queue is full."
+  `RejectedExecutionException` once the queue is full. Idle threads are reaped after [[idle-timeout-ms]]."
   ^ThreadPoolExecutor [thread-name]
-  (ThreadPoolExecutor.
-   (int pool-size)
-   (int pool-size)
-   0 TimeUnit/MILLISECONDS
-   (ArrayBlockingQueue. (int executor-queue-capacity))
-   (reify ThreadFactory
-     (newThread [_ r]
-       (doto (Thread. r)
-         (.setName thread-name)
-         (.setDaemon true))))))
+  (doto (ThreadPoolExecutor.
+         (int pool-size)
+         (int pool-size)
+         (long idle-timeout-ms) TimeUnit/MILLISECONDS
+         (ArrayBlockingQueue. (int executor-queue-capacity))
+         (reify ThreadFactory
+           (newThread [_ r]
+             (doto (Thread. r)
+               (.setName thread-name)
+               (.setDaemon true)))))
+    (.allowCoreThreadTimeOut true)))
 
 (defonce ^:private waiter-executor
   ;; Outer pool: runs the `extract-and-insert!` tasks submitted by `record-used-tables!`. Each task blocks waiting
@@ -323,13 +330,13 @@
   ;; `AbortPolicy` rejects beyond that, which `record-used-tables!` catches to drop the task. Keeping the work on
   ;; these bounded pools (rather than `u/with-timeout`'s unbounded shared `future` pool) means a stall can't spill
   ;; onto threads shared with the rest of the app.
-  (delay (new-fixed-daemon-pool "metabot-used-tables-waiter")))
+  (delay (thread-pool-executor "metabot-used-tables-waiter")))
 
 (defonce ^:private worker-executor
   ;; Inner pool: runs the (usually fast, but potentially slow) BFS+sql parse. Kept separate from `waiter-executor` so
   ;; a burst of waiters can never starve the workers doing the extractions. Sized to match `waiter-executor` so every
   ;; waiter has a worker. Rows are keyed by distinct `message_id`, so concurrent inserts don't contend.
-  (delay (new-fixed-daemon-pool "metabot-used-tables-worker")))
+  (delay (thread-pool-executor "metabot-used-tables-worker")))
 
 (defn- extract-used-tables-async-with-timeout
   "Run [[extract-used-tables]] on [[worker-executor]] and block the calling [[waiter-executor]] thread on the result for
