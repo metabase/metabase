@@ -346,7 +346,7 @@
         (.cancel fut true)
         (throw e)))))
 
-(defn- extract-used-tables-with-timing
+(defn- extract-used-tables-with-timing!
   "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics and caps runtime at
   [[extraction-timeout-ms]]. Returns nil (persisting no rows) and counts a timeout if the cap is exceeded.
 
@@ -381,7 +381,7 @@
   [message-id parts]
   (log/with-thread-context {:metabot_message_id message-id}
     (try
-      (let [rows (extract-used-tables-with-timing message-id parts)]
+      (let [rows (extract-used-tables-with-timing! message-id parts)]
         (when (seq rows)
           (t2/insert! :model/MetabotUsedTable rows)))
       (catch Exception e

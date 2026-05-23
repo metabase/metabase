@@ -811,8 +811,8 @@
                                           conversation-id
                                           "internal"
                                           {:role "user" :content "go"})]
-          (with-redefs [used-tables/extract-used-tables-with-timing (fn [_ _]
-                                                                      [{:message_id assistant-msg-id :table_id 1}])
+          (with-redefs [used-tables/extract-used-tables-with-timing! (fn [_ _]
+                                                                       [{:message_id assistant-msg-id :table_id 1}])
                         t2/insert! (fn [& _]
                                      (throw (ex-info "boom" {})))]
             (log.capture/with-log-messages-for-level [logs [metabase.metabot.used-tables :warn]]

@@ -671,7 +671,7 @@
       (is (= 2 (count rows))))))
 
 ;;; ---------------------------------------- prometheus metrics ----------------------------------------
-;;; `extract-used-tables-with-timing` wraps the 2-arity entry point. We redef `extract-used-tables` to isolate the
+;;; `extract-used-tables-with-timing!` wraps the 2-arity entry point. We redef `extract-used-tables` to isolate the
 ;;; wrapper's metric contract from query analysis. One shared `with-prometheus-system!` (it's slow to set up); metrics
 ;;; are cleared between `testing` blocks so each starts from zero. Not `^:parallel` (installs a reporter, redefs a var).
 
@@ -686,22 +686,22 @@
   (mt/with-prometheus-system! [_ system]
     ;; mt/with-prometheus-system! is slow, so combine all test in a single deftest and clear! metrics between cases.
     (let [reset! #(run! prometheus/clear! extraction-metrics)]
-      (testing "extract-used-tables-with-timing increments the total counter, leaves errors at 0, and returns the body"
+      (testing "extract-used-tables-with-timing! increments the total counter, leaves errors at 0, and returns the body"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] [::row])]
-          (is (= [::row] (#'used-tables/extract-used-tables-with-timing 1 [])))
+          (is (= [::row] (#'used-tables/extract-used-tables-with-timing! 1 [])))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-total)))
           (is (= 0.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))))
       (reset!)
-      (testing "extract-used-tables-with-timing increments the errors counter and rethrows when extraction throws"
+      (testing "extract-used-tables-with-timing! increments the errors counter and rethrows when extraction throws"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] (throw (ex-info "boom" {})))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                                (#'used-tables/extract-used-tables-with-timing 1 [])))
+                                (#'used-tables/extract-used-tables-with-timing! 1 [])))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-total)))
           (is (= 1.0 (mt/metric-value system :metabase-metabot/used-tables-extraction-errors)))))
       (reset!)
-      (testing "extract-used-tables-with-timing observes the duration histogram"
+      (testing "extract-used-tables-with-timing! observes the duration histogram"
         (mt/with-dynamic-fn-redefs [used-tables/extract-used-tables (fn [_message-id _parts] (Thread/sleep 1) [])]
-          (#'used-tables/extract-used-tables-with-timing 1 [])
+          (#'used-tables/extract-used-tables-with-timing! 1 [])
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/used-tables-extraction-duration-ms))))))
       (reset!)
       (testing "caught exception increments the warnings counter (by :reason) without touching errors"
