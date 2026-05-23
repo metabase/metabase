@@ -651,6 +651,8 @@
                         :labels [:reason]})
    (prometheus/counter :metabase-metabot/used-tables-extraction-dropped
                        {:description "Number of used-tables extraction tasks dropped because the background executor's queue was full."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-timeouts
+                       {:description "Number of used-tables extractions abandoned because they exceeded the extraction timeout."})
    (prometheus/histogram :metabase-metabot/used-tables-extraction-duration-ms
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s

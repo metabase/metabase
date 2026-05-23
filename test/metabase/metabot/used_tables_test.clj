@@ -414,7 +414,7 @@
           ;; `lib/native-query` auto-extracts a card-type tag pointing at the card
           outer-sql    (format "SELECT * FROM {{#%s}}" card-id)]
       (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [query & _]
-                                                         ;; production extractor passes a query, not raw SQL
+                                                          ;; production extractor passes a query, not raw SQL
                                                           (let [sql (lib/raw-native-query query)]
                                                             (cond
                                                               (= sql outer-sql) {:tables [{:table-id orders-id}]}

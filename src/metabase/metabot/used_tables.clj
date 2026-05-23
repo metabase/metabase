@@ -32,7 +32,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent ArrayBlockingQueue Callable ExecutorService RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeUnit)))
+   (java.util.concurrent ArrayBlockingQueue Callable ExecutorService RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeoutException TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -276,25 +276,44 @@
          all-tables (into tables (collect-tables queries))]
      (->rows message-id all-tables))))
 
+(def ^:dynamic *run-synchronously?*
+  "When true, [[record-used-tables!]] extracts and inserts on the calling thread instead of the background
+  executor. Bound to true in tests so assertions can read `metabot_used_table` rows immediately after a turn is
+  finalized, and so the work participates in the test's rollback transaction."
+  false)
+
+(def ^:private extraction-timeout-ms
+  "Hard cap on a single used-table extraction. On timeout we abandon the work and persist no rows for the message.
+  This is safeguard against bugs or pathological queries. Under normal circumstances, even for large queries,
+  extraction should not take more than a few seconds."
+  (* 15 1000))
+
 (defn- extract-used-tables-with-timing
-  "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics."
+  "Like the 2-arity [[extract-used-tables]] but records Prometheus timing/failure metrics and caps runtime at
+  [[extraction-timeout-ms]]. Returns nil (persisting no rows) and counts a failure if the cap is exceeded.
+
+  The timeout is skipped when [[*run-synchronously?*]] is set (tests), so extraction stays on the calling thread and
+  inside the test transaction rather than running on a [[u/with-timeout]] future thread."
   [message-id parts]
   (let [start (u/start-timer)]
     (analytics/inc! :metabase-metabot/used-tables-extraction-total)
     (try
-      (let [result (extract-used-tables message-id parts)]
+      (let [result (if *run-synchronously?*
+                     (extract-used-tables message-id parts)
+                     (u/with-timeout extraction-timeout-ms
+                       (extract-used-tables message-id parts)))]
         (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
         result)
+      (catch TimeoutException _
+        (analytics/inc! :metabase-metabot/used-tables-extraction-timeouts)
+        (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
+        (log/warnf "Used-table extraction for message %s exceeded the %sms timeout; abandoning extraction"
+                   message-id extraction-timeout-ms)
+        nil)
       (catch Throwable t
         (analytics/inc! :metabase-metabot/used-tables-extraction-errors)
         (analytics/observe! :metabase-metabot/used-tables-extraction-duration-ms (long (u/since-ms start)))
         (throw t)))))
-
-(def ^:dynamic *run-synchronously?*
-  "When true, [[record-used-tables!]] extracts and inserts on the calling thread instead of the
-  background executor. Bound to true in tests so assertions can read `metabot_used_table` rows
-  immediately after a turn is finalized, and so the work participates in the test's rollback transaction."
-  false)
 
 (def ^:private executor-queue-capacity
   "Max number of extraction tasks allowed to sit in [[executor]]'s queue. Beyond this, new submissions are dropped.
@@ -305,8 +324,13 @@
 (defonce ^:private executor
   ;; Small fixed pool of daemon threads. Four threads give headroom for the (usually fast, but potentially slow)
   ;; BFS+sql parse when several turns finalize at once; rows are keyed by distinct `message_id`, so concurrent inserts
-  ;; don't contend. The queue is bounded; the default `AbortPolicy` throws `RejectedExecutionException` when it's
+  ;; don't contend. The queue is bounded. The default `AbortPolicy` throws `RejectedExecutionException` when it's
   ;; full, which `record-used-tables!` catches to drop the task.
+  ;;
+  ;; NOTE: the `u/with-timeout` in `extract-used-tables-with-timing` runs the body in a `future`, so the actual
+  ;; extraction executes on the shared `clojure.core/future` thread pool (the unbounded agent soloExecutor), not on
+  ;; our [[executor]]'s worker thread. The worker thread only blocks on the deref and is freed at the timeout. On
+  ;; timeout the future is cancelled, but work that doesn't observe interrupts may linger on that shared pool.
   (delay (ThreadPoolExecutor.
           4 4
           0 TimeUnit/MILLISECONDS
