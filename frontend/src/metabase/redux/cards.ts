@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions-reducer";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
@@ -84,6 +85,10 @@ export const createQuestionCard =
       cardApi.endpoints.createCard,
     );
     dispatch(cardCreated(card));
+    // Hydrate the normalized `questions` slice so `getMetadata(state).question(id)`
+    // reflects the write immediately, instead of waiting for a later GET — the
+    // entity framework used to do this when normalizing the create response.
+    dispatch({ type: INJECT_RTK_QUERY_QUESTION_VALUE, payload: card });
     return card;
   };
 
@@ -100,5 +105,9 @@ export const updateQuestionCard =
       cardApi.endpoints.updateCard,
     );
     dispatch(cardUpdated(card));
+    // Hydrate the normalized `questions` slice so `getMetadata(state).question(id)`
+    // reflects the write immediately, instead of waiting for a later GET — the
+    // entity framework used to do this when normalizing the update response.
+    dispatch({ type: INJECT_RTK_QUERY_QUESTION_VALUE, payload: card });
     return card;
   };
