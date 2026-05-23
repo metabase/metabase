@@ -62,27 +62,39 @@
 
   Consecutive same-role messages are merged because Gemini, like Anthropic,
   expects alternating user/model turns. The system prompt is passed separately
-  on the request and is not produced here."
+  on the request and is not produced here.
+
+  Tool-output parts reconstructed from frontend history carry `:id` but not
+  `:function` — the function name is recovered by matching against the preceding
+  `:tool-input` part with the same id. Gemini rejects `functionResponse` parts
+  with an empty `name`."
   [parts]
-  (->> parts
-       (mapv (fn [part]
-               (case (:type part)
-                 :text        {:role  "model"
-                               :parts [{:text (:text part)}]}
-                 :tool-input  {:role  "model"
-                               :parts [{:functionCall      (cond-> {:name (:function part)
-                                                                    :args (or (:arguments part) {})}
-                                                             (:id part) (assoc :id (:id part)))
-                                        :thoughtSignature  bypass-thought-signature}]}
-                 :tool-output {:role  "user"
-                               :parts [{:functionResponse (cond-> {:name     (:function part)
-                                                                   :response {:content (tool-output->text part)}}
-                                                            (:id part) (assoc :id (:id part)))}]}
-                 {:role  (case (name (or (:role part) "user"))
-                           "assistant" "model"
-                           "user")
-                  :parts [{:text (or (:content part) "")}]})))
-       merge-consecutive-same-role))
+  (let [id->fn-name (into {}
+                          (keep (fn [p]
+                                  (when (and (= :tool-input (:type p)) (:id p) (:function p))
+                                    [(:id p) (:function p)])))
+                          parts)]
+    (->> parts
+         (mapv (fn [part]
+                 (case (:type part)
+                   :text        {:role  "model"
+                                 :parts [{:text (:text part)}]}
+                   :tool-input  {:role  "model"
+                                 :parts [{:functionCall      (cond-> {:name (:function part)
+                                                                      :args (or (:arguments part) {})}
+                                                               (:id part) (assoc :id (:id part)))
+                                          :thoughtSignature  bypass-thought-signature}]}
+                   :tool-output {:role  "user"
+                                 :parts [{:functionResponse (cond-> {:name     (or (:function part)
+                                                                                   (get id->fn-name (:id part))
+                                                                                   "")
+                                                                     :response {:content (tool-output->text part)}}
+                                                              (:id part) (assoc :id (:id part)))}]}
+                   {:role  (case (name (or (:role part) "user"))
+                             "assistant" "model"
+                             "user")
+                    :parts [{:text (or (:content part) "")}]})))
+         merge-consecutive-same-role)))
 
 ;;; Tool definition format
 
