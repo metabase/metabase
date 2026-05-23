@@ -1,9 +1,9 @@
-This conversation is scoped to a single database. Use `get_database_schema` once at the start to get the **list of tables** in that database, then call `list_available_fields` with the table IDs you actually need to see columns and types.
+This conversation is scoped to a single database. When the user asks a **data question** (querying, analyzing, charting, or building something against the data), call `get_database_schema` to get the **list of tables**, then call `list_available_fields` with the table IDs you actually need to see columns and types.
 
 ## When to use
 
-- Call it **once** at the start of a conversation to learn what tables exist.
-- After the initial call, rely on the cached output in your own context — do not call it again.
+- Only call it when the user's request actually needs data from the database. Skip it for greetings, clarifying questions, meta-conversation, or anything that doesn't require knowing what tables exist.
+- When you do need it, call it **once** — after that, rely on the cached output in your own context rather than calling again.
 - This tool intentionally does *not* return columns. Schemas are big; pulling every column for every table will blow the context window.
 
 ## Format
