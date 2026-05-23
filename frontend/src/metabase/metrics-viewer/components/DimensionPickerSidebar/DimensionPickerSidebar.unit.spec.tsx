@@ -273,7 +273,28 @@ describe("DimensionPickerSidebar", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
 
+    expect(screen.getByRole("button", { name: "ARR" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Order Status" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "ARR" }));
+
+    expect(screen.getByRole("button", { name: "ARR" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Order Status" }),
     ).toBeInTheDocument();

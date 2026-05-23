@@ -11,18 +11,16 @@ import type { AllFieldsMetricGroup } from "./types";
 export function MetricAccordionList({
   activeTab,
   groups,
-  expandedMetricSourceId,
+  expandedMetricSourceIds,
   onToggleMetric,
   onSelect,
 }: {
   activeTab: MetricsViewerTabState;
   groups: AllFieldsMetricGroup[];
-  expandedMetricSourceId: MetricSourceId | null;
+  expandedMetricSourceIds: MetricSourceId[];
   onToggleMetric: (sourceId: MetricSourceId) => void;
   onSelect: (item: DimensionPickerItem) => void;
 }) {
-  const expandedGroupKey = expandedMetricSourceId ?? groups[0]?.key;
-
   return (
     <Stack gap="xs">
       {groups.map((group) => (
@@ -30,7 +28,7 @@ export function MetricAccordionList({
           key={group.key}
           activeTab={activeTab}
           group={group}
-          isExpanded={group.key === expandedGroupKey}
+          isExpanded={expandedMetricSourceIds.includes(group.key)}
           onToggle={() => onToggleMetric(group.key)}
           onSelect={onSelect}
         />

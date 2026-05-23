@@ -74,8 +74,9 @@ export function DimensionPickerSidebar({
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string | null>(
     null,
   );
-  const [expandedMetricSourceId, setExpandedMetricSourceId] =
-    useState<MetricSourceId | null>(null);
+  const [expandedMetricSourceIds, setExpandedMetricSourceIds] = useState<
+    MetricSourceId[]
+  >(() => sourceOrder.slice(0, 1));
 
   const sections = useMemo(
     () =>
@@ -177,6 +178,18 @@ export function DimensionPickerSidebar({
     setMode("all");
   };
 
+  const handleToggleMetric = (sourceId: MetricSourceId) => {
+    setExpandedMetricSourceIds((currentSourceIds) => {
+      if (currentSourceIds.includes(sourceId)) {
+        return currentSourceIds.filter(
+          (currentSourceId) => currentSourceId !== sourceId,
+        );
+      }
+
+      return [...currentSourceIds, sourceId];
+    });
+  };
+
   return (
     <Box
       className={S.root}
@@ -226,8 +239,8 @@ export function DimensionPickerSidebar({
             sourceColors={sourceColors}
             metricSlots={metricSlots}
             hasMultipleSources={hasMultipleSources}
-            expandedMetricSourceId={expandedMetricSourceId}
-            onToggleMetric={setExpandedMetricSourceId}
+            expandedMetricSourceIds={expandedMetricSourceIds}
+            onToggleMetric={handleToggleMetric}
             onSelect={handleSelect}
           />
         ) : categories.length > 0 ? (

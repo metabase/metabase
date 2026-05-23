@@ -15,7 +15,7 @@ import { Text } from "metabase/ui";
 
 import { AllFieldsSectionList } from "./AllFieldsSectionList";
 import { MetricAccordionList } from "./MetricAccordionList";
-import type { AllFieldsMetricGroup } from "./types";
+import { buildAllFieldsMetricGroups } from "./buildAllFieldsMetricGroups";
 
 export function AllFieldsList({
   activeTab,
@@ -25,7 +25,7 @@ export function AllFieldsList({
   sourceColors,
   metricSlots,
   hasMultipleSources,
-  expandedMetricSourceId,
+  expandedMetricSourceIds,
   onToggleMetric,
   onSelect,
 }: {
@@ -36,7 +36,7 @@ export function AllFieldsList({
   sourceColors: SourceColorMap;
   metricSlots: MetricSlot[];
   hasMultipleSources: boolean;
-  expandedMetricSourceId: MetricSourceId | null;
+  expandedMetricSourceIds: MetricSourceId[];
   onToggleMetric: (sourceId: MetricSourceId) => void;
   onSelect: (item: DimensionPickerItem) => void;
 }) {
@@ -59,7 +59,7 @@ export function AllFieldsList({
       <MetricAccordionList
         activeTab={activeTab}
         groups={metricGroups}
-        expandedMetricSourceId={expandedMetricSourceId}
+        expandedMetricSourceIds={expandedMetricSourceIds}
         onToggleMetric={onToggleMetric}
         onSelect={onSelect}
       />
@@ -73,34 +73,4 @@ export function AllFieldsList({
       onSelect={onSelect}
     />
   );
-}
-
-function buildAllFieldsMetricGroups({
-  sections,
-  sourceOrder,
-  sourceDataById,
-  metricSlots,
-  sourceColors,
-}: {
-  sections: DimensionPickerSection[];
-  sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  metricSlots: MetricSlot[];
-  sourceColors: SourceColorMap;
-}): AllFieldsMetricGroup[] {
-  return sourceOrder
-    .map((sourceId) => {
-      const metricSlot = metricSlots.find((slot) => slot.sourceId === sourceId);
-
-      return {
-        key: sourceId,
-        name: sourceDataById[sourceId]?.name ?? sourceId,
-        colors:
-          metricSlot != null ? sourceColors[metricSlot.entityIndex] : undefined,
-        sections: sections.filter(
-          (section) => section.isShared || section.sourceId === sourceId,
-        ),
-      };
-    })
-    .filter((group) => group.sections.length > 0);
 }
