@@ -92,7 +92,7 @@
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `workspace-instance` setting stores. Returns nil when the workspace does not
+  `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` if any of the workspace's databases is not
   `:provisioned`."
   [workspace-id]

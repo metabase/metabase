@@ -7,7 +7,7 @@
   "Marker so callers can `(comment ...keep-me)` to retain the require that registers the settings in this ns."
   nil)
 
-(defsetting workspace-instance
+(defsetting instance-workspace
   (deferred-tru "The workspace loaded on this instance. Populated at boot from a config.yml `:workspace` section or at runtime via `POST /api/ee/advanced-config`. `nil` on parent and unconfigured instances. Read by the QP, transform hooks, and the EE `workspace-mode?` predicate via `metabase-enterprise.workspaces.core/instance-workspace`.")
   :type       :json
   :encryption :no

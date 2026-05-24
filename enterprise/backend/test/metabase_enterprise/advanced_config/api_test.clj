@@ -48,7 +48,7 @@
             (t2/delete! :model/Database db-id)))))))
 
 (deftest applies-workspace-section-test
-  (testing "POST /api/ee/advanced-config applies the :workspace section into the workspace-instance setting"
+  (testing "POST /api/ee/advanced-config applies the :workspace section into the instance-workspace setting"
     (let [db-name (str "advanced-config-ws-" (random-uuid))
           payload {:version 1
                    :config  {:databases [{:name    db-name

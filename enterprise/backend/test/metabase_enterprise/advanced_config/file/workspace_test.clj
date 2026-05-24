@@ -70,7 +70,7 @@
             (str "must accept " (pr-str v)))))))
 
 (deftest apply-workspace-section-populates-atom-test
-  (testing "applying the :workspace section stores parsed config in the workspace-instance setting keyed by db-id"
+  (testing "applying the :workspace section stores parsed config in the instance-workspace setting keyed by db-id"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (let [section (workspace-section "ws-test-db")

@@ -2222,8 +2222,7 @@
            permissions
            premium-features
            search
-           util
-           workspaces}
+           util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard

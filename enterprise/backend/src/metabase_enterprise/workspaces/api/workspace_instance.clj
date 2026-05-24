@@ -60,7 +60,7 @@
   "Read-only summary of the workspace loaded on this instance, wrapped in a
   `{:data ...}` envelope.
 
-  Reads from the `workspace-instance` setting populated at boot by the `:workspace`
+  Reads from the `instance-workspace` setting populated at boot by the `:workspace`
   section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`
   when no workspace was loaded — i.e. this is a manager-only instance, or no
   `config.yml` was present at boot and `POST /current` hasn't been called.
@@ -71,7 +71,7 @@
 
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
   "Install a workspace config on this instance at runtime. Accepts the same shape
-  `GET /current` returns and persists it via the `workspace-instance` setting so
+  `GET /current` returns and persists it via the `instance-workspace` setting so
   it survives restarts. Use this on a running instance to enter workspace mode
   without restarting from `config.yml`."
   [_route-params

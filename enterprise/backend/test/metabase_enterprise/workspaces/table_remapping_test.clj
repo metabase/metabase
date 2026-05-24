@@ -28,7 +28,7 @@
                  (t2/select-one :model/Database db-id)))))
 
 (defn- with-provisioned-workspace-db!
-  "Set the `workspace-instance` setting so `db-workspace-namespace` returns
+  "Set the `instance-workspace` setting so `db-workspace-namespace` returns
    `{:schema output-schema}` for `db-id`, run `f`, clear it on the way out."
   [db-id output-schema f]
   (try

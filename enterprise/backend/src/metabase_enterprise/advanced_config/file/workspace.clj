@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-config.file.workspace
   "Loader for the `:workspace` section of `config.yml`.
 
-  On boot, parses the section and stores it in the `workspace-instance` setting
+  On boot, parses the section and stores it in the `instance-workspace` setting
   (see `metabase-enterprise.workspaces.settings`). That setting is the
   instance-side source of truth for `db-workspace-namespace`.
 
@@ -93,7 +93,7 @@
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
    [[metabase-enterprise.advanced-config.file/initialize!]]) and stores the
-   result in the `workspace-instance` setting keyed by db-id.
+   result in the `instance-workspace` setting keyed by db-id.
 
    The per-database `:output` map is taken verbatim — `workspaces.config/build-workspace-config`
    on the manager side emits it already-expanded, so we don't re-derive it here."

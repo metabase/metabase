@@ -12,7 +12,7 @@
    - **Instance-side state.** When a Metabase boots in workspace mode, the
      `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
      parses `config.yml` and stores the resulting workspace map in the
-     `workspace-instance` setting. Workspace-aware code (transform target
+     `instance-workspace` setting. Workspace-aware code (transform target
      rewriting, table-remapping QP middleware) reads from the setting via
      [[workspace-mode?]] / [[db-workspace-namespace]]. The setting lives in the
      instance's own application database — child instances have their own app DB,
@@ -74,7 +74,7 @@
       :schema (:schema table)})))
 
 (defn- coerce-database-id-key
-  "JSON round-trips through the `workspace-instance` setting return integer
+  "JSON round-trips through the `instance-workspace` setting return integer
    `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
   [k]
   (cond
@@ -89,29 +89,29 @@
           (update :databases #(update-keys % coerce-database-id-key))))
 
 (defenterprise-schema set-instance-workspace! :- :any
-  "EE impl: store the workspace config in the `workspace-instance` setting.
+  "EE impl: store the workspace config in the `instance-workspace` setting.
    Replaces any prior value. The shape is validated against
    `::ws/workspace-instance-config`."
   :feature :none
   [config :- ::ws/workspace-instance-config]
-  (ws.settings/workspace-instance! config)
+  (ws.settings/instance-workspace! config)
   nil)
 
 (defenterprise clear-instance-workspace!
-  "EE impl: clear the `workspace-instance` setting."
+  "EE impl: clear the `instance-workspace` setting."
   :feature :none
   []
-  (ws.settings/workspace-instance! nil)
+  (ws.settings/instance-workspace! nil)
   nil)
 
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."
   []
-  (normalize-database-keys (ws.settings/workspace-instance)))
+  (normalize-database-keys (ws.settings/instance-workspace)))
 
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (the
-   `workspace-instance` setting is populated — either from a `:workspace` section
+   `instance-workspace` setting is populated — either from a `:workspace` section
    of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
    source of truth for gating features that conflict with workspace remapping
    (DB routing, impersonation, writeback, CSV upload, model persistence). Use
@@ -122,7 +122,7 @@
    loaded, we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (some? (ws.settings/workspace-instance)))
+  (some? (ws.settings/instance-workspace)))
 
 (defn db-workspace-namespace
   "Return the workspace-isolated output namespace map for `db-id` on this

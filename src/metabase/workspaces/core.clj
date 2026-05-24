@@ -36,7 +36,7 @@
 
    The OSS jar has no workspace mode (`workspace-mode?` returns false), so
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
-   reads the `workspace-instance` setting."
+   reads the `instance-workspace` setting."
   (:require
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.malli.registry :as mr]))
@@ -66,7 +66,7 @@
    [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
-  "The shape stored in the EE `workspace-instance` setting after the `:workspace`
+  "The shape stored in the EE `instance-workspace` setting after the `:workspace`
    config.yml loader has resolved database names to ids. Database keys are integer
    ids (post-resolution); the wire format with name keys lives in
    `metabase-enterprise.advanced-config.file.workspace`."
@@ -102,7 +102,7 @@
   nil)
 
 (defenterprise clear-instance-workspace!
-  "Clear the `workspace-instance` setting on this instance. No-op on OSS."
+  "Clear the `instance-workspace` setting on this instance. No-op on OSS."
   metabase-enterprise.workspaces.core
   []
   nil)

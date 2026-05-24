@@ -239,7 +239,7 @@
                   (vec vs))))
          set)))
 
-;; `^:synchronized` because the `workspace-instance` setting is process-wide state
+;; `^:synchronized` because the `instance-workspace` setting is process-wide state
 ;; backed by the shared test app DB; running concurrently with other workspace-mode
 ;; tests would cross-pollute.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
@@ -382,7 +382,7 @@
                           ;; `init-from-config-file!` for the `:databases` section (updates the
                           ;; existing Database row with merged workspace creds + schema-filters)
                           ;; and `apply-workspace-section!` for the `:workspace` section (resolves
-                          ;; db names → ids and writes the `workspace-instance` setting).
+                          ;; db names → ids and writes the `instance-workspace` setting).
                           (advanced-config.file/initialize! (yaml/parse-string yaml-str))
                           ;; Diagnostic: the loader should have written the workspace-instance
                           ;; setting and rewritten the Database row's :details to workspace-user creds.
@@ -647,7 +647,7 @@
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                             "no app-db Table row points at the isolation schema")))))))))
                         (finally
-                          ;; Clear the `workspace-instance` setting (populated by `apply-workspace-section!`
+                          ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
