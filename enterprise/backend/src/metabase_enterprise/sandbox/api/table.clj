@@ -62,8 +62,8 @@
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
-         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
-         ;; fetch the metadata
+       ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+       ;; fetch the metadata
        (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
@@ -80,8 +80,8 @@
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
-         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
-         ;; fetch the metadata
+       ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+       ;; fetch the metadata
        (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            table)))

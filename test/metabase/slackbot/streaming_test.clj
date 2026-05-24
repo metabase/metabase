@@ -218,7 +218,7 @@
                                         (fn [_conv-id _profile-id _user-message & {:as opts}]
                                           (deliver stored opts)
                                           {:assistant-msg-id 1 :assistant-external-id "ext"})
-                          ;; Force setup to throw *after* start-turn! has run.
+                                        ;; Force setup to throw *after* start-turn! has run.
                                         slackbot.persistence/message-history
                                         (fn [& _] (throw (ex-info "boom" {})))]
               (mt/client :post 200 "metabot/slack/events"

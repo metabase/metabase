@@ -252,7 +252,7 @@ jobs:
       run: sha256sum ./metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |

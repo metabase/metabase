@@ -568,7 +568,7 @@
   [driver conn schema table-name]
   (try
     (let [sql (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
-        ;; if the query completes without throwing an Exception, we can SELECT from this table
+      ;; if the query completes without throwing an Exception, we can SELECT from this table
       (jdbc/reducible-query {:connection conn} sql)
       true)
     (catch Throwable _
@@ -826,7 +826,7 @@
             (or (instance? OffsetDateTime t)
                 (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
-              ;; tests are expecting this to be in the UTC offset, so convert to that
+                ;; tests are expecting this to be in the UTC offset, so convert to that
                 (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.

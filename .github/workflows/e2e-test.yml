@@ -95,7 +95,7 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Download failed test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         if: github.run_attempt != '1'
         continue-on-error: true
         id: failed-specs
@@ -185,7 +185,7 @@ jobs:
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: |
           !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
@@ -196,7 +196,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Failed Tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: |
           !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
@@ -242,7 +242,7 @@ jobs:
             }
 
       - name: Upload Timing Data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: steps.extract-timings.outcome == 'success' && steps.extract-timings.outputs.has-changes == 'true'
         with:
           name: timing-data-${{ inputs.name }}
