@@ -56,12 +56,12 @@
                                          :databases {(keyword db-name) {:input_schemas ["public"]
                                                                         :output        {:schema "ws_uploaded"}}}}}}]
       (try
-        ;; Workspace bring-up bypasses the :config-text-file premium gate.
-        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
-          (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
-            (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
-                                  (first (multipart (yaml-bytes payload)))
-                                  (second (multipart (yaml-bytes payload))))))
+        (mt/with-premium-features #{:config-text-file}
+          (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+            (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
+              (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
+                                    (first (multipart (yaml-bytes payload)))
+                                    (second (multipart (yaml-bytes payload)))))))
         (testing "Database row was created"
           (let [db (t2/select-one :model/Database :name db-name :engine "postgres")]
             (is (some? db))

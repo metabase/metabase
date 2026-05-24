@@ -129,20 +129,20 @@
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (is (nil? (ws/db-workspace-namespace db-id)))))))
 
-(deftest oss-readable-no-premium-token-test
-  (testing "the :workspace section loads on instances without the :config-text-file premium feature"
+(deftest oss-rejects-workspace-section-without-premium-token-test
+  (testing "OSS instances need the :config-text-file token to load a :workspace section (no special bring-up carve-out)"
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
-        (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
-          (is (= :ok (advanced-config.file/initialize!
-                      {:version 1
-                       :config {:workspace (workspace-section "ws-test-db")}})))
-          (is (some? (ws/instance-workspace))
-              "setting is populated even without :config-text-file token")
-          (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id))))))))
+        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Premium token with the :config-text-file feature"
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
 
-(deftest oss-rejects-config-without-workspace-section-test
-  (testing "OSS instance still gets the premium-token error when :workspace is absent"
+(deftest oss-rejects-non-settings-sections-without-premium-token-test
+  (testing "OSS instances always need the :config-text-file token for non-:settings sections"
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
         (is (thrown-with-msg?
@@ -151,99 +151,7 @@
              (advanced-config.file/initialize!
               {:version 1
                :config {:users [{:first_name "X" :last_name "Y"
-                                 :email "x@example.com" :password "pw"}]}}))
-            "without :workspace, OSS still requires the premium token")))))
-
-(deftest workspace-bring-up-opens-gate-for-other-sections-test
-  (testing "presence of :workspace lets sibling sections (:databases, :users, :api-keys) load on OSS"
-    (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/Database _ {:name "sibling-db"}]
-          (is (= :ok (advanced-config.file/initialize!
-                      {:version 1
-                       :config {:users [{:first_name "Bring"
-                                         :last_name  "Up"
-                                         :email      "bringup@example.com"
-                                         :password   "password1"}]
-                                :workspace (workspace-section "sibling-db")}})))
-          (is (some? (ws/instance-workspace))
-              ":workspace section ran"))))))
-
-(defn- try-initialize!
-  "Run `initialize!` and report whether it returned `:ok` cleanly. Catches every
-  Throwable so the OSS-bypass attack tests below can ask 'did anything block
-  this?' without caring which layer (spec validation or the premium-token gate)
-  did the blocking — both count as defense."
-  [parsed-config]
-  (try
-    (= :ok (advanced-config.file/initialize! parsed-config))
-    (catch Throwable _
-      false)))
-
-(deftest invalid-workspace-section-does-not-open-gate-test
-  (testing "an empty or malformed :workspace section does NOT let the rest of the file load on OSS"
-    (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{}
-        (testing "empty workspace map"
-          (is (false? (try-initialize!
-                       {:version 1
-                        :config {:users [{:first_name "X" :last_name "Y"
-                                          :email "x@example.com" :password "pw"}]
-                                 :workspace {}}}))
-              "empty :workspace doesn't unlock the gate"))
-        (testing "workspace missing :databases"
-          (is (false? (try-initialize!
-                       {:version 1
-                        :config {:users [{:first_name "X" :last_name "Y"
-                                          :email "x@example.com" :password "pw"}]
-                                 :workspace {:name "Just a name"}}}))))
-        (testing "workspace with empty :databases map"
-          (is (false? (try-initialize!
-                       {:version 1
-                        :config {:users [{:first_name "X" :last_name "Y"
-                                          :email "x@example.com" :password "pw"}]
-                                 :workspace {:name "n" :databases {}}}}))))))))
-
-(deftest valid-workspace-section?-test
-  (testing "valid-workspace-section? matches the spec used by the gate"
-    (testing "structurally-valid sections"
-      (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                  {:name "ws" :databases {:db1 {:input_schemas ["s1"]
-                                                :output        {:schema "out"}}}}))
-          "minimal: single schema string on input, output is a {:schema} map")
-      (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                  {:name "ws" :databases {:db1 {:input_schemas ["PUBLIC" "ANALYTICS"]
-                                                :output        {:schema "WS_ALICE"}}}}))
-          "multiple input schemas allowed"))
-    (testing "structural rejection"
-      (is (false? (advanced-config.file.workspace/valid-workspace-section? {}))
-          "empty map is invalid")
-      (is (false? (advanced-config.file.workspace/valid-workspace-section? {:name "ws"}))
-          ":databases is required")
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws" :databases {}}))
-          "empty :databases map is invalid")
-      (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                  {:name "ws"
-                   :databases {:db1 {:input_schemas []
-                                     :output        {:schema "out"}}}}))
-          "empty :input_schemas is allowed (no-schema drivers like MySQL pass [])"))
-    (testing ":output rejection"
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws"
-                    :databases {:db1 {:input_schemas ["s1"]
-                                      :output        {}}}}))
-          ":output with neither :db nor :schema is invalid")
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws"
-                    :databases {:db1 {:input_schemas ["s1"]}}}))
-          ":output is required"))
-    (testing "schema-string rejection"
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws"
-                    :databases {:db1 {:input_schemas [""]
-                                      :output        {:schema "out"}}}}))
-          "empty-string in :input_schemas is invalid"))))
+                                 :email "x@example.com" :password "pw"}]}})))))))
 
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
 ;;;
@@ -252,11 +160,6 @@
 
 (deftest mysql-cardinality-upgrade-section-test
   (testing "MySQL workspace: only `:db` slot is populated in the setting (no schema layer)"
-    (let [section {:name "ws"
-                   :databases {:mysql-prod {:input_schemas ["prod_db"]
-                                            :output        {:db "ws_alice"}}}}]
-      (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
-          "MySQL workspace passes validation"))
     (testing "loader stores MySQL output namespace in the :db slot"
       (mt/with-empty-h2-app-db!
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
@@ -341,8 +244,8 @@
                 (str driver " input_schemas matches expectation"))
             (is (= (:output expectations) (:output wsd))
                 (str driver " :output matches expectation")))
-          (testing "validates against the workspace spec"
-            (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
+          (testing "validates against the workspace section spec"
+            (is (true? (s/valid? :metabase-enterprise.advanced-config.file.workspace/config-file-spec section))
                 (str driver " fixture must satisfy the section spec")))
           (testing "round-trips through apply-workspace-section! into the setting"
             (mt/with-empty-h2-app-db!

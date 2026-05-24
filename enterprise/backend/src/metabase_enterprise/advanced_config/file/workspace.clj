@@ -59,13 +59,6 @@
 (s/def ::config-file-spec
   (s/keys :req-un [::name ::databases]))
 
-(defn valid-workspace-section?
-  "Predicate used by the file-level loader to decide whether `(:workspace m)` is a
-  structurally-valid bring-up manifest. Only a valid section opens the
-  config-text-file gate for OSS instances — a typo or empty section must not."
-  [section-config]
-  (s/valid? ::config-file-spec section-config))
-
 (defmethod advanced-config.file.i/section-spec :workspace
   [_section-name]
   (s/spec ::config-file-spec))

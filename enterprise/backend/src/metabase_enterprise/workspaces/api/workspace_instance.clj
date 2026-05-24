@@ -76,9 +76,6 @@
   without restarting from `config.yml`."
   [_route-params
    _query-params
-   ;; Use the canonical schema so the `:decode/json` transformer coerces the
-   ;; `:databases` map keys from JSON strings back into integer Database ids
-   ;; before validation and storage.
    body :- ::ws.oss/workspace-instance-config]
   (api/check-data-analyst)
   (ws/set-instance-workspace! body)

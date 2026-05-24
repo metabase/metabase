@@ -105,7 +105,7 @@ describe("scenarios > workspaces > workspace instance", () => {
     });
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up workspace mode through the SetupWorkspaceModal");
+      cy.log("set up workspace mode");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
@@ -181,7 +181,7 @@ describe("scenarios > workspaces > workspace instance", () => {
     });
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up workspace mode through the SetupWorkspaceModal");
+      cy.log("set up workspace mode");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
