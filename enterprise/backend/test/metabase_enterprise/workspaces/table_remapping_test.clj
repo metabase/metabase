@@ -28,8 +28,8 @@
                  (t2/select-one :model/Database db-id)))))
 
 (defn- with-provisioned-workspace-db!
-  "Set the in-process workspace atom so `db-workspace-namespace` returns
-   `{:schema output-schema}` for `db-id`, run `f`, clear the atom on the way out."
+  "Set the `workspace-instance` setting so `db-workspace-namespace` returns
+   `{:schema output-schema}` for `db-id`, run `f`, clear it on the way out."
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"

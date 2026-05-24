@@ -11,11 +11,13 @@
 
    - **Instance-side state.** When a Metabase boots in workspace mode, the
      `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
-     parses `config.yml` and stores the resulting workspace map in
-     [[workspace-instance-config]]. Workspace-aware code (transform target
-     rewriting, table-remapping QP middleware) reads from that atom via
-     [[workspace-mode?]] / [[db-workspace-namespace]]. The atom is fresh per process
-     — every boot re-reads `config.yml` and replaces the prior value.
+     parses `config.yml` and stores the resulting workspace map in the
+     `workspace-instance` setting. Workspace-aware code (transform target
+     rewriting, table-remapping QP middleware) reads from the setting via
+     [[workspace-mode?]] / [[db-workspace-namespace]]. The setting lives in the
+     instance's own application database — child instances have their own app DB,
+     so storing it there persists the workspace across restarts without leaking
+     between parent and child.
 
    Per-database lifecycle for the manager-side rows:
 
@@ -32,6 +34,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
@@ -70,70 +73,67 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defonce ^{:dynamic true
-           :doc "The single workspace loaded into this instance from `config.yml`, or nil
-  when no workspace was loaded.
+(defn- coerce-database-id-key
+  "JSON round-trips through the `workspace-instance` setting return integer
+   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
+  [k]
+  (cond
+    (int? k)     k
+    (keyword? k) (parse-long (name k))
+    (string? k)  (parse-long k)))
 
-  Shape:
-    {:name <workspace-name>
-     :databases {<database-id> {:input_schemas [<schema-name>, ...]
-                                :output        {:db ?, :schema ?}}
-                 ...}}
-
-  `:input_schemas` is a vector of driver-opaque schema strings. For 3-slot
-  drivers (SQL Server, BigQuery) the warehouse catalog/project is
-  derived from the canonical `Database.details` at use time, not duplicated
-  on each row.
-
-  `:output` is a `::table-namespace` map — the loader expands the stored
-  `output_namespace` string into `{:db (db-position-value db) :schema ns}`
-  at boot so QP middleware can read both slots without a per-query case."}
-  *workspace-instance-config*
-  (atom nil))
+(defn- normalize-database-keys
+  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
+  [config]
+  (some-> config
+          (update :databases #(update-keys % coerce-database-id-key))))
 
 (defenterprise-schema set-instance-workspace! :- :any
-  "EE impl: install the in-process workspace config atom. Replaces any prior
-   value. The shape is validated against `::ws/workspace-instance-config`."
+  "EE impl: store the workspace config in the `workspace-instance` setting.
+   Replaces any prior value. The shape is validated against
+   `::ws/workspace-instance-config`."
   :feature :none
   [config :- ::ws/workspace-instance-config]
-  (reset! *workspace-instance-config* config)
+  (ws.settings/workspace-instance! config)
   nil)
 
 (defenterprise clear-instance-workspace!
-  "EE impl: clear the in-process workspace config atom."
+  "EE impl: clear the `workspace-instance` setting."
   :feature :none
   []
-  (reset! *workspace-instance-config* nil)
+  (ws.settings/workspace-instance! nil)
   nil)
 
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."
   []
-  @*workspace-instance-config*)
+  (normalize-database-keys (ws.settings/workspace-instance)))
 
 (defenterprise workspace-mode?
-  "EE impl: true iff this instance is running in workspace mode (a `:workspace`
-   section was loaded from `config.yml` at boot). Single source of truth for
-   gating features that conflict with workspace remapping (DB routing,
-   impersonation, writeback, CSV upload, model persistence). Use
-   [[db-workspace-namespace]] when you need per-database scoping.
+  "EE impl: true iff this instance is running in workspace mode (the
+   `workspace-instance` setting is populated — either from a `:workspace` section
+   of `config.yml` at boot or by a `POST /api/ee/workspace-instance/current`).
+   Single source of truth for gating features that conflict with workspace
+   remapping (DB routing, impersonation, writeback, CSV upload, model
+   persistence). Use [[db-workspace-namespace]] when you need per-database
+   scoping.
 
    Deliberately ungated on premium features: a workspace child instance bootstraps
    from `config.yml` *before* its token is installed; if the workspace map is
    loaded, we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (some? @*workspace-instance-config*))
+  (ws.settings/workspace-mode?))
 
 (defn db-workspace-namespace
   "Return the workspace-isolated output namespace map for `db-id` on this
    instance, or `nil` when this instance is not running a workspace or the
    workspace has no entry for `db-id`. The namespace map is
    `{:db ?, :schema ?}` - either or both keys may be absent depending on
-   the driver's `qualified-name-components`. Reads from the in-process atom
-   populated by `config.yml`."
+   the driver's `qualified-name-components`. Reads from the `workspace-instance`
+   setting."
   [db-id]
-  (get-in @*workspace-instance-config* [:databases db-id :output]))
+  (get-in (instance-workspace) [:databases db-id :output]))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."

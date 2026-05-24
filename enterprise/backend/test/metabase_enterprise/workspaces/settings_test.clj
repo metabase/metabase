@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.settings :as ws.settings]))
+   [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk]
                       (try
@@ -10,21 +13,21 @@
                         (finally
                           (ws/clear-instance-workspace!)))))
 
-(deftest has-active-workspace-false-when-atom-empty-test
-  (testing "has-active-workspace is false when no :workspace section has been loaded"
+(deftest workspace-mode?-false-when-setting-empty-test
+  (testing "workspace-mode? is false when no :workspace section has been loaded"
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/has-active-workspace)))))
+    (is (false? (ws.settings/workspace-mode?)))))
 
-(deftest has-active-workspace-true-when-atom-populated-test
-  (testing "has-active-workspace flips to true once the loader populates the in-process atom"
+(deftest workspace-mode?-true-when-setting-populated-test
+  (testing "workspace-mode? flips to true once a workspace config has been set"
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/has-active-workspace)))
+    (is (false? (ws.settings/workspace-mode?)))
     (ws/set-instance-workspace! {:name "Acme" :databases {}})
-    (is (true? (ws.settings/has-active-workspace)))))
+    (is (true? (ws.settings/workspace-mode?)))))
 
-(deftest has-active-workspace-flips-back-to-false-on-clear-test
-  (testing "has-active-workspace returns to false after clear-instance-workspace!"
+(deftest workspace-mode?-flips-back-to-false-on-clear-test
+  (testing "workspace-mode? returns to false after clear-instance-workspace!"
     (ws/set-instance-workspace! {:name "Acme" :databases {}})
-    (is (true? (ws.settings/has-active-workspace)))
+    (is (true? (ws.settings/workspace-mode?)))
     (ws/clear-instance-workspace!)
-    (is (false? (ws.settings/has-active-workspace)))))
+    (is (false? (ws.settings/workspace-mode?)))))

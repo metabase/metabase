@@ -15,7 +15,13 @@
   (mt/with-premium-features #{:workspaces}
     (f)))
 
-(use-fixtures :each with-premium-feature)
+(defn- with-clear-workspace [f]
+  (try
+    (f)
+    (finally
+      (ws/clear-instance-workspace!))))
+
+(use-fixtures :each with-premium-feature with-clear-workspace)
 
 (deftest current-superuser-only-test
   (testing "GET /ee/workspace-instance/current requires superuser"
@@ -42,6 +48,36 @@
                               (get databases (str (mt/id))))]
             (is (= ["PUBLIC"] (:input_schemas db)))
             (is (= {:schema "ws_alice"} (:output db)))))))))
+
+(deftest post-current-superuser-only-test
+  (testing "POST /ee/workspace-instance/current requires superuser"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "ee/workspace-instance/current"
+                                 {:name "x" :databases {}})))))
+
+(deftest post-current-round-trip-test
+  (testing "POST /ee/workspace-instance/current installs the workspace and is readable via GET"
+    (let [payload {:name      "Installed via API"
+                   :databases {(mt/id) {:input_schemas ["PUBLIC"]
+                                        :output        {:schema "ws_api_install"}}}}
+          posted  (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" payload)]
+      (is (= "Installed via API" (:name posted)))
+      (testing "GET reflects the workspace just installed"
+        (let [fetched (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")]
+          (is (= "Installed via API" (:name fetched)))
+          (is (= 1 (count (:databases fetched)))))))))
+
+(deftest delete-current-superuser-only-test
+  (testing "DELETE /ee/workspace-instance/current requires superuser"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :delete 403 "ee/workspace-instance/current")))))
+
+(deftest delete-current-clears-workspace-test
+  (testing "DELETE /ee/workspace-instance/current clears any installed workspace"
+    (ws/set-instance-workspace! {:name "to-clear" :databases {}})
+    (is (some? (ws/instance-workspace)))
+    (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
+    (is (nil? (ws/instance-workspace)))))
 
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires superuser"

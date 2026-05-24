@@ -11,4 +11,4 @@ export const canManageWorkspaces = (state: State): boolean => {
 };
 
 export const hasActiveWorkspace = (state: State): boolean =>
-  getSetting(state, "has-active-workspace") ?? false;
+  getSetting(state, "workspace-mode?") ?? false;

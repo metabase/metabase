@@ -1,14 +1,14 @@
 (ns metabase-enterprise.advanced-config.file.workspace
   "Loader for the `:workspace` section of `config.yml`.
 
-  On boot, parses the section and stores it in the in-process atom:
-  [[metabase-enterprise.workspaces.core/workspace-instance-config]].
-  That atom is the instance-side source of truth for `db-workspace-namespace`.
+  On boot, parses the section and stores it in the `workspace-instance` setting
+  (see `metabase-enterprise.workspaces.settings`). That setting is the
+  instance-side source of truth for `db-workspace-namespace`.
 
-  The atom is fresh per process, every boot re-reads `config.yml` and replaces the
-  prior value. There is no durable storage of instance-side workspace state, by
-  design: the file IS the source of truth, and a different file at boot means a
-  different workspace, no questions asked."
+  Every boot re-reads `config.yml` and overwrites the prior value. The setting
+  persists across restarts in the instance's app DB, so a running workspace
+  survives a process bounce even without `config.yml` — but if `config.yml` is
+  present at boot, it wins."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -115,8 +115,9 @@
 
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see [[metabase-enterprise.advanced-config.file/initialize!]])
-   and stores the result in [[metabase-enterprise.workspaces.core/workspace-instance-config]] keyed by
-   db-id. The atom carries `{:input_schemas [String], :output {:db ?, :schema ?}}`.
+   and stores the result in the `workspace-instance` setting keyed by db-id. The
+   setting carries `{:input_schemas [String], :output {:db ?, :schema ?}}` per
+   database.
    `:output` is expanded once at boot via [[expand-output]] so the QP hot path
    doesn't re-run the per-engine case per query."
   [section-config]

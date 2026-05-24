@@ -203,7 +203,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           )}
           {hasActiveWorkspace && (
             <DataStudioTab
-              label={t`Workspace`}
+              label={t`Workspaces`}
               icon="folder"
               to={Urls.workspaceInstance()}
               isSelected={currentTab === "workspaces"}

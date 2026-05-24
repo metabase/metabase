@@ -239,8 +239,9 @@
                   (vec vs))))
          set)))
 
-;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
-;; running concurrently with other workspace-mode tests would cross-pollute.
+;; `^:synchronized` because the `workspace-instance` setting is process-wide state
+;; backed by the shared test app DB; running concurrently with other workspace-mode
+;; tests would cross-pollute.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (defn- with-redshift-describe-filter-disabled
   "Redshift test infra normally filters describe-database to only return tables
@@ -381,11 +382,11 @@
                           ;; `init-from-config-file!` for the `:databases` section (updates the
                           ;; existing Database row with merged workspace creds + schema-filters)
                           ;; and `apply-workspace-section!` for the `:workspace` section (resolves
-                          ;; db names → ids and populates `ws/workspace-instance-config`).
+                          ;; db names → ids and writes the `workspace-instance` setting).
                           (binding [advanced-config.file/*config* (yaml/parse-string yaml-str)]
                             (advanced-config.file/initialize!))
-                          ;; Diagnostic: the loader should have populated the in-process workspace
-                          ;; atom and rewritten the Database row's :details to workspace-user creds.
+                          ;; Diagnostic: the loader should have written the workspace-instance
+                          ;; setting and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
                               "loader did not put the instance into workspace-mode (atom not populated)")
                           ;; The Database row's `:details` was just rewritten by the loader. Re-read
@@ -647,7 +648,7 @@
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                             "no app-db Table row points at the isolation schema")))))))))
                         (finally
-                          ;; Clear the in-process workspace atom (populated by `apply-workspace-section!`
+                          ;; Clear the `workspace-instance` setting (populated by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
