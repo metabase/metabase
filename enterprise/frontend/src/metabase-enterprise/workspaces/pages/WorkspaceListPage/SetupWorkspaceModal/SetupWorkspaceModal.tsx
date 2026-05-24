@@ -1,6 +1,5 @@
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
-import * as Yup from "yup";
 
 import {
   Form,
@@ -21,7 +20,6 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Errors from "metabase/utils/errors";
 import { useApplyAdvancedConfigMutation } from "metabase-enterprise/api";
 
 const CONFIG_FILENAME = "config.yml";
@@ -52,10 +50,6 @@ type SetupWorkspaceFormValues = {
   config: File | null;
 };
 
-const SETUP_WORKSPACE_SCHEMA = Yup.object({
-  config: Yup.mixed<File>().nullable().required(Errors.required),
-});
-
 const INITIAL_VALUES: SetupWorkspaceFormValues = {
   config: null,
 };
@@ -78,32 +72,34 @@ function SetupWorkspaceForm({ onClose }: SetupWorkspaceFormProps) {
   };
 
   return (
-    <FormProvider
-      initialValues={INITIAL_VALUES}
-      validationSchema={SETUP_WORKSPACE_SCHEMA}
-      onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="lg">
-          <Text c="text-secondary">
-            {jt`Upload the ${(
-              <Code key="config">{CONFIG_FILENAME}</Code>
-            )} from the main instance's workspace page.`}
-          </Text>
-          <FormFileInput
-            name="config"
-            label={t`Config file`}
-            placeholder={t`Choose a ${CONFIG_FILENAME} file`}
-            accept=".yml,.yaml,application/yaml,text/yaml"
-            leftSection={<FixedSizeIcon name="attachment" aria-hidden />}
-          />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Set up`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
+    <FormProvider initialValues={INITIAL_VALUES} onSubmit={handleSubmit}>
+      {({ values }) => (
+        <Form>
+          <Stack gap="lg">
+            <Text c="text-secondary">
+              {jt`Upload the ${(
+                <Code key="config">{CONFIG_FILENAME}</Code>
+              )} from the main instance's workspace page.`}
+            </Text>
+            <FormFileInput
+              name="config"
+              label={t`Config file`}
+              placeholder={t`Choose a ${CONFIG_FILENAME} file`}
+              accept=".yml,.yaml,application/yaml,text/yaml"
+              leftSection={<FixedSizeIcon name="attachment" aria-hidden />}
+            />
+            <FormErrorMessage />
+            <Group justify="flex-end">
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Set up`}
+                variant="filled"
+                disabled={values.config == null}
+              />
+            </Group>
+          </Stack>
+        </Form>
+      )}
     </FormProvider>
   );
 }
