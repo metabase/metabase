@@ -20,11 +20,11 @@ describe("DeleteSection", () => {
     setup();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Exit workspace mode" }),
+      screen.getByRole("button", { name: "Leave workspace" }),
     );
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Exit workspace mode" }),
+      within(dialog).getByRole("button", { name: "Leave workspace" }),
     );
 
     await waitFor(() => {

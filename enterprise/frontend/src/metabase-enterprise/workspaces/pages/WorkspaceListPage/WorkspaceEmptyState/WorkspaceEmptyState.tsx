@@ -56,7 +56,7 @@ export function WorkspaceEmptyState() {
             title={t`Or is this your developer instance?`}
             description={jt`Upload the ${(
               <Code key="config">{CONFIG_FILENAME}</Code>
-            )} from your main instance. We will register its databases and switch into isolated workspace mode.`}
+            )} from your main instance. We will register its databases and load the isolated workspace here.`}
           >
             <Button variant="default" onClick={openSetup}>
               {t`Set up a developer instance`}

@@ -151,7 +151,7 @@ export const WorkspaceInstancePage = {
     WorkspaceInstancePage.get().findByText(canonicalName),
   exitButton: () =>
     WorkspaceInstancePage.get().findByRole("button", {
-      name: "Exit workspace mode",
+      name: "Leave workspace",
     }),
 };
 
@@ -159,7 +159,7 @@ export const ExitWorkspaceModal = {
   get: () => modal(),
   confirmButton: () =>
     ExitWorkspaceModal.get().findByRole("button", {
-      name: "Exit workspace mode",
+      name: "Leave workspace",
     }),
   cancelButton: () =>
     ExitWorkspaceModal.get().findByRole("button", { name: "Cancel" }),

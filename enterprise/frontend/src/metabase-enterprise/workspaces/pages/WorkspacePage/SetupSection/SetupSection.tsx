@@ -11,7 +11,7 @@ export type SetupSectionProps = {
 };
 
 export function SetupSection({ workspace }: SetupSectionProps) {
-  const description = jt`Download this ${<Code key="config">{CONFIG_FILENAME}</Code>} and upload it on the developer instance to switch it into isolated workspace mode. The file carries the database credentials the developer instance needs.`;
+  const description = jt`Download this ${<Code key="config">{CONFIG_FILENAME}</Code>} and upload it on the developer instance to load this isolated workspace. The file carries the database credentials the developer instance needs.`;
 
   return (
     <TitleSection

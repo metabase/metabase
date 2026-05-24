@@ -105,7 +105,7 @@ describe("scenarios > workspaces > workspace instance", () => {
     });
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up workspace mode");
+      cy.log("set up the workspace");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
@@ -156,7 +156,7 @@ describe("scenarios > workspaces > workspace instance", () => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
 
-      cy.log("exit workspace mode through the UI");
+      cy.log("exit the workspace through the UI");
       H.WorkspaceInstancePage.visit();
       H.WorkspaceInstancePage.exitButton().click();
       H.ExitWorkspaceModal.confirmButton().click();
@@ -187,7 +187,7 @@ describe("scenarios > workspaces > workspace instance", () => {
     });
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up workspace mode");
+      cy.log("set up the workspace");
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
@@ -234,7 +234,7 @@ describe("scenarios > workspaces > workspace instance", () => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
 
-      cy.log("exit workspace mode through the UI");
+      cy.log("exit the workspace through the UI");
       H.WorkspaceInstancePage.visit();
       H.WorkspaceInstancePage.exitButton().click();
       H.ExitWorkspaceModal.confirmButton().click();
