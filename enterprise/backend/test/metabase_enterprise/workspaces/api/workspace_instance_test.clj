@@ -15,13 +15,13 @@
   (mt/with-premium-features #{:workspaces}
     (f)))
 
-(defn- with-clear-workspace [f]
+(defn- with-clear-workspace! [f]
   (try
     (f)
     (finally
       (ws/clear-instance-workspace!))))
 
-(use-fixtures :each with-premium-feature with-clear-workspace)
+(use-fixtures :each with-premium-feature with-clear-workspace!)
 
 (deftest current-superuser-only-test
   (testing "GET /ee/workspace-instance/current requires data analyst or superuser"

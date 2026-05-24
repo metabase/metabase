@@ -8,10 +8,12 @@
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- yaml-bytes ^bytes [body]
-  (.getBytes (yaml/generate-string body) "UTF-8"))
+  (.getBytes ^String (yaml/generate-string body) "UTF-8"))
 
 (defn- multipart [bs]
   [{:request-options {:headers {"content-type" "multipart/form-data"}}}
