@@ -95,8 +95,6 @@
 (defn- cache-results!
   "Save the final results of a query."
   [query-hash]
-  (log/infof "Caching results for next time for query with hash %s. %s"
-             (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
   (try
     (let [bytez (serialized-bytes)]
       (if-not (instance? (Class/forName "[B") bytez)
@@ -104,13 +102,23 @@
         (do
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
-          (log/debug "Successfully cached results for query.")
           (schedule-purge! *backend*))))
     :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
         (log/debugf e "Not caching results: results are larger than %s KB" (cache/query-caching-max-kb))
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
+
+(defn- ^:private describe-cache-context
+  [metadata query-hash]
+  (let [card-id      (get-in metadata [:preprocessed_query :info :card-id])
+        dashboard-id (get-in metadata [:preprocessed_query :info :dashboard-id])
+        hash-str     (i/short-hex-hash query-hash)]
+    (cond
+      (and card-id dashboard-id) (format "Card %d (dashboard %d; hash %s)" card-id dashboard-id hash-str)
+      card-id                    (format "Card %d (hash %s)" card-id hash-str)
+      dashboard-id               (format "Dashboard %d (hash %s)" dashboard-id hash-str)
+      :else                      (format "Hash %s" hash-str))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (add-object-to-cache! (assoc metadata
@@ -128,11 +136,17 @@
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
            ;; doesn't get re-run at full cost on every request
            eligible?       (> duration-ms min-duration-ms)]
-       (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                  (i/short-hex-hash query-hash)
-                  (u/format-milliseconds duration-ms)
-                  (u/format-milliseconds min-duration-ms)
-                  (if eligible? "eligible" "not eligible"))
+       (when (log/enabled? :debug)
+         (let [context          (describe-cache-context metadata query-hash)
+               duration-str     (u/format-milliseconds duration-ms)
+               min-duration-str (u/format-milliseconds min-duration-ms)]
+           (if eligible?
+             (log/debugf "%s took %s to run; minimum for cache eligibility is %s; eligible"
+                         context duration-str min-duration-str)
+             (log/debugf "%s took %s to run; minimum for cache eligibility is %s; not eligible"
+                         context duration-str min-duration-str))
+           (when eligible?
+             (log/debugf "Caching results for %s" context))))
        (when eligible?
          (cache-results! query-hash))
        (rf (cond-> result
