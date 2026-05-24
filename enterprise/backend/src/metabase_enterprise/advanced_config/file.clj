@@ -170,8 +170,11 @@
       (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
     path*))
 
-(def ^:private ^:dynamic *config*
-  "Override the config contents as returned by [[config]], for test mocking purposes."
+(def ^:dynamic *config*
+  "Override the config contents as returned by [[config]] — bind this to a
+   parsed-YAML map to drive [[initialize!]] without reading from disk. Used by
+   tests (which bind a mock config) and by the EE `/api/ee/advanced-config`
+   upload endpoint."
   nil)
 
 (defmulti ^:private expand-parsed-template-form

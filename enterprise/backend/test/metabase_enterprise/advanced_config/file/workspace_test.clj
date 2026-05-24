@@ -8,9 +8,12 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each
   (fn [thunk]
