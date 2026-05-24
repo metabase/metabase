@@ -80,7 +80,7 @@ function WorkspaceInstancePageBody({
       <PaneHeader
         title={<Title order={3}>{workspace.name}</Title>}
         breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Workspace`}</DataStudioBreadcrumbs>
+          <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={<HelpMenu />}
         py={0}
