@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.custom-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -415,6 +416,71 @@
                                            :value_field (mt/$ids $venues.id)}}
                    1
                    (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
+
+(deftest ^:parallel values-from-card-external-remapping-test
+  (testing "remapped breakouts are stripped from the result, leaving only the requested columns in the requested order"
+    (mt/dataset test-data
+      (mt/with-column-remappings [orders.user_id    people.name
+                                  orders.product_id products.title]
+        (binding [custom-values/*max-rows* 3]
+          (mt/with-temp
+            [:model/Card card (mt/card-with-source-metadata-for-query (mt/mbql-query orders))]
+            (let [user-id-ref       (lib/ensure-uuid [:field {} (mt/id :orders :user_id)])
+                  people-name-ref   (lib/ensure-uuid [:field {} (mt/id :people :name)])
+                  product-title-ref (lib/ensure-uuid [:field {} (mt/id :products :title)])]
+              (testing "value-field is a remapped FK with no label"
+                (is (= {:has_more_values true
+                        :values          [[2210] [624] [276]]}
+                       (custom-values/values-from-card card user-id-ref))))
+              (testing "value-field is a remapped FK, label-field is its remap target"
+                (is (= {:has_more_values true
+                        :values          [[2210 "Abbey Satterfield"]
+                                          [624 "Abbie Parisian"]
+                                          [276 "Abbie Ryan"]]}
+                       (custom-values/values-from-card card user-id-ref {:label-field people-name-ref}))))
+              (testing "value-field and label-field are remap targets reached via different FKs"
+                (is (= {:has_more_values true
+                        :values          [["Abbey Satterfield" "Aerodynamic Leather Toucan"]
+                                          ["Abbey Satterfield" "Awesome Plastic Watch"]
+                                          ["Abbey Satterfield" "Enormous Cotton Pants"]]}
+                       (custom-values/values-from-card card people-name-ref {:label-field product-title-ref})))))))))))
+
+(deftest ^:parallel parameter-remapped-value-external-remapping-test
+  (testing "parameter-remapped-value returns the [value label] pair for a single value when breakouts are remapped"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-column-remappings [orders.user_id    people.name
+                                    orders.product_id products.title]
+          (binding [custom-values/*max-rows* 3]
+            (mt/with-temp
+              [:model/Card card (mt/card-with-source-metadata-for-query (mt/mbql-query orders))]
+              (let [raise (fn [] (throw (ex-info "Shouldn't call this function" {})))]
+                (testing "value-field is a remapped FK, label-field is its remap target"
+                  (is (= [2210 "Abbey Satterfield"]
+                         (custom-values/parameter-remapped-value
+                          {:name                 "Card as source"
+                           :slug                 "card"
+                           :id                   "_CARD_"
+                           :type                 :category
+                           :values_source_type   :card
+                           :values_source_config {:card_id     (:id card)
+                                                  :value_field (mt/$ids $orders.user_id)
+                                                  :label_field (mt/$ids $people.name)}}
+                          2210
+                          raise))))
+                (testing "value-field and label-field are remap targets reached via different FKs"
+                  (is (= ["Abbey Satterfield" "Aerodynamic Leather Toucan"]
+                         (custom-values/parameter-remapped-value
+                          {:name                 "Card as source"
+                           :slug                 "card"
+                           :id                   "_CARD_"
+                           :type                 :category
+                           :values_source_type   :card
+                           :values_source_config {:card_id     (:id card)
+                                                  :value_field (mt/$ids $orders.user_id->people.name)
+                                                  :label_field (mt/$ids $orders.product_id->products.title)}}
+                          "Abbey Satterfield"
+                          raise))))))))))))
 
 (deftest ^:parallel order-by-aggregation-fields-test
   (testing "Values could be retrieved for queries containing ordering by aggregation (#46369)"
