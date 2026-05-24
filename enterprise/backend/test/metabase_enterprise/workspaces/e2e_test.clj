@@ -258,7 +258,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers
-    (mt/with-premium-features #{:workspaces}
+    (mt/with-premium-features #{:workspaces :config-text-file}
       ;; The default test-time `db-connection-timeout-ms` is 5s. BigQuery's
       ;; first call through a freshly-built impersonated client (cold gRPC
       ;; handshake + impersonation token mint + `listDatasets`) regularly
@@ -700,7 +700,7 @@
   ;; source table, so it inherits that failure mode. Investigation pending; unrelated
   ;; to the native-SQL-rewrite hook this test was written to cover.
   (mt/test-drivers #{:postgres :mysql}
-    (mt/with-premium-features #{:workspaces}
+    (mt/with-premium-features #{:workspaces :config-text-file}
       (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
         (let [admin-driver  driver/*driver*
               admin-db      (mt/db)
