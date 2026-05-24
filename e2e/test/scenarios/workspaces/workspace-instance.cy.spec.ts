@@ -155,6 +155,12 @@ describe("scenarios > workspaces > workspace instance", () => {
       ).then((result) => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
+
+      cy.log("exit workspace mode through the UI");
+      H.WorkspaceInstancePage.visit();
+      H.WorkspaceInstancePage.exitButton().click();
+      H.ExitWorkspaceModal.confirmButton().click();
+      H.WorkspaceListPage.get().should("be.visible");
     });
   });
 
@@ -227,6 +233,12 @@ describe("scenarios > workspaces > workspace instance", () => {
       ).then((result) => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
+
+      cy.log("exit workspace mode through the UI");
+      H.WorkspaceInstancePage.visit();
+      H.WorkspaceInstancePage.exitButton().click();
+      H.ExitWorkspaceModal.confirmButton().click();
+      H.WorkspaceListPage.get().should("be.visible");
     });
   });
 });

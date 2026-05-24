@@ -11,7 +11,7 @@ export const advancedConfigApi = EnterpriseApi.injectEndpoints({
         formData.append("config", config);
         return {
           method: "POST",
-          url: "/api/ee/advanced-config/",
+          url: "/api/ee/advanced-config",
           body: { formData },
           formData: true,
           fetch: true,

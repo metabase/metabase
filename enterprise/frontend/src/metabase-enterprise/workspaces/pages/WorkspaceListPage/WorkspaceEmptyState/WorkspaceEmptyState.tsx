@@ -43,7 +43,7 @@ export function WorkspaceEmptyState() {
           description={t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
         />
         <Divider />
-        <SimpleGrid cols={2} spacing="xl">
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
           <Section
             title={t`Is this your main instance?`}
             description={t`Create a workspace from here. We will provision an isolated schema and a dedicated user in the databases you pick, ready for a developer instance to use.`}

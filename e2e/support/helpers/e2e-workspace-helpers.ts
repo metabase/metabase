@@ -149,4 +149,18 @@ export const WorkspaceInstancePage = {
     ),
   remappingRow: (canonicalName: string) =>
     WorkspaceInstancePage.get().findByText(canonicalName),
+  exitButton: () =>
+    WorkspaceInstancePage.get().findByRole("button", {
+      name: "Exit workspace mode",
+    }),
+};
+
+export const ExitWorkspaceModal = {
+  get: () => modal(),
+  confirmButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", {
+      name: "Exit workspace mode",
+    }),
+  cancelButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };

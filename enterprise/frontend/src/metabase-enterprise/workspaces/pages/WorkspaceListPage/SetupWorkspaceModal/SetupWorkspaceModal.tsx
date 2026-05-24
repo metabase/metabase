@@ -14,6 +14,7 @@ import {
   Button,
   Code,
   FixedSizeIcon,
+  FocusTrap,
   Group,
   Modal,
   Stack,
@@ -41,6 +42,7 @@ export function SetupWorkspaceModal({
       padding="xl"
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <SetupWorkspaceForm onClose={onClose} />
     </Modal>
   );
@@ -94,7 +96,6 @@ function SetupWorkspaceForm({ onClose }: SetupWorkspaceFormProps) {
             placeholder={t`Choose a ${CONFIG_FILENAME} file`}
             accept=".yml,.yaml,application/yaml,text/yaml"
             leftSection={<FixedSizeIcon name="attachment" aria-hidden />}
-            data-autofocus
           />
           <FormErrorMessage />
           <Group justify="flex-end">
