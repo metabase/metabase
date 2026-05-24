@@ -32,9 +32,11 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
@@ -139,6 +141,71 @@
   "Return all TableRemapping rows, ordered by id."
   []
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+
+(defn upsert-database!
+  "Insert or update a `:model/Database` row from a `{:name, :engine, :details}` map.
+   Matches on the (`:name`, `:engine`) pair. Used by the workspace `/setup`
+   endpoint to register the warehouses the uploaded `config.yml` references
+   without going through the full config-file loader (no env-var expansion, no
+   sync). Returns the resulting Database row."
+  [{:keys [name engine details] :as _spec}]
+  (let [engine-kw (keyword engine)
+        row       {:name name, :engine engine-kw, :details (or details {})}]
+    (if-let [existing-id (t2/select-one-pk :model/Database :name name :engine engine-kw)]
+      (do (t2/update! :model/Database existing-id row)
+          (t2/select-one :model/Database :id existing-id))
+      (first (t2/insert-returning-instances! :model/Database row)))))
+
+(defn- expand-output-namespace
+  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
+   namespace map QP middleware, transform hooks, and table-remapping consume.
+
+   The setting contract is map-shaped on purpose: doing this expansion once at
+   write time lets the per-query hot path read both slots without re-running the
+   per-engine case. For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is
+   filled from `Database.details`. For 2-slot drivers the `output_namespace`
+   string lands in the schema slot. For no-schema drivers (MySQL) it lands in
+   the db slot.
+
+   `output_namespace` blank means the workspace database isn't provisioned yet —
+   `:schema` carries `nil` and QP/transform consumers treat the workspace as
+   having no output mapping for that database."
+  [db output-namespace]
+  (let [components (set (driver/qualified-name-components (:engine db)))
+        positions  (engine-namespace-positions db)
+        schema     (when-not (str/blank? output-namespace) output-namespace)]
+    (cond-> {}
+      (:db components)     (assoc :db (:db positions))
+      (:schema components) (assoc :schema schema)
+      ;; No-schema drivers (MySQL): the namespace name lands in the db slot.
+      (and (:db components) (not (:schema components)))
+      (assoc :db schema))))
+
+(defn build-instance-config
+  "Take a parsed `:workspace` config-file section
+   (`{:name <s>, :databases {<db-name-keyword-or-string> {:input_schemas [<s>...]
+                                                          :output_namespace <s>}}}`)
+   and return the shape stored by [[set-instance-workspace!]]:
+   `{:name <s>, :databases {<db-id> {:input_schemas [<s>...] :output {:db ?, :schema ?}}}}`.
+
+   Resolves each `<db-name>` to a `:model/Database` row via `t2/select` —
+   callers are expected to have inserted/upserted those rows beforehand.
+   Throws `ex-info` (400) if the workspace section names a database not present
+   in the app DB."
+  [{:keys [name databases]}]
+  (let [dbs-by-name (t2/select-fn->fn :name identity :model/Database)]
+    {:name      name
+     :databases (into {}
+                      (map (fn [[db-name-kw wsd]]
+                             (let [db-name (clojure.core/name db-name-kw)
+                                   db      (or (get dbs-by-name db-name)
+                                               (throw (ex-info (str "Workspace references unknown database: "
+                                                                    (pr-str db-name))
+                                                               {:status-code   400
+                                                                :database-name db-name})))]
+                               [(:id db) {:input_schemas (vec (:input_schemas wsd))
+                                          :output        (expand-output-namespace db (:output_namespace wsd))}])))
+                      databases)}))
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 

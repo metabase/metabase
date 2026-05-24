@@ -15,9 +15,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.driver :as driver]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +31,7 @@
   (s/and string? (complement str/blank?)))
 
 (s/def ::input_schemas
-  (s/coll-of ::non-blank-string :min-count 1))
+  (s/coll-of ::non-blank-string))
 
 (s/def ::output_namespace ::non-blank-string)
 
@@ -74,35 +72,6 @@
        form))
    x))
 
-(defn- resolve-db [db-name]
-  (or (t2/select-one :model/Database :name db-name)
-      (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
-                      {:database-name db-name}))))
-
-(defn- expand-output
-  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   atom shape that QP middleware, transform_hooks, and table_remapping consume.
-
-   The atom contract is map-shaped on purpose: doing this expansion once at
-   boot lets the per-query hot path read both slots without re-running the
-   per-engine case. For 3-slot drivers (SQL Server, BigQuery) the
-   `:db` slot is filled from `Database.details`. For 2-slot drivers the
-   `output_namespace` string lands in the schema slot.
-
-   `output_namespace` blank means the workspace database isn't provisioned yet —
-   the atom carries `{:db ? :schema nil}` and QP/transform consumers treat the
-   workspace as having no output mapping."
-  [db output-namespace]
-  (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
-        schema     (when-not (str/blank? output-namespace) output-namespace)]
-    (cond-> {}
-      (:db components)     (assoc :db (:db positions))
-      (:schema components) (assoc :schema schema)
-      ;; No-schema drivers (MySQL): the namespace name lands in the db slot.
-      (and (:db components) (not (:schema components)))
-      (assoc :db schema))))
-
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
@@ -114,27 +83,17 @@
                   ...}}
 
    Resolves each database name to a `:model/Database` (rows are populated by the
-   `:databases` section, which runs earlier — see [[metabase-enterprise.advanced-config.file/initialize!]])
-   and stores the result in the `workspace-instance` setting keyed by db-id. The
-   setting carries `{:input_schemas [String], :output {:db ?, :schema ?}}` per
-   database.
-   `:output` is expanded once at boot via [[expand-output]] so the QP hot path
-   doesn't re-run the per-engine case per query."
+   `:databases` section, which runs earlier — see
+   [[metabase-enterprise.advanced-config.file/initialize!]]) and stores the
+   result in the `workspace-instance` setting keyed by db-id. The setting
+   carries `{:input_schemas [String], :output {:db ?, :schema ?}}` per database."
   [section-config]
-  (let [{:keys [name databases]} (ordered->plain section-config)
-        resolved-databases (into {}
-                                 (map (fn [[db-name-kw wsd-config]]
-                                        (let [db-name (clojure.core/name db-name-kw)
-                                              db      (resolve-db db-name)]
-                                          [(:id db) {:input_schemas (vec (:input_schemas wsd-config))
-                                                     :output        (expand-output db (:output_namespace wsd-config))}])))
-                                 databases)]
-    (ws/set-instance-workspace! {:name      name
-                                 :databases resolved-databases})
+  (let [config (ws/build-instance-config (ordered->plain section-config))]
+    (ws/set-instance-workspace! config)
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
-               (pr-str name) (count resolved-databases))
-    {:workspace-name name
-     :database-count (count resolved-databases)}))
+               (pr-str (:name config)) (count (:databases config)))
+    {:workspace-name (:name config)
+     :database-count (count (:databases config))}))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

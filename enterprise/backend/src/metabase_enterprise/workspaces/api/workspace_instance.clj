@@ -3,12 +3,15 @@
    `/api/ee/workspace-instance`. See [[metabase-enterprise.workspaces.api.workspace-manager]]
    for the manager-side admin operations."
   (:require
+   [clojure.java.io :as io]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as ws.oss]))
+   [metabase.util.yaml :as yaml]
+   [metabase.workspaces.core :as ws.oss]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -90,6 +93,40 @@
   (api/check-superuser)
   (ws/clear-instance-workspace!)
   nil)
+
+(api.macros/defendpoint :post "/setup" :- WorkspaceInstance
+  "Bootstrap workspace mode on this instance from an uploaded `config.yml`. The
+  file must include `:databases` (each `{:name, :engine, :details}`) and a
+  `:workspace` section (`{:name, :databases {<db-name> {:input_schemas, :output_namespace}}}`);
+  any other sections are ignored. Upserts each database by `(name, engine)`, then
+  resolves the workspace map and writes the `workspace-instance` setting. The
+  whole thing runs in one application-database transaction.
+
+  Unlike the boot-time `config.yml` loader, this endpoint deliberately performs
+  **no template / env-var expansion** — the file's values are inserted verbatim."
+  {:multipart true}
+  [_route-params
+   _query-params
+   _body
+   {{config "config"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["config" [:map
+                    [:filename :string]
+                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  (api/check-superuser)
+  (let [tempfile (:tempfile config)]
+    (try
+      (let [parsed    (yaml/from-file tempfile)
+            databases (api/check-400 (not-empty (get-in parsed [:config :databases])))
+            workspace (api/check-400 (not-empty (get-in parsed [:config :workspace])))]
+        (t2/with-transaction [_conn]
+          (run! ws/upsert-database! databases)
+          (ws/set-instance-workspace! (ws/build-instance-config workspace))))
+      (finally
+        (io/delete-file tempfile :silently))))
+  (present-workspace-instance (ws/instance-workspace)))
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
   "Return all table remappings, ordered by id."

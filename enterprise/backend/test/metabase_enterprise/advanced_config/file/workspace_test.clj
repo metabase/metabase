@@ -110,7 +110,7 @@
     (mt/with-empty-h2-app-db!
       (is (thrown-with-msg?
            ExceptionInfo
-           #"Workspace config references unknown database"
+           #"Workspace references unknown database"
            (advanced-config.file.workspace/apply-workspace-section!
             (workspace-section "nonexistent-db")))))))
 
@@ -230,11 +230,11 @@
       (is (false? (advanced-config.file.workspace/valid-workspace-section?
                    {:name "ws" :databases {}}))
           "empty :databases map is invalid")
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws"
-                    :databases {:db1 {:input_schemas    []
-                                      :output_namespace "out"}}}))
-          "empty :input_schemas is invalid - need at least one input schema"))
+      (is (true? (advanced-config.file.workspace/valid-workspace-section?
+                  {:name "ws"
+                   :databases {:db1 {:input_schemas    []
+                                     :output_namespace "out"}}}))
+          "empty :input_schemas is allowed (no-schema drivers like MySQL pass [])"))
     (testing "schema-string rejection"
       (is (false? (advanced-config.file.workspace/valid-workspace-section?
                    {:name "ws"
