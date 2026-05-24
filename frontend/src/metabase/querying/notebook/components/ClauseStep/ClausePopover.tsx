@@ -55,6 +55,7 @@ export function ClausePopover({
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
         disabled={!hasPopover}
+        preventPositionChangeWhenVisible={isOpen}
       >
         <Popover.Target>
           {renderItem(disabled ? noop : handleOpen, hasPopover)}
