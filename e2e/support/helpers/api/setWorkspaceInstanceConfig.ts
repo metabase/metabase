@@ -1,9 +1,6 @@
-import type { WorkspaceInstance } from "metabase-types/api";
-
-export function setWorkspaceInstanceConfig(config: WorkspaceInstance) {
-  return cy.request("POST", "/api/ee/workspace-instance/current", config);
-}
-
+// Cleanup helper for tests that bring up workspace mode via the UI: kicks the
+// instance out of workspace mode in a single API call so afterEach hooks stay
+// fast.
 export function clearWorkspaceInstanceConfig() {
   return cy.request("DELETE", "/api/ee/workspace-instance/current");
 }

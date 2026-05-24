@@ -6,8 +6,8 @@
    provisions an isolation schema + workspace user via
    `workspaces.provisioning/*`, builds the canonical `config.yml` map via
    `workspaces.config/build-workspace-config`, round-trips it through YAML,
-   binds it to `advanced-config.file/*config*`, and calls `initialize!` —
-   which runs the same `:databases` and `:workspace` section loaders the
+   and passes it to `advanced-config.file/initialize!` — which runs the same
+   `:databases` and `:workspace` section loaders the
    child instance uses at boot. Then it runs a transform whose target gets
    rewritten to the isolation schema, and verifies that visibility from
    Metabase's perspective is confined to the input schema — neither the
@@ -378,13 +378,12 @@
                           ;;|       Child  below        |
                           ;;+---------------------------+
 
-                          ;; --- Stage 3: bind `*config*` and run the file loader. This invokes
+                          ;; --- Stage 3: feed the parsed YAML to the file loader. This invokes
                           ;; `init-from-config-file!` for the `:databases` section (updates the
                           ;; existing Database row with merged workspace creds + schema-filters)
                           ;; and `apply-workspace-section!` for the `:workspace` section (resolves
                           ;; db names → ids and writes the `workspace-instance` setting).
-                          (binding [advanced-config.file/*config* (yaml/parse-string yaml-str)]
-                            (advanced-config.file/initialize!))
+                          (advanced-config.file/initialize! (yaml/parse-string yaml-str))
                           ;; Diagnostic: the loader should have written the workspace-instance
                           ;; setting and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
@@ -727,8 +726,7 @@
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]
-                    (binding [advanced-config.file/*config* reparsed]
-                      (advanced-config.file/initialize!))
+                    (advanced-config.file/initialize! reparsed)
                     (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                       (mt/with-db ws-db
                         (sync/sync-database! ws-db {:scan :schema})

@@ -1,16 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
+import type { ReactNode } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
   Card,
-  FixedSizeIcon,
-  Group,
+  Code,
+  Divider,
+  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -19,100 +19,75 @@ import * as Urls from "metabase/urls";
 import type { Workspace } from "metabase-types/api";
 
 import { NewWorkspaceModal } from "../NewWorkspaceModal";
+import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
-import S from "./WorkspaceEmptyState.module.css";
+const CONFIG_FILENAME = "config.yml";
 
 export function WorkspaceEmptyState() {
-  const [opened, { open, close }] = useDisclosure(false);
+  const [createOpened, { open: openCreate, close: closeCreate }] =
+    useDisclosure(false);
+  const [setupOpened, { open: openSetup, close: closeSetup }] =
+    useDisclosure(false);
   const dispatch = useDispatch();
-  const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
-    useDocsUrl("ai/file-based-development");
-  const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
-    useDocsUrl("installation-and-operation/remote-sync");
 
   const handleCreate = (workspace: Workspace) => {
-    close();
+    closeCreate();
     dispatch(push(Urls.workspace(workspace.id)));
   };
 
   return (
-    <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
-      <Box p="md">
-        <Title
-          order={3}
-          mb="sm"
-        >{t`Isolated spaces for agents and developers`}</Title>
-        <Text c="text-secondary" mb="sm">
-          {t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
-        </Text>
-        <Text c="text-secondary" mb="md">
-          {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-            t`Create a workspace here, or with Metabase’s CLI. That will set up an isolated sandbox with a dedicated schema and database user in the data warehouse(s) you choose.`
-          }
-        </Text>
-        <Box pb="xl">
-          <Button variant="filled" onClick={open}>
-            {t`Create a workspace`}
-          </Button>
-        </Box>
-        {(showFileBasedDevLink || showRemoteSyncLink) && (
-          <Group pt="md" gap="sm" align="stretch">
-            {showFileBasedDevLink && (
-              <DocsLink
-                title={t`File-based development`}
-                description={t`How to use the CLI to develop content locally.`}
-                link={fileBasedDevDocsUrl}
-              />
-            )}
-            {showRemoteSyncLink && (
-              <DocsLink
-                title={t`Using remote sync`}
-                description={
-                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-                  t`How to sync and review Metabase content with git.`
-                }
-                link={remoteSyncDocsUrl}
-              />
-            )}
-          </Group>
-        )}
-      </Box>
+    <Card p="xl" maw="56rem" mx="auto" shadow="none" withBorder>
+      <Stack p="md" gap="xl">
+        <Section
+          title={t`Isolated spaces for agents and developers`}
+          description={t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
+        />
+        <Divider />
+        <SimpleGrid cols={2} spacing="xl">
+          <Section
+            title={t`Is this your main instance?`}
+            description={t`Create a workspace from here. We will provision an isolated schema and a dedicated user in the databases you pick, ready for a developer instance to use.`}
+          >
+            <Button variant="filled" onClick={openCreate}>
+              {t`Create a workspace`}
+            </Button>
+          </Section>
+          <Section
+            title={t`Or is this your developer instance?`}
+            description={jt`Upload the ${(
+              <Code key="config">{CONFIG_FILENAME}</Code>
+            )} from your main instance. We will register its databases and load the workspace here, switching into workspace mode.`}
+          >
+            <Button variant="default" onClick={openSetup}>
+              {t`Set up a developer instance`}
+            </Button>
+          </Section>
+        </SimpleGrid>
+      </Stack>
       <NewWorkspaceModal
-        opened={opened}
+        opened={createOpened}
         onCreate={handleCreate}
-        onClose={close}
+        onClose={closeCreate}
       />
+      <SetupWorkspaceModal opened={setupOpened} onClose={closeSetup} />
     </Card>
   );
 }
 
-type DocsLinkProps = {
+type SectionProps = {
   title: string;
-  description: string;
-  link: string;
+  description: ReactNode;
+  children?: ReactNode;
 };
 
-function DocsLink({ title, description, link }: DocsLinkProps) {
+function Section({ title, description, children }: SectionProps) {
   return (
-    <Box
-      className={S.docsLink}
-      component={Link}
-      to={link}
-      target="_blank"
-      rel="noreferrer"
-      p="md"
-      bdrs="md"
-      flex="1"
-      miw="16rem"
-    >
-      <Group gap="sm" wrap="nowrap" align="flex-start">
-        <FixedSizeIcon c="brand" name="reference" />
-        <Stack gap="xs">
-          <Title order={5}>{title}</Title>
-          <Box c="text-secondary">{description}</Box>
-        </Stack>
-      </Group>
-    </Box>
+    <Stack gap="sm" align="flex-start" h="100%">
+      <Title order={4}>{title}</Title>
+      <Text c="text-secondary" flex={1}>
+        {description}
+      </Text>
+      {children && <Box pt="xs">{children}</Box>}
+    </Stack>
   );
 }

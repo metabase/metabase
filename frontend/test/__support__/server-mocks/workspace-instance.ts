@@ -7,10 +7,7 @@ const BASE_URL = "path:/api/ee/workspace-instance";
 export function setupGetCurrentWorkspaceEndpoint(
   workspace: WorkspaceInstance | null,
 ) {
-  fetchMock.get(
-    `${BASE_URL}/current`,
-    workspace ?? { status: 204, body: null },
-  );
+  fetchMock.get(`${BASE_URL}/current`, { data: workspace });
 }
 
 export function setupListTableRemappingsEndpoint(remappings: TableRemapping[]) {

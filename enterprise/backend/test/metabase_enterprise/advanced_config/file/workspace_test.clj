@@ -6,7 +6,6 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml])
@@ -57,7 +56,7 @@
           (is (= 1 (count dbs)))
           (let [[_db-name wsd] (first dbs)]
             (is (= ["public"] (:input_schemas wsd)))
-            (is (= "mb__isolation_44490_1933" (:output_namespace wsd)))))))))
+            (is (= {:schema "mb__isolation_44490_1933"} (:output wsd)))))))))
 
 (deftest non-blank-string-spec-test
   (testing "::non-blank-string rejects nil, non-strings, and whitespace-only strings,
@@ -71,14 +70,14 @@
             (str "must accept " (pr-str v)))))))
 
 (deftest apply-workspace-section-populates-atom-test
-  (testing "applying the :workspace section stores parsed config in the in-process atom keyed by db-id"
+  (testing "applying the :workspace section stores parsed config in the workspace-instance setting keyed by db-id"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (let [section (workspace-section "ws-test-db")
               {:keys [workspace-name database-count]} (advanced-config.file.workspace/apply-workspace-section! section)]
           (is (= "New workspace" workspace-name))
           (is (= 1 database-count))
-          (testing "atom holds the parsed config"
+          (testing "setting holds the parsed config"
             (let [stored (ws/instance-workspace)]
               (is (= "New workspace" (:name stored)))
               (is (= ["public"]
@@ -87,15 +86,15 @@
                      (get-in stored [:databases db-id :output]))))))))))
 
 (deftest re-apply-replaces-atom-test
-  (testing "re-applying with a different config replaces the atom — no mismatch detection, file is the truth"
+  (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database _    {:name "ws-test-db" :engine :postgres}
                      :model/Database _    {:name "ws-test-db-2" :engine :postgres}]
         (let [section-1 (workspace-section "ws-test-db")
               section-2 (assoc section-1
                                :name "Renamed Workspace"
-                               :databases {:ws-test-db-2 {:input_schemas    ["public"]
-                                                          :output_namespace "different_schema"}})]
+                               :databases {:ws-test-db-2 {:input_schemas ["public"]
+                                                          :output        {:schema "different_schema"}}})]
           (advanced-config.file.workspace/apply-workspace-section! section-1)
           (is (= "New workspace" (:name (ws/instance-workspace))))
           (advanced-config.file.workspace/apply-workspace-section! section-2)
@@ -103,14 +102,14 @@
           (is (= 1 (count (:databases (ws/instance-workspace)))))
           (is (= {:schema "different_schema"}
                  (->> (ws/instance-workspace) :databases vals first :output))
-              "atom reflects the new config, not the old one"))))))
+              "setting reflects the new config, not the old one"))))))
 
 (deftest unknown-database-name-throws-test
   (testing "referencing a database that doesn't exist in app-db throws ex-info"
     (mt/with-empty-h2-app-db!
       (is (thrown-with-msg?
            ExceptionInfo
-           #"Workspace references unknown database"
+           #"Workspace config references unknown database"
            (advanced-config.file.workspace/apply-workspace-section!
             (workspace-section "nonexistent-db")))))))
 
@@ -124,8 +123,8 @@
 
 (deftest db-workspace-namespace-returns-nil-when-no-load-test
   (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
-    ;; The atom is cleared in the use-fixtures :each tear-down, so this confirms
-    ;; the read truly comes from the atom and not from any leftover rows.
+    ;; The setting is cleared in the use-fixtures :each tear-down, so this confirms
+    ;; the read truly comes from the setting and not from any leftover rows.
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (is (nil? (ws/db-workspace-namespace db-id)))))))
@@ -135,52 +134,49 @@
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
-          (binding [advanced-config.file/*config*
-                    {:version 1
-                     :config {:workspace (workspace-section "ws-test-db")}}]
-            (is (= :ok (advanced-config.file/initialize!)))
-            (is (some? (ws/instance-workspace))
-                "atom is populated even without :config-text-file token")
-            (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))))
+          (is (= :ok (advanced-config.file/initialize!
+                      {:version 1
+                       :config {:workspace (workspace-section "ws-test-db")}})))
+          (is (some? (ws/instance-workspace))
+              "setting is populated even without :config-text-file token")
+          (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id))))))))
 
 (deftest oss-rejects-config-without-workspace-section-test
   (testing "OSS instance still gets the premium-token error when :workspace is absent"
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
-        (binding [advanced-config.file/*config*
-                  {:version 1
-                   :config {:users [{:first_name "X" :last_name "Y"
-                                     :email "x@example.com" :password "pw"}]}}]
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Premium token with the :config-text-file feature"
-               (advanced-config.file/initialize!))
-              "without :workspace, OSS still requires the premium token"))))))
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Premium token with the :config-text-file feature"
+             (advanced-config.file/initialize!
+              {:version 1
+               :config {:users [{:first_name "X" :last_name "Y"
+                                 :email "x@example.com" :password "pw"}]}}))
+            "without :workspace, OSS still requires the premium token")))))
 
 (deftest workspace-bring-up-opens-gate-for-other-sections-test
   (testing "presence of :workspace lets sibling sections (:databases, :users, :api-keys) load on OSS"
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Database _ {:name "sibling-db"}]
-          (binding [advanced-config.file/*config*
-                    {:version 1
-                     :config {:users [{:first_name "Bring"
-                                       :last_name  "Up"
-                                       :email      "bringup@example.com"
-                                       :password   "password1"}]
-                              :workspace (workspace-section "sibling-db")}}]
-            (is (= :ok (advanced-config.file/initialize!)))
-            (is (some? (ws/instance-workspace))
-                ":workspace section ran")))))))
+          (is (= :ok (advanced-config.file/initialize!
+                      {:version 1
+                       :config {:users [{:first_name "Bring"
+                                         :last_name  "Up"
+                                         :email      "bringup@example.com"
+                                         :password   "password1"}]
+                                :workspace (workspace-section "sibling-db")}})))
+          (is (some? (ws/instance-workspace))
+              ":workspace section ran"))))))
 
 (defn- try-initialize!
   "Run `initialize!` and report whether it returned `:ok` cleanly. Catches every
   Throwable so the OSS-bypass attack tests below can ask 'did anything block
   this?' without caring which layer (spec validation or the premium-token gate)
   did the blocking — both count as defense."
-  []
+  [parsed-config]
   (try
-    (= :ok (advanced-config.file/initialize!))
+    (= :ok (advanced-config.file/initialize! parsed-config))
     (catch Throwable _
       false)))
 
@@ -189,38 +185,35 @@
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{}
         (testing "empty workspace map"
-          (binding [advanced-config.file/*config*
-                    {:version 1
-                     :config {:users [{:first_name "X" :last_name "Y"
-                                       :email "x@example.com" :password "pw"}]
-                              :workspace {}}}]
-            (is (false? (try-initialize!))
-                "empty :workspace doesn't unlock the gate")))
+          (is (false? (try-initialize!
+                       {:version 1
+                        :config {:users [{:first_name "X" :last_name "Y"
+                                          :email "x@example.com" :password "pw"}]
+                                 :workspace {}}}))
+              "empty :workspace doesn't unlock the gate"))
         (testing "workspace missing :databases"
-          (binding [advanced-config.file/*config*
-                    {:version 1
-                     :config {:users [{:first_name "X" :last_name "Y"
-                                       :email "x@example.com" :password "pw"}]
-                              :workspace {:name "Just a name"}}}]
-            (is (false? (try-initialize!)))))
+          (is (false? (try-initialize!
+                       {:version 1
+                        :config {:users [{:first_name "X" :last_name "Y"
+                                          :email "x@example.com" :password "pw"}]
+                                 :workspace {:name "Just a name"}}}))))
         (testing "workspace with empty :databases map"
-          (binding [advanced-config.file/*config*
-                    {:version 1
-                     :config {:users [{:first_name "X" :last_name "Y"
-                                       :email "x@example.com" :password "pw"}]
-                              :workspace {:name "n" :databases {}}}}]
-            (is (false? (try-initialize!)))))))))
+          (is (false? (try-initialize!
+                       {:version 1
+                        :config {:users [{:first_name "X" :last_name "Y"
+                                          :email "x@example.com" :password "pw"}]
+                                 :workspace {:name "n" :databases {}}}}))))))))
 
 (deftest valid-workspace-section?-test
   (testing "valid-workspace-section? matches the spec used by the gate"
     (testing "structurally-valid sections"
       (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                  {:name "ws" :databases {:db1 {:input_schemas    ["s1"]
-                                                :output_namespace "out"}}}))
-          "minimal: single schema string on input, output namespace is a single string")
+                  {:name "ws" :databases {:db1 {:input_schemas ["s1"]
+                                                :output        {:schema "out"}}}}))
+          "minimal: single schema string on input, output is a {:schema} map")
       (is (true? (advanced-config.file.workspace/valid-workspace-section?
-                  {:name "ws" :databases {:db1 {:input_schemas    ["PUBLIC" "ANALYTICS"]
-                                                :output_namespace "WS_ALICE"}}}))
+                  {:name "ws" :databases {:db1 {:input_schemas ["PUBLIC" "ANALYTICS"]
+                                                :output        {:schema "WS_ALICE"}}}}))
           "multiple input schemas allowed"))
     (testing "structural rejection"
       (is (false? (advanced-config.file.workspace/valid-workspace-section? {}))
@@ -232,20 +225,25 @@
           "empty :databases map is invalid")
       (is (true? (advanced-config.file.workspace/valid-workspace-section?
                   {:name "ws"
-                   :databases {:db1 {:input_schemas    []
-                                     :output_namespace "out"}}}))
+                   :databases {:db1 {:input_schemas []
+                                     :output        {:schema "out"}}}}))
           "empty :input_schemas is allowed (no-schema drivers like MySQL pass [])"))
+    (testing ":output rejection"
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input_schemas ["s1"]
+                                      :output        {}}}}))
+          ":output with neither :db nor :schema is invalid")
+      (is (false? (advanced-config.file.workspace/valid-workspace-section?
+                   {:name "ws"
+                    :databases {:db1 {:input_schemas ["s1"]}}}))
+          ":output is required"))
     (testing "schema-string rejection"
       (is (false? (advanced-config.file.workspace/valid-workspace-section?
                    {:name "ws"
-                    :databases {:db1 {:input_schemas    [""]
-                                      :output_namespace "out"}}}))
-          "empty-string in :input_schemas is invalid")
-      (is (false? (advanced-config.file.workspace/valid-workspace-section?
-                   {:name "ws"
-                    :databases {:db1 {:input_schemas    ["s1"]
-                                      :output_namespace ""}}}))
-          "empty-string :output_namespace is invalid"))))
+                    :databases {:db1 {:input_schemas [""]
+                                      :output        {:schema "out"}}}}))
+          "empty-string in :input_schemas is invalid"))))
 
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
 ;;;
@@ -253,10 +251,10 @@
 ;;; without modification.
 
 (deftest mysql-cardinality-upgrade-section-test
-  (testing "MySQL workspace: only `:db` slot is populated in the atom (no schema layer)"
+  (testing "MySQL workspace: only `:db` slot is populated in the setting (no schema layer)"
     (let [section {:name "ws"
-                   :databases {:mysql-prod {:input_schemas    ["prod_db"]
-                                            :output_namespace "ws_alice"}}}]
+                   :databases {:mysql-prod {:input_schemas ["prod_db"]
+                                            :output        {:db "ws_alice"}}}}]
       (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
           "MySQL workspace passes validation"))
     (testing "loader stores MySQL output namespace in the :db slot"
@@ -264,24 +262,19 @@
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
           (advanced-config.file.workspace/apply-workspace-section!
            {:name "ws"
-            :databases {:mysql-prod {:input_schemas    ["prod_db"]
-                                     :output_namespace "ws_alice"}}})
+            :databases {:mysql-prod {:input_schemas ["prod_db"]
+                                     :output        {:db "ws_alice"}}}})
           (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 (deftest bigquery-3-slot-section-test
-  (testing "BigQuery workspace: project from details, dataset from output_namespace"
-    ;; `apply-workspace-section!` -> `expand-output` -> `engine-namespace-positions`
-    ;; -> `driver/qualified-name-components` triggers a driver-load. On the default
-    ;; Enterprise classpath BigQuery isn't loaded; skip the round-trip half of this
-    ;; test when the driver isn't on the test classpath.
-    (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
-      (mt/with-empty-h2-app-db!
-        (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
-          (advanced-config.file.workspace/apply-workspace-section!
-           {:name "ws"
-            :databases {:bq-prod {:input_schemas    ["core"]
-                                  :output_namespace "ws_alice"}}})
-          (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+  (testing "BigQuery workspace: project + dataset in the :output map"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
+        (advanced-config.file.workspace/apply-workspace-section!
+         {:name "ws"
+          :databases {:bq-prod {:input_schemas ["core"]
+                                :output        {:db "metabase-prod" :schema "ws_alice"}}}})
+        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
 ;;;
@@ -292,7 +285,7 @@
 ;;;
 ;;;   - the YAML parses
 ;;;   - the `:workspace` section validates against the spec
-;;;   - the loader round-trips it into the atom with the per-driver expected
+;;;   - the loader round-trips it into the setting with the per-driver expected
 ;;;     output namespace
 ;;;
 ;;; If a driver's wire format drifts, the corresponding fixture and this test
@@ -300,47 +293,39 @@
 
 (def ^:private per-driver-fixture-expectations
   "Per-driver fixture metadata: db-name + engine + connection details from the fixture,
-   the wire-shape `:input_schemas`, the wire-shape `:output_namespace`, and the
-   expanded `:output` map the atom should hold after loading. The expanded `:output`
-   reflects each engine's catalog source — `:db` comes from `Database.details` for
-   3-slot drivers, `nil` for 2-slot drivers; the schema slot holds the
-   `output_namespace` string (or lands in `:db` for MySQL)."
-  {:postgres   {:db-name           "test-data (postgres)"
-                :engine            :postgres
-                :details           {}
-                :input_schemas     ["public"]
-                :output_namespace  "mb__isolation_44490_1933"
-                :expanded-output   {:schema "mb__isolation_44490_1933"}}
-   :redshift   {:db-name           "test-data (redshift)"
-                :engine            :redshift
-                :details           {}
-                :input_schemas     ["public"]
-                :output_namespace  "mb__isolation_44490_1933"
-                :expanded-output   {:schema "mb__isolation_44490_1933"}}
-   :mysql      {:db-name           "test-data (mysql)"
-                :engine            :mysql
-                :details           {:db "prod_db"}
-                :input_schemas     ["prod_db"]
-                :output_namespace  "ws_alice"
-                :expanded-output   {:db "ws_alice"}}
-   :clickhouse {:db-name           "test-data (clickhouse)"
-                :engine            :clickhouse
-                :details           {}
-                :input_schemas     ["prod_events"]
-                :output_namespace  "ws_alice"
-                :expanded-output   {:schema "ws_alice"}}
-   :sqlserver  {:db-name           "test-data (sqlserver)"
-                :engine            :sqlserver
-                :details           {:db "AnalyticsDB"}
-                :input_schemas     ["dbo"]
-                :output_namespace  "ws_alice"
-                :expanded-output   {:db "AnalyticsDB" :schema "ws_alice"}}
-   :bigquery   {:db-name           "test-data (bigquery)"
-                :engine            :bigquery-cloud-sdk
-                :details           {:project-id "metabase-prod"}
-                :input_schemas     ["core"]
-                :output_namespace  "ws_alice"
-                :expanded-output   {:db "metabase-prod" :schema "ws_alice"}}})
+   the wire-shape `:input_schemas`, and the `:output` map (already expanded in the
+   YAML since `workspaces.config/build-workspace-config` emits the runtime shape
+   directly)."
+  {:postgres   {:db-name        "test-data (postgres)"
+                :engine         :postgres
+                :details        {}
+                :input_schemas  ["public"]
+                :output         {:schema "mb__isolation_44490_1933"}}
+   :redshift   {:db-name        "test-data (redshift)"
+                :engine         :redshift
+                :details        {}
+                :input_schemas  ["public"]
+                :output         {:schema "mb__isolation_44490_1933"}}
+   :mysql      {:db-name        "test-data (mysql)"
+                :engine         :mysql
+                :details        {:db "prod_db"}
+                :input_schemas  ["prod_db"]
+                :output         {:db "ws_alice"}}
+   :clickhouse {:db-name        "test-data (clickhouse)"
+                :engine         :clickhouse
+                :details        {}
+                :input_schemas  ["prod_events"]
+                :output         {:schema "ws_alice"}}
+   :sqlserver  {:db-name        "test-data (sqlserver)"
+                :engine         :sqlserver
+                :details        {:db "AnalyticsDB"}
+                :input_schemas  ["dbo"]
+                :output         {:db "AnalyticsDB" :schema "ws_alice"}}
+   :bigquery   {:db-name        "test-data (bigquery)"
+                :engine         :bigquery-cloud-sdk
+                :details        {:project-id "metabase-prod"}
+                :input_schemas  ["core"]
+                :output         {:db "metabase-prod" :schema "ws_alice"}}})
 
 (deftest per-driver-fixtures-parse-and-validate-test
   (testing "Each per-driver fixture YAML parses, has the expected workspace section, and round-trips through the loader"
@@ -354,22 +339,16 @@
             (is (= "New workspace" (:name section)))
             (is (= (:input_schemas expectations) (:input_schemas wsd))
                 (str driver " input_schemas matches expectation"))
-            (is (= (:output_namespace expectations) (:output_namespace wsd))
-                (str driver " output_namespace matches expectation")))
+            (is (= (:output expectations) (:output wsd))
+                (str driver " :output matches expectation")))
           (testing "validates against the workspace spec"
             (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
                 (str driver " fixture must satisfy the section spec")))
-          (testing "round-trips through apply-workspace-section! into the atom"
-            ;; The round-trip step requires the driver to be loadable because
-            ;; `apply-workspace-section!` -> `expand-output` -> `engine-namespace-positions`
-            ;; -> `driver/qualified-name-components` triggers driver-load. Skip drivers
-            ;; absent from the current classpath (e.g. BigQuery on the
-            ;; default Enterprise OSS run).
-            (when (workspaces.tu/driver-loadable? (:engine expectations))
-              (mt/with-empty-h2-app-db!
-                (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
-                                                            :engine  (:engine expectations)
-                                                            :details (:details expectations)}]
-                  (advanced-config.file.workspace/apply-workspace-section! section)
-                  (is (= (:expanded-output expectations) (ws/db-workspace-namespace db-id))
-                      (str driver " atom output matches fixture")))))))))))
+          (testing "round-trips through apply-workspace-section! into the setting"
+            (mt/with-empty-h2-app-db!
+              (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
+                                                          :engine  (:engine expectations)
+                                                          :details (:details expectations)}]
+                (advanced-config.file.workspace/apply-workspace-section! section)
+                (is (= (:output expectations) (ws/db-workspace-namespace db-id))
+                    (str driver " setting output matches fixture"))))))))))

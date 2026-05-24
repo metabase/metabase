@@ -1,8 +1,12 @@
 import { provideTableRemappingListTags } from "metabase/api/tags";
-import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
+import type {
+  GetCurrentWorkspaceResponse,
+  TableRemapping,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { tag } from "./tags";
+import { invalidateTags, listTag, tag } from "./tags";
 
 export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,7 +15,17 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/workspace-instance/current",
       }),
+      transformResponse: (response: GetCurrentWorkspaceResponse) =>
+        response.data,
       providesTags: [tag("workspace")],
+    }),
+    deleteWorkspaceInstance: builder.mutation<void, void>({
+      query: () => ({
+        method: "DELETE",
+        url: "/api/ee/workspace-instance/current",
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), listTag("workspace")]),
     }),
     listTableRemappings: builder.query<TableRemapping[], void>({
       query: () => ({
@@ -24,5 +38,8 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetCurrentWorkspaceQuery, useListTableRemappingsQuery } =
-  workspaceInstanceApi;
+export const {
+  useGetCurrentWorkspaceQuery,
+  useDeleteWorkspaceInstanceMutation,
+  useListTableRemappingsQuery,
+} = workspaceInstanceApi;

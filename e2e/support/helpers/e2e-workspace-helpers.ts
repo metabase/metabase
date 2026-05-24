@@ -1,4 +1,6 @@
-import type { WorkspaceId } from "metabase-types/api";
+import yaml from "js-yaml";
+
+import type { AdvancedConfig, WorkspaceId } from "metabase-types/api";
 
 import { modal } from "./e2e-ui-elements-helpers";
 
@@ -12,6 +14,10 @@ export const WorkspaceListPage = {
     WorkspaceListPage.get().findByRole("button", {
       name: first ? "Create a workspace" : "New",
     }),
+  setupButton: () =>
+    WorkspaceListPage.get().findByRole("button", {
+      name: "Set up a developer instance",
+    }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
     WorkspaceListPage.get().findByRole("region", { name }),
@@ -24,6 +30,25 @@ export const NewWorkspaceModal = {
     NewWorkspaceModal.get().findByRole("button", { name: "Create" }),
   cancelButton: () =>
     NewWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+};
+
+export const SetupWorkspaceModal = {
+  get: () => modal(),
+  configInput: () => SetupWorkspaceModal.get().get('input[type="file"]'),
+  setupButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Set up" }),
+  cancelButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+  uploadConfig: (config: AdvancedConfig) => {
+    SetupWorkspaceModal.configInput().selectFile(
+      {
+        contents: Cypress.Buffer.from(yaml.dump(config)),
+        fileName: "config.yml",
+        mimeType: "application/yaml",
+      },
+      { force: true },
+    );
+  },
 };
 
 export const WorkspacePage = {

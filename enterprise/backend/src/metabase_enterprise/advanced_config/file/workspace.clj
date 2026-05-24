@@ -15,7 +15,8 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,10 +34,19 @@
 (s/def ::input_schemas
   (s/coll-of ::non-blank-string))
 
-(s/def ::output_namespace ::non-blank-string)
+(s/def :metabase-enterprise.advanced-config.file.workspace.output/db
+  (s/nilable string?))
+
+(s/def :metabase-enterprise.advanced-config.file.workspace.output/schema
+  (s/nilable string?))
+
+(s/def ::output
+  (s/and (s/keys :opt-un [:metabase-enterprise.advanced-config.file.workspace.output/db
+                          :metabase-enterprise.advanced-config.file.workspace.output/schema])
+         (fn [m] (or (some? (:db m)) (some? (:schema m))))))
 
 (s/def ::workspace-database-config
-  (s/keys :req-un [::input_schemas ::output_namespace]))
+  (s/keys :req-un [::input_schemas ::output]))
 
 (s/def ::databases
   ;; map of database-name -> per-database workspace config. Keys may be keywords or
@@ -72,28 +82,43 @@
        form))
    x))
 
+(defn- resolve-db [db-name]
+  (or (t2/select-one :model/Database :name db-name)
+      (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
+                      {:database-name db-name}))))
+
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
    Shape (post-`ordered->plain`):
 
      {:name      \"<workspace-name>\"
-      :databases {\"<db-name>\" {:input_schemas    [<schema-name>, ...]
-                                  :output_namespace <ns-string>}
+      :databases {\"<db-name>\" {:input_schemas [<schema-name>, ...]
+                                  :output        {:db ?, :schema ?}}
                   ...}}
 
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
    [[metabase-enterprise.advanced-config.file/initialize!]]) and stores the
-   result in the `workspace-instance` setting keyed by db-id. The setting
-   carries `{:input_schemas [String], :output {:db ?, :schema ?}}` per database."
+   result in the `workspace-instance` setting keyed by db-id.
+
+   The per-database `:output` map is taken verbatim — `workspaces.config/build-workspace-config`
+   on the manager side emits it already-expanded, so we don't re-derive it here."
   [section-config]
-  (let [config (ws/build-instance-config (ordered->plain section-config))]
-    (ws/set-instance-workspace! config)
+  (let [{:keys [name databases]} (ordered->plain section-config)
+        resolved-databases (into {}
+                                 (map (fn [[db-name-kw wsd-config]]
+                                        (let [db-name (clojure.core/name db-name-kw)
+                                              db      (resolve-db db-name)]
+                                          [(:id db) {:input_schemas (vec (:input_schemas wsd-config))
+                                                     :output        (:output wsd-config)}])))
+                                 databases)]
+    (ws/set-instance-workspace! {:name      name
+                                 :databases resolved-databases})
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
-               (pr-str (:name config)) (count (:databases config)))
-    {:workspace-name (:name config)
-     :database-count (count (:databases config))}))
+               (pr-str name) (count resolved-databases))
+    {:workspace-name name
+     :database-count (count resolved-databases)}))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

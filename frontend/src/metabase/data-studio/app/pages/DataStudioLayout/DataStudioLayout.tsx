@@ -94,7 +94,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canManageWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canManageWorkspaces,
   );
-  const hasActiveWorkspace = useSelector(PLUGIN_WORKSPACES.hasActiveWorkspace);
+  const { workspace, isLoading: isLoadingWorkspace } =
+    PLUGIN_WORKSPACES.useGetCurrentWorkspace();
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -201,20 +202,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
-          {hasActiveWorkspace && (
+          {canManageWorkspaces && !isLoadingWorkspace && (
             <DataStudioTab
               label={t`Workspaces`}
               icon="folder"
-              to={Urls.workspaceInstance()}
-              isSelected={currentTab === "workspaces"}
-              showLabel={isNavbarOpened}
-            />
-          )}
-          {!hasActiveWorkspace && canManageWorkspaces && (
-            <DataStudioTab
-              label={t`Workspaces`}
-              icon="folder"
-              to={Urls.workspaceList()}
+              to={
+                workspace != null
+                  ? Urls.workspaceInstance()
+                  : Urls.workspaceList()
+              }
               isSelected={currentTab === "workspaces"}
               showLabel={isNavbarOpened}
             />

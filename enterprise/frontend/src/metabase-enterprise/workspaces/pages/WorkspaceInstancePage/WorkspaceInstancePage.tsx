@@ -18,6 +18,7 @@ import type {
 
 import { HelpMenu } from "../../components/HelpMenu";
 
+import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
 
@@ -92,6 +93,7 @@ function WorkspaceInstancePageBody({
             remappings={remappings}
           />
         ))}
+        <DeleteSection />
       </Stack>
     </PageContainer>
   );

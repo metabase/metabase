@@ -272,7 +272,6 @@ export const createMockSettings = (
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",
-  "workspace-mode?": false,
   /**
    * This is a derived setting and it reads either from an env, or from the list
    * of databases. It checks whether there is a db with `is_sample` property.
