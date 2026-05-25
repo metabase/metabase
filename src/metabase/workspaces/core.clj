@@ -38,7 +38,7 @@
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
    reads the `instance-workspace` setting."
   (:require
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------- Workspace config schemas ----------------------------------
@@ -89,23 +89,6 @@
   metabase-enterprise.workspaces.core
   []
   false)
-
-(defenterprise-schema set-instance-workspace! :- :any
-  "Install the workspace config on this instance via the `workspace-instance`
-   setting. The shape is validated against `::workspace-instance-config` at the
-   OSS boundary so a malformed config never reaches the EE setting or the QP /
-   transform hooks that read from it.
-
-   No-op on OSS — workspace mode is EE-only."
-  metabase-enterprise.workspaces.core
-  [_config :- ::workspace-instance-config]
-  nil)
-
-(defenterprise clear-instance-workspace!
-  "Clear the `instance-workspace` setting on this instance. No-op on OSS."
-  metabase-enterprise.workspaces.core
-  []
-  nil)
 
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.

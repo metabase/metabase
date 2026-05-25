@@ -77,6 +77,19 @@
     (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
     (is (nil? (ws/instance-workspace)))))
 
+(deftest delete-current-drops-table-remappings-test
+  (testing "DELETE /ee/workspace-instance/current drops any TableRemapping rows"
+    (mt/with-model-cleanup [:model/TableRemapping]
+      (ws/set-instance-workspace! {:name "to-clear" :databases {}})
+      (t2/insert! :model/TableRemapping {:database_id     (mt/id)
+                                         :from_schema     "public"
+                                         :from_table_name "orders"
+                                         :to_schema       "mb_iso"
+                                         :to_table_name   "orders"})
+      (is (t2/exists? :model/TableRemapping :database_id (mt/id)))
+      (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
+      (is (not (t2/exists? :model/TableRemapping :database_id (mt/id)))))))
+
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires data analyst or superuser"
     (is (= "You don't have permissions to do that."

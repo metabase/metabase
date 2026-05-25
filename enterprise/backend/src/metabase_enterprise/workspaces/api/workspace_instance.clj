@@ -83,10 +83,13 @@
 
 (api.macros/defendpoint :delete "/current" :- :nil
   "Clear the workspace config on this instance. After this returns, the instance
-  is no longer in workspace mode and `GET /current` returns `nil`."
+  is no longer in workspace mode and `GET /current` returns `nil`. Also drops
+  every `TableRemapping` row, since stale mappings from the prior workspace
+  would otherwise keep rewriting queries on the now-unmanaged databases."
   []
   (api/check-data-analyst)
   (ws/clear-instance-workspace!)
+  (ws/clear-all-remappings!)
   nil)
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
