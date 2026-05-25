@@ -3,6 +3,8 @@ import { isDeprecatedEngine } from "metabase/databases/utils/engine";
 import type { State } from "metabase/redux/store";
 import type Database from "metabase-lib/v1/metadata/Database";
 
+export { getAdminPaths } from "metabase/selectors/admin";
+
 interface Props {
   databases?: Database[];
 }

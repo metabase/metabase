@@ -218,7 +218,9 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => <MainNavbar {...props} isOpen />}
+      component={(props) => (
+        <MainNavbar {...props} isOpen dashboard={openDashboard} />
+      )}
     />,
     {
       storeInitialState,
