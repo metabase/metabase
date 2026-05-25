@@ -31,7 +31,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { HomepageSetting } from "./HomepageSetting";
+import { HomepageSetting, getHomepageMode } from "./HomepageSetting";
 
 function FakeUrlControl() {
   return <div data-testid="fake-url-control">URL CONTROL</div>;
@@ -129,11 +129,30 @@ const findBulkPutBody = async () => {
   return bulk?.body as Record<string, unknown> | undefined;
 };
 
-describe("HomepageSetting", () => {
-  beforeEach(() => {
-    PLUGIN_HOMEPAGE_SETTING.CustomUrlOption = null;
+describe("getHomepageMode", () => {
+  it("returns 'default' when nothing is set", () => {
+    expect(getHomepageMode(null, null)).toBe("default");
+    expect(getHomepageMode("", false)).toBe("default");
+    expect(getHomepageMode(undefined, undefined)).toBe("default");
   });
 
+  it("treats a bare '/' landing page as 'default'", () => {
+    expect(getHomepageMode("/", false)).toBe("default");
+    expect(getHomepageMode("/", true)).toBe("dashboard");
+  });
+
+  it("returns 'dashboard' when custom-homepage is on and landing-page is empty", () => {
+    expect(getHomepageMode("", true)).toBe("dashboard");
+    expect(getHomepageMode(null, true)).toBe("dashboard");
+  });
+
+  it("returns 'url' when landing-page is set, taking precedence over custom-homepage", () => {
+    expect(getHomepageMode("/dashboard/7", false)).toBe("url");
+    expect(getHomepageMode("/dashboard/7", true)).toBe("url");
+  });
+});
+
+describe("HomepageSetting", () => {
   afterEach(() => {
     PLUGIN_HOMEPAGE_SETTING.CustomUrlOption = null;
   });

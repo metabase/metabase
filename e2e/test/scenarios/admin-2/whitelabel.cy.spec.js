@@ -732,12 +732,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.wait("@getSettings");
     });
 
-    const selectCustomUrl = () =>
-      cy
-        .findByTestId("homepage-setting")
-        .findByRole("radio", { name: "Custom URL" })
-        .click();
-
     const urlInput = () =>
       cy
         .findByTestId("homepage-setting")
@@ -758,7 +752,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should validate the URL and persist only same-origin relative paths", () => {
-      selectCustomUrl();
+      cy.findByTestId("homepage-setting")
+        .findByRole("radio", { name: "Custom URL" })
+        .click();
 
       urlInput().click().clear().type("/test-1").blur();
       H.undoToast().findByText("Changes saved").should("be.visible");

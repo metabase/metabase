@@ -37,7 +37,6 @@ export function HomepageSetting() {
   );
   const { value: landingPage } = useAdminSetting("landing-page");
 
-  const customUrlOption = PLUGIN_HOMEPAGE_SETTING.CustomUrlOption;
   const persistedMode = getHomepageMode(landingPage, customHomepage);
 
   // Optimistic local mode so the UI flips on click instead of waiting for the
@@ -112,12 +111,15 @@ export function HomepageSetting() {
             )}
           </Stack>
 
-          {customUrlOption && (
+          {PLUGIN_HOMEPAGE_SETTING.CustomUrlOption && (
             <Stack gap="xs">
-              <Radio value="url" label={customUrlOption.label} />
+              <Radio
+                value="url"
+                label={PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.label}
+              />
               {mode === "url" && (
                 <Box pl="xl">
-                  <customUrlOption.Control />
+                  <PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.Control />
                 </Box>
               )}
             </Stack>

@@ -13,7 +13,9 @@ export function LandingPageUrlField() {
   const [inputValue, setInputValue] = useState(value ?? "");
 
   useEffect(() => {
-    setInputValue(value ?? "");
+    if (value) {
+      setInputValue(value);
+    }
   }, [value]);
 
   const handleBlur = async (raw: string) => {
