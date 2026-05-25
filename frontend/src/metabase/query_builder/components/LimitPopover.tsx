@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ChangeEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -30,15 +29,12 @@ export const LimitPopover = ({
   );
   const inputRef = useRef<HTMLInputElement>(null);
   // Set when the popover is dismissed with Escape so the pending value is
-  // discarded instead of applied on unmount (Enter/outside-click still commit).
+  // discarded instead of applied on unmount
   const cancelRef = useRef(false);
 
   const parsedValue = parseInt(value, 10);
   const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
 
-  // Commit the selected limit when the popover is dismissed (unmounted), but
-  // only when it differs from the current limit. Both radios and the typed
-  // value are local-only until this point, so Escape can discard them.
   const selectedLimitRef = useLatest(selectedLimit);
   const limitRef = useLatest(limit);
   const onChangeLimitRef = useLatest(onChangeLimit);
@@ -61,7 +57,6 @@ export const LimitPopover = ({
       onKeyDownCapture={(e) => {
         if (e.key === "Escape") {
           cancelRef.current = true;
-          onClose();
         }
       }}
     >
@@ -82,7 +77,7 @@ export const LimitPopover = ({
           if (selected === "maximum") {
             setIsCustom(false);
           } else {
-            // Activating custom is handled by the input's onFocus
+            setIsCustom(true);
             inputRef.current?.focus();
             inputRef.current?.select();
           }
@@ -96,10 +91,8 @@ export const LimitPopover = ({
           className={cx({ [cx(CS.textBrand, CS.borderBrand)]: isCustom })}
           placeholder={t`Pick a limit`}
           onFocus={() => setIsCustom(true)}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setValue(e.target.value)
-          }
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) {
               return;
             }
