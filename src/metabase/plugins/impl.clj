@@ -82,17 +82,18 @@
         (let [all-manifests (-> stream
                                 (.filter (reify java.util.function.Predicate
                                            (test [_ p] (.matches all-matcher ^Path p))))
-                                (.collect (java.util.stream.Collectors/toList)))]
+                                (.collect (java.util.stream.Collectors/toList)))
+              nested-matcher (.getPathMatcher fs "glob:/metabase/*/metabase-plugin.yaml")
+              ^Path manifest (or (first (filter #(.matches nested-matcher ^Path %) all-manifests))
+                                 (first all-manifests))]
           (when (> (count all-manifests) 1)
-            (log/warnf "Found %d metabase-plugin.yaml files in %s: %s"
+            (log/warnf "Found %d metabase-plugin.yaml files in %s: %s — using %s"
                        (count all-manifests)
                        (.getFileName jar-path)
-                       (str/join ", " (map str all-manifests))))
-          (let [nested-matcher (.getPathMatcher fs "glob:/metabase/*/metabase-plugin.yaml")
-                ^Path manifest (or (first (filter #(.matches nested-matcher ^Path %) all-manifests))
-                                   (first all-manifests))]
-            (when manifest
-              (String. (Files/readAllBytes manifest)))))))))
+                       (str/join ", " (map str all-manifests))
+                       (str manifest)))
+          (when manifest
+            (String. (Files/readAllBytes manifest))))))))
 
 (defn- plugin-info [^Path jar-path]
   (some-> (slurp-plugin-manifest-from-archive jar-path)
