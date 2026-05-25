@@ -10,13 +10,17 @@ import type { IconName } from "metabase-types/api";
 
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
-  MetricsViewerTabType,
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerDimensionBreakoutType,
   SourceColorMap,
 } from "../types";
 
+import {
+  type DimensionBreakoutInfo,
+  getDimensionIcon,
+  getDimensionsByType,
+} from "./dimension-breakouts";
 import type { MetricSlot } from "./metric-slots";
-import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
 
@@ -25,7 +29,7 @@ export interface AvailableDimension {
   group?: DimensionGroup;
   canListValues?: boolean;
   isPreferred?: boolean;
-  tabInfo: TabInfo;
+  dimensionBreakoutInfo: DimensionBreakoutInfo;
 }
 
 export interface AvailableDimensionsResult {
@@ -33,14 +37,16 @@ export interface AvailableDimensionsResult {
   bySource: Record<MetricSourceId, AvailableDimension[]>;
 }
 
-export function getExistingTabDimensionIds(
-  tabs: MetricsViewerTabState[],
+export function getExistingDimensionBreakoutDimensionIds(
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
   excludedTabId?: string | null,
 ) {
   return new Set(
-    tabs
-      .filter((tab) => tab.id !== excludedTabId)
-      .flatMap((tab) => Object.values(tab.dimensionMapping))
+    dimensionBreakouts
+      .filter((dimensionBreakout) => dimensionBreakout.id !== excludedTabId)
+      .flatMap((dimensionBreakout) =>
+        Object.values(dimensionBreakout.dimensionMapping),
+      )
       .filter((id) => id != null),
   );
 }
@@ -50,7 +56,7 @@ interface DimensionEntry {
   id: string;
   label: string;
   icon: IconName;
-  tabType: MetricsViewerTabType;
+  dimensionBreakoutType: MetricsViewerDimensionBreakoutType;
   group?: DimensionGroup;
   canListValues: boolean;
   isPreferred?: boolean;
@@ -60,7 +66,7 @@ interface DimensionEntry {
 function collectAllDimensionEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  existingTabDimensionIds: Set<string>,
+  existingDimensionBreakoutDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
@@ -71,7 +77,7 @@ function collectAllDimensionEntries(
     }
 
     for (const [id, info] of getDimensionsByType(def)) {
-      if (existingTabDimensionIds.has(id)) {
+      if (existingDimensionBreakoutDimensionIds.has(id)) {
         continue;
       }
 
@@ -80,7 +86,7 @@ function collectAllDimensionEntries(
         id,
         label: info.displayName,
         icon: getDimensionIcon(info.dimensionMetadata),
-        tabType: info.dimensionType,
+        dimensionBreakoutType: info.dimensionType,
         group: info.group,
         canListValues: info.canListValues,
         isPreferred: info.isPreferred,
@@ -115,7 +121,7 @@ export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
   metricSlots: MetricSlot[],
-  existingTabDimensionIds: Set<string>,
+  existingDimensionBreakoutDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
@@ -126,7 +132,7 @@ export function getAvailableDimensionsForPicker(
   const entries = collectAllDimensionEntries(
     sourceOrder,
     definitionsBySourceId,
-    existingTabDimensionIds,
+    existingDimensionBreakoutDimensionIds,
   );
   const groups = groupBySource(entries);
   const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
@@ -149,8 +155,8 @@ export function getAvailableDimensionsForPicker(
         group: first.group,
         canListValues: first.canListValues,
         isPreferred: first.isPreferred,
-        tabInfo: {
-          type: first.tabType,
+        dimensionBreakoutInfo: {
+          type: first.dimensionBreakoutType,
           label: first.label,
           dimensionMapping: Object.fromEntries(
             group.flatMap((entry) =>
@@ -170,8 +176,8 @@ export function getAvailableDimensionsForPicker(
           group: entry.group,
           canListValues: entry.canListValues,
           isPreferred: entry.isPreferred,
-          tabInfo: {
-            type: entry.tabType,
+          dimensionBreakoutInfo: {
+            type: entry.dimensionBreakoutType,
             label: entry.label,
             dimensionMapping: Object.fromEntries(
               (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
@@ -186,11 +192,15 @@ export function getAvailableDimensionsForPicker(
   }
 
   result.shared.sort((first, second) =>
-    first.tabInfo.label.localeCompare(second.tabInfo.label),
+    first.dimensionBreakoutInfo.label.localeCompare(
+      second.dimensionBreakoutInfo.label,
+    ),
   );
   for (const sourceId of sourceOrder) {
     result.bySource[sourceId]?.sort((first, second) =>
-      first.tabInfo.label.localeCompare(second.tabInfo.label),
+      first.dimensionBreakoutInfo.label.localeCompare(
+        second.dimensionBreakoutInfo.label,
+      ),
     );
   }
 
@@ -292,7 +302,7 @@ export function buildDimensionPickerSections({
         ...metadata,
         items: dimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.tabInfo.label,
+          name: dimension.dimensionBreakoutInfo.label,
         })),
       });
       return;
@@ -305,7 +315,7 @@ export function buildDimensionPickerSections({
         ...metadata,
         items: groupDimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.tabInfo.label,
+          name: dimension.dimensionBreakoutInfo.label,
         })),
       });
     }
@@ -339,7 +349,7 @@ function mergeDimensionMappings(items: DimensionPickerItem[]) {
 
   for (const item of items) {
     for (const [slotIndex, dimensionId] of Object.entries(
-      item.tabInfo.dimensionMapping,
+      item.dimensionBreakoutInfo.dimensionMapping,
     )) {
       mapping[Number(slotIndex)] ??= dimensionId;
     }
@@ -360,8 +370,8 @@ function buildSidebarCategory(
     key,
     name,
     targetItems: items,
-    tabInfo: {
-      ...first.tabInfo,
+    dimensionBreakoutInfo: {
+      ...first.dimensionBreakoutInfo,
       label: name,
       dimensionMapping: mergeDimensionMappings(items),
     },
@@ -369,18 +379,18 @@ function buildSidebarCategory(
 }
 
 function shouldShowInDefaultSidebar(item: DimensionPickerItem) {
-  if (item.tabInfo.type === "numeric") {
+  if (item.dimensionBreakoutInfo.type === "numeric") {
     return false;
   }
 
-  if (item.tabInfo.type === "category") {
+  if (item.dimensionBreakoutInfo.type === "category") {
     return item.isPreferred !== false;
   }
 
   return true;
 }
 
-const SIDEBAR_CATEGORY_ORDER: MetricsViewerTabType[] = [
+const SIDEBAR_CATEGORY_ORDER: MetricsViewerDimensionBreakoutType[] = [
   "time",
   "geo",
   "category",
@@ -394,8 +404,8 @@ function sortSidebarCategories(
   second: DimensionPickerSidebarCategory,
 ) {
   const typeDiff =
-    SIDEBAR_CATEGORY_ORDER.indexOf(first.tabInfo.type) -
-    SIDEBAR_CATEGORY_ORDER.indexOf(second.tabInfo.type);
+    SIDEBAR_CATEGORY_ORDER.indexOf(first.dimensionBreakoutInfo.type) -
+    SIDEBAR_CATEGORY_ORDER.indexOf(second.dimensionBreakoutInfo.type);
 
   if (typeDiff !== 0) {
     return typeDiff;
@@ -426,9 +436,9 @@ export function buildDimensionPickerSidebarCategories({
 
   for (const item of items) {
     const key =
-      item.tabInfo.type === "time"
+      item.dimensionBreakoutInfo.type === "time"
         ? "type:time"
-        : `${item.tabInfo.type}:${item.name}`;
+        : `${item.dimensionBreakoutInfo.type}:${item.name}`;
     const existing = groupedItems.get(key);
     if (existing) {
       existing.push(item);
@@ -439,7 +449,8 @@ export function buildDimensionPickerSidebarCategories({
 
   for (const [key, categoryItems] of groupedItems) {
     const first = categoryItems[0];
-    const name = first.tabInfo.type === "time" ? t`Time` : first.name;
+    const name =
+      first.dimensionBreakoutInfo.type === "time" ? t`Time` : first.name;
     categories.push(buildSidebarCategory(key, name, categoryItems));
   }
 
@@ -448,13 +459,13 @@ export function buildDimensionPickerSidebarCategories({
 
 export function buildDimensionPickerSidebarCategorySelectRows({
   category,
-  activeTab,
+  activeDimensionBreakout,
   metricSlots,
   sourceDataById,
   sourceColors,
 }: {
   category: DimensionPickerSidebarCategory;
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   metricSlots: MetricSlot[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
@@ -466,7 +477,8 @@ export function buildDimensionPickerSidebarCategorySelectRows({
     >();
 
     for (const item of category.targetItems) {
-      const dimensionId = item.tabInfo.dimensionMapping[slot.slotIndex];
+      const dimensionId =
+        item.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex];
       if (!dimensionId || optionsByValue.has(dimensionId)) {
         continue;
       }
@@ -499,7 +511,7 @@ export function buildDimensionPickerSidebarCategorySelectRows({
     }
 
     const activeDimensionId =
-      activeTab.dimensionMapping[slot.slotIndex] ?? null;
+      activeDimensionBreakout.dimensionMapping[slot.slotIndex] ?? null;
 
     return [
       {

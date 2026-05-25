@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
+import { trackMetricsViewerDimensionSelected } from "metabase/metrics-viewer/analytics";
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
   SourceColorMap,
 } from "metabase/metrics-viewer/types";
 import {
   type AvailableDimensionsResult,
+  type DimensionBreakoutInfo,
   type DimensionPickerItem,
   type DimensionPickerSidebarCategory,
   type SourceDisplayInfo,
-  type TabInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
-  getTabConfig,
+  getDimensionBreakoutConfig,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
@@ -43,29 +43,33 @@ import {
 } from "./utils";
 
 type DimensionPickerSidebarProps = {
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   availableDimensions: AvailableDimensionsResult;
   allFieldsAvailableDimensions?: AvailableDimensionsResult;
   metricSlots: MetricSlot[];
   sourceColors: SourceColorMap;
   metricSourceOrder: MetricSourceId[];
   metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  onAddTab: (tabInfo: TabInfo) => void;
-  onUpdateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
+  onSelectDimensionBreakout: (
+    dimensionBreakoutInfo: DimensionBreakoutInfo,
+  ) => void;
+  onUpdateActiveDimensionBreakout: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
 };
 
 type SidebarMode = "default" | "all";
 
 export function DimensionPickerSidebar({
-  activeTab,
+  activeDimensionBreakout,
   availableDimensions,
   allFieldsAvailableDimensions = availableDimensions,
   metricSlots,
   sourceColors,
   metricSourceOrder,
   metricSourceDataById,
-  onAddTab,
-  onUpdateActiveTab,
+  onSelectDimensionBreakout,
+  onUpdateActiveDimensionBreakout,
 }: DimensionPickerSidebarProps) {
   const { close } = useDimensionPickerSidebar();
   const [searchText, setSearchText] = useState("");
@@ -99,29 +103,34 @@ export function DimensionPickerSidebar({
     [sections, searchText],
   );
 
-  const selectedTabCategoryKey = getSelectedCategoryKey(categories, activeTab);
+  const selectedDimensionBreakoutCategoryKey = getSelectedCategoryKey(
+    categories,
+    activeDimensionBreakout,
+  );
   const showAllFields = mode === "all" || searchText.trim() !== "";
 
   const handleSelect = (item: DimensionPickerItem) => {
-    if (hasSameDimensions(item, activeTab)) {
+    if (hasSameDimensions(item, activeDimensionBreakout)) {
       return;
     }
 
-    const tabConfig = getTabConfig(item.tabInfo.type);
+    const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+      item.dimensionBreakoutInfo.type,
+    );
     if (
-      activeTab.type === item.tabInfo.type &&
-      tabConfig.matchMode === "aggregate"
+      activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
+      dimensionBreakoutConfig.matchMode === "aggregate"
     ) {
-      onUpdateActiveTab({
-        dimensionMapping: item.tabInfo.dimensionMapping,
-        label: item.tabInfo.label,
+      onUpdateActiveDimensionBreakout({
+        dimensionMapping: item.dimensionBreakoutInfo.dimensionMapping,
+        label: item.dimensionBreakoutInfo.label,
       });
-      trackMetricsViewerDimensionTabAdded();
+      trackMetricsViewerDimensionSelected();
       return;
     }
 
-    onAddTab(item.tabInfo);
-    trackMetricsViewerDimensionTabAdded();
+    onSelectDimensionBreakout(item.dimensionBreakoutInfo);
+    trackMetricsViewerDimensionSelected();
   };
 
   const handleCategorySelect = (category: DimensionPickerSidebarCategory) => {
@@ -129,7 +138,7 @@ export function DimensionPickerSidebar({
       setExpandedCategoryKey(null);
     }
 
-    if (isCategorySelected(category, activeTab)) {
+    if (isCategorySelected(category, activeDimensionBreakout)) {
       return;
     }
 
@@ -149,26 +158,29 @@ export function DimensionPickerSidebar({
     slotIndex: number,
     dimensionId: string,
   ) => {
-    const isActiveCategory = isCategorySelected(category, activeTab);
+    const isActiveCategory = isCategorySelected(
+      category,
+      activeDimensionBreakout,
+    );
 
     if (isActiveCategory) {
       const dimensionMapping = {
-        ...activeTab.dimensionMapping,
+        ...activeDimensionBreakout.dimensionMapping,
         [slotIndex]: dimensionId,
       };
-      onUpdateActiveTab({ dimensionMapping });
+      onUpdateActiveDimensionBreakout({ dimensionMapping });
       return;
     }
 
     const dimensionMapping = {
-      ...category.tabInfo.dimensionMapping,
+      ...category.dimensionBreakoutInfo.dimensionMapping,
       [slotIndex]: dimensionId,
     };
-    onAddTab({
-      ...category.tabInfo,
+    onSelectDimensionBreakout({
+      ...category.dimensionBreakoutInfo,
       dimensionMapping,
     });
-    trackMetricsViewerDimensionTabAdded();
+    trackMetricsViewerDimensionSelected();
   };
 
   const handleBack = () => {
@@ -224,7 +236,7 @@ export function DimensionPickerSidebar({
       <ScrollArea pb="lg" offsetScrollbars="present">
         {showAllFields && (
           <AllFieldsList
-            activeTab={activeTab}
+            activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
             metricSourceOrder={metricSourceOrder}
             metricSourceDataById={metricSourceDataById}
@@ -240,14 +252,15 @@ export function DimensionPickerSidebar({
             </Text>
             <Stack gap="xs">
               {categories.map((category) => {
-                const isSelected = category.key === selectedTabCategoryKey;
+                const isSelected =
+                  category.key === selectedDimensionBreakoutCategoryKey;
                 const isExpanded = category.key === expandedCategoryKey;
 
                 return (
                   <CategoryItem
                     key={category.key}
                     category={category}
-                    activeTab={activeTab}
+                    activeDimensionBreakout={activeDimensionBreakout}
                     metricSlots={metricSlots}
                     sourceDataById={metricSourceDataById}
                     sourceColors={sourceColors}

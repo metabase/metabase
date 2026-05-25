@@ -21,8 +21,8 @@ import {
   type ExpressionDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
-  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -35,6 +35,7 @@ import {
   getEffectiveDefinitionEntry,
   getEffectiveTokenDefinitionEntry,
 } from "../utils/definition-entries";
+import { getDimensionBreakoutConfig } from "../utils/dimension-breakout-config";
 import type { MetricSlot } from "../utils/metric-slots";
 import {
   computeMetricSlots,
@@ -42,7 +43,6 @@ import {
   findStandaloneSlot,
 } from "../utils/metric-slots";
 import { parseExpression } from "../utils/parse-expression";
-import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
   resultsByEntityIndex: Map<number, Dataset>;
@@ -55,15 +55,17 @@ export interface UseDefinitionQueriesResult {
 function getModifiedDefinitionForTab(
   definition: MetricsViewerDefinitionEntry,
   slotIndex: number,
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
 ): MetricDefinition | null {
   if (!definition.definition) {
     return null;
   }
-  const tabConfig = getTabConfig(tab.type);
-  const dimensionId = tab.dimensionMapping[slotIndex];
+  const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+    dimensionBreakout.type,
+  );
+  const dimensionId = dimensionBreakout.dimensionMapping[slotIndex];
   if (!dimensionId) {
-    if (tabConfig.minDimensions > 0) {
+    if (dimensionBreakoutConfig.minDimensions > 0) {
       return null;
     }
     return definition.definition;
@@ -71,13 +73,13 @@ function getModifiedDefinitionForTab(
   return getModifiedDefinition(
     definition.definition,
     dimensionId,
-    tab.projectionConfig,
+    dimensionBreakout.projectionConfig,
   );
 }
 
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
   entity: ExpressionDefinitionEntry,
   metricSlots: MetricSlot[],
   entityIndex: number,
@@ -107,7 +109,7 @@ function buildArithmeticRequest(
     const modifiedDefinition = getModifiedDefinitionForTab(
       definition,
       slotIndex,
-      tab,
+      dimensionBreakout,
     );
     if (!modifiedDefinition) {
       if (!definition.definition) {
@@ -172,7 +174,7 @@ function buildArithmeticRequest(
 function buildQueryItems(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   formulaEntities: MetricsViewerFormulaEntity[],
-  tab: MetricsViewerTabState | null,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState | null,
 ): {
   datasetRequestsByEntityIndex: Map<number, MetricDatasetRequest>;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
@@ -182,7 +184,7 @@ function buildQueryItems(
   const modifiedDefinitionsBySlotIndex = new Map<number, MetricDefinition>();
   const expressionErrorsByEntityIndex = new Map<number, string>();
 
-  if (!tab) {
+  if (!dimensionBreakout) {
     return {
       datasetRequestsByEntityIndex,
       modifiedDefinitionsBySlotIndex,
@@ -202,7 +204,7 @@ function buildQueryItems(
       const modifiedDefinition = getModifiedDefinitionForTab(
         effectiveEntry,
         slot.slotIndex,
-        tab,
+        dimensionBreakout,
       );
       if (!modifiedDefinition) {
         return;
@@ -217,7 +219,7 @@ function buildQueryItems(
     if (isExpressionEntry(entity)) {
       buildArithmeticRequest(
         definitions,
-        tab,
+        dimensionBreakout,
         entity,
         metricSlots,
         entityIndex,
@@ -239,7 +241,7 @@ function buildQueryItems(
 export function useDefinitionQueries(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   formulaEntities: MetricsViewerFormulaEntity[],
-  tab: MetricsViewerTabState | null,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState | null,
 ): UseDefinitionQueriesResult {
   const dispatch = useDispatch();
 
@@ -248,8 +250,8 @@ export function useDefinitionQueries(
     modifiedDefinitionsBySlotIndex,
     expressionErrorsByEntityIndex,
   } = useMemo(
-    () => buildQueryItems(definitions, formulaEntities, tab),
-    [definitions, formulaEntities, tab],
+    () => buildQueryItems(definitions, formulaEntities, dimensionBreakout),
+    [definitions, formulaEntities, dimensionBreakout],
   );
 
   const breakoutRequests = useMemo(() => {

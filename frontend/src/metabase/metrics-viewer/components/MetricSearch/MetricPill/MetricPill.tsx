@@ -13,7 +13,7 @@ import type {
   SelectedMetric,
 } from "../../../types/viewer-state";
 import { getEntryBreakout } from "../../../utils/definition-entries";
-import { getDimensionsByType } from "../../../utils/tabs";
+import { getDimensionsByType } from "../../../utils/dimension-breakouts";
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 

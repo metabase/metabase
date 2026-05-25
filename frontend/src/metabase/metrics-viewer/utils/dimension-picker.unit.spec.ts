@@ -1,6 +1,6 @@
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
 } from "../types/viewer-state";
 
 import {
@@ -16,7 +16,7 @@ import {
   buildDimensionPickerSidebarCategories,
   buildDimensionPickerSidebarCategorySelectRows,
   getAvailableDimensionsForPicker,
-  getExistingTabDimensionIds,
+  getExistingDimensionBreakoutDimensionIds,
 } from "./dimension-picker";
 
 const ORDERS_METRIC = createMockNormalizedMetric({
@@ -51,7 +51,7 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "numeric",
       label: "Amount",
       dimensionMapping: { 0: "dim-amount" },
@@ -62,7 +62,7 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: true,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "category",
       label: "Category",
       dimensionMapping: { 0: "dim-category" },
@@ -73,7 +73,7 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "time",
       label: "Created At",
       dimensionMapping: { 0: "dim-created-at" },
@@ -84,7 +84,7 @@ const REVENUE_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "boolean",
       label: "Is Active",
       dimensionMapping: { 0: "dim-active" },
@@ -98,7 +98,7 @@ const ORDERS_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: undefined,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "time",
       label: "Created At",
       dimensionMapping: { 0: "dim-created-at" },
@@ -109,7 +109,7 @@ const ORDERS_DIMENSIONS: AvailableDimension[] = [
     group: undefined,
     canListValues: false,
     isPreferred: true,
-    tabInfo: {
+    dimensionBreakoutInfo: {
       type: "category",
       label: "Status",
       dimensionMapping: { 0: "dim-status" },
@@ -180,7 +180,7 @@ describe("getAvailableDimensionsForPicker", () => {
             group: undefined,
             canListValues: false,
             isPreferred: undefined,
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "time",
               label: "Created At",
               dimensionMapping: { 1: "dim-created-at" },
@@ -191,7 +191,7 @@ describe("getAvailableDimensionsForPicker", () => {
             group: undefined,
             canListValues: false,
             isPreferred: true,
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "category",
               label: "Status",
               dimensionMapping: { 1: "dim-status" },
@@ -216,21 +216,23 @@ describe("getAvailableDimensionsForPicker", () => {
     const allDimensions = result.bySource[REVENUE_SOURCE_ID] ?? [];
     expect(allDimensions).toHaveLength(REVENUE_DIMENSIONS.length);
 
-    const labels = allDimensions.map((d) => d.tabInfo.label);
+    const labels = allDimensions.map((d) => d.dimensionBreakoutInfo.label);
     expect(labels).toEqual([...new Set(labels)]);
 
     for (const dim of allDimensions) {
-      const dimId = Object.values(dim.tabInfo.dimensionMapping)[0];
-      expect(dim.tabInfo.dimensionMapping).toEqual({
+      const dimId = Object.values(
+        dim.dimensionBreakoutInfo.dimensionMapping,
+      )[0];
+      expect(dim.dimensionBreakoutInfo.dimensionMapping).toEqual({
         0: dimId,
         1: dimId,
       });
     }
   });
 
-  it("filters out dimensions whose id matches existingTabDimensionIds", () => {
+  it("filters out dimensions whose id matches existingDimensionBreakoutDimensionIds", () => {
     const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
-      Object.values(dimension.tabInfo.dimensionMapping),
+      Object.values(dimension.dimensionBreakoutInfo.dimensionMapping),
     );
 
     const result = getAvailableDimensionsForPicker(
@@ -244,10 +246,10 @@ describe("getAvailableDimensionsForPicker", () => {
   });
 });
 
-describe("getExistingTabDimensionIds", () => {
-  const tabs: MetricsViewerTabState[] = [
+describe("getExistingDimensionBreakoutDimensionIds", () => {
+  const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] = [
     {
-      id: "tab-category",
+      id: "dimensionBreakout-category",
       type: "category",
       label: "Category",
       display: "bar",
@@ -255,7 +257,7 @@ describe("getExistingTabDimensionIds", () => {
       projectionConfig: {},
     },
     {
-      id: "tab-created-at",
+      id: "dimensionBreakout-created-at",
       type: "time",
       label: "Created At",
       display: "line",
@@ -264,16 +266,19 @@ describe("getExistingTabDimensionIds", () => {
     },
   ];
 
-  it("returns dimension ids from every tab", () => {
-    expect(getExistingTabDimensionIds(tabs)).toEqual(
-      new Set(["dim-category", "dim-created-at"]),
-    );
+  it("returns dimension ids from every dimensionBreakout", () => {
+    expect(
+      getExistingDimensionBreakoutDimensionIds(dimensionBreakouts),
+    ).toEqual(new Set(["dim-category", "dim-created-at"]));
   });
 
-  it("can exclude the active tab ids", () => {
-    expect(getExistingTabDimensionIds(tabs, "tab-category")).toEqual(
-      new Set(["dim-created-at"]),
-    );
+  it("can exclude the active dimensionBreakout ids", () => {
+    expect(
+      getExistingDimensionBreakoutDimensionIds(
+        dimensionBreakouts,
+        "dimensionBreakout-category",
+      ),
+    ).toEqual(new Set(["dim-created-at"]));
   });
 });
 
@@ -285,7 +290,7 @@ describe("buildDimensionPickerSections", () => {
           {
             icon: "label",
             group: { id: "customers", type: "main", displayName: "Customers" },
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "category",
               label: "Customer Name",
               dimensionMapping: {
@@ -297,7 +302,7 @@ describe("buildDimensionPickerSections", () => {
           {
             icon: "calendar",
             group: { id: "orders", type: "main", displayName: "Orders" },
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "time",
               label: "Created At",
               dimensionMapping: {
@@ -345,7 +350,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
     ]);
     expect(categories.find((category) => category.name === "Time")).toEqual(
       expect.objectContaining({
-        tabInfo: {
+        dimensionBreakoutInfo: {
           type: "time",
           label: "Time",
           dimensionMapping: { 0: "dim-created-at" },
@@ -353,7 +358,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
         targetItems: [
           expect.objectContaining({
             name: "Created At",
-            tabInfo: REVENUE_DIMENSIONS[2].tabInfo,
+            dimensionBreakoutInfo: REVENUE_DIMENSIONS[2].dimensionBreakoutInfo,
           }),
         ],
       }),
@@ -369,7 +374,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
             {
               icon: "label",
               isPreferred: false,
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "category",
                 label: "Address",
                 dimensionMapping: { 0: "dim-address" },
@@ -378,7 +383,7 @@ describe("buildDimensionPickerSidebarCategories", () => {
             {
               icon: "label",
               isPreferred: true,
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "category",
                 label: "Category",
                 dimensionMapping: { 0: "dim-category" },
@@ -406,7 +411,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
           [REVENUE_SOURCE_ID]: [
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Created At",
                 dimensionMapping: { 0: "dim-created-at" },
@@ -414,7 +419,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
             },
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Order Date",
                 dimensionMapping: { 0: "dim-order-date" },
@@ -424,7 +429,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
           [ORDERS_SOURCE_ID]: [
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Placed At",
                 dimensionMapping: { 1: "dim-placed-at" },
@@ -447,7 +452,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
 
     const rows = buildDimensionPickerSidebarCategorySelectRows({
       category: timeCategory!,
-      activeTab: {
+      activeDimensionBreakout: {
         id: "dim-created-at",
         type: "time",
         label: "Time",
@@ -500,7 +505,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
             {
               icon: "calendar",
               group: { id: "orders", type: "main", displayName: "Orders" },
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Created At",
                 dimensionMapping: { 0: "dim-orders-created-at" },
@@ -513,7 +518,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
                 type: "connection",
                 displayName: "Products",
               },
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Created At",
                 dimensionMapping: { 0: "dim-products-created-at" },
@@ -533,7 +538,7 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
 
     const rows = buildDimensionPickerSidebarCategorySelectRows({
       category: timeCategory!,
-      activeTab: {
+      activeDimensionBreakout: {
         id: "dim-orders-created-at",
         type: "time",
         label: "Time",

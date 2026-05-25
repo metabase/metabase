@@ -1,7 +1,7 @@
 import type {
   MetricDefinitionEntry,
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
 } from "../types/viewer-state";
 
 import { remapDimensionMappings } from "./remap-dimension-mappings";
@@ -15,10 +15,10 @@ function metric(sourceId: MetricSourceId): MetricDefinitionEntry {
 }
 
 function makeTab(
-  overrides: Partial<MetricsViewerTabState> = {},
-): MetricsViewerTabState {
+  overrides: Partial<MetricsViewerDimensionBreakoutState> = {},
+): MetricsViewerDimensionBreakoutState {
   return {
-    id: "tab-1",
+    id: "dimensionBreakout-1",
     type: "time",
     label: "By Month",
     display: "line",
@@ -37,9 +37,9 @@ const COSTS: MetricSourceId = "metric:3" as MetricSourceId;
 // ---------------------------------------------------------------------------
 
 describe("remapDimensionMappings", () => {
-  it("returns same tab objects when slot mapping is identity", () => {
+  it("returns same dimensionBreakout objects when slot mapping is identity", () => {
     const entities = [metric(REVENUE), metric(ORDERS)];
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: "created_at", 1: "created_at" },
     });
     const slotMapping = new Map([
@@ -47,16 +47,20 @@ describe("remapDimensionMappings", () => {
       [1, 1],
     ]);
 
-    const result = remapDimensionMappings([tab], slotMapping, entities);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      entities,
+    );
 
-    expect(result[0]).toBe(tab); // referential equality
+    expect(result[0]).toBe(dimensionBreakout); // referential equality
   });
 
   it("remaps indices when slots shift", () => {
     // Old: [Revenue(0), Orders(1), Costs(2)], New: [Orders(0), Costs(1)]
     // Revenue removed, Orders 1→0, Costs 2→1
     const next = [metric(ORDERS), metric(COSTS)];
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord", 2: "dim-cost" },
     });
     const slotMapping = new Map([
@@ -65,7 +69,11 @@ describe("remapDimensionMappings", () => {
       // Revenue (old 0) not in map — removed
     ]);
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({
       0: "dim-ord",
@@ -75,7 +83,7 @@ describe("remapDimensionMappings", () => {
 
   it("remaps indices when entities are reordered", () => {
     const next = [metric(ORDERS), metric(REVENUE)]; // swapped
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord" },
     });
     const slotMapping = new Map([
@@ -83,7 +91,11 @@ describe("remapDimensionMappings", () => {
       [1, 0], // Orders:  old 1 → new 0
     ]);
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({
       0: "dim-ord",
@@ -93,7 +105,7 @@ describe("remapDimensionMappings", () => {
 
   it("inherits sibling dimension for a new slot with same sourceId", () => {
     const next = [metric(REVENUE), metric(REVENUE)]; // second instance added
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: "created_at" },
     });
     const slotMapping = new Map([
@@ -101,7 +113,11 @@ describe("remapDimensionMappings", () => {
       // slot 1 is new — not in the mapping
     ]);
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({
       0: "created_at",
@@ -111,7 +127,7 @@ describe("remapDimensionMappings", () => {
 
   it("does not add mapping for a brand-new metric with no sibling", () => {
     const next = [metric(REVENUE), metric(ORDERS)]; // Orders is new
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: "created_at" },
     });
     const slotMapping = new Map([
@@ -119,19 +135,23 @@ describe("remapDimensionMappings", () => {
       // slot 1 (Orders) is new with no sibling
     ]);
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({ 0: "created_at" });
   });
 
-  it("reconciles multiple tabs independently", () => {
+  it("reconciles multiple dimensionBreakouts independently", () => {
     const next = [metric(ORDERS), metric(REVENUE)]; // swapped
     const tab1 = makeTab({
-      id: "tab-1",
+      id: "dimensionBreakout-1",
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord" },
     });
     const tab2 = makeTab({
-      id: "tab-2",
+      id: "dimensionBreakout-2",
       dimensionMapping: { 0: "cat-rev", 1: "cat-ord" },
     });
     const slotMapping = new Map([
@@ -153,22 +173,32 @@ describe("remapDimensionMappings", () => {
 
   it("handles empty slot mapping (all entities new)", () => {
     const next = [metric(REVENUE)];
-    const tab = makeTab({ dimensionMapping: { 0: "created_at" } });
+    const dimensionBreakout = makeTab({
+      dimensionMapping: { 0: "created_at" },
+    });
     const slotMapping = new Map<number, number>();
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({});
   });
 
   it("inherits null dimension from sibling", () => {
     const next = [metric(REVENUE), metric(REVENUE)];
-    const tab = makeTab({
+    const dimensionBreakout = makeTab({
       dimensionMapping: { 0: null },
     });
     const slotMapping = new Map([[0, 0]]);
 
-    const result = remapDimensionMappings([tab], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({
       0: null,

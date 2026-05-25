@@ -6,18 +6,18 @@ import { MetricsViewerVisualization } from "metabase/metrics-viewer/components/M
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutProjectionConfig,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerDisplayType,
   MetricsViewerFormulaEntity,
-  MetricsViewerTabProjectionConfig,
-  MetricsViewerTabState,
   SourceColorMap,
 } from "metabase/metrics-viewer/types/viewer-state";
 import {
   type AvailableDimensionsResult,
   type DimensionFilterValue,
   buildDimensionItemsFromDefinitions,
+  getDimensionBreakoutConfig,
   getProjectionInfo,
-  getTabConfig,
   shouldShowStackSeries,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
@@ -33,10 +33,10 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-type MetricsViewerTabContentProps = {
+type MetricsViewerDimensionBreakoutContentProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
-  tab: MetricsViewerTabState;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
   queriesAreLoading: boolean;
   queriesError: string | null;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
@@ -46,15 +46,17 @@ type MetricsViewerTabContentProps = {
   sourceColors: SourceColorMap;
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
   onDimensionRemove: (slotIndex: number) => void;
 };
 
-export function MetricsViewerTabContent({
+export function MetricsViewerDimensionBreakoutContent({
   definitions,
   formulaEntities,
-  tab,
+  dimensionBreakout,
   queriesAreLoading,
   queriesError,
   modifiedDefinitionsBySlotIndex,
@@ -64,38 +66,40 @@ export function MetricsViewerTabContent({
   sourceColors,
   availableDimensions,
   sourceOrder,
-  onTabUpdate,
+  onDimensionBreakoutUpdate,
   onDimensionChange,
   onDimensionRemove,
-}: MetricsViewerTabContentProps) {
-  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
+}: MetricsViewerDimensionBreakoutContentProps) {
+  const dimensionFilter = getDimensionBreakoutConfig(
+    dimensionBreakout.type,
+  ).dimensionPredicate;
 
   const dimensionItems = useMemo(
     () =>
       buildDimensionItemsFromDefinitions(
         definitions,
-        tab.dimensionMapping,
+        dimensionBreakout.dimensionMapping,
         modifiedDefinitionsBySlotIndex,
         sourceColors,
         metricSlots,
         formulaEntities,
-        tab.projectionConfig,
+        dimensionBreakout.projectionConfig,
         dimensionFilter,
       ),
     [
       definitions,
-      tab.dimensionMapping,
+      dimensionBreakout.dimensionMapping,
       modifiedDefinitionsBySlotIndex,
       sourceColors,
       metricSlots,
       formulaEntities,
-      tab.projectionConfig,
+      dimensionBreakout.projectionConfig,
       dimensionFilter,
     ],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
-    for (const key of getObjectKeys(tab.dimensionMapping)) {
+    for (const key of getObjectKeys(dimensionBreakout.dimensionMapping)) {
       const slotIndex = Number(key);
       const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
       if (!modDef) {
@@ -107,11 +111,11 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, modifiedDefinitionsBySlotIndex]);
+  }, [dimensionBreakout.dimensionMapping, modifiedDefinitionsBySlotIndex]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
-    for (const key of getObjectKeys(tab.dimensionMapping)) {
+    for (const key of getObjectKeys(dimensionBreakout.dimensionMapping)) {
       const slotIndex = Number(key);
       const modDef = modifiedDefinitionsBySlotIndex.get(slotIndex);
       if (!modDef) {
@@ -123,15 +127,15 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitionsBySlotIndex]);
+  }, [dimensionBreakout.dimensionMapping, modifiedDefinitionsBySlotIndex]);
 
   const updateProjectionConfig = useCallback(
-    (updates: Partial<MetricsViewerTabProjectionConfig>) => {
-      onTabUpdate({
-        projectionConfig: { ...tab.projectionConfig, ...updates },
+    (updates: Partial<MetricsViewerDimensionBreakoutProjectionConfig>) => {
+      onDimensionBreakoutUpdate({
+        projectionConfig: { ...dimensionBreakout.projectionConfig, ...updates },
       });
     },
-    [onTabUpdate, tab.projectionConfig],
+    [onDimensionBreakoutUpdate, dimensionBreakout.projectionConfig],
   );
 
   const handleDimensionFilterChange = useCallback(
@@ -157,28 +161,28 @@ export function MetricsViewerTabContent({
 
   const handleDisplayTypeChange = useCallback(
     (display: MetricsViewerDisplayType) => {
-      onTabUpdate({ display });
+      onDimensionBreakoutUpdate({ display });
     },
-    [onTabUpdate],
+    [onDimensionBreakoutUpdate],
   );
 
   const handleVisualizationSettingsChange = useCallback(
     (updates: Partial<VisualizationSettings>) => {
-      onTabUpdate({
+      onDimensionBreakoutUpdate({
         visualizationSettings: {
-          ...tab.visualizationSettings,
+          ...dimensionBreakout.visualizationSettings,
           ...updates,
         },
       });
     },
-    [onTabUpdate, tab.visualizationSettings],
+    [onDimensionBreakoutUpdate, dimensionBreakout.visualizationSettings],
   );
 
   const handleShowColumnLabelsChange = useCallback(
     (showColumnLabels: boolean) => {
-      onTabUpdate({ showColumnLabels });
+      onDimensionBreakoutUpdate({ showColumnLabels });
     },
-    [onTabUpdate],
+    [onDimensionBreakoutUpdate],
   );
 
   const handleBrush = useCallback(
@@ -196,26 +200,29 @@ export function MetricsViewerTabContent({
   );
 
   const showStackSeries = shouldShowStackSeries(
-    tab.display,
+    dimensionBreakout.display,
     rawSeries,
     formulaEntities,
     definitions,
   );
 
-  const isTimeTab = tab.type === "time";
+  const isTimeDimensionBreakout = dimensionBreakout.type === "time";
 
-  const tabConfig = getTabConfig(tab.type);
+  const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+    dimensionBreakout.type,
+  );
   const hasAnyOptions = dimensionItems.some((item) =>
     item.type === "expression"
       ? item.metricSources.some((s) => s.availableOptions.length > 0)
       : item.availableOptions.length > 0,
   );
-  const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
-  const showColumnLabels = tab.showColumnLabels === true;
+  const hideDimensionPill =
+    dimensionBreakoutConfig.minDimensions === 0 && !hasAnyOptions;
+  const showColumnLabels = dimensionBreakout.showColumnLabels === true;
 
-  const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
-    isNotNull,
-  ).length;
+  const mappedDimensionCount = getObjectValues(
+    dimensionBreakout.dimensionMapping,
+  ).filter(isNotNull).length;
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
@@ -223,12 +230,12 @@ export function MetricsViewerTabContent({
     <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
         rawSeries={rawSeries}
-        onBrush={isTimeTab ? handleBrush : undefined}
+        onBrush={isTimeDimensionBreakout ? handleBrush : undefined}
         definitions={definitions}
         formulaEntities={formulaEntities}
         metricSlots={metricSlots}
-        tab={tab}
-        onTabUpdate={onTabUpdate}
+        dimensionBreakout={dimensionBreakout}
+        onDimensionBreakoutUpdate={onDimensionBreakoutUpdate}
         cardIdToEntityIndex={cardIdToEntityIndex}
         queriesAreLoading={queriesAreLoading}
         queriesError={queriesError}
@@ -246,10 +253,10 @@ export function MetricsViewerTabContent({
         <Flex mt="md" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
-            displayType={tab.display}
-            tabType={tab.type}
-            tabLabel={tab.label}
-            dimensionFilter={tab.projectionConfig.dimensionFilter}
+            displayType={dimensionBreakout.display}
+            dimensionBreakoutType={dimensionBreakout.type}
+            dimensionBreakoutLabel={dimensionBreakout.label}
+            dimensionFilter={dimensionBreakout.projectionConfig.dimensionFilter}
             allFilterDimensions={allFilterDimensions}
             availableDimensions={availableDimensions}
             sourceOrder={sourceOrder}
@@ -261,7 +268,7 @@ export function MetricsViewerTabContent({
             canToggleColumnLabels={!hideDimensionPill}
             showColumnLabels={showColumnLabels}
             onShowColumnLabelsChange={handleShowColumnLabelsChange}
-            visualizationSettings={tab.visualizationSettings}
+            visualizationSettings={dimensionBreakout.visualizationSettings}
             onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />
         </Flex>

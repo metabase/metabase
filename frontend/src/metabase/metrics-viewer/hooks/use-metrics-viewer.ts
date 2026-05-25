@@ -19,21 +19,26 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
-  MetricsViewerTabState,
   SelectedMetric,
   SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 import { getDefinitionName } from "../utils/definition-builder";
+import {
+  type DimensionBreakoutInfo,
+  createDimensionBreakoutFromInfo,
+  recomputeDimensionBreakoutLabels,
+} from "../utils/dimension-breakouts";
 import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import {
   getAvailableDimensionsForPicker,
-  getExistingTabDimensionIds,
+  getExistingDimensionBreakoutDimensionIds,
 } from "../utils/dimension-picker";
 import { type MetricSlot, computeMetricSlots } from "../utils/metric-slots";
 import {
@@ -42,11 +47,6 @@ import {
   getSelectedMetricsInfo,
 } from "../utils/series";
 import { createSourceId } from "../utils/source-ids";
-import {
-  type TabInfo,
-  createTabFromTabInfo,
-  recomputeTabLabels,
-} from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
 import { useViewerState } from "./use-viewer-state";
@@ -55,9 +55,8 @@ import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 export interface UseMetricsViewerResult {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
-  tabs: MetricsViewerTabState[];
-  activeTab: MetricsViewerTabState | null;
-  activeTabId: string | null;
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
   initialLoadComplete: boolean;
   loadingIds: Set<MetricSourceId>;
   resultsByEntityIndex: Map<number, Dataset>;
@@ -74,23 +73,27 @@ export interface UseMetricsViewerResult {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   availableDimensions: AvailableDimensionsResult;
-  activeTabAvailableDimensions: AvailableDimensionsResult;
+  activeDimensionBreakoutAvailableDimensions: AvailableDimensionsResult;
   sidebarAvailableDimensions: AvailableDimensionsResult;
 
   addMetric: (metric: SelectedMetric) => void;
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
-  changeTab: (tabId: string) => void;
-  addAndSelectTab: (tabInfo: TabInfo) => void;
-  removeTab: (tabId: string) => void;
-  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
-  updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
-  changeTabDimension: (
-    tabId: string,
+  selectDimensionBreakout: (
+    dimensionBreakoutInfo: DimensionBreakoutInfo,
+  ) => void;
+  updateActiveDimensionBreakout: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
+  changeDimensionBreakoutDimension: (
+    dimensionBreakoutId: string,
     slotIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeTabDimension: (tabId: string, slotIndex: number) => void;
+  removeDimensionBreakoutDimension: (
+    dimensionBreakoutId: string,
+    slotIndex: number,
+  ) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -111,12 +114,11 @@ export function useMetricsViewer({
     setInitialLoadComplete,
     removeDefinition,
     setFormulaEntities,
-    selectTab: changeTab,
-    addTab,
-    removeTab,
-    updateTab,
-    setDefinitionDimension: changeTabDimension,
-    removeDefinitionDimension: removeTabDimension,
+    selectDimensionBreakoutById,
+    addDimensionBreakout,
+    updateDimensionBreakout,
+    setDefinitionDimension: changeDimensionBreakoutDimension,
+    removeDefinitionDimension: removeDimensionBreakoutDimension,
     setBreakoutDimension,
     initialize,
     loadAndAddMetric,
@@ -146,14 +148,18 @@ export function useMetricsViewer({
     setInitialLoadComplete,
   );
 
-  const activeTab = useMemo((): MetricsViewerTabState | null => {
-    if (state.tabs.length === 0) {
-      return null;
-    }
-    return (
-      state.tabs.find((tab) => tab.id === state.selectedTabId) ?? state.tabs[0]
-    );
-  }, [state.tabs, state.selectedTabId]);
+  const activeDimensionBreakout =
+    useMemo((): MetricsViewerDimensionBreakoutState | null => {
+      if (state.dimensionBreakouts.length === 0) {
+        return null;
+      }
+      return (
+        state.dimensionBreakouts.find(
+          (dimensionBreakout) =>
+            dimensionBreakout.id === state.selectedDimensionBreakoutId,
+        ) ?? state.dimensionBreakouts[0]
+      );
+    }, [state.dimensionBreakouts, state.selectedDimensionBreakoutId]);
 
   const {
     resultsByEntityIndex,
@@ -161,7 +167,11 @@ export function useMetricsViewer({
     queriesError,
     modifiedDefinitionsBySlotIndex,
     breakoutValuesByEntityIndex,
-  } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
+  } = useDefinitionQueries(
+    state.definitions,
+    state.formulaEntities,
+    activeDimensionBreakout,
+  );
 
   const definitionValues = useMemo(
     () => Object.values(state.definitions),
@@ -189,21 +199,21 @@ export function useMetricsViewer({
   );
 
   const { series, cardIdToEntityIndex, activeBreakoutColors } = useMemo(() => {
-    if (!activeTab) {
+    if (!activeDimensionBreakout) {
       return { series: [], cardIdToEntityIndex: {}, activeBreakoutColors: {} };
     }
     return buildSeries({
       formulaEntities: state.formulaEntities,
       definitions: state.definitions,
-      display: activeTab.display,
+      display: activeDimensionBreakout.display,
       resultsByEntityIndex,
       sourceBreakoutColors,
-      extraVizSettings: activeTab.visualizationSettings,
+      extraVizSettings: activeDimensionBreakout.visualizationSettings,
     });
   }, [
     state.formulaEntities,
     state.definitions,
-    activeTab,
+    activeDimensionBreakout,
     resultsByEntityIndex,
     sourceBreakoutColors,
   ]);
@@ -274,19 +284,28 @@ export function useMetricsViewer({
     return result;
   }, [definitionValues]);
 
-  const existingTabDimensionIds = useMemo(
-    () => getExistingTabDimensionIds(state.tabs),
-    [state.tabs],
+  const existingDimensionBreakoutDimensionIds = useMemo(
+    () => getExistingDimensionBreakoutDimensionIds(state.dimensionBreakouts),
+    [state.dimensionBreakouts],
   );
 
-  const existingNonActiveTabDimensionIds = useMemo(
-    () => getExistingTabDimensionIds(state.tabs, activeTab?.id),
-    [state.tabs, activeTab?.id],
+  const existingNonActiveDimensionBreakoutDimensionIds = useMemo(
+    () =>
+      getExistingDimensionBreakoutDimensionIds(
+        state.dimensionBreakouts,
+        activeDimensionBreakout?.id,
+      ),
+    [state.dimensionBreakouts, activeDimensionBreakout?.id],
   );
 
-  const effectiveTabs = useMemo(
-    () => recomputeTabLabels(state.tabs, state.definitions, metricSlots),
-    [state.tabs, metricSlots, state.definitions],
+  const effectiveDimensionBreakouts = useMemo(
+    () =>
+      recomputeDimensionBreakoutLabels(
+        state.dimensionBreakouts,
+        state.definitions,
+        metricSlots,
+      ),
+    [state.dimensionBreakouts, metricSlots, state.definitions],
   );
 
   const availableDimensions = useMemo(
@@ -295,24 +314,29 @@ export function useMetricsViewer({
         definitionsBySourceId,
         sourceOrder,
         metricSlots,
-        existingTabDimensionIds,
-      ),
-    [definitionsBySourceId, sourceOrder, metricSlots, existingTabDimensionIds],
-  );
-
-  const activeTabAvailableDimensions = useMemo(
-    () =>
-      getAvailableDimensionsForPicker(
-        definitionsBySourceId,
-        sourceOrder,
-        metricSlots,
-        existingNonActiveTabDimensionIds,
+        existingDimensionBreakoutDimensionIds,
       ),
     [
       definitionsBySourceId,
       sourceOrder,
       metricSlots,
-      existingNonActiveTabDimensionIds,
+      existingDimensionBreakoutDimensionIds,
+    ],
+  );
+
+  const activeDimensionBreakoutAvailableDimensions = useMemo(
+    () =>
+      getAvailableDimensionsForPicker(
+        definitionsBySourceId,
+        sourceOrder,
+        metricSlots,
+        existingNonActiveDimensionBreakoutDimensionIds,
+      ),
+    [
+      definitionsBySourceId,
+      sourceOrder,
+      metricSlots,
+      existingNonActiveDimensionBreakoutDimensionIds,
     ],
   );
 
@@ -364,35 +388,36 @@ export function useMetricsViewer({
     [removeDefinition],
   );
 
-  const addAndSelectTab = useCallback(
-    (tabInfo: TabInfo) => {
-      const newTab = createTabFromTabInfo(tabInfo);
-      if (!newTab) {
+  const selectDimensionBreakout = useCallback(
+    (dimensionBreakoutInfo: DimensionBreakoutInfo) => {
+      const newDimensionBreakout = createDimensionBreakoutFromInfo(
+        dimensionBreakoutInfo,
+      );
+      if (!newDimensionBreakout) {
         return;
       }
 
-      addTab(newTab);
-      changeTab(newTab.id);
+      addDimensionBreakout(newDimensionBreakout);
+      selectDimensionBreakoutById(newDimensionBreakout.id);
     },
-    [addTab, changeTab],
+    [addDimensionBreakout, selectDimensionBreakoutById],
   );
 
-  const updateActiveTab = useCallback(
-    (updates: Partial<MetricsViewerTabState>) => {
-      if (!activeTab) {
+  const updateActiveDimensionBreakout = useCallback(
+    (updates: Partial<MetricsViewerDimensionBreakoutState>) => {
+      if (!activeDimensionBreakout) {
         return;
       }
-      updateTab(activeTab.id, updates);
+      updateDimensionBreakout(activeDimensionBreakout.id, updates);
     },
-    [activeTab, updateTab],
+    [activeDimensionBreakout, updateDimensionBreakout],
   );
 
   return {
     definitions: state.definitions,
     formulaEntities: state.formulaEntities,
-    tabs: effectiveTabs,
-    activeTab,
-    activeTabId: state.selectedTabId,
+    dimensionBreakouts: effectiveDimensionBreakouts,
+    activeDimensionBreakout,
     initialLoadComplete,
     loadingIds,
     resultsByEntityIndex,
@@ -409,19 +434,16 @@ export function useMetricsViewer({
     sourceOrder,
     sourceDataById,
     availableDimensions,
-    activeTabAvailableDimensions,
+    activeDimensionBreakoutAvailableDimensions,
     sidebarAvailableDimensions,
 
     addMetric,
     swapMetric,
     removeMetric,
-    changeTab,
-    addAndSelectTab,
-    removeTab,
-    updateTab,
-    updateActiveTab,
-    changeTabDimension,
-    removeTabDimension,
+    selectDimensionBreakout,
+    updateActiveDimensionBreakout,
+    changeDimensionBreakoutDimension,
+    removeDimensionBreakoutDimension,
     setBreakoutDimension,
     setFormulaEntities,
   };

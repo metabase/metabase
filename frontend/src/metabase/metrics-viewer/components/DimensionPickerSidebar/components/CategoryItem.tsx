@@ -1,6 +1,6 @@
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
   SourceColorMap,
 } from "metabase/metrics-viewer/types";
 import {
@@ -19,7 +19,7 @@ import { MetricDimensionSelect } from "./MetricDimensionSelect";
 
 export function CategoryItem({
   category,
-  activeTab,
+  activeDimensionBreakout,
   metricSlots,
   sourceDataById,
   sourceColors,
@@ -30,7 +30,7 @@ export function CategoryItem({
   onDimensionChange,
 }: {
   category: DimensionPickerSidebarCategory;
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   metricSlots: MetricSlot[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
@@ -42,7 +42,7 @@ export function CategoryItem({
 }) {
   const categorySelectRows = getCategorySelectRows({
     category,
-    activeTab,
+    activeDimensionBreakout,
     metricSlots,
     sourceDataById,
     sourceColors,
@@ -77,29 +77,29 @@ export function CategoryItem({
 
 function getCategorySelectRows({
   category,
-  activeTab,
+  activeDimensionBreakout,
   metricSlots,
   sourceDataById,
   sourceColors,
 }: {
   category: DimensionPickerSidebarCategory;
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   metricSlots: MetricSlot[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
 }) {
-  const categoryTab = isCategorySelected(category, activeTab)
-    ? activeTab
+  const categoryTab = isCategorySelected(category, activeDimensionBreakout)
+    ? activeDimensionBreakout
     : {
-        ...activeTab,
-        type: category.tabInfo.type,
-        label: category.tabInfo.label,
-        dimensionMapping: category.tabInfo.dimensionMapping,
+        ...activeDimensionBreakout,
+        type: category.dimensionBreakoutInfo.type,
+        label: category.dimensionBreakoutInfo.label,
+        dimensionMapping: category.dimensionBreakoutInfo.dimensionMapping,
       };
 
   return buildDimensionPickerSidebarCategorySelectRows({
     category,
-    activeTab: categoryTab,
+    activeDimensionBreakout: categoryTab,
     metricSlots,
     sourceDataById,
     sourceColors,

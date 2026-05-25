@@ -1,4 +1,4 @@
-import type { MetricsViewerTabState } from "metabase/metrics-viewer/types";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type {
   DimensionPickerItem,
   DimensionPickerSection,
@@ -10,11 +10,11 @@ import { getSidebarSectionName, hasSameDimensions } from "../../utils";
 import { DimensionButton } from "./DimensionButton";
 
 export function AllFieldsSectionList({
-  activeTab,
+  activeDimensionBreakout,
   sections,
   onSelect,
 }: {
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   sections: DimensionPickerSection[];
   onSelect: (item: DimensionPickerItem) => void;
 }) {
@@ -36,9 +36,9 @@ export function AllFieldsSectionList({
             <Stack gap={0}>
               {section.items.map((item, itemIndex) => (
                 <DimensionButton
-                  key={`${item.tabInfo.type}-${item.name}-${itemIndex}`}
+                  key={`${item.dimensionBreakoutInfo.type}-${item.name}-${itemIndex}`}
                   item={item}
-                  isSelected={hasSameDimensions(item, activeTab)}
+                  isSelected={hasSameDimensions(item, activeDimensionBreakout)}
                   onClick={() => onSelect(item)}
                 />
               ))}
