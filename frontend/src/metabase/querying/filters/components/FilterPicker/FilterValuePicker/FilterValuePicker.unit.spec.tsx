@@ -7,6 +7,7 @@ import {
   setupRemappedFieldValueEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   createMockClipboardData,
   renderWithProviders,
   screen,
@@ -773,7 +774,11 @@ describe("StringFilterValuePicker", () => {
 
       const input = screen.getByRole("combobox", { name: "Filter value" });
       await userEvent.type(input, "a@b.com");
-      input.blur();
+      // blurring commits the typed value; wrap it so the resulting state
+      // updates in MultiAutocomplete are flushed inside act()
+      act(() => {
+        input.blur();
+      });
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
