@@ -15,9 +15,11 @@ function getSectionKey(section: DimensionPickerSection) {
 }
 
 function getDimensionItemKey(item: DimensionPickerSection["items"][number]) {
-  const dimensionIds = Object.values(item.tabInfo.dimensionMapping).join("|");
-
-  return `${item.tabInfo.type}:${dimensionIds}`;
+  const entries = Object.entries(item.tabInfo.dimensionMapping)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join("|");
+  return `${item.tabInfo.type}:${entries}`;
 }
 
 function mergeSectionsByName(sections: DimensionPickerSection[]) {
