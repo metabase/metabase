@@ -4,7 +4,7 @@ import { Flex, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
-import type { MetricSourceId } from "../../types/viewer-state";
+import type { MetricSourceId } from "../../types";
 
 import S from "./DimensionPillBar.module.css";
 
@@ -62,33 +62,22 @@ export function DimensionPillBar({ items }: DimensionPillBarProps) {
 
   return (
     <Flex
+      className={S.container}
       bg="background-primary"
-      p="xs"
-      bdrs="xl"
       w="100%"
       align="center"
       justify="center"
-      gap="sm"
       wrap="wrap"
       data-testid="metrics-viewer-dimension-pill-container"
     >
-      {items.map((item) =>
-        item.type === "expression" ? (
-          <DimensionLabel
-            key={`expr-${item.id}`}
-            label={item.label}
-            icon={item.icon}
-            colors={item.colors}
-          />
-        ) : (
-          <DimensionLabel
-            key={item.id}
-            label={item.label}
-            icon={item.icon}
-            colors={item.colors}
-          />
-        ),
-      )}
+      {items.map((item) => (
+        <DimensionLabel
+          key={item.type === "expression" ? `expr-${item.id}` : item.id}
+          label={item.label}
+          icon={item.icon}
+          colors={item.colors}
+        />
+      ))}
     </Flex>
   );
 }
