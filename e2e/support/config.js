@@ -40,8 +40,8 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
-const COVERAGE_MANIFEST_DIR = path.resolve("e2e/coverage-manifest");
-const NYC_OUTPUT_FILE = path.resolve(".nyc_output/out.json");
+const COVERAGE_MANIFEST_DIR = path.resolve(__dirname, "../coverage-manifest");
+const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
