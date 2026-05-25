@@ -29,10 +29,13 @@ RUN git config --global --add safe.directory /home/node
 # install bun for frontend dependencies
 RUN npm install -g bun
 
+# skip Cypress binary download (E2E-only, not needed for production build)
+ENV CYPRESS_INSTALL_BINARY=0
+
 # install frontend dependencies
 RUN bun install --frozen-lockfile
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh ${VERSION:+:version \"$VERSION\"}
 
 # ###################
 # # STAGE 2: runner

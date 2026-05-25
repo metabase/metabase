@@ -34,19 +34,13 @@ export const useDashboardRefreshPeriod = ({
   const { start, stop } = useInterval(intervalFactor, TICK_PERIOD * 1000);
 
   const onRefreshPeriodChange = useCallback(
-    (newPeriod: number | null) => {
+    (_newPeriod: number | null) => {
       stop();
-      if (newPeriod !== null) {
-        setPeriod(newPeriod);
-        elapsedHook.current?.(0);
-        start();
-      } else {
-        elapsed.current = 0;
-        setPeriod(null);
-        elapsedHook.current?.(null);
-      }
+      elapsed.current = 0;
+      setPeriod(null);
+      elapsedHook.current?.(null);
     },
-    [start, stop],
+    [stop],
   );
 
   useUnmount(() => {

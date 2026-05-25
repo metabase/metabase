@@ -104,7 +104,7 @@ export const EmbedFrame = ({
   titled,
   theme,
   hide_parameters,
-  pdfDownloadsEnabled = true,
+  pdfDownloadsEnabled: _pdfDownloadsEnabled = true,
   withFooter = true,
   contentClassName,
 }: EmbedFrameProps) => {
@@ -141,9 +141,9 @@ export const EmbedFrame = ({
     .join(",");
 
   const isFooterEnabled =
-    withFooter && (hasEmbedBranding || pdfDownloadsEnabled || actionButtons);
+    withFooter && (hasEmbedBranding || actionButtons);
 
-  const finalName = titled ? name : null;
+  const finalName = null;
 
   const hasParameters = Array.isArray(parameters) && parameters.length > 0;
   const visibleParameters = hasParameters
@@ -151,7 +151,7 @@ export const EmbedFrame = ({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || dashboardTabs) || pdfDownloadsEnabled;
+  const hasHeader = Boolean(finalName || dashboardTabs);
 
   const allowParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
@@ -207,36 +207,8 @@ export const EmbedFrame = ({
             )}
             data-testid="embed-frame-header"
           >
-            {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer hasTitle={!!finalName}>
-                <TitleAndButtonsContainer
-                  data-testid="fixed-width-dashboard-header"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  {finalName && (
-                    <TitleAndDescription
-                      title={finalName}
-                      description={description}
-                      className={CS.my2}
-                    />
-                  )}
-                  <Box style={{ flex: 1 }} />
-                  {dashboard && pdfDownloadsEnabled && (
-                    <ExportAsPdfButton
-                      className={cx({
-                        [EmbedFrameS.CompactExportAsPdfButton]:
-                          !titled && (hasVisibleParameters || hasDashboardTabs),
-                        [EmbedFrameS.ParametersVisibleWithNoTabs]:
-                          hasVisibleParameters && !hasDashboardTabs,
-                      })}
-                    />
-                  )}
-                  {headerButtons}
-                </TitleAndButtonsContainer>
-              </TitleAndDescriptionContainer>
-            )}
             {dashboardTabs && (
-              <DashboardTabsContainer narrow={!titled && pdfDownloadsEnabled}>
+              <DashboardTabsContainer narrow={false}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}

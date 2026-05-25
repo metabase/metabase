@@ -52,6 +52,10 @@
   background: var(--mb-color-tooltip-background-focused);
 }
 
+.TableBody:has(.RowFocused) .Row:not(.RowFocused) {
+  opacity: 0.4;
+}
+
 .Cell {
   overflow: hidden;
   text-overflow: ellipsis;
