@@ -145,7 +145,7 @@ jobs:
           )"
 
       - name: Auto approve PR
-        uses: juliangruber/approve-pull-request-action@f83b836abaed1b3ab639ae61f9117c52ae405f65 # v1
+        uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
         with:
           github-token: ${{ github.token }}
           number: ${{ steps.create_pr.outputs.pr_number }}

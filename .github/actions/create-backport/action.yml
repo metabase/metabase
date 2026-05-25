@@ -84,7 +84,7 @@ runs:
 
     - name: Auto approve backport PR
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      uses: juliangruber/approve-pull-request-action@v1
+      uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
       with:
         github-token: ${{ inputs.github-token-2 }}
         number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
