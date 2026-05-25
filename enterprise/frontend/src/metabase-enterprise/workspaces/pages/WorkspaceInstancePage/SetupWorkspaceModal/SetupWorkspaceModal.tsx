@@ -35,7 +35,7 @@ export function SetupWorkspaceModal({
 }: SetupWorkspaceModalProps) {
   return (
     <Modal
-      title={t`Set up a developer instance`}
+      title={t`Set up a workspace`}
       opened={opened}
       padding="xl"
       onClose={onClose}

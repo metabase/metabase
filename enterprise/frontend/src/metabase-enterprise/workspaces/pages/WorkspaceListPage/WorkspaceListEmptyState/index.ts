@@ -1,1 +1,1 @@
-export * from "./WorkspaceEmptyState";
+export * from "./WorkspaceListEmptyState";

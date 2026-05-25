@@ -88,6 +88,7 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.queryWritableDB(
         `CREATE SCHEMA IF NOT EXISTS ${POSTGRES_OUTPUT_SCHEMA}`,
@@ -106,8 +107,8 @@ describe("scenarios > workspaces > workspace instance", () => {
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
       cy.log("set up the workspace");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.setupButton().click();
+      H.WorkspaceInstancePage.visit();
+      H.WorkspaceInstancePage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
       H.SetupWorkspaceModal.setupButton().click();
       H.WorkspaceInstancePage.get().should("be.visible");
@@ -160,7 +161,7 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.WorkspaceInstancePage.visit();
       H.WorkspaceInstancePage.exitButton().click();
       H.ExitWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.get().should("be.visible");
+      H.WorkspaceInstancePage.setupButton().should("be.visible");
     });
   });
 
@@ -169,6 +170,7 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
       H.queryWritableDB(
         `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
@@ -188,8 +190,8 @@ describe("scenarios > workspaces > workspace instance", () => {
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
       cy.log("set up the workspace");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.setupButton().click();
+      H.WorkspaceInstancePage.visit();
+      H.WorkspaceInstancePage.setupButton().click();
       H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
       H.SetupWorkspaceModal.setupButton().click();
       H.WorkspaceInstancePage.get().should("be.visible");
@@ -238,10 +240,18 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.WorkspaceInstancePage.visit();
       H.WorkspaceInstancePage.exitButton().click();
       H.ExitWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.get().should("be.visible");
+      H.WorkspaceInstancePage.setupButton().should("be.visible");
     });
   });
 });
+
+function stubDevelopmentModeTokenFeature() {
+  cy.intercept("/api/session/properties", (req) => {
+    req.continue((res) => {
+      res.body["token-features"].development_mode = true;
+    });
+  });
+}
 
 function createAndRunTransform({
   sourceTable,

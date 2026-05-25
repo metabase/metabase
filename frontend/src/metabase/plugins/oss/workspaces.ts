@@ -17,6 +17,7 @@ export type UseGetCurrentWorkspaceResult = {
 
 const getDefaultWorkspaces = () => ({
   canManageWorkspaces: (_state: State): boolean => false,
+  getIsDevelopmentMode: (_state: State): boolean => false,
   useGetCurrentWorkspace: (): UseGetCurrentWorkspaceResult => ({
     workspace: null,
     isLoading: false,

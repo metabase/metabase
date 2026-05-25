@@ -94,6 +94,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canManageWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canManageWorkspaces,
   );
+  const isDevelopmentMode = useSelector(PLUGIN_WORKSPACES.getIsDevelopmentMode);
   const { workspace, isLoading: isLoadingWorkspace } =
     PLUGIN_WORKSPACES.useGetCurrentWorkspace();
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
@@ -207,7 +208,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               label={t`Workspaces`}
               icon="folder"
               to={
-                workspace != null
+                workspace != null || isDevelopmentMode
                   ? Urls.workspaceInstance()
                   : Urls.workspaceList()
               }

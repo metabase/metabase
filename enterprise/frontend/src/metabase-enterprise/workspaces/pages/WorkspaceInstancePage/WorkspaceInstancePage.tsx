@@ -5,6 +5,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/redux";
 import { Stack, Title } from "metabase/ui";
 import {
   useGetCurrentWorkspaceQuery,
@@ -17,9 +18,11 @@ import type {
 } from "metabase-types/api";
 
 import { HelpMenu } from "../../components/HelpMenu";
+import { getIsDevelopmentMode } from "../../selectors";
 
 import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
+import { WorkspaceInstanceEmptyState } from "./WorkspaceInstanceEmptyState";
 import { getDatabasesInfo } from "./utils";
 
 export function WorkspaceInstancePage() {
@@ -46,7 +49,6 @@ export function WorkspaceInstancePage() {
   if (
     isLoading ||
     error != null ||
-    workspace == null ||
     remappings == null ||
     databasesResponse == null
   ) {
@@ -55,7 +57,7 @@ export function WorkspaceInstancePage() {
 
   return (
     <WorkspaceInstancePageBody
-      workspace={workspace}
+      workspace={workspace ?? null}
       remappings={remappings}
       databases={databasesResponse.data}
     />
@@ -63,7 +65,7 @@ export function WorkspaceInstancePage() {
 }
 
 type WorkspaceInstancePageBodyProps = {
-  workspace: WorkspaceInstance;
+  workspace: WorkspaceInstance | null;
   remappings: TableRemapping[];
   databases: Database[];
 };
@@ -73,28 +75,36 @@ function WorkspaceInstancePageBody({
   remappings,
   databases,
 }: WorkspaceInstancePageBodyProps) {
-  const databasesInfo = getDatabasesInfo(workspace, databases, remappings);
+  const databasesInfo =
+    workspace != null ? getDatabasesInfo(workspace, databases, remappings) : [];
+  const isDevelopmentMode = useSelector(getIsDevelopmentMode);
 
   return (
     <PageContainer data-testid="workspace-instance-page">
       <PaneHeader
-        title={<Title order={3}>{workspace.name}</Title>}
+        title={
+          workspace != null ? <Title order={3}>{workspace.name}</Title> : null
+        }
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={<HelpMenu />}
         py={0}
       />
-      <Stack gap="3.5rem">
-        {databasesInfo.map(({ database, remappings }) => (
-          <TableRemappingSection
-            key={database.id}
-            database={database}
-            remappings={remappings}
-          />
-        ))}
-        <DeleteSection />
-      </Stack>
+      {workspace == null ? (
+        <WorkspaceInstanceEmptyState />
+      ) : (
+        <Stack gap="3.5rem">
+          {databasesInfo.map(({ database, remappings }) => (
+            <TableRemappingSection
+              key={database.id}
+              database={database}
+              remappings={remappings}
+            />
+          ))}
+          {isDevelopmentMode && <DeleteSection />}
+        </Stack>
+      )}
     </PageContainer>
   );
 }

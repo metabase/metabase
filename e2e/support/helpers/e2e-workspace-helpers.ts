@@ -14,10 +14,6 @@ export const WorkspaceListPage = {
     WorkspaceListPage.get().findByRole("button", {
       name: first ? "Create a workspace" : "New",
     }),
-  setupButton: () =>
-    WorkspaceListPage.get().findByRole("button", {
-      name: "Set up a developer instance",
-    }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
     WorkspaceListPage.get().findByRole("region", { name }),
@@ -149,6 +145,10 @@ export const WorkspaceInstancePage = {
     ),
   remappingRow: (canonicalName: string) =>
     WorkspaceInstancePage.get().findByText(canonicalName),
+  setupButton: () =>
+    WorkspaceInstancePage.get().findByRole("button", {
+      name: "Set up a workspace",
+    }),
   exitButton: () =>
     WorkspaceInstancePage.get().findByRole("button", {
       name: "Leave workspace",
