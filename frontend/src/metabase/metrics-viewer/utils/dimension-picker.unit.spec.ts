@@ -556,8 +556,8 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
     });
 
     expect(rows[0].options.map((option) => option.label)).toEqual([
-      "Orders -> Created At",
-      "Products -> Created At",
+      "Orders → Created At",
+      "Products → Created At",
     ]);
   });
 });

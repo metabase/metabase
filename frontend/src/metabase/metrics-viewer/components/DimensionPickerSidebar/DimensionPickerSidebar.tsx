@@ -15,6 +15,7 @@ import {
   type TabInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
+  getTabConfig,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
@@ -103,6 +104,19 @@ export function DimensionPickerSidebar({
 
   const handleSelect = (item: DimensionPickerItem) => {
     if (hasSameDimensions(item, activeTab)) {
+      return;
+    }
+
+    const tabConfig = getTabConfig(item.tabInfo.type);
+    if (
+      activeTab.type === item.tabInfo.type &&
+      tabConfig.matchMode === "aggregate"
+    ) {
+      onUpdateActiveTab({
+        dimensionMapping: item.tabInfo.dimensionMapping,
+        label: item.tabInfo.label,
+      });
+      trackMetricsViewerDimensionTabAdded();
       return;
     }
 

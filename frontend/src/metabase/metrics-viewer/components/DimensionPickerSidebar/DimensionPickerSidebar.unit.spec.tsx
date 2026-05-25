@@ -200,6 +200,19 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("updates the active time tab with the clicked time field from all fields", async () => {
+    const { onAddTab, onUpdateActiveTab } = setup({ tab: timeTab });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
+
+    expect(onAddTab).not.toHaveBeenCalled();
+    expect(onUpdateActiveTab).toHaveBeenCalledWith({
+      label: "Order Date",
+      dimensionMapping: { 0: "dim-order-date" },
+    });
+  });
+
   it("groups all fields by metric when multiple metrics are selected", async () => {
     setup({
       dimensions: {
