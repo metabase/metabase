@@ -54,6 +54,7 @@ import {
   type ClickObject,
   type HoveredObject,
   type QueryClickActionsMode,
+  type TableSelectionMention,
   type VisualizationDefinition,
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
@@ -135,6 +136,7 @@ type VisualizationOwnProps = {
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  onTableSelectionMention?: (selection: TableSelectionMention) => void;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -997,6 +999,7 @@ class Visualization extends PureComponent<
                     }
                     onUpdateWarnings={onUpdateWarnings}
                     onVisualizationClick={this.handleVisualizationClick}
+                    onTableSelectionMention={this.props.onTableSelectionMention}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
                     tableFooterExtraButtons={tableFooterExtraButtons}

@@ -77,9 +77,10 @@ jest.mock("metabase/common/components/QuestionResultLoader", () => ({
 }));
 
 jest.mock("metabase/querying/components/QueryVisualization", () => ({
-  QueryVisualization: ({ handleVisualizationClick }: any) => (
+  QueryVisualization: ({ clicked, handleVisualizationClick }: any) => (
     <button
       data-testid="embedded-question"
+      data-clicked={clicked ? "true" : "false"}
       onClick={() =>
         handleVisualizationClick?.({
           value: 123,
@@ -184,10 +185,15 @@ describe("AgentMessage", () => {
 
     await userEvent.click(screen.getByTestId("embedded-question"));
 
-    expect(mockSetPrompt).toHaveBeenCalledWith(
-      "this data point: Created At: 2026-01-01, Revenue: 123",
+    const prompt = mockSetPrompt.mock.calls[0][0];
+    expect(prompt).toMatch(
+      /^\[[^\]]+ 2026 · 123\]\(metabase:\/\/data-point\/1\)$/,
     );
     expect(mockFocusPromptInput).toHaveBeenCalled();
+    expect(screen.getByTestId("embedded-question")).toHaveAttribute(
+      "data-clicked",
+      "true",
+    );
 
     const context = await mockChatContextProvider?.();
     expect(context).toEqual({
@@ -198,7 +204,8 @@ describe("AgentMessage", () => {
           chart_configs: [
             expect.objectContaining({
               selected_data: expect.objectContaining({
-                label: "Created At: 2026-01-01, Revenue: 123",
+                mention_id: 1,
+                label: expect.stringMatching(/^[^\]]+ 2026 · 123$/),
                 value: 123,
                 row: expect.objectContaining({
                   values: ["2026-01-01", 123],

@@ -65,6 +65,7 @@ import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
+  MetabotColumnInfo,
   RowValue,
   RowValues,
   VisualizationSettings,
@@ -102,6 +103,36 @@ const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
 
 const getColumnIndexFromPivotedColumnId = (pivotedColumnId: string) =>
   parseInt(pivotedColumnId.split(":")[1]);
+
+const getColumnIndexFromSelectionColumnId = (
+  columnId: string,
+  cols: DatasetColumn[],
+  isPivoted: boolean,
+) => {
+  if (columnId === ROW_ID_COLUMN_ID) {
+    return -1;
+  }
+
+  if (isPivoted) {
+    return getColumnIndexFromPivotedColumnId(columnId);
+  }
+
+  const columnIndex = cols.findIndex((column) => column.name === columnId);
+  if (columnIndex >= 0) {
+    return columnIndex;
+  }
+
+  if (columnId.startsWith(`${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:`)) {
+    return Number(columnId.split(":")[1]);
+  }
+
+  return -1;
+};
+
+const getMetabotColumnInfo = (column: DatasetColumn): MetabotColumnInfo => ({
+  name: column.display_name || column.name,
+  type: column.base_type as MetabotColumnInfo["type"],
+});
 
 interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
@@ -176,6 +207,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    onTableSelectionMention,
     zoomedRowIndex,
     tableFooterExtraButtons,
   }: TableProps,
@@ -745,6 +777,63 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     enableSelection: true,
   });
   const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
+  const lastMentionedSelectionKeyRef = useRef("");
+  useEffect(() => {
+    if (!onTableSelectionMention) {
+      return;
+    }
+
+    const selectedCells = tableProps.selection.selectedCells
+      .map((cell) => ({
+        ...cell,
+        columnIndex: getColumnIndexFromSelectionColumnId(
+          cell.columnId,
+          data.cols,
+          isPivoted,
+        ),
+      }))
+      .filter((cell) => cell.columnIndex >= 0);
+
+    if (selectedCells.length <= 1) {
+      lastMentionedSelectionKeyRef.current = "";
+      return;
+    }
+
+    const selectionKey = selectedCells
+      .map((cell) => cell.cellId)
+      .sort()
+      .join(",");
+    if (selectionKey === lastMentionedSelectionKeyRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      lastMentionedSelectionKeyRef.current = selectionKey;
+      const selectedRowIds = new Set(selectedCells.map((cell) => cell.rowId));
+      const selectedColumnIndexes = _.uniq(
+        selectedCells.map((cell) => cell.columnIndex),
+      );
+      const selectedColumns = selectedColumnIndexes.map(
+        (columnIndex) => data.cols[columnIndex],
+      );
+      const tableRows = tableProps.table.getRowModel().rows;
+      const selectedRows = tableRows.filter((row) =>
+        selectedRowIds.has(row.id),
+      );
+
+      onTableSelectionMention({
+        columns: selectedColumns.map(getMetabotColumnInfo),
+        rows: selectedRows.map((row) =>
+          selectedColumnIndexes.map(
+            (columnIndex) => data.rows[row.index]?.[columnIndex],
+          ),
+        ),
+        cellCount: selectedCells.length,
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [data.cols, data.rows, isPivoted, onTableSelectionMention, tableProps]);
   const infoPopoversDisabled = getInfoPopoversDisabled({
     clicked,
     hasMetadataPopovers,

@@ -183,6 +183,7 @@ class VisualizationResultInner extends Component {
             onOpenChartSettings={this.props.onOpenChartSettings}
             onUpdateQuestion={this.props.onUpdateQuestion}
             onUpdateWarnings={this.props.onUpdateWarnings}
+            onTableSelectionMention={this.props.onTableSelectionMention}
             onHeaderColumnReorder={this.props.onHeaderColumnReorder}
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings

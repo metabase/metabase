@@ -29,6 +29,7 @@ import type {
   DatasetColumn,
   DatasetData,
   IconName,
+  MetabotColumnInfo,
   RawSeries,
   RowValue,
   RowValues,
@@ -125,6 +126,12 @@ export type ColumnSettings = OptionsType & {
   [key: string]: unknown;
 };
 
+export type TableSelectionMention = {
+  columns: MetabotColumnInfo[];
+  rows: RowValue[][];
+  cellCount: number;
+};
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
@@ -202,6 +209,7 @@ export interface VisualizationProps {
   onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
+  onTableSelectionMention?: (selection: TableSelectionMention) => void;
   onUpdateVisualizationSettings: (
     settings: VisualizationSettings,
     question?: Question,
@@ -273,6 +281,8 @@ export type VisualizationPassThroughProps = {
    * Extra buttons to be shown in the table footer (if the visualization is a table)
    */
   tableFooterExtraButtons?: ReactNode;
+
+  onTableSelectionMention?: (selection: TableSelectionMention) => void;
 
   /**
    * Props used for Audit Table visualization
