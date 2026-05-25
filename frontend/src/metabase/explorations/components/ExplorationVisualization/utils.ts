@@ -98,6 +98,12 @@ export function buildSeriesGroups({
     seriesGroups[0].series = removeAxisTitlesFromAllSeries(
       seriesGroups[0].series,
     );
+    seriesGroups[1].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[1].series,
+    );
+    seriesGroups[2].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[2].series,
+    );
 
     const bottomLeftChartLabel = getChartLabel(seriesGroups[1]);
     if (bottomLeftChartLabel) {
