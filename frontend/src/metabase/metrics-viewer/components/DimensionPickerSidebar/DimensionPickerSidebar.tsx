@@ -15,6 +15,7 @@ import {
   type TabInfo,
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
+  getTabConfig,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
@@ -47,9 +48,8 @@ type DimensionPickerSidebarProps = {
   allFieldsAvailableDimensions?: AvailableDimensionsResult;
   metricSlots: MetricSlot[];
   sourceColors: SourceColorMap;
-  sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
+  metricSourceOrder: MetricSourceId[];
+  metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   onAddTab: (tabInfo: TabInfo) => void;
   onUpdateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
 };
@@ -62,9 +62,8 @@ export function DimensionPickerSidebar({
   allFieldsAvailableDimensions = availableDimensions,
   metricSlots,
   sourceColors,
-  sourceOrder,
-  sourceDataById,
-  hasMultipleSources,
+  metricSourceOrder,
+  metricSourceDataById,
   onAddTab,
   onUpdateActiveTab,
 }: DimensionPickerSidebarProps) {
@@ -74,35 +73,25 @@ export function DimensionPickerSidebar({
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string | null>(
     null,
   );
-  const [expandedMetricSourceIds, setExpandedMetricSourceIds] = useState<
-    MetricSourceId[]
-  >(() => sourceOrder.slice(0, 1));
-
-  const sections = useMemo(
-    () =>
-      buildDimensionPickerSections({
-        availableDimensions: allFieldsAvailableDimensions,
-        sourceOrder,
-        sourceDataById,
-        hasMultipleSources,
-      }),
-    [
-      allFieldsAvailableDimensions,
-      sourceOrder,
-      sourceDataById,
-      hasMultipleSources,
-    ],
-  );
 
   const categories = useMemo(
     () =>
       buildDimensionPickerSidebarCategories({
         availableDimensions,
-        sourceOrder,
-        sourceDataById,
-        hasMultipleSources,
+        sourceOrder: metricSourceOrder,
+        sourceDataById: metricSourceDataById,
       }),
-    [availableDimensions, sourceOrder, sourceDataById, hasMultipleSources],
+    [availableDimensions, metricSourceOrder, metricSourceDataById],
+  );
+
+  const sections = useMemo(
+    () =>
+      buildDimensionPickerSections({
+        availableDimensions: allFieldsAvailableDimensions,
+        sourceOrder: metricSourceOrder,
+        sourceDataById: metricSourceDataById,
+      }),
+    [allFieldsAvailableDimensions, metricSourceOrder, metricSourceDataById],
   );
 
   const filteredSections = useMemo(
@@ -115,6 +104,19 @@ export function DimensionPickerSidebar({
 
   const handleSelect = (item: DimensionPickerItem) => {
     if (hasSameDimensions(item, activeTab)) {
+      return;
+    }
+
+    const tabConfig = getTabConfig(item.tabInfo.type);
+    if (
+      activeTab.type === item.tabInfo.type &&
+      tabConfig.matchMode === "aggregate"
+    ) {
+      onUpdateActiveTab({
+        dimensionMapping: item.tabInfo.dimensionMapping,
+        label: item.tabInfo.label,
+      });
+      trackMetricsViewerDimensionTabAdded();
       return;
     }
 
@@ -178,17 +180,7 @@ export function DimensionPickerSidebar({
     setMode("all");
   };
 
-  const handleToggleMetric = (sourceId: MetricSourceId) => {
-    setExpandedMetricSourceIds((currentSourceIds) => {
-      if (currentSourceIds.includes(sourceId)) {
-        return currentSourceIds.filter(
-          (currentSourceId) => currentSourceId !== sourceId,
-        );
-      }
-
-      return [...currentSourceIds, sourceId];
-    });
-  };
+  const showFieldsByCategory = !showAllFields && categories.length > 0;
 
   return (
     <Box
@@ -230,72 +222,67 @@ export function DimensionPickerSidebar({
       </Box>
 
       <ScrollArea pb="lg" offsetScrollbars="present">
-        {showAllFields ? (
+        {showAllFields && (
           <AllFieldsList
             activeTab={activeTab}
             sections={filteredSections}
-            sourceOrder={sourceOrder}
-            sourceDataById={sourceDataById}
+            metricSourceOrder={metricSourceOrder}
+            metricSourceDataById={metricSourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
-            hasMultipleSources={hasMultipleSources}
-            expandedMetricSourceIds={expandedMetricSourceIds}
-            onToggleMetric={handleToggleMetric}
             onSelect={handleSelect}
           />
-        ) : categories.length > 0 ? (
-          <Stack gap="lg">
+        )}
+        {showFieldsByCategory && (
+          <Stack gap="xs">
+            <Text px="sm" size="sm" c="text-secondary" my="sm">
+              {t`Shared dimensions`}
+            </Text>
             <Stack gap="xs">
-              <Text px="sm" size="sm" c="text-secondary" my="sm">
-                {t`Shared dimensions`}
-              </Text>
-              <Stack gap="xs">
-                {categories.map((category) => {
-                  const isSelected = category.key === selectedTabCategoryKey;
-                  const isExpanded = category.key === expandedCategoryKey;
+              {categories.map((category) => {
+                const isSelected = category.key === selectedTabCategoryKey;
+                const isExpanded = category.key === expandedCategoryKey;
 
-                  return (
-                    <CategoryItem
-                      key={category.key}
-                      category={category}
-                      activeTab={activeTab}
-                      metricSlots={metricSlots}
-                      sourceDataById={sourceDataById}
-                      sourceColors={sourceColors}
-                      isSelected={isSelected}
-                      isExpanded={isExpanded}
-                      onCategorySelect={() => handleCategorySelect(category)}
-                      onToggleCategorySettings={() =>
-                        handleToggleCategorySettings(category)
-                      }
-                      onDimensionChange={(slotIndex, dimensionId) =>
-                        handleCategoryDimensionChange(
-                          category,
-                          slotIndex,
-                          dimensionId,
-                        )
-                      }
-                    />
-                  );
-                })}
-                <Button
-                  mr="auto"
-                  mt="sm"
-                  onClick={handleSeeAll}
-                  size="sm"
-                  variant="subtle"
-                >
-                  {t`See all`}
-                </Button>
-              </Stack>
+                return (
+                  <CategoryItem
+                    key={category.key}
+                    category={category}
+                    activeTab={activeTab}
+                    metricSlots={metricSlots}
+                    sourceDataById={metricSourceDataById}
+                    sourceColors={sourceColors}
+                    isSelected={isSelected}
+                    isExpanded={isExpanded}
+                    onCategorySelect={() => handleCategorySelect(category)}
+                    onToggleCategorySettings={() =>
+                      handleToggleCategorySettings(category)
+                    }
+                    onDimensionChange={(slotIndex, dimensionId) =>
+                      handleCategoryDimensionChange(
+                        category,
+                        slotIndex,
+                        dimensionId,
+                      )
+                    }
+                  />
+                );
+              })}
+              <Button
+                mr="auto"
+                mt="sm"
+                onClick={handleSeeAll}
+                size="sm"
+                variant="subtle"
+              >
+                {t`See all`}
+              </Button>
             </Stack>
           </Stack>
-        ) : (
-          <Text
-            c="text-secondary"
-            ta="center"
-            py="lg"
-          >{t`No fields found`}</Text>
+        )}
+        {!showAllFields && !showFieldsByCategory && (
+          <Text c="text-secondary" ta="center" py="lg">
+            {t`No fields found`}
+          </Text>
         )}
       </ScrollArea>
     </Box>

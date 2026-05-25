@@ -13,7 +13,7 @@ import type {
   MetricsViewerTabState,
   MetricsViewerTabType,
   SourceColorMap,
-} from "../types/viewer-state";
+} from "../types";
 
 import type { MetricSlot } from "./metric-slots";
 import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
@@ -262,12 +262,10 @@ export function buildDimensionPickerSections({
   availableDimensions,
   sourceOrder,
   sourceDataById,
-  hasMultipleSources,
 }: {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
 }): DimensionPickerSection[] {
   const sections: DimensionPickerSection[] = [];
 
@@ -312,6 +310,8 @@ export function buildDimensionPickerSections({
       });
     }
   };
+
+  const hasMultipleSources = sourceOrder.length > 1;
 
   if (hasMultipleSources && availableDimensions.shared.length > 0) {
     splitByGroup(availableDimensions.shared, t`Shared`, { isShared: true });
@@ -408,18 +408,15 @@ export function buildDimensionPickerSidebarCategories({
   availableDimensions,
   sourceOrder,
   sourceDataById,
-  hasMultipleSources,
 }: {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
 }): DimensionPickerSidebarCategory[] {
   const sections = buildDimensionPickerSections({
     availableDimensions,
     sourceOrder,
     sourceDataById,
-    hasMultipleSources,
   });
   const items = sections
     .flatMap((section) => section.items)
@@ -493,7 +490,7 @@ export function buildDimensionPickerSidebarCategorySelectRows({
         ...option,
         label:
           (labelCounts.get(option.label) ?? 0) > 1
-            ? `${groupName ?? fallbackGroupName} -> ${option.label}`
+            ? `${groupName ?? fallbackGroupName} → ${option.label}`
             : option.label,
       }))
       .sort((first, second) => first.label.localeCompare(second.label));

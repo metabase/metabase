@@ -5,6 +5,15 @@ import { ActionIcon, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./CategoryButton.module.css";
 
+type CategoryButtonProps = {
+  item: DimensionPickerSidebarCategory;
+  isSelected: boolean;
+  canConfigure: boolean;
+  isExpanded: boolean;
+  onClick: () => void;
+  onConfigure: () => void;
+};
+
 export function CategoryButton({
   item,
   isSelected,
@@ -12,19 +21,12 @@ export function CategoryButton({
   isExpanded,
   onClick,
   onConfigure,
-}: {
-  item: DimensionPickerSidebarCategory;
-  isSelected: boolean;
-  canConfigure: boolean;
-  isExpanded: boolean;
-  onClick: () => void;
-  onConfigure: () => void;
-}) {
+}: CategoryButtonProps) {
   return (
-    <Flex className={S.categoryRow} data-expanded={isExpanded || undefined}>
+    <Flex className={S.categoryRow} data-expanded={isExpanded}>
       <UnstyledButton
         className={S.categoryItem}
-        data-selected={isSelected || undefined}
+        data-selected={isSelected}
         aria-label={item.name}
         aria-pressed={isSelected}
         onClick={onClick}

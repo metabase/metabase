@@ -17,29 +17,25 @@ import { AllFieldsSectionList } from "./AllFieldsSectionList";
 import { MetricAccordionList } from "./MetricAccordionList";
 import { buildAllFieldsMetricGroups } from "./buildAllFieldsMetricGroups";
 
+type AllFieldsListProps = {
+  activeTab: MetricsViewerTabState;
+  sections: DimensionPickerSection[];
+  metricSourceOrder: MetricSourceId[];
+  metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  sourceColors: SourceColorMap;
+  metricSlots: MetricSlot[];
+  onSelect: (item: DimensionPickerItem) => void;
+};
+
 export function AllFieldsList({
   activeTab,
   sections,
-  sourceOrder,
-  sourceDataById,
+  metricSourceOrder,
+  metricSourceDataById,
   sourceColors,
   metricSlots,
-  hasMultipleSources,
-  expandedMetricSourceIds,
-  onToggleMetric,
   onSelect,
-}: {
-  activeTab: MetricsViewerTabState;
-  sections: DimensionPickerSection[];
-  sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  sourceColors: SourceColorMap;
-  metricSlots: MetricSlot[];
-  hasMultipleSources: boolean;
-  expandedMetricSourceIds: MetricSourceId[];
-  onToggleMetric: (sourceId: MetricSourceId) => void;
-  onSelect: (item: DimensionPickerItem) => void;
-}) {
+}: AllFieldsListProps) {
   if (sections.length === 0) {
     return (
       <Text c="text-secondary" ta="center" py="lg">{t`No fields found`}</Text>
@@ -48,19 +44,18 @@ export function AllFieldsList({
 
   const metricGroups = buildAllFieldsMetricGroups({
     sections,
-    sourceOrder,
-    sourceDataById,
+    sourceOrder: metricSourceOrder,
+    sourceDataById: metricSourceDataById,
     metricSlots,
     sourceColors,
   });
 
-  if (hasMultipleSources && metricGroups.length > 1) {
+  if (metricSourceOrder.length > 1 && metricGroups.length > 1) {
     return (
       <MetricAccordionList
         activeTab={activeTab}
+        defaultExpandedGroupKeys={metricSourceOrder.slice(0, 1)}
         groups={metricGroups}
-        expandedMetricSourceIds={expandedMetricSourceIds}
-        onToggleMetric={onToggleMetric}
         onSelect={onSelect}
       />
     );

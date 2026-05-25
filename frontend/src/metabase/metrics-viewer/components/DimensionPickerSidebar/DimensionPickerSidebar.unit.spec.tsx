@@ -79,14 +79,12 @@ function setup({
   slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
   sourceOrder = [SOURCE_ID],
   sources = sourceDataById,
-  hasMultipleSources = false,
 }: {
   tab?: MetricsViewerTabState;
   dimensions?: AvailableDimensionsResult;
   slots?: MetricSlot[];
   sourceOrder?: MetricSourceId[];
   sources?: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources?: boolean;
 } = {}) {
   const onAddTab = jest.fn();
   const onUpdateActiveTab = jest.fn();
@@ -98,9 +96,8 @@ function setup({
         availableDimensions={dimensions}
         metricSlots={slots}
         sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
-        sourceOrder={sourceOrder}
-        sourceDataById={sources}
-        hasMultipleSources={hasMultipleSources}
+        metricSourceOrder={sourceOrder}
+        metricSourceDataById={sources}
         onAddTab={onAddTab}
         onUpdateActiveTab={onUpdateActiveTab}
       />
@@ -200,6 +197,19 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("updates the active time tab with the clicked time field from all fields", async () => {
+    const { onAddTab, onUpdateActiveTab } = setup({ tab: timeTab });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
+
+    expect(onAddTab).not.toHaveBeenCalled();
+    expect(onUpdateActiveTab).toHaveBeenCalledWith({
+      label: "Order Date",
+      dimensionMapping: { 0: "dim-order-date" },
+    });
+  });
+
   it("groups all fields by metric when multiple metrics are selected", async () => {
     setup({
       dimensions: {
@@ -255,7 +265,6 @@ describe("DimensionPickerSidebar", () => {
         [SOURCE_ID]: { type: "metric", name: "ARR" },
         [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
       },
-      hasMultipleSources: true,
     });
 
     await userEvent.click(screen.getByRole("button", { name: "See all" }));

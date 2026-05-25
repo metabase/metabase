@@ -27,7 +27,6 @@ type AddDimensionPopoverProps = {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
   canAddScalarTab: boolean;
   onAddTab: (tabInfo: TabInfo) => void;
   renderTrigger?: (args: RenderTriggerArgs) => ReactElement;
@@ -37,7 +36,6 @@ export function AddDimensionPopover({
   availableDimensions,
   sourceOrder,
   sourceDataById,
-  hasMultipleSources,
   onAddTab,
   canAddScalarTab,
   renderTrigger,
@@ -51,9 +49,8 @@ export function AddDimensionPopover({
         availableDimensions,
         sourceOrder,
         sourceDataById,
-        hasMultipleSources,
       }),
-    [availableDimensions, sourceOrder, sourceDataById, hasMultipleSources],
+    [availableDimensions, sourceOrder, sourceDataById],
   );
 
   const handleSelect = useCallback(
