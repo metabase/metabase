@@ -304,7 +304,7 @@
                                              (inc (* items (dec page)))
                                              (* items page)))))
 
-(def excluded-schemas
+(def ^:private schemas
   #{"SystemFe" "SYSLIB" "LockLogShredder" "Sys_Calendar" "SYSBAR" "SYSUIF"
     "dbcmngr" "tdwm" "TDStats" "TDQCD" "SQLJ" "SysAdmin" "SYSSPATIAL" "DBC" "Crashdumps" "External_AP" "TDPUSER"})
 
@@ -338,8 +338,12 @@
 ;; Overridden to have access to the database with the configured property dbnames (inclusion list)
 ;; which will be used to filter the schemas.
 (defmethod driver/describe-database :teradata [driver database]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    {:tables (fast-active-tables, driver, ^DatabaseMetaData metadata, database)}))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     {:tables (fast-active-tables driver (.getMetaData conn) database)})))
 
 ;; We can't use getObject(int, Class) as the underlying Resultset used by the Teradata jdbc driver is based on jdk6.
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/TIMESTAMP]
