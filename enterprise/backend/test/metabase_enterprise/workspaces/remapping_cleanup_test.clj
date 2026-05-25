@@ -134,8 +134,8 @@
          db-id {:schema "public" :table "products"} {:schema "ws_alice" :table "products_copy"})
         (is (= 2 (count (ws.table-remapping/all-mappings-for-db db-id)))
             "fixture: two remap rows registered before deprovision")
-      ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
-      ;; (e.g. BQ dataset deleted, SA delete throws).
+        ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
+        ;; (e.g. BQ dataset deleted, SA delete throws).
         (let [failing-provisioner (reify provisioning/Provisioner
                                     (init!    [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (grant!   [_ _ _ _ _]   (throw (ex-info "not used" {})))

@@ -82,10 +82,10 @@
         card (-> original
                  (assoc :dataset-query (:dataset_query body)
                         :type (:type body (:type original)))
-                           ;; Remove the old `:result-metadata` from the card, it's likely wrong now.
+                 ;; Remove the old `:result-metadata` from the card, it's likely wrong now.
                  (dissoc :result-metadata)
-                           ;; But if the request includes `:result_metadata`, use that. It may be from a native card
-                           ;; that's been run before saving the card.
+                 ;; But if the request includes `:result_metadata`, use that. It may be from a native card
+                 ;; that's been run before saving the card.
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}

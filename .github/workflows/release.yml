@@ -152,7 +152,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         overwrite: true
@@ -182,7 +182,7 @@ jobs:
           .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -221,7 +221,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
