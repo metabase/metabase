@@ -1,5 +1,5 @@
 /* The panel sections drop to a tighter padding/gap below 40em, which sits
-   between Mantine's default xs (36em) and sm (48em) breakpoints — so the
+   between Mantine's default xs (36em) and sm (48em) breakpoints, so the
    responsive switch lives here instead of via Mantine prop tokens. */
 .section {
   padding: 1.5rem;

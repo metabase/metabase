@@ -22,6 +22,26 @@ import type { UpdateTargetId } from "../types";
 import S from "./StrategyEditorForDatabases.module.css";
 import { StrategyForm } from "./StrategyForm";
 
+/** Rounded outer container for the two-column launcher + form layout. */
+function RoundedBox({
+  children,
+  twoColumns,
+}: {
+  children: ReactNode;
+  twoColumns?: boolean;
+}) {
+  return (
+    <Box
+      w="100%"
+      maw={twoColumns ? "100%" : "30rem"}
+      bd="2px solid var(--mb-color-border)"
+      className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
+    >
+      {children}
+    </Box>
+  );
+}
+
 export const StrategyEditorForDatabases: React.FC = () => {
   const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
@@ -173,23 +193,3 @@ export const StrategyEditorForDatabases: React.FC = () => {
     </SettingsPageWrapper>
   );
 };
-
-/** Rounded outer container for the two-column launcher + form layout. */
-function RoundedBox({
-  children,
-  twoColumns,
-}: {
-  children: ReactNode;
-  twoColumns?: boolean;
-}) {
-  return (
-    <Box
-      w="100%"
-      maw={twoColumns ? "100%" : "30rem"}
-      bd="2px solid var(--mb-color-border)"
-      className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
-    >
-      {children}
-    </Box>
-  );
-}

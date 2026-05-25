@@ -34,6 +34,8 @@ import type { Card } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../types";
 
+import S from "./MetricToolbar.module.css";
+
 type MetricModalType =
   | "move"
   | "copy"
@@ -134,7 +136,7 @@ function MetricToolbarButtons({
           <ActionIcon
             variant="default"
             size="lg"
-            bd="1px solid var(--mb-color-border)"
+            className={S.moreOptionsButton}
             aria-label={t`More options`}
           >
             <Icon name="ellipsis" />

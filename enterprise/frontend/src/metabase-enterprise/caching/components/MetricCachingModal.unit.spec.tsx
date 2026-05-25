@@ -62,16 +62,16 @@ describe("MetricCachingModal", () => {
       await screen.findByRole("radio", { name: /^Default$/i }),
     ).toBeChecked();
     expect(
-      screen.getByRole("radio", { name: /^Duration$/i }),
+      await screen.findByRole("radio", { name: /^Duration$/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("radio", { name: /^Schedule$/i }),
+      await screen.findByRole("radio", { name: /^Schedule$/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("radio", { name: /^Adaptive$/i }),
+      await screen.findByRole("radio", { name: /^Adaptive$/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("radio", { name: /Don.t cache/i }),
+      await screen.findByRole("radio", { name: /Don.t cache/i }),
     ).toBeInTheDocument();
   });
 

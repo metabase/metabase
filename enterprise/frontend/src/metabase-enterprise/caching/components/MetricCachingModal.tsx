@@ -8,7 +8,9 @@ import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrateg
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { MetricCachingModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
-import type { CacheStrategy } from "metabase-types/api";
+import type { CacheStrategy, CacheableModel } from "metabase-types/api";
+
+const QUESTION_MODELS: CacheableModel[] = ["question"];
 
 export function MetricCachingModal({
   cardId,
@@ -16,12 +18,10 @@ export function MetricCachingModal({
   onClose,
 }: MetricCachingModalProps) {
   // Metric cache configs live under the `question` model on the API (metrics
-  // are `card`s in the backend); the writer hook handles the metric → question
-  // translation, but the reader takes the API-side model name directly. The
-  // array literal is re-created per render — fine, RTK Query keys the cache by
-  // serialized args, not reference identity.
+  // are `card`s in the backend). The writer hook handles the metric/question
+  // translation, but the reader takes the API-side model name directly.
   const { configs, isLoading, error } = useCacheConfigs({
-    model: ["question"],
+    model: QUESTION_MODELS,
     id: cardId,
   });
 

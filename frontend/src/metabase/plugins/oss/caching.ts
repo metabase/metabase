@@ -8,7 +8,11 @@ import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { ModalOverlayProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
+import type {
+  CacheableDashboard,
+  CacheableModel,
+  CardId,
+} from "metabase-types/api";
 
 // Types
 export type InvalidateNowButtonProps = {
@@ -38,7 +42,7 @@ export type PreemptiveCachingSwitchProps = {
 };
 
 export interface MetricCachingModalProps {
-  cardId: number;
+  cardId: CardId;
   cardName: string;
   onClose: () => void;
 }

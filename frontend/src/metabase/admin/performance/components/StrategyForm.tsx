@@ -231,7 +231,9 @@ const StrategyFormBody = ({
         style={{
           overflow: layout === "default" ? "auto" : undefined,
           flexDirection: "column",
-          flexGrow: 1,
+          // In the modal layout the Modal sizes itself, so the form shouldn't
+          // claim flex-grow on its parent.
+          flexGrow: layout === "modal" ? undefined : 1,
         }}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}

@@ -46,7 +46,7 @@ export const StrategyFormLauncher = ({
   const strategy = savedStrategy ?? rootStrategy;
   const isBeingEdited = targetId === forId;
 
-  const { hovered, ref: hoveredRef } = useHover<HTMLDivElement>();
+  const { hovered, ref: hoveredRef } = useHover<HTMLElement>();
 
   const buttonVariant =
     isBeingEdited || hovered
