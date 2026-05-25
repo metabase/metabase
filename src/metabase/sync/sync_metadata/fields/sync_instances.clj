@@ -69,7 +69,7 @@
                                    :display_name               (humanization/name->human-readable-name field-name)
                                    :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
                                    :base_type                  base-type
-           ;; todo test this?
+                                   ;; todo test this?
                                    :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
                                    :coercion_strategy          (when effective-type coercion-strategy)
                                    :semantic_type              semantic-type

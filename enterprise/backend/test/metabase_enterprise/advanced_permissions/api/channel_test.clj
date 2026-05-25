@@ -7,7 +7,7 @@
    [metabase.test :as mt]))
 
 (comment
- ;; to register the :metabase-test channel implementation
+  ;; to register the :metabase-test channel implementation
   notification.tu/keepme)
 
 (deftest channel-api-test

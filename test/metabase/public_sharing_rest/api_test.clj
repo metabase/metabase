@@ -1481,7 +1481,7 @@
                (let [result (results)]
                  (is (=? {:status "completed"}
                          result))
-                      ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
+                 ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
                  (testing "row_count isn't included in public endpoints"
                    (is (nil? (:row_count result))))
                  (is (= 6 (count (get-in result [:data :cols]))))

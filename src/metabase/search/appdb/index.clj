@@ -210,7 +210,7 @@
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
-            ;; We may fail to insert a new metadata row if we lose a race with another instance.
+              ;; We may fail to insert a new metadata row if we lose a race with another instance.
               (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
                 (try
                   (create-table! table-name)
@@ -427,7 +427,7 @@
   (log/infof "Resetting appdb index for version %s, active table: %s" (search.spec/index-version-hash)
              (pr-str (active-table)))
   (letfn [(reset-logic []
-              ;; stop tracking any pending table
+            ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
                 (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]

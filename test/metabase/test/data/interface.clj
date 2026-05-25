@@ -72,11 +72,11 @@
                                           [:map {:closed true}
                                            [:native ms/NonBlankString]]
                                           ms/FieldType]]
-    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-    ;; datasets e.g. [[mt/with-actions-test-data]]
-    ;; default is nullable
+   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+   ;; datasets e.g. [[mt/with-actions-test-data]]
+   ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
    [:pk?               {:optional true} [:maybe :boolean]]

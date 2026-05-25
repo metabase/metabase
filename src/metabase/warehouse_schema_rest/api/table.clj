@@ -173,9 +173,9 @@
           {:name "query-table-async"}
           (qp.streaming/streaming-response [rff :api]
             (qp/process-query query
-             ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
-             ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
-             ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                              ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+                              ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+                              ;; Then we can avoid building non-relevant fields, only to throw them away again.
                               (qp.streaming/transforming-query-response
                                rff
                                (fn [response]

@@ -205,7 +205,7 @@
                                                 {:request-options {:redirect-strategy :none}}
                                                 :code "test-code"
                                                 :state "some-state")]
-        ;; Without a state cookie, the callback fails with invalid/expired state error
+          ;; Without a state cookie, the callback fails with invalid/expired state error
           (is (str/includes? (:body response) "OIDC state cookie is invalid, expired, or missing")))))))
 
 (deftest callback-state-validation-csrf-test
@@ -213,12 +213,12 @@
     (with-test-encryption!
       (sso.test-setup/with-slack-default-setup!
         (with-successful-oidc!
-        ;; First, initiate auth to set state cookie
+          ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso"
                                                        {:request-options {:redirect-strategy :none}}
                                                        :preferred_method "slack-connect"
                                                        :redirect default-redirect-uri)
-              ;; Convert Set-Cookie headers to Cookie header format (extract name=value parts)
+                ;; Convert Set-Cookie headers to Cookie header format (extract name=value parts)
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";"))) ; Extract name=value before first ;
@@ -228,7 +228,7 @@
                                                                      :headers {"Cookie" cookie-header}}}
                                                   :code "test-code"
                                                   :state "wrong-state")]
-          ;; State mismatch should indicate possible CSRF attack
+            ;; State mismatch should indicate possible CSRF attack
             (is (str/includes? (str (:body response)) "CSRF"))))))))
 
 (deftest happy-path-callback-test
@@ -236,12 +236,12 @@
     (with-test-encryption!
       (sso.test-setup/with-slack-default-setup!
         (with-successful-oidc!
-        ;; First, initiate auth to set state cookie
+          ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso"
                                                        {:request-options {:redirect-strategy :none}}
                                                        :preferred_method "slack-connect"
                                                        :redirect default-redirect-uri)
-              ;; Convert Set-Cookie headers to Cookie header format
+                ;; Convert Set-Cookie headers to Cookie header format
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";")))
@@ -312,12 +312,12 @@
             (letfn [(new-user-exists? []
                       (boolean (seq (t2/select :model/User :%lower.email "example@slack.com"))))]
               (is (false? (new-user-exists?)))
-            ;; Initiate auth
+              ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
                                                            :preferred_method "slack-connect"
                                                            :redirect default-redirect-uri)
-                  ;; Convert Set-Cookie headers to Cookie header format
+                    ;; Convert Set-Cookie headers to Cookie header format
                     set-cookies (get-in init-response [:headers "Set-Cookie"])
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
@@ -327,7 +327,7 @@
                                                                          :headers {"Cookie" cookie-header}}}
                                                       :code "test-code"
                                                       :state "test-state")]
-              ;; Complete callback
+                ;; Complete callback
                 (is (sso.test-setup/successful-login? response))
                 (let [new-user (t2/select-one :model/User :email "example@slack.com")]
                   (testing "new user"
@@ -364,7 +364,7 @@
                             {:success? false
                              :error :user-provisioning-disabled
                              :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
-            ;; Initiate auth
+              ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
                                                            :preferred_method "slack-connect"
@@ -373,7 +373,7 @@
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
                                        (str/join "; "))]
-              ;; Try callback - should fail
+                ;; Try callback - should fail
                 (mt/client-real-response :get 401 "/auth/sso"
                                          {:request-options {:redirect-strategy :none
                                                             :headers {"Cookie" cookie-header}}}

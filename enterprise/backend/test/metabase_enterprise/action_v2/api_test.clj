@@ -172,7 +172,7 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (action-v2.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
-                                                     ;; MySQL does not support multiple auto increment fields.
+                                                  ;; MySQL does not support multiple auto increment fields.
                                                   :id_2   [:integer]
                                                   :name   [:text]
                                                   :song   [:text]}
@@ -511,18 +511,18 @@
               [:text    :Coercion/ISO8601->Date                      "2025-03-25T00:00:00Z"         "2025-03-25"
                :text    :Coercion/ISO8601->Time                      "1999-04-05T14:34:42Z"         "14:34:42"
 
-              ;; note fractional seconds in input, remains undefined for Seconds
+               ;; note fractional seconds in input, remains undefined for Seconds
                :int     :Coercion/UNIXSeconds->DateTime              "2025-03-25T14:34:42Z"         (quot (inst-ms #inst "2025-03-25T14:34:42Z") 1000)
                :bigint  :Coercion/UNIXMilliSeconds->DateTime         "2025-03-25T14:34:42.314Z"     (inst-ms #inst "2025-03-25T14:34:42.314Z")
 
-              ;; note fractional secs beyond millis are discarded   (lossy)
+               ;; note fractional secs beyond millis are discarded   (lossy)
                :bigint  :Coercion/UNIXMicroSeconds->DateTime         "2025-03-25T14:34:42.314121Z"  (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000)
                :bigint  :Coercion/UNIXNanoSeconds->DateTime          "2025-03-25T14:34:42.3141212Z" (* (inst-ms #inst "2025-03-25T14:34:42.314Z") 1000000)
 
-              ;; nil safe
+               ;; nil safe
                :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     nil                            nil
 
-              ;; seconds component does not work properly here, lost by qp output, bug in existing code?
+               ;; seconds component does not work properly here, lost by qp output, bug in existing code?
                #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"])
              (partition 4)
              (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)

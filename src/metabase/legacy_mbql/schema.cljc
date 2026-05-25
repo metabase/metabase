@@ -1158,7 +1158,7 @@
   (one-of
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
-    ;; SUGAR filters drivers do not need to implement
+   ;; SUGAR filters drivers do not need to implement
    in not-in does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter

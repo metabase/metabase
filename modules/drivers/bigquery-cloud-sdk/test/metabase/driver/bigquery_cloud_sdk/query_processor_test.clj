@@ -190,7 +190,7 @@
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
                        "  `categories__via__category_id__name` ASC"]
-                        ;; reformat the SQL because the formatting may have changed once we change the test DB name.
+                      ;; reformat the SQL because the formatting may have changed once we change the test DB name.
                       (str/join " ")
                       (driver/prettify-native-form :bigquery-cloud-sdk)
                       str/split-lines))

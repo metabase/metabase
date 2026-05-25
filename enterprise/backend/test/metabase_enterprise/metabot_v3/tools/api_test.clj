@@ -1302,7 +1302,7 @@
                                        {:conversation_id conversation-id}))))
         (testing "With superuser permissions"
           (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
-                                         ;; note: t2 not included because it's a (non-native) MBQL query
+                                       ;; note: t2 not included because it's a (non-native) MBQL query
                                        (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
                    :conversation_id conversation-id}
                   (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"

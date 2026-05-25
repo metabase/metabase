@@ -545,11 +545,11 @@
        (if config/*disable-setting-cache*
          (db-value setting)
          (do
-            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
+           ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
            (setting.cache/restore-cache-if-needed!)
            (let [cache (setting.cache/cache)]
              (if (nil? cache)
-                ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
+               ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
                (db-value setting)
                (core/get cache (setting-name setting-definition-or-name))))))))))
 

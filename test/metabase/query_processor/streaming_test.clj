@@ -403,7 +403,7 @@
                             :limit        2}}
     :assertions {:csv  (fn [results]
                          (is (string? results))
-                          ;; CSVs round decimals to 2 digits without viz-settings
+                         ;; CSVs round decimals to 2 digits without viz-settings
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
@@ -764,7 +764,7 @@
 (deftest streaming-response-handles-cancellation-test
   (testing "Streaming response handles cancellation gracefully without assertion errors"
     (let [mock-qp-fn (fn [rff]
-                      ;; Simulate immediate cancellation
+                       ;; Simulate immediate cancellation
                        (with-redefs [qp.pipeline/canceled? (constantly true)]
                          (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
 
