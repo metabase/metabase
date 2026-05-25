@@ -72,6 +72,10 @@ export function isCategorySelected(
   category: DimensionPickerSidebarCategory,
   activeTab: MetricsViewerTabState,
 ) {
+  if (category.tabInfo.type === "time" && activeTab.type === "time") {
+    return true;
+  }
+
   return (
     hasSameDimensions(category, activeTab) ||
     category.targetItems.some((item) => hasSameDimensions(item, activeTab))
