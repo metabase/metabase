@@ -5,14 +5,17 @@ import { Route } from "react-router";
 import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
+  setupGetCurrentWorkspaceEndpoint,
   setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import type { WorkspaceInstance } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
   createMockWorkspace,
   createMockWorkspaceDatabase,
+  createMockWorkspaceInstance,
 } from "metabase-types/api/mocks";
 
 import { WorkspacePage } from "./WorkspacePage";
@@ -28,8 +31,9 @@ const POSTGRES = createMockDatabase({
 
 const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
-function setup() {
+function setup({ currentWorkspace = null as WorkspaceInstance | null } = {}) {
   setupGetWorkspaceEndpoint(WORKSPACE);
+  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
   setupDatabasesEndpoints([POSTGRES]);
   setupCreateWorkspaceDatabaseEndpoint(
     createMockWorkspace({
@@ -83,5 +87,21 @@ describe("WorkspacePage", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it("shows the warning state when the instance is itself in a workspace", async () => {
+    setup({ currentWorkspace: createMockWorkspaceInstance() });
+
+    expect(
+      await screen.findByText(
+        /You cannot manage workspaces when the current instance is in a workspace itself/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-database-section"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("workspace-setup-section"),
+    ).not.toBeInTheDocument();
   });
 });
