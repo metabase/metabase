@@ -1,5 +1,5 @@
 (ns metabase.driver.teradata
-  (:refer-clojure :exclude [select-keys empty?])
+  (:refer-clojure :exclude [select-keys empty? mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys empty?]])
+   [metabase.util.performance :refer [select-keys empty? mapv]])
   (:import [java.sql Connection DatabaseMetaData ResultSet Types PreparedStatement]
            [java.time OffsetDateTime OffsetTime]
            [java.util Calendar TimeZone]))
@@ -171,7 +171,7 @@
                                    "ENCRYPTDATA"         (if encrypt-data "ON" "OFF")
                                    "FINALIZE_AUTO_CLOSE" "ON"
                                    "LOB_SUPPORT"         "OFF"}
-                                  (if ssl
+                                  (when ssl
                                     {"SSLMODE" "REQUIRE"}))
                                  (map #(format "%s=%s" (first %) (second %)))
                                  (str/join ",")))}
