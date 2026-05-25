@@ -2,21 +2,17 @@ import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 
+import { Button } from "metabase/common/components/Button";
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Flex, rem } from "metabase/ui";
 
 import { goToNextStep, loadDefaults } from "../../actions";
 import { LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
 
-import {
-  PageBody,
-  PageButton,
-  PageMain,
-  PageRoot,
-  PageTitle,
-} from "./WelcomePage.styled";
+import S from "./WelcomePage.module.css";
 
 export const WelcomePage = (): JSX.Element | null => {
   const [isElapsed] = useTimeout(LOCALE_TIMEOUT);
@@ -36,19 +32,37 @@ export const WelcomePage = (): JSX.Element | null => {
   }
 
   return (
-    <PageRoot data-testid="welcome-page">
-      <PageMain>
+    <Flex
+      data-testid="welcome-page"
+      direction="column"
+      align="center"
+      mih="100vh"
+    >
+      <Flex
+        direction="column"
+        align="center"
+        justify="center"
+        flex="1 0 auto"
+        mt={rem(112)}
+        mb="xl"
+        maw={rem(550)}
+      >
         <DefaultLogoIcon height={118} />
-        <PageTitle>{t`Welcome to Metabase`}</PageTitle>
-        <PageBody>
+        <h1 className={S.title}>{t`Welcome to Metabase`}</h1>
+        <div className={S.body}>
           {t`Looks like everything is working.`}{" "}
           {t`Now let’s get to know you, connect to your data, and start finding you some answers!`}
-        </PageBody>
-        <PageButton primary autoFocus onClick={handleStepSubmit}>
+        </div>
+        <Button
+          className={S.button}
+          primary
+          autoFocus
+          onClick={handleStepSubmit}
+        >
           {t`Let's get started`}
-        </PageButton>
-      </PageMain>
+        </Button>
+      </Flex>
       <SetupHelp />
-    </PageRoot>
+    </Flex>
   );
 };

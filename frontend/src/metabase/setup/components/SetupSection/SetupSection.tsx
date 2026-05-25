@@ -2,14 +2,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  SectionButton,
-  SectionContainer,
-  SectionDescription,
-  SectionHeader,
-  SectionRoot,
-  SectionTitle,
-} from "./SetupSection.styled";
+import { Button } from "metabase/common/components/Button";
+import { Box, Flex, Text } from "metabase/ui";
+
+import S from "./SetupSection.module.css";
 
 interface SetupSectionProps {
   title: ReactNode;
@@ -25,21 +21,26 @@ export const SetupSection = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <SectionRoot>
-      <SectionHeader>
-        <SectionContainer>
-          <SectionTitle>{title}</SectionTitle>
-          <SectionDescription>{description}</SectionDescription>
-        </SectionContainer>
-        <SectionButton
+    <Box className={S.root} mt="lg" pt="lg">
+      <Flex align="center" mb="xl">
+        <Box flex="1 1 auto" mr="xl">
+          <Text c="text-primary" fw={700}>
+            {title}
+          </Text>
+          <Text c="text-secondary" mt="sm">
+            {description}
+          </Text>
+        </Box>
+        <Button
+          className={S.button}
           round
           icon={isExpanded ? "chevronup" : "chevrondown"}
           aria-label={t`Setup section`}
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded(!isExpanded)}
         />
-      </SectionHeader>
+      </Flex>
       {isExpanded && children}
-    </SectionRoot>
+    </Box>
   );
 };

@@ -1,0 +1,17 @@
+.title {
+  color: var(--mb-color-brand);
+  font-size: 2.2rem;
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.body {
+  color: var(--mb-color-text-secondary);
+  font-size: 1.286em;
+  line-height: 1.457em;
+  margin: var(--mantine-spacing-md) 0;
+  text-align: center;
+}
+
+.button {
+  margin-top: var(--mantine-spacing-xl);
+}

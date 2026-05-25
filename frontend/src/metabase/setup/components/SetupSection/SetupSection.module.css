@@ -1,0 +1,9 @@
+.root {
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.button {
+  color: var(--mb-color-brand);
+  width: 2.5rem;
+  height: 2.5rem;
+}
