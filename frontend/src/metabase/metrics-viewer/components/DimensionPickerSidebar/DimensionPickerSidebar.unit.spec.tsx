@@ -98,8 +98,8 @@ function setup({
         availableDimensions={dimensions}
         metricSlots={slots}
         sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
-        sourceOrder={sourceOrder}
-        sourceDataById={sources}
+        metricSourceOrder={sourceOrder}
+        metricSourceDataById={sources}
         hasMultipleSources={hasMultipleSources}
         onAddTab={onAddTab}
         onUpdateActiveTab={onUpdateActiveTab}

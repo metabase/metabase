@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type {
   MetricSourceId,
   MetricsViewerTabState,
@@ -8,19 +10,35 @@ import { Stack } from "metabase/ui";
 import { MetricAccordionItem } from "./MetricAccordionItem";
 import type { AllFieldsMetricGroup } from "./types";
 
+type MetricAccordionListProps = {
+  activeTab: MetricsViewerTabState;
+  defaultExpandedGroupKeys: MetricSourceId[];
+  groups: AllFieldsMetricGroup[];
+  onSelect: (item: DimensionPickerItem) => void;
+};
+
 export function MetricAccordionList({
   activeTab,
+  defaultExpandedGroupKeys,
   groups,
-  expandedMetricSourceIds,
-  onToggleMetric,
   onSelect,
-}: {
-  activeTab: MetricsViewerTabState;
-  groups: AllFieldsMetricGroup[];
-  expandedMetricSourceIds: MetricSourceId[];
-  onToggleMetric: (sourceId: MetricSourceId) => void;
-  onSelect: (item: DimensionPickerItem) => void;
-}) {
+}: MetricAccordionListProps) {
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<MetricSourceId[]>(
+    defaultExpandedGroupKeys,
+  );
+
+  const handleToggleAccordion = (sourceId: MetricSourceId) => {
+    setExpandedGroupKeys((currentSourceIds) => {
+      if (currentSourceIds.includes(sourceId)) {
+        return currentSourceIds.filter(
+          (currentSourceId) => currentSourceId !== sourceId,
+        );
+      }
+
+      return [...currentSourceIds, sourceId];
+    });
+  };
+
   return (
     <Stack gap="xs">
       {groups.map((group) => (
@@ -28,8 +46,8 @@ export function MetricAccordionList({
           key={group.key}
           activeTab={activeTab}
           group={group}
-          isExpanded={expandedMetricSourceIds.includes(group.key)}
-          onToggle={() => onToggleMetric(group.key)}
+          isExpanded={expandedGroupKeys.includes(group.key)}
+          onToggle={() => handleToggleAccordion(group.key)}
           onSelect={onSelect}
         />
       ))}

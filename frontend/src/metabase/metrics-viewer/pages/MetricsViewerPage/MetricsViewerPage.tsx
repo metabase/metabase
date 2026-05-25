@@ -98,7 +98,6 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const hasMultipleSources = sourceOrder.length > 1;
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
@@ -165,9 +164,8 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                   allFieldsAvailableDimensions={activeTabAvailableDimensions}
                   metricSlots={metricSlots}
                   sourceColors={sourceColors}
-                  sourceOrder={sourceOrder}
-                  sourceDataById={sourceDataById}
-                  hasMultipleSources={hasMultipleSources}
+                  metricSourceOrder={sourceOrder}
+                  metricSourceDataById={sourceDataById}
                   onAddTab={addAndSelectTab}
                   onUpdateActiveTab={updateActiveTab}
                 />
