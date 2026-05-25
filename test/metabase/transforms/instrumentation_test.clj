@@ -1,7 +1,4 @@
 (ns metabase.transforms.instrumentation-test
-  "Unit tests for transform instrumentation helpers — primarily the metric emission shape
-   of `record-incremental-rows!`. End-to-end emission through the full `run-cancelable-transform!`
-   pipeline is covered by `metabase-enterprise.transforms.incremental-metrics-test`."
   (:require
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
@@ -10,9 +7,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; All assertions share one `with-prometheus-system!` (boot is expensive). Blocks that
-;; re-touch a metric clear it first so each assertion is absolute (1) rather than
-;; cumulative — keeps the test order non-load-bearing.
 (deftest record-incremental-rows!-test
   (mt/with-prometheus-system! [_ system]
     (testing "Both numbers present: emits {type=available} and {type=processed} under same full-incremental-run label"

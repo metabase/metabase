@@ -31,13 +31,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- driver-result->rows-processed
-  "Pulls a row count out of whatever `driver/run-transform!` returned. The contract is
-  unfortunately heterogeneous: incremental + most strategies return `{:rows-affected N}`,
-  but the `create-or-replace` branch in `driver/sql` returns the bare integer. Anything
-  else — a Python transform's HTTP response, for example — yields nil so the metric is
-  skipped rather than mislabelled. Coerces to `Long` so the metric pipeline speaks one
-  integer width end-to-end; a driver that stuffs a non-integer into `:rows-affected`
-  is a contract violation and `long` will throw loudly rather than mask the bug."
+  "Extract a row count from `driver/run-transform!`'s heterogeneous return (map with `:rows-affected`, bare integer, or nil), coerced to `Long`."
   [driver-result]
   (some-> (cond
             (integer? driver-result) driver-result
@@ -139,10 +133,6 @@
           transform-timeout    (transforms.settings/transform-timeout)
           transform-timeout-ms (u/minutes->ms transform-timeout)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      ;; Enrich the active task.transform.* span with checkpoint range attrs for
-      ;; incremental runs. No-op when tracing is disabled or no span is active.
-      ;; `when-let` with map destructure folds the nil-guard, the `:rows-available`
-      ;; extraction, and the `:as` rebind into one form.
       (when-let [{:keys [rows-available] :as srp} source-range-params]
         (tracing/add-span-attrs! :tasks
                                  (cond-> (transforms-base.u/checkpoint-span-attrs srp)
@@ -162,17 +152,8 @@
                     (run-transform! cancel-chan source-range-params)))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
-        ;; Paired `when-some`: both rows-available (source-side, from get-source-range-params)
-        ;; and rows-processed (target-side, from the driver result) must be non-nil for the
-        ;; pair to emit. Either being absent silently drops the metric — the same-population
-        ;; invariant lives here at the call site rather than inside `record-incremental-rows!`,
-        ;; so the helper is a thin "always emit both" sink.
-        ;;
-        ;; Narrow try/catch: succeed-started-run! has already marked the run, so a throw
-        ;; from the emission code must not escape to the outer catch (which would call
-        ;; fail-started-run! and re-throw, polluting logs for a run that actually
-        ;; succeeded). Prometheus calls are left naked inside; the realistic failure
-        ;; is unregistered-metric typos, which CI catches loudly.
+        ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
+        ;; fail-started-run! after succeed-started-run! has already fired.
         (when-some [rows-available (:rows-available source-range-params)]
           (try
             (when-some [rows-processed (driver-result->rows-processed (:result ret))]

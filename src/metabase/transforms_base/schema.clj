@@ -56,10 +56,7 @@
    [:checkpoint-filter-field-id ::lib.schema.id/field]
    [:lo {:optional true} [:maybe ::checkpoint-bound]]
    [:hi {:optional true} [:maybe ::checkpoint-bound]]
-   ;; Count of source rows within the (lo, hi] range that this run is expected to scan.
-   ;; Computed by the same aggregation that derives the high watermark, so it is "available
-   ;; at watermark-scan time" — strictly the row count corresponding to the run that is
-   ;; about to execute. nil when the count could not be derived (e.g. defensive fallback).
+   ;; Count of source rows in (lo, hi] from the same scan that derived the watermark; nil if unavailable.
    [:rows-available {:optional true} [:maybe :int]]])
 
 ;;; ------------------------------------------------- Options -------------------------------------------------

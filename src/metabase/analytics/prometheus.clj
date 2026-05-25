@@ -533,14 +533,11 @@
                           ;; 20s poll loop + 10min timeout sweep; buckets bracket both tails.
                           :buckets [100 500 1000 5000 10000 20000 30000 60000 120000 300000 600000]})
    (prometheus/histogram :metabase-transforms/incremental-rows
-                         {:description "Row counts for incremental transform runs: rows available in the source (lo, hi] range vs. rows written to the target. Emitted only for incremental transforms."
+                         {:description "Source-available vs. target-processed row counts for incremental transform runs."
                           :labels [:type :full-incremental-run]
-                          ;; Matches the decade layout of `data-transfer-rows`, plus a `0` sentinel
-                          ;; bucket (an empty incremental window — polled, nothing new in range — is
-                          ;; a meaningful observation distinct from "small but nonzero work") and a
-                          ;; 100M upper bound (a full-incremental rebuild on a large source table
-                          ;; can scan past 10M; losing resolution there would erase exactly the
-                          ;; heaviest workloads from the efficiency-ratio panel).
+                          ;; Decade layout matches `data-transfer-rows`; `0` distinguishes empty
+                          ;; windows from "small but nonzero work"; `100M` covers full-incremental
+                          ;; rebuilds on large sources.
                           :buckets [0 10 100 1000 10000 100000 1000000 10000000 100000000]})
    ;; Python-transform specific metrics
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms

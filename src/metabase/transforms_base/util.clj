@@ -288,8 +288,7 @@
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value.
-   :rows-available             count of source rows in (lo, hi] from the same scan that
-                               derived the watermark — nil if the count was not produced."
+   :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
   [{:keys [source target] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
@@ -320,11 +319,8 @@
             base-type         (:base-type column)
             lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
-            ;; A single scan produces both the high watermark and the count of rows the
-            ;; upcoming run will see in (lo, hi]. Combining max + count avoids a second
-            ;; round-trip and pins both numbers to the same point-in-time view of the
-            ;; source — any rows that arrive between this scan and the actual transform
-            ;; run land in the next watermark window, not this one.
+            ;; Combine max + count in one scan: avoids a second round-trip and pins both
+            ;; numbers to the same point-in-time view of the source.
             [max-value rows-available]
             (let [table-id          (:table-id column)
                   table-metadata    (lib.metadata/table metadata-provider table-id)

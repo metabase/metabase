@@ -501,14 +501,7 @@
 ;;; -------------------------------------------------- `:metabase-transforms/incremental-rows` --------------------------------------------------
 
 (defn- run-cancelable-with-mocks!
-  "Drives `run-cancelable-transform!` with the same `with-redefs` shape as the timeout test so we
-  don't need a warehouse DB. Caller supplies the source-range-params the run should see and the
-  driver result the inner callback should return; everything else (schema check, checkpoint
-  persistence, watermark, canceling lifecycle) is stubbed.
-
-  The callback's return value is wrapped in the `{:status :succeeded :result …}` envelope that
-  `transforms-base.i/execute-base!` produces in production, so `run-cancelable-transform!`'s
-  emission code sees the driver result under `:result` the same way the real flow does."
+  "Drive `run-cancelable-transform!` with stubbed lifecycle (schema, checkpoint, watermark, canceling) and wrap `driver-result` in the production `{:status :succeeded :result …}` envelope."
   [transform source-range-params driver-result]
   (with-redefs [driver/schema-exists?                            (constantly true)
                 driver/create-schema-if-needed!                  (constantly nil)
@@ -525,98 +518,80 @@
        (fn [_cancel-chan _range-params]
          {:status :succeeded :result driver-result})))))
 
-;; All assertions share one `with-prometheus-system!` (boot is expensive). Each block targets
-;; a distinct (type, full-incremental-run) tuple; we clear between blocks that share a tuple.
 (deftest run-cancelable-transform!-emits-incremental-rows-test
-  (testing "`run-cancelable-transform!` emits the incremental-rows histogram only for incremental runs,
-            with the `full-incremental-run` label reflecting whether a watermark exists."
-    (mt/with-prometheus-system! [_ system]
-      (testing "Non-incremental transform: `get-source-range-params` returns nil → no emission, both branches stay at zero"
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table"}}
-         nil
-         {:rows-affected 100})
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "true"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "true"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "false"})))))
-      (testing "First incremental run (no watermark) → {full-incremental-run=true}, both types bumped from the same scan"
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
-         {:checkpoint-filter-field-id 42 :rows-available 1000}
-         {:rows-affected 1000})
-        (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "true"}))))
-        (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "true"}))))
-        (is (== 1000 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
-                                            {:type "available" :full-incremental-run "true"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"})))))
-      (testing "Subsequent incremental run (watermark present) → {full-incremental-run=false}, attrition surfaces as sum mismatch"
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
-         {:checkpoint-filter-field-id 42 :rows-available 500}
-         {:rows-affected 120})
-        (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"}))))
-        (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "false"}))))
-        ;; The two sides diverge: this is the efficiency signal the metric exists to surface —
-        ;; a transform that aggregates/dedups in its SELECT processes fewer rows than were available.
-        (is (== 500 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"}))))
-        (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "false"})))))
-      (testing "Incremental run whose driver result lacks a row count → no emission on either side"
-        ;; Python transforms return an HTTP-response map under `:result` with no `:rows-affected`
-        ;; key. The metric pair must stay synchronised over the same population of runs, so the
-        ;; emission is dropped entirely rather than recording an orphaned `type=available` sample.
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
-         {:checkpoint-filter-field-id 42 :rows-available 999}
-         {:http-response "no rows-affected here"})
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "false"})))))
-      (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
-        ;; The defensive fallback in `get-source-range-params` can yield a map without
-        ;; `:rows-available` (e.g. if the count aggregation came back nil). The call site's
-        ;; outer `when-some` on `:rows-available` enforces the same-population invariant: no
-        ;; available count → no processed observation either.
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (run-cancelable-with-mocks!
-         {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
-         {:checkpoint-filter-field-id 42}
-         {:rows-affected 100})
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "available" :full-incremental-run "false"}))))
-        (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
-                                           {:type "processed" :full-incremental-run "false"})))))
-      (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"
-        ;; succeed-started-run! has already fired by the time we hit the emission block. If the
-        ;; emission throw escaped, the outer catch in run-cancelable-transform! would call
-        ;; fail-started-run! (no-op against an already-inactive row) and re-throw, polluting
-        ;; logs with an error for a run the DB records as succeeded. The narrow try/catch around
-        ;; the emission swallows and logs at warn instead.
-        (analytics/clear! :metabase-transforms/incremental-rows)
-        (with-redefs [transforms.instrumentation/record-incremental-rows!
-                      (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
-          (is (= {:status :succeeded :result {:rows-affected 1000}}
-                 (run-cancelable-with-mocks!
-                  {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
-                  {:checkpoint-filter-field-id 42 :rows-available 1000}
-                  {:rows-affected 1000}))
-              "run-cancelable-transform! returns the success envelope; the emission throw is swallowed."))))))
+  (mt/with-prometheus-system! [_ system]
+    (testing "Non-incremental transform: `get-source-range-params` returns nil → no emission, both branches stay at zero"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table"}}
+       nil
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "First incremental run (no watermark) → {full-incremental-run=true}, both types bumped from the same scan"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+       {:checkpoint-filter-field-id 42 :rows-available 1000}
+       {:rows-affected 1000})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "true"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "true"}))))
+      (is (== 1000 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                          {:type "available" :full-incremental-run "true"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"})))))
+    (testing "Subsequent incremental run (watermark present) → {full-incremental-run=false}, attrition surfaces as sum mismatch"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 500}
+       {:rows-affected 120})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 500 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Incremental run whose driver result lacks a row count → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 999}
+       {:http-response "no rows-affected here"})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42}
+       {:rows-affected 100})
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "A throw from the emission helper must NOT escape into the outer try/catch — the run already succeeded"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (with-redefs [transforms.instrumentation/record-incremental-rows!
+                    (fn [& _] (throw (ex-info "Synthetic emission failure" {})))]
+        (is (= {:status :succeeded :result {:rows-affected 1000}}
+               (run-cancelable-with-mocks!
+                {:id 1 :target {:type "table-incremental"} :last_checkpoint_value nil}
+                {:checkpoint-filter-field-id 42 :rows-available 1000}
+                {:rows-affected 1000}))
+            "run-cancelable-transform! returns the success envelope; the emission throw is swallowed.")))))
 
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"

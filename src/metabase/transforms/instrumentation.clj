@@ -106,16 +106,7 @@
       (analytics/observe! :metabase-transforms/data-transfer-rows labels rows))))
 
 (mu/defn record-incremental-rows!
-  "Observe the source-available and target-processed row counts for an incremental transform run.
-
-   `rows-available` is the count of source rows in the (lo, hi] checkpoint range and comes from
-   `transforms-base.util/get-source-range-params`. `rows-processed` is the number of rows actually
-   written to the target — for SQL incremental transforms, the `:rows-affected` value returned by
-   `driver/run-transform!`. Both observations are emitted with the same `full-incremental-run`
-   label so a Grafana panel can compare available vs. processed across the same population of runs.
-
-   Both numbers are required. The same-population invariant — emit both or neither — is enforced
-   at the call site; this helper is a thin sink that always emits both."
+  "Emit the available/processed row-count pair for an incremental transform run; the same-population invariant is enforced at the call site."
   [rows-available        :- :int
    rows-processed        :- :int
    full-incremental-run? :- :boolean]
