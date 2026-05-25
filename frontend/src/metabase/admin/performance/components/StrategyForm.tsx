@@ -22,7 +22,6 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
-  type BoxProps,
   Button,
   FixedSizeIcon,
   Flex,
@@ -57,12 +56,17 @@ interface ButtonLabels {
   discard: string;
 }
 
-/** Context passed to a `renderFooter` slot so the consumer can wire up
- * Save / Discard / progress states without re-reading Formik themselves. */
-interface StrategyFormFooterContext {
-  dirty: boolean;
-  isFormPending: boolean;
-}
+/**
+ * Layout variant of the form's footer + wrapper styling.
+ *
+ * - `"default"` (full page): scrolling `FormBox` with bordered Save/Discard
+ *   bar; `InvalidateNowButton` appears alone when the form is clean.
+ * - `"sidebar"`: right-aligned Save/Cancel without the bordered bar; no
+ *   `FormBox` padding override (handled by the sidebar surface itself).
+ * - `"modal"`: drops the `FormBox` padding so the modal's own inset wins,
+ *   and always renders Invalidate + Cancel + Save in one row.
+ */
+export type StrategyFormLayout = "default" | "sidebar" | "modal";
 
 /** Module-level, frozen so the form's initialValues reference is stable
  * across renders. The targetId picks one of the two when no saved strategy
@@ -81,16 +85,7 @@ interface StrategyFormProps {
   shouldShowName?: boolean;
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
-  isInSidebar?: boolean;
-  /** Optional slot that replaces the default footer (Save / Discard / Clear
-   * cache). When provided the consumer owns the footer chrome; the form still
-   * provides the Formik context so the consumer's buttons can dispatch
-   * submit / reset via `useFormikContext`. */
-  renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
-  /** Mantine props applied to the inner `FormBox` wrapper, useful for
-   * neutralizing its default padding when the surrounding surface already
-   * provides its own inset (e.g. a Mantine `Modal`). */
-  formBoxProps?: BoxProps;
+  layout?: StrategyFormLayout;
 }
 
 export const StrategyForm = ({
@@ -103,17 +98,15 @@ export const StrategyForm = ({
   shouldAllowInvalidation = false,
   shouldShowName = true,
   onReset,
-  isInSidebar = false,
-  renderFooter,
-  formBoxProps,
-  buttonLabels = isInSidebar
+  layout = "default",
+  buttonLabels = layout === "default"
     ? {
-        save: t`Save`,
-        discard: t`Cancel`,
-      }
-    : {
         save: t`Save changes`,
         discard: t`Discard changes`,
+      }
+    : {
+        save: t`Save`,
+        discard: t`Cancel`,
       },
 }: StrategyFormProps) => {
   const defaultStrategy =
@@ -138,10 +131,8 @@ export const StrategyForm = ({
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
         buttonLabels={buttonLabels}
-        isInSidebar={isInSidebar}
-        renderFooter={renderFooter}
+        layout={layout}
         strategyType={initialValues.type}
-        formBoxProps={formBoxProps}
       />
     </FormProvider>
   );
@@ -159,17 +150,15 @@ const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const initialValuesWithDefaults = { ...defaultValues, ...initialValues };
   const valuesWithDefaults = { ...defaultValues, ...values };
   // If the default value is a number and the value is a string, coerce the value to a number
-  const coercedValuesWithDefaults = _.chain(valuesWithDefaults)
-    .pairs()
-    .map(([key, value]) => [
+  const coercedValuesWithDefaults = Object.fromEntries(
+    Object.entries(valuesWithDefaults).map(([key, value]) => [
       key,
       typeof getDefaultValueForField(values.type, key) === "number" &&
       typeof value === "string"
         ? Number(value)
         : value,
-    ])
-    .object()
-    .value();
+    ]),
+  );
   return !_.isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
 };
 
@@ -181,9 +170,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation,
   shouldShowName = true,
   buttonLabels,
-  isInSidebar,
-  renderFooter,
-  formBoxProps,
+  layout,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -193,9 +180,7 @@ const StrategyFormBody = ({
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
-  renderFooter?: (ctx: StrategyFormFooterContext) => ReactNode;
-  formBoxProps?: BoxProps;
+  layout: StrategyFormLayout;
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -240,11 +225,11 @@ const StrategyFormBody = ({
   }, [values, setFieldValue, setStatus]);
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h={layout === "modal" ? undefined : "100%"}>
       <Form
         display="flex"
         style={{
-          overflow: isInSidebar ? undefined : "auto",
+          overflow: layout === "default" ? "auto" : undefined,
           flexDirection: "column",
           flexGrow: 1,
         }}
@@ -252,10 +237,10 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         <Box
-          className={cx(Styles.FormBox, {
-            [Styles.FormBoxSidebar]: isInSidebar,
+          className={cx({
+            [Styles.FormBox]: layout !== "modal",
+            [Styles.FormBoxSidebar]: layout === "sidebar",
           })}
-          {...formBoxProps}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="md" c="text-secondary">
@@ -326,19 +311,15 @@ const StrategyFormBody = ({
             )}
           </Stack>
         </Box>
-        {renderFooter ? (
-          <StrategyFormFooterSlot dirty={dirty} renderFooter={renderFooter} />
-        ) : (
-          <FormButtons
-            targetId={targetId}
-            targetModel={targetModel}
-            targetName={targetName}
-            shouldAllowInvalidation={shouldAllowInvalidation}
-            buttonLabels={buttonLabels}
-            isInSidebar={isInSidebar}
-            dirty={dirty}
-          />
-        )}
+        <FormButtons
+          targetId={targetId}
+          targetModel={targetModel}
+          targetName={targetName}
+          shouldAllowInvalidation={shouldAllowInvalidation}
+          buttonLabels={buttonLabels}
+          layout={layout}
+          dirty={dirty}
+        />
       </Form>
     </Flex>
   );
@@ -346,21 +327,21 @@ const StrategyFormBody = ({
 
 const FormButtonsGroup = ({
   children,
-  isInSidebar,
+  layout,
 }: {
   children: ReactNode;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
 }) => {
   return (
     <Group
       py="md"
       gap="md"
-      justify={isInSidebar ? "flex-end" : undefined}
-      px={isInSidebar ? "md" : "2.5rem"}
-      pb={isInSidebar ? 0 : undefined}
-      bg={isInSidebar ? undefined : "background-primary"}
+      justify={layout === "sidebar" ? "flex-end" : undefined}
+      px={layout === "sidebar" ? "md" : "2.5rem"}
+      pb={layout === "sidebar" ? 0 : undefined}
+      bg={layout === "sidebar" ? undefined : "background-primary"}
       style={
-        isInSidebar
+        layout === "sidebar"
           ? undefined
           : { borderTop: "1px solid var(--mb-color-border)" }
       }
@@ -376,7 +357,7 @@ type FormButtonsProps = {
   shouldAllowInvalidation: boolean;
   targetName?: string;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
   dirty: boolean;
 };
 
@@ -386,38 +367,67 @@ const FormButtons = ({
   shouldAllowInvalidation,
   targetName,
   buttonLabels,
-  isInSidebar,
+  layout,
   dirty,
 }: FormButtonsProps) => {
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
   }
 
+  const canInvalidate =
+    shouldAllowInvalidation &&
+    isModelWithClearableCache(targetModel) &&
+    targetId !== null &&
+    !!targetName;
+
   const { isFormPending, wasFormRecentlyPending } = useIsFormPending();
+
+  if (layout === "modal") {
+    return (
+      <Group
+        justify={canInvalidate ? "space-between" : "flex-end"}
+        wrap="nowrap"
+        mt="xl"
+        gap="md"
+      >
+        {canInvalidate && (
+          <PLUGIN_CACHING.InvalidateNowButton
+            targetId={targetId}
+            targetModel={targetModel}
+            targetName={targetName}
+          />
+        )}
+        <Group gap="md" wrap="nowrap">
+          <Button type="reset">{buttonLabels.discard}</Button>
+          <FormSubmitButton
+            h="2.5rem"
+            label={buttonLabels.save}
+            variant="filled"
+            data-testid="strategy-form-submit-button"
+          />
+        </Group>
+      </Group>
+    );
+  }
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
   if (isSavingPossible) {
     return (
-      <FormButtonsGroup isInSidebar={isInSidebar}>
+      <FormButtonsGroup layout={layout}>
         <SaveAndDiscardButtons
           dirty={dirty}
           isFormPending={isFormPending}
           buttonLabels={buttonLabels}
-          isInSidebar={isInSidebar}
+          layout={layout}
         />
       </FormButtonsGroup>
     );
   }
 
-  if (
-    shouldAllowInvalidation &&
-    isModelWithClearableCache(targetModel) &&
-    targetId &&
-    targetName
-  ) {
+  if (canInvalidate) {
     return (
-      <FormButtonsGroup isInSidebar={isInSidebar}>
+      <FormButtonsGroup layout={layout}>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           targetModel={targetModel}
@@ -428,20 +438,6 @@ const FormButtons = ({
   }
 
   return null;
-};
-
-/** Thin wrapper that bridges the form-pending hook into the consumer's
- * `renderFooter` slot. Lives inside StrategyFormBody so it can read Formik
- * context (`useIsFormPending` does that internally). */
-const StrategyFormFooterSlot = ({
-  dirty,
-  renderFooter,
-}: {
-  dirty: boolean;
-  renderFooter: (ctx: StrategyFormFooterContext) => ReactNode;
-}) => {
-  const { isFormPending } = useIsFormPending();
-  return <>{renderFooter({ dirty, isFormPending })}</>;
 };
 
 const ScheduleStrategyFormFields = () => {
@@ -483,12 +479,12 @@ const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
   buttonLabels,
-  isInSidebar,
+  layout,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
-  isInSidebar?: boolean;
+  layout: StrategyFormLayout;
 }) => {
   return (
     <>
@@ -496,8 +492,8 @@ const SaveAndDiscardButtons = ({
         {buttonLabels.discard}
       </Button>
       <FormSubmitButton
-        miw={isInSidebar ? undefined : "10rem"}
-        h="40px"
+        miw={layout === "sidebar" ? undefined : "10rem"}
+        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
           <Group gap="xs">
@@ -507,7 +503,6 @@ const SaveAndDiscardButtons = ({
         activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
-        className="strategy-form-submit-button"
       />
     </>
   );

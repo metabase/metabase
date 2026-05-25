@@ -76,13 +76,15 @@ export const strategies = {
     label: () => t`Default`,
     description: (model?: CacheableModel) => {
       switch (model) {
+        case "database":
+          return t`Use the default policy`;
         case "dashboard":
           return t`Each question will use its own policy or the database policy`;
         case "question":
         case "metric":
           return t`Use the database or dashboard policy`;
         default:
-          return "";
+          return undefined;
       }
     },
     shortLabel: () => t`Default`,

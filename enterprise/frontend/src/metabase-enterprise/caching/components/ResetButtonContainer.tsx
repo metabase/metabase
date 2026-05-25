@@ -2,10 +2,10 @@ import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Form, useFormContext } from "metabase/forms";
+import { Form, FormSubmitButton, useFormContext } from "metabase/forms";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
-import { ResetAllFormSubmitButton } from "./ResetButtonContainer.styled";
+import S from "./ResetButtonContainer.module.css";
 
 export const ResetButtonContainer = () => {
   return (
@@ -38,7 +38,7 @@ const ResetAllToDefaultButtonFormBody = () => {
     <>
       <Form>
         <Flex justify="flex-end">
-          <ResetAllFormSubmitButton
+          <FormSubmitButton
             px="1rem"
             py=".75rem"
             lh="1"
@@ -65,7 +65,9 @@ const ResetAllToDefaultButtonFormBody = () => {
               </Text>
             }
             variant="subtle"
-            highlightOnHover={status === "idle"}
+            // Suppress the hover background while the form is mid-submission or
+            // showing the post-submit success state.
+            className={status === "idle" ? S.highlightOnHover : undefined}
           />
         </Flex>
       </Form>

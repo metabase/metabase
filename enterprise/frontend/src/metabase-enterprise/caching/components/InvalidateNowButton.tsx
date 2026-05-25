@@ -7,7 +7,7 @@ import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalid
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { FormProvider, FormSubmitButton } from "metabase/forms";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { FixedSizeIcon, Group, Icon, Loader, Text } from "metabase/ui";
 
@@ -64,46 +64,49 @@ const InvalidateNowFormBody = ({
     [targetModel],
   );
 
+  // No outer <form> wrapper here: `StrategyForm` already renders the enclosing
+  // <form>, and nesting forms is invalid HTML. The button still gets Formik
+  // context from <FormProvider> (which is just React context, not a DOM form),
+  // and the click handler routes through the confirmation modal -> `submitForm`
+  // rather than relying on native form submission.
   return (
     <>
-      <Form>
-        <FormSubmitButton
-          onClick={(e) => {
-            confirmInvalidation();
-            e.preventDefault();
-            return false;
-          }}
-          disabled={wasFormRecentlyPending}
-          p="sm"
-          miw={40}
-          h={40}
-          style={{ alignSelf: "flex-start" }}
-          label={
-            <Group gap="sm">
-              <Icon c="danger" name="trash" />
-              <Text>{buttonText}</Text>
-            </Group>
-          }
-          activeLabel={
-            <Group gap="sm">
-              <Loader size="1rem" />
-              <Text>{c("Shown when a cache is being cleared")
-                .t`Clearing cache… `}</Text>
-            </Group>
-          }
-          successLabel={
-            <Group gap="sm">
-              <FixedSizeIcon name="check" c="success" pos="relative" top={1} />
-              <Text>{t`Cache cleared`}</Text>
-            </Group>
-          }
-          failedLabel={
-            <Text fw="bold" lh="1">
-              {t`Error`}
-            </Text>
-          }
-        />
-      </Form>
+      <FormSubmitButton
+        onClick={(e) => {
+          confirmInvalidation();
+          e.preventDefault();
+          return false;
+        }}
+        disabled={wasFormRecentlyPending}
+        p="sm"
+        miw={40}
+        h={40}
+        style={{ alignSelf: "flex-start" }}
+        label={
+          <Group gap="sm">
+            <Icon c="danger" name="trash" />
+            <Text>{buttonText}</Text>
+          </Group>
+        }
+        activeLabel={
+          <Group gap="sm">
+            <Loader size="1rem" />
+            <Text>{c("Shown when a cache is being cleared")
+              .t`Clearing cache… `}</Text>
+          </Group>
+        }
+        successLabel={
+          <Group gap="sm">
+            <FixedSizeIcon name="check" c="success" pos="relative" top={1} />
+            <Text>{t`Cache cleared`}</Text>
+          </Group>
+        }
+        failedLabel={
+          <Text fw="bold" lh="1">
+            {t`Error`}
+          </Text>
+        }
+      />
 
       {confirmationModal}
     </>
