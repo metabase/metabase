@@ -398,10 +398,6 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.log("wait for x-ray dashboard to generate and save it");
-      H.main()
-        .findByText("A look at", { exact: false, timeout: 30_000 })
-        .should("be.visible");
-      cy.button("Save this").click();
       H.undoToast().should("contain", "Your dashboard was saved");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
@@ -449,6 +445,7 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
 
       cy.log("x-ray dashboard should be pre-selected, move it");
+      cy.intercept("PUT", "/api/dashboard/*").as("moveDashboard");
       H.main()
         .findByRole("button", {
           name: "Move to shared collection",
@@ -456,6 +453,8 @@ describe("scenarios - embedding hub", () => {
         })
         .should("be.enabled")
         .click();
+
+      cy.wait("@moveDashboard").its("response.statusCode").should("eq", 200);
 
       cy.log(
         "x-rayed dashboard should have been moved to the shared collection",
