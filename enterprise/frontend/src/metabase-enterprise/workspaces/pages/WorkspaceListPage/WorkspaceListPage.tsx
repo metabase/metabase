@@ -6,10 +6,18 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { Group, Stack } from "metabase/ui";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
-import type { Database, Workspace } from "metabase-types/api";
+import {
+  useGetCurrentWorkspaceQuery,
+  useListWorkspacesQuery,
+} from "metabase-enterprise/api";
+import type {
+  Database,
+  Workspace,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
 import { HelpMenu } from "../../components/HelpMenu";
+import { WorkspaceInstanceWarningState } from "../../components/WorkspaceInstanceWarningState";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceItem } from "./WorkspaceItem";
@@ -22,13 +30,19 @@ export function WorkspaceListPage() {
     error: workspacesError,
   } = useListWorkspacesQuery();
   const {
+    data: currentWorkspace,
+    isLoading: isLoadingCurrentWorkspace,
+    error: currentWorkspaceError,
+  } = useGetCurrentWorkspaceQuery();
+  const {
     data: databasesResponse,
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery();
 
-  const isLoading = isLoadingWorkspaces || isLoadingDatabases;
-  const error = workspacesError ?? databasesError;
+  const isLoading =
+    isLoadingWorkspaces || isLoadingCurrentWorkspace || isLoadingDatabases;
+  const error = workspacesError ?? currentWorkspaceError ?? databasesError;
 
   if (
     isLoading ||
@@ -42,6 +56,7 @@ export function WorkspaceListPage() {
   return (
     <WorkspaceListPageBody
       workspaces={workspaces}
+      currentWorkspace={currentWorkspace ?? null}
       availableDatabases={databasesResponse.data}
     />
   );
@@ -49,14 +64,18 @@ export function WorkspaceListPage() {
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
+  currentWorkspace: WorkspaceInstance | null;
   availableDatabases: Database[];
 };
 
 function WorkspaceListPageBody({
   workspaces,
+  currentWorkspace,
   availableDatabases,
 }: WorkspaceListPageBodyProps) {
   const hasWorkspaces = workspaces.length > 0;
+  const isWorkspaceInstance = currentWorkspace != null;
+  const hasActions = hasWorkspaces && !isWorkspaceInstance;
 
   return (
     <PageContainer data-testid="workspace-list-page">
@@ -65,7 +84,7 @@ function WorkspaceListPageBody({
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={
-          hasWorkspaces && (
+          hasActions && (
             <Group gap="sm">
               <NewWorkspaceButton />
               <HelpMenu />
@@ -74,7 +93,11 @@ function WorkspaceListPageBody({
         }
         py={0}
       />
-      {hasWorkspaces ? (
+      {isWorkspaceInstance ? (
+        <WorkspaceInstanceWarningState />
+      ) : !hasWorkspaces ? (
+        <WorkspaceListEmptyState />
+      ) : (
         <Stack data-testid="workspace-list" gap="lg">
           {workspaces.map((workspace) => (
             <WorkspaceItem
@@ -84,8 +107,6 @@ function WorkspaceListPageBody({
             />
           ))}
         </Stack>
-      ) : (
-        <WorkspaceListEmptyState />
       )}
     </PageContainer>
   );
