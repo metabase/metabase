@@ -104,6 +104,28 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("hides the help menu in the empty state", async () => {
+    setup({ workspace: null });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /Isolated spaces for agents and developers/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Help/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the help menu when a workspace is set up", async () => {
+    setup();
+
+    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Help/ }),
+    ).toBeInTheDocument();
+  });
+
   it("does not render the delete section on the main instance", async () => {
     setup({ isDevelopmentMode: false });
 

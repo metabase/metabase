@@ -88,7 +88,7 @@ function WorkspaceInstancePageBody({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={<HelpMenu />}
+        actions={workspace != null ? <HelpMenu /> : null}
         py={0}
       />
       {workspace == null ? (
