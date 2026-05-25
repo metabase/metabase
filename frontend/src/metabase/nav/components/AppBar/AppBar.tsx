@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { DetailViewState } from "metabase/redux/store";
-import type { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
 import AppBarLarge from "./AppBarLarge";
@@ -26,6 +27,9 @@ export interface AppBarProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   isMetricsViewer?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }

@@ -2,6 +2,8 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import AppBar from "metabase/app/nav/AppBar";
+import Navbar from "metabase/app/nav/Navbar";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
   Archived,
@@ -15,8 +17,6 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import AppBar from "metabase/nav/containers/AppBar";
-import Navbar from "metabase/nav/containers/Navbar";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";

@@ -32,8 +32,6 @@ function QuestionLineageMock() {
 jest.mock("../NewItemButton", () => NewItemButtonMock);
 jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
 jest.mock("../search/SearchButton/SearchButton", () => ({ SearchButton }));
-jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
-jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
 
 describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
@@ -179,6 +177,8 @@ describe("AppBar", () => {
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   detailView: null,
   currentUser: createMockUser(),
+  collectionBreadcrumbs: <BreadcrumbsMock />,
+  questionLineage: <QuestionLineageMock />,
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
   ...opts,

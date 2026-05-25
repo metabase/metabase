@@ -8,14 +8,13 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
-import { getDashboard } from "metabase/dashboard/selectors";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
@@ -36,7 +35,6 @@ interface EntityLoaderProps {
 }
 
 interface StateProps {
-  dashboard?: Dashboard;
   questionId?: number;
   collectionId?: CollectionId;
 }
@@ -52,11 +50,6 @@ type Props = MainNavbarOwnProps &
 
 function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
-    // Can't use dashboard entity loader instead.
-    // The dashboard page uses DashboardsApi.get directly,
-    // so we can't re-use data between these components.
-    dashboard: getDashboard(state),
-
     questionId: maybeGetQuestionId(state, props),
     collectionId: maybeGetCollectionId(state, props),
   };

@@ -1,13 +1,12 @@
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
-import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
 import { AppSwitcher } from "../AppSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
@@ -31,6 +30,9 @@ export interface AppBarSmallProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
@@ -45,6 +47,9 @@ const AppBarSmall = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  collectionBreadcrumbs,
+  questionLineage,
+  onSearchItemSelect,
   onToggleNavbar,
   onCloseNavbar,
 }: AppBarSmallProps): JSX.Element => {
@@ -84,6 +89,7 @@ const AppBarSmall = ({
                   <SearchBar
                     onSearchActive={handleSearchActive}
                     onSearchInactive={handleSearchInactive}
+                    onSearchItemSelect={onSearchItemSelect}
                   />
                 ) : (
                   <Flex justify="end">
@@ -112,9 +118,9 @@ const AppBarSmall = ({
               table={detailView.table}
             />
           ) : isQuestionLineageVisible ? (
-            <QuestionLineage />
+            questionLineage
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
+            collectionBreadcrumbs
           ) : null}
         </AppBarSubheader>
       )}

@@ -1,5 +1,7 @@
 import type { Location } from "history";
 
+import type { Dashboard } from "metabase-types/api";
+
 export interface MainNavbarOwnProps {
   isOpen: boolean;
   location: Location;
@@ -7,6 +9,7 @@ export interface MainNavbarOwnProps {
     slug?: string;
     pageId?: string;
   };
+  dashboard?: Dashboard;
 }
 
 export interface MainNavbarDispatchProps {
