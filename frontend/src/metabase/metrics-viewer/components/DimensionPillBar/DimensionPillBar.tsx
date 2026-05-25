@@ -1,12 +1,12 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
-import { DimensionPill } from "metabase/common/components/DimensionPill";
-import { Flex } from "metabase/ui";
+import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import { Flex, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
 import type { MetricSourceId } from "../../types/viewer-state";
 
-import { ExpressionDimensionPill } from "./ExpressionDimensionPill";
+import S from "./DimensionPillBar.module.css";
 
 // ── Standalone metric pill item ──
 
@@ -53,17 +53,9 @@ export type DimensionPillBarItem =
 
 export interface DimensionPillBarProps {
   items: DimensionPillBarItem[];
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onDimensionRemove?: (slotIndex: number) => void;
-  disabled?: boolean;
 }
 
-export function DimensionPillBar({
-  items,
-  onDimensionChange,
-  onDimensionRemove,
-  disabled,
-}: DimensionPillBarProps) {
+export function DimensionPillBar({ items }: DimensionPillBarProps) {
   if (items.length === 0) {
     return null;
   }
@@ -82,27 +74,48 @@ export function DimensionPillBar({
     >
       {items.map((item) =>
         item.type === "expression" ? (
-          <ExpressionDimensionPill
+          <DimensionLabel
             key={`expr-${item.id}`}
-            item={item}
-            onDimensionChange={onDimensionChange}
-            disabled={disabled}
+            label={item.label}
+            icon={item.icon}
+            colors={item.colors}
           />
         ) : (
-          <DimensionPill
+          <DimensionLabel
             key={item.id}
             label={item.label}
             icon={item.icon}
             colors={item.colors}
-            options={item.availableOptions}
-            onSelect={(dimension) => onDimensionChange(item.id, dimension)}
-            onRemove={
-              onDimensionRemove ? () => onDimensionRemove(item.id) : undefined
-            }
-            disabled={disabled}
           />
         ),
       )}
+    </Flex>
+  );
+}
+
+function DimensionLabel({
+  label,
+  icon,
+  colors,
+}: {
+  label?: string;
+  icon?: IconName;
+  colors?: string[];
+}) {
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <Flex align="center" gap="xs" className={S.label}>
+      <SourceColorIndicator
+        colors={colors}
+        fallbackIcon={icon ?? "add"}
+        size={12}
+      />
+      <Text size="sm" lh="1rem" c="text-primary">
+        {label}
+      </Text>
     </Flex>
   );
 }

@@ -22,8 +22,7 @@ import {
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
-import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
-import { isNotNull } from "metabase/utils/types";
+import { getObjectKeys } from "metabase/utils/objects";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
@@ -49,8 +48,6 @@ type MetricsViewerDimensionBreakoutContentProps = {
   onDimensionBreakoutUpdate: (
     updates: Partial<MetricsViewerDimensionBreakoutState>,
   ) => void;
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onDimensionRemove: (slotIndex: number) => void;
 };
 
 export function MetricsViewerDimensionBreakoutContent({
@@ -67,8 +64,6 @@ export function MetricsViewerDimensionBreakoutContent({
   availableDimensions,
   sourceOrder,
   onDimensionBreakoutUpdate,
-  onDimensionChange,
-  onDimensionRemove,
 }: MetricsViewerDimensionBreakoutContentProps) {
   const dimensionFilter = getDimensionBreakoutConfig(
     dimensionBreakout.type,
@@ -220,12 +215,6 @@ export function MetricsViewerDimensionBreakoutContent({
     dimensionBreakoutConfig.minDimensions === 0 && !hasAnyOptions;
   const showColumnLabels = dimensionBreakout.showColumnLabels === true;
 
-  const mappedDimensionCount = getObjectValues(
-    dimensionBreakout.dimensionMapping,
-  ).filter(isNotNull).length;
-  const dimensionRemoveHandler =
-    mappedDimensionCount > 1 ? onDimensionRemove : undefined;
-
   return (
     <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
@@ -242,11 +231,7 @@ export function MetricsViewerDimensionBreakoutContent({
       />
       {!hideDimensionPill && showColumnLabels && (
         <Box mt="sm">
-          <DimensionPillBar
-            items={dimensionItems}
-            onDimensionChange={onDimensionChange}
-            onDimensionRemove={dimensionRemoveHandler}
-          />
+          <DimensionPillBar items={dimensionItems} />
         </Box>
       )}
       {definitionForControls && (

@@ -63,8 +63,6 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
     removeMetric,
     selectDimensionBreakout,
     updateActiveDimensionBreakout,
-    changeDimensionBreakoutDimension,
-    removeDimensionBreakoutDimension,
     setBreakoutDimension,
     setFormulaEntities,
   } = useMetricsViewerResult;
@@ -146,19 +144,6 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                   }
                   sourceOrder={sourceOrder}
                   onDimensionBreakoutUpdate={updateActiveDimensionBreakout}
-                  onDimensionChange={(slotIndex, dim) =>
-                    changeDimensionBreakoutDimension(
-                      activeDimensionBreakout.id,
-                      slotIndex,
-                      dim,
-                    )
-                  }
-                  onDimensionRemove={(slotIndex) =>
-                    removeDimensionBreakoutDimension(
-                      activeDimensionBreakout.id,
-                      slotIndex,
-                    )
-                  }
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoDimensionBreakoutEmptyState />
