@@ -693,7 +693,7 @@
                ["2014-01-01" 498]
                ["2015-01-01" 267]]
               [iso8601-date-part int]]]
-             ;; TODO: Find a way how to make those work with Druid JDBC.
+            ;; TODO: Find a way how to make those work with Druid JDBC.
             :when (not (#{:week-of-year :day-of-week :week} unit))]
       (testing unit
         (testing "topN query"
@@ -707,8 +707,8 @@
                    columns))
             (is (= expected-rows
                    rows))))
-       ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
-       ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
+        ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
+        ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
         (testing "group timeseries query"
           (let [{:keys [columns rows]} (mt/formatted-rows+column-names
                                         format-fns
@@ -854,7 +854,7 @@
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
-                                 ;; test data is all in the past so nothing happened today <3
+                   ;; test data is all in the past so nothing happened today <3
                    :filter      [:not [:time-interval $timestamp :current :day]]}))))))))
 
 (deftest ^:parallel min-test

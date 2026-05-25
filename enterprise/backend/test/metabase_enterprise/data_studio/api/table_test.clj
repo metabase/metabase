@@ -311,7 +311,7 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
           (perms/revoke-collection-permissions! (perms-group/data-analyst) coll-id)
-            ;; Analyst has data analyst role but no data perms on the table
+          ;; Analyst has data analyst role but no data perms on the table
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
                                        {:table_ids [table-id]}))))))))

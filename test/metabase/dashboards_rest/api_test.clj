@@ -1898,7 +1898,7 @@
                                                        :size_y           4
                                                        :col              1
                                                        :row              1
-                                                      ;; initialy was in tab1, now in tab 2
+                                                       ;; initialy was in tab1, now in tab 2
                                                        :dashboard_tab_id dashtab-id-2
                                                        :card_id          card-id-1}
                                                       {:id               dashcard-id-2
@@ -3559,11 +3559,11 @@
   ;; This test should either (1) be rehabilitated to use Lib to get the set of columns for filtering a dashcard (like
   ;; the FE); or (2) just be dropped if it's not providing value.
   #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
-    ;; FE use the id returned by /api/table/:card__id/query_metadata
-    ;; for the `values_source_config.value_field`, so we need to test to make sure
-    ;; the id is a valid field that we could use to retrieve values.
+      ;; FE use the id returned by /api/table/:card__id/query_metadata
+      ;; for the `values_source_config.value_field`, so we need to test to make sure
+      ;; the id is a valid field that we could use to retrieve values.
       (mt/with-temp
-      ;; card with agggregation and binning columns
+        ;; card with agggregation and binning columns
         [Card {mbql-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                          (mt/mbql-query venues
                                            {:limit 5
@@ -3659,7 +3659,7 @@
                   (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
                                                                 (:id dashboard)
                                                                 "_text_"
-                                                              ;; a0 is part of first 2 rows of queried table
+                                                                ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
 
 (deftest field-filter-uuid-operator-dashboard-test

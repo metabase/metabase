@@ -160,8 +160,8 @@
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
-               ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
-               ;; should be decrypted
+                ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
+                ;; should be decrypted
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))
 

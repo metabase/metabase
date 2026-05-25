@@ -286,6 +286,51 @@
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
+(deftest card-with-unexported-table-and-field-test
+  (testing "a Card referencing a Table/Field absent from the bundle still loads by synthesizing inactive rows"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing a database, table, field and a card that references them"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "pop! minis")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  field (ts/create! :model/Field :name "age" :table_id (:id table) :base_type :type/Integer)
+                  _user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                  mp    (lib-be/application-database-metadata-provider (:id db))
+                  query (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                            (lib/filter (lib/>= (lib.metadata/field mp (:id field)) 18))
+                            (lib/aggregate (lib/count)))]
+              (ts/create! :model/Card
+                          :database_id   (:id db)
+                          :table_id      (:id table)
+                          :collection_id (:id coll)
+                          :query_type    :query
+                          :name          "Example Card"
+                          :dataset_query query
+                          :display       :line)
+              (reset! serialized (into [] (remove #(#{"Table" "Field"} (-> % :serdes/meta last :model))
+                                                  (serdes.extract/extract {})))))))
+
+        (testing "the bundle has the Card but no Table/Field"
+          (is (seq (by-model @serialized "Card")))
+          (is (empty? (by-model @serialized "Table")))
+          (is (empty? (by-model @serialized "Field"))))
+
+        (testing "deserializing synthesizes inactive Table and Field for the dangling references"
+          (ts/with-db dest-db
+            (ts/create! :model/Database :name "my-db")
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [db    (t2/select-one :model/Database :name "my-db")
+                  table (t2/select-one :model/Table :name "customers" :db_id (:id db))
+                  field (and table (t2/select-one :model/Field :name "age" :table_id (:id table)))
+                  card  (t2/select-one :model/Card :name "Example Card")
+                  query (:dataset_query card)]
+              (is (=? {:active false} table))
+              (is (=? {:active false} field))
+              (is (= (:id db) (lib/database-id query)))
+              (is (= (:id table) (lib/primary-source-table-id query))))))))))
+
 (deftest segment-test
   ;; Segment.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
   ;; converted to a portable form and read back in.
@@ -487,7 +532,6 @@
             (is (=? {:definition {:stages [{:aggregation [[:* {} [:measure {} (:entity_id @msr1s)] 2]]}]}}
                     derived-measure))
             (is (= #{[{:id "my-db", :model "Database"}]
-                     [{:id "my-db", :model "Database"} {:id "sales", :model "Table"}]
                      [{:id (:entity_id @msr1s), :model "Measure"}]}
                    (serdes/mbql-deps (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
@@ -1418,7 +1462,7 @@
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory extract1))
             (ts/with-db source-db
-             ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
+              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
               (t2/delete! :model/DashboardCardSeries (:id series1s))
               (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
               (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
@@ -1426,7 +1470,7 @@
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
                         series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
-                       ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
+                        ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
                         series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
                     (testing "Sense check: there are 3 series for the dashboard card initially"
                       (is (= 3

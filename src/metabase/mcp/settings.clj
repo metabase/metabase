@@ -41,7 +41,7 @@
   {"claude"  ["https://*.claudemcpcontent.com"]
    "chatgpt" ["https://*.web-sandbox.oaiusercontent.com"]
 
-    ;; vscode-webview:// handled by mcp-sandbox-origin? in security middleware
+   ;; vscode-webview:// handled by mcp-sandbox-origin? in security middleware
    "cursor-vscode"  []})
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------

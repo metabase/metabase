@@ -547,7 +547,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
                                     (fn [_query & _opts]
-                        ;; Return "order" which will fuzzy match multiple tables
+                                      ;; Return "order" which will fuzzy match multiple tables
                                       {:tables [{:table "order" :schema "public"}]})]
           (let [query (mt/with-db db
                         (lib/native-query (mt/metadata-provider) "SELECT * FROM order"))

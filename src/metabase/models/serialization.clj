@@ -834,7 +834,7 @@
 (defn- xform-one [model-name ingested]
   (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
-    (-> (select-keys ingested (:copy spec))
+    (-> (merge (:defaults spec) (select-keys ingested (:copy spec)))
         (into (for [[k transform] (:transform spec)
                     :when (and (not (::nested transform))
                                ;; handling circuit-breaking
@@ -1403,10 +1403,22 @@
 
 (declare ^:private mbql-deps-map)
 
+(defn- ref->db-dep
+  "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
+  its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
+  are synthesized as inactive rows on import — but their Database is, since it can't be synthesized. We can't rely
+  on the query's top-level `:database` for this because some references (e.g. dashboard parameter mappings) are
+  bare field refs with no surrounding query."
+  [ref]
+  (when-let [db-name (first ref)]
+    #{[{:model "Database" :id db-name}]}))
+
 (defn- mbql-deps-vector [entity]
   (match/match-one entity
-    [#{:field "field"} (opts :guard map?) (id :guard vector?)]
-    (into #{(field->path id)} (mbql-deps-map opts))
+    ;; A `:field`/`:field-id` clause's only dependency is the Database of its referenced field; the Field itself
+    ;; is not a dependency, and a field clause never contains nested metric/segment/card refs, so we don't descend.
+    [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
+    (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
@@ -1419,8 +1431,8 @@
           (mbql-deps-map opts))
 
     ;; legacy (MBQL 4) refs
-    [#{:field "field" :field-id "field-id"} (id :guard vector?) opts]
-    (into #{(field->path id)} (mbql-deps-map opts))
+    [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
+    (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
     #{[{:model (case tag
@@ -1443,12 +1455,13 @@
                     (and (= k :database)
                          (string? v)
                          (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    (and (= k :source-table) (vector? v))      #{(table->path v)}
+                    ;; Table/Field references contribute only their Database as a dependency (see `ref->db-dep`).
+                    (and (= k :source-table) (vector? v))      (ref->db-dep v)
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
-                    (and (= k :source-field) (vector? v))      #{(field->path v)}
+                    (and (= k :source-field) (vector? v))      (ref->db-dep v)
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
-                    (and (= k :table-id)     (vector? v))      #{(table->path v)}
+                    (and (= k :table-id)     (vector? v))      (ref->db-dep v)
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     (map? v)                                   (mbql-deps-map v)
                     (vector? v)                                (mbql-deps-vector v))))
@@ -1763,11 +1776,11 @@
      (into {}
            (for [[k cols] mapping]
              (let [updated-cols (cond
-                                   ;; e.g. [{:sourceId "card:..."} ...]
+                                  ;; e.g. [{:sourceId "card:..."} ...]
                                   (and (coll? cols) (map? (first cols)))
                                   (mapv #(update % :sourceId import-visualizer-source-id) cols)
 
-                                   ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+                                  ;; e.g. ["$_card:<id>_name"] for funnel dimensions
                                   (and (coll? cols) (string? (first cols)))
                                   (mapv import-card-dimension-ref cols)
 
@@ -1791,7 +1804,8 @@
   [settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
     #{(case model
-        "table" (table->path id)
+        ;; A linked Table is not a dependency (synthesized on import if missing), but its Database is.
+        "table" [{:model "Database" :id (first id)}]
         [{:model (name (link-card-model->toucan-model model))
           :id    id}])}))
 
