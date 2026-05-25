@@ -24,6 +24,20 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: "/api/ee/workspace-instance/current",
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          workspaceInstanceApi.util.updateQueryData(
+            "getCurrentWorkspace",
+            undefined,
+            () => null,
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), listTag("workspace")]),
     }),
