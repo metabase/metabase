@@ -26,13 +26,6 @@
   font-weight: normal;
 }
 
-@media (max-width: 40em) {
-  .launcher {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
 /* The "policy" pill on the right of each launcher. Mantine sets data-variant
  * on the button root, so the brand-border override targets it directly. */
 .token {
@@ -50,6 +43,11 @@
 }
 
 @media (max-width: 40em) {
+  .launcher {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .token {
     flex: 1;
   }
