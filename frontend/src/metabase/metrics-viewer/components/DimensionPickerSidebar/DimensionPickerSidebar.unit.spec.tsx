@@ -79,14 +79,12 @@ function setup({
   slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
   sourceOrder = [SOURCE_ID],
   sources = sourceDataById,
-  hasMultipleSources = false,
 }: {
   tab?: MetricsViewerTabState;
   dimensions?: AvailableDimensionsResult;
   slots?: MetricSlot[];
   sourceOrder?: MetricSourceId[];
   sources?: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources?: boolean;
 } = {}) {
   const onAddTab = jest.fn();
   const onUpdateActiveTab = jest.fn();
@@ -100,7 +98,6 @@ function setup({
         sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
         metricSourceOrder={sourceOrder}
         metricSourceDataById={sources}
-        hasMultipleSources={hasMultipleSources}
         onAddTab={onAddTab}
         onUpdateActiveTab={onUpdateActiveTab}
       />
@@ -268,7 +265,6 @@ describe("DimensionPickerSidebar", () => {
         [SOURCE_ID]: { type: "metric", name: "ARR" },
         [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
       },
-      hasMultipleSources: true,
     });
 
     await userEvent.click(screen.getByRole("button", { name: "See all" }));

@@ -128,16 +128,13 @@ export function MetricSearchInput({
     <Flex
       ref={containerRef}
       className={S.inputWrapper}
-      bg="background-primary"
       align="center"
       gap="sm"
-      px="sm"
-      py="xs"
       onClick={handleContainerClick}
       data-has-error={validationError ? true : undefined}
       data-testid="metrics-formula-input"
     >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2rem">
         {isCollapsed ? (
           // Unfocused: each formula entity rendered as MetricPill or MetricExpressionPill
           <>

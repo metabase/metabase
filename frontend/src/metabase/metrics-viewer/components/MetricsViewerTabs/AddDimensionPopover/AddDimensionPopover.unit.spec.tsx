@@ -44,7 +44,6 @@ function setup({
       availableDimensions={availableDimensions}
       sourceOrder={[SOURCE_ID]}
       sourceDataById={sourceDataById}
-      hasMultipleSources={false}
       canAddScalarTab={false}
       onAddTab={onAddTab}
       renderTrigger={renderTrigger}

@@ -314,7 +314,6 @@ describe("buildDimensionPickerSections", () => {
         [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
         [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
       },
-      hasMultipleSources: true,
     });
 
     expect(sections).toEqual([
@@ -337,7 +336,6 @@ describe("buildDimensionPickerSidebarCategories", () => {
       sourceDataById: {
         [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
       },
-      hasMultipleSources: false,
     });
 
     expect(categories.map((category) => category.name)).toEqual([
@@ -393,7 +391,6 @@ describe("buildDimensionPickerSidebarCategories", () => {
       sourceDataById: {
         [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
       },
-      hasMultipleSources: false,
     });
 
     expect(categories.map((category) => category.name)).toEqual(["Category"]);
@@ -441,7 +438,6 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
         [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
         [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
       },
-      hasMultipleSources: true,
     });
     const timeCategory = categories.find(
       (category) => category.name === "Time",
@@ -530,7 +526,6 @@ describe("buildDimensionPickerSidebarCategorySelectRows", () => {
       sourceDataById: {
         [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
       },
-      hasMultipleSources: false,
     });
     const timeCategory = categories.find(
       (category) => category.name === "Time",

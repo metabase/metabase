@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, DefaultSelectItem, Icon, Popover } from "metabase/ui";
+import { Box, Button, DefaultSelectItem, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -10,6 +10,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { UNBINNED } from "../../../constants";
+import S from "../MetricControls.module.css";
 
 const MIN_WIDTH = "11.25rem";
 
@@ -72,12 +73,14 @@ export function BinningButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          fw="bold"
-          py="xs"
-          px="sm"
+          className={S.controlButton}
+          h="2rem"
+          fw={400}
+          py={0}
+          px="md"
+          bdrs="md"
           variant="subtle"
           color="text-primary"
-          rightSection={<Icon name="chevrondown" size={12} />}
           onClick={() => setIsOpen(!isOpen)}
         >
           {displayLabel}
