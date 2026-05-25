@@ -1,0 +1,19 @@
+.root {
+  display: inline-block;
+}
+
+.root > button {
+  border: 1px solid var(--mb-color-border);
+}
+
+.root > button:not(:last-of-type) {
+  border-right-width: 0.5px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.root > button:not(:first-of-type) {
+  border-left-width: 0.5px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

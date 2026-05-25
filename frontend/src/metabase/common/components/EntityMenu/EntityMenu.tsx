@@ -3,7 +3,7 @@ import { Component, createRef } from "react";
 
 import { EntityMenuItem } from "metabase/common/components/EntityMenuItem";
 import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
-import type { EntityMenuIconButtonProps } from "metabase/common/components/EntityMenuTrigger/EntityMenuTrigger.styled";
+import type { EntityMenuIconButtonProps } from "metabase/common/components/EntityMenuTrigger/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
 import { Divider, Popover } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";

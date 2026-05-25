@@ -1,0 +1,134 @@
+.root {
+  position: relative;
+  display: flex;
+  padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px);
+  color: var(--mb-color-text-primary);
+  opacity: 1;
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 0.125rem solid transparent;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &::after {
+    content: " ";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    border-bottom: 0.125rem solid transparent;
+  }
+}
+
+.rootSelected {
+  color: var(--mb-color-brand);
+
+  &::after {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.rootDisabled {
+  color: var(--mb-color-text-primary);
+  opacity: 0.3;
+  cursor: default;
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.inputWrapper {
+  position: relative;
+  padding: var(--mantine-spacing-xs);
+  border: 1px solid transparent;
+  border-radius: var(--mantine-radius-sm);
+  line-height: 1.15;
+}
+
+.inputWrapperRenaming {
+  box-shadow: 0 0 2px 1px var(--mb-color-brand);
+}
+
+.inputWrapperRenamable {
+  &:hover {
+    box-shadow: 0 0 2px 1px var(--mb-color-brand);
+  }
+}
+
+.inputResizer {
+  visibility: hidden;
+  white-space: pre;
+  padding-right: 2px;
+}
+
+.input {
+  position: absolute;
+  width: 100%;
+  left: 0;
+  bottom: -1px;
+  padding: var(--mantine-spacing-xs);
+  border: 1px solid transparent;
+  border-radius: var(--mantine-radius-xs);
+  outline: none;
+  background-color: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: bold;
+  text-align: center;
+}
+
+.inputDisabled {
+  pointer-events: none;
+}
+
+.menuButton {
+  transition: background-color 0s;
+  align-self: center;
+  padding: var(--mantine-spacing-xs);
+  color: inherit;
+  border: none;
+
+  &:hover,
+  &:focus {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-tertiary);
+  }
+}
+
+.menuButtonOpen {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-tertiary);
+}
+
+.menuButtonDisabled {
+  &:hover,
+  &:focus {
+    color: var(--mb-color-text-primary);
+    background-color: transparent;
+  }
+}
+
+.menuContent {
+  padding: var(--mantine-spacing-sm);
+}
+
+.menuItem {
+  width: 100%;
+  padding: 0.85em 1.45em;
+  border-radius: 0.5em;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:focus,
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-secondary);
+  }
+}

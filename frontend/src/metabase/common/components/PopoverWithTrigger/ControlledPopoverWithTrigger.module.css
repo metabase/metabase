@@ -1,0 +1,8 @@
+.triggerButton {
+  padding: 0;
+  border: none;
+
+  &:hover {
+    background: unset;
+  }
+}

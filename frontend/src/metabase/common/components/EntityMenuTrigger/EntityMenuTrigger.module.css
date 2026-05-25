@@ -1,0 +1,13 @@
+.iconButton {
+  width: 36px;
+  height: 36px;
+  color: var(--entity-menu-trigger-color, inherit);
+
+  &:hover {
+    color: var(--entity-menu-trigger-hover-color, inherit);
+    background-color: var(
+      --entity-menu-trigger-hover-bg,
+      var(--mb-color-background-tertiary)
+    );
+  }
+}

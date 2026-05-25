@@ -1,19 +1,20 @@
+import cx from "classnames";
 import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
-import { ButtonGroupRoot } from "./ButtonGroup.styled";
+import S from "./ButtonGroup.module.css";
 
 export interface ButtonGroupProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
 export const ButtonGroup = forwardRef(function ButtonGroup(
-  { children, ...props }: ButtonGroupProps,
+  { children, className, ...props }: ButtonGroupProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <ButtonGroupRoot {...props} ref={ref}>
+    <div {...props} ref={ref} className={cx(S.root, className)}>
       {children}
-    </ButtonGroupRoot>
+    </div>
   );
 });
