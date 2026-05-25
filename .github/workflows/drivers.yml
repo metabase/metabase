@@ -1551,7 +1551,7 @@ jobs:
       CI: 'true'
       DRIVERS: teradata
       MB_TERADATA_TEST_HOST: ${{ secrets.MB_TERADATA_TEST_HOST }}
-      MB_TERADATA_TEST_USER: ${{ secrets.MB_TERADATA_TEST_USER }}
+      MB_TERADATA_TEST_USER: dbc
       MB_TERADATA_TEST_PASSWORD: ${{ secrets.MB_TERADATA_TEST_PASSWORD }}
     name: Teradata
     steps:
