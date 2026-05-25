@@ -8,6 +8,7 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import type { CustomVizPluginId } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { wrapPluginWidget } from "./widget-mount";
 
@@ -35,8 +36,8 @@ export function sanitizePluginSettings(
   >["settings"] = {};
 
   for (const [settingId, value] of Object.entries(settings)) {
-    if (!value || typeof value !== "object") {
-      sanitizedSettings[settingId] = value;
+    if (!isObject(value)) {
+      // settings definitions should be objects
       continue;
     }
 
