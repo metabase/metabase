@@ -15,7 +15,7 @@ export function WorkspaceInstanceEmptyState() {
   return (
     <>
       <WorkspaceEmptyState
-        description={t`Set up this instance to remap transform tables into an isolated workspace schema, so you can develop and test transforms without affecting your production tables.`}
+        description={t`Set up this developer instance to remap transform tables into an isolated workspace schema, so you can develop and test transforms without affecting your production tables.`}
       >
         {isDevelopmentMode && (
           <Box pb="xl">
