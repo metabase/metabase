@@ -1,28 +1,23 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
-import { TextInput } from "metabase/ui";
+import { Stack, Text, TextInput } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { getRelativeLandingPageUrl } from "./utils";
 
-export function LandingPageWidget() {
+export function LandingPageUrlField() {
   const [error, setError] = useState<string | null>(null);
-  const { value, updateSetting, description } = useAdminSetting("landing-page");
+  const { value, updateSetting } = useAdminSetting("landing-page");
   const [inputValue, setInputValue] = useState(value ?? "");
 
   useEffect(() => {
-    if (value) {
-      setInputValue(value);
-    }
+    setInputValue(value ?? "");
   }, [value]);
 
-  const handleChange = async (value: string) => {
-    const { isSameOrigin, relativeUrl } = getRelativeLandingPageUrl(
-      value.trim(),
-    );
+  const handleBlur = async (raw: string) => {
+    const { isSameOrigin, relativeUrl } = getRelativeLandingPageUrl(raw.trim());
 
     if (!isSameOrigin) {
       setError(t`This field must be a relative URL.`);
@@ -44,25 +39,24 @@ export function LandingPageWidget() {
   };
 
   return (
-    <div>
-      <SettingHeader
-        id="landing-page"
-        title={t`Landing page`}
-        description={description}
-      />
+    <Stack gap="xs">
       <TextInput
         id="landing-page"
         data-testid="landing-page"
         aria-label={t`Landing page custom destination`}
-        placeholder="/"
+        aria-describedby="landing-page-hint"
+        placeholder="/dashboard/1"
         error={error}
-        value={String(inputValue ?? "")}
+        value={inputValue}
         onChange={(e) => {
           setError(null);
           setInputValue(e.target.value);
         }}
-        onBlur={(e) => handleChange(e.target.value)}
+        onBlur={(e) => handleBlur(e.target.value)}
       />
-    </div>
+      <Text id="landing-page-hint" size="xs" c="text-secondary">
+        {t`Enter a relative URL like /dashboard/1 or /collection/2.`}
+      </Text>
+    </Stack>
   );
 }
