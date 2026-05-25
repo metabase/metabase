@@ -182,7 +182,7 @@ function toTableDependencyNode(
     schema: node.data.schema ?? "",
     db,
     fields: node.data.fields.map(
-      (f) =>
+      (f): Field =>
         ({
           id: f.id,
           name: f.name,

@@ -197,15 +197,18 @@ export type UserKeyValue =
     }
   | {
       namespace: "schema_viewer";
-      key: string;
-      value:
-        | {
-            table_ids: ConcreteTableId[];
-          }
-        | {
-            databaseId: DatabaseId;
-            schema?: SchemaName;
-          };
+      key: "last_database";
+      value: {
+        databaseId: DatabaseId;
+        schema?: SchemaName;
+      };
+    }
+  | {
+      namespace: "schema_viewer";
+      key: `${DatabaseId}__${SchemaName}`;
+      value: {
+        table_ids: ConcreteTableId[];
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

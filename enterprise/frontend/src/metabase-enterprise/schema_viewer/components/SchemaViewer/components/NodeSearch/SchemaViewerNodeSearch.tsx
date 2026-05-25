@@ -26,7 +26,7 @@ type SearchItem = {
   label: React.ReactNode;
   text: string;
   fkCount: number;
-  haystack: string;
+  haystack: string[];
 };
 
 export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
@@ -66,7 +66,9 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           label,
           text,
           fkCount,
-          haystack: `${text} ${name} ${display_name ?? ""}`.toLowerCase(),
+          haystack: [text, name, display_name ?? ""]
+            .filter(Boolean)
+            .map((s) => s.toLowerCase()),
         };
       }),
     [nodes],
@@ -77,7 +79,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
     if (q === "") {
       return allItems;
     }
-    return allItems.filter((item) => item.haystack.includes(q));
+    return allItems.filter((item) => item.haystack.some((h) => h.includes(q)));
   }, [allItems, query]);
 
   const handleOptionSubmit = (nodeId: string) => {
@@ -142,7 +144,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
               >
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
                   <Text className={S.label}>{item.label}</Text>
-                  <Group gap={4} wrap="nowrap" className={S.fieldCount}>
+                  <Group gap="xs" wrap="nowrap" className={S.fieldCount}>
                     <Text c="text-tertiary" fz="xs">
                       {item.fkCount}
                     </Text>

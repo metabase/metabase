@@ -1,7 +1,12 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePrevious } from "react-use";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  SchemaName,
+} from "metabase-types/api";
 
 type UseSchemaPreferencesStoreArgs = {
   databaseId: DatabaseId | undefined;
@@ -60,7 +65,7 @@ export function useSchemaPreferencesStore({
   schema,
   initialTableIds,
 }: UseSchemaPreferencesStoreArgs): UseSchemaPreferencesStoreResult {
-  const contextKey =
+  const contextKey: `${DatabaseId}__${SchemaName}` | null =
     databaseId != null ? `${databaseId}__${schema ?? ""}` : null;
 
   const {
@@ -91,12 +96,8 @@ export function useSchemaPreferencesStore({
     return map;
   });
 
-  // On context switch, seed from URL initial ids if present and not yet
-  // cached. If no URL ids and no cached entry, the savedPrefs effect below
-  // will populate.
-  const prevContextKeyRef = useRef(contextKey);
-  if (prevContextKeyRef.current !== contextKey) {
-    prevContextKeyRef.current = contextKey;
+  const prevContextKey = usePrevious(contextKey);
+  if (prevContextKey !== contextKey) {
     if (
       contextKey != null &&
       initialTableIds != null &&
@@ -123,13 +124,7 @@ export function useSchemaPreferencesStore({
     !isLoadingSavedPrefs &&
     savedPrefs !== undefined
   ) {
-    const restoredIds =
-      savedPrefs != null &&
-      typeof savedPrefs === "object" &&
-      "table_ids" in savedPrefs &&
-      Array.isArray(savedPrefs.table_ids)
-        ? (savedPrefs.table_ids as ConcreteTableId[])
-        : EMPTY_IDS;
+    const restoredIds = savedPrefs != null ? savedPrefs.table_ids : EMPTY_IDS;
     setTableIdsByContext((prev) => {
       if (prev.has(contextKey)) {
         return prev;

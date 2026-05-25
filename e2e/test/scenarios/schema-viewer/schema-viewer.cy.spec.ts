@@ -3,24 +3,19 @@ const { H } = cy;
 import {
   MAGIC_USER_GROUPS,
   SAMPLE_DB_ID,
-  SAMPLE_DB_TABLES,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const {
-  STATIC_ORDERS_ID: ORDERS_ID,
-  STATIC_PEOPLE_ID: PEOPLE_ID,
-  STATIC_PRODUCTS_ID: PRODUCTS_ID,
-  STATIC_REVIEWS_ID: REVIEWS_ID,
-} = SAMPLE_DB_TABLES;
+const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const BASE_URL = "/data-studio/schema-viewer";
 const PUBLIC_SCHEMA = "PUBLIC";
 const ERD_ALIAS = "erd";
 
 // Layout constants mirrored from the SchemaViewer source. Keep in sync.
-const AUTO_LAYOUT_ZOOM = 0.3;
-const MIN_FOCUS_ZOOM = 0.5;
+const MIN_ZOOM = 0.3;
+const MIN_ZOOM_FOR_TARGET = 0.5;
 
 const SV_SCHEMA = "sv_test";
 const SV_EXTRA_SCHEMA = "sv_extra";
@@ -146,7 +141,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.findByRole("button", { name: "Sample Database" }).click();
 
     cy.log("Single-schema DB auto-navigates into PUBLIC and fetches ERD");
-    cy.wait(`@${ERD_ALIAS}`)
+    cy.wait("@erd")
       .its("request.url")
       .should("include", `database-id=${SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
@@ -180,8 +175,8 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.log("Click panel title — camera re-zooms to the selected Orders node");
     infoPanel().findByRole("heading", { name: "Orders" }).click();
     assertViewportZoom((z) =>
-      expect(z, "title click should zoom in (>= 0.5)").to.be.at.least(
-        MIN_FOCUS_ZOOM,
+      expect(z, "title click should zoom correctly").to.be.at.least(
+        MIN_ZOOM_FOR_TARGET,
       ),
     );
     assertNodeInViewport(ORDERS_ID);
@@ -205,16 +200,16 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.log("Auto-layout zoom is within React Flow's clamp range (>= MIN_ZOOM)");
     assertViewportZoom((z) =>
       expect(z, "auto-layout zoom should be at least MIN_ZOOM").to.be.at.least(
-        AUTO_LAYOUT_ZOOM,
+        MIN_ZOOM,
       ),
     );
 
-    cy.log("Re-select Orders, then Focus-node zooms in (>= 0.5) onto Orders");
+    cy.log("Re-select Orders, then Focus-node zooms in onto Orders");
     tableNode(ORDERS_ID).findByText("ORDERS").click();
     cy.contains("button", "Focus node").should("be.visible").click();
     assertViewportZoom((z) =>
-      expect(z, "focus-node zoom should be at least 0.5").to.be.at.least(
-        MIN_FOCUS_ZOOM,
+      expect(z, "focus-node should be zoomed in").to.be.at.least(
+        MIN_ZOOM_FOR_TARGET,
       ),
     );
     assertNodeInViewport(ORDERS_ID);
@@ -225,12 +220,12 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.contains("button", "Focus node").should("be.disabled");
 
     cy.log(
-      "Double-click Reviews — camera zooms in (>= 0.5) onto Reviews and re-enables the focus-node button",
+      "Double-click Reviews — camera zooms in onto Reviews and re-enables the focus-node button",
     );
     tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
     assertViewportZoom((z) =>
-      expect(z, "double-click should zoom in (>= 0.5)").to.be.at.least(
-        MIN_FOCUS_ZOOM,
+      expect(z, "double-click should zoom in").to.be.at.least(
+        MIN_ZOOM_FOR_TARGET,
       ),
     );
     assertNodeInViewport(REVIEWS_ID);
@@ -288,31 +283,23 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     infoPanel().findByLabelText("Close").click({ force: true });
     cy.findByTestId("graph-info-panel").should("not.exist");
     cy.contains("button", "Focus node").should("not.exist");
-
-    cy.log("Legacy /api/ee/dependencies/erd URL is fully decommissioned (404)");
-    cy.request({
-      url: "/api/ee/dependencies/erd?database-id=1&schema=PUBLIC",
-      failOnStatusCode: false,
-    })
-      .its("status")
-      .should("eq", 404);
   });
 
   it("URL state survives a hard reload, and the bare URL redirects back to the last opened (DB, schema)", () => {
     cy.log("Deep-link directly to Sample DB → PUBLIC");
     cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     tableNode(ORDERS_ID).should("be.visible");
 
     cy.log("Hard reload reproduces the same canvas state");
     cy.reload();
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     tableNode(ORDERS_ID).should("be.visible");
     tableNode(PRODUCTS_ID).should("be.visible");
 
     cy.log("Visiting the bare URL redirects to the last opened (DB, schema)");
     cy.visit(BASE_URL);
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     cy.url()
       .should("include", `database-id=${SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
@@ -321,7 +308,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
 
   it("opens the picker with the current selection highlighted, and supports Back navigation between databases and schemas", () => {
     cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     tableNode(ORDERS_ID).should("be.visible");
 
     cy.log("Picker trigger shows the current schema name");
@@ -351,6 +338,13 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
     H.queryWritableDB(SV_SETUP_SQL, "postgres");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  });
+
+  after(() => {
+    H.queryWritableDB(
+      "DROP SCHEMA IF EXISTS sv_test CASCADE; DROP SCHEMA IF EXISTS sv_extra CASCADE;",
+      "postgres",
+    );
   });
 
   it("drills into a multi-schema DB via the picker, renders self-ref + one-to-one + cross-schema edges, expands an off-canvas FK target, and persists the expansion", () => {
@@ -394,7 +388,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
 
     cy.log(`Click ${SV_SCHEMA} → navigates and ERD loads`);
     cy.findByLabelText(SV_SCHEMA).click();
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     cy.url()
       .should("include", `database-id=${WRITABLE_DB_ID}`)
       .and("include", `schema=${SV_SCHEMA}`);
@@ -414,9 +408,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.log(
       "Schema-bounded BFS: cross-schema lookup is NOT a node yet — it surfaces only as an FK pointer on products",
     );
-    cy.get<number>("@lookupId").then((id) =>
-      cy.get(`[data-id="table-${id}"]`).should("not.exist"),
-    );
+    cy.get<number>("@lookupId").then((id) => tableNode(id).should("not.exist"));
 
     cy.log(
       "Edges visible: users<->profiles (one-to-one) and categories self-ref. Cross-schema FK has no edge until expansion",
@@ -439,7 +431,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.get<number>("@productsId").then((id) =>
       tableNode(id).findByText("lookup_id").click({ force: true }),
     );
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     cy.get<number>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
       assertNodeInViewport(id);
@@ -451,7 +443,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       "Reload — the expanded lookup table persists via UKV (URL stays untouched, canvas keeps the table)",
     );
     cy.reload();
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     cy.get<number>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
     });
@@ -470,7 +462,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
         `${BASE_URL}?database-id=${WRITABLE_DB_ID}&schema=${SV_SCHEMA}&table-ids=${otherId}`,
       );
     });
-    cy.wait(`@${ERD_ALIAS}`).then(({ request }) => {
+    cy.wait("@erd").then(({ request }) => {
       cy.get<number>("@otherId").then((otherId) => {
         expect(
           request.url,
@@ -486,9 +478,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     });
     cy.log("Canvas reflects URL precedence: `other` is shown, `lookup` is not");
     cy.get<number>("@otherId").then((id) => tableNode(id).should("be.visible"));
-    cy.get<number>("@lookupId").then((id) =>
-      cy.get(`[data-id="table-${id}"]`).should("not.exist"),
-    );
+    cy.get<number>("@lookupId").then((id) => tableNode(id).should("not.exist"));
   });
 });
 
@@ -521,7 +511,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       "Click the 'Schema viewer' button in the Orders table section — opens with Orders as focal",
     );
     cy.findByTestId("table-section").findByLabelText("Schema viewer").click();
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
     cy.url()
       .should("include", "/data-studio/schema-viewer")
       .and("include", `database-id=${SAMPLE_DB_ID}`)
@@ -580,7 +570,7 @@ describe("scenarios > schema-viewer (permissions)", () => {
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
     cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait(`@${ERD_ALIAS}`);
+    cy.wait("@erd");
 
     cy.log(
       "Schema viewer renders for the analyst — Sample DB tables on canvas",

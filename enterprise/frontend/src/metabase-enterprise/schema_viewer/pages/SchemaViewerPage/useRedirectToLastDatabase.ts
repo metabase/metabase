@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
@@ -27,20 +27,13 @@ export function useRedirectToLastDatabase({
   const dispatch = useDispatch();
 
   const {
-    value: lastDatabaseRaw,
+    value: lastDatabase,
     setValue: setLastDatabase,
     isLoading: isLoadingLastDatabase,
   } = useUserKeyValue({
     namespace: "schema_viewer",
     key: "last_database",
   });
-
-  const lastDatabase =
-    lastDatabaseRaw != null &&
-    typeof lastDatabaseRaw === "object" &&
-    "databaseId" in lastDatabaseRaw
-      ? (lastDatabaseRaw as { databaseId: DatabaseId; schema?: string })
-      : undefined;
 
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
@@ -52,10 +45,10 @@ export function useRedirectToLastDatabase({
   // Redirect to last opened database only on initial load (not when user
   // clears selection).
   const hasDbSelected = databaseId != null;
-  const hasRedirectedRef = useRef(false);
+  const shoudlRedirectRef = useRef(true);
 
   useEffect(() => {
-    if (hasRedirectedRef.current) {
+    if (!shoudlRedirectRef.current) {
       return;
     }
     if (
@@ -70,18 +63,18 @@ export function useRedirectToLastDatabase({
         (db) => db.id === lastDatabase.databaseId,
       );
       if (dbExists) {
-        hasRedirectedRef.current = true;
+        shoudlRedirectRef.current = false;
         const url = Urls.dataStudioSchemaViewer({
           databaseId: lastDatabase.databaseId,
           schema: lastDatabase.schema,
         });
-        dispatch(push(url));
+        dispatch(replace(url));
       }
     }
     // Mark as "redirected" even if we didn't redirect (no saved db or db
     // doesn't exist) so we don't re-redirect when the user clears selection.
     if (!isLoadingLastDatabase && !isLoadingDatabases) {
-      hasRedirectedRef.current = true;
+      shoudlRedirectRef.current = false;
     }
   }, [
     isLoadingLastDatabase,

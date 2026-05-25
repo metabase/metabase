@@ -17,7 +17,7 @@ export type ErdField = {
   name: string;
   display_name: string;
   database_type: string;
-  base_type: string | null;
+  base_type: string;
   effective_type: string | null;
   semantic_type: string | null;
   fk_target_field_id: FieldId | null;
