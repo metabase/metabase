@@ -150,6 +150,7 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
+  workspaces: false,
   ...opts,
 });
 
@@ -174,6 +175,8 @@ export const createMockSettings = (
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
+  "metaplow-tracking-enabled": false,
+  "metaplow-url": null,
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
@@ -275,6 +278,7 @@ export const createMockSettings = (
    * You probably don't want to set this directly in tests because it can get out
    * of sync with the database state (which should be a source of truth).
    */
+  "has-active-workspace": false,
   "has-sample-database?": undefined,
   "has-user-setup": true,
   "hide-embed-branding?": true,

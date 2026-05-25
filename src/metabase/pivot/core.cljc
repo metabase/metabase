@@ -620,7 +620,7 @@
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
                           item-index      (count @result)
                           _               (vswap! result conj! nil) ;; Placeholder for parent item to be filled in
-                                                                    ;; once children are processed.
+                          ;; once children are processed.
                           result-value    (process-tree children (inc depth) current-offset path-with-value)
                           item            (->ResultItem (:value node) rawValue (:clicked node) isCollapsed
                                                         (:hasSubtotal node) isGrandTotal isSubtotal isValueColumn

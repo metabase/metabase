@@ -559,26 +559,26 @@
    options
    (fn [^java.sql.Connection conn]
      (when-let [db (cond
-                  ;; id?
+                     ;; id?
                      (integer? db-or-id-or-spec)
                      (driver-api/with-metadata-provider db-or-id-or-spec
                        (driver-api/database (driver-api/metadata-provider)))
-                  ;; db?
+                     ;; db?
                      (u/id db-or-id-or-spec)     db-or-id-or-spec
-                  ;; otherwise it's a spec and we can't get the db
+                     ;; otherwise it's a spec and we can't get the db
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
          (when-not (str/blank? (get options :session-timezone))
-            ;; set session time zone if defined
+           ;; set session time zone if defined
            (.setTimeZoneId underlying-conn (get options :session-timezone))))
        (try
          (.setReadOnly conn true)
          (catch Throwable e
            (log/warn e "Error setting starburst connection to read-only")))
-          ;; as with statement and prepared-statement, cannot set holdability on the connection level
+       ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
          (.close conn)
@@ -600,7 +600,7 @@
             (or (instance? OffsetDateTime t)
                 (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
-              ;; tests are expecting this to be in the UTC offset, so convert to UTC
+                ;; tests are expecting this to be in the UTC offset, so convert to UTC
                 (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; starburst returns local results already adjusted to session time zone offset for us, e.g.

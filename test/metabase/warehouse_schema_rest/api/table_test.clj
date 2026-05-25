@@ -266,7 +266,7 @@
                                        :visibility_type            "normal"
                                        :has_field_values           "none"
                                        :database_required          false
-                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                       ;; Index sync is turned off across the application as it is not used ATM.
                                        #_#_:database_indexed           true
                                        :database_is_auto_increment true
                                        :name_field                 {:base_type "type/Text",
@@ -347,7 +347,7 @@
                                        :base_type        "type/BigInteger"
                                        :effective_type   "type/BigInteger"
                                        :has_field_values "none"
-                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                       ;; Index sync is turned off across the application as it is not used ATM.
                                        #_#_:database_indexed  true
                                        :database_required false
                                        :database_is_auto_increment true
@@ -425,7 +425,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -669,7 +669,7 @@
                                 :effective_type    "type/BigInteger"
                                 :has_field_values  "none"
                                 :database_required false
-                              ;; Index sync is turned off across the application as it is not used ATM.
+                                ;; Index sync is turned off across the application as it is not used ATM.
                                 #_#_:database_indexed  true
                                 :database_is_auto_increment true
                                 :name_field        {:base_type "type/Text",

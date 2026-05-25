@@ -33,15 +33,15 @@
             orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [driver db opts]
-                        ;; Only count connections for our test database because on startup the audit-db will be
-                        ;; synced, which causes this to fail intermittently because it creates connections (to db
-                        ;; 13371337)
+                                      ;; Only count connections for our test database because on startup the audit-db will be
+                                      ;; synced, which causes this to fail intermittently because it creates connections (to db
+                                      ;; 13371337)
                                       (if (= db test-db-id)
                                         (reify javax.sql.DataSource
                                           (getConnection [_]
                                             (vswap! connection-count inc)
                                             (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
-                          ;; For other databases (like audit DB), just pass through
+                                        ;; For other databases (like audit DB), just pass through
                                         (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))

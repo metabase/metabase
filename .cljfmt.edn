@@ -1,12 +1,9 @@
 ;; Cljfmt config. See https://github.com/weavejester/cljfmt#formatting-options
-{:sort-ns-references?
- true
-
- :function-arguments-indentation
- :community
-
- :parallel?
- true
+{:function-arguments-indentation  :community
+ :indent-line-comments?           true
+ :normalize-newlines-at-file-end? true
+ :parallel?                       true
+ :sort-ns-references?             true
 
  :paths
  ["src"

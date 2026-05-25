@@ -85,7 +85,7 @@
              (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
                (let [cache-key (pool-cache-key database)]
                  (testing "database id is not in our connection map initially"
-                 ;; deref'ing a var to get the atom. looks weird
+                   ;; deref'ing a var to get the atom. looks weird
                    (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
                  (testing "when getting a pooled connection it is now in our connection map"
                    (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -106,21 +106,21 @@
           (let [read-details  {:db "mem:read_pool_test"}
                 write-details {:db "mem:write_pool_test"}
                 spec          (mdb/spec :h2 read-details)]
-          ;; Create an in-memory H2 db we can use for the test
+            ;; Create an in-memory H2 db we can use for the test
             (sql-jdbc.execute/do-with-connection-with-options
              :h2
              spec
              {:write? true}
              (fn [conn]
                (next.jdbc/execute! conn ["CREATE TABLE IF NOT EXISTS test_tbl (id int)"])
-             ;; Use snake_case for column name since deftransforms uses snake_case keys
+               ;; Use snake_case for column name since deftransforms uses snake_case keys
                (mt/with-temp [:model/Database database {:engine             :h2
                                                         :details            read-details
                                                         :write_data_details write-details}]
                  (let [db-id             (u/the-id database)
                        default-cache-key [db-id :default]
                        write-cache-key   [db-id :write-data]]
-               ;; Ensure pools are cleared
+                   ;; Ensure pools are cleared
                    (sql-jdbc.conn/invalidate-pool-for-db! database)
 
                    (testing "initially no pools exist"
@@ -145,7 +145,7 @@
                        (is (some? write-pool))
                        (is (not (identical? default-pool write-pool)))))
 
-               ;; Cleanup
+                   ;; Cleanup
                    (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))))
 
 (deftest write-connection-reuses-default-pool-when-unconfigured-test
@@ -177,12 +177,12 @@
         (testing "Write connection pool uses :write-data-details when available"
           (let [read-details  {:db "mem:read_details_db"}
                 write-details {:db "mem:write_details_db"}]
-          ;; Use snake_case for column name since deftransforms uses snake_case keys
+            ;; Use snake_case for column name since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
                                                      :write_data_details write-details}]
               (let [db-id (u/the-id database)]
-              ;; Ensure pools are cleared
+                ;; Ensure pools are cleared
                 (sql-jdbc.conn/invalidate-pool-for-db! database)
 
                 (testing "jdbc-spec-hash differs between default and write connection types"
@@ -195,7 +195,7 @@
                         "Hash should differ because effective-details returns different details")))
 
                 (testing "hash cache uses composite keys"
-                ;; Get both pools
+                  ;; Get both pools
                   (sql-jdbc.conn/db->pooled-connection-spec database)
                   (driver.conn/with-write-connection
                     (sql-jdbc.conn/db->pooled-connection-spec database))
@@ -206,36 +206,42 @@
                     (is (some? write-cached-hash))
                     (is (not= default-cached-hash write-cached-hash))))
 
-              ;; Cleanup
+                ;; Cleanup
                 (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
 
-(deftest invalidate-pool-clears-both-connection-types-test
+(deftest invalidate-pool-clears-all-connection-types-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (mt/with-premium-features #{:writable-connection}
-        (testing "invalidate-pool-for-db! clears both default and write pools"
+      (mt/with-premium-features #{:writable-connection :workspaces}
+        (testing "invalidate-pool-for-db! clears default, write, and admin pools"
           (let [read-details  {:db "mem:invalidate_test"}
-                write-details {:db "mem:invalidate_write_test"}]
-          ;; Use snake_case for column name since deftransforms uses snake_case keys
+                write-details {:db "mem:invalidate_write_test"}
+                admin-details {:db "mem:invalidate_admin_test"}]
+            ;; Use snake_case for column names since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
-                                                     :write_data_details write-details}]
+                                                     :write_data_details write-details
+                                                     :admin_details      admin-details}]
               (let [db-id             (u/the-id database)
                     default-cache-key [db-id :default]
-                    write-cache-key   [db-id :write-data]]
-              ;; Create both pools
+                    write-cache-key   [db-id :write-data]
+                    admin-cache-key   [db-id :admin]]
                 (sql-jdbc.conn/db->pooled-connection-spec database)
                 (driver.conn/with-write-connection
                   (sql-jdbc.conn/db->pooled-connection-spec database))
+                (driver.conn/with-admin-connection
+                  (sql-jdbc.conn/db->pooled-connection-spec database))
 
-                (testing "both pools exist before invalidation"
+                (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
 
-                (testing "invalidate-pool-for-db! removes both pools"
+                (testing "invalidate-pool-for-db! removes all pools"
                   (sql-jdbc.conn/invalidate-pool-for-db! database)
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
-                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))))))))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key))))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -481,8 +487,8 @@
                                    (assoc :use-auth-provider true
                                           :auth-provider :azure-managed-identity
                                           :azure-managed-identity-client-id "client ID"))
-                            ;; we return an expired token which forces a renewal when a second connection is requested
-                            ;; (the first time it is used without checking for expiry)
+              ;; we return an expired token which forces a renewal when a second connection is requested
+              ;; (the first time it is used without checking for expiry)
               expires-in (atom "0")
               connection-creations (atom 0)]
           (binding [u.http/*fetch-as-json* (fn [url _headers]
@@ -493,16 +499,16 @@
             (mt/with-temp [:model/Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
               (mt/with-db oauth-db
                 (try
-                                ;; since Metabase is running and using the pool of this DB, the sync might fail
-                                ;; if the connection pool is shut down during the sync
+                  ;; since Metabase is running and using the pool of this DB, the sync might fail
+                  ;; if the connection pool is shut down during the sync
                   (sync/sync-database! (mt/db))
                   (catch Exception _))
-                              ;; after "fixing" the expiry, we should get a connection from a pool that doesn't get shut down
+                ;; after "fixing" the expiry, we should get a connection from a pool that doesn't get shut down
                 (reset! expires-in "10000")
                 (sync/sync-database! (mt/db))
                 (is (= [["Polo Lounge"]]
                        (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
-                              ;; we must have created more than one connection
+                ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}

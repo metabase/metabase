@@ -310,14 +310,12 @@
   "Set `metabase_table_import.target_id` to the int id of the matching
   `metabase_table` row for every staging row whose match key resolves. The
   match key is `(db_name, schema, name)` against `(d.name, t.schema, t.name)`,
-  restricted to active, non-defective live rows.
+  restricted to non-defective live rows.
 
-  Rows that do not match keep `target_id` NULL. Inactive matches are
-  deliberately not resolved so a re-import after a deactivation creates a
-  fresh active row.
+  Inactive matches will be reactivated on import.
 
-  Idempotent — running again with the same staging contents produces the
-  same assignments."
+  Rows that do not match keep `target_id` NULL. Idempotent — running again with
+  the same staging contents produces the same assignments."
   []
   (t2/query
    {:update :metabase_table_import
@@ -334,8 +332,7 @@
                        [:= [:coalesce :t.schema [:inline ""]]
                         [:coalesce :metabase_table_import.schema [:inline ""]]]
                        [:= :t.name :metabase_table_import.name]
-                       [:= :t.is_defective_duplicate [:inline false]]
-                       [:= :t.active [:inline true]]]}}}))
+                       [:= :t.is_defective_duplicate [:inline false]]]}}}))
 
 ;; UPDATE before INSERT: on a clean-schema import the UPDATE matches nothing
 ;; (fast no-op) and the INSERT then writes each row exactly once.
@@ -378,16 +375,23 @@
                                :where    [:= :it.target_id :metabase_table.id]
                                :order-by [[:it.source_id :asc]]
                                :limit    1}
+                 ;; reactivate in place:
+                 :active     [:inline true]
                  :updated_at :%now}
         :where  [:and
                  [:= :metabase_table.is_defective_duplicate [:inline false]]
-                 [:= :metabase_table.active [:inline true]]
                  [:exists {:select [[[:inline 1]]]
                            :from   [[:metabase_table_import :it]]
                            :where  [:and
                                     [:= :it.target_id :metabase_table.id]
-                                    [:!= [:coalesce :metabase_table.description [:inline ""]]
-                                     [:coalesce :it.description             [:inline ""]]]]}]]})
+                                    ;; Fire when the description differs OR the row needs
+                                    ;; reactivating — otherwise re-importing a deactivated
+                                    ;; but otherwise-unchanged table would skip the UPDATE
+                                    ;; and leave it inactive.
+                                    [:or
+                                     [:!= [:coalesce :metabase_table.description [:inline ""]]
+                                      [:coalesce :it.description [:inline ""]]]
+                                     [:= :metabase_table.active [:inline false]]]]}]]})
       ;; INSERT bypasses :model/Table's :after-insert hook — that hook
       ;; schedules per-DB Quartz triggers we don't want and fires
       ;; `set-new-table-permissions!` once per row. The JOIN on db_name

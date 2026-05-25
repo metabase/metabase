@@ -45,7 +45,7 @@ runs:
       # whether to fail or to pass the whole job, based on the quarantine list.
       continue-on-error: true
     - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
+      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
       # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
@@ -59,7 +59,7 @@ runs:
         fail-on-error: false
     - name: Upload Logs on Failure
       if: always() && steps.run-test.outcome != 'success'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ format('test-logs-{0}{1}', github.job, inputs.logs-artifact-suffix && format('-{0}', inputs.logs-artifact-suffix) || '') }}
         path: logs/test-log.json

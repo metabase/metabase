@@ -134,7 +134,7 @@
                    :content-type :json
                    :throw-exceptions false
                    :headers (merge
-                              ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
+                             ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
                              {"X-Metabase-Action" (:name action)}
                              (-> headers
                                  (parse-and-substitute params->value)

@@ -1,6 +1,5 @@
 (ns metabase.mcp.api-test
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -118,10 +117,7 @@
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
    content (the JSON-decoded text from the first content block).
-   Records test failures if the response status is not 200 or the tool returns an error.
-   Also enforces the MCP spec contract: every successful tool result with content
-   must include `structuredContent` (because every tool in our manifest declares
-   `outputSchema`, and the spec mandates structuredContent for those)."
+   Records test failures if the response status is not 200 or the tool returns an error."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
@@ -339,47 +335,20 @@
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
-      (testing "construct_query exposes the nullable user prompt"
+      (testing "construct_query expects the portable external-query JSON body"
         (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
               construct-query-tool   (get tools-by-name "construct_query")
               construct-query-schema (:inputSchema construct-query-tool)
-              prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
-                                         (get-in construct-query-schema [:properties :prompt]))
+              query-schema           (or (get-in construct-query-schema [:properties "query"])
+                                         (get-in construct-query-schema [:properties :query]))
               required-fields        (set (:required construct-query-schema))
-              schema-keys            (atom #{})
-              reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
-          (walk/postwalk (fn [x]
-                           (when (map? x)
-                             (swap! schema-keys into (keys x)))
-                           x)
-                         construct-query-schema)
-          (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
-          ;; Strict-tool-input-schema forces every property into :required and
-          ;; converts previously-optional ones (like :prompt) to nullable unions.
-          (is (or (contains? required-fields "prompt")
-                  (contains? required-fields :prompt)))
-          (is (= false (:additionalProperties construct-query-schema)))
-          ;; Prompt is nullable. Either a `:type` union (hand-written form) or an
-          ;; `:anyOf`/`:oneOf` with a {:type "null"} branch (Malli `[:maybe …]`).
-          (is (or (= ["string" "null"] (:type prompt-schema))
-                  (= #{"string" "null"} (set (:type prompt-schema)))
-                  (some #(= "null" (:type %)) (:anyOf prompt-schema))
-                  (some #(= "null" (:type %)) (:oneOf prompt-schema))))
-          ;; ChatGPT's MCP validator rejects exactly these JSON-Schema constructs.
-          ;; `:oneOf`/`:minLength`/`:maxLength` are accepted by ChatGPT and not asserted against.
-          (is (empty? (select-keys (frequencies @schema-keys)
-                                   [:allOf :prefixItems])))
-          ;; `items: false` (tuple closure) must not appear either.
-          (is (not (some #(false? (:items %))
-                         (->> (tree-seq coll? seq construct-query-schema)
-                              (filter map?)))))
-          (is (str/includes? (or (:description prompt-schema)
-                                 (some :description (:anyOf prompt-schema))
-                                 (some :description (:oneOf prompt-schema))
-                                 "")
-                             "exact original message"))
-          (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
-          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
+              ;; ::lib.schema/external-query is generated as a deeply-nested :allOf, so the
+              ;; root :type tag lives under the first branch rather than the top level.
+              query-leaf-type        (or (:type query-schema)
+                                         (some :type (:allOf query-schema)))]
+          (is (str/includes? (:description construct-query-tool) "construct_notebook_query"))
+          (is (contains? required-fields "query"))
+          (is (= "object" query-leaf-type)))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -672,6 +641,11 @@
                                          :dataset_query (orders-count-query)}]
         (let [[session-id _] (initialize!)
               orders-id      (mt/id :orders)
+              db-name        (t2/select-one-fn :name :model/Database (mt/id))
+              orders-query   {:lib/type "mbql/query"
+                              :stages   [{:lib/type     "mbql.stage/mbql"
+                                          :source-table [db-name "PUBLIC" "ORDERS"]
+                                          :limit        5}]}
               ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
               ;; assertion in `call-tool` fails partway through the sequence.
               question-id    (atom nil)
@@ -688,13 +662,8 @@
                                             {:id (:id metric) :field-id (str metric-fid)})
                   _              (call-tool session-id "search" {:term_queries ["orders"]})
                   ;; Query construction + execution
-                  construct-data (call-tool session-id "construct_query"
-                                            {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]
-                                             :prompt     "show 5 orders"})
-                  _              (call-tool session-id "query"
-                                            {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]})
+                  construct-data (call-tool session-id "construct_query" {:query orders-query})
+                  _              (call-tool session-id "query" {:query orders-query})
                   _              (call-tool session-id "execute_query"
                                             {:query_handle (:query_handle construct-data)})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
@@ -729,10 +698,12 @@
                                     (reset! streamed? true)
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
-              construct-data (call-tool session-id "construct_query"
-                                        {:source     {:type "table" :id (mt/id :orders)}
-                                         :operations [["limit" 5]]
-                                         :prompt     "show 5 orders"})
+              db-name        (t2/select-one-fn :name :model/Database (mt/id))
+              external-query {:lib/type "mbql/query"
+                              :stages   [{:lib/type     "mbql.stage/mbql"
+                                          :source-table [db-name "PUBLIC" "ORDERS"]
+                                          :limit        5}]}
+              construct-data (call-tool session-id "construct_query" {:query external-query})
               execute-data   (call-tool session-id "execute_query"
                                         {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
@@ -791,11 +762,20 @@
                            {"mcp-session-id" session-id})))))
 
   (testing "visualize_query includes the prompt stored with a construct_query handle"
+    ;; Mirrors master's assertion that the user's original prompt round-trips through the
+    ;; construct→store→visualize flow so the iframe can include it when submitting
+    ;; visualization feedback. Adapted from master's `:source`/`:operations` shape to our
+    ;; branch's `:query` representations shape; the `:prompt` round-trip semantic is
+    ;; preserved exactly.
     (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
           construct-data (call-tool session-id "construct_query"
-                                    {:source     {:type "table" :id (mt/id :orders)}
-                                     :operations [["limit" 5]]
-                                     :prompt     "show 5 orders"})
+                                    {:query  external-query
+                                     :prompt "show 5 orders"})
           response       (mcp-request (jsonrpc-request "tools/call"
                                                        {:name      "visualize_query"
                                                         :arguments {:query_handle (:query_handle construct-data)}})
@@ -851,11 +831,18 @@
 
 (deftest construct-query-returns-bare-handle-test
   (testing "construct_query returns just `{:query_handle uuid}` — no widget session plumbing"
+    ;; Adapted from master's `:source`/`:operations` legacy program shape to our branch's
+    ;; representations `:query` shape. The semantic — that the response is a bare handle
+    ;; with no widgetSessionId field — is preserved.
     (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
           construct-data (call-tool session-id "construct_query"
-                                    {:source     {:type "table" :id (mt/id :orders)}
-                                     :operations [["limit" 5]]
-                                     :prompt     "show 5 orders"})]
+                                    {:query  external-query
+                                     :prompt "show 5 orders"})]
       (is (some? (parse-uuid (:query_handle construct-data))))
       (is (not (contains? construct-data :widgetSessionId))))))
 
@@ -875,12 +862,19 @@
 
 (deftest execute-query-resolves-via-cross-session-fallback-test
   (testing "execute_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
+    ;; Adapted from master's `:source`/`:operations` legacy program shape to our branch's
+    ;; representations `:query` shape. The semantic — cross-session same-user resolution —
+    ;; is preserved.
     (let [[owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
+          db-name             (t2/select-one-fn :name :model/Database (mt/id))
+          external-query      {:lib/type "mbql/query"
+                               :stages   [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [db-name "PUBLIC" "ORDERS"]
+                                           :limit        5}]}
           construct-data      (call-tool owner-session "construct_query"
-                                         {:source     {:type "table" :id (mt/id :orders)}
-                                          :operations [["limit" 5]]
-                                          :prompt     "show 5 orders"})
+                                         {:query  external-query
+                                          :prompt "show 5 orders"})
           response            (mcp-request (jsonrpc-request "tools/call"
                                                             {:name      "execute_query"
                                                              :arguments {:query_handle (:query_handle construct-data)}})

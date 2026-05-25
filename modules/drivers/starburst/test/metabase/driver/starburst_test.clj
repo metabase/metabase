@@ -356,8 +356,8 @@
 (deftest prepared-statements
   (mt/test-driver :starburst
     (testing "Make sure prepared statements work"
-        ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
-        ;; The role is ignored as Metabase users may not have the role defined in the database connection
+      ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
+      ;; The role is ignored as Metabase users may not have the role defined in the database connection
       (prepared-statements-helper true)
       (prepared-statements-helper false))))
 

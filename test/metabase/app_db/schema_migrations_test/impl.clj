@@ -73,8 +73,8 @@
   (do-with-temp-empty-app-db*
    driver
    (fn [^javax.sql.DataSource data-source]
-      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
-      ;; open
+     ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
+     ;; open
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
                  custom-migrations.util/*allow-temp-scheduling* false]
@@ -143,8 +143,8 @@
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
       (liquibase/with-scope-locked liquibase
-       ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
-       ;; and initializing checksums so that they match the ones generated in production.
+        ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
+        ;; and initializing checksums so that they match the ones generated in production.
         (.listUnrunChangeSets liquibase nil (LabelExpression.))
         (.generateDeploymentId change-log-service)
         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
