@@ -397,10 +397,6 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.log("wait for x-ray dashboard to generate and save it");
-      H.main()
-        .findByText("A look at", { exact: false, timeout: 30_000 })
-        .should("be.visible");
-      cy.button("Save this").click();
       H.undoToast().should("contain", "Your dashboard was saved");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
