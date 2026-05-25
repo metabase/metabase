@@ -38,6 +38,7 @@ Every Metabase user authenticates to BigQuery with their own Google account inst
 | `src/metabase/api_routes/routes.clj` | Registers `/api/google-bigquery` routes |
 | `src/metabase/query_processor/error_type.clj` | Adds `google-oauth-required` error type |
 | `src/metabase/users/models/user.clj` | Encrypted transforms for token fields |
+| `src/metabase/query_processor/middleware/cache.clj` | Disables Metabase result cache for BigQuery (see below) |
 | `frontend/src/metabase/querying/components/QueryVisualization/VisualizationError/VisualizationError.tsx` | Handles `google-oauth-required` error type |
 
 ## Configuration (env vars)
@@ -80,6 +81,14 @@ Use `(get-in outer-query [:middleware :userland-query?])` to distinguish interac
 
 ### Project ID with user credentials
 `OAuth2Credentials` doesn't carry a project ID. Use `bigquery.common/get-project-id details` (not `(:project-id details)` directly) — it falls back to reading from the service account JSON if the explicit field is not set.
+
+### Metabase query cache is disabled for BigQuery
+
+Metabase's result cache keys on query structure only — not user identity. With per-user OAuth, User A's cached results could be served to User B, bypassing BigQuery IAM entirely.
+
+The fix is in `cache.clj`: `is-cacheable?` returns `false` when `driver/*driver*` is `:bigquery-cloud-sdk`. BigQuery's own project-level result cache handles repeated identical queries for free (0 bytes billed), so there is no practical cost to disabling Metabase's cache for BigQuery.
+
+Note: BigQuery's native cache does **not** work for queries with non-deterministic functions (`NOW()`, `CURRENT_DATE()`, etc.), streaming buffer tables, or Google Sheets external tables. Those queries will always hit BigQuery.
 
 ### Settings use env vars only
 `defsetting` with `:visibility :internal :setter :none` bypasses the i18n requirement (no `deferred-tru` needed). Settings are read-only from env vars.
