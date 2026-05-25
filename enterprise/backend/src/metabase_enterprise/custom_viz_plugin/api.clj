@@ -263,20 +263,13 @@
 
 (def ^:private sandbox-host-html
   "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
-   so plugin code can be `eval`'d under a relaxed, per-iframe CSP. The body is intentionally
-   empty — near-membrane will populate the realm via its `redWindow.eval`."
+   so plugin code can be `eval`'d under a relaxed, per-iframe CSP."
   "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
 
 (def ^:private sandbox-host-csp
-  "CSP applied ONLY to the sandbox iframe document. `'unsafe-eval'` is required because that's
-   how near-membrane evaluates plugin code inside the realm; everything else is closed off.
-   `frame-ancestors 'self'` overrides the global middleware's default-deny so Metabase can
-   embed this document in its own custom-viz sandbox iframe.
-
-   We intentionally do NOT add a CSP `sandbox` directive here — the iframe element already
-   carries `sandbox=\"allow-same-origin allow-scripts\"` (set by `@locker/near-membrane-dom`),
-   which is what the membrane needs. Adding the CSP directive too can give the document an
-   opaque origin in some browsers and break same-origin `contentWindow` access from the parent."
+  "CSP applied ONLY to the sandbox iframe document.
+   - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
+   - `frame-ancestors 'self'` - so Metabase can embed this document."
   (str "default-src 'none'; "
        "script-src 'unsafe-eval'; "
        "frame-ancestors 'self';"))
@@ -296,17 +289,11 @@
     (respond {:status  200
               :headers {"Content-Type"                 "text/html; charset=utf-8"
                         "Content-Security-Policy"      sandbox-host-csp
-                        ;; Override the global `X-Frame-Options: DENY` so Metabase can embed
-                        ;; this document as the custom-viz sandbox iframe. CSP `frame-ancestors`
-                        ;; above carries the modern equivalent for browsers that prefer it.
                         "X-Frame-Options"              "SAMEORIGIN"
                         "X-Content-Type-Options"       "nosniff"
                         "Cross-Origin-Resource-Policy" "same-origin"
                         "Referrer-Policy"              "no-referrer"
-                        ;; `no-store` ensures CSP changes take effect immediately. The body
-                        ;; is tiny (~70 bytes) and the iframe is only loaded a handful of
-                        ;; times per session, so the perf cost is negligible.
-                        "Cache-Control"                "no-store"}
+                        "Cache-Control"                "public, max-age=60"}
               :body    sandbox-host-html})
     (catch Throwable e
       (raise e))))

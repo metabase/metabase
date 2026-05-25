@@ -11,9 +11,7 @@ function isLiveTarget(target: object): boolean {
 }
 
 // Same-origin endpoint that serves a tiny HTML document with a permissive,
-// per-document CSP (allowing `'unsafe-eval'`). Loading the iframe from this
-// URL — instead of about:blank — lets the membrane realm evaluate plugin code
-// without the main app's strict nonce-based CSP applying to the sandbox.
+// per-document CSP (allowing `'unsafe-eval'`).
 const SANDBOX_HOST_URL = "/api/ee/custom-viz-plugin/sandbox-host";
 
 export async function createPluginSandbox(pluginId: CustomVizPluginId) {

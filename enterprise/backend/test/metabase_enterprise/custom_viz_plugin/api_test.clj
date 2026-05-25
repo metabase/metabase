@@ -461,12 +461,7 @@
             (is (some? csp))
             (is (str/includes? csp "default-src 'none'"))
             (is (str/includes? csp "script-src 'unsafe-eval'"))
-            ;; The iframe element already carries `sandbox="allow-same-origin allow-scripts"`,
-            ;; so we must NOT add a CSP `sandbox` directive — it can give the document an
-            ;; opaque origin and break the membrane's same-origin `contentWindow` access.
             (is (not (str/includes? csp "sandbox")))
-            ;; `frame-ancestors 'self'` lets Metabase embed this doc; the global middleware
-            ;; otherwise denies framing for every response.
             (is (str/includes? csp "frame-ancestors 'self'"))))
         (testing "framing is allowed for same-origin (overrides the global X-Frame-Options: DENY)"
           (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
@@ -474,7 +469,7 @@
           (is (= "nosniff"     (get headers "X-Content-Type-Options")))
           (is (= "no-referrer" (get headers "Referrer-Policy")))
           (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
-          (is (= "no-store"    (get headers "Cache-Control")))))))
+          (is (= "public, max-age=60" (get headers "Cache-Control")))))))
   (testing "GET /sandbox-host requires the :custom-viz premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
