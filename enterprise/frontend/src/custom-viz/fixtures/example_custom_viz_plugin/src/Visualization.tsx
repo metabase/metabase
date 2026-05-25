@@ -1,7 +1,7 @@
 import React from "react";
-import type { CustomVisualizationProps } from "@metabase/custom-viz";
-import { ThumbsIcon } from "./ThumbsIcon";
-import { Settings } from "./types";
+import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
+import type { Settings } from "./types";
+
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
@@ -15,11 +15,11 @@ export const Visualization = (
   var rows = data.rows;
   var value = rows[0][0];
 
-  var lastClickState = React.useState(null);
+  var lastClickState = React.useState<RowValue | null>(null);
   var lastClickValue = lastClickState[0];
   var setLastClickValue = lastClickState[1];
 
-  var lastHoverState = React.useState(null);
+  var lastHoverState = React.useState<RowValue | null>(null);
   var lastHoverValue = lastHoverState[0];
   var setLastHoverValue = lastHoverState[1];
 
@@ -27,26 +27,26 @@ export const Visualization = (
     throw new Error("Value and threshold need to be numbers");
   }
 
-  function handleClick(ev) {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
     setLastClickValue(value);
     onClick({
       value: value,
       column: cols[0],
       settings: settings,
-      event: ev.nativeEvent,
-      element: ev.currentTarget,
+      event: event.nativeEvent,
+      element: event.currentTarget,
       origin: { row: rows[0], cols: cols },
-      data: [{ key: cols[0].name, value: value, col: cols[0] }],
+      data: [{ value: value, col: cols[0] }],
     });
   }
 
-  function handleHoverEnter(ev) {
+  function handleHoverEnter(event: React.MouseEvent<HTMLDivElement>) {
     setLastHoverValue(value);
     onHover({
       value: value,
       column: cols[0],
-      event: ev.nativeEvent,
-      element: ev.currentTarget,
+      event: event.nativeEvent,
+      element: event.currentTarget,
       data: [{ key: cols[0].name, value: value, col: cols[0] }],
     });
   }

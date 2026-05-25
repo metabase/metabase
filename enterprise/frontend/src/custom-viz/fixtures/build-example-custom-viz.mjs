@@ -5,7 +5,7 @@
  *   - e2e/support/assets/example_custom_viz_plugin.tgz  (manifest: demo-viz)
  *   - e2e/support/assets/example_custom_viz_plugin_2.tgz (manifest: demo-viz-2)
  *
- * Run with:
+ * Invoked automatically by Cypress `setupNodeEvents`. Can also be run manually:
  *
  *   bun run build:custom-viz-fixtures
  */
@@ -36,13 +36,17 @@ const visualizations = [
   {
     index: "index-widget-security.tsx",
     manifest: "demo-viz-security.json",
-    out: "example_custom_viz_plugin_widget_security.tgz",
+    out: "example_custom_viz_plugin_3_security.tgz",
   },
 ];
 
-for (const { index, manifest, out } of visualizations) {
-  await buildDemoViz(index, manifest, out);
+export async function buildCustomVizFixtures() {
+  for (const { index, manifest, out } of visualizations) {
+    await buildDemoViz(index, manifest, out);
+  }
 }
+
+await buildCustomVizFixtures();
 
 async function buildDemoViz(index, manifest, out) {
   const root = resolve(__dirname, "example_custom_viz_plugin");
@@ -59,12 +63,6 @@ async function buildDemoViz(index, manifest, out) {
     bundle: true,
     format: "iife",
     globalName: "__customVizPlugin__",
-    // The sandbox reads `globalThis.__customVizPlugin__` to find the
-    // factory, and esbuild's iife wraps exports as `{ default: fn }`.
-    // esbuild also emits `"use strict"`, and in strict indirect eval
-    // top-level `var` stays local to the eval — so `globalName` alone
-    // never reaches the sandbox global. We unwrap the default and
-    // assign explicitly via `globalThis`.
     footer: {
       js: "globalThis.__customVizPlugin__ = __customVizPlugin__.default;",
     },
