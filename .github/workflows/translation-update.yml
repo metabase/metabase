@@ -151,7 +151,7 @@ jobs:
           number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
-        run: gh pr merge $PR_NUMBER --squash --auto "1"
+        run: gh pr merge --squash --auto "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}

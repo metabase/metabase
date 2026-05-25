@@ -91,7 +91,8 @@ runs:
 
     - name: Enable Pull Request Automerge
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      run: gh pr merge $PR_NUMBER --squash --auto "1"
+      run: gh pr merge --squash --auto "$PR_NUMBER"
+      shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
