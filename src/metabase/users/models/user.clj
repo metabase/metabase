@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util.encryption :as encryption]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -61,12 +62,18 @@
   {:in (comp mi/json-in stringify-keys-and-values)
    :out (comp stringify-keys-and-values mi/json-out-without-keywordization)})
 
+(def ^:private transform-encrypted-string
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
 (t2/deftransforms :model/User
-  {:login_attributes transform-attributes
-   :jwt_attributes   transform-attributes
-   :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword
-   :type             mi/transform-keyword})
+  {:login_attributes           transform-attributes
+   :jwt_attributes             transform-attributes
+   :settings                   mi/transform-encrypted-json
+   :sso_source                 mi/transform-keyword
+   :type                       mi/transform-keyword
+   :google_oauth_access_token  transform-encrypted-string
+   :google_oauth_refresh_token transform-encrypted-string})
 
 (def ^:private allowed-user-types
   #{:internal :personal :api-key})

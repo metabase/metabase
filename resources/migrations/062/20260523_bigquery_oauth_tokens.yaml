@@ -1,0 +1,46 @@
+## Add Google OAuth token columns to core_user for per-user BigQuery authentication
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v62.2026-05-23T00:00:00
+      author: ole-internal
+      comment: Add Google OAuth token columns to core_user for per-user BigQuery authentication
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: core_user
+                columnName: google_oauth_access_token
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_oauth_access_token
+                  type: ${text.type}
+                  remarks: Encrypted Google OAuth access token for BigQuery per-user authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: google_oauth_refresh_token
+                  type: ${text.type}
+                  remarks: Encrypted Google OAuth refresh token for BigQuery per-user authentication
+                  constraints:
+                    nullable: true
+              - column:
+                  name: google_oauth_token_expiry
+                  type: BIGINT
+                  remarks: Unix timestamp (ms) when the Google OAuth access token expires
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_user
+            columnName: google_oauth_access_token
+        - dropColumn:
+            tableName: core_user
+            columnName: google_oauth_refresh_token
+        - dropColumn:
+            tableName: core_user
+            columnName: google_oauth_token_expiry

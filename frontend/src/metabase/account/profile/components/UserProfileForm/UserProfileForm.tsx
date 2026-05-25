@@ -5,6 +5,7 @@ import * as Yup from "yup";
 
 import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import { GoogleAccountSection } from "./GoogleAccountSection";
 import {
   Form,
   FormErrorMessage,
@@ -69,6 +70,7 @@ const UserProfileForm = ({
   return (
     <Box>
       <ColorSchemeSwitcher />
+      <GoogleAccountSection />
       <FormProvider
         initialValues={initialValues}
         validationSchema={schema}

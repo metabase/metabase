@@ -70,6 +70,7 @@ export const TAG_TYPES = [
   "metabot-prompt-suggestions",
   "metabot-permissions",
   "security-advisory",
+  "bigquery-oauth",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

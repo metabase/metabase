@@ -22,6 +22,7 @@ import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
+import { BigQueryOAuthPrompt } from "./BigQueryOAuthPrompt";
 import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
 
@@ -76,6 +77,10 @@ export function VisualizationError({
         />
       );
     }
+  }
+
+  if (errorType === "google-oauth-required") {
+    return <BigQueryOAuthPrompt className={className} />;
   }
 
   if (errorType === "missing-required-permissions") {

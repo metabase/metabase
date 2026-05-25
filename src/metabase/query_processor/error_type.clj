@@ -45,6 +45,10 @@
   "The current user does not have required permissions to run the current query."
   :parent client)
 
+(deferror google-oauth-required
+  "The current user must connect their Google account before querying this BigQuery database."
+  :parent client)
+
 (defn permission-error?
   "Is `error-type` a permissions error"
   [error-type]

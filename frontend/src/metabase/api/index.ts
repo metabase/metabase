@@ -21,6 +21,7 @@ export * from "./entity-id";
 export * from "./field";
 export * from "./glossary";
 export * from "./google";
+export * from "./google-bigquery";
 export * from "./group-table-access-policy";
 export * from "./ldap";
 export * from "./llm";

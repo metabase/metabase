@@ -24,6 +24,7 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -35,7 +36,7 @@
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
-   (com.google.auth.oauth2 ImpersonatedCredentials)
+   (com.google.auth.oauth2 AccessToken ImpersonatedCredentials OAuth2Credentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -82,14 +83,31 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
+(defn- user-oauth-credentials
+  "Returns OAuth2Credentials for the current Metabase user if they have a connected Google account.
+  Returns nil when no user is active (background jobs) OR when the user has no token yet, so that
+  connection tests and sync always fall back to the service account. The google-oauth-required error
+  is thrown at query-execution time instead (see execute-reducible-query)."
+  []
+  (when-let [user @(driver-api/current-user)]
+    (let [get-token (requiring-resolve 'metabase.bigquery-oauth.api/get-valid-access-token)
+          token     (get-token user)]
+      (when (seq token)
+        (log/debugf "Using per-user Google OAuth credentials for user %d" (:id user))
+        (-> (AccessToken. ^String token nil)
+            (OAuth2Credentials/create))))))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
+  (let [user-creds   (user-oauth-credentials)
+        base-creds   (or user-creds
+                         (bigquery.common/database-details->service-account-credential details))
+        ;; Service account impersonation only applies when using the service account (not user OAuth).
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
         ;; so the 1-hour lifetime is just the initial token validity period.
         ;; Each query creates a fresh client, and the credentials handle refresh internally.
-        impersonating? (some? (:impersonate-service-account details))
+        impersonating? (and (nil? user-creds) (some? (:impersonate-service-account details)))
         final-creds  (if impersonating?
                        (let [target-sa (:impersonate-service-account details)]
                          (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
@@ -99,7 +117,9 @@
                           nil  ;; delegates (not needed)
                           (java.util.ArrayList. bigquery-scopes)
                           3600))  ;; 1 hour token lifetime
-                       (.createScoped base-creds bigquery-scopes))
+                       (if user-creds
+                         base-creds  ;; user OAuth credentials are already scoped by Google consent
+                         (.createScoped base-creds bigquery-scopes)))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -113,14 +133,14 @@
                        (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
-    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
-    ;; from the impersonation target SA, not from a key file), so the Google SDK
-    ;; would throw "A project ID is required for this service but could not be
-    ;; determined from the builder or the environment" when building the client.
-    ;; Fall back to the base SA's project id, which is what every non-impersonated
-    ;; call site is implicitly relying on through `getOptions.getProjectId`.
+    ;; User OAuth credentials don't carry a project id, so set it from the database details.
+    ;; ImpersonatedCredentials also don't carry a project id (they derive identity from the
+    ;; impersonation target SA, not from a key file), so fall back to the base SA's project id.
+    (when user-creds
+      (when-let [pid (bigquery.common/get-project-id details)]
+        (.setProjectId bq-bldr ^String pid)))
     (when impersonating?
-      (when-let [pid (or (:project-id details)
+      (when-let [pid (or (bigquery.common/get-project-id details)
                          (.getProjectId base-creds))]
         (.setProjectId bq-bldr ^String pid)))
     (when-let [host (not-empty (:host details))]
@@ -804,6 +824,15 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
+  ;; Require per-user OAuth only for interactive (userland) queries — sync, fingerprinting, and
+  ;; background jobs are not userland queries and always fall back to the service account.
+  (when (get-in outer-query [:middleware :userland-query?])
+    (when-let [user @(driver-api/current-user)]
+      (let [get-token (requiring-resolve 'metabase.bigquery-oauth.api/get-valid-access-token)
+            token     (get-token user)]
+        (when-not (seq token)
+          (throw (ex-info (tru "Connect your Google account to query BigQuery.")
+                          {:type qp.error-type/google-oauth-required}))))))
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
