@@ -64,7 +64,7 @@
                                           metabase.login-history.record/maybe-send-login-from-new-device-email
                                           (fn [login-history]
                                             (when-let [futur (original-maybe-send login-history)]
-                                ;; block in tests
+                                              ;; block in tests
                                               (u/deref-with-timeout futur 10000)))]
                 (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                       :device_id (str (random-uuid))}
@@ -129,7 +129,7 @@
                                                           metabase.login-history.record/maybe-send-login-from-new-device-email
                                                           (fn [login-history]
                                                             (when-let [futur (original-maybe-send login-history)]
-                                                ;; block in tests
+                                                              ;; block in tests
                                                               (u/deref-with-timeout futur 10000)))]
                                 (let [device (str (random-uuid))]
                                   (mt/with-temp [:model/LoginHistory _ {:user_id   user-id

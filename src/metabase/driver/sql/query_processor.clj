@@ -45,7 +45,7 @@
       (str/replace #";([\s;]*(--.*\n?)*)*$" "")
       str/trimr
       (as-> trimmed
-        ;; Query could potentially end with a comment.
+            ;; Query could potentially end with a comment.
             (if (re-find #"--.*$" trimmed)
               (str trimmed "\n")
               trimmed))))
@@ -2204,8 +2204,8 @@
     (merge
      honeysql-form
      (if (needs-cte-for-duplicate-cols? source-metadata)
-        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
-        ;; This is ok since we control the alias.
+       ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
+       ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
         :from [[table-alias]]}

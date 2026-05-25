@@ -77,7 +77,7 @@ jobs:
       - name: Upload i18n violations report
         id: upload-violations
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: i18n-violations
           path: target/i18n-violations.*

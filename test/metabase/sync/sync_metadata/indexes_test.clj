@@ -39,7 +39,7 @@
           (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
           (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
           (finally
-          ;; clean the db so this test is repeatable
+            ;; clean the db so this test is repeatable
             (t2/delete! :model/Database (mt/id))
             (u/ignore-exceptions
               (tx/destroy-db! driver/*driver* ds))))))))

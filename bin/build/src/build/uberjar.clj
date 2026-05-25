@@ -1,12 +1,14 @@
 (ns build.uberjar
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.util.zip :as build.zip]
    [clojure.tools.namespace.dependency :as ns.deps]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
    [metabuild-common.core :as u]
+   [metabuild-common.misc :as misc]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
    (java.io File OutputStream)
@@ -167,13 +169,45 @@
    #"META-INF/license.*"
    #"META-INF/LICENSE.*"])
 
+(defn- prefer-lib
+  "Returns a conflict handler fn that ensures `preferred` lib's classes always win.
+   The returned fn writes when the incoming class is from `preferred`, skips otherwise."
+  [preferred]
+  (fn prefer-lib' [{:keys [lib path in]}]
+    (when (= lib preferred)
+      {:write {path {:stream in}}})))
+
+;; hive-jdbc bundles javax.activation classes with package-private visibility on LogSupport.
+;; When these overwrite jakarta.activation's public versions, javax.mail (postal) fails with
+;; IllegalAccessError.
+(def ^:private activation-conflict-handler
+  (let [from-com-sun-activation (prefer-lib 'com.sun.activation/jakarta.activation)]
+    {"com/sun/activation/.*" from-com-sun-activation
+     "javax/activation/.*"   from-com-sun-activation}))
+
+;; vertica-jdbc bundles unshaded gson 2.8.9. When these overwrite the pinned 2.12.1,
+;; BigQuery crashes with NoSuchMethodError on JsonWriter.value(float). See #73736.
+(def ^:private gson-conflict-handler
+  {"com/google/gson/.*" (prefer-lib 'com.google.code.gson/gson)})
+
+;; avatica (Hive transitive dep) bundles the entire SLF4J API unshaded.
+(def ^:private slf4j-conflict-handler
+  {"org/slf4j/.*" (prefer-lib 'org.slf4j/slf4j-api)})
+
+(def conflict-handlers
+  "Merged conflict handlers for the uberjar build. Handles Log4j2 plugin merging,
+   jakarta.activation class visibility, gson version pinning, and SLF4J API."
+  (merge log4j2-conflict-handler
+         activation-conflict-handler
+         gson-conflict-handler
+         slf4j-conflict-handler))
+
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (b/uber {:class-dir         class-dir
                :uber-file         uberjar-filename
-               ;; merge Log4j2Plugins.dat files. (#50721)
-               :conflict-handlers log4j2-conflict-handler
+               :conflict-handlers conflict-handlers
                :basis             basis
                :exclude           dependency-ignore-patterns})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
@@ -209,8 +243,8 @@
                   :when (.isFile f)]
             (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
                   target   (u/get-path-in-filesystem fs rel-path)]
-              (Files/createDirectories (.getParent target) (into-array java.nio.file.attribute.FileAttribute []))
-              (Files/copy (.toPath f) target (into-array java.nio.file.CopyOption [])))))))))
+              (Files/createDirectories (.getParent target) (misc/varargs java.nio.file.attribute.FileAttribute))
+              (Files/copy (.toPath f) target (misc/varargs java.nio.file.CopyOption)))))))))
 
 (defn update-manifest!
   "Start a build step that updates the manifest.
@@ -241,3 +275,42 @@
         (add-non-aot-driver-sources!)
         (update-manifest!))
       (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))
+
+(defn detect-class-conflicts
+  "Run `b/uber` against `basis` (no AOT, no resources) and return a seq of
+   `{:path ... :lib ...}` for every `.class` file conflict not already handled
+   by our conflict handlers."
+  [basis]
+  (let [conflicts (atom [])]
+    (clean!)
+    (b/uber {:class-dir         class-dir
+             :uber-file         uberjar-filename
+             :conflict-handlers (merge conflict-handlers
+                                       {:default (fn [{:keys [lib path]}]
+                                                   (when (str/ends-with? path ".class")
+                                                     (swap! conflicts conj {:path path :lib lib}))
+                                                   nil)})
+             :basis             basis
+             :exclude           dependency-ignore-patterns})
+    @conflicts))
+
+(defn audit-conflicts
+  "Build a bare uberjar (no AOT, no resources) and report all class file conflicts.
+   Useful for detecting vendored/unshaded dependencies in fat JARs.
+
+     clojure -X:build:build/uberjar build.uberjar/audit-conflicts
+     clojure -X:build:build/uberjar build.uberjar/audit-conflicts :edition :ee"
+  [{:keys [edition], :or {edition :ee}}]
+  (u/step (format "Audit %s uberjar class file conflicts" edition)
+    (let [basis     (create-basis edition)
+          conflicts (detect-class-conflicts basis)]
+      (when (seq conflicts)
+        (u/announce "=== %d class file conflicts detected ===" (count conflicts))
+        (let [report-file "target/conflict-report.txt"]
+          (spit report-file
+                (str/join "\n"
+                          (for [[path libs] (->> conflicts
+                                                 (group-by :path)
+                                                 (sort-by key))]
+                            (format "%s — %s" path (str/join ", " (map :lib libs))))))
+          (u/announce "Conflict report written to %s" report-file))))))

@@ -306,8 +306,8 @@
                                    :insert!   {:model :model/Measure}
                                    :relations {:creator_id [:core-user :id]
                                                :table_id   [:table :id]}}})
-   ;; :revision {}
-   ;; :task-history {}
+;; :revision {}
+;; :task-history {}
 
 ;; * inserters
 (defn- spec-gen
@@ -374,8 +374,8 @@
     (catch clojure.lang.ExceptionInfo e
       (if (and (pos? num-retries)
                (str/includes? (ex-message e) "Couldn't satisfy such-that predicate"))
-           ;; We can't recur from here, and I don't think it's worth using a more complex trampoline.
-           ;; We are not going to overflow the stack, so this should be fine.
+        ;; We can't recur from here, and I don't think it's worth using a more complex trampoline.
+        ;; We are not going to overflow the stack, so this should be fine.
         (spec-gen-with-retries query (dec num-retries))
         (throw e)))))
 

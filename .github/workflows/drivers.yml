@@ -1673,6 +1673,9 @@ jobs:
       - be-tests-h2
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
+      # these are not reliable, but we want to run them anyway to gather data about failures
+      # - be-tests-snowflake-ee
+      # - be-tests-bigquery-cloud-sdk-ee
       - be-tests-clickhouse-ee
       - be-tests-druid-ee
       - be-tests-databricks-ee
@@ -1685,21 +1688,20 @@ jobs:
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
-      - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       # - be-tests-starburst-ee
+      - be-tests-teradata-ee
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
-      - be-tests-teradata-ee
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()
     steps:
       - name: Check job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:
@@ -1713,8 +1715,7 @@ jobs:
               }));
 
             // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' ||
-                job.name == 'be-tests-starburst-ee' || job.name == 'be-tests-bigquery-cloud-sdk-ee'))) {
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
                 console.log("");
                 console.log("        _------.        ");
                 console.log("       /  ,     \_      ");

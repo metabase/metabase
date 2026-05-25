@@ -34,7 +34,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Build sample app compatibility data
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         id: build-sample-apps-data
         with:
           script: | # js
@@ -136,7 +136,7 @@ jobs:
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
@@ -180,7 +180,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest
@@ -247,7 +247,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js shoppy-e2e
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-shoppy-e2e-${{ matrix.environment }}-latest
@@ -327,7 +327,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js shoppy-e2e
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-shoppy-synthetic-tests-latest
@@ -382,7 +382,7 @@ jobs:
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
@@ -415,7 +415,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-host-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest

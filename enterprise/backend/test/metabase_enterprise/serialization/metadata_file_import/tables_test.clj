@@ -69,16 +69,17 @@
             "NULL-safe match: staging schema=NULL ⇔ target schema=NULL"))
       (finally (p/clear-staging-tables!)))))
 
-(deftest resolve-skips-inactive-target-test
+(deftest resolve-matches-inactive-target-test
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
-                 :model/Table {} {:db_id db-id :schema "PUBLIC" :name "users" :active false}]
+                 :model/Table {tid :id} {:db_id db-id :schema "PUBLIC" :name "users" :active false}]
     (try
       (p/clear-staging-tables!)
       (t2/insert! :metabase_table_import [(staging-row 100 db-name "users")])
       (p/resolve-target-table-ids-in-staging!)
       (let [row (get (staging-rows-by-source-id) 100)]
-        (is (nil? (:target_id row))
-            "inactive target rows are intentionally not resolved — re-import creates a fresh active row"))
+        (is (= tid (:target_id row))
+            "inactive (non-defective) target rows resolve to the existing row — the merge reactivates
+             it in place rather than inserting a duplicate that collides on the unique index"))
       (finally (p/clear-staging-tables!)))))
 
 (deftest resolve-skips-defective-duplicate-target-test
