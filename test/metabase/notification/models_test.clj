@@ -67,7 +67,7 @@
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
       (models.notification/reassigning-creator
-        (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))
+       (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))
       (is (= (mt/user->id :rasta)
              (t2/select-one-fn :creator_id :model/Notification noti-id)))))
 
