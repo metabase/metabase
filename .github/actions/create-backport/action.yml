@@ -91,11 +91,10 @@ runs:
 
     - name: Enable Pull Request Automerge
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      uses: peter-evans/enable-pull-request-automerge@v2
-      with:
-        token: ${{ inputs.github-token }}
-        pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
-        merge-method: squash
+      run: gh pr merge $PR_NUMBER --squash --auto "1"
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
     - uses: ./.github/actions/notify-pull-request
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'true' }}

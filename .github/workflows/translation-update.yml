@@ -151,8 +151,7 @@ jobs:
           number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
-        uses: peter-evans/enable-pull-request-automerge@684fed02ccc9b5eefcf7d40b65b3cd44255bd5bc # v2
-        with:
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          pull-request-number: ${{ steps.create_pr.outputs.pr_number }}
-          merge-method: squash
+        run: gh pr merge $PR_NUMBER --squash --auto "1"
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
