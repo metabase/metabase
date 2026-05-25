@@ -45,7 +45,7 @@ runs:
       # whether to fail or to pass the whole job, based on the quarantine list.
       continue-on-error: true
     - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@v1
+      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
       # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
