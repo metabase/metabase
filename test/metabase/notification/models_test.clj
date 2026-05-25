@@ -62,13 +62,30 @@
            #"Update payload_id is not allowed."
            (t2/update! :model/Notification noti-id {:payload_id 1338})))))
 
-  (testing "can change creator id (used by the admin bulk change-owner endpoint)"
+  (testing "creator_id changes only through the blessed reassigning-creator path"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)})
+      (models.notification/reassigning-creator
+        (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))
       (is (= (mt/user->id :rasta)
-             (t2/select-one-fn :creator_id :model/Notification noti-id))))))
+             (t2/select-one-fn :creator_id :model/Notification noti-id)))))
+
+  (testing "any other path can't change creator_id — even a superuser"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (testing "superuser (outside the blessed path)"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (thrown-with-msg?
+               java.lang.Exception
+               #"Update creator_id is not allowed."
+               (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))
+      (testing "no current user (system context)"
+        (is (thrown-with-msg?
+             java.lang.Exception
+             #"Update creator_id is not allowed."
+             (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"

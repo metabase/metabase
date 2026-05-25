@@ -1284,39 +1284,27 @@
           (is (<= (count (:check_history resp)) 10)))))))
 
 ;; ---------------------------------------------------------------------------------------------
-;; F. Superuser may reassign creator_id via the public PUT endpoint
+;; F. creator_id (owner) cannot be reassigned via the public PUT endpoint — only via POST /bulk
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest put-non-superuser-cannot-change-creator-id-test
-  (testing "PUT /api/notification/:id strips creator_id for non-superusers (owner stays unchanged)"
+(deftest put-cannot-change-creator-id-test
+  (testing "PUT /api/notification/:id rejects creator_id changes (owner stays unchanged); reassignment is admin-only"
     (mt/with-temp [:model/Card             {card-id :id} {}
                    :model/NotificationCard {nc :id}      {:card_id card-id}
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :rasta)}]
-      ;; rasta owns this notification; they cannot change creator_id to someone else
-      (let [notification (mt/user-http-request :rasta :get 200 (format "notification/%d" nid))]
-        (mt/user-http-request :rasta :put 200 (format "notification/%d" nid)
-                              (assoc notification :creator_id (mt/user->id :crowberto)))
-        ;; creator_id must not have changed
-        (is (= (mt/user->id :rasta)
-               (t2/select-one-fn :creator_id :model/Notification nid))
-            "non-superuser cannot change creator_id via PUT")))))
-
-(deftest put-superuser-can-change-creator-id-test
-  (testing "PUT /api/notification/:id allows superusers to change creator_id (owner picker)"
-    (mt/with-temp [:model/User             {new-owner :id} {}
-                   :model/Card             {card-id :id}   {}
-                   :model/NotificationCard {nc :id}        {:card_id card-id}
-                   :model/Notification     {nid :id}       {:payload_type :notification/card
-                                                            :payload_id   nc
-                                                            :creator_id   (mt/user->id :rasta)}]
-      (let [notification (mt/user-http-request :crowberto :get 200 (format "notification/%d" nid))]
-        (mt/user-http-request :crowberto :put 200 (format "notification/%d" nid)
-                              (assoc notification :creator_id new-owner))
-        (is (= new-owner
-               (t2/select-one-fn :creator_id :model/Notification nid))
-            "superuser CAN change creator_id via PUT")))))
+      (doseq [actor [:rasta :crowberto]]
+        (testing (format "as %s: changing creator_id is a 400, not a silent strip" actor)
+          (let [notification (mt/user-http-request actor :get 200 (format "notification/%d" nid))]
+            (mt/user-http-request actor :put 400 (format "notification/%d" nid)
+                                  (assoc notification :creator_id (mt/user->id :lucky)))
+            (testing "echoing back the unchanged creator_id is allowed (clients PUT the whole notification)"
+              (mt/user-http-request actor :put 200 (format "notification/%d" nid)
+                                    (assoc notification :creator_id (mt/user->id :rasta)))))))
+      (is (= (mt/user->id :rasta)
+             (t2/select-one-fn :creator_id :model/Notification nid))
+          "creator_id is unchanged"))))
 
 ;; ---------------------------------------------------------------------------------------------
 ;; Per-notification isolation — two notifications on the same card

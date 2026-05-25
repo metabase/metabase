@@ -119,11 +119,13 @@
   search no longer descends into recipients (per design iteration)."
   [email]
   (let [lower-email (u/lower-case-en email)]
-    (->> (t2/select [:model/NotificationRecipient :notification_handler_id :details]
-                    :type :notification-recipient/raw-value)
-         (into #{}
-               (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
-                     (map :notification_handler_id))))))
+    ;; reducible-select so the (necessarily) in-memory `details.value` scan streams rows rather
+    ;; than realizing the whole raw-value recipient table at once.
+    (into #{}
+          (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
+                (map :notification_handler_id))
+          (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
+                               :type :notification-recipient/raw-value))))
 
 (defn- notification-ids-with-recipient-email
   "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
@@ -146,9 +148,15 @@
       :where     where-clause})))
 
 (defn- wildcard-string
-  "`%foo%` substring pattern with the input lowercased."
+  "`%foo%` substring pattern with the input lowercased and LIKE metacharacters (`\\`, `%`, `_`)
+  escaped so they match literally rather than as wildcards. Relies on the default `\\` LIKE escape
+  character, which H2, Postgres, and MySQL all share."
   [s]
-  (str "%" (u/lower-case-en s) "%"))
+  (let [escaped (-> (u/lower-case-en s)
+                    (str/replace "\\" "\\\\")
+                    (str/replace "_" "\\_")
+                    (str/replace "%" "\\%"))]
+    (str "%" escaped "%")))
 
 (defn- query-where-clause
   "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
@@ -212,6 +220,9 @@
   (let [lookback (lookback-cutoff)]
     {:select [:lr.entity_id
               [:lr.tick_started_at :started_at]
+              ;; Boolean CASE, read back in Clojure — same pattern as
+              ;; `metabase.search.in-place.legacy/bookmark-col`. `has-failure?` runs it through
+              ;; `bit->boolean` to absorb the MySQL/MariaDB bit-vs-boolean JDBC quirk.
               [[:case
                 [:exists {:select [[1]]
                           :from   [[:task_history :tf]]
@@ -219,8 +230,8 @@
                                    [:= :tf.run_id :lr.run_id]
                                    [:= :tf.task task-channel-send]
                                    [:= :tf.status "failed"]]}]
-                1
-                :else 0]
+                true
+                :else false]
                :has_failure]]
      :from   [[{:select [:tr2.entity_id
                          [:tr2.id         :run_id]
@@ -270,84 +281,80 @@
                [:= :notification_handler.notification_id :notification.id]
                [:in :notification_handler.channel_type channels]]}]))
 
+(defn- list-where-clauses
+  "Optional WHERE clauses for the list/detail query, returned as data (a seq with inactive filters
+  elided) so `base-list-query` can `(reduce sql.helpers/where ...)` them onto the query."
+  [{:keys [active creator_id creator_active creatorless card_id recipient_email channel
+           last_send_status query]}]
+  (keep
+   identity
+   [(when (some? active)         [:= :notification.active active])
+    (when (some? creator_active) [:= :cu.is_active creator_active])
+    ;; `creatorless` = true:  no creator at all, OR a deactivated creator (both are "creatorless")
+    ;; `creatorless` = false: has a live (active) creator
+    ;; [:= col nil] is IS NULL and [:is-not col nil] is IS NOT NULL per HoneySQL 2 semantics.
+    (when (true? creatorless)
+      [:or [:= :notification.creator_id nil] [:= :cu.is_active false]])
+    (when (false? creatorless)
+      [:and [:is-not :notification.creator_id nil] [:= :cu.is_active true]])
+    (when creator_id    [:= :notification.creator_id creator_id])
+    (when card_id       [:= :nc.card_id card_id])
+    (when (seq channel) (channel-exists channel))
+    (when last_send_status
+      (case last_send_status
+        :successful [:= :ls.has_failure false]
+        :failing    [:= :ls.has_failure true]))
+    (when recipient_email
+      (let [ids (notification-ids-with-recipient-email recipient_email)]
+        ;; No recipient matched → an always-false predicate so the page comes back empty. We use
+        ;; the truthy `[:= 1 0]` (renders `WHERE 1 = 0`) rather than `false`/`nil`, which the
+        ;; `keep identity` above would elide — turning "no matches" into "no filter".
+        (if (seq ids) [:in :notification.id ids] [:= 1 0])))
+    (when-not (str/blank? query) (query-where-clause query))]))
+
 (defn- base-list-query
   "Select notifications plus run-summary columns, card name, and creator name computed inline.
 
   When `skip-run-joins?` is true (detail path only), the `lc`/`ls` window subqueries and their
   select columns are omitted — the detail endpoint overwrites `last_check`/`last_send` from
   per-notification histories anyway, so those joins are pure waste on that path."
-  [{:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status query
-           skip-run-joins?]}]
-  (cond-> {:select (cond-> [:notification.id
-                            :notification.active
-                            :notification.creator_id
-                            :notification.created_at
-                            :notification.updated_at
-                            :notification.payload_type
-                            :notification.payload_id
-                            [:c.name                                           :card_name]
-                            [:cu.is_active                                     :creator_is_active]
-                            [[:coalesce :cu.last_name :cu.first_name :cu.email] :creator_name]]
-                     (not skip-run-joins?)
-                     (into [[:lc.id                                            :lc_id]
-                            [:lc.status                                        :lc_status]
-                            [:lc.started_at                                    :lc_started_at]
-                            [:ls.started_at                                    :ls_started_at]
-                            [:ls.has_failure                                   :ls_has_failure]]))
-           :from   [:notification]
-           :where  [:= :notification.payload_type "notification/card"]}
+  [{:keys [skip-run-joins?] :as filters}]
+  (reduce
+   sql.helpers/where
+   (cond-> {:select (cond-> [:notification.id
+                             :notification.active
+                             :notification.creator_id
+                             :notification.created_at
+                             :notification.updated_at
+                             :notification.payload_type
+                             :notification.payload_id
+                             [:c.name                                           :card_name]
+                             [:cu.is_active                                     :creator_is_active]
+                             [[:coalesce :cu.last_name :cu.first_name :cu.email] :creator_name]]
+                      (not skip-run-joins?)
+                      (into [[:lc.id                                            :lc_id]
+                             [:lc.status                                        :lc_status]
+                             [:lc.started_at                                    :lc_started_at]
+                             [:ls.started_at                                    :ls_started_at]
+                             [:ls.has_failure                                   :ls_has_failure]]))
+            :from   [:notification]
+            ;; A `notification/card` row with no payload_id is orphaned — it has no card, so
+            ;; every card-derived column is null and it can't be managed here. Exclude it.
+            :where  [:and
+                     [:= :notification.payload_type "notification/card"]
+                     [:is-not :notification.payload_id nil]]}
 
-    ;; These joins are always present regardless of the path.
-    true
-    (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
-        (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
-        (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
+     ;; These joins are always present regardless of the path.
+     true
+     (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
+         (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
+         (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
 
-    ;; Window subquery joins — skipped on the detail path (see docstring).
-    (not skip-run-joins?)
-    (-> (sql.helpers/left-join [(latest-run-per-card)       :lc] [:= :lc.entity_id :nc.card_id])
-        (sql.helpers/left-join [(latest-send-tick-per-card) :ls] [:= :ls.entity_id :nc.card_id]))
-
-    (some? active)
-    (sql.helpers/where [:= :notification.active active])
-
-    (some? creator_active)
-    (sql.helpers/where [:= :cu.is_active creator_active])
-
-    ;; `creatorless` = true:  no creator at all, OR a deactivated creator (both are "creatorless")
-    ;; `creatorless` = false: has a live (active) creator
-    ;; Use [:= col nil] for IS NULL and [:is-not col nil] for IS NOT NULL per HoneySQL 2 semantics.
-    (true? creatorless)
-    (sql.helpers/where [:or
-                        [:= :notification.creator_id nil]
-                        [:= :cu.is_active false]])
-
-    (false? creatorless)
-    (sql.helpers/where [:and
-                        [:is-not :notification.creator_id nil]
-                        [:= :cu.is_active true]])
-
-    creator_id
-    (sql.helpers/where [:= :notification.creator_id creator_id])
-
-    card_id
-    (sql.helpers/where [:= :nc.card_id card_id])
-
-    (seq channel)
-    (sql.helpers/where (channel-exists channel))
-
-    last_send_status
-    (sql.helpers/where (case last_send_status
-                         :successful [:= :ls.has_failure 0]
-                         :failing    [:= :ls.has_failure 1]))
-
-    recipient_email
-    (sql.helpers/where
-     (let [ids (notification-ids-with-recipient-email recipient_email)]
-       (if (seq ids) [:in :notification.id ids] [:= 1 0])))
-
-    (not (str/blank? query))
-    (sql.helpers/where (query-where-clause query))))
+     ;; Window subquery joins — skipped on the detail path (see docstring).
+     (not skip-run-joins?)
+     (-> (sql.helpers/left-join [(latest-run-per-card)       :lc] [:= :lc.entity_id :nc.card_id])
+         (sql.helpers/left-join [(latest-send-tick-per-card) :ls] [:= :ls.entity_id :nc.card_id])))
+   (list-where-clauses filters)))
 
 (defn- order-by-clauses
   "Resolve `sort_column` + `sort_direction` (both already malli-validated enums) into an
@@ -409,28 +416,34 @@
   (some-> status keyword))
 
 (defn- error-by-run-id
-  "Given a set of failed run IDs (from the page's `lc.id`s), return a map run_id → error message.
-  One SQL query, latest failed task_history row per run wins. Avoids cross-dialect JSON SQL by
-  letting toucan deserialize `task_details` and reading `:message` in Clojure."
+  "Given a set of failed/abandoned run IDs (from the page's `lc.id`s), return a map
+  run_id → error message. The latest failed/abandoned task_history row per run wins, selected in
+  SQL via `ROW_NUMBER() OVER (PARTITION BY run_id ORDER BY ended_at DESC)` filtered to rank 1.
+  Avoids cross-dialect JSON SQL by letting toucan deserialize `task_details` and reading
+  `:message` in Clojure."
   [run-ids]
   (when (seq run-ids)
-    (->> (t2/select [:model/TaskHistory :run_id :task_details :ended_at]
-                    {:where    [:and
-                                [:in :run_id run-ids]
-                                [:in :status ["failed"]]]
-                     :order-by [[:ended_at :desc]]})
-         (reduce (fn [acc {:keys [run_id task_details]}]
-                   (if (contains? acc run_id)
-                     acc
-                     (assoc acc run_id (:message task_details))))
-                 {}))))
+    (->> (t2/select :model/TaskHistory
+                    {:select [:run_id :task_details]
+                     :from   [[{:select [:run_id :task_details
+                                         [[:over [[:row_number]
+                                                  {:partition-by [:run_id]
+                                                   :order-by     [[:ended_at :desc]]}]]
+                                          :rn]]
+                                :from   [:task_history]
+                                :where  [:and
+                                         [:in :run_id run-ids]
+                                         [:in :status ["failed" "abandoned"]]]}
+                               :sub]]
+                     :where  [:= :sub.rn 1]})
+         (into {} (map (juxt :run_id (comp :message :task_details)))))))
 
 (defn- has-failure?
-  "True when a `has_failure` value from the `latest-send-tick-per-card` subquery indicates at
-  least one channel failure.  H2 returns CASE expressions as strings ('0'/'1'); Postgres returns
-  integers (0/1).  We coerce with `not=` against zero/\"0\" to handle both."
+  "True when the `has_failure` value from `latest-send-tick-per-card` indicates at least one
+  channel failure. `bit->boolean` absorbs the MySQL/MariaDB bit-vs-boolean JDBC quirk so H2,
+  Postgres, and MySQL all read uniformly."
   [v]
-  (and v (not= 0 v) (not= "0" (str v))))
+  (boolean (api/bit->boolean v)))
 
 (defn- decorate-runs
   "Build :last_check / :last_send maps on each row from the joined run columns + a one-shot
@@ -703,17 +716,25 @@
   hydrated before-state so the caller can drive post-commit side effects via
   [[notification-api/publish-notification-update!]]."
   [update-map ids]
-  (t2/with-transaction [_conn]
-    (let [before (-> (t2/select :model/Notification
-                                :id           [:in ids]
-                                :payload_type :notification/card)
-                     models.notification/hydrate-notification
-                     vec)]
-      (t2/update! :model/Notification
-                  :id           [:in ids]
-                  :payload_type :notification/card
-                  update-map)
-      before)))
+  ;; Guard empty `ids`: `[:in :id []]` is degenerate SQL, and there's nothing to select/update or
+  ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
+  (if (empty? ids)
+    []
+    ;; This admin endpoint is the blessed owner-reassignment path, so it permits the `creator_id`
+    ;; change the model's before-update otherwise rejects. (Harmless for the archive action, whose
+    ;; update-map never touches creator_id.)
+    (models.notification/reassigning-creator
+     (t2/with-transaction [_conn]
+       (let [before (-> (t2/select :model/Notification
+                                   :id           [:in ids]
+                                   :payload_type :notification/card)
+                        models.notification/hydrate-notification
+                        vec)]
+         (t2/update! :model/Notification
+                     :id           [:in ids]
+                     :payload_type :notification/card
+                     update-map)
+         before)))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes

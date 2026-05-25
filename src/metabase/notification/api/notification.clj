@@ -246,26 +246,23 @@
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification.
 
-  `creator_id` (owner reassignment): superusers may supply it here (e.g. the admin 'Edit alert'
-  modal's owner picker). Non-superusers always have `:creator_id` stripped — the model's
-  `before-update` hook enforces this as well. `update-notification!` routes changes through
-  a spec that only tracks `:active` + nested entities, so a superuser-supplied `creator_id`
-  is applied via a separate update before the spec-based update. Bulk reassignment via
-  `POST /ee/notifications/bulk` remains the recommended path for multi-row owner changes."
+  `creator_id` (owner) cannot be changed here by anyone — reassign owners (single or bulk) via
+  `POST /api/ee/notifications/bulk`. A change attempt gets a 400 rather than being silently
+  dropped; echoing back the unchanged value (e.g. PUTing the whole notification) is fine. The
+  model's `before-update` hook is the backstop."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
-  (let [new-creator-id        (when (mi/superuser?) (:creator_id body))
-        body                  (dissoc body :creator_id)
-        existing-notification (get-notification id)]
+  (let [existing-notification (get-notification id)]
+    ;; Reject an actual ownership change (echoing back the unchanged value is fine — clients PUT
+    ;; the whole notification map). Reassignment goes through the admin bulk endpoint only.
+    (when (and (contains? body :creator_id)
+               (not= (:creator_id body) (:creator_id existing-notification)))
+      (throw (ex-info "Changing a notification's creator_id is only allowed via the admin reassignment endpoint."
+                      {:status-code 400})))
     (api/update-check existing-notification body)
-    (t2/with-transaction [_conn]
-      (when new-creator-id
-        (t2/update! :model/Notification id {:creator_id new-creator-id}))
-      (models.notification/update-notification! (cond-> existing-notification
-                                                  new-creator-id (assoc :creator_id new-creator-id))
-                                                body))
+    (models.notification/update-notification! existing-notification (dissoc body :creator_id))
     (u/prog1 (get-notification id)
       (publish-notification-update! <> existing-notification))))
 

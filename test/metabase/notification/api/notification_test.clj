@@ -597,8 +597,14 @@
         [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
                        :notification {:creator_id (mt/user->id :rasta)}}]
         (let [update!                     (fn [user-or-id expected-status]
+                                            ;; This test exercises card-view + subscription permissions, not owner
+                                            ;; reassignment. Drop creator_id from the body — otherwise the stale value
+                                            ;; left over after change-notification-creator would read as a (forbidden,
+                                            ;; non-superuser) reassignment and 400 before the permission checks run.
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
-                                                                  (assoc notification :updated_at (t/offset-date-time))))
+                                                                  (-> notification
+                                                                      (dissoc :creator_id)
+                                                                      (assoc :updated_at (t/offset-date-time)))))
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
