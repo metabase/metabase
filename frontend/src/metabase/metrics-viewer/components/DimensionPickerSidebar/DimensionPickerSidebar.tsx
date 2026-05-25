@@ -234,50 +234,48 @@ export function DimensionPickerSidebar({
           />
         )}
         {showFieldsByCategory && (
-          <Stack gap="lg">
+          <Stack gap="xs">
+            <Text px="sm" size="sm" c="text-secondary" my="sm">
+              {t`Shared dimensions`}
+            </Text>
             <Stack gap="xs">
-              <Text px="sm" size="sm" c="text-secondary" my="sm">
-                {t`Shared dimensions`}
-              </Text>
-              <Stack gap="xs">
-                {categories.map((category) => {
-                  const isSelected = category.key === selectedTabCategoryKey;
-                  const isExpanded = category.key === expandedCategoryKey;
+              {categories.map((category) => {
+                const isSelected = category.key === selectedTabCategoryKey;
+                const isExpanded = category.key === expandedCategoryKey;
 
-                  return (
-                    <CategoryItem
-                      key={category.key}
-                      category={category}
-                      activeTab={activeTab}
-                      metricSlots={metricSlots}
-                      sourceDataById={metricSourceDataById}
-                      sourceColors={sourceColors}
-                      isSelected={isSelected}
-                      isExpanded={isExpanded}
-                      onCategorySelect={() => handleCategorySelect(category)}
-                      onToggleCategorySettings={() =>
-                        handleToggleCategorySettings(category)
-                      }
-                      onDimensionChange={(slotIndex, dimensionId) =>
-                        handleCategoryDimensionChange(
-                          category,
-                          slotIndex,
-                          dimensionId,
-                        )
-                      }
-                    />
-                  );
-                })}
-                <Button
-                  mr="auto"
-                  mt="sm"
-                  onClick={handleSeeAll}
-                  size="sm"
-                  variant="subtle"
-                >
-                  {t`See all`}
-                </Button>
-              </Stack>
+                return (
+                  <CategoryItem
+                    key={category.key}
+                    category={category}
+                    activeTab={activeTab}
+                    metricSlots={metricSlots}
+                    sourceDataById={metricSourceDataById}
+                    sourceColors={sourceColors}
+                    isSelected={isSelected}
+                    isExpanded={isExpanded}
+                    onCategorySelect={() => handleCategorySelect(category)}
+                    onToggleCategorySettings={() =>
+                      handleToggleCategorySettings(category)
+                    }
+                    onDimensionChange={(slotIndex, dimensionId) =>
+                      handleCategoryDimensionChange(
+                        category,
+                        slotIndex,
+                        dimensionId,
+                      )
+                    }
+                  />
+                );
+              })}
+              <Button
+                mr="auto"
+                mt="sm"
+                onClick={handleSeeAll}
+                size="sm"
+                variant="subtle"
+              >
+                {t`See all`}
+              </Button>
             </Stack>
           </Stack>
         )}

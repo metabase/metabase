@@ -24,12 +24,12 @@
   background-color: var(--mb-color-background-hover);
 }
 
-.categoryItem[data-selected] {
+.categoryItem[data-selected="true"] {
   background-color: var(--mb-color-background-selected);
   color: var(--mb-color-text-brand);
 }
 
-.categoryItem[data-selected]:hover {
+.categoryItem[data-selected="true"]:hover {
   background-color: var(--mb-color-background-hover);
 }
 
