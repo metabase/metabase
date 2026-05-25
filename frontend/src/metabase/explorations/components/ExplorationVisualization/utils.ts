@@ -13,6 +13,7 @@ import type {
   DatasetColumn,
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryParams,
   ExplorationQueryType,
   ExplorationThread,
   ExplorationThreadMetric,
@@ -35,9 +36,42 @@ interface SeriesGroup {
   queryType: ExplorationQueryType;
   isTimeseries: boolean;
   stackCount?: number;
+  chartLabel?: string;
+  /**
+   * Variant-specific params from the BE plan row (e.g. `k` for
+   * `top-n-other`). All queries in a group share the same params shape
+   * upstream, so we copy off the first one in `buildSeries`.
+   */
+  params?: ExplorationQueryParams | null;
+}
+
+/**
+ * Per-group chart title used by the labeled layout strategies. Falls back
+ * to the static `QUERY_TYPE_TO_LABEL_MAP`, with a dynamic case for
+ * `top-n-other` so the title reflects the actual `k` from the query plan.
+ */
+function getChartLabel(group: SeriesGroup): string | null {
+  if (group.queryType === "top-n-other") {
+    const k = group.params?.k;
+    return typeof k === "number" ? t`Top ${k}` : null;
+  }
+  return QUERY_TYPE_TO_LABEL_MAP[group.queryType]?.() ?? null;
 }
 
 const SHOULD_STACK_CUTOFF = 8;
+
+const QUERY_TYPE_TO_LABEL_MAP: Record<
+  ExplorationQueryType,
+  () => string | null
+> = {
+  ["default"]: () => null,
+  ["top-n-other"]: () => null,
+  ["temporal-pattern-day"]: () => t`Day of week`,
+  ["temporal-pattern-hour"]: () => t`Hour of day`,
+  ["time-facet"]: () => t`Over time`,
+  ["filtered-subset"]: () => null,
+  ["per-value-time-series"]: () => null,
+};
 
 export function buildSeriesGroups({
   queries,
@@ -55,34 +89,56 @@ export function buildSeriesGroups({
     buildSeries({ ...rest, queriesWithDatasets }),
   );
 
-  // time charts first
-  seriesGroups.sort((a, b) => {
-    if (a.isTimeseries === b.isTimeseries) {
-      return 0;
-    }
-    return a.isTimeseries ? -1 : 1;
-  });
-
-  const layoutStrategy = getGroupVizualizationLayoutStrategy(seriesGroups);
+  const layoutStrategy = getChartsGroupLayoutStrategy(seriesGroups);
 
   if (
     layoutStrategy === "two-small-charts-down" ||
     layoutStrategy === "two-small-tables-down"
   ) {
-    seriesGroups[0].series = seriesGroups[0].series.map((series) => ({
-      ...series,
-      card: {
-        ...series.card,
-        visualization_settings: {
-          ...series.card.visualization_settings,
-          "graph.x_axis.title_text": "",
-          "graph.y_axis.title_text": "",
-        },
-      },
-    }));
+    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[0].series,
+    );
+
+    const bottomLeftChartLabel = getChartLabel(seriesGroups[1]);
+    if (bottomLeftChartLabel) {
+      seriesGroups[1].chartLabel = bottomLeftChartLabel;
+    }
+
+    const bottomRightChartLabel = getChartLabel(seriesGroups[2]);
+    if (bottomRightChartLabel) {
+      seriesGroups[2].chartLabel = bottomRightChartLabel;
+    }
+  }
+
+  if (layoutStrategy === "two-same-size-charts-vertically") {
+    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[0].series,
+    );
+    seriesGroups[1].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[1].series,
+    );
+
+    const bottomChartLabel = getChartLabel(seriesGroups[1]);
+    if (bottomChartLabel) {
+      seriesGroups[1].chartLabel = bottomChartLabel;
+    }
   }
 
   return { seriesGroups, layoutStrategy };
+}
+
+function removeAxisTitlesFromAllSeries(series: SingleSeries[]) {
+  return series.map((series) => ({
+    ...series,
+    card: {
+      ...series.card,
+      visualization_settings: {
+        ...series.card.visualization_settings,
+        "graph.x_axis.title_text": "",
+        "graph.y_axis.title_text": "",
+      },
+    },
+  }));
 }
 
 interface ExplorationQueryWithDataset extends ExplorationQuery {
@@ -173,6 +229,7 @@ export function buildSeries({
     isTimeseries,
     stackCount,
     queryType: queriesWithDatasets[0]?.query_type || "default",
+    params: queriesWithDatasets[0]?.params,
   };
 }
 
@@ -437,33 +494,41 @@ export function getDocumentsForDocumentMenu(
 }
 
 // Pre-defined chart layouts; the value drives the `data-chart-layout` attribute
-// the grid CSS keys off. New layouts are added here and in the CSS module.
+// the grid CSS keys off. New layouts are added here and in the CSS module - ./ExplorationVisualization.module.css
 export type ChartLayout =
   | "default"
   | "two-small-charts-down"
-  | "two-small-tables-down";
+  | "two-small-tables-down"
+  | "two-same-size-charts-vertically";
 
-export const getGroupVizualizationLayoutStrategy = (
+export const getChartsGroupLayoutStrategy = (
   seriesGroups: SeriesGroup[],
 ): ChartLayout => {
   const isTwoSmallChartsDownStrategy =
     seriesGroups.length === 3 &&
-    // FIXME: resolve typing issue
     seriesGroups[1].queryType === "temporal-pattern-day" &&
     seriesGroups[2].queryType === "temporal-pattern-hour";
 
-  const bottomChartsAreTables =
-    isTwoSmallChartsDownStrategy &&
-    seriesGroups[1].series[0].card.display === "table" &&
-    seriesGroups[2].series[0].card.display === "table";
+  if (isTwoSmallChartsDownStrategy) {
+    const bottomChartsAreTables =
+      isTwoSmallChartsDownStrategy &&
+      seriesGroups[1].series[0].card.display === "table" &&
+      seriesGroups[2].series[0].card.display === "table";
 
-  // The layout the chart grid renders. Currently derived from a single flag;
-  // a later refactor will replace that with a function returning this value.
-  const chartLayout: ChartLayout = !isTwoSmallChartsDownStrategy
-    ? "default"
-    : bottomChartsAreTables
+    return bottomChartsAreTables
       ? "two-small-tables-down"
       : "two-small-charts-down";
+  }
 
-  return chartLayout;
+  const isTwoChartsWithOneSpecial =
+    seriesGroups.length === 2 &&
+    seriesGroups[0].queryType === "default" &&
+    (seriesGroups[1].queryType === "time-facet" ||
+      seriesGroups[1].queryType === "top-n-other");
+
+  if (isTwoChartsWithOneSpecial) {
+    return "two-same-size-charts-vertically";
+  }
+
+  return "default";
 };

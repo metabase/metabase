@@ -5,6 +5,7 @@ import type {
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
+  ExplorationQueryType,
   ExplorationThread,
 } from "metabase-types/api";
 import {
@@ -556,21 +557,26 @@ describe("ExplorationGroupVisualization", () => {
     }
 
     /** A line query in its own series group (distinct `dimension_id`). */
-    function lineQuery(id: number, name: string): ExplorationQuery {
+    function lineQuery(
+      id: number,
+      name: string,
+      queryType: ExplorationQueryType = "default",
+    ): ExplorationQuery {
       return makeQuery({
         id,
         name,
         status: "done",
         dimension_id: `dim-${id}`,
+        query_type: queryType,
       });
     }
 
     /**
-     * Four segment queries sharing a `dimension_id` — enough for
-     * `getDisplay` to pick the `table` heat-map display for the group.
+     * Four segment queries sharing a `dimension_id` + `query_type` — enough
+     * for `getDisplay` to pick the `table` heat-map display for the group.
      */
     function tableGroupQueries(
-      dimensionId: string,
+      queryType: ExplorationQueryType,
       name: string,
       startId: number,
     ): ExplorationQuery[] {
@@ -579,7 +585,8 @@ describe("ExplorationGroupVisualization", () => {
           id: startId + i,
           name,
           status: "done",
-          dimension_id: dimensionId,
+          dimension_id: `dim-${queryType}`,
+          query_type: queryType,
           segment_id: i + 1,
         }),
       );
@@ -588,8 +595,8 @@ describe("ExplorationGroupVisualization", () => {
     it('uses the "two-small-charts-down" layout for the day-of-week + hour-of-day trio', () => {
       const { container } = setupGroupLayout([
         lineQuery(101, "Revenue trend"),
-        lineQuery(102, "Revenue (day of week)"),
-        lineQuery(103, "Revenue (hour of day)"),
+        lineQuery(102, "Revenue (day of week)", "temporal-pattern-day"),
+        lineQuery(103, "Revenue (hour of day)", "temporal-pattern-hour"),
       ]);
 
       expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
@@ -623,6 +630,34 @@ describe("ExplorationGroupVisualization", () => {
       );
     });
 
+    it('uses the "two-same-size-charts-vertically" layout for a 2-chart group with a `time-facet` secondary', () => {
+      const { container } = setupGroupLayout([
+        lineQuery(101, "Revenue by region"),
+        lineQuery(102, "Revenue over time", "time-facet"),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "two-same-size-charts-vertically",
+      );
+    });
+
+    it('shows a "Top {k}" label on the bottom chart when its queryType is "top-n-other"', () => {
+      setupGroupLayout([
+        lineQuery(101, "Revenue by amount"),
+        makeQuery({
+          id: 102,
+          name: "Top 3 amounts",
+          status: "done",
+          dimension_id: "dim-102",
+          query_type: "top-n-other",
+          params: { k: 3 },
+        }),
+      ]);
+
+      expect(screen.getByText("Top 3")).toBeInTheDocument();
+    });
+
     it('uses the "two-small-tables-down" layout when the two bottom charts are heat-map tables', () => {
       // Categorical (non-date) datasets so `getDisplay` skips the line
       // branch and the two bottom groups resolve to `table` heat-maps.
@@ -630,8 +665,16 @@ describe("ExplorationGroupVisualization", () => {
 
       const { container } = setupGroupLayout([
         lineQuery(1, "Orders trend"),
-        ...tableGroupQueries("dim-dow", "Orders (day of week)", 10),
-        ...tableGroupQueries("dim-hod", "Orders (hour of day)", 20),
+        ...tableGroupQueries(
+          "temporal-pattern-day",
+          "Orders (day of week)",
+          10,
+        ),
+        ...tableGroupQueries(
+          "temporal-pattern-hour",
+          "Orders (hour of day)",
+          20,
+        ),
       ]);
 
       expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(

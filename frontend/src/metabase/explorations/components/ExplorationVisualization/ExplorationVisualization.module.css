@@ -58,3 +58,14 @@
 .chartGrid[data-chart-layout="two-small-tables-down"] > :first-child {
   grid-column: 1 / -1;
 }
+
+/*
+ * "two same-size charts vertically" — two charts stacked in a single column
+ * with equal heights. Used when a page pairs a main chart with a labeled
+ * secondary chart (e.g. an "over time" facet); the bottom chart shows its
+ * `chartLabel` as a title rendered by the chart component itself.
+ */
+.chartGrid[data-chart-layout="two-same-size-charts-vertically"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(15rem, 1fr) minmax(15rem, 1fr);
+}

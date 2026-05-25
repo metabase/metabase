@@ -13,7 +13,6 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
-  ExplorationQueryType,
   ExplorationThread,
   ExplorationThreadMetric,
   SingleSeries,
@@ -216,39 +215,30 @@ function ExplorationGroupVisualizationChart({
         interestingTimelineIds={interestingTimelineIds}
       />
       <Box className={S.chartGrid} data-chart-layout={layoutStrategy}>
-        {seriesGroups.map(({ series, stackCount, queryType, isTimeseries }) => (
-          <Box key={queryType}>
-            {
-              // TODO: I don't like we mix layout and title display logic - we should move this to "buildSeriesGroups"
-              //  and return there something like "groupTitle?: string"
-              (layoutStrategy === "two-small-charts-down" ||
-                layoutStrategy === "two-small-tables-down") &&
-                !isTimeseries && <Text>{queryType}</Text>
-            }
-            {isCartesianChart(series[0].card.display) ? (
-              <ExplorationCartesianChart
-                key={series[0].card.id}
-                series={series}
-                timelineEvents={timelineEvents}
-                stackCount={stackCount}
-                queryType={queryType}
-              />
-            ) : series[0].card.display === "table" ? (
-              <ExplorationHeatMap
-                key={series[0].card.id}
-                series={series}
-                queryType={queryType}
-              />
-            ) : (
-              <ExplorationMap
-                key={series[0].card.id}
-                series={series}
-                queryColors={queryColors}
-                queryType={queryType}
-              />
-            )}
-          </Box>
-        ))}
+        {seriesGroups.map(({ series, stackCount, queryType, chartLabel }) =>
+          isCartesianChart(series[0].card.display) ? (
+            <ExplorationCartesianChart
+              key={queryType}
+              series={series}
+              timelineEvents={timelineEvents}
+              stackCount={stackCount}
+              label={chartLabel}
+            />
+          ) : series[0].card.display === "table" ? (
+            <ExplorationHeatMap
+              key={queryType}
+              series={series}
+              label={chartLabel}
+            />
+          ) : (
+            <ExplorationMap
+              key={queryType}
+              series={series}
+              queryColors={queryColors}
+              label={chartLabel}
+            />
+          ),
+        )}
       </Box>
     </>
   );
@@ -258,53 +248,71 @@ interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   timelineEvents: TimelineEvent[];
   stackCount?: number;
-  queryType: ExplorationQueryType;
+  label?: string;
 }
 
 function ExplorationCartesianChart({
   series,
   timelineEvents,
   stackCount,
+  label,
 }: ExplorationCartesianChartProps) {
+  // The outer Stack is the grid item — height auto so it stretches to the
+  // cell. The label takes its natural height; the chart fills whatever is
+  // left via `flex={1}`. Without this, `h="100%"` on the chart plus a label
+  // above it would overflow the cell by the label's height.
   return (
-    <Box h="100%" mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}>
-      <Visualization
-        rawSeries={series}
-        timelineEvents={timelineEvents}
-        className={S.chart}
-      />
-    </Box>
+    <Stack
+      gap="sm"
+      mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}
+    >
+      {label && <Text size="lg">{label}</Text>}
+      <Box flex={1} mih={0}>
+        <Visualization
+          rawSeries={series}
+          timelineEvents={timelineEvents}
+          className={S.chart}
+        />
+      </Box>
+    </Stack>
   );
 }
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
-  queryType: ExplorationQueryType;
+  label?: string;
 }
 
-function ExplorationHeatMap({ series }: ExplorationHeatMapProps) {
+function ExplorationHeatMap({ series, label }: ExplorationHeatMapProps) {
   const combinedSeries = getHeatMapSeries({ series });
   // The pivoted heat-map renders one body row per segment series plus a
-  // header row. Size the box to exactly that height (rather than `h="100%"`)
-  // so a short table isn't stretched to fill — and leave empty space below —
-  // its grid cell.
+  // header row. Size the table to exactly that height (rather than
+  // `h="100%"`) so a short table isn't stretched to fill — and leave empty
+  // space below — its grid cell.
   const tableHeight = HEADER_HEIGHT + series.length * ROW_HEIGHT;
   return (
-    <Box h={tableHeight}>
-      <Visualization rawSeries={[combinedSeries]} className={S.chart} />
-    </Box>
+    <Stack gap="sm">
+      {label && <Text size="lg">{label}</Text>}
+      <Box h={tableHeight}>
+        <Visualization rawSeries={[combinedSeries]} className={S.chart} />
+      </Box>
+    </Stack>
   );
 }
 
 interface ExplorationMapProps {
   series: SingleSeries[];
   queryColors: Record<string, string>;
-  queryType: ExplorationQueryType;
+  label?: string;
 }
 
-function ExplorationMap({ series, queryColors }: ExplorationMapProps) {
+function ExplorationMap({ series, queryColors, label }: ExplorationMapProps) {
+  // The Stack is the grid item — height auto so it stretches to the cell.
+  // The label and (optional) legend take their natural height; the map
+  // boxes inside use `flex={1}` to share whatever vertical space is left.
   return (
-    <Stack key={series[0].card.id} gap="md" h="100%">
+    <Stack gap="md">
+      {label && <Text size="lg">{label}</Text>}
       {series.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {series.map((s) => {
