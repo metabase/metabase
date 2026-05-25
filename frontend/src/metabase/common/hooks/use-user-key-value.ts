@@ -10,7 +10,36 @@ import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { UserKeyValue } from "metabase-types/api";
 
-export interface UseUserKeyValueParams<T extends UserKeyValue> {
+type UserKeyValueNamespace<Namespace extends UserKeyValue["namespace"]> =
+  Extract<UserKeyValue, { namespace: Namespace }>;
+
+type ExactUserKeyValue<
+  Namespace extends UserKeyValue["namespace"],
+  Key extends string,
+> = Extract<UserKeyValueNamespace<Namespace>, { key: Key }>;
+
+type UserKeyValueFor<Params extends Pick<UserKeyValue, "namespace" | "key">> = [
+  ExactUserKeyValue<Params["namespace"], Params["key"]>,
+] extends [never]
+  ? UserKeyValueNamespace<Params["namespace"]> extends infer NamespaceMatch
+    ? NamespaceMatch extends UserKeyValue
+      ? Params["key"] extends NamespaceMatch["key"]
+        ? NamespaceMatch
+        : never
+      : never
+    : never
+  : ExactUserKeyValue<Params["namespace"], Params["key"]>;
+
+export interface UseUserKeyValueParams<
+  Params extends Pick<UserKeyValue, "namespace" | "key"> = UserKeyValue,
+> {
+  namespace: Params["namespace"];
+  key: Params["key"];
+  defaultValue?: UserKeyValueFor<Params>["value"];
+  skip?: boolean;
+}
+
+interface UseUserKeyValueImplementationParams<T extends UserKeyValue> {
   namespace: T["namespace"];
   key: T["key"];
   defaultValue?: T["value"];
@@ -35,12 +64,21 @@ export type UseUserKeyValueResult<T extends UserKeyValue> = {
   clearValue: () => Promise<{ data?: unknown; error?: unknown }>;
 };
 
+export function useUserKeyValue<
+  Namespace extends UserKeyValue["namespace"],
+  Key extends string,
+>(params: {
+  namespace: Namespace;
+  key: Key;
+  defaultValue?: UserKeyValueFor<{ namespace: Namespace; key: Key }>["value"];
+  skip?: boolean;
+}): UseUserKeyValueResult<UserKeyValueFor<{ namespace: Namespace; key: Key }>>;
 export function useUserKeyValue<T extends UserKeyValue>({
   namespace,
   key,
   defaultValue,
   skip = false,
-}: UseUserKeyValueParams<T>): UseUserKeyValueResult<T> {
+}: UseUserKeyValueImplementationParams<T>): UseUserKeyValueResult<T> {
   const user = useSelector(getUser) ?? null;
 
   const queryParams = user && !skip ? { namespace, key } : skipToken;
