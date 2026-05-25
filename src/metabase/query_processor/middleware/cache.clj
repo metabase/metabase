@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -241,22 +242,29 @@
 (defn- is-cacheable?
   "Returns true if the query has a valid cache strategy."
   [{:keys [cache-strategy], :as _query}]
-  (let [has-strat?  (has-cache-strategy? cache-strategy)
-        not-nocache? (strategy-not-nocache? cache-strategy)]
-    (and has-strat? not-nocache?)))
+  (let [has-strat?    (has-cache-strategy? cache-strategy)
+        not-nocache?  (strategy-not-nocache? cache-strategy)
+        ;; Per-user OAuth for BigQuery means each user authenticates to BigQuery with their own
+        ;; Google account. Metabase's cache is keyed by query structure only (not user identity),
+        ;; so cached results from one user could be served to another, bypassing BigQuery IAM.
+        ;; BigQuery has its own project-level result cache that handles repeated queries for free.
+        not-bigquery? (not= driver/*driver* :bigquery-cloud-sdk)]
+    (and has-strat? not-nocache? not-bigquery?)))
 
 (defn- get-cache-eligibility-description
   "Returns a descriptive string explaining why a query is or isn't cacheable."
   [{:keys [cache-strategy], :as _query}]
-  (let [has-strat?  (has-cache-strategy? cache-strategy)
-        not-nocache? (strategy-not-nocache? cache-strategy)]
-    (if (and has-strat? not-nocache?)
+  (let [has-strat?    (has-cache-strategy? cache-strategy)
+        not-nocache?  (strategy-not-nocache? cache-strategy)
+        not-bigquery? (not= driver/*driver* :bigquery-cloud-sdk)]
+    (if (and has-strat? not-nocache? not-bigquery?)
       (str "cache strategy provided: " (pr-str cache-strategy) "; "
            "cache strategy type is not :nocache")
       (str/join ", "
                 (cond-> []
-                  (not has-strat?)   (conj "no cache strategy provided")
-                  (not not-nocache?) (conj "cache strategy is :nocache"))))))
+                  (not has-strat?)    (conj "no cache strategy provided")
+                  (not not-nocache?)  (conj "cache strategy is :nocache")
+                  (not not-bigquery?) (conj "BigQuery uses per-user OAuth; caching disabled"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
