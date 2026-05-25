@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -28,6 +29,10 @@
 
 (doseq [[feature supported?] {:metadata/key-constraints false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
+
+(defmethod driver/db-start-of-week :teradata
+  [_driver]
+  :sunday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :teradata [_ column-type]
   (let [type-mapping
@@ -200,8 +205,15 @@
 (defmethod sql.qp/date [:teradata :hour] [_ _ expr] (:to_timestamp (:raw "'yyyy-mm-dd hh24'") expr))
 (defmethod sql.qp/date [:teradata :hour-of-day] [_ _ expr] [::h2x/extract :hour expr])
 (defmethod sql.qp/date [:teradata :day] [_ _ expr] (h2x/->date expr))
-(defmethod sql.qp/date [:teradata :day-of-week] [driver _ expr] (h2x/inc (h2x/- (sql.qp/date driver :day expr)
-                                                                                (sql.qp/date driver :week expr))))
+(defmethod sql.qp/date [:teradata :day-of-week]
+  [driver _ expr]
+  (sql.qp/adjust-day-of-week
+   driver
+   (h2x/inc (h2x/- (sql.qp/date driver :day expr)
+                   (sql.qp/date driver :week expr)))
+   (driver.common/start-of-week-offset driver)
+   (fn mod-fn [& args]
+     (into [:mod] args))))
 (defmethod sql.qp/date [:teradata :day-of-month] [_ _ expr] [::h2x/extract :day expr])
 (defmethod sql.qp/date [:teradata :day-of-year] [driver _ expr] (h2x/inc (h2x/- (sql.qp/date driver :day expr) (trunc :year expr))))
 (defmethod sql.qp/date [:teradata :week] [_ _ expr] (trunc :day expr)) ; Same behaviour as with Oracle.
@@ -235,6 +247,17 @@
 (defmethod sql.qp/float-dbtype :teradata
   [_]
   "DOUBLE PRECISION")
+
+(defmethod sql.qp/->honeysql [:teradata :regex-match-first]
+  [driver [_ arg pattern]]
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+
+(defmethod sql.qp/->honeysql [:teradata :replace]
+  [driver [_ arg pattern replacement]]
+  [:oreplace
+   (sql.qp/->honeysql driver arg)
+   (sql.qp/->honeysql driver pattern)
+   (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:teradata :seconds]
   [_ _ expr]
