@@ -10,7 +10,7 @@ type SchemaViewerContextValue = {
    * database type while the new table is being loaded.
    */
   expandingTableIds: Set<ConcreteTableId>;
-  onExpandToTable: (
+  expandToTable: (
     tableId: ConcreteTableId,
     /**
      * Edge IDs to try selecting once the new table arrives in the graph.
@@ -20,7 +20,7 @@ type SchemaViewerContextValue = {
     candidateEdgeIdsToSelect?: readonly string[],
   ) => void;
   selectedNodeId: string | null;
-  onSelectNode: (nodeId: string | null) => void;
+  selectNode: (nodeId: string | null) => void;
   /**
    * Pan/zoom to a single node using the shared zoom rules (≥0.5 zoom, header
    * pinned near the top). Coalesces with other zoom calls in the same tick
@@ -32,9 +32,9 @@ type SchemaViewerContextValue = {
 export const SchemaViewerContext = createContext<SchemaViewerContextValue>({
   visibleTableIds: new Set(),
   expandingTableIds: new Set(),
-  onExpandToTable: () => {},
+  expandToTable: () => {},
   selectedNodeId: null,
-  onSelectNode: () => {},
+  selectNode: () => {},
   zoomToNode: () => {},
 });
 

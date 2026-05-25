@@ -11,8 +11,6 @@ import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 type ContextOverrides = {
   visibleTableIds?: Set<ConcreteTableId>;
   expandingTableIds?: Set<ConcreteTableId>;
-  onExpandToTable?: jest.Mock;
-  zoomToNode?: jest.Mock;
 };
 
 type SetupOpts = {
@@ -32,9 +30,9 @@ function setup({
   isSelectedInEdge = false,
   context: contextOverrides = {},
 }: SetupOpts = {}) {
-  const onExpandToTable = contextOverrides.onExpandToTable ?? jest.fn();
-  const zoomToNode = contextOverrides.zoomToNode ?? jest.fn();
-  const onSelectNode = jest.fn();
+  const expandToTable = jest.fn();
+  const zoomToNode = jest.fn();
+  const selectNode = jest.fn();
 
   const field: ErdField = {
     id: 10,
@@ -54,9 +52,9 @@ function setup({
       contextOverrides.visibleTableIds ?? new Set<ConcreteTableId>(),
     expandingTableIds:
       contextOverrides.expandingTableIds ?? new Set<ConcreteTableId>(),
-    onExpandToTable,
+    expandToTable,
     selectedNodeId: null,
-    onSelectNode,
+    selectNode,
     zoomToNode,
   };
 
@@ -74,7 +72,7 @@ function setup({
     </ReactFlowProvider>,
   );
 
-  return { onExpandToTable, zoomToNode };
+  return { expandToTable, zoomToNode };
 }
 
 describe("SchemaViewerFieldRow", () => {
@@ -117,36 +115,29 @@ describe("SchemaViewerFieldRow", () => {
 
   describe("click behavior", () => {
     it("clicking a plain non-FK field does not fire any handler", async () => {
-      const onExpandToTable = jest.fn();
-      const zoomToNode = jest.fn();
-      setup({
+      const { expandToTable, zoomToNode } = setup({
         field: { semantic_type: null },
-        context: { onExpandToTable, zoomToNode },
       });
       await userEvent.click(screen.getByText("user_id"));
-      expect(onExpandToTable).not.toHaveBeenCalled();
+      expect(expandToTable).not.toHaveBeenCalled();
       expect(zoomToNode).not.toHaveBeenCalled();
     });
 
     it("clicking an FK field with a null target (permission-filtered) does not fire any handler", async () => {
-      const onExpandToTable = jest.fn();
-      const zoomToNode = jest.fn();
-      setup({
+      const { expandToTable, zoomToNode } = setup({
         field: {
           semantic_type: "type/FK",
           fk_target_table_id: null,
           fk_target_field_id: null,
         },
-        context: { onExpandToTable, zoomToNode },
       });
       await userEvent.click(screen.getByText("user_id"));
-      expect(onExpandToTable).not.toHaveBeenCalled();
+      expect(expandToTable).not.toHaveBeenCalled();
       expect(zoomToNode).not.toHaveBeenCalled();
     });
 
     it("clicking an FK field whose target is off canvas calls onExpandToTable with both candidate edge ID orderings", async () => {
-      const onExpandToTable = jest.fn();
-      setup({
+      const { expandToTable } = setup({
         field: {
           id: 10,
           semantic_type: "type/FK",
@@ -155,19 +146,17 @@ describe("SchemaViewerFieldRow", () => {
         },
         context: {
           visibleTableIds: new Set<ConcreteTableId>(),
-          onExpandToTable,
         },
       });
       await userEvent.click(screen.getByText("user_id"));
-      expect(onExpandToTable).toHaveBeenCalledWith(99, [
+      expect(expandToTable).toHaveBeenCalledWith(99, [
         "edge-10-999",
         "edge-999-10",
       ]);
     });
 
     it("clicking an FK field whose target is on canvas calls zoomToNode with `table-{targetId}`", async () => {
-      const zoomToNode = jest.fn();
-      setup({
+      const { zoomToNode } = setup({
         field: {
           id: 10,
           semantic_type: "type/FK",
@@ -176,7 +165,6 @@ describe("SchemaViewerFieldRow", () => {
         },
         context: {
           visibleTableIds: new Set([99]),
-          zoomToNode,
         },
       });
       await userEvent.click(screen.getByText("user_id"));

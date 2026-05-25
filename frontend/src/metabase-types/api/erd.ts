@@ -1,4 +1,10 @@
-import type { ConcreteTableId, DatabaseId, FieldId, TableId } from "./";
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  FieldId,
+  SchemaName,
+  TableId,
+} from "./";
 
 export type ErdRelationship = "one-to-one" | "many-to-one";
 
@@ -22,7 +28,7 @@ export type ErdNode = {
   table_id: ConcreteTableId;
   name: string;
   display_name: string;
-  schema: string | null;
+  schema: SchemaName | null;
   db_id: DatabaseId;
   fields: ErdField[];
 };
@@ -40,8 +46,16 @@ export type ErdResponse = {
   edges: ErdEdge[];
 };
 
-export type GetErdRequest = {
+/**
+ * Backend semantics:
+ *  - With a schema, the backend returns all tables in that schema; we only
+ *    append `table-ids` for external tables the user has explicitly expanded
+ *    into.
+ *  - With no schema but explicit table-ids, those are the focal set.
+ *  - At least one of `schema` or `table-ids` must be provided.
+ */
+export type ErdParams = {
   "database-id": DatabaseId;
   "table-ids"?: TableId[];
-  schema?: string;
+  schema?: SchemaName;
 };

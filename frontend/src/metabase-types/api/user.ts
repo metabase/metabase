@@ -1,7 +1,9 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { ConcreteTableId, SchemaName } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -198,11 +200,11 @@ export type UserKeyValue =
       key: string;
       value:
         | {
-            table_ids: number[];
+            table_ids: ConcreteTableId[];
           }
         | {
-            databaseId: number;
-            schema?: string;
+            databaseId: DatabaseId;
+            schema?: SchemaName;
           };
     };
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { t } from "ttag";
 
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
@@ -27,7 +27,6 @@ import type {
   Field,
 } from "metabase-types/api";
 
-import S from "./PanelBody.module.css";
 import { getNodeTableInfo } from "./utils";
 
 type PanelBodyProps = {
@@ -48,7 +47,7 @@ export function PanelBody({
   renderField = renderDefaultField,
 }: PanelBodyProps) {
   return (
-    <Stack className={S.body} p="lg" gap="lg">
+    <Stack flex="1 1 auto" mih={0} p="lg" gap="lg" style={{ overflow: "auto" }}>
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
@@ -176,7 +175,7 @@ function FieldsSection({ node, renderField }: FieldsSectionProps) {
         {getNodeFieldsLabelWithCount(fields.length)}
       </Title>
       {fields.map((field, fieldIndex) => (
-        <Box key={fieldIndex}>{renderField(field)}</Box>
+        <Fragment key={fieldIndex}>{renderField(field)}</Fragment>
       ))}
     </Stack>
   );

@@ -71,7 +71,7 @@ export function useRedirectToLastDatabase({
       );
       if (dbExists) {
         hasRedirectedRef.current = true;
-        const url = Urls.dataStudioErd({
+        const url = Urls.dataStudioSchemaViewer({
           databaseId: lastDatabase.databaseId,
           schema: lastDatabase.schema,
         });

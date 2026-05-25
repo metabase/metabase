@@ -117,14 +117,8 @@ export function SchemaViewer({
   const visibleTableIds = useMemo(() => {
     const prev = visibleTableIdsRef.current;
     if (prev.size === nodes.length) {
-      let same = true;
-      for (const n of nodes) {
-        if (!prev.has(n.data.table_id)) {
-          same = false;
-          break;
-        }
-      }
-      if (same) {
+      const hasAllNodes = nodes.every((n) => prev.has(n.data.table_id));
+      if (hasAllNodes) {
         return prev;
       }
     }
@@ -237,9 +231,9 @@ export function SchemaViewer({
     () => ({
       visibleTableIds,
       expandingTableIds,
-      onExpandToTable: handleExpandToTable,
+      expandToTable: handleExpandToTable,
       selectedNodeId,
-      onSelectNode: handleSelectNode,
+      selectNode: handleSelectNode,
       zoomToNode,
     }),
     [

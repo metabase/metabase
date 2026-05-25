@@ -4,7 +4,7 @@ import cx from "classnames";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, FixedSizeIcon, Group, type IconName, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
@@ -42,14 +42,13 @@ export function SchemaViewerFieldRow({
   isSelfRefTarget,
   isSelectedInEdge,
 }: SchemaViewerFieldRowProps) {
-  const { visibleTableIds, expandingTableIds, onExpandToTable, zoomToNode } =
+  const { visibleTableIds, expandingTableIds, expandToTable, zoomToNode } =
     useSchemaViewerContext();
   const { setEdges } = useReactFlow<
     SchemaViewerFlowNode,
     SchemaViewerFlowEdge
   >();
 
-  const isPkField = isPK(field);
   const isFkField = isFK(field);
 
   const icon: IconName = getFieldIcon(field);
@@ -90,7 +89,7 @@ export function SchemaViewerFieldRow({
               getEdgeId(field.fk_target_field_id, field.id),
             ]
           : undefined;
-      onExpandToTable(field.fk_target_table_id, candidateEdgeIds);
+      expandToTable(field.fk_target_table_id, candidateEdgeIds);
     } else if (canZoomTo && field.fk_target_table_id != null) {
       const targetNodeId = getNodeId({
         table_id: field.fk_target_table_id,
@@ -145,7 +144,7 @@ export function SchemaViewerFieldRow({
       <Box
         className={cx(S.name, { [S.clickableName]: isClickable })}
         fz="sm"
-        fw={isPkField || isSelectedInEdge ? "bold" : "normal"}
+        fw={isSelectedInEdge ? "bold" : "normal"}
         c={isSelectedInEdge ? "brand" : undefined}
       >
         {field.name}

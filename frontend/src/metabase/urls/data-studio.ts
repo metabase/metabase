@@ -2,8 +2,8 @@ import type {
   CardId,
   CollectionId,
   DatabaseId,
+  ErdParams,
   FieldId,
-  GetErdRequest,
   MeasureId,
   NativeQuerySnippetId,
   SchemaName,
@@ -275,32 +275,18 @@ export function dataStudioMetricHistory(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/history`;
 }
 
-export function dataStudioErdBase() {
-  return `${ROOT_URL}/schema-viewer`;
-}
-
-type DataStudioErdParams = {
+type DataStudioSchemaViewerParams = {
   databaseId: DatabaseId;
   schema?: SchemaName;
   tableIds?: readonly TableId[];
 };
 
-/**
- * Build the request body for `useGetErdQuery`.
- *
- * Backend semantics:
- *  - With a schema, the backend returns all tables in that schema; we only
- *    append `table-ids` for external tables the user has explicitly expanded
- *    into.
- *  - With no schema but explicit table-ids, those are the focal set.
- *  - At least one of `schema` or `table-ids` must be provided.
- */
-export function getErdQueryParams({
+export function getSchemaViewerParams({
   databaseId,
   schema,
   tableIds,
-}: DataStudioErdParams): GetErdRequest {
-  const params: GetErdRequest = { "database-id": databaseId };
+}: DataStudioSchemaViewerParams): ErdParams {
+  const params: ErdParams = { "database-id": databaseId };
   if (schema != null) {
     params.schema = schema;
   }
@@ -310,8 +296,13 @@ export function getErdQueryParams({
   return params;
 }
 
-export function dataStudioErd(args: DataStudioErdParams) {
-  const queryParams = getErdQueryParams(args);
+export function dataStudioSchemaViewer(args?: DataStudioSchemaViewerParams) {
+  const SCHEMA_VIEWER_BASE_URL = `${ROOT_URL}/schema-viewer`;
+  if (!args) {
+    return SCHEMA_VIEWER_BASE_URL;
+  }
+
+  const queryParams = getSchemaViewerParams(args);
   const params = new URLSearchParams();
   params.set("database-id", String(queryParams["database-id"]));
   if (queryParams.schema != null) {
@@ -322,7 +313,7 @@ export function dataStudioErd(args: DataStudioErdParams) {
       params.append("table-ids", String(id));
     }
   }
-  return `${dataStudioErdBase()}?${params.toString()}`;
+  return `${SCHEMA_VIEWER_BASE_URL}?${params.toString()}`;
 }
 
 export function dataStudioGlossary() {

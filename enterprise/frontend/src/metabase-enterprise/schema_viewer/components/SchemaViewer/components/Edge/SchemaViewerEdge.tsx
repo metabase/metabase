@@ -3,6 +3,7 @@ import {
   getSmoothStepPath,
   useNodesInitialized,
 } from "@xyflow/react";
+import type { CSSProperties } from "react";
 import { memo, useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
@@ -176,16 +177,16 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   const relationship = props.data?.relationship ?? "many-to-one";
   const symbols = useMemo(() => getSymbolTypes(relationship), [relationship]);
   const stroke = selected
-    ? (palette["brand"] ?? "var(--mb-color-brand)")
-    : (palette["border"] ?? "var(--mb-color-border)");
+    ? (palette.brand ?? "var(--mb-color-brand)")
+    : (palette.border ?? "var(--mb-color-border)");
   const strokeWidth = selected ? 2 : 1;
 
-  const style = useMemo(
+  const style: CSSProperties = useMemo(
     () => ({
       strokeWidth,
       stroke,
       strokeDasharray: "9 9",
-      ...(isHidden ? { visibility: "hidden" as const } : {}),
+      visibility: isHidden ? "hidden" : undefined,
     }),
     [stroke, strokeWidth, isHidden],
   );

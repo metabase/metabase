@@ -24,7 +24,7 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "dependencies";
     case pathname.startsWith(Urls.dependencyDiagnostics()):
       return "dependency-diagnostics";
-    case pathname.startsWith(Urls.dataStudioErdBase()):
+    case pathname.startsWith(Urls.dataStudioSchemaViewer()):
       return "schema-viewer";
     case pathname.startsWith(Urls.dataStudioLibrary()):
       return "library";

@@ -23,7 +23,7 @@ import S from "./SchemaPickerInput.module.css";
 
 type SchemaPickerInputProps = {
   databaseId: DatabaseId | undefined;
-  schema: string | undefined;
+  schema: SchemaName | undefined;
   onSchemaChange: () => void;
 };
 
@@ -102,7 +102,7 @@ export function SchemaPickerInput({
         (schemaName): schemaName is SchemaName => schemaName.trim().length > 0,
       );
       if (dbSchemas != null && dbSchemas.length <= 1) {
-        const url = Urls.dataStudioErd({
+        const url = Urls.dataStudioSchemaViewer({
           databaseId: dbId,
           schema: dbSchemas[0],
         });
@@ -123,7 +123,7 @@ export function SchemaPickerInput({
       // schema list.
       const dbIdForNavigation = popoverSchemaListDbId;
       if (dbIdForNavigation != null) {
-        const url = Urls.dataStudioErd({
+        const url = Urls.dataStudioSchemaViewer({
           databaseId: dbIdForNavigation,
           schema: schemaName,
         });

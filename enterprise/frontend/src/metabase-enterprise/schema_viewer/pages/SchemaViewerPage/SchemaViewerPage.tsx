@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Stack } from "metabase/ui";
-import { getErdQueryParams } from "metabase/urls";
+import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
@@ -34,25 +34,33 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
 
-  const initialTableIds = useMemo(() => {
+  const tableIds: ConcreteTableId[] | undefined = useMemo(() => {
     if (rawTableIds == null) {
       return undefined;
     }
     const ids = Array.isArray(rawTableIds) ? rawTableIds : [rawTableIds];
-    return ids.map((id) => Number(id) as ConcreteTableId);
+    return ids.map(Number);
   }, [rawTableIds]);
 
   useRedirectToLastDatabase({ databaseId, schema });
 
   const { extraTableIds, addExtraTableId, contextKey, isRestoring } =
-    useSchemaPreferencesStore({ databaseId, schema, initialTableIds });
+    useSchemaPreferencesStore({
+      databaseId,
+      schema,
+      initialTableIds: tableIds,
+    });
 
   // Defer the ERD query until per-context saved prefs have resolved — without
   // this gate we'd fire two requests on every schema entry: one with empty
   // `extraTableIds`, then another once the restored set arrives.
   const { data, isFetching, error } = useGetErdQuery(
     databaseId != null && !isRestoring
-      ? getErdQueryParams({ databaseId, schema, tableIds: extraTableIds })
+      ? getSchemaViewerParams({
+          databaseId,
+          schema,
+          tableIds: extraTableIds,
+        })
       : skipToken,
   );
 

@@ -7,6 +7,7 @@
   --regular-edge-z-index: 0;
   --selected-edge-z-index: 1;
   --node-z-index: 2;
+  --minimap-height: 10rem;
 
   :global(.react-flow__edges > svg) {
     z-index: var(--regular-edge-z-index);
@@ -14,6 +15,10 @@
   /* Class added by ReactFlow for selected edges */
   :global(.react-flow__edges > svg:has(> .react-flow__edge.selected)) {
     z-index: var(--selected-edge-z-index);
+  }
+
+  :global(.react-flow__minimap) {
+    height: var(--minimap-height);
   }
 }
 
@@ -25,8 +30,7 @@
   position: absolute;
   top: 1rem;
   bottom: 1rem;
-  /* Leaving some space for the minimap underneath */
-  max-height: calc(100% - 10rem);
+  max-height: calc(100% - var(--minimap-height));
   z-index: var(--canvas-element-z-index);
 
   .fieldName {

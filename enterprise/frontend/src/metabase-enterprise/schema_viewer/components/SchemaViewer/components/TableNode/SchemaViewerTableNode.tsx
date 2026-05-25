@@ -16,7 +16,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   id,
   data,
 }: SchemaViewerTableNodeProps) {
-  const { selectedNodeId, onSelectNode, zoomToNode } = useSchemaViewerContext();
+  const { selectedNodeId, selectNode, zoomToNode } = useSchemaViewerContext();
   // Highlight this node when any edge that touches it is selected. Uses a
   // React Flow store selector (rather than useEdges()) so the node only
   // re-renders when its own connection-selected state actually flips, not
@@ -66,9 +66,9 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       // Prevent React Flow's default left-click node handling from clearing
       // the edge selection we manage in SchemaViewer.
       event.stopPropagation();
-      onSelectNode(id);
+      selectNode(id);
     },
-    [id, onSelectNode],
+    [id, selectNode],
   );
 
   return (
@@ -88,7 +88,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         onClick={handleHeaderClick}
         style={{ cursor: "pointer" }}
       >
-        <FixedSizeIcon name="table2" c="text-secondary" />
+        <FixedSizeIcon name="table" c="text-secondary" />
         <Box
           fz={17}
           lh="1.5rem"

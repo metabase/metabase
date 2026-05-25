@@ -37,14 +37,14 @@ function setup({
     makeNode(2, "PRODUCTS"),
     makeNode(3, "REVIEWS", [{ name: "order_id", isFK: true }]),
   ],
-  zoomToNode = jest.fn(),
 }: SetupOpts = {}) {
+  const zoomToNode = jest.fn();
   const value = {
     visibleTableIds: new Set<ConcreteTableId>(),
     expandingTableIds: new Set<ConcreteTableId>(),
-    onExpandToTable: jest.fn(),
+    expandToTable: jest.fn(),
     selectedNodeId: null,
-    onSelectNode: jest.fn(),
+    selectNode: jest.fn(),
     zoomToNode,
   };
 
@@ -100,15 +100,19 @@ describe("SchemaViewerNodeSearch", () => {
     const reviewsOption = options.find((opt) =>
       within(opt).queryByText("REVIEWS"),
     );
+    const productsOption = options.find((opt) =>
+      within(opt).queryByText("PRODUCTS"),
+    );
     expect(ordersOption).toBeDefined();
     expect(reviewsOption).toBeDefined();
+    expect(productsOption).toBeDefined();
     expect(within(ordersOption!).getByText("1")).toBeInTheDocument();
     expect(within(reviewsOption!).getByText("1")).toBeInTheDocument();
+    expect(within(productsOption!).getByText("0")).toBeInTheDocument();
   });
 
   it("selecting an option calls zoomToNode and closes the dropdown", async () => {
-    const zoomToNode = jest.fn();
-    setup({ zoomToNode });
+    const { zoomToNode } = setup();
     await userEvent.click(screen.getByPlaceholderText(/Jump to table/i));
     await userEvent.click(screen.getByText("ORDERS"));
     expect(zoomToNode).toHaveBeenCalledWith("table-1");
