@@ -1,8 +1,13 @@
-import type { UseGetCurrentWorkspaceResult } from "metabase/plugins";
+import type {
+  UseGetCurrentWorkspaceOptions,
+  UseGetCurrentWorkspaceResult,
+} from "metabase/plugins";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
-export function useGetCurrentWorkspace(): UseGetCurrentWorkspaceResult {
-  const { data, isLoading } = useGetCurrentWorkspaceQuery();
+export function useGetCurrentWorkspace({
+  skip,
+}: UseGetCurrentWorkspaceOptions = {}): UseGetCurrentWorkspaceResult {
+  const { data, isLoading } = useGetCurrentWorkspaceQuery(undefined, { skip });
   return {
     workspace: data ?? null,
     isLoading,

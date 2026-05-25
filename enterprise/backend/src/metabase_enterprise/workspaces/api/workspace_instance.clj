@@ -66,7 +66,7 @@
   `config.yml` was present at boot and `POST /current` hasn't been called.
   The envelope avoids an empty JSON body for the `nil` case."
   []
-  (api/check-data-analyst)
+  (api/check-superuser)
   {:data (some-> (ws/instance-workspace) present-workspace-instance)})
 
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
@@ -77,7 +77,7 @@
   [_route-params
    _query-params
    body :- ::ws.oss/workspace-instance-config]
-  (api/check-data-analyst)
+  (api/check-superuser)
   (ws/set-instance-workspace! body)
   (present-workspace-instance (ws/instance-workspace)))
 
@@ -87,7 +87,7 @@
   every `TableRemapping` row, since stale mappings from the prior workspace
   would otherwise keep rewriting queries on the now-unmanaged databases."
   []
-  (api/check-data-analyst)
+  (api/check-superuser)
   (ws/clear-instance-workspace!)
   (ws/clear-all-remappings!)
   nil)
@@ -95,5 +95,5 @@
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
   "Return all table remappings, ordered by id."
   []
-  (api/check-data-analyst)
+  (api/check-superuser)
   (mapv present-remapping (ws/list-remappings)))

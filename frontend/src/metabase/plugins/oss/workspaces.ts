@@ -10,6 +10,10 @@ export type AdminConnectionInfoSectionProps = {
   database: Database;
 };
 
+export type UseGetCurrentWorkspaceOptions = {
+  skip?: boolean;
+};
+
 export type UseGetCurrentWorkspaceResult = {
   workspace: WorkspaceInstance | null;
   isLoading: boolean;
@@ -17,8 +21,11 @@ export type UseGetCurrentWorkspaceResult = {
 
 const getDefaultWorkspaces = () => ({
   canManageWorkspaces: (_state: State): boolean => false,
+  canManageWorkspaceInstance: (_state: State): boolean => false,
   getIsDevelopmentMode: (_state: State): boolean => false,
-  useGetCurrentWorkspace: (): UseGetCurrentWorkspaceResult => ({
+  useGetCurrentWorkspace: (
+    _options?: UseGetCurrentWorkspaceOptions,
+  ): UseGetCurrentWorkspaceResult => ({
     workspace: null,
     isLoading: false,
   }),

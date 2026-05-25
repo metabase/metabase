@@ -33,7 +33,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isMac } from "metabase/utils/browser";
-import type { IconName } from "metabase-types/api";
+import type { IconName, WorkspaceInstance } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
@@ -46,12 +46,22 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
-    isLoading,
+    isLoading: isLoadingNavbarKey,
   } = useUserKeyValue({
     namespace: "data_studio",
     key: "isNavbarOpened",
   });
   const isNavbarOpened = _isNavbarOpened !== false;
+
+  const canManageWorkspaceInstance = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaceInstance,
+  );
+  const { workspace, isLoading: isLoadingWorkspace } =
+    PLUGIN_WORKSPACES.useGetCurrentWorkspace({
+      skip: !canManageWorkspaceInstance,
+    });
+
+  const isLoading = isLoadingNavbarKey || isLoadingWorkspace;
 
   useRegisterShortcut(
     [
@@ -72,6 +82,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       <DataStudioNav
         isNavbarOpened={isNavbarOpened}
         onNavbarToggle={setIsNavbarOpened}
+        workspace={workspace}
       />
       <Box h="100%" flex={1} miw={0}>
         {children}
@@ -83,9 +94,14 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
 type DataStudioNavProps = {
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
+  workspace: WorkspaceInstance | null;
 };
 
-function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
+function DataStudioNav({
+  isNavbarOpened,
+  onNavbarToggle,
+  workspace,
+}: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
@@ -94,9 +110,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canManageWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canManageWorkspaces,
   );
+  const canManageWorkspaceInstance = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaceInstance,
+  );
   const isDevelopmentMode = useSelector(PLUGIN_WORKSPACES.getIsDevelopmentMode);
-  const { workspace, isLoading: isLoadingWorkspace } =
-    PLUGIN_WORKSPACES.useGetCurrentWorkspace();
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -203,7 +220,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
-          {canManageWorkspaces && !isLoadingWorkspace && (
+          {(workspace != null || isDevelopmentMode
+            ? canManageWorkspaceInstance
+            : canManageWorkspaces) && (
             <DataStudioTab
               label={t`Workspaces`}
               icon="folder"

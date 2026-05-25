@@ -4,11 +4,16 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { AdminConnectionInfoSection } from "./components/AdminConnectionInfoSection";
 import { useGetCurrentWorkspace } from "./hooks";
 import { getAdminConnectionInfoRoutes, getDataStudioRoutes } from "./routes";
-import { canManageWorkspaces, getIsDevelopmentMode } from "./selectors";
+import {
+  canManageWorkspaceInstance,
+  canManageWorkspaces,
+  getIsDevelopmentMode,
+} from "./selectors";
 
 export function initializePlugin() {
   if (hasPremiumFeature("workspaces")) {
     PLUGIN_WORKSPACES.canManageWorkspaces = canManageWorkspaces;
+    PLUGIN_WORKSPACES.canManageWorkspaceInstance = canManageWorkspaceInstance;
     PLUGIN_WORKSPACES.getIsDevelopmentMode = getIsDevelopmentMode;
     PLUGIN_WORKSPACES.useGetCurrentWorkspace = useGetCurrentWorkspace;
     PLUGIN_WORKSPACES.getDataStudioRoutes = getDataStudioRoutes;
