@@ -442,6 +442,49 @@
             (is (contains? identifiers "compat-viz"))
             (is (not (contains? identifiers "incompat-viz")))))))))
 
+;;; ------------------------------------------------ Sandbox-host Endpoint ------------------------------------------------
+
+(deftest sandbox-host-endpoint-test
+  (testing "GET /sandbox-host returns minimal HTML with a per-document CSP"
+    (mt/with-premium-features #{:custom-viz}
+      (let [resp (mt/user-http-request-full-response
+                  :rasta :get 200 "ee/custom-viz-plugin/sandbox-host")
+            headers (:headers resp)]
+        (testing "returns a tiny HTML body"
+          (is (string? (:body resp)))
+          (is (str/includes? (:body resp) "<!doctype html>"))
+          (is (str/includes? (:body resp) "<body></body>")))
+        (testing "response is served as HTML"
+          (is (str/starts-with? (get headers "Content-Type") "text/html")))
+        (testing "Content-Security-Policy allows unsafe-eval only inside the sandbox doc"
+          (let [csp (get headers "Content-Security-Policy")]
+            (is (some? csp))
+            (is (str/includes? csp "default-src 'none'"))
+            (is (str/includes? csp "script-src 'unsafe-eval'"))
+            ;; The iframe element already carries `sandbox="allow-same-origin allow-scripts"`,
+            ;; so we must NOT add a CSP `sandbox` directive — it can give the document an
+            ;; opaque origin and break the membrane's same-origin `contentWindow` access.
+            (is (not (str/includes? csp "sandbox")))
+            ;; `frame-ancestors 'self'` lets Metabase embed this doc; the global middleware
+            ;; otherwise denies framing for every response.
+            (is (str/includes? csp "frame-ancestors 'self'"))))
+        (testing "framing is allowed for same-origin (overrides the global X-Frame-Options: DENY)"
+          (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
+        (testing "hardening headers are present"
+          (is (= "nosniff"     (get headers "X-Content-Type-Options")))
+          (is (= "no-referrer" (get headers "Referrer-Policy")))
+          (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
+          (is (= "no-store"    (get headers "Cache-Control")))))))
+  (testing "GET /sandbox-host requires the :custom-viz premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Custom Visualizations"
+       (mt/user-http-request :rasta :get 402 "ee/custom-viz-plugin/sandbox-host"))))
+  (testing "GET /sandbox-host requires authentication"
+    (mt/with-premium-features #{:custom-viz}
+      (is (= "Unauthenticated"
+             (client/client :get 401 "ee/custom-viz-plugin/sandbox-host"))))))
+
 ;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
 
 (deftest bundle-endpoint-test

@@ -291,7 +291,7 @@ export async function loadCustomVizPlugin(
     // up in the static-viz bundle, which is evaluated by GraalVM and has no
     // DOM constructors.
     const { createPluginSandbox } = await import("./sandbox");
-    const sandbox = createPluginSandbox(plugin.id);
+    const sandbox = await createPluginSandbox(plugin.id);
     const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {

@@ -261,6 +261,56 @@
       (finally
         (try (.delete tempfile) (catch Exception _))))))
 
+(def ^:private sandbox-host-html
+  "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
+   so plugin code can be `eval`'d under a relaxed, per-iframe CSP. The body is intentionally
+   empty — near-membrane will populate the realm via its `redWindow.eval`."
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
+(def ^:private sandbox-host-csp
+  "CSP applied ONLY to the sandbox iframe document. `'unsafe-eval'` is required because that's
+   how near-membrane evaluates plugin code inside the realm; everything else is closed off.
+   `frame-ancestors 'self'` overrides the global middleware's default-deny so Metabase can
+   embed this document in its own custom-viz sandbox iframe.
+
+   We intentionally do NOT add a CSP `sandbox` directive here — the iframe element already
+   carries `sandbox=\"allow-same-origin allow-scripts\"` (set by `@locker/near-membrane-dom`),
+   which is what the membrane needs. Adding the CSP directive too can give the document an
+   opaque origin in some browsers and break same-origin `contentWindow` access from the parent."
+  (str "default-src 'none'; "
+       "script-src 'unsafe-eval'; "
+       "frame-ancestors 'self';"))
+
+(api.macros/defendpoint :get "/sandbox-host" :- :any
+  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
+   sandbox. The response carries a per-document `Content-Security-Policy` that permits
+   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
+   nonce-based CSP."
+  [_route-params
+   _query-params
+   _body
+   _request
+   respond
+   raise]
+  (try
+    (respond {:status  200
+              :headers {"Content-Type"                 "text/html; charset=utf-8"
+                        "Content-Security-Policy"      sandbox-host-csp
+                        ;; Override the global `X-Frame-Options: DENY` so Metabase can embed
+                        ;; this document as the custom-viz sandbox iframe. CSP `frame-ancestors`
+                        ;; above carries the modern equivalent for browsers that prefer it.
+                        "X-Frame-Options"              "SAMEORIGIN"
+                        "X-Content-Type-Options"       "nosniff"
+                        "Cross-Origin-Resource-Policy" "same-origin"
+                        "Referrer-Policy"              "no-referrer"
+                        ;; `no-store` ensures CSP changes take effect immediately. The body
+                        ;; is tiny (~70 bytes) and the iframe is only loaded a handful of
+                        ;; times per session, so the perf cost is negligible.
+                        "Cache-Control"                "no-store"}
+              :body    sandbox-host-html})
+    (catch Throwable e
+      (raise e))))
+
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.

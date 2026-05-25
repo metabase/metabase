@@ -1,5 +1,6 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
+import { getSubpathSafeUrl } from "metabase/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { makeDistortionCallback } from "./distortions";
@@ -9,10 +10,17 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-export function createPluginSandbox(pluginId: CustomVizPluginId) {
+// Same-origin endpoint that serves a tiny HTML document with a permissive,
+// per-document CSP (allowing `'unsafe-eval'`). Loading the iframe from this
+// URL — instead of about:blank — lets the membrane realm evaluate plugin code
+// without the main app's strict nonce-based CSP applying to the sandbox.
+const SANDBOX_HOST_URL = "/api/ee/custom-viz-plugin/sandbox-host";
+
+export async function createPluginSandbox(pluginId: CustomVizPluginId) {
   let capturedFactory: unknown;
 
-  const env = createVirtualEnvironment(window, {
+  const env = await createVirtualEnvironment(window, {
+    iframeSrc: getSubpathSafeUrl(SANDBOX_HOST_URL),
     distortionCallback: makeDistortionCallback(pluginId),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
