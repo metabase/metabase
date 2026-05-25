@@ -739,7 +739,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -762,7 +762,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -836,7 +836,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
         });
@@ -858,7 +858,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -882,7 +882,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
