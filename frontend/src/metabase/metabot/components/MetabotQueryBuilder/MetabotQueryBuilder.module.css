@@ -3,27 +3,8 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background-primary);
   position: relative;
-  overflow: hidden;
-}
-
-.pageHeader {
-  padding: 0.5rem 0.75rem 0.5rem 1rem;
-  gap: 0.5rem;
-  z-index: 1;
-  min-width: 0;
-}
-
-.backgroundIllustration {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  transition: opacity 400ms ease;
-}
-
-.backgroundIllustrationFading {
-  opacity: 0;
 }
 
 .pageFullscreen {
@@ -31,15 +12,13 @@
   overflow: hidden;
 }
 
-/* Empty state - centered layout */
 .centeredContainer {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
-  padding: 2rem 2rem 8rem;
+  padding: 2rem;
   gap: 1.5rem;
 }
 
@@ -48,15 +27,10 @@
   align-items: center;
   flex-direction: column;
   gap: 0.75rem;
-  transition: opacity 250ms ease;
 
   @media screen and (--breakpoint-min-sm) {
     flex-direction: row;
   }
-}
-
-.greetingFading {
-  opacity: 0;
 }
 
 .greetingIcon {
@@ -67,11 +41,9 @@
 .inputWrapper {
   width: 100%;
   max-width: 42rem;
-  position: relative;
 }
 
 .conversationContainer {
-  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -110,11 +82,7 @@
   width: 100%;
   max-width: 54rem;
   margin: 0 auto;
-  padding: 0 1.5rem 0.5rem;
-}
-
-.disclaimer {
-  margin-top: 0.5rem;
+  padding: 0 1.5rem 1.5rem;
 }
 
 .fullscreenQuestionPanel {
@@ -161,10 +129,9 @@
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
-  background: var(--mb-color-background-primary);
   box-shadow:
     0 0 0 1px var(--mb-color-border),
-    0 2px 8px rgba(0, 0, 0, 0.04);
+    0 4px 24px rgba(0, 0, 0, 0.08);
   min-height: 7rem;
   transition:
     box-shadow 150ms ease,
@@ -173,12 +140,12 @@
   &:focus-within {
     box-shadow:
       0 0 0 1px var(--mb-color-border),
-      0 2px 8px rgba(0, 0, 0, 0.06);
+      0 4px 24px rgba(0, 0, 0, 0.12);
   }
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-background-tertiary);
+  background: var(--mb-color-background-secondary);
   animation: pulse 5s ease-in-out 1s infinite;
 }
 
@@ -213,11 +180,6 @@
   gap: 0.25rem;
   width: 100%;
   min-height: 10.75rem;
-  transition: opacity 250ms ease;
-}
-
-.promptSuggestionsFading {
-  opacity: 0;
 }
 
 .promptSuggestion {
@@ -228,30 +190,54 @@
   border-radius: 0.5rem;
   transition:
     background 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    opacity 150ms ease;
 
   &:hover {
-    background: var(--mb-color-background-primary);
+    background: var(--mb-color-background-secondary);
     color: var(--mb-color-text-primary);
   }
 }
 
-.placeholder {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  position: relative;
+.promptSuggestionShow {
+  opacity: 0;
+  animation: fade-in 300ms ease forwards;
+}
+
+.promptSuggestionHide {
+  opacity: 1;
+  animation: fade-out 200ms ease forwards;
+  cursor: default;
+  user-select: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes pulse {
   0%,
   100% {
-    background: var(--mb-color-background-tertiary);
+    background: var(--mb-color-background-secondary);
   }
 
   50% {
-    background: var(--mb-color-background-secondary);
+    background: var(--mb-color-background-tertiary);
   }
 }

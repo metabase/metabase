@@ -109,6 +109,10 @@
   overflow: hidden;
 }
 
+.navigateToQuestionCardHighlight {
+  animation: selected-question-pulse 1200ms ease-out;
+}
+
 .navigateToQuestionHeader {
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem 0.5rem 0.75rem;
@@ -126,6 +130,26 @@
 .agentPartActions {
   opacity: 0;
   transition: opacity 150ms linear;
+}
+
+@keyframes selected-question-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 var(--mb-color-focus),
+      0 0 0 1px var(--mb-color-focus) inset;
+  }
+
+  55% {
+    box-shadow:
+      0 0 0 0.5rem rgba(80, 158, 227, 0),
+      0 0 0 2px var(--mb-color-focus) inset;
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(80, 158, 227, 0),
+      0 0 0 0 transparent inset;
+  }
 }
 
 .agentPartActionIcon:hover {

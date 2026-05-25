@@ -132,7 +132,11 @@
 }
 
 .smartLink {
+  border: 0;
+  background: transparent;
   color: var(--mb-color-brand);
+  cursor: pointer;
+  font: inherit;
   font-weight: 700;
   padding: 0.125rem;
   border-radius: var(--mantine-radius-sm);

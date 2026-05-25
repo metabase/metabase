@@ -306,7 +306,7 @@ function assertUnreachable(value: never) {
 
 export const useEntityData = (
   entityId: number | null,
-  model: SuggestionModel | null,
+  model: SuggestionModel | "data-point" | null,
 ) => {
   const isCard = model && ["card", "dataset", "metric"].includes(model);
   const cardQuery = useGetCardQuery(
@@ -429,6 +429,7 @@ export const useEntityData = (
     }
     case "indexed-entity":
     case "measure":
+    case "data-point":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
@@ -459,6 +460,27 @@ export const SmartLinkComponent = memo(
         dispatch(updateMentionsCache({ entityId, model, name }));
       }
     }, [updateAttributes, dispatch, entity, entityId, model]);
+
+    if (model === "data-point") {
+      return (
+        <NodeViewWrapper as="span" data-type="smart-link">
+          <button
+            type="button"
+            className={styles.smartLink}
+            onMouseUp={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(
+                new CustomEvent("metabot:data-point-mention-click", {
+                  detail: { id: parseInt(entityId, 10) },
+                }),
+              );
+            }}
+          >
+            <span className={styles.smartLinkInner}>@{label}</span>
+          </button>
+        </NodeViewWrapper>
+      );
+    }
 
     const showLoading = isLoading && !entity;
     if (showLoading) {

@@ -18,6 +18,11 @@ type AIMarkdownProps = MarkdownProps & {
   singleNewlinesAreParagraphs?: boolean;
 };
 
+const parseDataPointLink = (href: string | undefined) => {
+  const match = href?.match(/^metabase:\/\/data-point\/(\d+)$/);
+  return match ? { id: Number(match[1]), model: "data-point" as const } : null;
+};
+
 const splitMessageLinesAsParagraphs = (message: string) =>
   message.replaceAll(/\r?\n|\r/g, "\n\n");
 
@@ -35,7 +40,9 @@ const getComponents = ({
     node?: any;
     [key: string]: any;
   }) => {
-    const parsed = parseMetabaseProtocolLink(node.properties.href);
+    const parsed =
+      parseDataPointLink(node.properties.href) ??
+      parseMetabaseProtocolLink(node.properties.href);
     if (parsed) {
       return (
         <MarkdownSmartLink

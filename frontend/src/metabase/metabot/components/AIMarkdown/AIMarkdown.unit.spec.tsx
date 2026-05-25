@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -54,5 +55,19 @@ describe("AIMarkdown", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Revenue" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "$42" })).toBeInTheDocument();
+  });
+
+  it("dispatches data point mention clicks", async () => {
+    const listener = jest.fn();
+    window.addEventListener("metabot:data-point-mention-click", listener);
+
+    setup({ children: "[Dec 2025 · 2.85K](metabase://data-point/7)" });
+
+    await userEvent.click(screen.getByRole("button", { name: /Dec 2025/ }));
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: { id: 7 } }),
+    );
+    window.removeEventListener("metabot:data-point-mention-click", listener);
   });
 });
