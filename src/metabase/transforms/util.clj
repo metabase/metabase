@@ -35,12 +35,14 @@
   unfortunately heterogeneous: incremental + most strategies return `{:rows-affected N}`,
   but the `create-or-replace` branch in `driver/sql` returns the bare integer. Anything
   else — a Python transform's HTTP response, for example — yields nil so the metric is
-  skipped rather than mislabelled."
+  skipped rather than mislabelled. Coerces to `Long` so the metric pipeline speaks one
+  integer width end-to-end; a driver that stuffs a non-integer into `:rows-affected`
+  is a contract violation and `long` will throw loudly rather than mask the bug."
   [driver-result]
-  (cond
-    (integer? driver-result) driver-result
-    (map? driver-result)     (:rows-affected driver-result)
-    :else                    nil))
+  (some-> (cond
+            (integer? driver-result) driver-result
+            (map? driver-result)     (:rows-affected driver-result))
+          long))
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
 
@@ -160,16 +162,18 @@
                     (run-transform! cancel-chan source-range-params)))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
-        ;; Source-range-params is non-nil only for incremental transforms, so this gate
-        ;; gives us "incremental only" emission for free. Both numbers must be present
-        ;; for the metric pair to fire — see `record-incremental-rows!`.
+        ;; Paired `when-some`: both rows-available (source-side, from get-source-range-params)
+        ;; and rows-processed (target-side, from the driver result) must be non-nil for the
+        ;; pair to emit. Either being absent silently drops the metric — the same-population
+        ;; invariant lives here at the call site rather than inside `record-incremental-rows!`,
+        ;; so the helper is a thin "always emit both" sink.
         ;;
         ;; Narrow try/catch: succeed-started-run! has already marked the run, so a throw
         ;; from the emission code must not escape to the outer catch (which would call
         ;; fail-started-run! and re-throw, polluting logs for a run that actually
         ;; succeeded). Prometheus calls are left naked inside; the realistic failure
         ;; is unregistered-metric typos, which CI catches loudly.
-        (when-let [{:keys [rows-available]} source-range-params]
+        (when-some [rows-available (:rows-available source-range-params)]
           (try
             (when-some [rows-processed (driver-result->rows-processed (:result ret))]
               (tracing/add-span-attrs! :tasks {:transform/rows-processed rows-processed})

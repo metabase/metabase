@@ -114,20 +114,18 @@
    `driver/run-transform!`. Both observations are emitted with the same `full-incremental-run`
    label so a Grafana panel can compare available vs. processed across the same population of runs.
 
-   Both numbers are required for emission: if either is missing the function is a no-op. This
-   keeps `sum(rows-available)` and `sum(rows-processed)` over the same run population rather than
-   silently undercounting one side."
-  [rows-available        :- [:maybe int?]
-   rows-processed        :- [:maybe int?]
+   Both numbers are required. The same-population invariant — emit both or neither — is enforced
+   at the call site; this helper is a thin sink that always emits both."
+  [rows-available        :- :int
+   rows-processed        :- :int
    full-incremental-run? :- :boolean]
-  (when (and (some? rows-available) (some? rows-processed))
-    (let [labels {:full-incremental-run (str full-incremental-run?)}]
-      (analytics/observe! :metabase-transforms/incremental-rows
-                          (assoc labels :type "available")
-                          rows-available)
-      (analytics/observe! :metabase-transforms/incremental-rows
-                          (assoc labels :type "processed")
-                          rows-processed))))
+  (let [labels {:full-incremental-run (str full-incremental-run?)}]
+    (analytics/observe! :metabase-transforms/incremental-rows
+                        (assoc labels :type "available")
+                        rows-available)
+    (analytics/observe! :metabase-transforms/incremental-rows
+                        (assoc labels :type "processed")
+                        rows-processed)))
 
 (defn record-job-start!
   "Record the start of a transform job run."
