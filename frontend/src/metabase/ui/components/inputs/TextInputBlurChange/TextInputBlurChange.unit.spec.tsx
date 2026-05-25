@@ -38,7 +38,7 @@ describe("TextInputBlurChange", () => {
     expect(onBlurChange).toHaveBeenCalledTimes(0);
 
     await userEvent.type(inputEl, "test");
-    inputEl.blur();
+    await userEvent.tab();
 
     expect(onBlurChange).toHaveBeenCalledTimes(1);
     expect(onBlurChange.mock.results[0].value).toBe("test");
