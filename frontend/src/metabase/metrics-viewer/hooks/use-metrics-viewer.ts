@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 
 import { objectFromEntries } from "metabase/utils/objects";
-import { isNotNull } from "metabase/utils/types";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -32,7 +31,10 @@ import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
-import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
+import {
+  getAvailableDimensionsForPicker,
+  getExistingTabDimensionIds,
+} from "../utils/dimension-picker";
 import { type MetricSlot, computeMetricSlots } from "../utils/metric-slots";
 import {
   buildSeries,
@@ -72,6 +74,8 @@ export interface UseMetricsViewerResult {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   availableDimensions: AvailableDimensionsResult;
+  activeTabAvailableDimensions: AvailableDimensionsResult;
+  sidebarAvailableDimensions: AvailableDimensionsResult;
 
   addMetric: (metric: SelectedMetric) => void;
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -271,13 +275,13 @@ export function useMetricsViewer({
   }, [definitionValues]);
 
   const existingTabDimensionIds = useMemo(
-    () =>
-      new Set(
-        state.tabs
-          .flatMap((tab) => Object.values(tab.dimensionMapping))
-          .filter(isNotNull),
-      ),
+    () => getExistingTabDimensionIds(state.tabs),
     [state.tabs],
+  );
+
+  const existingNonActiveTabDimensionIds = useMemo(
+    () => getExistingTabDimensionIds(state.tabs, activeTab?.id),
+    [state.tabs, activeTab?.id],
   );
 
   const effectiveTabs = useMemo(
@@ -294,6 +298,33 @@ export function useMetricsViewer({
         existingTabDimensionIds,
       ),
     [definitionsBySourceId, sourceOrder, metricSlots, existingTabDimensionIds],
+  );
+
+  const activeTabAvailableDimensions = useMemo(
+    () =>
+      getAvailableDimensionsForPicker(
+        definitionsBySourceId,
+        sourceOrder,
+        metricSlots,
+        existingNonActiveTabDimensionIds,
+      ),
+    [
+      definitionsBySourceId,
+      sourceOrder,
+      metricSlots,
+      existingNonActiveTabDimensionIds,
+    ],
+  );
+
+  const sidebarAvailableDimensions = useMemo(
+    () =>
+      getAvailableDimensionsForPicker(
+        definitionsBySourceId,
+        sourceOrder,
+        metricSlots,
+        new Set(),
+      ),
+    [definitionsBySourceId, sourceOrder, metricSlots],
   );
 
   const addMetric = useCallback(
@@ -378,6 +409,8 @@ export function useMetricsViewer({
     sourceOrder,
     sourceDataById,
     availableDimensions,
+    activeTabAvailableDimensions,
+    sidebarAvailableDimensions,
 
     addMetric,
     swapMetric,

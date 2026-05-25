@@ -17,7 +17,7 @@ const availableDimensions: AvailableDimensionsResult = {
   bySource: {
     [SOURCE_ID]: [
       {
-        icon: "string",
+        icon: "label",
         tabInfo: {
           type: "category",
           label: "Category",

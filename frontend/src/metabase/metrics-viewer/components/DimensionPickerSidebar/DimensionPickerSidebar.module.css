@@ -1,0 +1,13 @@
+.root {
+  display: flex;
+  flex: 0 0 20.5rem;
+  flex-direction: column;
+  width: 20.5rem;
+  min-height: 0;
+  background-color: var(--mb-color-background-primary);
+}
+
+.searchInput {
+  border-radius: var(--mantine-radius-md);
+  font-size: var(--mantine-font-size-md);
+}

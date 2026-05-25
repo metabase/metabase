@@ -10,8 +10,10 @@ import type { IconName } from "metabase-types/api";
 
 import type {
   MetricSourceId,
+  MetricsViewerTabState,
   MetricsViewerTabType,
-} from "../types/viewer-state";
+  SourceColorMap,
+} from "../types";
 
 import type { MetricSlot } from "./metric-slots";
 import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
@@ -21,12 +23,26 @@ import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 export interface AvailableDimension {
   icon: IconName;
   group?: DimensionGroup;
+  canListValues?: boolean;
+  isPreferred?: boolean;
   tabInfo: TabInfo;
 }
 
 export interface AvailableDimensionsResult {
   shared: AvailableDimension[];
   bySource: Record<MetricSourceId, AvailableDimension[]>;
+}
+
+export function getExistingTabDimensionIds(
+  tabs: MetricsViewerTabState[],
+  excludedTabId?: string | null,
+) {
+  return new Set(
+    tabs
+      .filter((tab) => tab.id !== excludedTabId)
+      .flatMap((tab) => Object.values(tab.dimensionMapping))
+      .filter((id) => id != null),
+  );
 }
 
 interface DimensionEntry {
@@ -36,6 +52,8 @@ interface DimensionEntry {
   icon: IconName;
   tabType: MetricsViewerTabType;
   group?: DimensionGroup;
+  canListValues: boolean;
+  isPreferred?: boolean;
   sourceId: MetricSourceId;
 }
 
@@ -64,6 +82,8 @@ function collectAllDimensionEntries(
         icon: getDimensionIcon(info.dimensionMetadata),
         tabType: info.dimensionType,
         group: info.group,
+        canListValues: info.canListValues,
+        isPreferred: info.isPreferred,
         sourceId,
       });
     }
@@ -113,17 +133,11 @@ export function getAvailableDimensionsForPicker(
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
 
-  const sourceIdToSlotIndices = metricSlots.reduce(
-    (acc, slot) => {
-      if (acc[slot.sourceId]) {
-        acc[slot.sourceId].push(slot.slotIndex);
-      } else {
-        acc[slot.sourceId] = [slot.slotIndex];
-      }
-      return acc;
-    },
-    {} as Record<MetricSourceId, number[]>,
-  );
+  const sourceIdToSlotIndices: Record<MetricSourceId, number[]> = {};
+  for (const slot of metricSlots) {
+    const slotIndices = (sourceIdToSlotIndices[slot.sourceId] ??= []);
+    slotIndices.push(slot.slotIndex);
+  }
 
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
@@ -133,6 +147,8 @@ export function getAvailableDimensionsForPicker(
       result.shared.push({
         icon: first.icon,
         group: first.group,
+        canListValues: first.canListValues,
+        isPreferred: first.isPreferred,
         tabInfo: {
           type: first.tabType,
           label: first.label,
@@ -152,6 +168,8 @@ export function getAvailableDimensionsForPicker(
         arr.push({
           icon: entry.icon,
           group: entry.group,
+          canListValues: entry.canListValues,
+          isPreferred: entry.isPreferred,
           tabInfo: {
             type: entry.tabType,
             label: entry.label,
@@ -192,27 +210,69 @@ export type DimensionPickerItem = AvailableDimension & {
   name: string;
 };
 
+export type DimensionPickerSidebarCategory = DimensionPickerItem & {
+  key: string;
+  targetItems: DimensionPickerItem[];
+};
+
+export type DimensionPickerSidebarCategorySelectOption = {
+  value: string;
+  label: string;
+  icon: IconName;
+};
+
+type RawDimensionPickerSidebarCategorySelectOption =
+  DimensionPickerSidebarCategorySelectOption & {
+    groupName?: string;
+  };
+
+export type DimensionPickerSidebarCategorySelectRow = {
+  slotIndex: number;
+  sourceId: MetricSourceId;
+  metricName: string;
+  colors?: string[];
+  value: string | null;
+  options: DimensionPickerSidebarCategorySelectOption[];
+};
+
 export type DimensionPickerSection = {
   name?: string;
   items: DimensionPickerItem[];
+  isShared?: boolean;
+  sourceId?: MetricSourceId;
 };
+
+function getDimensionPickerSectionName(
+  sectionName: string | undefined,
+  groupName: string | undefined,
+  metadata: Pick<DimensionPickerSection, "isShared" | "sourceId">,
+) {
+  if ((metadata.isShared || metadata.sourceId) && groupName) {
+    return groupName;
+  }
+
+  if (sectionName && groupName) {
+    return `${sectionName} · ${groupName}`;
+  }
+
+  return sectionName ?? groupName;
+}
 
 export function buildDimensionPickerSections({
   availableDimensions,
   sourceOrder,
   sourceDataById,
-  hasMultipleSources,
 }: {
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
 }): DimensionPickerSection[] {
   const sections: DimensionPickerSection[] = [];
 
   const splitByGroup = (
     dimensions: AvailableDimension[],
     sectionName?: string,
+    metadata: Pick<DimensionPickerSection, "isShared" | "sourceId"> = {},
   ) => {
     const groups = new Map<string | undefined, AvailableDimension[]>();
     for (const dimension of dimensions) {
@@ -226,8 +286,10 @@ export function buildDimensionPickerSections({
     }
 
     if (groups.size <= 1) {
+      const groupName = dimensions[0]?.group?.displayName;
       sections.push({
-        name: sectionName,
+        name: getDimensionPickerSectionName(sectionName, groupName, metadata),
+        ...metadata,
         items: dimensions.map((dimension) => ({
           ...dimension,
           name: dimension.tabInfo.label,
@@ -238,9 +300,9 @@ export function buildDimensionPickerSections({
 
     for (const [, groupDimensions] of groups) {
       const groupName = groupDimensions[0].group?.displayName;
-      const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
       sections.push({
-        name,
+        name: getDimensionPickerSectionName(sectionName, groupName, metadata),
+        ...metadata,
         items: groupDimensions.map((dimension) => ({
           ...dimension,
           name: dimension.tabInfo.label,
@@ -249,8 +311,10 @@ export function buildDimensionPickerSections({
     }
   };
 
+  const hasMultipleSources = sourceOrder.length > 1;
+
   if (hasMultipleSources && availableDimensions.shared.length > 0) {
-    splitByGroup(availableDimensions.shared, t`Shared`);
+    splitByGroup(availableDimensions.shared, t`Shared`, { isShared: true });
   }
 
   for (const sourceId of sourceOrder) {
@@ -261,11 +325,193 @@ export function buildDimensionPickerSections({
 
     if (hasMultipleSources) {
       const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
-      splitByGroup(sourceDimensions, sourceName);
+      splitByGroup(sourceDimensions, sourceName, { sourceId });
     } else {
       splitByGroup(sourceDimensions);
     }
   }
 
   return sections;
+}
+
+function mergeDimensionMappings(items: DimensionPickerItem[]) {
+  const mapping: Record<number, string> = {};
+
+  for (const item of items) {
+    for (const [slotIndex, dimensionId] of Object.entries(
+      item.tabInfo.dimensionMapping,
+    )) {
+      mapping[Number(slotIndex)] ??= dimensionId;
+    }
+  }
+
+  return mapping;
+}
+
+function buildSidebarCategory(
+  key: string,
+  name: string,
+  items: DimensionPickerItem[],
+): DimensionPickerSidebarCategory {
+  const first = items[0];
+
+  return {
+    ...first,
+    key,
+    name,
+    targetItems: items,
+    tabInfo: {
+      ...first.tabInfo,
+      label: name,
+      dimensionMapping: mergeDimensionMappings(items),
+    },
+  };
+}
+
+function shouldShowInDefaultSidebar(item: DimensionPickerItem) {
+  if (item.tabInfo.type === "numeric") {
+    return false;
+  }
+
+  if (item.tabInfo.type === "category") {
+    return item.isPreferred !== false;
+  }
+
+  return true;
+}
+
+const SIDEBAR_CATEGORY_ORDER: MetricsViewerTabType[] = [
+  "time",
+  "geo",
+  "category",
+  "boolean",
+  "numeric",
+  "scalar",
+];
+
+function sortSidebarCategories(
+  first: DimensionPickerSidebarCategory,
+  second: DimensionPickerSidebarCategory,
+) {
+  const typeDiff =
+    SIDEBAR_CATEGORY_ORDER.indexOf(first.tabInfo.type) -
+    SIDEBAR_CATEGORY_ORDER.indexOf(second.tabInfo.type);
+
+  if (typeDiff !== 0) {
+    return typeDiff;
+  }
+
+  return first.name.localeCompare(second.name);
+}
+
+export function buildDimensionPickerSidebarCategories({
+  availableDimensions,
+  sourceOrder,
+  sourceDataById,
+}: {
+  availableDimensions: AvailableDimensionsResult;
+  sourceOrder: MetricSourceId[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+}): DimensionPickerSidebarCategory[] {
+  const sections = buildDimensionPickerSections({
+    availableDimensions,
+    sourceOrder,
+    sourceDataById,
+  });
+  const items = sections
+    .flatMap((section) => section.items)
+    .filter(shouldShowInDefaultSidebar);
+  const categories: DimensionPickerSidebarCategory[] = [];
+  const groupedItems = new Map<string, DimensionPickerItem[]>();
+
+  for (const item of items) {
+    const key =
+      item.tabInfo.type === "time"
+        ? "type:time"
+        : `${item.tabInfo.type}:${item.name}`;
+    const existing = groupedItems.get(key);
+    if (existing) {
+      existing.push(item);
+    } else {
+      groupedItems.set(key, [item]);
+    }
+  }
+
+  for (const [key, categoryItems] of groupedItems) {
+    const first = categoryItems[0];
+    const name = first.tabInfo.type === "time" ? t`Time` : first.name;
+    categories.push(buildSidebarCategory(key, name, categoryItems));
+  }
+
+  return categories.sort(sortSidebarCategories);
+}
+
+export function buildDimensionPickerSidebarCategorySelectRows({
+  category,
+  activeTab,
+  metricSlots,
+  sourceDataById,
+  sourceColors,
+}: {
+  category: DimensionPickerSidebarCategory;
+  activeTab: MetricsViewerTabState;
+  metricSlots: MetricSlot[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  sourceColors: SourceColorMap;
+}): DimensionPickerSidebarCategorySelectRow[] {
+  return metricSlots.flatMap((slot) => {
+    const optionsByValue = new Map<
+      string,
+      RawDimensionPickerSidebarCategorySelectOption
+    >();
+
+    for (const item of category.targetItems) {
+      const dimensionId = item.tabInfo.dimensionMapping[slot.slotIndex];
+      if (!dimensionId || optionsByValue.has(dimensionId)) {
+        continue;
+      }
+
+      optionsByValue.set(dimensionId, {
+        value: dimensionId,
+        label: item.name,
+        icon: item.icon,
+        groupName: item.group?.displayName,
+      });
+    }
+
+    const labelCounts = new Map<string, number>();
+    for (const option of optionsByValue.values()) {
+      labelCounts.set(option.label, (labelCounts.get(option.label) ?? 0) + 1);
+    }
+    const fallbackGroupName =
+      sourceDataById[slot.sourceId]?.name ?? slot.sourceId;
+    const options = [...optionsByValue.values()]
+      .map(({ groupName, ...option }) => ({
+        ...option,
+        label:
+          (labelCounts.get(option.label) ?? 0) > 1
+            ? `${groupName ?? fallbackGroupName} → ${option.label}`
+            : option.label,
+      }))
+      .sort((first, second) => first.label.localeCompare(second.label));
+    if (options.length === 0) {
+      return [];
+    }
+
+    const activeDimensionId =
+      activeTab.dimensionMapping[slot.slotIndex] ?? null;
+
+    return [
+      {
+        slotIndex: slot.slotIndex,
+        sourceId: slot.sourceId,
+        metricName: sourceDataById[slot.sourceId]?.name ?? slot.sourceId,
+        colors: sourceColors[slot.entityIndex],
+        value: options.some((option) => option.value === activeDimensionId)
+          ? activeDimensionId
+          : null,
+        options,
+      },
+    ];
+  });
 }
