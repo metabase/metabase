@@ -1,3 +1,10 @@
 .root {
+  --badge-height-xs: 1.25rem;
+  --badge-height-sm: 1.5rem;
+  --badge-lh: 0.9375rem;
+  --badge-fz-xs: 0.6875rem;
+  --badge-fz-sm: var(--badge-fz-xs);
+
   background-color: var(--mb-color-background-brand);
+  text-transform: none;
 }
