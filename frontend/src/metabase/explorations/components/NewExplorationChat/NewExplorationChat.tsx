@@ -242,6 +242,7 @@ export function NewExplorationChat({
           mx="lg"
           mb="lg"
           mih="8rem"
+          pr="0.75rem"
           flex="none"
           onClick={handleClick}
         >
