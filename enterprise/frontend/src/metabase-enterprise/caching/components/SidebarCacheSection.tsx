@@ -6,7 +6,7 @@ import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfig
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
-import { Anchor, Flex } from "metabase/ui";
+import { Flex, UnstyledButton } from "metabase/ui";
 
 import S from "./SidebarCacheSection.module.css";
 import { getItemId } from "./utils";
@@ -39,15 +39,14 @@ export const SidebarCacheSection = ({
     <DelayedLoadingAndErrorWrapper delay={0} loading={isLoading} error={error}>
       <Flex align="center" justify="space-between">
         <span id={labelId}>{t`When to get new results`}</span>
-        <Anchor
-          role="button"
+        <UnstyledButton
           fw="bold"
           className={S.formLauncher}
           onClick={() => setPage("caching")}
           aria-labelledby={labelId}
         >
           {shortStrategyLabel}
-        </Anchor>
+        </UnstyledButton>
       </Flex>
     </DelayedLoadingAndErrorWrapper>
   );
