@@ -15,7 +15,11 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -603,3 +607,61 @@
           (is (=? {:magic_group_type "all-external-users"
                    :name "All tenant users"}
                   (get-magic-group "all-external-users"))))))))
+
+;;; ---------------------------------------- Performance tests ------------------------------------------
+
+(defn- count-db-calls
+  "Execute `f` and return the number of database calls (queries) made during its execution."
+  [f]
+  (let [call-count (atom 0)]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/transduce-execute-with-connection
+     :around :default
+     (fn [next-method rf conn query-type model query]
+       (swap! call-count inc)
+       (next-method rf conn query-type model query))
+     ::query-counter)
+    (try
+      (f)
+      (finally
+        (methodical/remove-aux-method-with-unique-key!
+         #'t2.pipeline/transduce-execute-with-connection
+         :around :default
+         ::query-counter)))
+    @call-count))
+
+(deftest permissions-graph-update-query-count-test
+  (testing "PUT /api/permissions/graph should not make an excessive number of DB calls"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [num-groups 28
+              num-tables 382
+              now        (java.time.OffsetDateTime/now)
+              table-ids  (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                   (for [i (range num-tables)]
+                                                     {:db_id      db-id
+                                                      :name       (format "table_%d" i)
+                                                      :schema     "PUBLIC"
+                                                      :active     true
+                                                      :created_at now
+                                                      :updated_at now}))
+              group-ids  (t2/insert-returning-pks! :model/PermissionsGroup
+                                                   (for [i (range num-groups)]
+                                                     {:name (str "perf-test-group-" i "-" (random-uuid))}))]
+          (try
+            (let [base-graph    (data-perms.graph/api-graph {:group-ids group-ids})
+                  view-perms    {"PUBLIC" (zipmap table-ids (repeat :unrestricted))}
+                  cq-perms      {"PUBLIC" (zipmap table-ids (repeat :query-builder))}
+                  updated-graph (reduce (fn [g gid]
+                                          (-> g
+                                              (assoc-in [:groups gid db-id :view-data] view-perms)
+                                              (assoc-in [:groups gid db-id :create-queries] cq-perms)))
+                                        base-graph
+                                        group-ids)
+                  num-calls     (count-db-calls
+                                 #(mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                                        updated-graph))]
+              (is (<= num-calls 100)
+                  (format "Expected at most 100 database calls, got %d" num-calls)))
+            (finally
+              (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))
