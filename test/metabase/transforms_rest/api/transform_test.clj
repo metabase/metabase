@@ -497,6 +497,27 @@
                                                      (format "transform/%d/run" (:id created)))]
                   (is (= "Transform run started" (:message response))))))))))))
 
+(deftest run-transform-permission-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "POST /transform/:id/run requires only read permission, not write"
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (with-transform-cleanup! [table-name "test_read_run"]
+              (mt/with-temp [:model/Transform transform {:name   "Test Read Run Transform"
+                                                         :source {:type  "query"
+                                                                  :query (make-query "Gadget")}
+                                                         :target {:type   "table"
+                                                                  :schema (get-test-schema)
+                                                                  :name   table-name}}]
+                (testing "modifying the transform is forbidden (no write permission)"
+                  (mt/user-http-request :lucky :put 403 (format "transform/%d" (:id transform))
+                                        {:name "Renamed"}))
+                (testing "running the transform succeeds (only read permission required)"
+                  (is (= "Transform run started"
+                         (:message (mt/user-http-request :lucky :post 202
+                                                         (format "transform/%d/run" (:id transform)))))))))))))))
+
 (deftest list-transforms-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

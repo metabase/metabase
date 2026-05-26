@@ -11,15 +11,13 @@ import {
 } from "metabase/forms";
 import {
   Button,
-  FixedSizeIcon,
   FocusTrap,
   Group,
   Input,
   Modal,
-  Radio,
+  Select,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
@@ -143,7 +141,7 @@ function NewDatabaseForm({
               <Text>
                 {t`This will create a temporary schema and user in this database, grant that user read access to the schemas you select, and write access to the temporary schema.`}
               </Text>
-              <DatabaseInput
+              <DatabaseSelect
                 databases={availableDatabases}
                 value={values.database_id}
                 onChange={(databaseId) => {
@@ -173,13 +171,13 @@ function NewDatabaseForm({
   );
 }
 
-type DatabaseInputProps = {
+type DatabaseSelectProps = {
   databases: Database[];
   value: DatabaseId | null;
   onChange: (databaseId: DatabaseId | null) => void;
 };
 
-function DatabaseInput({ databases, value, onChange }: DatabaseInputProps) {
+function DatabaseSelect({ databases, value, onChange }: DatabaseSelectProps) {
   if (databases.length === 1) {
     return (
       <Input.Wrapper label={t`Database`}>
@@ -188,42 +186,20 @@ function DatabaseInput({ databases, value, onChange }: DatabaseInputProps) {
     );
   }
 
+  const data = databases.map((database) => ({
+    value: String(database.id),
+    label: database.name,
+    disabled: !supportsWorkspaces(database),
+  }));
+
   return (
-    <Radio.Group
+    <Select
       label={t`Database`}
+      data={data}
       value={value != null ? String(value) : null}
       onChange={(newValue) =>
         onChange(newValue != null ? Number(newValue) : null)
       }
-    >
-      <Stack gap="sm">
-        {databases.map((database) => (
-          <Radio
-            key={database.id}
-            value={String(database.id)}
-            label={<DatabaseLabel database={database} />}
-            disabled={!supportsWorkspaces(database)}
-          />
-        ))}
-      </Stack>
-    </Radio.Group>
-  );
-}
-
-type DatabaseLabelProps = {
-  database: Database;
-};
-
-function DatabaseLabel({ database }: DatabaseLabelProps) {
-  if (supportsWorkspaces(database)) {
-    return <>{database.name}</>;
-  }
-  return (
-    <Group gap="xs" wrap="nowrap" component="span">
-      <span>{database.name}</span>
-      <Tooltip label={t`This database does not support workspaces.`}>
-        <FixedSizeIcon name="info" c="text-secondary" aria-hidden />
-      </Tooltip>
-    </Group>
+    />
   );
 }

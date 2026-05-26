@@ -89,18 +89,24 @@ describe("NewDatabaseModal", () => {
     );
   });
 
-  it("renders a single database as text without a radio group", () => {
+  it("renders a single database as text without a select", () => {
     setup({ availableDatabases: [POSTGRES_DATABASE] });
 
     expect(screen.getByText("Postgres")).toBeInTheDocument();
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("disables radios for databases that do not support workspaces", () => {
+  it("disables options for databases that do not support workspaces", async () => {
     setup({ availableDatabases: [POSTGRES_DATABASE, UNSUPPORTED_DATABASE] });
 
-    expect(screen.getByRole("radio", { name: "Postgres" })).toBeEnabled();
-    expect(screen.getByRole("radio", { name: /Unsupported/ })).toBeDisabled();
+    await userEvent.click(screen.getByRole("textbox", { name: "Database" }));
+
+    expect(
+      screen.getByRole("option", { name: "Postgres" }),
+    ).not.toHaveAttribute("data-combobox-disabled");
+    expect(screen.getByRole("option", { name: "Unsupported" })).toHaveAttribute(
+      "data-combobox-disabled",
+    );
   });
 
   it("requires at least one schema when the database supports schemas", async () => {

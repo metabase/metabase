@@ -12,6 +12,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
@@ -53,10 +54,11 @@
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
       (mt/with-premium-features #{:metabase-ai-managed}
+        ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
         (mt/with-dynamic-fn-redefs [http/request (fn [opts]
                                                    (when (:body opts)
                                                      (reset! captured (json/decode+kw (:body opts))))
-                                                   (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
           (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
                                              llm-proxy-base-url     "http://proxy.example"
                                              llm-openrouter-api-key "sk-or-v1-test-key"
@@ -849,3 +851,272 @@
                                   "tag"                  "test-tag"
                                   "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                       token-events)))))))))
+
+(deftest ^:parallel body-preview-test
+  (let [body-preview #'self.core/body-preview]
+    (testing "nil, blank, and non-string scalars → nil"
+      (is (every? nil? (map body-preview [nil "" "   " 500 :error true]))))
+    (testing "plain strings pass through trimmed"
+      (is (= "Internal Server Error" (body-preview "  Internal Server Error  "))))
+    (testing "JSON envelopes prefer [:error :message] over :error/:detail/:message"
+      (is (= "model decommissioned" (body-preview {:error {:message "model decommissioned" :type "x"}})))
+      (is (= "invalid metric"       (body-preview {:error  "invalid metric"})))
+      (is (= "missing prompt"       (body-preview {:detail "missing prompt"})))
+      (is (= "bad request"          (body-preview {:message "bad request"}))))
+    (testing "extract-error-message returns nil for non-string values at the recognised keys"
+      (let [extract #'self.core/extract-error-message]
+        (is (every? nil? (map extract [{:error  {:code 42 :type "x"}}
+                                       {:detail [{:loc ["body" "prompt"]}]}
+                                       {:message {:code "missing"}}
+                                       {:error  {:message {:code 500}}}
+                                       {:error  42}])))))
+    (testing "a non-string, blank, or whitespace-only at one key falls through to a later key"
+      (is (= "real error" (body-preview {:error {:message {:code 500}} :detail "real error"})))
+      (is (= "real error" (body-preview {:error ""    :detail "real error"})))
+      (is (= "real error" (body-preview {:error "   " :detail "real error"}))))
+    (testing "empty maps and arrays return nil (nothing to preview, no warn)"
+      (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+                   (is (every? nil? (map body-preview [{} []])))
+                   (msgs))]
+        (is (empty? msgs))))
+    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview + warn"
+      (let [bodies [{:request-id "abc" :trace ["frame1"]}
+                    [42 :kw]
+                    [{:request-id "abc"}]
+                    {:error {:code 42 :type "x"}}]
+            msgs   (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+                     (doseq [b bodies]
+                       (is (= (pr-str b) (body-preview b))
+                           (str "pr-str fallback for " (pr-str b))))
+                     (msgs))]
+        (is (= (count bodies) (count msgs))
+            "one warn line per pr-str fallback")
+        (is (every? #(re-find #"unrecognised error body shape" (:message %)) msgs))))
+    (testing "JSON arrays probe their first element"
+      (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
+      (is (= "first message" (body-preview ["first message" "ignored"]))))
+    (testing "long bodies are truncated to 500 chars with an ellipsis"
+      (let [preview (body-preview (apply str (repeat 2000 \x)))]
+        (is (str/ends-with? preview "…"))
+        (is (= 501 (count preview)))))))
+
+(defn- caught
+  "Run `thunk` and return the thrown exception, or nil if it didn't throw."
+  [thunk]
+  (try (thunk) nil (catch Exception e e)))
+
+(deftest rethrow-api-error!-passthrough-test
+  (testing ":api-error exceptions are rethrown unchanged"
+    (let [original (ex-info "boom" {:api-error true :error-code :proxy-not-configured})]
+      (is (identical? original
+                      (caught #(self.core/rethrow-api-error! "anthropic" (constantly "X") original)))))))
+
+(deftest rethrow-api-error!-string-body-test
+  (testing "HTTP responses with a body get the upstream body appended and surfaced in ex-data"
+    (let [upstream (ex-info "clj-http error"
+                            {:status                500
+                             :reason-phrase         "Internal Server Error"
+                             :headers               {"content-type" "application/json"}
+                             :body                  (json/encode {:error {:message "model decommissioned"}})
+                             :http-client           (reify java.io.Closeable (close [_]))
+                             :trace-redirects       ["http://elsewhere"]
+                             :orig-content-encoding "gzip"})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                             upstream))]
+      (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
+      ;; pin exact ex-data keys — clj-http internals (:http-client, :trace-redirects, …) must not leak.
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
+             (set (keys (ex-data ex)))))
+      (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
+               :status 500 :body {:error {:message "model decommissioned"}}}
+              (ex-data ex)))))
+
+  (testing "non-JSON bodies still get a preview appended"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body "upstream gateway timeout"})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "openrouter"
+                             (constantly "OpenRouter upstream provider returned an error")
+                             upstream))]
+      (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
+      (is (str/includes? (ex-message ex) "upstream gateway timeout"))
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
+             (set (keys (ex-data ex)))))))
+
+  (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body (json/encode {:request-id "abc" :trace ["frame1"]})})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (constantly "Anthropic API is not working but not saying why")
+                             upstream))]
+      (is (str/includes? (ex-message ex) "Anthropic API is not working but not saying why"))
+      (is (str/includes? (ex-message ex) ":request-id")
+          "the unrecognised envelope's pr-str is appended so operators see what we got")
+      (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
+          "the full body is still preserved in ex-data for debugging")
+      (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
+             (set (keys (ex-data ex))))))))
+
+(deftest rethrow-api-error!-no-body-test
+  (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
+    (let [ex (caught #(self.core/rethrow-api-error!
+                       "openai" (constantly "unused") (java.net.SocketTimeoutException. "Read timed out")))]
+      (is (str/includes? (ex-message ex) "API request failed"))
+      (is (str/includes? (ex-message ex) "Read timed out"))
+      ;; pin exact ex-data keys for the no-body branch too.
+      (is (= #{:api-error :provider :error-code :exception-class}
+             (set (keys (ex-data ex)))))
+      (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
+               :exception-class "java.net.SocketTimeoutException"}
+              (ex-data ex)))))
+
+  (testing "no-body branch drops the trailing colon when ex-message is blank"
+    (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
+      (is (= "openai API request failed" (ex-message ex)))
+      (is (= #{:api-error :provider :error-code :exception-class}
+             (set (keys (ex-data ex))))))))
+
+(deftest rethrow-api-error!-input-stream-test
+  (testing "InputStream JSON bodies are decoded and structured-extracted"
+    (let [json     (json/encode {:error {:message "model decommissioned"}})
+          upstream (ex-info "clj-http error"
+                            {:status  500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body    (java.io.ByteArrayInputStream. (.getBytes ^String json))})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "anthropic"
+                             (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                             upstream))]
+      (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
+      (is (=? {:error {:message "model decommissioned"}} (:body (ex-data ex))))))
+
+  (testing "Large InputStream bodies are bounded — not fully slurped into memory"
+    ;; ByteArrayInputStream.available() returns the unread byte count, so we can
+    ;; measure how much rethrow-api-error! pulled off the stream without proxying.
+    (let [body-bytes (.getBytes ^String (apply str (repeat 2000000 \x)))
+          stream     (java.io.ByteArrayInputStream. body-bytes)
+          upstream   (ex-info "clj-http error"
+                              {:status  502 :reason-phrase "Bad Gateway"
+                               :headers {"content-type" "text/plain"}
+                               :body    stream})
+          ex         (caught #(self.core/rethrow-api-error!
+                               "openrouter"
+                               (constantly "OpenRouter upstream provider returned an error")
+                               upstream))
+          consumed   (- (alength body-bytes) (.available stream))]
+      (is (str/includes? (ex-message ex) "OpenRouter upstream provider returned an error"))
+      (is (str/ends-with? (ex-message ex) "…"))
+      (is (< consumed (alength body-bytes))
+          "should not consume the entire 2MB stream just to surface an error preview")))
+
+  (testing "Truncated InputStream JSON bodies fall back to the raw bounded string"
+    ;; A small slurp cap forces the JSON to be cut mid-envelope. We should fall back
+    ;; to surfacing the raw bounded string rather than throwing on parse failure.
+    (let [json     (json/encode {:error {:message (apply str (repeat 10000 \x))}})
+          upstream (ex-info "clj-http error"
+                            {:status  500 :reason-phrase "Internal Server Error"
+                             :headers {"content-type" "application/json"}
+                             :body    (java.io.ByteArrayInputStream. (.getBytes ^String json))})
+          ex       (with-redefs [self.core/max-body-slurp-chars 100]
+                     (caught #(self.core/rethrow-api-error!
+                               "anthropic"
+                               (constantly "Anthropic upstream provider returned an error")
+                               upstream)))]
+      (is (str/includes? (ex-message ex) "Anthropic upstream provider returned an error"))
+      (is (str/includes? (ex-message ex) "{\"error\":{\"message\":\"xxx")
+          "the truncated raw string is surfaced in the user-facing message when JSON parse fails")
+      (is (string? (:body (ex-data ex)))
+          "the bounded raw string is kept on ex-data when JSON parse fails")
+      (is (<= (count (:body (ex-data ex))) 100)
+          "the body in ex-data respects the slurp cap"))))
+
+(deftest rethrow-api-error!-retry-after-test
+  (testing "Retry-After header survives the ex-data allow-list and reaches retry-delay-ms"
+    ;; Regression test: an earlier revision allow-listed only :status/:reason-phrase/:body,
+    ;; which silently dropped :headers and made provider 429/529 retries fall back to
+    ;; exponential backoff instead of honoring the upstream Retry-After.
+    (let [upstream (ex-info "clj-http error"
+                            {:status 429 :reason-phrase "Too Many Requests"
+                             :headers {"retry-after" "3"}
+                             :body "rate limited"})
+          ex       (caught #(self.core/rethrow-api-error!
+                             "openrouter"
+                             (constantly "OpenRouter rate limit")
+                             upstream))]
+      (is (= {"retry-after" "3"} (:headers (ex-data ex))))
+      (is (<= 3000 (#'self/retry-delay-ms 1 ex) (+ 3000 750))
+          "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception"))))
+
+(deftest rethrow-api-error!-warn-log-test
+  (testing "the full upstream body is emitted at warn level alongside provider and status"
+    (let [upstream (ex-info "clj-http error"
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body "upstream gateway timeout"})
+          [entry & more]
+          (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+            (caught #(self.core/rethrow-api-error!
+                      "openrouter"
+                      (constantly "OpenRouter upstream provider returned an error")
+                      upstream))
+            (msgs))]
+      (is (nil? more) "exactly one warn line at the failure boundary")
+      (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
+              entry))
+      (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
+                   (:message entry)))))
+  (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
+    (let [cap      @#'self.core/max-body-log-chars
+          big-body (apply str (repeat (+ cap 1000) \x))
+          upstream (ex-info "clj-http error"
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body big-body})
+          [entry & more]
+          (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+            (let [ex (caught #(self.core/rethrow-api-error!
+                               "openrouter"
+                               (constantly "OpenRouter upstream provider returned an error")
+                               upstream))]
+              (is (= big-body (:body (ex-data ex)))
+                  "the full, untruncated body still survives on ex-data"))
+            (msgs))]
+      (is (nil? more) "exactly one warn line at the failure boundary")
+      (is (str/ends-with? (:message entry)
+                          (str "body=" (subs (pr-str big-body) 0 cap) "…"))
+          "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
+      (is (not (str/includes? (:message entry) big-body))
+          "the full oversized body is not spliced into the warn line"))))
+
+(deftest rethrow-api-error!-auth-status-body-not-leaked-test
+  (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
+    (doseq [status [401 403]]
+      (let [secret   "sk-leaked-key-abc123 for org=acme-corp tenant=42"
+            upstream (ex-info "clj-http error"
+                              {:status        status
+                               :reason-phrase "Unauthorized"
+                               :headers       {"content-type" "application/json"}
+                               :body          (json/encode {:error {:message secret}})})
+            [entry & more]
+            (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+              (let [ex (caught #(self.core/rethrow-api-error!
+                                 "anthropic"
+                                 (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                                 upstream))]
+                (is (= (str "Anthropic API error (HTTP " status ")") (ex-message ex))
+                    "no body preview spliced onto the user-facing message for auth statuses")
+                (is (not (str/includes? (ex-message ex) secret))
+                    "secret-bearing body must not leak into the rethrown message")
+                (is (= {:error {:message secret}} (:body (ex-data ex)))
+                    "the full decoded body is still preserved on ex-data for debugging"))
+              (msgs))]
+        (is (nil? more) "exactly one warn line at the failure boundary")
+        (is (str/includes? (:message entry) secret)
+            "the full body is still emitted at warn level for server-side debugging")))))
