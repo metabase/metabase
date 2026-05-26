@@ -1,12 +1,13 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -339,3 +340,19 @@
   (when (premium-features/has-feature? :dependencies)
     (when (deps.findings/mark-immediate-dependents-stale! :table (:table_id object))
       (task.entity-check/trigger-entity-check-job!))))
+
+;; ### Database Deletion (orphans transforms)
+;; Transforms whose `source_database_id` matches the database being deleted survive the delete (the
+;; FK uses `ON DELETE SET NULL` and ukrit/maz asked us to preserve the SQL/Python as a tombstone),
+;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
+;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`. Called from the
+;; OSS `:model/Database` before-delete hook via `defenterprise`, so we can still resolve the affected
+;; transforms by their (still non-null) `source_database_id` before the FK action fires.
+(defenterprise mark-transforms-stale-on-database-delete!
+  "Enterprise implementation: mark all transforms whose source database is being deleted as stale
+   for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
+  :feature :dependencies
+  [db-id]
+  (when-let [transform-ids (not-empty (t2/select-pks-set :model/Transform :source_database_id db-id))]
+    (deps.analysis-finding/mark-stale! :transform transform-ids)
+    (task.entity-check/trigger-entity-check-job!)))
