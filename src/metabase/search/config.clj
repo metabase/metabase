@@ -91,6 +91,7 @@
     :mine                1
     :exact               5
     :prefix              0
+    :library             200
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}
    :command-palette
@@ -109,8 +110,7 @@
     :model/metric   1
     :model/question 0}
    :metabot
-   {:library             100
-    :official-collection 80
+   {:official-collection 80
     :verified            80
     :data-layer          1     ; overall multiplier; per-tier weights live under :data-layer/* below
     :data-layer/final    33

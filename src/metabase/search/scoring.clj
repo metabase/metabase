@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.search.config :as search.config]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -83,6 +84,20 @@
                 [:= :search_index.model [:inline "dataset"]] [:inline "card"]
                 [:= :search_index.model [:inline "metric"]] [:inline "card"]
                 :else :search_index.model]]]}))
+
+(defn library-score-expr
+  "Score expression: 1 when `root-collection-type-col` is one of the library collection types, else 0.
+  Pass the engine-appropriate column reference (e.g. `:search_index.root_collection_type` for appdb,
+  `:root_collection_type` for semantic). The `:root-collection-type` attr is computed at ingestion
+  time by walking the collection's materialized path (see `collection/root-collection-type`), so
+  items in arbitrarily deep sub-collections of a library tree still match here."
+  [root-collection-type-col]
+  [:case
+   (into [:or]
+         (for [t (sort collection/library-collection-types)]
+           [:= root-collection-type-col [:inline t]]))
+   [:inline 1]
+   :else [:inline 0]])
 
 (defn model-rank-expr
   "Score an item based on its :model type."

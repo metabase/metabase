@@ -235,6 +235,24 @@
                 ["collection" 2 "collection official"]]
                (search-results* "collection")))))))
 
+(deftest library-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "Items whose root ancestor collection is a library type rank above non-library items"
+      (with-index-contents!
+        [{:model "card" :id 1 :name "card plain"}
+         {:model "card" :id 2 :name "card in library"      :root_collection_type "library"}
+         {:model "card" :id 3 :name "card in library-data" :root_collection_type "library-data"}
+         {:model "card" :id 4 :name "card in lib-metrics"  :root_collection_type "library-metrics"}
+         {:model "card" :id 5 :name "card in trash"        :root_collection_type "trash"}]
+        (let [library-id? #{2 3 4}
+              in-library? (fn [[_ id _]] (boolean (library-id? id)))]
+          (testing "with positive :library weight, library items come first"
+            (is (= [true true true false false]
+                   (map in-library? (semantic.tu/with-weights {:library 1} (search-results* "card"))))))
+          (testing "with negative :library weight, library items come last"
+            (is (= [false false true true true]
+                   (map in-library? (semantic.tu/with-weights {:library -1} (search-results* "card")))))))))))
+
 (deftest verified-test
   (with-index-contents!
     [{:model "card" :id 1 :name "card normal" :verified false}

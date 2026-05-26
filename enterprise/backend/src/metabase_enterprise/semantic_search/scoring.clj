@@ -94,7 +94,8 @@
      :prefix     (if search-string
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                    (search.scoring/prefix [:lower :name] (u/lower-case-en search-string))
-                   [:inline 0])}))
+                   [:inline 0])
+     :library    (search.scoring/library-score-expr :root_collection_type)}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy :official_collection)

@@ -37,7 +37,7 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (index_table_xyzs). If higher than what's found in db dynamic schema migration will
   be attempted."
-  3)
+  4)
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
@@ -84,6 +84,16 @@
                          (execute! {:alter-table [(keyword table-name)]
                                     :add-column  [[:data_layer :text :if-not-exists]]}))))
 
+(defn- add-root-collection-type-column!
+  "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can match items
+  in arbitrarily deep sub-collections of a library tree (the existing `collection_type` only matches the
+  direct parent collection)."
+  [tx index-metadata]
+  (alter-index-tables! tx index-metadata 4
+                       (fn [execute! table-name]
+                         (execute! {:alter-table [(keyword table-name)]
+                                    :add-column  [[:root_collection_type :text :if-not-exists]]}))))
+
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
   leftovers if necessary."
@@ -91,5 +101,7 @@
   ;; migration 1: all tables dropped in schema migration in single function call
   ;; migration 2: add personal_owner_id column to index tables
   ;; migration 3: add collection_type and data_layer columns to index tables
+  ;; migration 4: add root_collection_type column to index tables
   (add-personal-owner-id-column! tx index-metadata)
-  (add-collection-type-and-data-layer-columns! tx index-metadata))
+  (add-collection-type-and-data-layer-columns! tx index-metadata)
+  (add-root-collection-type-column! tx index-metadata))
