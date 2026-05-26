@@ -1,8 +1,7 @@
 diff --git a/node_modules/@locker/near-membrane-dom/dist/index.mjs.js b/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
-index 8f40f9ab4a2..08ffaccf24c 100644
 --- a/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
 +++ b/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
-@@ -107,7 +107,7 @@ getCachedGlobalObjectReferences(rootWindow);
+@@ -107,7 +107,7 @@
  const IFRAME_SANDBOX_ATTRIBUTE_VALUE = 'allow-same-origin allow-scripts';
  const revoked = toSafeWeakSet(new WeakSetCtor());
  const blueCreateHooksCallbackCache = toSafeWeakMap(new WeakMapCtor());
@@ -11,7 +10,7 @@ index 8f40f9ab4a2..08ffaccf24c 100644
    var _ReflectApply;
    const iframe = ReflectApply(DocumentProtoCreateElement, doc, ['iframe']);
    // It is impossible to test whether the NodeProtoLastChildGetter branch is
-@@ -116,6 +116,13 @@ function createDetachableIframe(doc) {
+@@ -116,6 +116,13 @@
    const style = ReflectApply(HTMLElementProtoStyleGetter, iframe, []);
    style.display = 'none';
    ReflectApply(ElementProtoSetAttribute, iframe, ['sandbox', IFRAME_SANDBOX_ATTRIBUTE_VALUE]);
@@ -25,7 +24,7 @@ index 8f40f9ab4a2..08ffaccf24c 100644
    ReflectApply(NodeProtoAppendChild, parent, [iframe]);
    return iframe;
  }
-@@ -132,6 +139,9 @@ function createIframeVirtualEnvironment(globalObject, providedOptions) {
+@@ -132,6 +139,9 @@
      defaultPolicy,
      endowments,
      globalObjectShape,
@@ -35,7 +34,7 @@ index 8f40f9ab4a2..08ffaccf24c 100644
      instrumentation,
      keepAlive = true,
      liveTargetCallback,
-@@ -141,7 +151,8 @@ function createIframeVirtualEnvironment(globalObject, providedOptions) {
+@@ -142,7 +152,8 @@
    } = ObjectAssign({
      __proto__: null
    }, providedOptions);
@@ -45,7 +44,7 @@ index 8f40f9ab4a2..08ffaccf24c 100644
    const redWindow = ReflectApply(HTMLIFrameElementProtoContentWindowGetter, iframe, []);
    const shouldUseDefaultGlobalOwnKeys = typeof globalObjectShape !== 'object' || globalObjectShape === null;
    const defaultGlobalOwnKeys = filterWindowKeys(getFilteredGlobalOwnKeys(redWindow, maxPerfMode));
-@@ -214,8 +225,14 @@ function createIframeVirtualEnvironment(globalObject, providedOptions) {
+@@ -218,8 +229,14 @@
      // Revoke the proxies of the redDocument and redWindow to prevent access.
      revoked.add(redDocument);
      revoked.add(redWindow);
@@ -60,9 +59,9 @@ index 8f40f9ab4a2..08ffaccf24c 100644
 +      ReflectApply(DocumentProtoClose, redDocument, []);
 +    }
    } else {
+     // istanbul ignore next: coverage never runs in old Chromium (<v86)
      if (IS_OLD_CHROMIUM_BROWSER) {
-       // For Chromium < v86 browsers we evaluate the `window` object to
-@@ -226,6 +243,22 @@ function createIframeVirtualEnvironment(globalObject, providedOptions) {
+@@ -231,6 +248,22 @@
      ReflectApply(ElementProtoRemove, iframe, []);
    }
    return env;
@@ -85,11 +84,10 @@ index 8f40f9ab4a2..08ffaccf24c 100644
  }
  function revokedProxyCallback(value) {
    return revoked.has(value);
-diff --git a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
-index 5ebdd4a64db..8aeb7f7a7e4 100644
---- a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
-+++ b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
-@@ -4,12 +4,22 @@ interface BrowserEnvironmentOptions {
+diff --git a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
+--- a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
++++ b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
+@@ -4,6 +4,15 @@
      defaultPolicy?: object;
      endowments?: PropertyDescriptorMap;
      globalObjectShape?: object;
@@ -105,18 +103,18 @@ index 5ebdd4a64db..8aeb7f7a7e4 100644
      instrumentation?: Instrumentation;
      keepAlive?: boolean;
      liveTargetCallback?: LiveTargetCallback;
-     maxPerfMode?: boolean;
+@@ -11,6 +20,7 @@
+     protectDistortions?: boolean;
      signSourceCallback?: SignSourceCallback;
  }
 +declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions: BrowserEnvironmentOptions & { iframeSrc: string }): Promise<VirtualEnvironment>;
  declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions?: BrowserEnvironmentOptions): VirtualEnvironment;
  export { createIframeVirtualEnvironment as default, BrowserEnvironmentOptions };
  export type { Connector, DistortionCallback, Instrumentation, LiveTargetCallback } from '@locker/near-membrane-base';
-diff --git a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
-index 4a7e98ab064..69410acc2b4 100644
---- a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
-+++ b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
-@@ -4,12 +4,22 @@ interface BrowserEnvironmentOptions {
+diff --git a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
+--- a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
++++ b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
+@@ -4,6 +4,15 @@
      defaultPolicy?: object;
      endowments?: PropertyDescriptorMap;
      globalObjectShape?: object;
@@ -132,7 +130,8 @@ index 4a7e98ab064..69410acc2b4 100644
      instrumentation?: Instrumentation;
      keepAlive?: boolean;
      liveTargetCallback?: LiveTargetCallback;
-     maxPerfMode?: boolean;
+@@ -11,6 +20,7 @@
+     protectDistortions?: boolean;
      signSourceCallback?: SignSourceCallback;
  }
 +declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions: BrowserEnvironmentOptions & { iframeSrc: string }): Promise<VirtualEnvironment>;
