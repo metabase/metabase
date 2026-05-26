@@ -60,7 +60,7 @@
         honeysql {:select [[tru :_]]
                   :from   [[table]]
                   :where  [:inline [:not= 1 1]]}
-        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 1})]
     (sql.qp/format-honeysql driver honeysql)))
 
 (def ^:dynamic *select-probe-query-timeout-seconds*

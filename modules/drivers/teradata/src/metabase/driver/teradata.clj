@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -27,7 +28,8 @@
 
 (driver/register! :teradata, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:metadata/key-constraints false}]
+(doseq [[feature supported?] {:metadata/key-constraints    false
+                              :test/jvm-timezone-setting   false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
@@ -216,10 +218,11 @@
      (into [:mod] args))))
 (defmethod sql.qp/date [:teradata :day-of-month] [_ _ expr] [::h2x/extract :day expr])
 (defmethod sql.qp/date [:teradata :day-of-year] [driver _ expr] (h2x/inc (h2x/- (sql.qp/date driver :day expr) (trunc :year expr))))
-(defmethod sql.qp/date [:teradata :week] [_ _ expr] (trunc :day expr)) ; Same behaviour as with Oracle.
-(defmethod sql.qp/date [:teradata :week-of-year] [_ _ expr] (h2x/inc (h2x// (h2x/- (trunc :iw expr)
-                                                                                   (trunc :iy expr))
-                                                                            7)))
+(defmethod sql.qp/date [:teradata :week]
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver (partial trunc :day) expr))
+;; TODO(rileythomp, 2026-05-26): Remove this, it's just here to test without restarting the REPL
+(defmethod sql.qp/date [:teradata :week-of-year] [driver period expr] ((get-method sql.qp/date [:sql :week-of-year]) driver period expr))
 (defmethod sql.qp/date [:teradata :month] [_ _ expr] (trunc :month expr))
 (defmethod sql.qp/date [:teradata :month-of-year] [_ _ expr] [::h2x/extract :month expr])
 (defmethod sql.qp/date [:teradata :quarter] [_ _ expr] (trunc :q expr))
@@ -265,7 +268,13 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:teradata :milliseconds]
   [driver _ expr]
-  (sql.qp/unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+  ;; TO_TIMESTAMP only accepts integer seconds, so for milliseconds:
+  ;; 1. Convert seconds part with TO_TIMESTAMP (integer division)
+  ;; 2. Add remaining milliseconds using interval arithmetic
+  (let [seconds-expr (h2x// expr 1000)
+        millis-remainder [:mod expr 1000]]
+    (h2x/+ (sql.qp/unix-timestamp->honeysql driver :seconds seconds-expr)
+           (h2x/* millis-remainder [:raw "INTERVAL '0.001' SECOND"]))))
 
 (defn- default-select
   [driver {[from] :from}]
@@ -400,7 +409,8 @@
 ;; https://www.mchange.com/projects/c3p0/#acquireRetryDelay
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :teradata
   [driver database]
-  {"acquireRetryDelay"            1000
+  {"acquireRetryAttempts"         (if driver-api/is-test? 1 0)
+   "acquireRetryDelay"            1000
    "acquireIncrement"             1
    "maxIdleTime"                  (* 6 60 60) ; 6 hours
    "minPoolSize"                  1
