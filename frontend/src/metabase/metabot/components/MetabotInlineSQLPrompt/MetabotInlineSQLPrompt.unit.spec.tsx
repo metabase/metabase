@@ -52,7 +52,7 @@ describe("MetabotInlineSQLPrompt", () => {
     setup();
 
     expect(
-      screen.getByText(/To use SQL generation, please/),
+      await screen.findByText(/To use SQL generation, please/),
     ).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-inline-sql-generate"),
@@ -62,11 +62,11 @@ describe("MetabotInlineSQLPrompt", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the admin message when the user cannot configure AI", () => {
+  it("shows the admin message when the user cannot configure AI", async () => {
     setup(undefined, { isAdmin: false });
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         "Ask your admin to connect to a model to use SQL generation.",
       ),
     ).toBeInTheDocument();

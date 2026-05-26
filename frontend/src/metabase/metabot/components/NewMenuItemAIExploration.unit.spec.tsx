@@ -6,25 +6,15 @@ describe("getNewMenuItemAIExploration", () => {
     expect(result).toBeUndefined();
   });
 
-  it("should return undefined when canUseNlq is false", () => {
-    const result = getNewMenuItemAIExploration(true, undefined, false);
-    expect(result).toBeUndefined();
-  });
-
-  it("should return undefined when canUseNlq is undefined", () => {
-    const result = getNewMenuItemAIExploration(true, undefined, undefined);
-    expect(result).toBeUndefined();
-  });
-
-  it("should return a Menu.Item when hasDataAccess and canUseNlq are true", () => {
+  it("should link to the ask mode question page when hasNlqAccess is true", () => {
     const result = getNewMenuItemAIExploration(true, undefined, true);
     expect(result).not.toBeUndefined();
-    expect(result?.key).toBe("nlq");
+    expect(result?.props?.to).toBe("/question/ask");
   });
 
-  it("should link to the ask mode question page", () => {
-    const result = getNewMenuItemAIExploration(true, 123, true);
+  it("should link to the research mode page when hasNlqAccess is false", () => {
+    const result = getNewMenuItemAIExploration(true, undefined, false);
     expect(result).not.toBeUndefined();
-    expect(result?.props?.to).toBe("/question/ask");
+    expect(result?.props?.to).toBe("/question/research");
   });
 });

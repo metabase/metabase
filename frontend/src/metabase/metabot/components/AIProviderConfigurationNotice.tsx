@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
@@ -24,25 +25,31 @@ export function AIProviderConfigurationNotice({
   const { hasNlqAccess } = useUserMetabotPermissions();
   const canConfigureAi = useSelector(canAccessSettings);
 
-  let content: React.ReactNode;
-  if (hasNlqAccess && canConfigureAi) {
-    content = jt`To use ${featureName}, please ${(
-      <Anchor
-        key="configure-ai-link"
-        component="button"
-        type="button"
-        fz="inherit"
-        inline
-        onClick={onConfigureAi}
-      >
-        {t`connect to a model`}
-      </Anchor>
-    )}.`;
-  } else if (hasNlqAccess) {
-    content = t`Ask your admin to connect to a model to use ${featureName}.`;
-  } else {
-    content = t`You don't have permission to use ${featureName}. Please contact your admin for access.`;
-  }
+  const content = match({ hasNlqAccess, canConfigureAi })
+    .with(
+      { hasNlqAccess: true, canConfigureAi: true },
+      () =>
+        jt`To use ${featureName}, please ${(
+          <Anchor
+            key="configure-ai-link"
+            component="button"
+            type="button"
+            fz="inherit"
+            inline
+            onClick={onConfigureAi}
+          >
+            {t`connect to a model`}
+          </Anchor>
+        )}.`,
+    )
+    .with(
+      { hasNlqAccess: true },
+      () => t`Ask your admin to connect to a model to use ${featureName}.`,
+    )
+    .otherwise(
+      () =>
+        t`You don't have permission to use ${featureName}. Please contact your admin for access.`,
+    );
   return (
     <Text
       c="text-tertiary"
