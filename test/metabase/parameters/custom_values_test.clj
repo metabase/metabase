@@ -53,6 +53,22 @@
                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :id)]
                 {:label-field [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} (mt/id :venues :name)]})))))))
 
+(deftest ^:parallel search-by-label-field-test
+  (testing "query-string with a label-field filters by the label, not the value"
+    (mt/with-temp
+      [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                               {:database_id (mt/id)
+                                :type        :question
+                                :table_id    (mt/id :venues)})]
+      (let [{:keys [values]} (custom-values/values-from-card
+                              card
+                              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :id)]
+                              {:query-string "bakery"
+                               :label-field  [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                              (mt/id :venues :name)]})]
+        (is (seq values))
+        (is (every? (fn [[_id label]] (re-find #"(?i)bakery" label)) values))))))
+
 (deftest ^:parallel with-mbql-card-test-2
   (testing "source card is a model" ; Models are opaque, so this sees the post-aggregation columns.
     (binding [custom-values/*max-rows* 3]
