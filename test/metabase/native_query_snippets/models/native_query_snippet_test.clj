@@ -23,7 +23,6 @@
                    :model/NativeQuerySnippet {snippet-id :id} {:collection_id collection-id}]
       (is (= collection-id
              (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))
-
   (doseq [[source dest] [[nil "snippets"]
                          ["snippets" "snippets"]
                          ["snippets" nil]]]
@@ -37,7 +36,6 @@
         (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))
-
   (doseq [collection-namespace [nil "x"]]
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
                      (pr-str collection-namespace))
@@ -50,7 +48,6 @@
                           :content       "1 = 1"
                           :creator_id    (mt/user->id :rasta)
                           :collection_id collection-id})))))
-
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
@@ -114,7 +111,6 @@
 (deftest template-tags-serialization-test
   (testing "Template tags serialization preserves nil, empty, and populated states"
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
-
       (testing "nil in -> {} out"
         (let [snippet (t2/insert-returning-instance! :model/NativeQuerySnippet
                                                      {:name "nil-tags"
@@ -125,7 +121,6 @@
           ;; toucan hooks populate it:
           (is (= {} (:template_tags extracted)))
           (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))
-
       (testing "empty map in -> empty map out"
         (mt/with-temp [:model/NativeQuerySnippet snippet
                        {:name "empty-tags"
@@ -134,7 +129,6 @@
                         :template_tags {}}]
           (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
             (is (= {} (:template_tags extracted))))))
-
       (testing "tags in -> tags out"
         (mt/with-temp [:model/NativeQuerySnippet snippet
                        {:name "with-tags"

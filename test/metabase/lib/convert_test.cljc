@@ -255,7 +255,6 @@
           (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
                   (lib.convert/->legacy-MBQL
                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
-
       (testing "with multiple arguments (MBQL 5 style)"
         (testing "->mbql5"
           (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC" "HJK" "XYZ"]
@@ -264,7 +263,6 @@
                    [:field {} 12] "ABC" "HJK" "XYZ"]
                   (lib.convert/->mbql5 [tag {:case-sensitive false}
                                         [:field 12 nil] "ABC" "HJK" "XYZ"]))))
-
         (testing "->legacy-MBQL"
           (is (=? [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"]
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
@@ -574,7 +572,6 @@
               :breakout [[:field 1677 nil]]
               :source-table 517}
       :type :query}))
-
   (test-round-trip
    {:database 67
     :query {:aggregation [[:aggregation-options
@@ -881,7 +878,6 @@
     {:type :query
      :database 1}
     {:type :query})
-
   (is (nil? (-> {:database 1
                  :type :query
                  :query {:source-table 224

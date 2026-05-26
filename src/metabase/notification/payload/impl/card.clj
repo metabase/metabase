@@ -36,7 +36,6 @@
         goal-val             (ui-logic/find-goal-value card_part)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
                                                                   (get-in card_part [:result :data]))]
-
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info "Unable to compare results to goal for notificationt_card"
                       {:notification_card  notification_card

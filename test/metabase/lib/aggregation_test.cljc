@@ -195,7 +195,6 @@
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
                                    (meta/id :venues :category-id)]]]}]}]
-
     (testing "with helper function"
       (is (=? result-query
               (-> q

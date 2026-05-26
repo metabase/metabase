@@ -101,7 +101,6 @@
                                                  ;; tech debt issue: #39376
                                                  #_{:base-type :type/Integer}
                                                  "CC"]]]}]}]}
-
               (lib/query meta/metadata-provider converted-query))))))
 
 (deftest ^:parallel stage-count-test

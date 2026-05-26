@@ -69,7 +69,6 @@
   (testing "Should default when only including a limit"
     (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 100 :offset 0)
            (mt/user-http-request :crowberto :get 200 "task/" :limit 100))))
-
   (testing "Should default when only including an offset"
     (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 50 :offset 100)
            (mt/user-http-request :crowberto :get 200 "task/" :offset 100)))))
@@ -118,7 +117,6 @@
   (testing "Regular user can't get task info"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/info"))))
-
   (testing "Superusers could get task info"
     (is (malli= [:map
                  [:scheduler :any]
@@ -578,11 +576,9 @@
                                        :started_at  (t/zoned-date-time)}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/runs/%d" (:id run)))))))
-
   (testing "404 for non-existent run"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "task/runs/%d" Integer/MAX_VALUE)))))
-
   (testing "superuser can get single run with tasks"
     (t2/delete! :model/TaskRun)
     (t2/delete! :model/TaskHistory)

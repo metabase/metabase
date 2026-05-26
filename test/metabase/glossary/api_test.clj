@@ -26,7 +26,6 @@
           (testing "Response hydrates creator"
             (is (map? (:creator response)))
             (is (= crowberto-id (get-in response [:creator :id]))))))
-
       (testing "cannot create glossary entry with missing fields"
         (is (=? {:errors {:term "value must be a non-blank string."}}
                 (mt/user-http-request :crowberto :post 400 "glossary"
@@ -34,7 +33,6 @@
         (is (=? {:errors {:definition "value must be a non-blank string."}}
                 (mt/user-http-request :crowberto :post 400 "glossary"
                                       {:term "Missing definition field"}))))))
-
   (testing "GET /api/glossary"
     (let [crowberto-id (mt/user->id :crowberto)]
       (mt/with-temp [:model/Glossary _g1 {:term "Database"
@@ -50,25 +48,21 @@
             (is (set/subset? #{"Database" "Query"} (set (map :term data))))
             (testing "Response hydrates creator"
               (is (every? #(map? (:creator %)) data)))))
-
         (testing "can search glossary entries by term"
           (let [response (mt/user-http-request :rasta :get 200 "glossary" :search "data")
                 data     (:data response)]
             (is (= 2 (count data)))
             (is (every? #(or (re-find #"(?i)data" (:term %))
                              (re-find #"(?i)data" (:definition %))) data))))
-
         (testing "search is case insensitive"
           (let [response (mt/user-http-request :rasta :get 200 "glossary" :search "DATABASE")
                 data     (:data response)]
             (is (<= 1 (count data)))
             (is (set/subset? #{"Database"} (set (map :term data))))))
-
         (testing "search returns empty when no matches"
           (let [response (mt/user-http-request :rasta :get 200 "glossary" :search (str "nonexistent-" (random-uuid)))
                 data     (:data response)]
             (is (= 0 (count data))))))))
-
   (testing "PUT /api/glossary/:id"
     (let [crowberto-id (mt/user->id :crowberto)]
       (mt/with-temp [:model/Glossary {gid :id} {:term "Old Term"
@@ -84,20 +78,17 @@
             (testing "Response hydrates creator"
               (is (map? (:creator response)))
               (is (= crowberto-id (get-in response [:creator :id]))))))
-
         (testing "returns 404 when updating non-existent entry"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404 "glossary/99999"
                                        {:term       "Does not exist"
                                         :definition "Does not exist"})))))))
-
   (testing "DELETE /api/glossary/:id"
     (mt/with-temp [:model/Glossary {gid :id} {:term "To Delete" :definition "Will be deleted"}]
       (testing "can delete glossary entry as superuser"
         (is (= nil
                (mt/user-http-request :crowberto :delete 204 (str "glossary/" gid))))
         (is (nil? (t2/select-one :model/Glossary :id gid))))
-
       (testing "returns 404 when deleting non-existent entry"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 "glossary/99999")))))))

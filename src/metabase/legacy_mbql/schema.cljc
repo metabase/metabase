@@ -1597,7 +1597,6 @@
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]
-
     [:widget-type
      {:default :category}
      [:ref
@@ -1605,7 +1604,6 @@
        "which type of widget the frontend should show for this Field Filter; this also affects which parameter types
   are allowed to be specified for it."}
       ::WidgetType]]
-
     [:options
      {:optional    true
       :description "optional map to be appended to filter clause"}
@@ -1921,9 +1919,7 @@
       :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
   this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"}
      [:ref ::SourceTable]]
-
     [:source-query {:optional true} [:ref ::SourceQuery]]
-
     [:condition
      {:description
       "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
@@ -1931,14 +1927,12 @@
 
     [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]"}
      [:ref ::Filter]]
-
     [:strategy
      {:optional true
       :description "Defaults to `:left-join`; used for all automatically-generated JOINs
 
   Driver implementations: this is guaranteed to be present after pre-processing."}
      [:ref ::lib.schema.join/strategy]]
-
     [:fields
      {:optional true
       :description
@@ -1957,7 +1951,6 @@
   Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with
   appropriate aliases."}
      [:ref ::JoinFields]]
-
     [:alias
      {:optional true
       :description
@@ -1967,7 +1960,6 @@
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
      ::lib.schema.join/alias]
-
     [:fk-field-id
      {:optional true
       :description "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
@@ -1977,7 +1969,6 @@
 
   Don't set this information yourself. It will have no effect."}
      [:maybe ::lib.schema.id/field]]
-
     [:source-metadata
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
@@ -2207,13 +2198,11 @@
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
    [:map
     [:database   {:optional true} ::DatabaseID]
-
     [:type
      [:enum
       {:decode/normalize helpers/normalize-keyword
        :description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
-
     [:native     {:optional true} [:ref ::TopLevelNativeInnerQuery]]
     [:query      {:optional true} [:ref ::MBQLInnerQuery]]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
