@@ -23,6 +23,7 @@
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -80,15 +81,25 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
-(def ^:private session-payload-version 1)
+(def ^:private session-payload-version
+  "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
+  1)
 
 (defn- encode-session-payload
+  "Encode a small JSON map for the second segment of `Mcp-Session-Id`.
+
+   MCP initialize capabilities are client-advertised hints, not authorization state. We include them in the
+   server-created session id so later requests can make the same tools/list decision on any Metabase webserver
+   without an in-memory cache or a DB row just for session metadata."
   [payload]
   (-> (json/encode payload)
       (.getBytes StandardCharsets/UTF_8)
       (->> (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
 
 (defn- decode-session-payload
+  "Decode the optional client-capability hint from an `Mcp-Session-Id`.
+
+   Invalid payloads return nil so the whole session id can be treated as invalid by [[session-parts]]."
   [encoded]
   (when-not (str/blank? encoded)
     (try
@@ -99,27 +110,48 @@
       (catch Exception _
         nil))))
 
+(defn- parse-session-payload
+  "Parse the optional base64url JSON capability segment.
+
+   Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
+   must include a decodable payload so malformed capability hints do not silently fall back to legacy behavior."
+  [payload]
+  (cond
+    (nil? payload)
+    {:extended false}
+
+    (str/blank? payload)
+    nil
+
+    :else
+    (when-let [decoded-payload (decode-session-payload payload)]
+      {:extended true
+       :payload  decoded-payload})))
+
 (defn- session-parts
+  "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
+
+   New session ids have the form `<uuid>.<base64url-json>`, currently with payload `{\"v\":1,\"ui\":true}`.
+   We keep the UUID as the first segment because existing MCP session behavior derives the embedding session key
+   from this server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly
+   across multiple Metabase webservers."
   [session-id]
   (when (string? session-id)
     (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
-      (when (and (#{1 2} (count parts)) (not (str/blank? uuid)))
-        (if (= 1 (count parts))
-          {:uuid uuid}
-          (when-let [decoded-payload (decode-session-payload payload)]
-            {:uuid     uuid
-             :payload  decoded-payload
-             :extended true}))))))
+      (when (and (#{1 2} (count parts))
+                 (u.str/valid-uuid? uuid))
+        (some-> (parse-session-payload payload)
+                (assoc :uuid uuid))))))
 
 (defn- session-uuid
   [session-id]
-  (when-let [uuid (:uuid (session-parts session-id))]
-    (try
-      (UUID/fromString uuid)
-      (catch IllegalArgumentException _
-        nil))))
+  (some-> (session-parts session-id) :uuid UUID/fromString))
 
 (defn- create-session-id
+  "Create a stateless MCP session id containing client capability hints.
+
+   The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
+   limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
   [{:keys [supports-mcp-ui?]}]
   (str (UUID/randomUUID)
        "."
