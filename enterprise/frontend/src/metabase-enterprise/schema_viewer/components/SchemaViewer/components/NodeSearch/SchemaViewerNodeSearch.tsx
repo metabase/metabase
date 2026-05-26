@@ -39,11 +39,10 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
 
-  // Empty tagsToIgnore so cmd+f fires even when focus is in another input.
   useHotkeys(
     [
       [
-        "mod+f",
+        "f",
         () => {
           inputRef.current?.focus();
           inputRef.current?.select();
@@ -51,7 +50,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
         },
       ],
     ],
-    [],
+    ["INPUT"],
   );
 
   const allItems = useMemo<SearchItem[]>(
