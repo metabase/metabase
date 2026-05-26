@@ -30,18 +30,7 @@ import {
 } from "../selectors";
 import { getIsObjectDetail } from "../selectors/mode";
 
-/**
- * The interactive object-detail sidesheet shown in the query builder. It owns
- * all of the query-builder wiring (zoom navigation, refresh-after-action) and
- * renders the presentational `DetailViewSidesheet` directly.
- *
- * Dashboards/public/embedding render object detail statically through the
- * registered "object" visualization instead; this component is QB-only.
- */
 export function ObjectDetailModal() {
-  // Cheap gate: only subscribe to the zoom/result selectors below when object
-  // detail is actually being shown, so this always-mounted component doesn't do
-  // work on every query builder render.
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   if (!isObjectDetail) {
@@ -70,8 +59,7 @@ function ObjectDetailModalInner() {
     if (!first) {
       return undefined;
     }
-    // Reuse the row data but force the "object" display so settings resolve the
-    // object-detail column config (`table.columns`, `column_settings`).
+    // Force "object" display so settings resolve the object-detail column config.
     const series = [
       { ...first, card: { ...first.card, display: "object" as const } },
     ];

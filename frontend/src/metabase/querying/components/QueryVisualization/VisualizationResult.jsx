@@ -43,9 +43,6 @@ export function VisualizationResult(props) {
   const scrollToLastColumn = useSelector(
     (state) => getUiControls(state)?.scrollToLastColumn ?? false,
   );
-  // Resolve the clicked row index to the source table's primary key value (the
-  // map disambiguates joined queries with multiple PK columns), then toggle the
-  // object detail: clicking the already-open row closes it, otherwise zoom in.
   const rowIndexToPkMap = useSelector(getRowIndexToPKMap);
   const zoomedObjectId = useSelector(getZoomedObjectId);
   const onZoomRow = useCallback(

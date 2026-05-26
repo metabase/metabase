@@ -8,13 +8,6 @@ import { ObjectDetailView } from "./ObjectDetailView";
 import S from "./ObjectDetailWrapper.module.css";
 import type { ObjectDetailProps } from "./types";
 
-/**
- * Static, single-object presentation used by the registered "object"
- * visualization (dashboards, public/embedded, and the QB's main result area).
- * The interactive zoom modal is rendered separately by the query builder
- * (`query_builder/.../ObjectDetailModal`), so this component has no zoom or
- * query-builder wiring.
- */
 export function ObjectDetailWrapper({
   question,
   isDataApp,

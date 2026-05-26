@@ -170,7 +170,6 @@ describe("ObjectDetail", () => {
     await screen.findByTestId("object-detail");
     await waitForLoaderToBeRemoved();
 
-    // tabbing moves focus onto the modal's controls rather than the page behind it
     await userEvent.tab();
     expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
   });
