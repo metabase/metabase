@@ -39,11 +39,15 @@ export interface AvailableDimensionsResult {
 
 export function getExistingDimensionBreakoutDimensionIds(
   dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
-  excludedTabId?: string | null,
+
+  excludedDimensionBreakoutId?: string | null,
 ) {
   return new Set(
     dimensionBreakouts
-      .filter((dimensionBreakout) => dimensionBreakout.id !== excludedTabId)
+      .filter(
+        (dimensionBreakout) =>
+          dimensionBreakout.id !== excludedDimensionBreakoutId,
+      )
       .flatMap((dimensionBreakout) =>
         Object.values(dimensionBreakout.dimensionMapping),
       )

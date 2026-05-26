@@ -203,7 +203,7 @@
                                (into #{} (map (comp :lib/expression-name second)) expressions)))
           pred             #(bad-ref-clause? :expression expression-names %)
           form             (-> (stage-with-joins-and-namespaced-keys-removed stage)
-                   ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                               ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
                                (dissoc :parameters))]
       (when (lib.schema.util/pred-matches-form? form pred)
         (lib.schema.util/matching-locations form pred)))))

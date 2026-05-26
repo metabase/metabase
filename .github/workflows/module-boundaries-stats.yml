@@ -52,7 +52,7 @@ jobs:
           echo "UNMODULED=$UNMODULED" >> $GITHUB_OUTPUT
           echo "VIOLATIONS=$VIOLATIONS" >> $GITHUB_OUTPUT
       - name: Upload stats
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           NAMED_MODULES: ${{ steps.get-stats.outputs.NAMED_MODULES }}
           ENFORCED_MODULES: ${{ steps.get-stats.outputs.ENFORCED_MODULES }}

@@ -170,16 +170,16 @@
   [env-var]
   (or (false? (:doc env-var))
       (false? (:can-read-from-env? env-var))
-              ;; Ideally, we'd move off of this list completely,
-              ;; but not all environment variables are defsettings.
+      ;; Ideally, we'd move off of this list completely,
+      ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
   "Used to remove settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
   [env-var]
-   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
-   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
+  ;; If the `defsetting` has a `:doc` key with a string, we should document it.
+  ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
   (when-not (boolean (:doc env-var))
     (= :none (:setter env-var))))
 

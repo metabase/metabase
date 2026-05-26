@@ -2,7 +2,7 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
-} from "../types/viewer-state";
+} from "../types";
 
 import { remapDimensionMappings } from "./remap-dimension-mappings";
 
@@ -14,7 +14,7 @@ function metric(sourceId: MetricSourceId): MetricDefinitionEntry {
   return { id: sourceId, type: "metric", definition: null as any };
 }
 
-function makeTab(
+function makeDimensionBreakout(
   overrides: Partial<MetricsViewerDimensionBreakoutState> = {},
 ): MetricsViewerDimensionBreakoutState {
   return {
@@ -39,7 +39,7 @@ const COSTS: MetricSourceId = "metric:3" as MetricSourceId;
 describe("remapDimensionMappings", () => {
   it("returns same dimensionBreakout objects when slot mapping is identity", () => {
     const entities = [metric(REVENUE), metric(ORDERS)];
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "created_at", 1: "created_at" },
     });
     const slotMapping = new Map([
@@ -60,7 +60,7 @@ describe("remapDimensionMappings", () => {
     // Old: [Revenue(0), Orders(1), Costs(2)], New: [Orders(0), Costs(1)]
     // Revenue removed, Orders 1→0, Costs 2→1
     const next = [metric(ORDERS), metric(COSTS)];
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord", 2: "dim-cost" },
     });
     const slotMapping = new Map([
@@ -83,7 +83,7 @@ describe("remapDimensionMappings", () => {
 
   it("remaps indices when entities are reordered", () => {
     const next = [metric(ORDERS), metric(REVENUE)]; // swapped
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord" },
     });
     const slotMapping = new Map([
@@ -105,7 +105,7 @@ describe("remapDimensionMappings", () => {
 
   it("inherits sibling dimension for a new slot with same sourceId", () => {
     const next = [metric(REVENUE), metric(REVENUE)]; // second instance added
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "created_at" },
     });
     const slotMapping = new Map([
@@ -127,7 +127,7 @@ describe("remapDimensionMappings", () => {
 
   it("does not add mapping for a brand-new metric with no sibling", () => {
     const next = [metric(REVENUE), metric(ORDERS)]; // Orders is new
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "created_at" },
     });
     const slotMapping = new Map([
@@ -146,11 +146,11 @@ describe("remapDimensionMappings", () => {
 
   it("reconciles multiple dimensionBreakouts independently", () => {
     const next = [metric(ORDERS), metric(REVENUE)]; // swapped
-    const tab1 = makeTab({
+    const dimensionBreakout1 = makeDimensionBreakout({
       id: "dimensionBreakout-1",
       dimensionMapping: { 0: "dim-rev", 1: "dim-ord" },
     });
-    const tab2 = makeTab({
+    const dimensionBreakout2 = makeDimensionBreakout({
       id: "dimensionBreakout-2",
       dimensionMapping: { 0: "cat-rev", 1: "cat-ord" },
     });
@@ -159,7 +159,11 @@ describe("remapDimensionMappings", () => {
       [1, 0],
     ]);
 
-    const result = remapDimensionMappings([tab1, tab2], slotMapping, next);
+    const result = remapDimensionMappings(
+      [dimensionBreakout1, dimensionBreakout2],
+      slotMapping,
+      next,
+    );
 
     expect(result[0].dimensionMapping).toEqual({
       0: "dim-ord",
@@ -173,7 +177,7 @@ describe("remapDimensionMappings", () => {
 
   it("handles empty slot mapping (all entities new)", () => {
     const next = [metric(REVENUE)];
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: "created_at" },
     });
     const slotMapping = new Map<number, number>();
@@ -189,7 +193,7 @@ describe("remapDimensionMappings", () => {
 
   it("inherits null dimension from sibling", () => {
     const next = [metric(REVENUE), metric(REVENUE)];
-    const dimensionBreakout = makeTab({
+    const dimensionBreakout = makeDimensionBreakout({
       dimensionMapping: { 0: null },
     });
     const slotMapping = new Map([[0, 0]]);

@@ -86,9 +86,7 @@ describe("scenarios > workspaces > workspace manager", () => {
 
       cy.log("add the writable Postgres database with one schema");
       H.WorkspaceDatabaseSection.addDatabaseButton().click();
-      H.NewWorkspaceDatabaseModal.schemasInput().click();
-      H.popover().findByRole("option", { name: PG_SCHEMA_A }).click();
-      H.NewWorkspaceDatabaseModal.get().click();
+      H.NewWorkspaceDatabaseModal.schemaCheckbox(PG_SCHEMA_A).click();
       H.NewWorkspaceDatabaseModal.submitButton().click();
 
       H.WorkspaceDatabaseSection.database(POSTGRES_DB_NAME)
@@ -98,9 +96,7 @@ describe("scenarios > workspaces > workspace manager", () => {
       cy.log("edit the database to include a second schema");
       H.WorkspaceDatabaseSection.databaseMenuButton(POSTGRES_DB_NAME).click();
       H.WorkspaceDatabaseSection.editMenuItem().click();
-      H.UpdateWorkspaceDatabaseModal.schemasInput().click();
-      H.popover().findByRole("option", { name: PG_SCHEMA_B }).click();
-      H.UpdateWorkspaceDatabaseModal.get().click();
+      H.UpdateWorkspaceDatabaseModal.schemaCheckbox(PG_SCHEMA_B).click();
       H.UpdateWorkspaceDatabaseModal.saveButton().click();
 
       H.WorkspaceDatabaseSection.database(POSTGRES_DB_NAME)
@@ -158,7 +154,7 @@ describe("scenarios > workspaces > workspace manager", () => {
 
       cy.log("add the writable MySQL database (no schemas to pick)");
       H.WorkspaceDatabaseSection.addDatabaseButton().click();
-      H.NewWorkspaceDatabaseModal.schemasInput().should("not.exist");
+      H.NewWorkspaceDatabaseModal.schemasGroup().should("not.exist");
       H.NewWorkspaceDatabaseModal.submitButton().click();
 
       H.WorkspaceDatabaseSection.database(MYSQL_DB_NAME).should("be.visible");

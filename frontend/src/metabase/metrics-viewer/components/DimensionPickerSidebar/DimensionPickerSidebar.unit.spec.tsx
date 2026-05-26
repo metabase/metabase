@@ -310,6 +310,62 @@ describe("DimensionPickerSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("merges shared and metric sections with the same table name", async () => {
+    setup({
+      dimensions: {
+        shared: [
+          {
+            icon: "calendar",
+            group: { id: "products", type: "main", displayName: "Product" },
+            dimensionBreakoutInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: {
+                0: "dim-product-created-at",
+                1: "dim-product-created-at",
+              },
+            },
+          },
+        ],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "label",
+              group: {
+                id: "products",
+                type: "main",
+                displayName: "Product",
+              },
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Title",
+                dimensionMapping: { 0: "dim-product-title" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Number of Orders" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getAllByText("Product")).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "Created At" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Title" })).toBeInTheDocument();
+  });
+
   it("shows per-metric column selects from the settings button", async () => {
     setup();
 
@@ -323,6 +379,46 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.queryByRole("button", { name: "Created At" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the active time mapping for column select values", async () => {
+    setup({
+      dimensionBreakout: {
+        ...timeDimensionBreakout,
+        dimensionMapping: { 0: "dim-created-at" },
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Birth Date",
+                dimensionMapping: { 0: "dim-birth-date" },
+              },
+            },
+            {
+              icon: "calendar",
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Time" }),
+    );
+
+    expect(screen.getByLabelText("Select dimension for Revenue")).toHaveValue(
+      "Created At",
+    );
   });
 
   it("does not show column selects when the category row is clicked", async () => {

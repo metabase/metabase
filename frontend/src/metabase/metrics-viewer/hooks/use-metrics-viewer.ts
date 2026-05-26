@@ -1,11 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { objectFromEntries } from "metabase/utils/objects";
-import type {
-  DimensionMetadata,
-  MetricDefinition,
-  ProjectionClause,
-} from "metabase-lib/metric";
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   CardId,
@@ -85,15 +81,6 @@ export interface UseMetricsViewerResult {
   updateActiveDimensionBreakout: (
     updates: Partial<MetricsViewerDimensionBreakoutState>,
   ) => void;
-  changeDimensionBreakoutDimension: (
-    dimensionBreakoutId: string,
-    slotIndex: number,
-    dimension: DimensionMetadata,
-  ) => void;
-  removeDimensionBreakoutDimension: (
-    dimensionBreakoutId: string,
-    slotIndex: number,
-  ) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -117,8 +104,6 @@ export function useMetricsViewer({
     selectDimensionBreakoutById,
     addDimensionBreakout,
     updateDimensionBreakout,
-    setDefinitionDimension: changeDimensionBreakoutDimension,
-    removeDefinitionDimension: removeDimensionBreakoutDimension,
     setBreakoutDimension,
     initialize,
     loadAndAddMetric,
@@ -442,8 +427,6 @@ export function useMetricsViewer({
     removeMetric,
     selectDimensionBreakout,
     updateActiveDimensionBreakout,
-    changeDimensionBreakoutDimension,
-    removeDimensionBreakoutDimension,
     setBreakoutDimension,
     setFormulaEntities,
   };

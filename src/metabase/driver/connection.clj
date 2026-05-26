@@ -63,7 +63,7 @@
 
 (def connection-types
   "All valid values for [[*connection-type*]]."
-  [:default :write-data :admin])
+  [:default :write-data :admin :transform])
 
 (mr/def ::connection-type
   (into [:enum] connection-types))
@@ -74,8 +74,13 @@
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
    - `:admin` — `:admin-details` merged over `:details` (if configured)
+   - `:transform` — same details as `:write-data` (transforms write, so `:write-data-details`
+     are taken into account when configured), but resolved through a separate connection pool
+     whose c3p0 leak-detector tolerates transform-length runtimes. Set by
+     [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]], [[with-default-connection]], or [[with-admin-connection]], not directly."
+   Bind via [[with-write-connection]], [[with-default-connection]], [[with-admin-connection]], or
+   [[with-transform-connection]], not directly."
   :default)
 
 (defmacro with-write-connection
@@ -108,6 +113,17 @@
    Use this to compile or execute a read query from inside a broader write-connection context."
   [& body]
   `(binding [*connection-type* :default]
+     ~@body))
+
+(defmacro with-transform-connection
+  "Establishes a transform-connection context for body.
+
+   Connection details resolve the same as `:write-data` (transforms write, so
+   `:write-data-details` are taken into account when configured), but queries are routed
+   through a separate connection pool keyed on `:transform` so the pool can carry its own
+   c3p0 properties. See [[*connection-type*]] for the rationale."
+  [& body]
+  `(binding [*connection-type* :transform]
      ~@body))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
@@ -145,12 +161,28 @@
 
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
-   requested type has no configured overlay (or is `:default`)."
+   requested type has no configured overlay (or is `:default`).
+
+   `:transform` resolves the same `:write-data-details` as `:write-data` — transforms write,
+   so they get write-data credentials when set. The two still resolve to *different* pool keys
+   (see [[effective-connection-type]]) so the pool properties can differ."
   [database connection-type]
   (case connection-type
     :default    nil
     :write-data (database-write-data-details database)
+    :transform  (database-write-data-details database)
     :admin      (database-admin-details database)))
+
+(defn- resolve-effective-type
+  "Maps a requested `connection-type` plus whether an `overlay` was resolved to the effective
+   pool key. `:transform` always keeps its own pool key — it is distinguished by its pool
+   properties, not its details — so it never falls back to `:default`. Other non-default types
+   fall back to `:default` when no overlay is configured, to avoid a duplicate pool."
+  [connection-type overlay]
+  (cond
+    (= connection-type :transform) :transform
+    overlay                        connection-type
+    :else                          :default))
 
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
@@ -159,14 +191,18 @@
 
    By default, returns the primary `:details`. Within a [[with-write-connection]] or
    [[with-admin-connection]] scope, takes the corresponding `:write-data-details` /
-   `:admin-details` into account (if configured). Within a
+   `:admin-details` into account (if configured). Within a [[with-transform-connection]]
+   scope, takes `:write-data-details` into account (if configured) — transforms write, so
+   they get write-data credentials when set — but resolves to a *different* pool key
+   (`:transform` vs `:write-data`) so the pool properties (e.g. `unreturnedConnectionTimeout`)
+   can differ. Within a
    [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
    overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
           base     (merge (:details database) overlay)
-          eff-type (if overlay *connection-type* :default)]
+          eff-type (resolve-effective-type *connection-type* overlay)]
       ;; Track when an overlay is genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
       ;; pool-level connection acquisition metrics.
@@ -191,6 +227,7 @@
     (case connection-type
       :default    (:details database)
       :write-data (database-write-data-details database)
+      :transform  (:details database)
       :admin      (database-admin-details database))))
 
 (defn write-connection-requested?
@@ -204,19 +241,20 @@
   (= *connection-type* :admin))
 
 (defn effective-connection-type
-  "Returns the connection type actually in effect for the given database. Return value
-  matches malli schema [[::connection-type]].
+  "Returns the effective pool key for the given database. Return value matches malli schema
+  [[::connection-type]].
 
    Returns the requested non-default type only when both *requested* (via the
    corresponding `with-*-connection`) and *configured* (the database has the relevant
    overlay details). Otherwise returns `:default`, avoiding duplicate resource allocation
-   (e.g. connection pools) when the requested type would resolve identically to `:default`."
+   (e.g. connection pools) when the requested type would resolve identically to `:default`.
+
+   `:transform` is the exception: it always resolves to `:transform` — the transform pool is
+   distinguished by its pool properties, not its details. See [[*connection-type*]]."
   [database]
   (let [database (driver.u/ensure-lib-database database)]
-    (if (and (not= *connection-type* :default)
-             (perf/not-empty (overlay-details-for-type database *connection-type*)))
-      *connection-type*
-      :default)))
+    (resolve-effective-type *connection-type*
+                            (perf/not-empty (overlay-details-for-type database *connection-type*)))))
 
 (defn track-connection-acquisition!
   "Increments a Prometheus counter tracking connection acquisitions by connection type

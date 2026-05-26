@@ -444,13 +444,13 @@
                 {:id  tab1-card2-id
                  :row 2}
 
-               ;; tab 2
+                ;; tab 2
                 {:id  tab2-card1-id
                  :row 8}
                 {:id  tab2-card2-id
                  :row 12}
 
-               ;; tab 3
+                ;; tab 3
                 {:id  tab4-card1-id
                  :row 14}
                 {:id  tab4-card2-id
@@ -595,10 +595,10 @@
                                 acc-row []]
                            (let [size-x  (inc (math/round (* 9 (math/random))))
                                  new-col (+ col size-x)]
-                              ;; we want to ensure we have a card at the end of the row
+                             ;; we want to ensure we have a card at the end of the row
                              (if (>= new-col 18)
                                (cons [col row (- 18 col) size-y] acc-row)
-                                ;; probability of skipping is 5%
+                               ;; probability of skipping is 5%
                                (if (> (math/random) 0.95)
                                  (recur (+ col size-x) acc-row)
                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
@@ -1641,7 +1641,7 @@
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
 
-        ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
+      ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
       (testing "not nullable timestamp column should not have extra on update"
         (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                            :last_name   "Hughes"

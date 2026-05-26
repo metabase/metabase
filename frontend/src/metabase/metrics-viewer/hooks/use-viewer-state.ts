@@ -5,11 +5,7 @@ import { useDispatch, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  DimensionMetadata,
-  MetricDefinition,
-  ProjectionClause,
-} from "metabase-lib/metric";
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
@@ -239,15 +235,6 @@ export interface UseViewerStateResult {
   updateDimensionBreakout: (
     dimensionBreakoutId: string,
     updates: Partial<MetricsViewerDimensionBreakoutState>,
-  ) => void;
-  setDefinitionDimension: (
-    dimensionBreakoutId: string,
-    slotIndex: number,
-    dimension: DimensionMetadata,
-  ) => void;
-  removeDefinitionDimension: (
-    dimensionBreakoutId: string,
-    slotIndex: number,
   ) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
@@ -502,70 +489,6 @@ export function useViewerState(): UseViewerStateResult {
             ? { ...dimensionBreakout, ...updates }
             : dimensionBreakout,
         ),
-      })),
-    [],
-  );
-
-  const setDefinitionDimension = useCallback(
-    (
-      dimensionBreakoutId: string,
-      slotIndex: number,
-      dimension: DimensionMetadata,
-    ) =>
-      setState((prev) => {
-        const slots = computeMetricSlots(prev.formulaEntities);
-        const slot = slots[slotIndex];
-        if (!slot) {
-          return prev;
-        }
-
-        const entry = prev.definitions[slot.sourceId];
-        const def = entry?.definition;
-        const dimId = def
-          ? LibMetric.dimensionValuesInfo(def, dimension).id
-          : undefined;
-
-        if (!dimId) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          dimensionBreakouts: prev.dimensionBreakouts.map(
-            (dimensionBreakout) => {
-              if (dimensionBreakout.id !== dimensionBreakoutId) {
-                return dimensionBreakout;
-              }
-              return {
-                ...dimensionBreakout,
-                dimensionMapping: {
-                  ...dimensionBreakout.dimensionMapping,
-                  [slotIndex]: dimId,
-                },
-              };
-            },
-          ),
-        };
-      }),
-    [],
-  );
-
-  const removeDefinitionDimension = useCallback(
-    (dimensionBreakoutId: string, slotIndex: number) =>
-      setState((prev) => ({
-        ...prev,
-        dimensionBreakouts: prev.dimensionBreakouts.map((dimensionBreakout) => {
-          if (dimensionBreakout.id !== dimensionBreakoutId) {
-            return dimensionBreakout;
-          }
-          return {
-            ...dimensionBreakout,
-            dimensionMapping: {
-              ...dimensionBreakout.dimensionMapping,
-              [slotIndex]: null,
-            },
-          };
-        }),
       })),
     [],
   );
@@ -881,8 +804,6 @@ export function useViewerState(): UseViewerStateResult {
     selectDimensionBreakoutById,
     addDimensionBreakout,
     updateDimensionBreakout,
-    setDefinitionDimension,
-    removeDefinitionDimension,
     setBreakoutDimension,
 
     initialize,

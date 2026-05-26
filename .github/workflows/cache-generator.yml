@@ -2,7 +2,7 @@
 # It sets the fresh cache each Monday but provides a manual trigger to update it on-demand.
 #
 # All other jobs only restore from this cache; *they never update it*!
-# They should always use `actions/cache/restore@v4` because `actions/cache@v4` would attempt to save the cache.
+# They should always use `actions/cache/restore@vX` because `actions/cache@vX` would attempt to save the cache.
 #
 # Our agreed-upon strategy is to use a deterministic cache key based on the week of the year.
 # Jobs can utilize the prior week's cache if the current week's cache is not found.

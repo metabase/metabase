@@ -10,6 +10,57 @@ import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
 import type { AllFieldsMetricGroup } from "./types";
 
+function getSectionKey(section: DimensionPickerSection) {
+  return section.name;
+}
+
+function getDimensionItemKey(item: DimensionPickerSection["items"][number]) {
+  const entries = Object.entries(item.dimensionBreakoutInfo.dimensionMapping)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join("|");
+  return `${item.dimensionBreakoutInfo.type}:${entries}`;
+}
+
+function mergeSectionsByName(sections: DimensionPickerSection[]) {
+  const mergedSections: DimensionPickerSection[] = [];
+  const sectionIndexesByKey = new Map<string, number>();
+
+  for (const section of sections) {
+    const sectionKey = getSectionKey(section);
+
+    if (sectionKey == null) {
+      mergedSections.push({ ...section, items: [...section.items] });
+      continue;
+    }
+
+    const sectionIndex = sectionIndexesByKey.get(sectionKey);
+
+    if (sectionIndex == null) {
+      sectionIndexesByKey.set(sectionKey, mergedSections.length);
+      mergedSections.push({ ...section, items: [...section.items] });
+      continue;
+    }
+
+    const mergedSection = mergedSections[sectionIndex];
+    const existingItemKeys = new Set(
+      mergedSection.items.map(getDimensionItemKey),
+    );
+    const newItems = section.items.filter(
+      (item) => !existingItemKeys.has(getDimensionItemKey(item)),
+    );
+
+    if (newItems.length > 0) {
+      mergedSections[sectionIndex] = {
+        ...mergedSection,
+        items: [...mergedSection.items, ...newItems],
+      };
+    }
+  }
+
+  return mergedSections;
+}
+
 export function buildAllFieldsMetricGroups({
   sections,
   sourceOrder,
@@ -27,14 +78,16 @@ export function buildAllFieldsMetricGroups({
     .map((sourceId) => {
       const metricSlot = metricSlots.find((slot) => slot.sourceId === sourceId);
 
+      const matchingSections = sections.filter(
+        (section) => section.isShared || section.sourceId === sourceId,
+      );
+
       return {
         key: sourceId,
         name: sourceDataById[sourceId]?.name ?? sourceId,
         colors:
           metricSlot != null ? sourceColors[metricSlot.entityIndex] : undefined,
-        sections: sections.filter(
-          (section) => section.isShared || section.sourceId === sourceId,
-        ),
+        sections: mergeSectionsByName(matchingSections),
       };
     })
     .filter((group) => group.sections.length > 0);

@@ -61,7 +61,7 @@
                                                                            :notification-payload notification-payload
                                                                            :template template
                                                                            :recipients recipients})
-                                                                    ;; rendered messages are recipients
+                                                      ;; rendered messages are recipients
                                                       recipients)]
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}

@@ -27,9 +27,10 @@ export function hasSameDimensions(
   }
 
   const itemEntries = getDimensionMappingEntries(item.dimensionBreakoutInfo);
-  const tabEntries = getDimensionMappingEntries(dimensionBreakout);
+  const dimensionBreakoutEntries =
+    getDimensionMappingEntries(dimensionBreakout);
   return (
-    itemEntries.length === tabEntries.length &&
+    itemEntries.length === dimensionBreakoutEntries.length &&
     itemEntries.every(
       ([slotIndex, dimensionId]) =>
         dimensionBreakout.dimensionMapping[Number(slotIndex)] === dimensionId,
@@ -77,6 +78,13 @@ export function isCategorySelected(
   category: DimensionPickerSidebarCategory,
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
+  if (
+    category.dimensionBreakoutInfo.type === "time" &&
+    activeDimensionBreakout.type === "time"
+  ) {
+    return true;
+  }
+
   return (
     hasSameDimensions(category, activeDimensionBreakout) ||
     category.targetItems.some((item) =>
