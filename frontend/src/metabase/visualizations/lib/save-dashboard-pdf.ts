@@ -148,24 +148,27 @@ const SUPPORTED_LINK_PROTOCOL = /^(https?:|mailto:|tel:)/i;
 // Coordinates are relative to gridNode; the rendered canvas shifts them down by verticalOffset.
 export const collectClickableLinks = (gridNode: HTMLElement): LinkBox[] => {
   const gridRect = gridNode.getBoundingClientRect();
-  return Array.from(gridNode.querySelectorAll<HTMLAnchorElement>("a[href]"))
+  return Array.from(
+    gridNode.querySelectorAll<HTMLAnchorElement>(
+      '[data-viz-ui-name="Text"] a[href]',
+    ),
+  )
     .map((anchor) => {
       const url = anchor.href;
       if (!url || !SUPPORTED_LINK_PROTOCOL.test(url)) {
         return null;
       }
-      const rect = anchor.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        return null;
-      }
-      return {
-        url,
-        x: rect.left - gridRect.left,
-        y: rect.top - gridRect.top,
-        width: rect.width,
-        height: rect.height,
-      };
+      return Array.from(anchor.getClientRects())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({
+          url,
+          x: rect.left - gridRect.left,
+          y: rect.top - gridRect.top,
+          width: rect.width,
+          height: rect.height,
+        }));
     })
+    .flat()
     .filter((link): link is LinkBox => link !== null);
 };
 
