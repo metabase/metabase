@@ -658,6 +658,23 @@ describe("ExplorationGroupVisualization", () => {
       expect(screen.getByText("Top 3")).toBeInTheDocument();
     });
 
+    it('uses the "chart-and-table-vertically" layout when a 2-chart pair has a special table secondary', () => {
+      // Categorical (non-date) datasets so `getDisplay` skips the line
+      // branch; 4 segment queries on the secondary group is enough for it
+      // to resolve to a `table` heat-map display.
+      mockIsDate.value = () => false;
+
+      const { container } = setupGroupLayout([
+        lineQuery(1, "Revenue by amount"),
+        ...tableGroupQueries("top-n-other", "Top revenue", 10),
+      ]);
+
+      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+        "data-chart-layout",
+        "chart-and-table-vertically",
+      );
+    });
+
     it('uses the "two-small-tables-down" layout when the two bottom charts are heat-map tables', () => {
       // Categorical (non-date) datasets so `getDisplay` skips the line
       // branch and the two bottom groups resolve to `table` heat-maps.

@@ -116,7 +116,10 @@ export function buildSeriesGroups({
     }
   }
 
-  if (layoutStrategy === "two-same-size-charts-vertically") {
+  if (
+    layoutStrategy === "two-same-size-charts-vertically" ||
+    layoutStrategy === "chart-and-table-vertically"
+  ) {
     seriesGroups[0].series = removeAxisTitlesFromAllSeries(
       seriesGroups[0].series,
     );
@@ -505,7 +508,17 @@ export type ChartLayout =
   | "default"
   | "two-small-charts-down"
   | "two-small-tables-down"
+  | "chart-and-table-vertically"
   | "two-same-size-charts-vertically";
+
+const SPECIAL_QUERY_TYPES: Exclude<ExplorationQueryType, "default"> = [
+  "top-n-other",
+  "temporal-pattern-day",
+  "temporal-pattern-hour",
+  "time-facet",
+  "filtered-subset",
+  "per-value-time-series",
+];
 
 export const getChartsGroupLayoutStrategy = (
   seriesGroups: SeriesGroup[],
@@ -529,10 +542,12 @@ export const getChartsGroupLayoutStrategy = (
   const isTwoChartsWithOneSpecial =
     seriesGroups.length === 2 &&
     seriesGroups[0].queryType === "default" &&
-    (seriesGroups[1].queryType === "time-facet" ||
-      seriesGroups[1].queryType === "top-n-other");
+    SPECIAL_QUERY_TYPES.includes(seriesGroups[1].queryType);
 
   if (isTwoChartsWithOneSpecial) {
+    if (seriesGroups[1].series[0].card.display === "table") {
+      return "chart-and-table-vertically";
+    }
     return "two-same-size-charts-vertically";
   }
 

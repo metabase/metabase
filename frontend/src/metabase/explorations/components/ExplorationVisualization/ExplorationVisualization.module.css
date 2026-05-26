@@ -69,3 +69,8 @@
   grid-template-columns: 1fr;
   grid-template-rows: minmax(15rem, 1fr) minmax(15rem, 1fr);
 }
+
+.chartGrid[data-chart-layout="chart-and-table-vertically"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(22rem, 1fr) auto;
+}
