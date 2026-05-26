@@ -2,8 +2,8 @@ import { Badge, type BadgeProps, Grid, Text } from "metabase/ui";
 
 const args = {
   variant: "light",
-  size: "sm",
-  children: "1",
+  size: "xs",
+  children: "Hello",
 };
 
 const argTypes = {
