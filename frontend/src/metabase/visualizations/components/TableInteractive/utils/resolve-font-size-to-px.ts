@@ -4,13 +4,11 @@
  * document.body, where em values would resolve against the body's font-size
  * instead of the embedding SDK root's font-size.
  *
- * Only em values are converted — rem values are left as-is because they always
- * resolve against the root <html> element regardless of DOM position, so they
- * produce the same px result in both the measurement container and the actual
- * rendered table.
- *
- * The conversion is only performed when baseFontSize is in px, since we can
- * only do reliable arithmetic with known absolute units.
+ * Any value that isn't an em (px, rem, keywords like `inherit`, etc.) is
+ * returned as-is — rem already resolves against the root <html> regardless of
+ * DOM position, and px is already in the target unit. The conversion only runs
+ * when both the input is em and the baseFontSize is in px, since that is the
+ * only case where we can do reliable arithmetic.
  */
 export function resolveFontSizeToPx(
   fontSize: string,
@@ -19,20 +17,7 @@ export function resolveFontSizeToPx(
   const isRem = fontSize.endsWith("rem");
   const isEm = fontSize.endsWith("em") && !isRem;
 
-  if (!isEm) {
-    console.warn(
-      `resolveFontSizeToPx: fontSize "${fontSize}" is not in em. ` +
-        `Column width measurement may be inaccurate.`,
-    );
-    return fontSize;
-  }
-
-  if (!baseFontSize || !baseFontSize.endsWith("px")) {
-    console.warn(
-      `resolveFontSizeToPx: cannot convert "${fontSize}" to px — ` +
-        `baseFontSize ${baseFontSize ? `"${baseFontSize}" is not in px` : "is not provided"}. ` +
-        `Column width measurement may be inaccurate.`,
-    );
+  if (!isEm || !baseFontSize?.endsWith("px")) {
     return fontSize;
   }
 
@@ -40,10 +25,6 @@ export function resolveFontSizeToPx(
   const baseValue = parseFloat(baseFontSize);
 
   if (isNaN(emValue) || isNaN(baseValue)) {
-    console.warn(
-      `resolveFontSizeToPx: cannot parse "${fontSize}" or "${baseFontSize}" as numbers. ` +
-        `Column width measurement may be inaccurate.`,
-    );
     return fontSize;
   }
 
