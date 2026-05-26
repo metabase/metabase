@@ -523,7 +523,7 @@
   [r limit]
   (try
     (with-open [rdr (io/reader r :encoding "UTF-8")]
-      (let [buf (char-array limit)]
+      (let [^chars buf (char-array limit)]
         (loop [off 0]
           (if (= off limit)
             (String. buf 0 limit)

@@ -934,12 +934,13 @@
   [thunk]
   (try (thunk) nil (catch Exception e e)))
 
-(deftest rethrow-api-error!-test
+(deftest rethrow-api-error!-passthrough-test
   (testing ":api-error exceptions are rethrown unchanged"
     (let [original (ex-info "boom" {:api-error true :error-code :proxy-not-configured})]
       (is (identical? original
-                      (caught #(self.core/rethrow-api-error! "anthropic" (constantly "X") original))))))
+                      (caught #(self.core/rethrow-api-error! "anthropic" (constantly "X") original)))))))
 
+(deftest rethrow-api-error!-string-body-test
   (testing "HTTP responses with a body get the upstream body appended and surfaced in ex-data"
     (let [upstream (ex-info "clj-http error"
                             {:status                500
@@ -990,8 +991,9 @@
       (is (= {:request-id "abc" :trace ["frame1"]} (:body (ex-data ex)))
           "the full body is still preserved in ex-data for debugging")
       (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
-             (set (keys (ex-data ex)))))))
+             (set (keys (ex-data ex))))))))
 
+(deftest rethrow-api-error!-no-body-test
   (testing "non-HTTP errors (no :body) fall through to the request-failed branch"
     (let [ex (caught #(self.core/rethrow-api-error!
                        "openai" (constantly "unused") (java.net.SocketTimeoutException. "Read timed out")))]
@@ -1008,8 +1010,9 @@
     (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
       (is (= "openai API request failed" (ex-message ex)))
       (is (= #{:api-error :provider :error-code :exception-class}
-             (set (keys (ex-data ex)))))))
+             (set (keys (ex-data ex))))))))
 
+(deftest rethrow-api-error!-input-stream-test
   (testing "InputStream JSON bodies are decoded and structured-extracted"
     (let [json     (json/encode {:error {:message "model decommissioned"}})
           upstream (ex-info "clj-http error"
@@ -1061,8 +1064,9 @@
       (is (string? (:body (ex-data ex)))
           "the bounded raw string is kept on ex-data when JSON parse fails")
       (is (<= (count (:body (ex-data ex))) 100)
-          "the body in ex-data respects the slurp cap")))
+          "the body in ex-data respects the slurp cap"))))
 
+(deftest rethrow-api-error!-retry-after-test
   (testing "Retry-After header survives the ex-data allow-list and reaches retry-delay-ms"
     ;; Regression test: an earlier revision allow-listed only :status/:reason-phrase/:body,
     ;; which silently dropped :headers and made provider 429/529 retries fall back to
@@ -1077,8 +1081,9 @@
                              upstream))]
       (is (= {"retry-after" "3"} (:headers (ex-data ex))))
       (is (<= 3000 (#'self/retry-delay-ms 1 ex) (+ 3000 750))
-          "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception")))
+          "retry-delay-ms picks up the 3-second Retry-After through the rethrown exception"))))
 
+(deftest rethrow-api-error!-warn-log-test
   (testing "the full upstream body is emitted at warn level alongside provider and status"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
