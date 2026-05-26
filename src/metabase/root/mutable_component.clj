@@ -21,6 +21,6 @@
     "Updates the value in the atom held by the current dynamic binding by applying `f` to
      the current value and any extra `args`. Visibility same as [[reset!]].")
   (alter-root [handle new-value]
-    "Installs a new root binding (a fresh atom) for the underlying var. Visible to all
-     threads and all scopes that are not inside an active dynamic binding, ignoring any
-     currently-active dynamic bindings on this thread."))
+    "Sets the root value, ignoring any currently-active dynamic bindings on this thread.
+     Visible to every thread immediately, including threads inside a `binding`, except
+     where a binding on that thread shadows this key."))
