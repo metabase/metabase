@@ -27,4 +27,5 @@ config:
       test-data (clickhouse):
         input_schemas:
         - prod_events
-        output_namespace: ws_alice
+        output:
+          schema: ws_alice

@@ -317,7 +317,7 @@ describe("DimensionPickerSidebar", () => {
           {
             icon: "calendar",
             group: { id: "products", type: "main", displayName: "Product" },
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "time",
               label: "Created At",
               dimensionMapping: {
@@ -336,7 +336,7 @@ describe("DimensionPickerSidebar", () => {
                 type: "main",
                 displayName: "Product",
               },
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "category",
                 label: "Title",
                 dimensionMapping: { 0: "dim-product-title" },
@@ -383,8 +383,8 @@ describe("DimensionPickerSidebar", () => {
 
   it("uses the active time mapping for column select values", async () => {
     setup({
-      tab: {
-        ...timeTab,
+      dimensionBreakout: {
+        ...timeDimensionBreakout,
         dimensionMapping: { 0: "dim-created-at" },
       },
       dimensions: {
@@ -393,7 +393,7 @@ describe("DimensionPickerSidebar", () => {
           [SOURCE_ID]: [
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Birth Date",
                 dimensionMapping: { 0: "dim-birth-date" },
@@ -401,7 +401,7 @@ describe("DimensionPickerSidebar", () => {
             },
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Created At",
                 dimensionMapping: { 0: "dim-created-at" },

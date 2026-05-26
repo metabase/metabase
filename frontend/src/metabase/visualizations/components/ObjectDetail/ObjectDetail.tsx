@@ -1,4 +1,3 @@
-import { Tables } from "metabase/entities/tables";
 import {
   closeObjectDetail,
   followForeignKey,
@@ -19,6 +18,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { fetchTableForeignKeys } from "metabase/redux/tables";
 import { getUser } from "metabase/selectors/user";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
@@ -61,8 +61,7 @@ type MapStateProps = ReturnType<typeof mapStateToProps>;
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = (dispatch: any) => ({
-  fetchTableFks: (id: number) =>
-    dispatch(Tables.objectActions.fetchForeignKeys({ id })),
+  fetchTableFks: (id: number) => dispatch(fetchTableForeignKeys({ id })),
   loadObjectDetailFKReferences: (args: any) =>
     dispatch(loadObjectDetailFKReferences(args)),
   followForeignKey: ({

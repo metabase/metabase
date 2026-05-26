@@ -7,9 +7,9 @@ import {
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
+import { databaseApi } from "metabase/api";
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
-import { Tables } from "metabase/entities/tables";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -19,8 +19,14 @@ import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Schema from "metabase-lib/v1/metadata/Schema";
-import type { Database, Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  Group,
+  GroupsPermissions,
+} from "metabase-types/api";
 
 import type {
   DataRouteParams,
@@ -59,27 +65,36 @@ const getGroupHint = (groupType: SpecialGroupType): string | null => {
   }
 };
 
+// The database's tables are loaded via getDatabaseMetadata (see DataPermissionsPage
+// and updateDataPermission below); read that request's state to drive the
+// editor/sidebar loading and error UI.
+const selectDatabaseTablesMetadata = (state: State, databaseId: string) =>
+  databaseApi.endpoints.getDatabaseMetadata.select({
+    id: databaseId as unknown as DatabaseId,
+    include_hidden: true,
+    remove_inactive: true,
+    skip_fields: true,
+  })(state);
+
 export const getIsLoadingDatabaseTables = (
   state: State,
   { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
-) =>
-  Tables.selectors.getLoading(state, {
-    entityQuery: {
-      dbId: params.databaseId,
-      include_hidden: true,
-    },
-  });
+): boolean => {
+  if (params.databaseId == null) {
+    return false;
+  }
+  return selectDatabaseTablesMetadata(state, params.databaseId).isLoading;
+};
 
 export const getLoadingDatabaseTablesError = (
   state: State,
   { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
-) => {
-  return Tables.selectors.getError(state, {
-    entityQuery: {
-      dbId: params.databaseId,
-      include_hidden: true,
-    },
-  });
+): string | undefined => {
+  if (params.databaseId == null) {
+    return undefined;
+  }
+  const { error } = selectDatabaseTablesMetadata(state, params.databaseId);
+  return error ? getResponseErrorMessage(error) : undefined;
 };
 
 type RouteParamsSelectorParameters = {

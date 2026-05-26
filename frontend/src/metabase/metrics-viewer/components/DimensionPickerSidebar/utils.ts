@@ -78,7 +78,10 @@ export function isCategorySelected(
   category: DimensionPickerSidebarCategory,
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
-  if (category.tabInfo.type === "time" && activeTab.type === "time") {
+  if (
+    category.dimensionBreakoutInfo.type === "time" &&
+    activeDimensionBreakout.type === "time"
+  ) {
     return true;
   }
 

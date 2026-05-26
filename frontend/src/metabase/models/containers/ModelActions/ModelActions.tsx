@@ -7,12 +7,12 @@ import _ from "underscore";
 import { useListActionsQuery, useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { fetchTableForeignKeys } from "metabase/redux/tables";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -40,7 +40,7 @@ type Props = OwnProps & EntityLoadersProps & DispatchProps;
 
 const mapDispatchToProps = {
   loadMetadataForCard,
-  fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
+  fetchTableForeignKeys,
   onChangeLocation: replace,
 };
 

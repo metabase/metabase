@@ -137,7 +137,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -174,7 +174,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'with-subscriptions="false"');
@@ -184,6 +184,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -221,7 +222,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -229,7 +229,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       // Trigger mouseover (not mouseenter) because this HoverCard is outside a
@@ -371,7 +370,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,theme=default",
     });
 
     codeBlock().should("contain", 'with-subscriptions="true"');
@@ -381,6 +380,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -458,6 +458,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("card");
@@ -559,6 +560,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      preselectGuest: true,
     });
 
     getEmbedSidebar()
@@ -593,7 +595,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -601,7 +602,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       cy.findByLabelText("Allow alerts")
@@ -703,7 +703,6 @@ describe(suiteTitle, () => {
         .and("include", "embedding/components.html#question");
 
       cy.findByText("Back").click();
-      cy.findByText("Back").click();
 
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
@@ -775,6 +774,31 @@ describe(suiteTitle, () => {
     });
   });
 
+  it("toggles save button for metabot", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .should("not.be.checked");
+
+    cy.log("turn on save option");
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=true,theme=default",
+    });
+
+    codeBlock().should("contain", 'is-save-enabled="true"');
+  });
+
   it("can toggle read-only setting for browser", () => {
     navigateToEmbedOptionsStep({
       experience: "browser",
@@ -815,6 +839,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -969,7 +994,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=stacked,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=stacked,theme=default",
     });
 
     getEmbedSidebar().findByText("Back").click();
@@ -985,7 +1010,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,authType=sso,layout=sidebar,theme=default",
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=false,layout=sidebar,theme=default",
     });
   });
 });

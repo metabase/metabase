@@ -85,7 +85,7 @@
   (let [update-ks       [:name :position]
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
-                          ;; filter out tabs that haven't changed
+                         ;; filter out tabs that haven't changed
                          (fn [new-tab]
                            (let [current-tab (get id->current-tab (:id new-tab))]
                              (not= (select-keys current-tab update-ks)

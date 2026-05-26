@@ -190,9 +190,8 @@
   [_measure]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/dependencies "Measure" [{:keys [definition table_id]}]
-  (cond-> (serdes/mbql-deps definition)
-    table_id (conj (serdes/table->path table_id))))
+(defmethod serdes/dependencies "Measure" [{:keys [definition]}]
+  (serdes/mbql-deps definition))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
   (let [table-path (-> measure :definition serdes/serialized-query-source-table)]

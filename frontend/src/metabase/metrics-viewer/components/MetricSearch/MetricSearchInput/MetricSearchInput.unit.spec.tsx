@@ -2,7 +2,6 @@ import { fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-
 import type {
   ExpressionDefinitionEntry,
   ExpressionSubToken,
@@ -13,9 +12,12 @@ import type {
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
-} from "../../../types/viewer-state";
-import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
-import { createMetricSourceId } from "../../../utils/source-ids";
+} from "metabase/metrics-viewer/types";
+import {
+  isExpressionEntry,
+  isMetricEntry,
+} from "metabase/metrics-viewer/types";
+import { createMetricSourceId } from "metabase/metrics-viewer/utils";
 
 import { MetricSearchInput } from "./MetricSearchInput";
 
@@ -23,7 +25,7 @@ import { MetricSearchInput } from "./MetricSearchInput";
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock("../../../utils/definition-builder", () => ({
+jest.mock("metabase/metrics-viewer/utils/definition-builder", () => ({
   getDefinitionName: (def: any) => def?.["display-name"] ?? null,
 }));
 
