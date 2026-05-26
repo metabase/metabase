@@ -43,6 +43,20 @@ const AGENT_CSS_VARIABLE_OVERRIDES: Record<
       "--color-background-secondary": "#181818",
     },
   },
+
+  // Cursor's agents window does not send theming variables,
+  // so we can provide a default based on agents window's theme.
+  // Agents window only supports 2 themes, no custom theme.
+  cursor: {
+    light: {
+      "--color-background-primary": "#FFFFFF",
+      "--color-background-secondary": "#F8F8F8",
+    },
+    dark: {
+      "--color-background-primary": "#181818",
+      "--color-background-secondary": "#141414",
+    },
+  },
 };
 
 interface BuildMcpAppsThemeOptions {
