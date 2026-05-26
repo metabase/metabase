@@ -523,13 +523,13 @@
   [r limit]
   (try
     (with-open [rdr (io/reader r :encoding "UTF-8")]
-      (let [^chars buf (char-array limit)]
+      (let [buf (char-array limit)]
         (loop [off 0]
           (if (= off limit)
-            (String. buf 0 limit)
+            (String. ^chars buf (int 0) (int limit))
             (let [n (.read ^java.io.Reader rdr buf off (- limit off))]
               (if (neg? n)
-                (when (pos? off) (String. buf 0 off))
+                (when (pos? off) (String. ^chars buf (int 0) (int off)))
                 (recur (+ off n))))))))
     (catch Exception _ nil)))
 
