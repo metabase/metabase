@@ -195,6 +195,7 @@
                         "official_collection"
                         "personal_owner_id"
                         "pinned"
+                        "root_collection_type"
                         "text_search_vector"
                         "text_search_with_native_query_vector"
                         "verified"

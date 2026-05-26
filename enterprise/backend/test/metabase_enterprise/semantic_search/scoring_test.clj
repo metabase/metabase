@@ -239,8 +239,6 @@
 (deftest library-test
   (mt/with-premium-features #{:semantic-search}
     (testing "Items whose root ancestor collection is a library type rank above non-library items"
-      ;; Mirror the appdb library-test predicate style: tag library rows with `lib-tree` so the
-      ;; check reads off the result name instead of a hand-counted set of ids.
       (with-index-contents!
         [{:model "card" :id 1 :name "plain card"}
          {:model "card" :id 2 :name "lib-tree card library"            :root_collection_type "library"}

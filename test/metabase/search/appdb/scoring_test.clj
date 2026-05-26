@@ -326,8 +326,6 @@
                    :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
                    :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                    :model/Collection other     {:name "non-library"    :location "/"}]
-      ;; Every library-tree row has the distinctive `lib-tree` token in its name so the
-      ;; predicate reads off the result rather than a hand-counted set of ids.
       (with-index-contents
         [{:model "card" :id 1 :name "plain card"                       :collection_id (:id other)    :collection_location (:location other)}
          {:model "card" :id 2 :name "lib-tree card library"            :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
