@@ -91,8 +91,8 @@ export const WorkspaceDatabaseSection = {
 
 export const NewWorkspaceDatabaseModal = {
   get: () => modal(),
-  databaseRadio: (name: string) =>
-    NewWorkspaceDatabaseModal.get().findByRole("radio", { name }),
+  databaseSelect: () =>
+    NewWorkspaceDatabaseModal.get().findByRole("textbox", { name: "Database" }),
   schemasGroup: () =>
     NewWorkspaceDatabaseModal.get().findByText("Schemas to include"),
   schemaCheckbox: (name: string) =>
