@@ -59,6 +59,19 @@ export function MetricCachingModal({
       title={t`Caching`}
       size="lg"
       padding="xl"
+      styles={{
+        content: {
+          height: "min(38rem, 85vh)",
+          display: "flex",
+          flexDirection: "column",
+        },
+        body: {
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        },
+      }}
     >
       <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
         <StrategyForm

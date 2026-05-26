@@ -50,6 +50,7 @@ import { isModelWithClearableCache } from "../types";
 import { getDefaultValueForField, getLabelString } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
+import StrategyFormStyles from "./StrategyForm.module.css";
 
 interface ButtonLabels {
   save: string;
@@ -121,6 +122,7 @@ export const StrategyForm = ({
         buttonLabels={buttonLabels}
         layout={layout}
         strategyType={initialValues.type}
+        onDiscard={onReset}
       />
     </FormProvider>
   );
@@ -159,6 +161,7 @@ const StrategyFormBody = ({
   shouldShowName = true,
   buttonLabels,
   layout,
+  onDiscard,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -169,6 +172,7 @@ const StrategyFormBody = ({
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   layout: StrategyFormLayout;
+  onDiscard?: () => void;
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -213,22 +217,31 @@ const StrategyFormBody = ({
   }, [values, setFieldValue, setStatus]);
 
   return (
-    <Flex direction="column" h={layout === "modal" ? undefined : "100%"}>
+    <Flex direction="column" h="100%" mih={0}>
       <Form
         display="flex"
         style={{
-          overflow: layout === "default" ? "auto" : undefined,
+          overflow: layout === "default" ? "auto" : "hidden",
           flexDirection: "column",
-          flexGrow: layout === "modal" ? undefined : 1,
+          flexGrow: 1,
+          minHeight: 0,
         }}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
+        {layout === "modal" && (
+          <StrategySelectorHeading headingId={headingId} />
+        )}
         <Box
           className={cx({
             [Styles.FormBox]: layout !== "modal",
             [Styles.FormBoxSidebar]: layout === "sidebar",
           })}
+          style={
+            layout === "modal"
+              ? { flex: 1, overflowY: "auto", minHeight: 0, marginTop: "1rem" }
+              : undefined
+          }
         >
           {shouldShowName && (
             <Box lh="1rem" pt="md" c="text-secondary">
@@ -247,6 +260,7 @@ const StrategyFormBody = ({
               targetId={targetId}
               model={targetModel}
               headingId={headingId}
+              showHeading={layout !== "modal"}
             />
             {selectedStrategyType === "ttl" && (
               <>
@@ -307,6 +321,7 @@ const StrategyFormBody = ({
           buttonLabels={buttonLabels}
           layout={layout}
           dirty={dirty}
+          onDiscard={onDiscard}
         />
       </Form>
     </Flex>
@@ -347,6 +362,7 @@ type FormButtonsProps = {
   buttonLabels: ButtonLabels;
   layout: StrategyFormLayout;
   dirty: boolean;
+  onDiscard?: () => void;
 };
 
 const FormButtons = ({
@@ -357,6 +373,7 @@ const FormButtons = ({
   buttonLabels,
   layout,
   dirty,
+  onDiscard,
 }: FormButtonsProps) => {
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
@@ -386,7 +403,9 @@ const FormButtons = ({
           />
         )}
         <Group gap="md" wrap="nowrap">
-          <Button type="reset">{buttonLabels.discard}</Button>
+          <Button type="button" onClick={onDiscard}>
+            {buttonLabels.discard}
+          </Button>
           <FormSubmitButton
             h="2.5rem"
             label={buttonLabels.save}
@@ -408,6 +427,7 @@ const FormButtons = ({
           isFormPending={isFormPending}
           buttonLabels={buttonLabels}
           layout={layout}
+          onDiscard={onDiscard}
         />
       </FormButtonsGroup>
     );
@@ -468,17 +488,26 @@ const SaveAndDiscardButtons = ({
   isFormPending,
   buttonLabels,
   layout,
+  onDiscard,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
   layout: StrategyFormLayout;
+  onDiscard?: () => void;
 }) => {
   return (
     <>
-      <Button disabled={!dirty || isFormPending} type="reset">
-        {buttonLabels.discard}
-      </Button>
+      {layout === "sidebar" ? (
+        // Sidebar Cancel closes the sidesheet; consumer wraps the dirty-confirm.
+        <Button type="button" onClick={onDiscard}>
+          {buttonLabels.discard}
+        </Button>
+      ) : (
+        <Button disabled={!dirty || isFormPending} type="reset">
+          {buttonLabels.discard}
+        </Button>
+      )}
       <FormSubmitButton
         miw={layout === "sidebar" ? undefined : "10rem"}
         h="2.5rem"
@@ -496,14 +525,31 @@ const SaveAndDiscardButtons = ({
   );
 };
 
+export const StrategySelectorHeading = ({
+  headingId,
+}: {
+  headingId: string;
+}) => (
+  <Stack gap="xs">
+    <Text lh="1.5rem" fw="bold" fz="md" id={headingId}>
+      {t`Select the cache invalidation policy`}
+    </Text>
+    <Text lh="1rem" fw="normal" size="sm" c="text-secondary">
+      {t`This determines how long cached results will be stored.`}
+    </Text>
+  </Stack>
+);
+
 const StrategySelector = ({
   targetId,
   model,
   headingId,
+  showHeading = true,
 }: {
   targetId: number | null;
   model?: CacheableModel;
   headingId: string;
+  showHeading?: boolean;
 }) => {
   const { strategies } = PLUGIN_CACHING;
 
@@ -514,35 +560,40 @@ const StrategySelector = ({
   }, [targetId, strategies]);
 
   return (
-    <section>
+    <section aria-labelledby={headingId}>
       <FormRadioGroup
         label={
-          <Stack gap="xs">
-            <Text lh="1.5rem" fw="bold" fz="md" id={headingId}>
-              {t`Select the cache invalidation policy`}
-            </Text>
-            <Text lh="1rem" fw="normal" size="sm" c="text-secondary">
-              {t`This determines how long cached results will be stored.`}
-            </Text>
-          </Stack>
+          showHeading ? (
+            <StrategySelectorHeading headingId={headingId} />
+          ) : undefined
         }
         name="type"
       >
-        <Stack mt="xl" gap="md">
-          {Object.entries(availableStrategies).map(([name, option]) => (
-            <Radio
-              key={name}
-              value={name}
-              label={<strong>{getLabelString(option.label, model)}</strong>}
-              description={
-                option.description
-                  ? getLabelString(option.description, model)
-                  : undefined
-              }
-              autoFocus={values.type === name}
-              role="radio"
-            />
-          ))}
+        <Stack mt={showHeading ? "xl" : 0} gap="md">
+          {Object.entries(availableStrategies).map(([name, option]) => {
+            const description = option.description
+              ? getLabelString(option.description, model)
+              : undefined;
+            return (
+              <Radio
+                key={name}
+                value={name}
+                className={StrategyFormStyles.strategyOption}
+                label={
+                  <Stack gap={4}>
+                    <strong>{getLabelString(option.label, model)}</strong>
+                    {description && (
+                      <Text size="sm" c="text-secondary">
+                        {description}
+                      </Text>
+                    )}
+                  </Stack>
+                }
+                autoFocus={values.type === name}
+                role="radio"
+              />
+            );
+          })}
         </Stack>
       </FormRadioGroup>
     </section>

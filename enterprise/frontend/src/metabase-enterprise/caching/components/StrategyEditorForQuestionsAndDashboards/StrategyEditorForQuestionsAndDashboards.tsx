@@ -246,6 +246,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
             savedStrategy={savedStrategy}
             shouldAllowInvalidation={true}
             shouldShowName={false}
+            onReset={closeForm}
             layout="sidebar"
           />
         )}

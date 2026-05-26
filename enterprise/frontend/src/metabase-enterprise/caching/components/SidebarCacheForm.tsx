@@ -85,7 +85,11 @@ export const SidebarCacheForm = ({
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onReset={onBack}
+            onReset={() =>
+              isStrategyFormDirty
+                ? askBeforeDiscardingChanges(onBack)
+                : onBack()
+            }
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
             layout="sidebar"
           />

@@ -5,7 +5,7 @@ import { Route } from "react-router";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
@@ -124,6 +124,33 @@ describe("MetricCachingModal", () => {
       expect(onClose).not.toHaveBeenCalled();
     },
   );
+
+  it("re-prompts on Cancel after the discard confirmation is dismissed (form stays dirty)", async () => {
+    const { onClose } = setup();
+
+    await userEvent.click(
+      await screen.findByRole("radio", { name: /^Duration$/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^Cancel$/i }));
+
+    // Dismiss the discard prompt by clicking its Cancel button (not Discard).
+    const discardDialog = await screen.findByRole("dialog", {
+      name: /Discard your changes\?/i,
+    });
+    await userEvent.click(
+      within(discardDialog).getByRole("button", { name: /^Cancel$/i }),
+    );
+
+    // Form should still be dirty (Duration still selected).
+    expect(screen.getByRole("radio", { name: /^Duration$/i })).toBeChecked();
+
+    // Pressing Cancel again should re-show the discard confirmation.
+    await userEvent.click(screen.getByRole("button", { name: /^Cancel$/i }));
+    expect(
+      await screen.findByRole("heading", { name: /Discard your changes\?/i }),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 
   it("renders the Clear cache button labelled for the metric", async () => {
     setup();
