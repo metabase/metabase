@@ -2258,7 +2258,7 @@
                                      :name "orphan_target"}}]
           ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
           (t2/delete! :model/Database db-id)
-          (let [reloaded (t2/select-one :model/Transform :id transform-id)
+          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags)
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
                 "Database deletion should have nulled the column")
@@ -2267,16 +2267,16 @@
                        :name "Orphan Transform"}
                       ser))
               (is (nil? (:source_database_id ser))))
-            (testing "exported source is marked :serdes/unresolved; SQL body kept, dead numeric refs nulled"
-              ;; The native query text survives as a breadcrumb. The :database slot is nulled because
-              ;; the numeric id refers to a now-deleted database — keeping it would make the destination
-              ;; instance's before-insert hook bind source_database_id to a stale id and crash the FK.
-              (is (=? {:serdes/unresolved true
-                       :type "query"
-                       :query {:database nil
-                               :type "native"
-                               :native {:query "SELECT 1"}}}
-                      (:source ser))))
+            (testing "exported source is marked :serdes/unresolved with the dead :database ref nulled"
+              ;; The :database slot is nulled because the numeric id refers to a now-deleted database —
+              ;; keeping it would make the destination instance's before-insert hook bind
+              ;; source_database_id to a stale id and crash the FK.
+              (is (true? (get-in ser [:source :serdes/unresolved])))
+              (is (nil? (get-in ser [:source :query :database]))))
+            (testing "the native SQL body is preserved verbatim as a breadcrumb"
+              ;; `lib-be/normalize-query` rewrites the raw query to MBQL5 (`:stages [...]`) at read time,
+              ;; so the native text now lives under `:stages [0] :native`.
+              (is (= "SELECT 1" (get-in ser [:source :query :stages 0 :native]))))
             (testing "Transform/dependencies does not emit a Database dep when source_database_id is nil"
               (is (not-any? #(some (fn [{:keys [model]}] (= "Database" model)) %)
                             (serdes/dependencies (assoc reloaded :tags [])))))))))))

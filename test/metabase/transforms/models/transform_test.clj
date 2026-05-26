@@ -16,14 +16,12 @@
                                      :type     "native"
                                      :native   {:query "SELECT 1"}}}}]
       (is (= (mt/id) (:source_database_id transform)))))
-
   (testing "A transform with no source database has a nil source_database_id"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
                     :source {:type "python"
                              :body "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))))
-
   (testing "updating a transform recomputes the source-database-id column from the source"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"

@@ -2045,7 +2045,6 @@
               ;; AND cascade-deletes the Table (Field FKs) — the transform survives as a tombstone.
               (t2/delete! :model/Database :name "soon-to-be-deleted")
               (reset! serialized (into [] (serdes.extract/extract {})))))
-
           (let [minimal (mapv (fn [entity]
                                 (if (= "Transform" (-> entity :serdes/meta last :model))
                                   (select-keys entity [:serdes/meta :entity_id :name
