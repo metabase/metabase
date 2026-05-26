@@ -159,18 +159,17 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
-(defn- openai-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- openai-error-msg
+  "Canonical, status-specific OpenAI error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "OpenAI API key expired or invalid")
       403 (tru "OpenAI API key has insufficient permissions")
       404 (tru "OpenAI API endpoint or model listing is unavailable")
       429 (tru "OpenAI API has rate limited us")
       500 (tru "OpenAI API is not working but not saying why")
-      (if error-msg
-        (tru "OpenAI API error (HTTP {0}): {1}" status error-msg)
-        (tru "OpenAI API error (HTTP {0})" status)))))
+      (tru "OpenAI API error (HTTP {0})" status))))
 
 (defn list-models
   "List available OpenAI models.
@@ -194,7 +193,7 @@
                          :display_name (:id model)})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (core/rethrow-api-error! "openai" openai-errors e)))))
+       (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
@@ -234,7 +233,7 @@
                                     :body    (json/encode req)})]
         (core/sse-reducible (:body response)))
       (catch Exception e
-        (core/rethrow-api-error! "openai" openai-errors e)))))
+        (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

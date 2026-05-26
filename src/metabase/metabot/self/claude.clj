@@ -183,9 +183,49 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
-(defn- anthropic-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- add-tools-cache-breakpoint
+  "Attach an ephemeral cache_control marker to the last tool in `tools`.
+  Anthropic caches everything in the request up to and including the block with
+  `cache_control`, so a single breakpoint on the final tool covers the whole
+  tool list."
+  [tools]
+  (if (seq tools)
+    (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
+    tools))
+
+(def ^:private system-cache-breakpoint-sentinel
+  "Literal marker placed in selmer templates to indicate where the static cacheable
+  prefix ends and the dynamic per-request suffix begins. Anthropic-only; ignored
+  by other provider adapters."
+  "<<<METABOT_CACHE_BREAKPOINT>>>")
+
+(defn- system->cached-content-blocks
+  "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
+
+  If `system` contains the cache breakpoint sentinel, split it into two content
+  blocks: a cached static prefix and an uncached dynamic suffix. The model sees
+  the concatenation; the split is purely a wire-protocol device for caching.
+
+  If the sentinel is absent, fall back to a single cached content block covering
+  the whole prompt."
+  [system]
+  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
+    (if (neg? idx)
+      [{:type          "text"
+        :text          system
+        :cache_control {:type "ephemeral"}}]
+      (let [prefix (str/trimr (subs system 0 idx))
+            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
+        [{:type          "text"
+          :text          prefix
+          :cache_control {:type "ephemeral"}}
+         {:type "text"
+          :text suffix}]))))
+
+(defn- anthropic-error-msg
+  "Canonical, status-specific Anthropic error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "Anthropic API key expired or invalid")
       403 (tru "Anthropic API key has insufficient permissions")
@@ -194,9 +234,7 @@
       429 (tru "Anthropic API has rate limited us")
       500 (tru "Anthropic API is not working but not saying why")
       529 (tru "Anthropic API is overloaded and is asking us to wait")
-      (if error-msg
-        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
-        (tru "Anthropic API error (HTTP {0})" status)))))
+      (tru "Anthropic API error (HTTP {0})" status))))
 
 (defn list-models
   "List available Anthropic models.
@@ -218,7 +256,7 @@
            models (reverse (sort-by :created_at (:data body)))]
        {:models (map #(select-keys % [:id :display_name]) models)})
      (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
+       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
@@ -262,7 +300,7 @@
                                       :body    (json/encode req)})]
           (core/sse-reducible (:body response)))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
+          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
