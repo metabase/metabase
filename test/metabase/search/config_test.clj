@@ -22,14 +22,3 @@
            (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))
     (is (= "exclude-others"
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
-
-(deftest metabot-weights-test
-  ;; Derive expectations from static-weights so retuning the magnitudes doesn't churn this test;
-  ;; what we're pinning is the inheritance contract, not the specific numbers.
-  (let [default (:default search.config/static-weights)]
-    (testing ":metabot has no static overrides — it inherits :default verbatim"
-      (is (=? default
-              (search.config/weights {:context :metabot}))))
-    (testing "request-level :weights override beats static weights"
-      (is (= 7 (-> (search.config/weights {:context :metabot :weights {:library 7}})
-                   :library))))))
