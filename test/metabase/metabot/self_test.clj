@@ -1102,7 +1102,8 @@
       (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
                    (:message entry)))))
   (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
-    (let [big-body (apply str (repeat 5000 \x))
+    (let [cap      @#'self.core/max-body-log-chars
+          big-body (apply str (repeat (+ cap 1000) \x))
           upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
                              :headers {"content-type" "text/plain"}
@@ -1117,10 +1118,8 @@
                   "the full, untruncated body still survives on ex-data"))
             (msgs))]
       (is (nil? more) "exactly one warn line at the failure boundary")
-      ;; pr-str of the string adds the surrounding quotes; the cap then slices at
-      ;; max-body-log-chars (2000) and appends the ellipsis.
       (is (str/ends-with? (:message entry)
-                          (str "body=" (subs (pr-str big-body) 0 2000) "…"))
+                          (str "body=" (subs (pr-str big-body) 0 cap) "…"))
           "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
       (is (not (str/includes? (:message entry) big-body))
           "the full oversized body is not spliced into the warn line"))))
