@@ -98,8 +98,6 @@
                                      (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
                                                 id
                                                 (pr-str label-field))))
-                ;; Search against the label when one is configured so users find rows by the label
-                ;; they see in the dropdown — matches the static-list source behavior.
                 search-column   (or label-column value-column)
                 value-textual?  (lib.types.isa/string? value-column)
                 search-textual? (lib.types.isa/string? search-column)
