@@ -85,6 +85,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v62.92fasdf
+      author: nvoxland
+      comment: Index on exploration.creator_id
+      changes:
+        - createIndex:
+            tableName: exploration
+            indexName: idx_exploration_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
       id: v62.g442xf
       author: nvoxland
       comment: FK exploration.creator_id -> core_user.id
@@ -98,16 +110,16 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v62.92fasdf
-      author: nvoxland
-      comment: Index on exploration.creator_id
+      id: v62.expcollidx
+      author: jdswanson
+      comment: Index on exploration.collection_id
       changes:
         - createIndex:
             tableName: exploration
-            indexName: idx_exploration_creator_id
+            indexName: idx_exploration_collection_id
             columns:
               - column:
-                  name: creator_id
+                  name: collection_id
 
   - changeSet:
       id: v62.expcollfk
@@ -121,18 +133,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_collection_id
             onDelete: SET NULL
-
-  - changeSet:
-      id: v62.expcollidx
-      author: jdswanson
-      comment: Index on exploration.collection_id
-      changes:
-        - createIndex:
-            tableName: exploration
-            indexName: idx_exploration_collection_id
-            columns:
-              - column:
-                  name: collection_id
 
   - changeSet:
       id: v62.bnweradf
@@ -205,6 +205,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v62.g89asrdg
+      author: nvoxland
+      comment: Index on exploration_thread.exploration_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
       id: v62.gpores
       author: nvoxland
       comment: FK exploration_thread.exploration_id -> exploration.id
@@ -216,18 +228,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_thread_exploration_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.g89asrdg
-      author: nvoxland
-      comment: Index on exploration_thread.exploration_id
-      changes:
-        - createIndex:
-            tableName: exploration_thread
-            indexName: idx_exploration_thread_exploration_id
-            columns:
-              - column:
-                  name: exploration_id
 
   - changeSet:
       id: v62.bjiofd
@@ -392,6 +392,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v62.nbwerg
+      author: nvoxland
+      comment: Index on exploration_thread_dimension.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread_dimension
+            indexName: idx_exploration_thread_dimension_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
       id: v62.4598gd
       author: nvoxland
       comment: FK exploration_thread_dimension.exploration_thread_id -> exploration_thread.id
@@ -403,18 +415,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_thread_dimension_thread_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.nbwerg
-      author: nvoxland
-      comment: Index on exploration_thread_dimension.exploration_thread_id
-      changes:
-        - createIndex:
-            tableName: exploration_thread_dimension
-            indexName: idx_exploration_thread_dimension_thread_id
-            columns:
-              - column:
-                  name: exploration_thread_id
 
   - changeSet:
       id: v62.bhresdfg
@@ -636,6 +636,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v62.badwes
+      author: nvoxland
+      comment: Index on exploration_query.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
       id: v62.bwbaxcz
       author: nvoxland
       comment: FK exploration_query.exploration_thread_id -> exploration_thread.id
@@ -673,18 +685,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_query_segment_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.badwes
-      author: nvoxland
-      comment: Index on exploration_query.exploration_thread_id
-      changes:
-        - createIndex:
-            tableName: exploration_query
-            indexName: idx_exploration_query_thread_id
-            columns:
-              - column:
-                  name: exploration_thread_id
 
   - changeSet:
       id: v62.qstatusidx
@@ -915,6 +915,18 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v62.64fsvsd
+      author: nvoxland
+      comment: Index on document.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_exploration_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
       id: v62.g43sdfg
       author: nvoxland
       comment: FK document.exploration_thread_id -> exploration_thread.id
@@ -926,18 +938,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_document_exploration_thread_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.64fsvsd
-      author: nvoxland
-      comment: Index on document.exploration_thread_id
-      changes:
-        - createIndex:
-            tableName: document
-            indexName: idx_document_exploration_thread_id
-            columns:
-              - column:
-                  name: exploration_thread_id
 
   - changeSet:
       id: v62.7gjeaasdg
@@ -1020,6 +1020,18 @@ databaseChangeLog:
             constraintName: uq_eqti_query_timeline
 
   - changeSet:
+      id: v62.qtinterestidx
+      author: jdswanson
+      comment: Index exploration_query_timeline_interestingness.exploration_query_id for hydration
+      changes:
+        - createIndex:
+            tableName: exploration_query_timeline_interestingness
+            indexName: idx_eqti_query_id
+            columns:
+              - column:
+                  name: exploration_query_id
+
+  - changeSet:
       id: v62.qtinterestfkq
       author: jdswanson
       comment: FK exploration_query_timeline_interestingness.exploration_query_id -> exploration_query.id
@@ -1044,18 +1056,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_eqti_timeline_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.qtinterestidx
-      author: jdswanson
-      comment: Index exploration_query_timeline_interestingness.exploration_query_id for hydration
-      changes:
-        - createIndex:
-            tableName: exploration_query_timeline_interestingness
-            indexName: idx_eqti_query_id
-            columns:
-              - column:
-                  name: exploration_query_id
 
   - changeSet:
       id: v62.g4ersd
@@ -1274,6 +1274,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v62.srusesridx
+      author: nvoxland
+      comment: Index on stored_result_use.stored_result_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_stored_result_id
+            columns:
+              - column:
+                  name: stored_result_id
+
+  - changeSet:
       id: v62.srusesrfk
       author: nvoxland
       comment: FK stored_result_use.stored_result_id -> stored_result.id
@@ -1285,6 +1297,18 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_stored_result_use_stored_result_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v62.srusecardidx
+      author: nvoxland
+      comment: Index on stored_result_use.card_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_card_id
+            columns:
+              - column:
+                  name: card_id
 
   - changeSet:
       id: v62.srusecardfk
@@ -1300,6 +1324,18 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v62.sruseexplidx
+      author: nvoxland
+      comment: Index on stored_result_use.exploration_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_exploration_id
+            columns:
+              - column:
+                  name: exploration_id
+
+  - changeSet:
       id: v62.sruseexplfk
       author: nvoxland
       comment: FK stored_result_use.exploration_id -> exploration.id
@@ -1311,42 +1347,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_stored_result_use_exploration_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v62.srusesridx
-      author: nvoxland
-      comment: Index on stored_result_use.stored_result_id
-      changes:
-        - createIndex:
-            tableName: stored_result_use
-            indexName: idx_stored_result_use_stored_result_id
-            columns:
-              - column:
-                  name: stored_result_id
-
-  - changeSet:
-      id: v62.srusecardidx
-      author: nvoxland
-      comment: Index on stored_result_use.card_id
-      changes:
-        - createIndex:
-            tableName: stored_result_use
-            indexName: idx_stored_result_use_card_id
-            columns:
-              - column:
-                  name: card_id
-
-  - changeSet:
-      id: v62.sruseexplidx
-      author: nvoxland
-      comment: Index on stored_result_use.exploration_id
-      changes:
-        - createIndex:
-            tableName: stored_result_use
-            indexName: idx_stored_result_use_exploration_id
-            columns:
-              - column:
-                  name: exploration_id
 
   - changeSet:
       id: v62.qplanstate
