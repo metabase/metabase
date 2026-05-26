@@ -9,14 +9,12 @@
   text-transform: none;
 
   &[data-variant="light"] {
-    --badge-color: var(--mb-color-text-primary);
-
     background-color: var(--mb-color-background-disabled);
+    color: var(--mb-color-text-primary);
   }
 
   &[data-variant="filled"] {
-    --badge-color: var(--mb-color-text-primary-inverse);
-
     background-color: var(--mb-color-background-brand);
+    color: var(--mb-color-text-primary-inverse);
   }
 }

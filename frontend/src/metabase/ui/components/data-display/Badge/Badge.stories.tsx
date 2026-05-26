@@ -29,9 +29,19 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = (props: BadgeProps) => <Badge {...props} />;
+const DefaultTemplate = ({
+  bg,
+  children,
+  color,
+  size,
+  variant,
+}: BadgeProps) => (
+  <Badge bg={bg} color={color} size={size} variant={variant}>
+    {children}
+  </Badge>
+);
 
-const GridTemplate = (props: BadgeProps) => (
+const GridTemplate = ({ children }: BadgeProps) => (
   <Grid align="center" bg="background-primary" columns={4} p="xl" w="50rem">
     <Grid.Col span={2} />
 
@@ -46,11 +56,15 @@ const GridTemplate = (props: BadgeProps) => (
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} variant="light" size="xs" />
+      <Badge size="xs" variant="light">
+        {children}
+      </Badge>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} variant="light" size="sm" />
+      <Badge size="sm" variant="light">
+        {children}
+      </Badge>
     </Grid.Col>
 
     <Grid.Col span={2}>
@@ -58,11 +72,15 @@ const GridTemplate = (props: BadgeProps) => (
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} bg="brand" color="white" variant="filled" size="xs" />
+      <Badge bg="brand" color="white" size="xs" variant="filled">
+        {children}
+      </Badge>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} bg="brand" color="white" variant="filled" size="sm" />
+      <Badge bg="brand" color="white" size="sm" variant="filled">
+        {children}
+      </Badge>
     </Grid.Col>
 
     <Grid.Col span={2}>
@@ -70,11 +88,15 @@ const GridTemplate = (props: BadgeProps) => (
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} bg="error" color="white" variant="filled" size="xs" />
+      <Badge bg="error" color="white" size="xs" variant="filled">
+        {children}
+      </Badge>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge {...props} bg="error" color="white" variant="filled" size="sm" />
+      <Badge bg="error" color="white" size="sm" variant="filled">
+        {children}
+      </Badge>
     </Grid.Col>
   </Grid>
 );
