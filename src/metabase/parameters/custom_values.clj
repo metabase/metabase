@@ -23,6 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
@@ -110,10 +111,20 @@
                 (cond-> query-filter (lib/filter query-filter))
                 (lib/breakout value-column)
                 ;; add the label as a second breakout so each row is a [value label] pair
-                (cond-> label-column (lib/breakout label-column))
-                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-                ;; "internal" query in the BE.
-                (assoc-in [:middleware :disable-remaps?] true))))))))
+                (cond-> label-column (lib/breakout label-column)))))))))
+
+(defn- result->rows
+  "Extract rows from a QP result, dropping values for any display columns the QP injected for
+  remapped breakouts. Those columns are referenced by a `:remapped_to` entry on their source
+  column; when none are present the raw rows are returned as-is."
+  [result]
+  (let [cols       (get-in result [:data :cols])
+        rows       (get-in result [:data :rows])
+        drop-names (into #{} (keep :remapped_to) cols)]
+    (if (empty? drop-names)
+      rows
+      (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
+        (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -135,10 +146,10 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (let [mbql-query   (values-from-card-query card field-ref opts)
-         result       (some-> mbql-query qp/process-query)
-         values       (get-in result [:data :rows])]
-     {:values         (or values [])
+   (let [mbql-query (values-from-card-query card field-ref opts)
+         result     (some-> mbql-query qp/process-query)
+         values     (some-> result result->rows)]
+     {:values          (or values [])
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))

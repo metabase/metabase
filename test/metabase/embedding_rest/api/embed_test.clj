@@ -1729,6 +1729,29 @@
                   url   (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" value)]
               (is (= expected (client/client :get 200 url))))))))))
 
+(deftest dashboard-param-value-remapping-static-list-test
+  (testing "remapping endpoint returns [value label] for a numeric param backed by a static list"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard {dashboard-id :id}
+                     {:enable_embedding true
+                      :parameters       [{:name                 "Seats"
+                                          :slug                 "seats"
+                                          :id                   "seats-param"
+                                          :type                 :number/=
+                                          :values_source_type   "static-list"
+                                          :values_source_config {:values [["10" "Ten"]
+                                                                          ["20" "Twenty"]
+                                                                          "30"]}}]
+                      :embedding_params {:seats "enabled"}}]
+        (let [token (dash-token dashboard-id)
+              url   #(format "embed/dashboard/%s/params/%s/remapping?value=%s" token "seats-param" %)]
+          (testing "labeled value is returned"
+            (is (= ["20" "Twenty"] (client/client :get 200 (url "20")))))
+          (testing "unlabeled value is returned as a singleton"
+            (is (= ["30"] (client/client :get 200 (url "30")))))
+          (testing "value not in the list falls back to [value]"
+            (is (= ["999"] (client/client :get 200 (url "999"))))))))))
+
 (deftest card-param-value-remapping-test
   (let [param-static-list          "_STATIC_CATEGORY_"
         param-static-list-label    "_STATIC_CATEGORY_LABEL_"
