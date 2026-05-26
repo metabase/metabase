@@ -93,18 +93,22 @@
                                                id
                                                (pr-str field-ref)
                                                (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
-          (let [label-column (when label-field
-                               (or (lib/find-matching-column query -1 label-field visible-columns)
-                                   (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
-                                              id
-                                              (pr-str label-field))))
-                textual?     (lib.types.isa/string? value-column)
-                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-                query-filter (cond
-                               (some? exact-value) (lib/= value-column exact-value)
-                               query-string        (if textual?
-                                                     (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                                                     (lib/= value-column query-string)))]
+          (let [label-column   (when label-field
+                                 (or (lib/find-matching-column query -1 label-field visible-columns)
+                                     (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
+                                                id
+                                                (pr-str label-field))))
+                ;; Search against the label when one is configured so users find rows by the label
+                ;; they see in the dropdown — matches the static-list source behavior.
+                search-column   (or label-column value-column)
+                value-textual?  (lib.types.isa/string? value-column)
+                search-textual? (lib.types.isa/string? search-column)
+                nonempty        ((if value-textual? lib/not-empty lib/not-null) value-column)
+                query-filter    (cond
+                                  (some? exact-value) (lib/= value-column exact-value)
+                                  query-string        (if search-textual?
+                                                        (lib/ignore-case (lib/contains search-column query-string))
+                                                        (lib/= search-column query-string)))]
             (-> query
                 (lib/limit *max-rows*)
                 (lib/filter nonempty)
