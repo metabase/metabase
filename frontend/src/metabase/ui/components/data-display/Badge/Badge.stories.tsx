@@ -1,11 +1,10 @@
-import { Fragment } from "react";
-
 import { Badge, type BadgeProps, Grid, Text } from "metabase/ui";
 
 const args = {
   variant: "light",
   size: "sm",
   color: "default",
+  children: "1",
 };
 
 const argTypes = {
@@ -17,16 +16,23 @@ const argTypes = {
     options: ["xs", "sm"],
     control: { type: "inline-radio" },
   },
-  color: {
+  bg: {
     options: [undefined, "brand" as const, "background-error" as const],
     control: { type: "inline-radio" },
   },
+  color: {
+    options: [undefined, "brand" as const, "error" as const],
+    control: { type: "inline-radio" },
+  },
+  children: {
+    control: { type: "text" },
+  },
 };
 
-const DefaultTemplate = (props: BadgeProps) => <Badge {...props}>Badge</Badge>;
+const DefaultTemplate = (props: BadgeProps) => <Badge {...props} />;
 
 const GridTemplate = (props: BadgeProps) => (
-  <Grid w="30rem" columns={4} align="center">
+  <Grid align="center" bg="background-primary" columns={4} p="xl" w="50rem">
     <Grid.Col span={2} />
 
     {argTypes.size.options.map((size) => (
@@ -35,25 +41,41 @@ const GridTemplate = (props: BadgeProps) => (
       </Grid.Col>
     ))}
 
-    {argTypes.variant.options.map((variant) => {
-      return argTypes.color.options.map((color) => (
-        <Fragment key={`${variant}-${color}`}>
-          <Grid.Col span={2}>
-            <Text fw="bold">
-              {variant} / {color ?? "default"}
-            </Text>
-          </Grid.Col>
+    <Grid.Col span={2}>
+      <Text fw="bold">light</Text>
+    </Grid.Col>
 
-          {argTypes.size.options.map((size) => (
-            <Grid.Col span={1} key={size}>
-              <Badge {...props} variant={variant} size={size} color={color}>
-                1
-              </Badge>
-            </Grid.Col>
-          ))}
-        </Fragment>
-      ));
-    })}
+    <Grid.Col span={1}>
+      <Badge {...props} variant="light" size="xs" />
+    </Grid.Col>
+
+    <Grid.Col span={1}>
+      <Badge {...props} variant="light" size="sm" />
+    </Grid.Col>
+
+    <Grid.Col span={2}>
+      <Text fw="bold">filled / brand</Text>
+    </Grid.Col>
+
+    <Grid.Col span={1}>
+      <Badge {...props} bg="brand" color="white" variant="filled" size="xs" />
+    </Grid.Col>
+
+    <Grid.Col span={1}>
+      <Badge {...props} bg="brand" color="white" variant="filled" size="sm" />
+    </Grid.Col>
+
+    <Grid.Col span={2}>
+      <Text fw="bold">filled / error</Text>
+    </Grid.Col>
+
+    <Grid.Col span={1}>
+      <Badge {...props} bg="error" color="white" variant="filled" size="xs" />
+    </Grid.Col>
+
+    <Grid.Col span={1}>
+      <Badge {...props} bg="error" color="white" variant="filled" size="sm" />
+    </Grid.Col>
   </Grid>
 );
 
@@ -73,7 +95,7 @@ export const SizesAndVariants = {
   name: "Sizes and variants",
   parameters: {
     controls: {
-      exclude: ["variant", "size", "color"],
+      exclude: ["variant", "size", "color", "bg"],
     },
   },
 };

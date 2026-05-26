@@ -4,7 +4,19 @@
   --badge-lh: 0.9375rem;
   --badge-fz-xs: 0.6875rem;
   --badge-fz-sm: var(--badge-fz-xs);
+  --badge-radius: 1rem;
 
-  background-color: var(--mb-color-background-brand);
   text-transform: none;
+
+  &[data-variant="light"] {
+    --badge-color: var(--mb-color-text-primary);
+
+    background-color: var(--mb-color-background-disabled);
+  }
+
+  &[data-variant="filled"] {
+    --badge-color: var(--mb-color-text-primary-inverse);
+
+    background-color: var(--mb-color-background-brand);
+  }
 }
