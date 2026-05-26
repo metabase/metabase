@@ -65,6 +65,11 @@ type SdkQuestionConfig = {
   targetCollection?: SdkCollectionId;
 
   /**
+   * The collection to preselect in the save modal's collection picker. Unlike `targetCollection`, the picker remains visible and the user can choose a different collection. Ignored when `targetCollection` is set.
+   */
+  initialCollection?: SdkCollectionId;
+
+  /**
    * Additional mapper function to override or add drill-down menu
    */
   componentPlugins?: MetabasePluginsConfig;
@@ -154,6 +159,7 @@ export type SdkQuestionContextType = Omit<
     | "onNavigateBack"
     | "isSaveEnabled"
     | "targetCollection"
+    | "initialCollection"
     | "withDownloads"
     | "withAlerts"
     | "backToDashboard"
