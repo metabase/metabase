@@ -266,6 +266,8 @@
                              :http-client   (reify Closeable (close [_] (reset! closed? true)))})]
         (is (identical? stream (:body response))
             "an InputStream body must be left as-is, not decoded into a map")
+        (is (= {:a 1} (:body (parse {:headers {"Content-Type" "application/json"} :body "{\"a\":1}"})))
+            "a string application/json body is still decoded into a map — non-streaming endpoints rely on this")
         (let [ex (is (thrown? Exception (check! response request)))]
           (is @closed?
               ":http-client must still be closed for a JSON streaming error body")
