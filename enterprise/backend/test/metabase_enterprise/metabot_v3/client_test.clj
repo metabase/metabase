@@ -233,6 +233,21 @@
                     (check! response request)))]
         (is (= "boom from upstream" (get-in (ex-data ex) [:response :body])))
         (assert-no-headers! (ex-data ex))))
+    (testing "streaming-response bodies route through quick-closing-body so the http-client is released"
+      ;; Regression: non-2xx streaming responses must close the underlying :http-client.
+      ;; ContentLengthInputStream doesn't close the connection on its own (clj-http#627).
+      (let [closed?    (atom false)
+            stream     (java.io.ByteArrayInputStream. (.getBytes "stream body" "UTF-8"))
+            {:keys [request]} (check-response!-input {})
+            response   {:status        500
+                        :reason-phrase "ISE"
+                        :body          stream
+                        :headers       {"x-secret" "hide-me"}
+                        :http-client   (reify Closeable (close [_] (reset! closed? true)))}
+            ex         (is (thrown? Exception (check! response request)))]
+        (is @closed?
+            ":http-client must be closed after slurping the stream body")
+        (is (= "stream body" (get-in (ex-data ex) [:response :body])))))
     (testing "long bodies are truncated in the exception message but kept in full in ex-data"
       (let [long-body (apply str (repeat 2000 \x))
             {:keys [response request]} (check-response!-input {:status        500

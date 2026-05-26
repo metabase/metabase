@@ -85,15 +85,33 @@
   "Cap on the body snippet spliced into the exception message."
   500)
 
+(defn- quick-closing-body
+  "Wrap a streaming response's body so closing the stream also closes the underlying `:http-client`.
+  Without this, ContentLengthInputStream-wrapped bodies never close the underlying connection.
+
+  Pair with a `Connection: close` request header so the HttpClient doesn't try to reuse the
+  hard-closed connection. See https://github.com/dakrone/clj-http/issues/627 and the
+  `closing-connection-test` regression test."
+  [response]
+  (proxy [FilterInputStream] [^InputStream (:body response)]
+    (close []
+      (.close ^Closeable (:http-client response)))))
+
 (defn- coerce-body
-  "Read a response body into a printable value, slurping `InputStream` bodies.
-  Returns nil for empty or unreadable bodies."
-  [body]
+  "Read a response body into a printable value.
+  For `InputStream` bodies (the streaming-response error path) the underlying connection is
+  closed via [[quick-closing-body]] so we don't leak it. Returns nil on read error."
+  [response]
   (try
-    (if (instance? InputStream body)
-      (slurp body)
-      body)
-    (catch Throwable _ nil)))
+    (let [body (:body response)]
+      (cond
+        (not (instance? InputStream body))   body
+        ;; Only the streaming-request path supplies a :http-client; the AI service's
+        ;; non-streaming endpoints already give us a string or parsed-JSON body.
+        (some? (:http-client response))      (with-open [in (quick-closing-body response)]
+                                               (slurp in))
+        :else                                (slurp body)))
+    (catch Exception _ nil)))
 
 (defn- extract-error-message
   "First non-blank scalar under `[:error :message]`, `:error`, `:detail`, or `:message`, or nil."
@@ -145,7 +163,7 @@
     (:body response)
     (let [status  (:status response)
           phrase  (:reason-phrase response)
-          body    (coerce-body (:body response))
+          body    (coerce-body response)
           url     (some-> response :request :url)
           preview (body-preview body)
           msg     (cond-> (format "AI service request failed: HTTP %d %s"
@@ -214,19 +232,6 @@
 
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
-
-(defn- quick-closing-body
-  "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
-  So we just close the client itself.
-
-  Please use `Connection: close` header when using this function to prevent connection being reused by HttpClient.
-
-  See: https://github.com/dakrone/clj-http/issues/627
-  Also: metabase-enterprise.metabot-v3.api-test/closing-connection-test (for 'chunked')"
-  [response]
-  (proxy [FilterInputStream] [^InputStream (:body response)]
-    (close []
-      (.close ^Closeable (:http-client response)))))
 
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
