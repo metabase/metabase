@@ -10,6 +10,8 @@ import {
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
+import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
+
 export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -45,3 +47,5 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
     />
   );
 };
+
+Object.assign(TreemapChart, TREEMAP_CHART_DEFINITION);
