@@ -44,7 +44,7 @@ runs:
         github-token: ${{ github.token }}
 
     - name: Restore M2 cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: |
           ~/.m2

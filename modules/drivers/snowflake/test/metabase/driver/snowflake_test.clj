@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -1486,11 +1488,16 @@
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
 
-(defn- get-db-priv-key [db]
+(defn- get-db-priv-key
+  "Returns a SHA-256 digest of the resolved private key file for `db`."
+  [db]
   (-> (:details db)
       (#'driver.snowflake/resolve-private-key)
       :private_key_file
-      slurp))
+      slurp
+      (.getBytes "UTF-8")
+      buddy-hash/sha256
+      codecs/bytes->hex))
 
 (defn- get-priv-key-details [details pk-user priv-key-var]
   (let [priv-key (tx/db-test-env-var-or-throw :snowflake priv-key-var)]
