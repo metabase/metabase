@@ -211,6 +211,43 @@
     (testing "after the binding pops, the root value is unchanged"
       (is (= 41 (mc/current k2-handle))))))
 
+(deftest ^:synchronized swap-2arity-in-binding-cascades-current-value-test
+  (testing "the 2-arity swap! also reads the cascaded current value for un-overridden keys"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/alter-root k2-handle {:answer 41})
+    (mc/binding k1-handle :bound-k1
+                (fn []
+                  (mc/swap! k2-handle update [:answer inc])
+                  (testing "swap! read the cascaded root map and applied (update m :answer inc)"
+                    (is (= {:answer 42} (mc/current k2-handle))))
+                  (testing "root is unchanged"
+                    (is (= {:answer 41} (mc/root k2-handle))))))))
+
+(deftest ^:synchronized binding-nil-override-shadows-root-test
+  (testing "binding a key to nil explicitly shadows root's non-nil value"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/binding k1-handle nil
+                (fn []
+                  (testing "current returns the nil override, not the root value"
+                    (is (nil? (mc/current k1-handle))))
+                  (testing "root is unaffected"
+                    (is (= :root-k1 (mc/root k1-handle))))))
+    (testing "after the binding pops, the root value is restored"
+      (is (= :root-k1 (mc/current k1-handle))))))
+
+(deftest ^:synchronized alter-root-from-binding-test
+  (testing "alter-root from inside a binding writes root, ignoring the active binding on this thread"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/binding k1-handle :bound-k1
+                (fn []
+                  (mc/alter-root k1-handle :new-root-k1)
+                  (testing "the binding still shadows the new root from this thread's view"
+                    (is (= :bound-k1 (mc/current k1-handle))))
+                  (testing "`root` reflects the new root value"
+                    (is (= :new-root-k1 (mc/root k1-handle))))))
+    (testing "after the binding pops, the new root is visible"
+      (is (= :new-root-k1 (mc/current k1-handle))))))
+
 (comment
   (let [iterations 100]
     (prof/profile
