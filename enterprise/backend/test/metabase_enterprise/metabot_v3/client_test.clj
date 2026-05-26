@@ -211,6 +211,27 @@
         (is (str/ends-with? preview "…"))
         (is (= 501 (count preview)))))))
 
+(deftest ^:parallel body-for-log-bounding-test
+  (let [body-for-log   #'metabot-v3.client/body-for-log
+        bounded-pr-str #'metabot-v3.client/bounded-pr-str
+        max-log        @#'metabot-v3.client/max-body-log-chars]
+    (testing "a huge string body is sliced before pr-str, never rendered in full"
+      ;; Proof of pre-truncation: without it, bounded-pr-str would print all 1M chars before
+      ;; the caller could truncate. The printed result stays near the limit instead.
+      (is (< (count (bounded-pr-str (apply str (repeat 1000000 \x)) max-log))
+             (+ max-log 10))))
+    (testing "body-for-log caps a huge string at max-body-log-chars with an ellipsis"
+      (let [out (body-for-log (apply str (repeat 1000000 \x)))]
+        (is (str/ends-with? out "…"))
+        (is (= (inc max-log) (count out)))))
+    (testing "a many-element collection renders under *print-length* and stays bounded"
+      (let [out (body-for-log (vec (range 100000)))]
+        (is (<= (count out) max-log))
+        (is (str/includes? out "...") "the *print-length* elision marker is present")))
+    (testing "a small recognised body is left untouched by the bounds"
+      (is (= (pr-str {:error {:message "nope"}})
+             (body-for-log {:error {:message "nope"}}))))))
+
 (deftest check-response!-test
   (let [check! #'metabot-v3.client/check-response!]
     (testing "200/202 returns the body unchanged"

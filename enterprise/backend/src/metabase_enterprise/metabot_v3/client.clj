@@ -181,6 +181,19 @@
     s
     (str (subs s 0 limit) "…")))
 
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  String bodies are sliced to `limit` before printing. Collections render under
+  `*print-length*`/`*print-level*`, which bound element count and nesting depth but *not* the
+  size of an individual scalar leaf — a map whose value is a near-cap string is still printed
+  in full, so callers must [[truncate-to]] the printed result to cap that case. The transient
+  allocation stays bounded by the upstream slurp cap ([[max-body-slurp-chars]]) regardless."
+  [body limit]
+  (binding [*print-length* 100
+            *print-level*  10]
+    (pr-str (cond-> body
+              (string? body) (truncate-to limit)))))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
@@ -189,7 +202,7 @@
 (defn- body-for-log
   "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
   [body]
-  (truncate-to (pr-str body) max-body-log-chars))
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
@@ -208,10 +221,11 @@
                     :else              nil)
         ;; Surface *some* context to the user even for unrecognised shapes — the warn
         ;; signals operators to add the new envelope shape to [[extract-error-message]].
-        ;; Cap pr-str once so a multi-MB body can't go unbounded into the warn line.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [capped (truncate-to-preview-limit (pr-str body))]
+                        ;; body is a collection here, so bounded-pr-str's limit arg is a no-op
+                        ;; (it only slices string bodies); truncate-to-preview-limit caps the result.
+                        (let [capped (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))]
                           (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
                           capped)))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
