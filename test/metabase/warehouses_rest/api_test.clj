@@ -597,6 +597,58 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
+(deftest reject-is-stub-in-create-test
+  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+    (mt/with-model-cleanup [:model/Database]
+      (with-redefs [driver/available?   (constantly true)
+                    driver/can-connect? (constantly true)]
+        (is (re-find #"is_stub"
+                     (mt/user-http-request :crowberto :post 400 "database"
+                                           {:name    (mt/random-name)
+                                            :engine  (u/qualified-name ::test-driver)
+                                            :details {:db "my_db"}
+                                            :is_stub true})))))))
+
+(deftest reject-is-stub-in-update-test
+  (testing "PUT /api/database/:id rejects :is_stub in the request body"
+    (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+      (is (re-find #"is_stub"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                         {:is_stub true})))
+      (testing "the row is unchanged"
+        (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id)))))))
+
+(deftest clear-is-stub-on-successful-main-connection-update-test
+  (testing "PUT /api/database/:id with new :details clears :is_stub when the main connection test succeeds"
+    (mt/with-temp [:model/Database {db-id :id} {:engine  ::test-driver
+                                                :details {:db "old"}
+                                                :is_stub true}]
+      (with-redefs [driver/can-connect? (constantly true)]
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                              {:details {:db "new"}}))
+      (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+
+(deftest preserve-is-stub-when-main-details-unchanged-test
+  (testing "PUT /api/database/:id that does not change :details leaves :is_stub untouched"
+    (mt/with-temp [:model/Database {db-id :id} {:engine  ::test-driver
+                                                :details {:db "x"}
+                                                :is_stub true
+                                                :name    "before"}]
+      (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                            {:name "after"})
+      (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))
+          ":is_stub must stay true when the main connection is not re-tested"))))
+
+(deftest preserve-is-stub-on-failed-main-connection-test
+  (testing "PUT /api/database/:id with new :details whose connection FAILS leaves :is_stub true"
+    (mt/with-temp [:model/Database {db-id :id} {:engine  ::test-driver
+                                                :details {:db "old"}
+                                                :is_stub true}]
+      (with-redefs [driver/can-connect? (fn [& _] (throw (Exception. "nope")))]
+        (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                              {:details {:db "new"}}))
+      (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `provider_name`"
