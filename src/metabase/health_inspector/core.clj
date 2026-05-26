@@ -13,7 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *delay*
+  "Per-query delay to prevent overloading the system."
+  5)
+
 (defn- validate-query [{:keys [dataset_query]}]
+  (Thread/sleep ^Long *delay*)
   (let [query (lib-be/normalize-query (json/decode dataset_query keyword))]
     (mr/validate ::schema/query query)))
 
@@ -22,7 +27,9 @@
 (defn- validate-queries []
   (let [queries (t2/reducible-select :report_card {:where [:= :archived false]})
         results (into [] (r/map validate-query queries))
-        ratio (/ (count (filter identity results)) (count results))]
+        ratio (if (empty? results)
+                1
+                (/ (count (filter identity results)) (count results)))]
     {:health (percent ratio)
      :message (if (= 1 ratio)
                 "All queries valid."
@@ -70,7 +77,6 @@
                  (triggers/with-identity trigger-key)
                  (triggers/for-job job-key)
                  (triggers/start-now)
-                 (triggers/with-schedule
-                   ;; Run every day at 2 AM
-                  (cron/cron-schedule "0 0 2 * * ? *")))]
+                 ;; 2AM every day
+                 (triggers/with-schedule (cron/cron-schedule "0 0 2 * * ? *")))]
     (task/schedule-task! job trigger)))
