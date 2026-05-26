@@ -30,7 +30,7 @@
               :dataset_query query}]
             (mt/with-dynamic-fn-redefs [metabot.example-question-generator/generate-example-questions
                                         (fn [input]
-                            ;; Return fake prompts if we have cards, empty otherwise
+                                          ;; Return fake prompts if we have cards, empty otherwise
                                           (if (or (seq (:metrics input)) (seq (:tables input)))
                                             {:table_questions [{:questions ["What is the total for this model?"
                                                                             "How many items are in this model?"]}]
@@ -76,7 +76,7 @@
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))))
 
-            ;; Reset metabot state
+              ;; Reset metabot state
               (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false}))))))))
 
 (deftest suggested-prompts-generator-skips-generation-when-managed-provider-is-locked-test

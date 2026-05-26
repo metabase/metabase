@@ -232,4 +232,4 @@
 
   ;; Call the :list-connections operation.
   (call :list-connections))
-  ;; => ()
+;; => ()
