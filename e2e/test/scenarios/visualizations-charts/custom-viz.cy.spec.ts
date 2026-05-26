@@ -2504,7 +2504,7 @@ describe("sandbox", () => {
     );
   });
 
-  it("blocks forbidden apis in custom widget settings", () => {
+  it("blocks forbidden apis in widget settings", () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
@@ -2523,8 +2523,6 @@ describe("sandbox", () => {
       { wrapId: true, idAlias: "questionId" },
     );
 
-    H.resetSnowplow();
-    H.enableTracking();
     H.visitQuestion("@questionId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "error").as("consoleError");
