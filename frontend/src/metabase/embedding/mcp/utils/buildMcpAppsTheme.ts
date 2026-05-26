@@ -31,9 +31,16 @@ const AGENT_CSS_VARIABLE_OVERRIDES: Record<
   string,
   Partial<Record<ResolvedColorScheme, Record<string, string>>>
 > = {
+  // ChatGPT does not send theming variables, so we have to
+  // provide them to match ChatGPT's looks.
   chatgpt: {
+    light: {
+      "--color-background-primary": "#FFFFFF",
+      "--color-background-secondary": "#F9F9F9",
+    },
     dark: {
       "--color-background-primary": "#212121",
+      "--color-background-secondary": "#181818",
     },
   },
 };
