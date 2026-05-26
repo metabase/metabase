@@ -57,8 +57,7 @@
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
     (is (contains? scopes "agent:notebook:*"))
     (is (contains? scopes "agent:query:*"))
-    (is (contains? scopes "agent:table:*"))
-    (is (contains? scopes "agent:metric:*"))))
+    (is (contains? scopes "agent:question:*"))))
 
 (deftest ^:parallel perms->scopes-other-tools-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
