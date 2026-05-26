@@ -80,8 +80,10 @@
       [:no-library-content     [:map {:closed true} [:status [:= :no-library-content]]]]
       [:ai-produced-no-prompts [:map {:closed true} [:status [:= :ai-produced-no-prompts]]]]]
   "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
-   Returns a discriminated union on `:status`; see [[metabot.suggested-prompts/generate-sample-prompts]].
-   The managed-free-limit case surfaces as a 402, not a union variant."
+   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,
+   `:no-library-content` when the Metabot has no models or metrics to summarize, or
+   `:ai-produced-no-prompts` when generation produced nothing.
+   Returns a 402 if the instance has reached its managed-AI usage limit."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
