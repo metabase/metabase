@@ -24,6 +24,16 @@
   (or (some (fn [a] (when (contains? @a k) a)) (rseq stack))
       (nth stack 0)))
 
+(defn- current-value
+  "Cascaded read for `k` during a `swap!`. `m` is the in-progress snapshot of the
+  top atom (which may have already been updated this attempt); if it doesn't define
+  `k`, walk `deeper` for the current value, returning nil if no level defines it."
+  [m deeper k]
+  (if (contains? m k)
+    (get m k)
+    (when (seq deeper)
+      (get @(read-atom deeper k) k))))
+
 (defrecord ComponentHandle [k]
   mc/MutableComponentHandle
   (current [_] (get @(read-atom *system* k) k))
@@ -34,9 +44,15 @@
   (reset! [_ new-value]
     (clojure.core/swap! (peek *system*) assoc k new-value))
   (swap! [_ f]
-    (clojure.core/swap! (peek *system*) update k f))
+    (let [stack  *system*
+          deeper (pop stack)]
+      (clojure.core/swap! (peek stack)
+                          (fn [m] (assoc m k (f (current-value m deeper k)))))))
   (swap! [_ f args]
-    (clojure.core/swap! (peek *system*) #(apply update % k f args)))
+    (let [stack  *system*
+          deeper (pop stack)]
+      (clojure.core/swap! (peek stack)
+                          (fn [m] (assoc m k (apply f (current-value m deeper k) args))))))
   (alter-root [_ new-value]
     (clojure.core/swap! (root-atom) assoc k new-value)))
 

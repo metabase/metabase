@@ -197,6 +197,20 @@
         (finally
           @root-writer)))))
 
+(deftest ^:synchronized swap-in-binding-cascades-current-value-test
+  (testing "swap! applies f to the cascaded current value of an un-overridden key, not nil"
+    (mc/alter-root k1-handle :root-k1)
+    (mc/alter-root k2-handle 41)
+    (mc/binding k1-handle :bound-k1
+                (fn []
+                  (mc/swap! k2-handle inc)
+                  (testing "swap! read the cascaded root value (41) and wrote (inc 41) to the binding"
+                    (is (= 42 (mc/current k2-handle))))
+                  (testing "root is unchanged — the swap! landed on the binding atom"
+                    (is (= 41 (mc/root k2-handle))))))
+    (testing "after the binding pops, the root value is unchanged"
+      (is (= 41 (mc/current k2-handle))))))
+
 (comment
   (let [iterations 100]
     (prof/profile
