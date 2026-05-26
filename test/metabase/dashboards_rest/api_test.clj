@@ -1674,7 +1674,9 @@
                                                    2 {:id 2}
                                                    3 {:id 3}}
                                                   {1 10
-                                                   2 20})))))
+                                                   2 20}))))))
+
+(deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"

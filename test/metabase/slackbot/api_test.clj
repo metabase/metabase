@@ -642,8 +642,9 @@
                   (is (= 1 (count @update-calls)))
                   (is (= channel-id (:channel (first @update-calls))))
                   (is (= message-ts (:ts (first @update-calls))))
-                  (is (str/includes? (:text (first @update-calls)) "removed"))))))))))
+                  (is (str/includes? (:text (first @update-calls)) "removed")))))))))))
 
+(deftest handle-delete-reaction-test-2
   (testing "reaction_added with a non-delete emoji is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -661,8 +662,9 @@
                        (tu/slack-request-options event-body)
                        event-body)
             (Thread/sleep 200)
-            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update"))))))
+            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update")))))))
 
+(deftest handle-delete-reaction-test-3
   (testing "reaction_added with delete emoji from non-owner is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"

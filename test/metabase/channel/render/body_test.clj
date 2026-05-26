@@ -247,35 +247,43 @@
       :content
       last))
 
-(deftest scalar-test
+(deftest ^:parallel scalar-test
   (testing "renders int"
     (is (= "10"
            (render-scalar-value {:cols [{:name         "ID",
                                          :display_name "ID",
                                          :base_type    :type/BigInteger
                                          :semantic_type nil}]
-                                 :rows [[10]]}))))
+                                 :rows [[10]]})))))
+
+(deftest ^:parallel scalar-test-2
   (testing "renders float"
     (is (= "10.12"
            (render-scalar-value {:cols [{:name         "floatnum",
                                          :display_name "FLOATNUM",
                                          :base_type    :type/Float
                                          :semantic_type nil}]
-                                 :rows [[10.12345]]}))))
+                                 :rows [[10.12345]]})))))
+
+(deftest ^:parallel scalar-test-3
   (testing "renders string"
     (is (= "foo"
            (render-scalar-value {:cols [{:name         "stringvalue",
                                          :display_name "STRINGVALUE",
                                          :base_type    :type/Text
                                          :semantic_type nil}]
-                                 :rows [["foo"]]}))))
+                                 :rows [["foo"]]})))))
+
+(deftest ^:parallel scalar-test-4
   (testing "renders date"
     (is (= "April 1, 2014, 8:30 AM"
            (render-scalar-value {:cols [{:name         "date",
                                          :display_name "DATE",
                                          :base_type    :type/DateTime
                                          :semantic_type nil}]
-                                 :rows [["2014-04-01T08:30:00.0000"]]}))))
+                                 :rows [["2014-04-01T08:30:00.0000"]]})))))
+
+(deftest ^:parallel scalar-test-5
   (testing "Includes raw text"
     (testing "for scalars"
       (let [results {:cols [{:name         "stringvalue",

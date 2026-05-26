@@ -120,8 +120,9 @@
 
     (testing "Check that non-admins are denied access"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "setting")))))
+             (mt/user-http-request :rasta :get 403 "setting"))))))
 
+(deftest fetch-setting-test-2
   (testing "GET /api/setting/:key"
     (testing "Test that admins can fetch a single Setting"
       (models.setting-test/test-setting-2! "OK!")

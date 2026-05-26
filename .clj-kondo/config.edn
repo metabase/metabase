@@ -205,6 +205,16 @@
   {:level      :warning
    :max-length 150}
 
+  ;; Warn on long tests (tests over `:min-length`) that look like
+  ;;
+  ;;    (deftest my-test
+  ;;      (testing ...)
+  ;;      (testing ...)
+  ;;      (testing ...))
+  :metabase/validate-deftest-logically-separate-tests
+  {:level      :warning
+   :min-length 70}
+
   ;; this is not enabled here, it is enabled below only for specific namespaces.
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
