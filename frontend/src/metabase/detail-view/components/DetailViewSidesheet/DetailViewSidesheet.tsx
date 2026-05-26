@@ -107,7 +107,10 @@ export function DetailViewSidesheet({
   const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
-  const pkColumnName = useMemo(() => columns.find(isPK)?.name, [columns]);
+  const pkColumnName = useMemo(
+    () => columns.find(isPK)?.name?.toLowerCase(),
+    [columns],
+  );
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();

@@ -125,7 +125,9 @@ export function ObjectDetailView({
   );
 
   const pkColumnName =
-    pkIndex != null ? passedData?.cols[pkIndex]?.name : undefined;
+    pkIndex != null
+      ? passedData?.cols[pkIndex]?.name?.toLowerCase()
+      : undefined;
 
   const zoomedRow = useMemo(() => {
     const zoomedRowIDNumber =
