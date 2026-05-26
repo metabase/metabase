@@ -2,7 +2,7 @@
   "Loader for the `:workspace` section of `config.yml`.
 
   On boot, parses the section and stores it in the `instance-workspace` setting
-  (see `metabase-enterprise.workspaces.settings`). That setting is the
+  (see [[metabase-enterprise.workspaces.settings]]). That setting is the
   instance-side source of truth for `db-workspace-namespace`.
 
   Every boot re-reads `config.yml` and overwrites the prior value. The setting
@@ -14,6 +14,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -34,15 +35,15 @@
 (s/def ::input_schemas
   (s/coll-of ::non-blank-string))
 
-(s/def :metabase-enterprise.advanced-config.file.workspace.output/db
+(s/def ::wkspc-output/db
   (s/nilable string?))
 
-(s/def :metabase-enterprise.advanced-config.file.workspace.output/schema
+(s/def ::wkspc-output/schema
   (s/nilable string?))
 
 (s/def ::output
-  (s/and (s/keys :opt-un [:metabase-enterprise.advanced-config.file.workspace.output/db
-                          :metabase-enterprise.advanced-config.file.workspace.output/schema])
+  (s/and (s/keys :opt-un [::wkspc-output/db
+                          ::wkspc-output/schema])
          (fn [m] (or (some? (:db m)) (some? (:schema m))))))
 
 (s/def ::workspace-database-config
