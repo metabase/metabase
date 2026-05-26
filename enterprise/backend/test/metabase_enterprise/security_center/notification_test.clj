@@ -373,7 +373,7 @@
   (testing "send-test-notification! sends a notification with test advisory data"
     (let [sent (atom nil)]
       (with-send-redef (fn [notif & _] (reset! sent notif))
-        (notification/send-test-notification!)
+        (notification/send-test-notification! {:email-recipients nil :slack-channel nil})
         (is (= :notification/system-event (:payload_type @sent)))
         (is (= :event/security-advisory-match (get-in @sent [:payload :event_topic])))
         (let [obj (get-in @sent [:payload :event_info :object])]
@@ -382,21 +382,44 @@
           (is (re-find #"(?i)test" (:title obj)))
           (is (re-find #"(?i)test" (:description obj))))))))
 
+(deftest send-test-notification-uses-passed-config-test
+  (testing "send-test-notification! uses the passed config — not the saved settings"
+    (let [sent              (atom nil)
+          form-emails       [{:type :notification-recipient/external-email :details {:email "form@example.com"}}]
+          saved-emails      [{:type :notification-recipient/external-email :details {:email "saved@example.com"}}]
+          form-slack-channel "#form-channel"]
+      (mt/with-temporary-setting-values [admin-email nil
+                                         slack-token-valid? true]
+        (with-redefs [settings/security-center-email-recipients (constantly saved-emails)
+                      settings/security-center-slack-channel     (constantly "#saved-channel")]
+          (with-send-redef (fn [notif & _] (reset! sent notif))
+            (notification/send-test-notification! {:email-recipients form-emails
+                                                   :slack-channel    form-slack-channel})
+            (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
+                  slack-handler (first (filter #(= :channel/slack (:channel_type %)) (:handlers @sent)))]
+              (is (= [{:type    :notification-recipient/external-email
+                       :details {:email "form@example.com"}}]
+                     (:recipients email-handler))
+                  "uses the email recipients from the passed config, not the saved setting")
+              (is (= "#form-channel"
+                     (get-in (first (:recipients slack-handler)) [:details :value]))
+                  "uses the Slack channel from the passed config, not the saved setting"))))))))
+
 (deftest send-test-notification-does-not-publish-event-test
   (testing "send-test-notification! does not publish an audit event"
     (let [published (atom [])]
       (with-redefs [events/publish-event!               (fn [topic _] (swap! published conj topic))
                     channel.settings/email-configured?   (constantly true)
                     notification.send/send-notification! (constantly nil)]
-        (notification/send-test-notification!)
+        (notification/send-test-notification! {:email-recipients nil :slack-channel nil})
         (is (empty? @published))))))
 
 (deftest send-test-notification-throws-when-no-channels-test
   (testing "send-test-notification! throws when no channels are configured"
-    (with-redefs [channel.settings/email-configured?           (constantly false)
-                  settings/security-center-slack-channel        (constantly nil)]
+    (with-redefs [channel.settings/email-configured? (constantly false)]
       (is (thrown-with-msg? Exception #"No notification channels are configured"
-                            (notification/send-test-notification!))))))
+                            (notification/send-test-notification! {:email-recipients nil
+                                                                   :slack-channel    nil}))))))
 
 ;;; -------------------------------------------- Notification payload -------------------------------------------------
 
