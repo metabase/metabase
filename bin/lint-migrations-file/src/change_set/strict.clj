@@ -50,7 +50,6 @@
    ;; only one change allowed per change set for the strict schema.
    :one-change
    (s/alt :change :change.strict/change)
-
    ;; unless it's SQL changes, in which case we'll let you specify more than one as long as they are qualified with
    ;; different DBMSes
    :sql-changes-for-different-

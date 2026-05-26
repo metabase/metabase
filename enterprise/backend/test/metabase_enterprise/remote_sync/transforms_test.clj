@@ -453,7 +453,6 @@ is_sample: false
                                                                    :location "/"}]
           (is (contains? (set (spec/all-syncable-collection-ids)) transforms-coll-id)
               "Transforms-namespace collection should be included when setting is enabled")))))
-
   (testing "Transforms collections are NOT included when setting is disabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false

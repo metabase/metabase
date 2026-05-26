@@ -256,7 +256,6 @@
             (testing "message must not name PRODUCTS or FK-linked tables"
               (is (not (re-find #"PRODUCTS" msg)))
               (is (not (re-find #"FK-linked" msg)))))))))
-
   (testing "unknown field also doesn't leak when no FK-reachable table has the column"
     (let [r (resolve.mp/import-resolver mp-with-fk)]
       (try

@@ -777,7 +777,6 @@
     (when-not table
       (throw (ex-info (str "Table not found in metadata: " table-name)
                       {:table-name table-name})))
-
     ;; Build a query for the table
     (let [base-query      (lib/query mp table)
           ;; Find the category column
@@ -1302,26 +1301,22 @@
               (is (= 1 (count items)))
               (is (= "transform" (:model (first items))))
               (is (= "Test Transform" (:name (first items)))))
-
             ;; Test 2: Transform appears when filtered by models=transform
             (let [items (:data (mt/user-http-request :lucky :get 200
                                                      (format "collection/%d/items" collection-id)
                                                      :models "transform"))]
               (is (= 1 (count items)))
               (is (= transform-id (:id (first items)))))
-
             ;; Test 3: Transform NOT returned when filtering for other models only
             (let [items (:data (mt/user-http-request :lucky :get 200
                                                      (format "collection/%d/items" collection-id)
                                                      :models "card"))]
               (is (empty? items)))
-
             ;; Test 4: Non-analysts users don't see transforms
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
             (let [items (:data (mt/user-http-request :rasta :get 200
                                                      (format "collection/%d/items" collection-id)))]
               (is (empty? items)))
-
             ;; Test 5: Admins see transforms
             (let [items (:data (mt/user-http-request :crowberto :get 200
                                                      (format "collection/%d/items" collection-id)))]
@@ -1477,14 +1472,11 @@
                 (try
                   ;; Add both tags to transform
                   (transform.model/update-transform-tags! (:id transform) [(:id tag1) (:id tag2)])
-
                   ;; Verify tags are associated
                   (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
                     (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids fetched)))))
-
                   ;; Delete tag1
                   (mt/user-http-request :lucky :delete 204 (str "transform-tag/" (:id tag1)))
-
                   ;; Verify tag1 is removed but tag2 remains
                   (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
                     (is (= [(:id tag2)] (vec (:tag_ids fetched)))))
@@ -1500,7 +1492,6 @@
             (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
                            :model/TransformTag tag2 {:name "order-tag-2"}
                            :model/TransformTag tag3 {:name "order-tag-3"}]
-
               (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
                 (testing "Creating transform with specific tag order preserves that order"
                   (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
@@ -1552,7 +1543,6 @@
               (is (= "transform" (:model (first items))))
               (is (= "Root Transform" (:name (first items))))))
           (testing "Transform appears when filtered by models=trans form"
-
             (let [items (:data (mt/user-http-request :crowberto :get 200
                                                      "collection/root/items"
                                                      :namespace "transforms"

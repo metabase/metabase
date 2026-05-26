@@ -24,7 +24,6 @@
       (is (= 1 (-> result first :id)))
       (is (= 2 (-> result second :id)))
       (is (= 3 (-> result last :id)))))
-
   (testing "RRF with multiple lists - no overlap"
     (let [list1 [{:id 1 :model "card" :name "Card 1"}
                  {:id 2 :model "dashboard" :name "Dashboard 1"}]
@@ -33,7 +32,6 @@
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 4 (count result)))
       (is (every? #(contains? #{1 2 3 4} (:id %)) result))))
-
   (testing "RRF with overlapping results - should boost common items"
     (let [list1 [{:id 1 :model "card" :name "Revenue Report"}
                  {:id 2 :model "dashboard" :name "Sales Dashboard"}
@@ -47,7 +45,6 @@
       (let [top-two-ids (set (map :id (take 2 result)))]
         (is (contains? top-two-ids 1))
         (is (contains? top-two-ids 2)))))
-
   (testing "RRF with identical items at different positions"
     (let [list1 [{:id 1 :model "card" :name "First"}
                  {:id 2 :model "dashboard" :name "Second"}
@@ -62,18 +59,15 @@
       (is (= 3 (count result)))
       ;; Item 2 appears first in list3, second in list1 and list2, so should rank highest
       (is (= 2 (-> result first :id)))))
-
   (testing "RRF with empty lists"
     (let [list1 []
           list2 [{:id 1 :model "card" :name "Card 1"}]
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 1 (count result)))
       (is (= 1 (-> result first :id)))))
-
   (testing "RRF with all empty lists"
     (let [result (#'search/reciprocal-rank-fusion [[] [] []])]
       (is (empty? result))))
-
   (testing "RRF score calculation correctness"
     ;; Test that the RRF formula 1/(k+r) where k=60 is correctly applied
     (let [list1 [{:id 1 :model "card" :name "Rank 1"}]  ; rank=1, score=1/61
@@ -88,7 +82,6 @@
       ;; So item 1 should rank higher than item 2
       (is (= 1 (:id first-item)))
       (is (= 2 (:id second-item)))))
-
   (testing "RRF preserves item data"
     (let [complex-item {:id 42
                         :model "dataset"
@@ -100,7 +93,6 @@
           result (#'search/reciprocal-rank-fusion [[complex-item]])]
       (is (= 1 (count result)))
       (is (= complex-item (first result)))))
-
   (testing "RRF with many lists"
     (let [lists (for [i (range 5)]
                   [{:id (inc i) :model "card" :name (str "Card " (inc i))}
@@ -131,7 +123,6 @@
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "model (dataset) result postprocessing"
     (let [result {:model "dataset"
                   :id 2
@@ -152,7 +143,6 @@
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "transform result postprocessing"
     (let [result {:model "transform"
                   :id 3
@@ -169,7 +159,6 @@
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "dashboard result postprocessing"
     (let [result {:model "dashboard"
                   :id 3
@@ -188,7 +177,6 @@
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "question (card) result postprocessing with moderated_status"
     (let [result {:model "card"
                   :id 4
@@ -208,7 +196,6 @@
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "metric result postprocessing"
     (let [result {:model "metric"
                   :id 5
@@ -227,7 +214,6 @@
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
       (is (= expected (#'search/postprocess-search-result result)))))
-
   (testing "database result postprocessing"
     (let [result {:model "database"
                   :id 6
@@ -255,7 +241,6 @@
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
-
       (testing ":search-native-query is not included in context when nil or false"
         (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                          (is (not (contains? context :search-native-query)))
@@ -283,7 +268,6 @@
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
-
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -291,7 +275,6 @@
                                                              {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
-
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -313,7 +296,6 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
-
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -321,11 +303,9 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
-
         (testing "limit above 50 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 75}))))
-
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
@@ -374,7 +354,6 @@
                       analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
                   (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
                   (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
-
               (testing "handles nil collection descriptions"
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
