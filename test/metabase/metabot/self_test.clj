@@ -1100,7 +1100,30 @@
       (is (=? {:level :warn :namespace 'metabase.metabot.self.core}
               entry))
       (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
-                   (:message entry))))))
+                   (:message entry)))))
+  (testing "an oversized body is capped in the warn log, but preserved in full on ex-data"
+    (let [big-body (apply str (repeat 5000 \x))
+          upstream (ex-info "clj-http error"
+                            {:status 502 :reason-phrase "Bad Gateway"
+                             :headers {"content-type" "text/plain"}
+                             :body big-body})
+          [entry & more]
+          (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+            (let [ex (caught #(self.core/rethrow-api-error!
+                               "openrouter"
+                               (constantly "OpenRouter upstream provider returned an error")
+                               upstream))]
+              (is (= big-body (:body (ex-data ex)))
+                  "the full, untruncated body still survives on ex-data"))
+            (msgs))]
+      (is (nil? more) "exactly one warn line at the failure boundary")
+      ;; pr-str of the string adds the surrounding quotes; the cap then slices at
+      ;; max-body-log-chars (2000) and appends the ellipsis.
+      (is (str/ends-with? (:message entry)
+                          (str "body=" (subs (pr-str big-body) 0 2000) "…"))
+          "the warn line's body segment is capped at max-body-log-chars with a trailing ellipsis")
+      (is (not (str/includes? (:message entry) big-body))
+          "the full oversized body is not spliced into the warn line"))))
 
 (deftest rethrow-api-error!-auth-status-body-not-leaked-test
   (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
