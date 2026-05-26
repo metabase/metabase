@@ -88,16 +88,18 @@
 (defn- stub-databases
   "Databases that exist in the instance but are not provisioned for this workspace.
    Excludes the sample DB (handled by GHY-3687), the audit DB, and routing-target
-   databases (destinations with `:router_database_id` set)."
+   databases (destinations with `:router_database_id` set).
+
+   `workspace-db-ids` is chunked into NOT-IN clauses of 500 so we stay well below
+   driver parameter limits (Oracle caps `IN` at 1000)."
   [workspace-db-ids]
   (t2/select :model/Database
-             {:where [:and
-                      [:= :is_sample false]
-                      [:= :is_audit  false]
-                      [:= :router_database_id nil]
-                      (if (seq workspace-db-ids)
-                        [:not-in :id workspace-db-ids]
-                        true)]}))
+             {:where (into [:and
+                            [:= :is_sample false]
+                            [:= :is_audit  false]
+                            [:= :router_database_id nil]]
+                           (map (fn [chunk] [:not-in :id (vec chunk)]))
+                           (partition-all 500 workspace-db-ids))}))
 
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
