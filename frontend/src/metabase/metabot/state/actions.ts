@@ -10,7 +10,7 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
