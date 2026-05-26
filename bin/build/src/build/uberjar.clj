@@ -197,17 +197,50 @@
 (def ^:private gson-conflict-handler
   {"com/google/gson/.*" (prefer-lib 'com.google.code.gson/gson)})
 
+;; jakarta.servlet-api 6.1 (Servlet 6.x, EE10) conflicts with jetty-jakarta-servlet-api 5.0
+;; (Servlet 5.0, EE9). We use Jetty 12 with the EE9 adapter, so we need the 5.0 API.
+(def ^:private servlet-conflict-handler
+  {"jakarta/servlet/.*" (prefer-lib 'org.eclipse.jetty.toolchain/jetty-jakarta-servlet-api)})
+
+;; databricks-jdbc-thin bundles Arrow's netty buffer patch classes. When these overwrite
+;; the real arrow-memory-netty-buffer-patch, BigQuery's Arrow integration can break.
+(def ^:private netty-buffer-conflict-handler
+  {"io/netty/buffer/.*" (prefer-lib 'org.apache.arrow/arrow-memory-netty-buffer-patch)})
+
 ;; avatica (Hive transitive dep) bundles the entire SLF4J API unshaded.
 (def ^:private slf4j-conflict-handler
   {"org/slf4j/.*" (prefer-lib 'org.slf4j/slf4j-api)})
 
+;; hive-jdbc-standalone bundles JAXB, guava internals, j2objc, animal-sniffer, and netty
+;; all unshaded. Prefer the real artifacts so runtime behavior matches what Maven resolved.
+(def ^:private hive-standalone-conflict-handler
+  {"javax/xml/bind/.*"                     (prefer-lib 'javax.xml.bind/jaxb-api)
+   "META-INF/versions/9/javax/xml/bind/.*" (prefer-lib 'javax.xml.bind/jaxb-api)
+   "com/google/j2objc/annotations/.*"      (prefer-lib 'com.google.j2objc/j2objc-annotations)
+   "com/google/thirdparty/publicsuffix/.*" (prefer-lib 'com.google.guava/guava)
+   "org/codehaus/mojo/animal_sniffer/.*"   (prefer-lib 'org.codehaus.mojo/animal-sniffer-annotations)})
+
+;; lz4-java 1.8.0 (hive transitive) vs at.yawk.lz4/lz4-java 1.10.2 (pinned).
+;; Same package, different Maven coords. Prefer the pinned newer version.
+(def ^:private lz4-conflict-handler
+  {"net/jpountz/.*" (prefer-lib 'at.yawk.lz4/lz4-java)})
+
+;; netty 4.2 split netty-codec into netty-codec-base. Both contain the same classes.
+;; Prefer the newer codec-base.
+(def ^:private netty-codec-conflict-handler
+  {"io/netty/handler/codec/.*" (prefer-lib 'io.netty/netty-codec-base)})
+
 (def conflict-handlers
-  "Merged conflict handlers for the uberjar build. Handles Log4j2 plugin merging,
-   jakarta.activation class visibility, gson version pinning, and SLF4J API."
+  "Merged conflict handlers for the uberjar build."
   (merge log4j2-conflict-handler
          activation-conflict-handler
          gson-conflict-handler
-         slf4j-conflict-handler))
+         servlet-conflict-handler
+         slf4j-conflict-handler
+         netty-buffer-conflict-handler
+         hive-standalone-conflict-handler
+         lz4-conflict-handler
+         netty-codec-conflict-handler))
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"

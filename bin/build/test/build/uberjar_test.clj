@@ -29,22 +29,18 @@
      "org/apache/poi/schemas"       ;; poi-ooxml vs poi-ooxml-lite — same version
      "org/w3/x2000"                 ;; poi-ooxml vs poi-ooxml-lite — XML digital signature schemas
      "org/etsi/uri"                 ;; poi-ooxml vs poi-ooxml-lite — digital signature schemas
-     "jakarta/servlet"              ;; jetty-servlet vs jakarta.servlet-api — same API version
      "javax/annotation"             ;; jsr250-api vs jsr305 — annotation-only JARs
      "net/jcip/annotations"         ;; jcip-annotations vs stephenc jcip-annotations — same lib, two Maven coords
-     "io/netty/buffer"              ;; databricks-jdbc-thin bundles custom Arrow netty buffers
-     "io/netty/handler/codec"       ;; netty-codec-base 4.2 vs netty-codec 4.1 — codec was split in netty 4.2
      "org/apache/calcite/avatica"   ;; avatica vs avatica-core — Hive transitive dep
-     ;; org/slf4j — handled by slf4j-conflict-handler (prefers org.slf4j/slf4j-api)
      "org/apache/hadoop"            ;; hadoop-common single-class overlap
      "org/apache/hive"              ;; hive-common single-class overlap
-     ;; hive-jdbc-standalone fat JAR bundles everything unshaded (v59 only — master uses individual modules)
-     "javax/xml/bind"               ;; hive-jdbc-standalone vs jaxb-api
-     "META-INF/versions/9/javax/xml/bind" ;; hive-jdbc-standalone vs jaxb-api (multi-release)
-     "com/google/j2objc/annotations" ;; hive-jdbc-standalone vs j2objc-annotations
-     "com/google/thirdparty/publicsuffix" ;; hive-jdbc-standalone vs guava
-     "net/jpountz"                  ;; lz4-java 1.8.0 (hive transitive) vs at.yawk.lz4/lz4-java 1.10.2
-     "org/codehaus/mojo/animal_sniffer"}) ;; hive-jdbc-standalone vs animal-sniffer-annotations
+     ;; Handled by conflict handlers (not listed here):
+     ;; jakarta/servlet — servlet-conflict-handler (prefers jetty EE9 5.0 over 6.1)
+     ;; io/netty/handler/codec — netty-codec-conflict-handler
+     ;; org/slf4j — slf4j-conflict-handler
+     ;; javax/xml/bind, j2objc, publicsuffix, animal_sniffer — hive-standalone-conflict-handler
+     ;; net/jpountz — lz4-conflict-handler
+     })
 
 (defn- prefix-matches?
   "True if `prefix` equals or is under any of the known prefixes."
