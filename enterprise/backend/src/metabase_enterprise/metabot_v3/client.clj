@@ -63,7 +63,13 @@
 
 (mu/defn- maybe-parse-response-body-as-json :- :map
   [response :- :map]
-  (let [json? (some-> (get-in response [:headers "Content-Type"]) (str/starts-with? "application/json"))]
+  ;; Only decode string bodies. Streaming requests (`:as :stream`) hand us an `InputStream`;
+  ;; decoding it here would consume the whole body unbounded and replace it with a parsed map,
+  ;; so a non-2xx streaming error would then skip `coerce-body`'s bounded slurp and its
+  ;; `quick-closing-body` connection close. Leave stream bodies untouched for `check-response!`.
+  ;; Non-streaming endpoints already hand us a string, so their JSON decoding is unaffected.
+  (let [json? (and (string? (:body response))
+                   (some-> (get-in response [:headers "Content-Type"]) (str/starts-with? "application/json")))]
     (cond-> response
       json? (update :body #(json/decode % true)))))
 
@@ -148,8 +154,10 @@
         (not (instance? InputStream body))   body
         ;; Only the streaming-request path supplies a :http-client; the AI service's
         ;; non-streaming endpoints already give us a string or parsed-JSON body.
-        (some? (:http-client response))      (with-open [^Closeable in (quick-closing-body response)]
-                                               (slurp-bounded in max-body-slurp-chars))
+        ;; `slurp-bounded` reads through a reader it closes, which closes the
+        ;; `quick-closing-body` proxy (and thus `:http-client`) — so no outer `with-open`,
+        ;; which would close the connection a second time.
+        (some? (:http-client response))      (slurp-bounded (quick-closing-body response) max-body-slurp-chars)
         :else                                (slurp-bounded body max-body-slurp-chars)))
     (catch Exception _ nil)))
 

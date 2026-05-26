@@ -248,6 +248,29 @@
         (is @closed?
             ":http-client must be closed after slurping the stream body")
         (is (= "stream body" (get-in (ex-data ex) [:response :body])))))
+    (testing "application/json streaming error bodies aren't eagerly parsed, so they still close the http-client"
+      ;; Regression (#1791): `post!` JSON-decodes application/json responses before `check-response!`.
+      ;; For a streaming request the body is an InputStream, so eager decoding would consume it
+      ;; unbounded and replace it with a map — making `coerce-body` take its non-InputStream branch
+      ;; and skip both the bounded slurp and the :http-client close. `maybe-parse-response-body-as-json`
+      ;; must leave InputStream bodies untouched.
+      (let [parse    #'metabot-v3.client/maybe-parse-response-body-as-json
+            closed?  (atom false)
+            json     "{\"error\":{\"message\":\"model decommissioned\"}}"
+            stream   (java.io.ByteArrayInputStream. (.getBytes json "UTF-8"))
+            {:keys [request]} (check-response!-input {})
+            response (parse {:status        500
+                             :reason-phrase "ISE"
+                             :headers       {"Content-Type" "application/json"}
+                             :body          stream
+                             :http-client   (reify Closeable (close [_] (reset! closed? true)))})]
+        (is (identical? stream (:body response))
+            "an InputStream body must be left as-is, not decoded into a map")
+        (let [ex (is (thrown? Exception (check! response request)))]
+          (is @closed?
+              ":http-client must still be closed for a JSON streaming error body")
+          (is (= json (get-in (ex-data ex) [:response :body]))
+              "the JSON error body is slurped (bounded) and surfaced verbatim in ex-data"))))
     (testing "InputStream bodies are bounded — a multi-MB upstream payload doesn't get fully slurped"
       ;; ByteArrayInputStream.available() returns unread bytes, so we can measure how much
       ;; coerce-body actually pulled off the stream without proxying read methods.
