@@ -562,15 +562,29 @@
                                          {:type "available" :full-incremental-run "false"}))))
       (is (== 120 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
                                          {:type "processed" :full-incremental-run "false"})))))
-    (testing "Incremental run whose driver result lacks a row count → no emission on either side"
+    (testing "Driver result missing :rows-affected (defensive contract) → no emission on either side"
       (analytics/clear! :metabase-transforms/incremental-rows)
       (run-cancelable-with-mocks!
        {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
        {:checkpoint-filter-field-id 42 :rows-available 999}
-       {:http-response "no rows-affected here"})
+       {:some-other-shape "no rows-affected here"})
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
                                          {:type "available" :full-incremental-run "false"}))))
       (is (== 0 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"})))))
+    (testing "Python-shaped driver result (clj-http response augmented with :rows-affected by run-python-transform-impl!) emits the metric"
+      (analytics/clear! :metabase-transforms/incremental-rows)
+      (run-cancelable-with-mocks!
+       {:id 1 :target {:type "table-incremental"} :last_checkpoint_value "42"}
+       {:checkpoint-filter-field-id 42 :rows-available 800}
+       {:status 200 :body {:exit_code 0} :rows-affected 750})
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 1 (:count (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "processed" :full-incremental-run "false"}))))
+      (is (== 800 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
+                                         {:type "available" :full-incremental-run "false"}))))
+      (is (== 750 (:sum (mt/metric-value system :metabase-transforms/incremental-rows
                                          {:type "processed" :full-incremental-run "false"})))))
     (testing "Incremental run whose source-range-params lacks :rows-available → no emission on either side"
       (analytics/clear! :metabase-transforms/incremental-rows)
