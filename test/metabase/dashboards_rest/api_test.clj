@@ -1247,7 +1247,9 @@
         (is (not= dash-id (:id response)))
         (let [copied-cards (t2/select :model/Card :dashboard_id (:id response))]
           (is (= 1 (count copied-cards)))
-          (is (not= card-id (:id (first copied-cards))))))))
+          (is (not= card-id (:id (first copied-cards)))))))))
+
+(deftest copy-dashboard-with-dashboard-questions-2
   (testing "`is_deep_copy=false` errors for dashboards containing dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1258,7 +1260,9 @@
       (is (= "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."
              (mt/user-http-request :rasta :post 400
                                    (format "dashboard/%d/copy" dash-id)
-                                   {:is_deep_copy false})))))
+                                   {:is_deep_copy false}))))))
+
+(deftest copy-dashboard-with-dashboard-questions-3
   (testing "`is_deep_copy=false` works for a dashboard without any dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1270,7 +1274,9 @@
                                            {:is_deep_copy false})]
         (is (some? (:id response)))
         (is (not= dash-id (:id response)))
-        (is (zero? (t2/count :model/Card :dashboard_id (:id response)))))))
+        (is (zero? (t2/count :model/Card :dashboard_id (:id response))))))))
+
+(deftest copy-dashboard-with-dashboard-questions-4
   (testing "`is_deep_copy=false` works for a dashboard with archived dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}

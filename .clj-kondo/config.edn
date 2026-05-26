@@ -213,7 +213,7 @@
   ;;      (testing ...))
   :metabase/validate-deftest-logically-separate-tests
   {:level      :warning
-   :min-length 70}
+   :min-length 65}
 
   ;; this is not enabled here, it is enabled below only for specific namespaces.
   :metabase/disallow-hardcoded-driver-names-in-tests

@@ -1019,8 +1019,9 @@
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-2
   (testing "Test that we can move a Collection"
     ;;
     ;;    +-> B                        +-> B ---> E
@@ -1033,8 +1034,9 @@
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-3
   (testing "Test that we can move a Collection and its descendants get moved as well"
     ;;
     ;;    +-> B                       +-> B ---> D -> E
@@ -1046,8 +1048,9 @@
       (collection/move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-4
   (testing "Test that we can move a Collection into the Root Collection"
     ;;
     ;;    +-> B                        +-> B
@@ -1060,8 +1063,9 @@
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
               "F" {"G" {}}}
-             (collection-locations (vals collections))))))
+             (collection-locations (vals collections)))))))
 
+(deftest move-nested-collections-test-5
   (testing "Test that we can move a Collection out of the Root Collection"
     ;;
     ;;    +-> B                               +-> B

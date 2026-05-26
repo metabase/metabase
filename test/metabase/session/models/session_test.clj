@@ -104,8 +104,9 @@
                     (mt/reset-inbox!)
                     (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
                       (is (= {}
-                             @mt/inbox))))))))))))
+                             @mt/inbox)))))))))))))
 
+(deftest send-email-on-first-login-from-new-device-test-2
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp [:model/User {user-id :id}]
       (mt/with-fake-inbox
