@@ -391,7 +391,7 @@
                   (recur (.readLine response-reader)))))))
         (when on-complete
           (on-complete @lines))))
-    (catch Throwable e
+    (catch Exception e
       (rethrow-with-context! "Error in request to AI Proxy" e))))
 
 (mu/defn select-metric-request
@@ -406,7 +406,7 @@
           response (post! url options)]
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
+    (catch Exception e
       (rethrow-with-context! "Error in request to AI Service" e))))
 
 (mu/defn find-outliers-request
@@ -419,7 +419,7 @@
           response (post! url options)]
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
+    (catch Exception e
       (rethrow-with-context! "Error in request to AI service" e))))
 
 (mu/defn fix-sql
