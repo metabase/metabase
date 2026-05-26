@@ -3,25 +3,16 @@ import { Badge, type BadgeProps, Grid, Text } from "metabase/ui";
 const args = {
   variant: "light",
   size: "sm",
-  color: "default",
   children: "1",
 };
 
 const argTypes = {
   variant: {
-    options: ["light", "filled"],
+    options: ["light", "filled-brand", "filled-error"],
     control: { type: "inline-radio" },
   },
   size: {
     options: ["xs", "sm"],
-    control: { type: "inline-radio" },
-  },
-  bg: {
-    options: [undefined, "brand" as const, "error" as const],
-    control: { type: "inline-radio" },
-  },
-  color: {
-    options: [undefined, "white" as const, "error" as const],
     control: { type: "inline-radio" },
   },
   children: {
@@ -29,17 +20,31 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = ({
-  bg,
-  children,
-  color,
-  size,
-  variant,
-}: BadgeProps) => (
-  <Badge bg={bg} color={color} size={size} variant={variant}>
-    {children}
-  </Badge>
-);
+const DefaultTemplate = ({ children, size, variant }: BadgeProps) => {
+  if (variant === "light") {
+    return (
+      <Badge size={size} variant="light">
+        {children}
+      </Badge>
+    );
+  }
+
+  if (variant === "filled-brand") {
+    return (
+      <Badge bg="brand" size={size} variant="filled">
+        {children}
+      </Badge>
+    );
+  }
+
+  if (variant === "filled-error") {
+    return (
+      <Badge bg="error" size={size} variant="filled">
+        {children}
+      </Badge>
+    );
+  }
+};
 
 const GridTemplate = ({ children }: BadgeProps) => (
   <Grid align="center" bg="background-primary" columns={3} p="xl" w="50rem">
@@ -117,7 +122,7 @@ export const SizesAndVariants = {
   name: "Sizes and variants",
   parameters: {
     controls: {
-      exclude: ["variant", "size", "color", "bg"],
+      exclude: ["variant", "size"],
     },
   },
 };
