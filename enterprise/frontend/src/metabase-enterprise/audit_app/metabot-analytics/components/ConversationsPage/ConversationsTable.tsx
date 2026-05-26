@@ -115,7 +115,7 @@ export function ConversationsTable({
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
                   {convo.profile_id && (
-                    <Badge size="sm" variant="light">
+                    <Badge size="xs" variant="light">
                       {renderMetabotProfileLabel(convo.profile_id)}
                     </Badge>
                   )}
