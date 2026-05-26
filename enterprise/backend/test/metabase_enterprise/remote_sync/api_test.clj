@@ -103,25 +103,21 @@
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
 
 (deftest test-connection-uses-body-overrides-test
-  (testing "POST /api/ee/remote-sync/test-connection passes body overrides to check-git-settings!"
+  (testing "POST /api/ee/remote-sync/test-connection passes URL and token from the body through to the lsRemote call"
     (let [captured (atom nil)]
       (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                          remote-sync-token  "saved-token"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (fn [s] (reset! captured s) nil)
-                      source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+        (with-redefs [settings/check-git-settings! (constantly nil)
+                      source.git/git-source        (fn [url _ token _]
+                                                     (reset! captured {:url url :token token})
+                                                     {:fake-source true})
                       source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
-                                {:remote-sync-url    "https://github.com/other/repo.git"
-                                 :remote-sync-token  "new-token"
-                                 :remote-sync-branch "develop"
-                                 :remote-sync-type   "read-write"})
-          (is (= {:remote-sync-url    "https://github.com/other/repo.git"
-                  :remote-sync-token  "new-token"
-                  :remote-sync-branch "develop"
-                  :remote-sync-type   :read-write}
-                 @captured)))))))
+                                {:remote-sync-url   "https://github.com/other/repo.git"
+                                 :remote-sync-token "new-token"})
+          (is (= {:url "https://github.com/other/repo.git" :token "new-token"} @captured)))))))
 
 (deftest test-connection-treats-obfuscated-token-as-unchanged-test
   (testing "POST /api/ee/remote-sync/test-connection uses stored token when body sends the obfuscated value"
@@ -131,12 +127,14 @@
                                          remote-sync-token  full-token
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (fn [s] (reset! captured s) nil)
-                      source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+        (with-redefs [settings/check-git-settings! (constantly nil)
+                      source.git/git-source        (fn [_ _ token _]
+                                                     (reset! captured token)
+                                                     {:fake-source true})
                       source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
-          (is (= full-token (:remote-sync-token @captured))
+          (is (= full-token @captured)
               "Obfuscated tokens must be replaced with the stored token before testing"))))))
 
 (deftest test-connection-requires-superuser-test
@@ -152,7 +150,7 @@
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))
 
 (deftest test-connection-returns-friendly-message-on-failure-test
-  (testing "POST /api/ee/remote-sync/test-connection wraps check-git-settings! exceptions in a user-friendly message"
+  (testing "POST /api/ee/remote-sync/test-connection wraps exceptions in a user-friendly message"
     (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                        remote-sync-token  "bad-token"
                                        remote-sync-branch "main"
@@ -164,10 +162,6 @@
       (testing "Repository-not-found maps to URL error"
         (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
           (is (= "Repository not found: Please check the repository URL"
-                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))
-      (testing "Branch failure maps to branch error"
-        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Invalid branch name" {})))]
-          (is (= "Branch error: Please check the specified branch exists"
                  (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))))
 
 ;;; ------------------------------------------------- Branches Endpoint -------------------------------------------------

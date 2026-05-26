@@ -10,7 +10,7 @@ import type {
   TestRemoteSyncConnectionRequest,
 } from "metabase-types/api";
 
-import { BRANCH_KEY, TOKEN_KEY, TYPE_KEY, URL_KEY } from "../../constants";
+import { TOKEN_KEY, URL_KEY } from "../../constants";
 
 interface TestConnectionButtonProps {
   values: RemoteSyncConfigurationSettings;
@@ -24,8 +24,6 @@ export const TestConnectionButton = ({ values }: TestConnectionButtonProps) => {
     const body: TestRemoteSyncConnectionRequest = {
       [URL_KEY]: values[URL_KEY],
       [TOKEN_KEY]: values[TOKEN_KEY],
-      [BRANCH_KEY]: values[BRANCH_KEY],
-      [TYPE_KEY]: values[TYPE_KEY],
     };
 
     try {

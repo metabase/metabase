@@ -141,8 +141,6 @@ export type CreateBranchResponse = {
 export type TestRemoteSyncConnectionRequest = {
   "remote-sync-url"?: string | null;
   "remote-sync-token"?: string | null;
-  "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "read-only" | "read-write" | null;
 };
 
 export type TestRemoteSyncConnectionResponse = {

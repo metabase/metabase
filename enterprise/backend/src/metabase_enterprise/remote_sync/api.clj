@@ -142,48 +142,41 @@
     (t2/hydrate (remote-sync.task/most-recent-task) :status)))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
-  "Test whether the configured Remote Sync credentials can reach the git repository.
+  "Test whether the Remote Sync credentials can reach the git repository.
 
-  When called with an empty body, validates the currently saved settings. When the body provides
-  any of `remote-sync-url`, `remote-sync-token`, `remote-sync-branch`, or `remote-sync-type`, those
-  override the saved values for the test — useful for verifying a new Personal Access Token before
-  saving. An obfuscated token (matching the existing token's masked representation) is treated as
-  \"unchanged\" and the stored token value is used for the test.
+  When called with an empty body, validates the currently saved URL and token. When the body provides
+  `remote-sync-url` or `remote-sync-token`, those override the saved values — useful for verifying a
+  new Personal Access Token before saving. An obfuscated token (matching the existing token's masked
+  representation) is treated as \"unchanged\" and the stored token value is used for the test.
+
+  Only validates connection and authentication; branch existence is not checked here.
 
   Returns `{:status :success}` on success. On failure, returns a 400 with a user-friendly error
-  message describing the connection problem (network, authentication, repository, or branch error).
+  message describing the connection problem.
 
   Requires superuser permissions."
   [_route-params
    _query-params
-   {:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type] :as body}
+   {:keys [remote-sync-url remote-sync-token] :as body}
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
-       [:remote-sync-token {:optional true} [:maybe :string]]
-       [:remote-sync-branch {:optional true} [:maybe :string]]
-       [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]]]
+       [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [current-token  (settings/remote-sync-token)
-        obfuscated?    (and remote-sync-token
-                            (= remote-sync-token (setting/obfuscate-value current-token)))
+  (let [current-token   (settings/remote-sync-token)
+        obfuscated?     (and remote-sync-token
+                             (= remote-sync-token (setting/obfuscate-value current-token)))
         effective-token (if (or obfuscated? (not (contains? body :remote-sync-token)))
                           current-token
                           remote-sync-token)
-        effective-settings {:remote-sync-url    (or remote-sync-url (settings/remote-sync-url))
-                            :remote-sync-token  effective-token
-                            :remote-sync-branch (or remote-sync-branch (settings/remote-sync-branch))
-                            :remote-sync-type   (or remote-sync-type (settings/remote-sync-type))}]
-    (api/check-400 (not (str/blank? (:remote-sync-url effective-settings)))
-                   "Remote sync is not configured.")
+        effective-url   (or remote-sync-url (settings/remote-sync-url))]
+    (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
     (try
-      (settings/check-git-settings! effective-settings)
-      ;; check-git-settings! only authenticates against the remote in :read-only mode with a
-      ;; non-blank branch. Force a fresh lsRemote here so a rotated token is detected on every
-      ;; Test Connection click, even when the cached JGit instance would otherwise short-circuit.
-      (-> (source.git/git-source (:remote-sync-url effective-settings)
-                                 "HEAD"
-                                 (:remote-sync-token effective-settings)
-                                 nil)
+      ;; Runs the URL protocol check; branch/type omitted so the branch-existence path is skipped.
+      (settings/check-git-settings! {:remote-sync-url   effective-url
+                                     :remote-sync-token effective-token})
+      ;; Force a fresh lsRemote so a rotated token is detected on every click, even when the
+      ;; cached JGit instance would otherwise short-circuit.
+      (-> (source.git/git-source effective-url "HEAD" effective-token nil)
           source.git/branches)
       {:status :success}
       (catch Exception e

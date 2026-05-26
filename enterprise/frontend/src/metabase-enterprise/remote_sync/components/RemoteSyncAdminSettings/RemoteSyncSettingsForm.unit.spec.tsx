@@ -556,7 +556,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should POST the current form values to the test-connection endpoint", async () => {
+    it("should POST only the URL and token to the test-connection endpoint", async () => {
       setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -580,8 +580,6 @@ describe("RemoteSyncSettingsForm", () => {
         expect(testRequest?.body).toEqual({
           "remote-sync-url": "https://github.com/test/repo.git",
           "remote-sync-token": "ghp_abc123",
-          "remote-sync-branch": "main",
-          "remote-sync-type": "read-only",
         });
       });
     });
