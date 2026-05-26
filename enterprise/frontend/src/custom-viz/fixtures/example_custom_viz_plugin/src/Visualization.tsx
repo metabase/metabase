@@ -18,7 +18,7 @@ export const Visualization = (
     throw new Error("Value and threshold need to be numbers");
   }
 
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
     setLastClickValue(value);
     onClick({
       value,
@@ -29,9 +29,9 @@ export const Visualization = (
       origin: { row: rows[0], cols },
       data: [{ value, col: cols[0] }],
     });
-  };
+  }
 
-  const handleHoverEnter = (event: MouseEvent<HTMLDivElement>) => {
+  function handleHoverEnter(event: MouseEvent<HTMLDivElement>) {
     setLastHoverValue(value);
     onHover({
       value,
@@ -40,11 +40,11 @@ export const Visualization = (
       element: event.currentTarget,
       data: [{ key: cols[0].name, value, col: cols[0] }],
     });
-  };
+  }
 
-  const handleHoverLeave = () => {
+  function handleHoverLeave() {
     onHover(null);
-  };
+  }
 
   return (
     <div>
