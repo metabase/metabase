@@ -241,10 +241,10 @@
     (testing "Items whose root ancestor collection is a library type rank above non-library items"
       (with-index-contents!
         [{:model "card" :id 1 :name "plain card"}
-         {:model "card" :id 2 :name "lib-tree card library"            :root_collection_type "library"}
-         {:model "card" :id 3 :name "lib-tree card library-data"       :root_collection_type "library-data"}
-         {:model "card" :id 4 :name "lib-tree card library-metrics"    :root_collection_type "library-metrics"}
-         {:model "card" :id 5 :name "trashed card"                     :root_collection_type "trash"}]
+         {:model "card" :id 2 :name "lib-tree card library"         :root_collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :root_collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :root_collection_type "library-metrics"}
+         {:model "card" :id 5 :name "trashed card"                  :root_collection_type "trash"}]
         (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
           (testing "with positive :library weight, library items come first"
             (is (= [true true true false false]

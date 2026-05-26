@@ -327,13 +327,13 @@
                    :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                    :model/Collection other     {:name "non-library"    :location "/"}]
       (with-index-contents
-        [{:model "card" :id 1 :name "plain card"                       :collection_id (:id other)    :collection_location (:location other)}
-         {:model "card" :id 2 :name "lib-tree card library"            :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
-         {:model "card" :id 3 :name "lib-tree card library-data"       :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
-         {:model "card" :id 4 :name "lib-tree card library-metrics"    :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
-         {:model "card" :id 5 :name "lib-tree card sub"                :collection_id (:id sub)      :collection_location (:location sub)}
-         {:model "card" :id 6 :name "lib-tree card sub-sub"            :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
-         {:model "card" :id 7 :name "trashed card"                     :collection_type "trash"}]
+        [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
+         {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+         {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
+         {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+         {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
         (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
           (testing "with positive :library weight, items inside library trees come first"
             (is (= [true true true true true false false]
