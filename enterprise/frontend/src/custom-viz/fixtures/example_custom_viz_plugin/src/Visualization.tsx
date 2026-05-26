@@ -1,70 +1,57 @@
-import React from "react";
+import { useState } from "react";
+import type { MouseEvent } from "react";
 import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
 import type { Settings } from "./types";
 
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
-  var series = props.series;
-  var settings = props.settings;
-  var onClick = props.onClick;
-  var onHover = props.onHover;
-  var threshold = settings.threshold;
-  var data = series[0].data;
-  var cols = data.cols;
-  var rows = data.rows;
-  var value = rows[0][0];
+  const { series, settings, onClick, onHover, locale } = props;
+  const { threshold } = settings;
+  const { cols, rows } = series[0].data;
+  const value = rows[0][0];
 
-  var lastClickState = React.useState<RowValue | null>(null);
-  var lastClickValue = lastClickState[0];
-  var setLastClickValue = lastClickState[1];
-
-  var lastHoverState = React.useState<RowValue | null>(null);
-  var lastHoverValue = lastHoverState[0];
-  var setLastHoverValue = lastHoverState[1];
+  const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
+  const [lastHoverValue, setLastHoverValue] = useState<RowValue | null>(null);
 
   if (typeof value !== "number" || typeof threshold !== "number") {
     throw new Error("Value and threshold need to be numbers");
   }
 
-  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setLastClickValue(value);
     onClick({
-      value: value,
+      value,
       column: cols[0],
-      settings: settings,
+      settings,
       event: event.nativeEvent,
       element: event.currentTarget,
-      origin: { row: rows[0], cols: cols },
-      data: [{ value: value, col: cols[0] }],
+      origin: { row: rows[0], cols },
+      data: [{ value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverEnter(event: React.MouseEvent<HTMLDivElement>) {
+  const handleHoverEnter = (event: MouseEvent<HTMLDivElement>) => {
     setLastHoverValue(value);
     onHover({
-      value: value,
+      value,
       column: cols[0],
       event: event.nativeEvent,
       element: event.currentTarget,
-      data: [{ key: cols[0].name, value: value, col: cols[0] }],
+      data: [{ key: cols[0].name, value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverLeave() {
+  const handleHoverLeave = () => {
     onHover(null);
-  }
-
-  if (typeof value !== "number" || typeof threshold !== "number") {
-    throw new Error("Value and threshold need to be numbers");
-  }
+  };
 
   return (
     <div>
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
       <div>Value: {value}</div>
-      <div data-testid="demo-viz-locale">Locale: {props.locale}</div>
+      <div data-testid="demo-viz-locale">Locale: {locale}</div>
       <button
         type="button"
         data-testid="demo-viz-click-target"
