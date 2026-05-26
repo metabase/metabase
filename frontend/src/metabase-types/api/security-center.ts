@@ -1,3 +1,5 @@
+import type { NotificationRecipient } from "./notification";
+
 export type AdvisoryMatchStatus =
   | "active"
   | "resolved"
@@ -41,3 +43,8 @@ export type AcknowledgeAdvisoryResponse = {
 };
 
 export type AcknowledgeAdvisoriesResponse = AcknowledgeAdvisoryResponse[];
+
+export type SendTestNotificationRequest = {
+  emailRecipients: NotificationRecipient[];
+  slackChannel: string | null;
+};
