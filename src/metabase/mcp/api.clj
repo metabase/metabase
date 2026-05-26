@@ -77,7 +77,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {} :resources {}}
+    :capabilities    {:tools {:listChanged true} :resources {}}
     :serverInfo      server-info}))
 
 (defn- handle-tools-list [id _params token-scopes]
@@ -257,10 +257,18 @@
           :else
           (json-response 200 responses))))))
 
+(def ^:private tools-list-changed-notification
+  {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
+
 (defn- handle-get
-  "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
+  "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
+   Polls the tool manifest hash on each keepalive tick — if the visible tool set has
+   changed since the previous tick, emits an MCP `notifications/tools/list_changed`
+   message so the client knows to refetch `tools/list`. Stateless: each connection
+   tracks its own last-seen hash; no shared registry."
   [_user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
+        token-scopes (:token-scopes request)
         session-err (session-error-response session-id)]
     (cond
       (some? session-err)
@@ -273,12 +281,16 @@
                    :status       200}
                   [os canceled-chan]
                    (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop []
+                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
                        (when-not (a/poll! canceled-chan)
                          (.write writer ": keepalive\n\n")
                          (.flush writer)
                          (Thread/sleep 30000)
-                         (recur)))))]
+                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
+                           (when (not= current-hash last-hash)
+                             (.write writer ^String (sse-body [tools-list-changed-notification]))
+                             (.flush writer))
+                           (recur current-hash))))))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
