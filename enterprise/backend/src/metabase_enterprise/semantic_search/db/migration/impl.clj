@@ -89,9 +89,18 @@
 (defn- add-root-collection-type-column!
   "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can
   match items in arbitrarily deep sub-collections of a library tree.
-  Backfills existing rows from the gate's stored document JSON, falling back to the row's own
-  `collection_type` when it equals a library root type. Items whose gate doc lacks the field
-  remain NULL until re-ingested naturally."
+
+  Backfill source order:
+    1. The gate's stored document JSON (`document->>'root_collection_type'`). Authoritative when
+       the gate doc was written by a spec that computes the field.
+    2. The row's own `collection_type` when it already equals a library root type. This works
+       because library-typed collections cannot currently have sub-collections — every indexed
+       row with `collection_type` in the library set is necessarily at the root of its tree.
+       If/when library sub-collections become possible, this fallback must be replaced with a
+       proper materialized-path lookup against the application DB.
+
+  Only library root types are considered for the fallback; other root types (`trash`,
+  `instance-analytics`, etc.) are irrelevant to the `:library` scorer and stay NULL."
   [tx index-metadata]
   (let [gate-table       (:gate-table-name index-metadata)
         library-types    [[:inline "library"]
