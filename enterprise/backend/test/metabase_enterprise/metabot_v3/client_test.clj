@@ -248,6 +248,17 @@
         (is @closed?
             ":http-client must be closed after slurping the stream body")
         (is (= "stream body" (get-in (ex-data ex) [:response :body])))))
+    (testing "InputStream bodies are bounded — a multi-MB upstream payload doesn't get fully slurped"
+      ;; ByteArrayInputStream.available() returns unread bytes, so we can measure how much
+      ;; coerce-body actually pulled off the stream without proxying read methods.
+      (let [body-bytes (.getBytes ^String (apply str (repeat 2000000 \x)))
+            stream     (java.io.ByteArrayInputStream. body-bytes)
+            {:keys [request]} (check-response!-input {})
+            response   {:status 502 :reason-phrase "Bad Gateway" :body stream}
+            _          (is (thrown? Exception (check! response request)))
+            consumed   (- (alength body-bytes) (.available stream))]
+        (is (< consumed (alength body-bytes))
+            "should not consume the entire 2MB stream just to surface an error preview")))
     (testing "long bodies are truncated in the exception message but kept in full in ex-data"
       (let [long-body (apply str (repeat 2000 \x))
             {:keys [response request]} (check-response!-input {:status        500

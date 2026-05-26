@@ -85,6 +85,27 @@
   "Cap on the body snippet spliced into the exception message."
   500)
 
+(def ^:private max-body-slurp-chars
+  "Cap on how many chars we read off an upstream InputStream body when coerce-body slurps it."
+  ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
+  ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
+  1000000)
+
+(defn- slurp-bounded
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input."
+  [r limit]
+  (try
+    (with-open [rdr (io/reader r :encoding "UTF-8")]
+      (let [buf (char-array limit)]
+        (loop [off 0]
+          (if (= off limit)
+            (String. ^chars buf (int 0) (int limit))
+            (let [n (.read ^java.io.Reader rdr buf off (- limit off))]
+              (if (neg? n)
+                (when (pos? off) (String. ^chars buf (int 0) (int off)))
+                (recur (+ off n))))))))
+    (catch Exception _ nil)))
+
 (defn- quick-closing-body
   "Wrap a streaming response's body so closing the stream also closes the underlying `:http-client`.
   Without this, ContentLengthInputStream-wrapped bodies never close the underlying connection.
@@ -100,7 +121,9 @@
 (defn- coerce-body
   "Read a response body into a printable value.
   For `InputStream` bodies (the streaming-response error path) the underlying connection is
-  closed via [[quick-closing-body]] so we don't leak it. Returns nil on read error."
+  closed via [[quick-closing-body]] so we don't leak it, and the slurp is bounded at
+  [[max-body-slurp-chars]] so a multi-MB upstream payload can't blow up memory. Returns
+  nil on read error."
   [response]
   (try
     (let [body (:body response)]
@@ -109,25 +132,33 @@
         ;; Only the streaming-request path supplies a :http-client; the AI service's
         ;; non-streaming endpoints already give us a string or parsed-JSON body.
         (some? (:http-client response))      (with-open [in (quick-closing-body response)]
-                                               (slurp in))
-        :else                                (slurp body)))
+                                               (slurp-bounded in max-body-slurp-chars))
+        :else                                (slurp-bounded body max-body-slurp-chars)))
     (catch Exception _ nil)))
 
 (defn- extract-error-message
-  "First non-blank scalar under `[:error :message]`, `:error`, `:detail`, or `:message`, or nil."
+  "First non-blank string under `[:error :message]`, `:error`, `:detail`, or `:message`.
+  Non-strings and whitespace-only strings fall through to the next key."
   [m]
-  ;; Scalars only — a raw map/vector under one of these keys would otherwise `str`-coerce and leak the
-  ;; envelope into the user-facing message. Per-lookup filtering also means a non-string or blank value
-  ;; at one key falls through to the next, e.g. `{:error "" :detail "real msg"}` → "real msg".
-  (let [scalar (fn [v] (when-not (coll? v) (not-empty (str/trim (str v)))))]
-    (or (scalar (get-in m [:error :message]))
-        (scalar (get m :error))
-        (scalar (get m :detail))
-        (scalar (get m :message)))))
+  ;; Filter per-lookup so a structured value (e.g. {:error {:code 500}}) never gets
+  ;; str-coerced into the user-facing exception message — bad shapes fall through to
+  ;; the next key instead.
+  (letfn [(s [v] (when (string? v) (not-empty (str/trim v))))]
+    (or (s (get-in m [:error :message]))
+        (s (:error m))
+        (s (:detail m))
+        (s (:message m)))))
+
+(defn- truncate-to-preview-limit
+  "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
+  [s]
+  (if (<= (count s) max-body-preview-chars)
+    s
+    (str (subs s 0 max-body-preview-chars) "…")))
 
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
-  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` (and warn).
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn.
   Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
@@ -140,17 +171,15 @@
                                            (string? head) head
                                            :else          nil))
                     :else              nil)
-        ;; pr-str fallback gives operators something to act on — better some context in the user-facing
-        ;; message than none, and the warn signals "add this envelope shape to extract-error-message".
+        ;; Surface *some* context to the user even for unrecognised shapes — the warn
+        ;; signals operators to add the new envelope shape to [[extract-error-message]].
+        ;; Cap pr-str once so a multi-MB body can't go unbounded into the warn line.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [printed (pr-str body)]
-                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" printed)
-                          printed)))]
-    (when-let [trimmed (some-> s str/trim not-empty)]
-      (if (<= (count trimmed) max-body-preview-chars)
-        trimmed
-        (str (subs trimmed 0 max-body-preview-chars) "…")))))
+                        (let [capped (truncate-to-preview-limit (pr-str body))]
+                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
+                          capped)))]
+    (some-> s str/trim not-empty truncate-to-preview-limit)))
 
 (defn- check-response!
   "Return the response body on success (HTTP 200 or 202); throw on failure.
