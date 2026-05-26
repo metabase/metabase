@@ -36125,6 +36125,44 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "prompt_count" : {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "status" : {
+                        "const" : "generated"
+                      }
+                    },
+                    "required" : [ "status", "prompt_count" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "no-library-content"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "ai-produced-no-prompts"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {

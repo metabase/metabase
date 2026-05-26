@@ -14048,6 +14048,59 @@
           "required" : [ "enabled" ]
         }
       },
+      "metabase.workspaces.core.table-namespace" : {
+        "description" : "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present\n   depending on the driver's `qualified-name-components`; at least one must\n   populate. Empty-string `\"\"` is reserved for the storage layer; the atom\n   carries `nil`/missing for absent slots.",
+        "type" : "object",
+        "properties" : {
+          "db" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.workspaces.core.workspace-database-config" : {
+        "description" : "Per-database workspace config: `:input_schemas` is a vector of driver-opaque\n   schema names (the source schemas the workspace reads from) — may be empty\n   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts\n   as the implicit input namespace; `:output` is a single namespace map (the\n   workspace's isolation schema, expanded with the warehouse catalog at boot).",
+        "type" : "object",
+        "properties" : {
+          "input_schemas" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "output" : {
+            "$ref" : "#/components/schemas/metabase.workspaces.core.table-namespace"
+          }
+        },
+        "required" : [ "input_schemas", "output" ]
+      },
+      "metabase.workspaces.core.workspace-instance-config" : {
+        "description" : "The shape stored in the EE `instance-workspace` setting after the `:workspace`\n   config.yml loader has resolved database names to ids. Database keys are integer\n   ids (post-resolution); the wire format with name keys lives in\n   `metabase-enterprise.advanced-config.file.workspace`.",
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-database-config"
+            }
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "name", "databases" ]
+      },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
@@ -23612,6 +23665,55 @@
         "tags" : [ "/api/ee/action-v2" ]
       }
     },
+    "/api/ee/advanced-config" : {
+      "post" : {
+        "operationId" : "post-api-ee-advanced-config",
+        "summary" : "POST /api/ee/advanced-config",
+        "description" : "Apply an uploaded `config.yml` to this instance. Runs the same per-section\n  initializers (`settings`, `databases`, `users`, `api-keys`, `workspace`, ...)\n  the boot-time loader runs. Superuser-only.\n\n  Unlike the boot-time loader, `{{env VAR}}` templates are NOT expanded — the\n  file's values are inserted verbatim, so an admin's upload can't read\n  server-side environment variables it didn't intend to.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "config" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "config" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/advanced-config" ]
+      }
+    },
     "/api/ee/advanced-permissions/application/graph" : {
       "get" : {
         "operationId" : "get-api-ee-advanced-permissions-application-graph",
@@ -29931,7 +30033,7 @@
       "post" : {
         "operationId" : "post-api-ee-security-center-test-notification",
         "summary" : "POST /api/ee/security-center/test-notification",
-        "description" : "Send a test notification through the configured Security Center channels.",
+        "description" : "Send a test notification through the given Security Center channels.\n\n   The request body lets callers pass the unsaved notification config from the\n   dialog so the test reflects current form state, not the persisted settings.\n   Both fields are optional; when omitted, the saved setting is used.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -29955,6 +30057,34 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "email_recipients" : {
+                    "oneOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack_channel" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/security-center" ]
@@ -31381,7 +31511,7 @@
       "get" : {
         "operationId" : "get-api-ee-workspace-instance-current",
         "summary" : "GET /api/ee/workspace-instance/current",
-        "description" : "Read-only summary of the workspace loaded on this instance.\n\n  Reads from the in-process atom populated at boot by the `:workspace` section of\n  `config.yml`. Returns `nil` when no workspace was loaded — i.e. this is a manager-only\n  instance, or no `config.yml` was present at boot.",
+        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31389,52 +31519,158 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "oneOf" : [ {
-                    "type" : "object",
-                    "properties" : {
-                      "databases" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "oneOf" : [ {
                         "type" : "object",
-                        "additionalProperties" : {
-                          "type" : "object",
-                          "properties" : {
-                            "input_schemas" : {
-                              "type" : "array",
-                              "items" : {
-                                "type" : "string"
-                              }
-                            },
-                            "output" : {
+                        "properties" : {
+                          "databases" : {
+                            "type" : "object",
+                            "additionalProperties" : {
                               "type" : "object",
                               "properties" : {
-                                "db" : {
-                                  "oneOf" : [ {
+                                "input_schemas" : {
+                                  "type" : "array",
+                                  "items" : {
                                     "type" : "string"
-                                  }, {
-                                    "type" : "null"
-                                  } ]
+                                  }
                                 },
-                                "schema" : {
-                                  "oneOf" : [ {
-                                    "type" : "string"
-                                  }, {
-                                    "type" : "null"
-                                  } ]
+                                "output" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "db" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "schema" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  }
                                 }
-                              }
+                              },
+                              "required" : [ "input_schemas", "output" ]
                             }
                           },
-                          "required" : [ "input_schemas", "output" ]
-                        }
-                      },
-                      "name" : {
-                        "type" : "string",
-                        "minLength" : 1
+                          "name" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          }
+                        },
+                        "required" : [ "name", "databases" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-workspace-instance-current",
+        "summary" : "POST /api/ee/workspace-instance/current",
+        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "databases" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "object",
+                        "properties" : {
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "output" : {
+                            "type" : "object",
+                            "properties" : {
+                              "db" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "schema" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              }
+                            }
+                          }
+                        },
+                        "required" : [ "input_schemas", "output" ]
                       }
                     },
-                    "required" : [ "name", "databases" ]
-                  }, {
-                    "type" : "null"
-                  } ]
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "name", "databases" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-instance-config"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-workspace-instance-current",
+        "summary" : "DELETE /api/ee/workspace-instance/current",
+        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }
@@ -36370,7 +36606,45 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "prompt_count" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "status" : {
+                        "const" : "generated"
+                      }
+                    },
+                    "required" : [ "status", "prompt_count" ],
+                    "additionalProperties" : false
+                  }, {
+                    "type" : "object",
+                    "properties" : {
+                      "status" : {
+                        "const" : "no-library-content"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "additionalProperties" : false
+                  }, {
+                    "type" : "object",
+                    "properties" : {
+                      "status" : {
+                        "const" : "ai-produced-no-prompts"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "additionalProperties" : false
+                  } ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
