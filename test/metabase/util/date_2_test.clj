@@ -518,80 +518,61 @@
           [[(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             (t/zoned-date-time "2011-04-17T15:00:00Z[UTC]")
             "UTC"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             (t/zoned-date-time "2011-04-18T00:00:00+09:00[Asia/Tokyo]")
             "Asia/Tokyo"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "UTC"))
             (t/zoned-date-time "2011-04-18T09:00:00+09:00[Asia/Tokyo]")
             "Asia/Tokyo"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "UTC"))
             (t/zoned-date-time "2011-04-18T00:00:00Z[UTC]")
             "UTC"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 9))
             (t/offset-date-time "2011-04-17T15:00:00Z")
             "UTC"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 9))
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0))
             (t/offset-date-time "2011-04-18T09:00:00+09:00")
             "Asia/Tokyo"]
-
            ;; instants should return arg as-is since they're always normalized to UTC
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "Asia/Tokyo"]
-
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/local-date-time 2011 4 18 0 0 0 0)
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-date-time 2011 4 18 0 0 0 0)
             (t/offset-date-time "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/local-date 2011 4 18)
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-date 2011 4 18)
             (t/offset-date-time "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
             (t/offset-time "10:55:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
             (t/offset-time "19:55:00+09:00")
             "Asia/Tokyo"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
             (t/offset-time "19:55:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
             (t/offset-time "04:55:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-time 19 55)
             (t/offset-time "19:55:00Z")
             "UTC"]
-
            [(t/local-time 19 55)
             (t/offset-time "19:55:00+09:00")
             "Asia/Tokyo"]]]

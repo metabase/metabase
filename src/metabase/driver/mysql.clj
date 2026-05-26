@@ -443,7 +443,6 @@
      ;; non-positive position
      [:< pos 1]
      ""
-
      ;; position greater than number of parts
      [:> pos
       [:+ 1
@@ -453,7 +452,6 @@
           [:length [:replace text div ""]]]
          [:length div]]]]]
      ""
-
      ;; This needs some explanation.
      ;; The inner substring_index returns the string up to the `pos` instance of `div`
      ;; The outer substring_index returns the string from the last instance of `div` to the end
@@ -1194,14 +1192,12 @@
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
                         [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
                         [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
-
                         [[:and
                           ;; mariadb
                           [:!= :generation_expression nil]
                           ;; mysql
                           [:<> :generation_expression ""]]
                          :database-is-generated]
-
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where

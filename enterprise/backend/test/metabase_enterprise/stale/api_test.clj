@@ -160,12 +160,10 @@
                      {:location (collection/children-location top-coll)}]
         (stale.test/with-stale-items [:model/Card card-in-root {:name "A Card in root"}
                                       :model/Dashboard dashboard-in-root {:name "B Dashboard in root"}
-
                                       :model/Card card-in-top-level-coll {:name "C Card in coll"
                                                                           :collection_id top-coll-id}
                                       :model/Dashboard dashboard-in-top-level-coll {:name "D Dashboard in coll"
                                                                                     :collection_id top-coll-id}
-
                                       :model/Card card-in-child-coll {:name "E Card in coll"
                                                                       :collection_id child-coll-id}
                                       :model/Dashboard dashboard-in-child-coll {:name "F Dashboard in coll"
@@ -173,11 +171,9 @@
           (is (= [;; the first two items are in the root collection
                   {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
                   {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
-
                   ;; next we have two items in our top-level collection
                   {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
                   {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
-
                   ;; finally we have 2 items in our child collection
                   {:id child-coll-id
                    :name child-coll-name
@@ -189,7 +185,6 @@
                    :type nil
                    :authority_level nil
                    :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
-
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true :sort_column "name")
                       :data
