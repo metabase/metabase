@@ -251,14 +251,22 @@
     (testing "InputStream bodies are bounded — a multi-MB upstream payload doesn't get fully slurped"
       ;; ByteArrayInputStream.available() returns unread bytes, so we can measure how much
       ;; coerce-body actually pulled off the stream without proxying read methods.
-      (let [body-bytes (.getBytes ^String (apply str (repeat 2000000 \x)))
+      (let [cap        @#'metabot-v3.client/max-body-slurp-chars
+            body-bytes (.getBytes ^String (apply str (repeat (* 2 cap) \x)))
             stream     (java.io.ByteArrayInputStream. body-bytes)
             {:keys [request]} (check-response!-input {})
             response   {:status 502 :reason-phrase "Bad Gateway" :body stream}
             _          (is (thrown? Exception (check! response request)))
-            consumed   (- (alength body-bytes) (.available stream))]
-        (is (< consumed (alength body-bytes))
-            "should not consume the entire 2MB stream just to surface an error preview")))
+            consumed   (- (alength body-bytes) (.available stream))
+            ;; ASCII body, so 1 byte == 1 char: the slurp must pull at least `cap` bytes to
+            ;; produce `cap` chars, and at most `cap` plus the reader's look-ahead. 64 KB covers
+            ;; the BufferedReader + StreamDecoder buffers; bound from above so silently raising
+            ;; the cap (e.g. to 1.5 MB) regresses this test instead of slipping through.
+            look-ahead (* 64 1024)]
+        (is (<= cap consumed)
+            "should read up to the configured cap to surface as much of the error preview as it can")
+        (is (<= consumed (+ cap look-ahead))
+            "should stop near max-body-slurp-chars, not slurp the whole 2MB stream")))
     (testing "long bodies are truncated in the exception message but kept in full in ex-data"
       (let [long-body (apply str (repeat 2000 \x))
             {:keys [response request]} (check-response!-input {:status        500

@@ -85,25 +85,42 @@
   "Cap on the body snippet spliced into the exception message."
   500)
 
+(def ^:private max-body-log-chars
+  "Cap on the body `pr-str` spliced into warn/error log lines. Larger than the user-facing
+  preview cap since operators want more context, but still bounded so a multi-MB body — a
+  parsed-JSON map from a non-streaming endpoint, or a near-cap slurped stream — can't flood
+  the logs. The full body always survives in `ex-data`."
+  2000)
+
 (def ^:private max-body-slurp-chars
   "Cap on how many chars we read off an upstream InputStream body when coerce-body slurps it."
   ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
   ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
   1000000)
 
+(def ^:private body-slurp-chunk-chars
+  "Read-chunk size for [[slurp-bounded]]. Keeps the transient buffer small so a tiny error
+  envelope costs a tiny allocation; only a body that actually reaches the cap pays for it."
+  8192)
+
 (defn- slurp-bounded
-  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input."
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input.
+  Grows a `StringBuilder` in [[body-slurp-chunk-chars]] chunks so memory scales with the real
+  body rather than pre-allocating the worst-case `limit`-sized buffer up front."
   [r limit]
   (try
     (with-open [rdr (io/reader r :encoding "UTF-8")]
-      (let [buf (char-array limit)]
-        (loop [off 0]
-          (if (= off limit)
-            (String. ^chars buf (int 0) (int limit))
-            (let [n (.read ^java.io.Reader rdr buf off (- limit off))]
-              (if (neg? n)
-                (when (pos? off) (String. ^chars buf (int 0) (int off)))
-                (recur (+ off n))))))))
+      (let [buf (char-array body-slurp-chunk-chars)
+            sb  (StringBuilder.)]
+        (loop []
+          (let [remaining (- limit (.length sb))]
+            (if (<= remaining 0)
+              (str sb)
+              (let [n (.read ^java.io.Reader rdr buf 0 (min remaining body-slurp-chunk-chars))]
+                (if (neg? n)
+                  (when (pos? (.length sb)) (str sb))
+                  (do (.append sb buf 0 n)
+                      (recur)))))))))
     (catch Exception _ nil)))
 
 (defn- quick-closing-body
@@ -149,12 +166,22 @@
         (s (:detail m))
         (s (:message m)))))
 
+(defn- truncate-to
+  "Cap `s` at `limit` chars with a trailing ellipsis when it overflows."
+  [s limit]
+  (if (<= (count s) limit)
+    s
+    (str (subs s 0 limit) "…")))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
-  (if (<= (count s) max-body-preview-chars)
-    s
-    (str (subs s 0 max-body-preview-chars) "…")))
+  (truncate-to s max-body-preview-chars))
+
+(defn- body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+  [body]
+  (truncate-to (pr-str body) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
@@ -201,7 +228,7 @@
       ;; `log/warn` would `pr-str` a trailing map into the message, not record it as
       ;; structured MDC. Use `log/warnf` so we knowingly emit one greppable blob.
       (log/warnf "AI service request failed: HTTP %s %s url=%s body=%s"
-                 status phrase url (pr-str body))
+                 status phrase url (body-for-log body))
       (throw (ex-info msg
                       {:error-code :ai-service-error
                        :status     status
@@ -224,7 +251,7 @@
     ;; (e.g. `(NullPointerException.)`) — skip the colon when there's nothing to say.
     (cond
       (= error-code :ai-service-error)
-      (log/errorf e "%s: HTTP %s body=%s" label status (pr-str body))
+      (log/errorf e "%s: HTTP %s body=%s" label status (body-for-log body))
 
       (str/blank? msg)
       (log/error e label)
