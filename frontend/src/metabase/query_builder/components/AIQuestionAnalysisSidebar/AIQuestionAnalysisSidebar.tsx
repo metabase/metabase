@@ -7,6 +7,9 @@ import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSetting } from "metabase/common/hooks";
+import { AIAnalysisContent } from "metabase/metabot/components/AIAnalysisContent/AIAnalysisContent";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
@@ -16,10 +19,6 @@ import {
 } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
-
-import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
-import { AIProviderConfigurationModal } from "../AIProviderConfigurationModal";
-import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 
 import { getTimelineEventsForAnalysis } from "./utils";
 

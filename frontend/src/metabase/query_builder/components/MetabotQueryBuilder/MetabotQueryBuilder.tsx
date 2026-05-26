@@ -11,7 +11,12 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useRouter } from "metabase/router";
@@ -26,9 +31,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-
-import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
-import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 
 import S from "./MetabotQueryBuilder.module.css";
 
