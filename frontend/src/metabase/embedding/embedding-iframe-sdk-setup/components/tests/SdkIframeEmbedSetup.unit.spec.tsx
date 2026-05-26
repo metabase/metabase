@@ -31,6 +31,64 @@ describe("Embed flow > initial setup", () => {
   });
 });
 
+describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("renders a Site URL mismatch error in the preview area when the configured Site URL origin doesn't match the current host", async () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      siteUrl: "http://different-host.example:9999",
+      initialState: {
+        resourceType: "dashboard",
+        resourceId: 1,
+        isGuest: false,
+        useExistingUserSession: true,
+      },
+    });
+
+    expect(
+      await screen.findByTestId("sdk-iframe-embed-site-url-mismatch-error"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/Site URL doesn't match the host/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("http://different-host.example:9999"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the Site URL mismatch error when origins match", async () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      siteUrl: window.location.origin,
+      initialState: {
+        resourceType: "dashboard",
+        resourceId: 1,
+        isGuest: false,
+        useExistingUserSession: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("sdk-iframe-embed-setup-modal-content"),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("sdk-iframe-embed-site-url-mismatch-error"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("Embed flow > forward and backward navigation", () => {
   beforeEach(() => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
