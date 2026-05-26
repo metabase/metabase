@@ -26,7 +26,7 @@ runs:
       id: get-cache-keys
 
     - name: Get Cypress cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ~/.cache/Cypress
         key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}

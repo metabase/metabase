@@ -310,6 +310,7 @@ config:
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
+    transform-run-job-sql-concurrency: 3
     transform-timeout: 240
     transforms-enabled: false
     unaggregated-query-row-limit: null
