@@ -15,7 +15,7 @@ import type {
   MetricsViewerDimensionBreakoutState,
   MetricsViewerDimensionBreakoutType,
   StoredMetricsViewerDimensionBreakout,
-} from "../types/viewer-state";
+} from "../types";
 
 import {
   DIMENSION_BREAKOUT_TYPE_REGISTRY,

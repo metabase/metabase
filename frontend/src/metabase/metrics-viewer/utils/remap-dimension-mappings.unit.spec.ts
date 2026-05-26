@@ -2,7 +2,7 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
-} from "../types/viewer-state";
+} from "../types";
 
 import { remapDimensionMappings } from "./remap-dimension-mappings";
 
