@@ -2241,7 +2241,7 @@
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
 (deftest transform-with-null-source-database-extract-test
-  (testing "A transform whose source database has been deleted serializes with a nil source_database_id (GDGT-2447)"
+  (testing "A transform whose source database has been deleted serializes as a tombstone (GDGT-2447)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-empty-h2-app-db!
         (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Soon-to-be-deleted DB"}
@@ -2262,11 +2262,21 @@
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
                 "Database deletion should have nulled the column")
-            (testing "exported YAML carries no resolvable source_database_id"
+            (testing "exported entity carries a nil source_database_id"
               (is (=? {:serdes/meta [{:model "Transform" :id transform-eid}]
                        :name "Orphan Transform"}
                       ser))
               (is (nil? (:source_database_id ser))))
+            (testing "exported source is marked :serdes/unresolved; SQL body kept, dead numeric refs nulled"
+              ;; The native query text survives as a breadcrumb. The :database slot is nulled because
+              ;; the numeric id refers to a now-deleted database — keeping it would make the destination
+              ;; instance's before-insert hook bind source_database_id to a stale id and crash the FK.
+              (is (=? {:serdes/unresolved true
+                       :type "query"
+                       :query {:database nil
+                               :type "native"
+                               :native {:query "SELECT 1"}}}
+                      (:source ser))))
             (testing "Transform/dependencies does not emit a Database dep when source_database_id is nil"
               (is (not-any? #(some (fn [{:keys [model]}] (= "Database" model)) %)
                             (serdes/dependencies (assoc reloaded :tags [])))))))))))

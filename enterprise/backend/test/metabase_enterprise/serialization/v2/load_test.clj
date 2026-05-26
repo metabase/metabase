@@ -2021,6 +2021,56 @@
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
 
+(deftest transform-with-deleted-source-database-load-test
+  (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  coll  (ts/create! :model/Collection :name "Transform Collection" :namespace :transforms)
+                  _     (ts/create! :model/Transform
+                                    :name "Orphan Transform"
+                                    :description "Transform whose source DB will be deleted"
+                                    :collection_id (:id coll)
+                                    :source {:query (mbql5-query (:id db) (:id table))
+                                             :type "query"}
+                                    :target {:database (:id db)
+                                             :type "table"
+                                             :schema "public"
+                                             :name "orphan_target"})]
+              ;; Deleting the database cascade-SET-NULLs source_database_id (FK action)
+              ;; AND cascade-deletes the Table (Field FKs) — the transform survives as a tombstone.
+              (t2/delete! :model/Database :name "soon-to-be-deleted")
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+
+          (let [minimal (mapv (fn [entity]
+                                (if (= "Transform" (-> entity :serdes/meta last :model))
+                                  (select-keys entity [:serdes/meta :entity_id :name
+                                                       :source :target])
+                                  entity))
+                              @serialized)]
+            (testing "the extracted transform carries the :serdes/unresolved flag and verbatim body"
+              (let [extracted (first (filter #(= "Transform" (-> % :serdes/meta last :model)) minimal))]
+                (is (some? extracted))
+                (is (true? (get-in extracted [:source :serdes/unresolved])))
+                ;; native query text is preserved verbatim
+                (is (some? (get-in extracted [:source :query])))))
+            (ts/with-db dest-db
+              (t2/delete! :model/TransformTag)
+              (serdes.load/load-metabase! (ingestion-in-memory minimal))
+              (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
+                (testing "transform round-trips and ends up as a tombstone in the destination instance"
+                  (is (some? transform))
+                  (is (nil? (:source_database_id transform))
+                      "source_database_id should be nil — there's no DB to bind to")
+                  (is (not (contains? (:source transform) :serdes/unresolved))
+                      "the :serdes/unresolved marker should have been stripped on import")
+                  (is (some? (get-in transform [:source :query]))
+                      "the query body should be preserved as a breadcrumb"))))))))))
+
 (deftest table-created-by-transform-load-test
   (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
     (mt/with-premium-features #{:transforms-basic}

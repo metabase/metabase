@@ -377,28 +377,41 @@
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database)
-               :source             {:export (fn [source]
-                                              (-> source
-                                                  (m/update-existing :query serdes/export-mbql)
-                                                  (m/update-existing :source-database serdes/*export-database-fk*)
-                                                  (m/update-existing :source-tables
-                                                                     (fn [entries]
-                                                                       (->> (transforms-base.u/normalize-source-tables entries)
-                                                                            (mapv (fn [entry]
-                                                                                    (-> entry
-                                                                                        (m/update-existing :table_id serdes/*export-table-fk*)
-                                                                                        (m/update-existing :database_id serdes/*export-database-fk*)))))))))
-                                    :import (fn [source]
-                                              (-> source
-                                                  (m/update-existing :query serdes/import-mbql)
-                                                  (m/update-existing :source-database import-maybe-int-database-fk)
-                                                  (m/update-existing :source-tables
-                                                                     (fn [entries]
-                                                                       (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
-                                                                            (mapv (fn [entry]
-                                                                                    (-> entry
-                                                                                        (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                        (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
+               :source             {:export-with-context
+                                    (fn [{:keys [source_database_id]} _k source]
+                                      (if source_database_id
+                                        (-> source
+                                            (m/update-existing :query serdes/export-mbql)
+                                            (m/update-existing :source-database serdes/*export-database-fk*)
+                                            (m/update-existing :source-tables
+                                                               (fn [entries]
+                                                                 (->> (transforms-base.u/normalize-source-tables entries)
+                                                                      (mapv #(-> %
+                                                                                 (m/update-existing :table_id serdes/*export-table-fk*)
+                                                                                 (m/update-existing :database_id serdes/*export-database-fk*)))))))
+                                        ;; Orphan: source DB has been deleted, so table/field rows it referenced
+                                        ;; are gone too. Null the dead numeric refs and flag the body so
+                                        ;; the importer skips ref resolution.
+                                        (-> source
+                                            (assoc :serdes/unresolved true)
+                                            (m/update-existing :query assoc :database nil)
+                                            (m/update-existing :source-database (constantly nil))
+                                            (m/update-existing :source-tables
+                                                               #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %)))))
+                                    :import
+                                    (fn [source]
+                                      (if (:serdes/unresolved source)
+                                        (dissoc source :serdes/unresolved)
+                                        (-> source
+                                            (m/update-existing :query serdes/import-mbql)
+                                            (m/update-existing :source-database import-maybe-int-database-fk)
+                                            (m/update-existing :source-tables
+                                                               (fn [entries]
+                                                                 (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                      (mapv (fn [entry]
+                                                                              (-> entry
+                                                                                  (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                  (m/update-existing :database_id import-maybe-int-database-fk))))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
