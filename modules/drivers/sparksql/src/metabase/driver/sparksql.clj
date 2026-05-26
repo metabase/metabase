@@ -243,7 +243,11 @@
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions/cumulative     false
                               :database-routing                false
-                              :jdbc/statements                 false}]
+                              :jdbc/statements                 false
+                              ;; Calling Statement.setQueryTimeout on Hive's JDBC driver closes the Thrift transport
+                              ;; on the server side; subsequent statement close() then throws "Failed to close
+                              ;; statement". Skip the call entirely.
+                              :jdbc/set-query-timeout          false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 (defmethod sql.qp/quote-style :sparksql

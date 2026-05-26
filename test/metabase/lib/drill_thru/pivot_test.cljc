@@ -26,10 +26,10 @@
      :drill-thru/pivot
      (fn [_test-case _context {:keys [click]}]
        (if (= click :cell)
-          ;; The pivot conditions are too complex to capture here; other tests check them.
-          ;; Just skip the canned cases for cell clicks.
+         ;; The pivot conditions are too complex to capture here; other tests check them.
+         ;; Just skip the canned cases for cell clicks.
          ::canned/skip
-          ;; Non-cell clicks are false though.
+         ;; Non-cell clicks are false though.
          false)))))
 
 (def ^:private orders-date-only-test-case

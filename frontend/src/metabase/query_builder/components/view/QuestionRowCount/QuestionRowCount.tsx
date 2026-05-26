@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   type NumberFormatter,
   useNumberFormatter,
@@ -11,7 +11,6 @@ import {
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
 import { setLimit } from "metabase/query_builder/actions";
 import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
 import {
@@ -38,22 +37,15 @@ interface OwnProps {
 
 interface StateProps {
   question: Question;
-  result: Dataset;
+  result: Dataset | null;
   isResultDirty: boolean;
-}
-
-interface EntityLoaderProps {
-  loading: boolean;
 }
 
 interface DispatchProps {
   onChangeLimit: (limit: Limit) => void;
 }
 
-type QuestionRowCountProps = OwnProps &
-  StateProps &
-  DispatchProps &
-  EntityLoaderProps;
+type QuestionRowCountProps = OwnProps & StateProps & DispatchProps;
 
 function mapStateToProps(state: State) {
   // Not expected to render before question is loaded
@@ -74,14 +66,20 @@ function QuestionRowCountInner({
   question,
   result,
   isResultDirty,
-  loading,
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
   const [opened, { close, toggle }] = useDisclosure(false);
+  const databaseId = question.databaseId();
+  const { isLoading: loading } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const formatNumber = useNumberFormatter();
   const message = useMemo(() => {
+    if (result == null) {
+      return "";
+    }
     if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result, formatNumber);
     }
@@ -116,7 +114,7 @@ function QuestionRowCountInner({
   }
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-start">
+    <Popover opened={opened} onDismiss={close} position="bottom-end">
       <Popover.Target>
         <UnstyledButton onClick={toggle} id={POPOVER_ID} aria-haspopup="dialog">
           <RowCountLabel
@@ -197,20 +195,13 @@ function getLimitMessage(
   return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
 }
 
-function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
-  return question.databaseId();
-}
-
-const ConnectedQuestionRowCount = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Databases.load({
-    id: getDatabaseId,
-    loadingAndErrorWrapper: false,
-  }),
+const ConnectedQuestionRowCount = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(QuestionRowCountInner);
 
 export type QuestionRowCountOpts = {
-  result?: Dataset;
+  result?: Dataset | null;
   isObjectDetail: boolean;
 };
 

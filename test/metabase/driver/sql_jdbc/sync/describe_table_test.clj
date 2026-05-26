@@ -216,9 +216,9 @@
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
-    (let [org-result-set-seq jdbc/result-set-seq]
-      (with-redefs [jdbc/result-set-seq (fn [& args]
-                                          (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+    (let [org-result-set-seq (mt/original-fn #'jdbc/result-set-seq)]
+      (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [& args]
+                                                        (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
         (is (= #{{:name "longitude"   :base-type :type/Float}
                  {:name "category_id" :base-type :type/Integer}
                  {:name "price"       :base-type :type/Integer}
@@ -479,9 +479,9 @@
 
 (mt/defdataset long-json
   [["long_json_table"
-     ;; `short_json` and `long_json` have the same schema,
-     ;; in the first row, both have an "a" key.
-     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    ;; `short_json` and `long_json` have the same schema,
+    ;; in the first row, both have an "a" key.
+    ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/encode {:a "x"}) (json/encode {:a "x"})]

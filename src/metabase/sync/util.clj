@@ -91,6 +91,19 @@
 ;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
 
+;; In-JVM only, same scope as `operation->db-ids`.
+(defonce ^:private external-busy-predicates (atom []))
+
+(defn register-busy-predicate!
+  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
+  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
+  (logged at WARN by the caller)."
+  [pred]
+  (swap! external-busy-predicates conj pred))
+
+(defn- external-busy []
+  (some (fn [p] (p)) @external-busy-predicates))
+
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
   given `operation`. This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user
@@ -259,13 +272,17 @@
    :analyze           :fingerprint
    :refingerprint     :fingerprint})
 
-(mu/defn do-sync-operation
-  "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
+(mu/defn- do-sync-operation*
+  "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
+  wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
+  Performs no eligibility gating itself — the public wrappers decide whether to call it."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  (when (database/should-sync? database)
+  (if-let [busy (external-busy)]
+    (log/warnf "Skipping %s for database %d: %s"
+               (name operation) (u/the-id database) (:reason busy))
     (let [run-type (operation->run-type operation)]
       (task-history/with-task-run (when run-type
                                     {:run_type    run-type
@@ -285,13 +302,45 @@
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
 
+(mu/defn do-sync-operation
+  "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs
+  only when the database is eligible for *automatic* sync (see
+  [[metabase.warehouses.models.database/should-auto-sync?]]) — i.e. it is suppressed when the
+  `disable-auto-sync` setting is on."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-auto-sync? database)
+    (do-sync-operation* operation database message f)))
+
+(mu/defn do-explicit-sync-operation
+  "Internal implementation of [[explicit-sync-operation]]; use that instead of calling this directly.
+  For explicit, user-requested syncs (e.g. the Sync-now button): runs whenever the database is
+  syncable at all (see [[metabase.warehouses.models.database/should-sync?]]), ignoring the
+  `disable-auto-sync` setting, which suppresses only automatically-triggered syncs."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-sync? database)
+    (do-sync-operation* operation database message f)))
+
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
   like error handling, logging, duplicate operation prevention, and event publishing. Intended for use with the
-  various top-level sync operations, such as `sync-metadata` or `analyze`."
+  various top-level sync operations, such as `sync-metadata` or `analyze`. Suppressed when
+  `disable-auto-sync` is on; for explicit user-requested syncs use [[explicit-sync-operation]]."
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
+
+(defmacro explicit-sync-operation
+  "Like [[sync-operation]], but for explicit, user-requested syncs: the work runs even when the
+  `disable-auto-sync` setting is enabled (that setting suppresses only automatically-triggered syncs)."
+  {:style/indent 3}
+  [operation database message & body]
+  `(do-explicit-sync-operation ~operation ~database ~message (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -679,8 +728,8 @@
    (or (isa? base-type :type/Temporal)
        (isa? base-type :type/Collection)
        (isa? base-type :type/Float)
-        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
-        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
+       ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
+       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
        (isa? semantic-type :type/PK)
        (isa? semantic-type :type/FK))))
 

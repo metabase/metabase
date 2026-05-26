@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
@@ -62,7 +63,27 @@
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                      (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
-                     [:inline 0])}))
+                     [:inline 0])
+     ;; :library matches items whose root (top-level) ancestor collection is one of the library types.
+     ;; The :root-collection-type attr is computed at ingestion time by walking the collection's
+     ;; materialized path (see metabase.collections.models.collection/root-collection-type), so items
+     ;; in arbitrarily deep sub-collections of a library tree still match here.
+     :library      [:case
+                    (into [:or]
+                          (for [t (sort collection/library-collection-types)]
+                            [:= :search_index.root_collection_type [:inline t]]))
+                    [:inline 1]
+                    :else [:inline 0]]
+     ;; :data-layer mirrors the :model/* pattern — one scorer, per-tier weights live under :data-layer/*
+     ;; (see metabase.search.config/scorer-param). Final/internal/hidden are mutually exclusive.
+     :data-layer   [:case
+                    [:= :search_index.data_layer [:inline "final"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :final) 0)]
+                    [:= :search_index.data_layer [:inline "internal"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :internal) 0)]
+                    [:= :search_index.data_layer [:inline "hidden"]]
+                    [:inline (or (search.config/scorer-param search-ctx :data-layer :hidden) 0)]
+                    :else [:inline 0]]}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

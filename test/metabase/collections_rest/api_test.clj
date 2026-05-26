@@ -288,7 +288,7 @@
           (is (= expected-lucky-tree
                  (collection-tree-view ids response-lucky))))
         (testing "Mocking having one user still returns a correct result"
-          (with-redefs [t2/select-fn-set (constantly nil)]
+          (mt/with-dynamic-fn-redefs [t2/select-fn-set (constantly nil)]
             (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
               (is (= expected-lucky-tree
                      (collection-tree-view ids response))))))))))
@@ -2816,7 +2816,7 @@
             (let [;; Create a parent collection with snippets namespace
                   lib-root         (t2/select-one :model/Collection :entity_id entity-id)
                   child-collection (mt/user-http-request :crowberto :post 200 "collection"
-                                                       ;; Deliberately not setting `:type` here - it's automatic.
+                                                         ;; Deliberately not setting `:type` here - it's automatic.
                                                          {:name      "Child Collection"
                                                           :parent_id (u/the-id lib-root)})
                   child-id         (:id child-collection)]
@@ -2826,7 +2826,7 @@
                        :name "Grandchild Collection"
                        :type collection-type}
                       (mt/user-http-request :crowberto :post 200 "collection"
-                                          ;; Likewise, deliberately no `:type`.
+                                            ;; Likewise, deliberately no `:type`.
                                             {:name      "Grandchild Collection"
                                              :parent_id child-id}))
                   "Grandchild collection should also inherit the :type of their non-magic parent"))))))))

@@ -179,6 +179,7 @@
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -763,3 +764,24 @@
                (mt/with-native-query-testing-context query
                  (is (= [[3 1]]
                         (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
+
+(deftest ^:parallel two-contains-filters-formatted-correct-test
+  (testing "a query with two contains filters should be formatted correctly (#74086)"
+    (mt/test-driver :oracle
+      (let [mp         (mt/metadata-provider)
+            id-field   (lib.metadata/field mp (mt/id :people :id))
+            name-field (lib.metadata/field mp (mt/id :people :name))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/filter (lib/and
+                                   (lib/contains name-field "Alice")
+                                   (lib/contains name-field "ice")))
+                      (lib/with-fields [id-field name-field]))
+            result (qp/process-query query)
+            native-sql (-> result :data :native_form :query)
+            prettified-sql (driver/prettify-native-form driver/*driver* native-sql)
+            native-query (lib/native-query mp prettified-sql)]
+        (is (= "SELECT\n  *\nFROM\n  (\n    SELECT\n      \"mb_test\".\"test_data_people\".\"id\" \"id\",\n      \"mb_test\".\"test_data_people\".\"name\" \"name\"\n    FROM\n      \"mb_test\".\"test_data_people\"\n    WHERE\n      (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%Alice%' ESCAPE CHR(92)\n      )\n      AND (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%ice%' ESCAPE CHR(92)\n      )\n  )\nWHERE\n  rownum <= 1048575"
+               prettified-sql))
+        (is (= [[1345 "Alice Connelly"]]
+               (mt/formatted-rows [int str] result)
+               (mt/formatted-rows [int str] (qp/process-query native-query))))))))

@@ -82,6 +82,7 @@ const configs = [
       "e2e/embedding-sdk-host-apps/**",
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+      "**/custom-viz/fixtures/example_custom_viz_plugin/**",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",

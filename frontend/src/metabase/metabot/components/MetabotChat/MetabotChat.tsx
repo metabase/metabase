@@ -9,8 +9,6 @@ import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   ActionIcon,
   Box,
@@ -53,7 +51,6 @@ export const MetabotChat = ({
 }: {
   config?: MetabotConfig;
 }) => {
-  const isHosted = useSelector(getIsHosted);
   const [
     isAiProviderConfigurationModalOpen,
     {
@@ -196,7 +193,6 @@ export const MetabotChat = ({
               }
               isDoingScience={metabot.isDoingScience}
               debug={metabot.debugMode}
-              showFeedbackButtons={isHosted}
             />
             {/* loading */}
             {metabot.isDoingScience && (

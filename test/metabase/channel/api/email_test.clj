@@ -115,7 +115,7 @@
                                          email-smtp-port "123"
                                          email-smtp-username "pre-user"
                                          email-smtp-password "pre-pass"]
-        (with-redefs [email/test-smtp-connection (fn [settings] settings)]
+        (mt/with-dynamic-fn-redefs [email/test-smtp-connection (fn [settings] settings)]
           (is (= "pre-user" (setting/get-value-of-type :string :email-smtp-username)))
           (is (= "pre-pass" (setting/get-value-of-type :string :email-smtp-password)))
           (is (= 123 (setting/get-value-of-type :integer :email-smtp-port)))
@@ -140,7 +140,7 @@
                                   MB_EMAIL_SMTP_USERNAME nil
                                   MB_EMAIL_SMTP_PASSWORD nil]
       (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
-        (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+        (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
           (is (= (-> default-email-settings
                      (assoc :with-corrections {})
                      (update :email-smtp-security name))

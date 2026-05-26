@@ -88,6 +88,14 @@ export const useSdkIframeEmbedSettings = ({
   const exampleDashboardId = useSetting("example-dashboard-id");
 
   const defaultSettings = useMemo(() => {
+    // Default to SSO when it's available and configured; otherwise default
+    // to guest. Callers that need a specific mode pass `initialState.isGuest`
+    // explicitly.
+    const defaultMode: "sso" | "guest" =
+      isSimpleEmbedFeatureAvailable && isSsoEnabledAndConfigured
+        ? "sso"
+        : "guest";
+
     return match(initialState)
       .with(
         { resourceType: "dashboard", resourceId: P.nonNullable },
@@ -98,7 +106,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -111,7 +119,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -126,7 +134,7 @@ export const useSdkIframeEmbedSettings = ({
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
-          isGuest: !!initialState?.isGuest,
+          isGuest: initialState?.isGuest ?? defaultMode === "guest",
           useExistingUserSession: !!initialState?.useExistingUserSession,
         }),
       );

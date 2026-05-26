@@ -42,11 +42,15 @@ export const DataStudio = {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
     },
+    visitTransform: (transformId: TransformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}`);
+    },
     visitInspect: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
     visitSettingsTab: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    runButton: () => cy.findAllByTestId("run-button").eq(0),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },

@@ -43,11 +43,11 @@
           (testing "the Collections properly exported"
             (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" "main"
                                                            "some_collection.yaml"))
-                                  (dissoc :serdes/meta)
+                                  (dissoc :serdes/meta :metabase_version)
                                   (update :created_at t/offset-date-time))
                   yaml-child  (-> (yaml/from-file (io/file dump-dir "collections" "main"
                                                            "some_collection" "child_collection.yaml"))
-                                  (dissoc :serdes/meta)
+                                  (dissoc :serdes/meta :metabase_version)
                                   (update :created_at t/offset-date-time))]
               (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
                          (dissoc :id :location)
@@ -145,6 +145,7 @@
                                                 "databases"  "my_company_data"
                                                 "tables"     "customers"
                                                 "fields"     "company__SLASH__organization_website.yaml"))
+                       (dissoc :metabase_version)
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
@@ -172,7 +173,7 @@
                                  (is (= (not-empty (sort ks))
                                         (not-empty ks)))
                                  (do
-                                  ;; check every present key is sorted in a monotone increasing order
+                                   ;; check every present key is sorted in a monotone increasing order
                                    (is (< idx (get order k)))
                                    (recur (rest ks)
                                           (long new-idx)))))))

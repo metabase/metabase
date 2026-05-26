@@ -6,7 +6,10 @@ import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
-import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
+import {
+  getCardsColumns,
+  getCardsReferencedColumns,
+} from "metabase/visualizations/echarts/cartesian/model";
 import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import {
   MAX_SERIES,
@@ -456,8 +459,6 @@ export function getAvailableAdditionalColumns(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ): DatasetColumn[] {
-  const alreadyIncludedColumns = new Set<DatasetColumn>();
-
   if (
     _.isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
     _.isEmpty(settings["graph.metrics"]?.filter(isNotNull))
@@ -465,22 +466,12 @@ export function getAvailableAdditionalColumns(
     return [];
   }
 
-  getCardsColumns(rawSeries, settings).forEach((cardColumns) => {
-    alreadyIncludedColumns.add(cardColumns.dimension.column);
-    if ("breakout" in cardColumns) {
-      alreadyIncludedColumns.add(cardColumns.breakout.column);
-      alreadyIncludedColumns.add(cardColumns.metric.column);
-    } else {
-      cardColumns.metrics.forEach((columnDescriptor) =>
-        alreadyIncludedColumns.add(columnDescriptor.column),
-      );
-    }
-  });
+  const alreadyIncludedColumns = new Set<DatasetColumn>(
+    getCardsReferencedColumns(rawSeries, settings).flat(),
+  );
 
   return rawSeries
-    .flatMap((singleSeries) => {
-      return singleSeries.data.cols;
-    })
+    .flatMap((singleSeries) => singleSeries.data.cols)
     .filter((column) => !alreadyIncludedColumns.has(column));
 }
 

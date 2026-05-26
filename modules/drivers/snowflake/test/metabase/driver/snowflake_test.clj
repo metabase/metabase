@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -11,7 +13,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -190,7 +191,7 @@
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
+        (is (= "CREATE DATABASE IF NOT EXISTS \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
       (testing "Create Table DDL statements"
         (is (= (map
@@ -708,7 +709,7 @@
            {:user some?
             :password some?
             :private_key_file complement}
-            ;; Before `use-password` password took precedence over a key file
+           ;; Before `use-password` password took precedence over a key file
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
       (is (=?
            {:user some?
@@ -871,13 +872,13 @@
     :snowflake
     (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
-         ;; User with default role PULIC. To access the db custom role has to be used.
+          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
           private-key-value (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB custom"
                              :engine  :snowflake
-                            ;; Details as collected from `api handler POST / database` are used.
+                             ;; Details as collected from `api handler POST / database` are used.
                              :details {:role                nil
                                        :warehouse           warehouse
                                        :db                  db
@@ -889,7 +890,7 @@
                                        :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
-     ;; TODO: We should make those message returned when role is incorrect more descriptive!
+      ;; TODO: We should make those message returned when role is incorrect more descriptive!
       (testing "Database can not be accessed with `nil` default role"
         (is (= "Looks like the Database name is incorrect."
                (:message (mt/user-http-request :crowberto :post 400 "database"
@@ -899,7 +900,7 @@
                (:message (mt/user-http-request :crowberto :post 400 "database"
                                                (assoc-in database [:details :role] "PUBLIC"))))))
       (testing "Database can be created using specified role"
-       ;; Map containing :details is expected to be database, hence considering request successful.
+        ;; Map containing :details is expected to be database, hence considering request successful.
         (is (contains? (mt/user-http-request :crowberto :post 200 "database"
                                              (assoc-in database [:details :role]
                                                        (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
@@ -919,7 +920,7 @@
                  (mt/rows (qp/process-query {:database (:id db)
                                              :type :query
                                              :query {:source-table (:id table)}})))))
-       ;; Cleanup
+        ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
@@ -930,13 +931,13 @@
     :snowflake
     (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
           warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
-         ;; User with default role PULIC. To access the db custom role has to be used.
+          ;; User with default role PULIC. To access the db custom role has to be used.
           user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
           private-key-value (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
           db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
           database          {:name    "Snowflake RSA test DB default"
                              :engine  :snowflake
-                            ;; Details as collected from `api handler POST / database` are used.
+                             ;; Details as collected from `api handler POST / database` are used.
                              :details {:role                nil
                                        :warehouse           warehouse
                                        :db                  db
@@ -949,7 +950,7 @@
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
-       ;; Map containing :details is expected to be database, hence considering request successful.
+        ;; Map containing :details is expected to be database, hence considering request successful.
         (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
                        :details))
         ;; As the request is asynchronous, wait for sync to complete.
@@ -967,7 +968,7 @@
                  (mt/rows (qp/process-query {:database (:id db)
                                              :type :query
                                              :query {:source-table (:id table)}})))))
-       ;; Cleanup
+        ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
@@ -978,7 +979,7 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:replacement-snippet     "'2014-08-02'::date"
               :prepared-statement-args nil}
-             (sql.params.substitution/->replacement-snippet-info :snowflake (params/->Date "2014-08-02")))))))
+             (sql.params.substitution/->replacement-snippet-info :snowflake (lib/parsed-date-param "2014-08-02")))))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
@@ -1487,11 +1488,16 @@
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
 
-(defn- get-db-priv-key [db]
+(defn- get-db-priv-key
+  "Returns a SHA-256 digest of the resolved private key file for `db`."
+  [db]
   (-> (:details db)
       (#'driver.snowflake/resolve-private-key)
       :private_key_file
-      slurp))
+      slurp
+      (.getBytes "UTF-8")
+      buddy-hash/sha256
+      codecs/bytes->hex))
 
 (defn- get-priv-key-details [details pk-user priv-key-var]
   (let [priv-key (tx/db-test-env-var-or-throw :snowflake priv-key-var)]

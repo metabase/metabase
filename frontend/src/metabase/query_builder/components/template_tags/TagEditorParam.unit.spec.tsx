@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupDatabasesEndpoints,
@@ -14,9 +15,17 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
-import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";
+import type {
+  Card,
+  Database,
+  Field,
+  FieldId,
+  TemplateTag,
+  TemplateTagType,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockFieldDimension,
   createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
@@ -33,13 +42,16 @@ import { TagEditorParam } from "./TagEditorParam";
 interface SetupOpts {
   tag?: TemplateTag;
   originalCard?: Card;
+  transformDatabase?: (database: Database) => void;
 }
 
 const setup = ({
   tag = createMockTemplateTag(),
   originalCard,
+  transformDatabase,
 }: SetupOpts = {}) => {
   const database = createSampleDatabase();
+  transformDatabase?.(database);
   const state = createMockState({
     qb: createMockQueryBuilderState({
       card: createMockCard({
@@ -82,6 +94,57 @@ const setup = ({
 };
 
 describe("TagEditorParam", () => {
+  describe("dimension field fetching", () => {
+    it("fetches the dimension field and its remapped field when mounting a dimension tag", async () => {
+      setup({
+        tag: createMockTemplateTag({
+          type: "dimension",
+          dimension: ["field", PEOPLE.NAME, null],
+          "widget-type": "string/=",
+        }),
+        transformDatabase: (database) => {
+          const peopleField = findFieldInDatabase(database, PEOPLE.NAME);
+          peopleField.dimensions = [
+            createMockFieldDimension({
+              type: "external",
+              human_readable_field_id: PEOPLE.SOURCE,
+            }),
+          ];
+        },
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/field/${PEOPLE.NAME}`),
+        ).toHaveLength(1);
+      });
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/field/${PEOPLE.SOURCE}`),
+        ).toHaveLength(1);
+      });
+    });
+
+    it("does not fetch a remapped field when the dimension has no remap", async () => {
+      setup({
+        tag: createMockTemplateTag({
+          type: "dimension",
+          dimension: ["field", PEOPLE.NAME, null],
+          "widget-type": "string/=",
+        }),
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/field/${PEOPLE.NAME}`),
+        ).toHaveLength(1);
+      });
+      expect(
+        fetchMock.callHistory.calls(`path:/api/field/${PEOPLE.SOURCE}`),
+      ).toHaveLength(0);
+    });
+  });
+
   describe("tag name", () => {
     it("should be able to update the name of the tag", async () => {
       const tag = createMockTemplateTag();
@@ -525,4 +588,14 @@ async function waitForElementsToLoad(text: string) {
     },
     { timeout: 20000 },
   );
+}
+
+function findFieldInDatabase(database: Database, fieldId: FieldId): Field {
+  for (const table of database.tables ?? []) {
+    const field = table.fields?.find((field) => field.id === fieldId);
+    if (field) {
+      return field;
+    }
+  }
+  throw new Error(`Field ${fieldId} not found in database ${database.id}`);
 }

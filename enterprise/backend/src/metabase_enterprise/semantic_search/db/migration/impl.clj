@@ -37,24 +37,52 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (index_table_xyzs). If higher than what's found in db dynamic schema migration will
   be attempted."
-  2)
+  3)
+
+(defn- alter-index-tables!
+  "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
+   rows' `index_version` to `target-version`. `alter-fn` is `(fn [execute! table-name])`. Tables listed in
+   `index_metadata` but missing from the database (e.g. dropped externally) are skipped — leaving the metadata row
+   in place to be cleaned up or re-created elsewhere."
+  [tx index-metadata target-version alter-fn]
+  (let [metadata-table  (keyword (:metadata-table-name index-metadata))
+        execute!        (fn [q] (jdbc/execute! tx (sql/format q)))
+        candidate-names (->> (execute! {:select-distinct [:table_name]
+                                        :from            [metadata-table]
+                                        :where           [[:< :index_version target-version]]})
+                             (mapcat vals))
+        existing-names  (when (seq candidate-names)
+                          (->> (execute! {:select [:tablename]
+                                          :from   [:pg_tables]
+                                          :where  [:in :tablename (vec candidate-names)]})
+                               (mapcat vals)
+                               set))
+        table-names     (filter existing-names candidate-names)]
+    (when (seq table-names)
+      (doseq [table-name table-names]
+        (alter-fn execute! table-name))
+      (execute! {:update metadata-table
+                 :set    {:index_version target-version}
+                 :where  [[:in :table_name (vec table-names)]]}))))
 
 (defn- add-personal-owner-id-column!
   "Migration 2: Add `personal_owner_id` column to index tables for SQL-level personal collection filtering."
   [tx index-metadata]
-  (let [index-metadata (keyword (:metadata-table-name index-metadata))
-        execute!       (fn [q] (jdbc/execute! tx (sql/format q)))
-        table-names    (->> (execute! {:select-distinct [:table_name]
-                                       :from            [index-metadata]
-                                       :where           [[:< :index_version 2]]})
-                            (mapcat vals))]
-    (when (seq table-names)
-      (doseq [table-name table-names]
-        (execute! {:alter-table [(keyword table-name)]
-                   :add-column  [[:personal_owner_id :int :if-not-exists]]}))
-      (execute! {:update index-metadata
-                 :set    {:index_version 2}
-                 :where  [[:in :table_name (vec table-names)]]}))))
+  (alter-index-tables! tx index-metadata 2
+                       (fn [execute! table-name]
+                         (execute! {:alter-table [(keyword table-name)]
+                                    :add-column  [[:personal_owner_id :int :if-not-exists]]}))))
+
+(defn- add-collection-type-and-data-layer-columns!
+  "Migration 3: Add `collection_type` and `data_layer` columns to index tables for the new ranking signals
+  (`:library` on `collection_type`; `:data-layer` per-tier weights on `data_layer`)."
+  [tx index-metadata]
+  (alter-index-tables! tx index-metadata 3
+                       (fn [execute! table-name]
+                         (execute! {:alter-table [(keyword table-name)]
+                                    :add-column  [[:collection_type :text :if-not-exists]]})
+                         (execute! {:alter-table [(keyword table-name)]
+                                    :add-column  [[:data_layer :text :if-not-exists]]}))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
@@ -62,4 +90,6 @@
   [tx {:keys [index-metadata] :as _opts}]
   ;; migration 1: all tables dropped in schema migration in single function call
   ;; migration 2: add personal_owner_id column to index tables
-  (add-personal-owner-id-column! tx index-metadata))
+  ;; migration 3: add collection_type and data_layer columns to index tables
+  (add-personal-owner-id-column! tx index-metadata)
+  (add-collection-type-and-data-layer-columns! tx index-metadata))

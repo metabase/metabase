@@ -205,7 +205,7 @@ export const SdkQuestionDefaultView = ({
               <DefaultViewTitle title={title} />
             </Stack>
           </RenderIfHasContent>
-          {showSaveButton && <SaveButton onClick={openSaveModal} />}
+          {showSaveButton && <SaveButton onClick={openSaveModal} ml="auto" />}
         </RenderIfHasContent>
         {queryResults && (
           <RenderIfHasContent
@@ -308,6 +308,7 @@ const DefaultViewSaveModal = ({
     onSave,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
   } = useSdkQuestionContext();
 
   if (!isSaveEnabled || !isOpen || !question) {
@@ -327,6 +328,7 @@ const DefaultViewSaveModal = ({
         close();
       }}
       targetCollection={targetCollection}
+      initialCollectionId={initialCollection}
     />
   );
 };

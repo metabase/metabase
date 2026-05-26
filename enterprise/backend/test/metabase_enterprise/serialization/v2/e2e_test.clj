@@ -30,12 +30,15 @@
 
 (set! *warn-on-reflection* true)
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
+;; Many tests here rely on the H2 test-data database via Card defaults, so we keep the H2 guard
+;; off and re-enable the H2 path in the extract (production keeps it filtered).
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir
@@ -102,7 +105,8 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule
+          :metabase_version))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -143,7 +147,8 @@
               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                         [10  {:refs     {:personal_owner_id ::rs/omit}
                                               :spec-gen {:namespace :snippets}}]]
-              :database                [[10]]
+              ;; serdes skips H2 databases at extract, so force :postgres here
+              :database                [[10 {:spec-gen {:engine :postgres}}]]
               ;; Tables are special - we define table 0-9 under db0, 10-19 under db1, etc. The :card spec below
               ;; depends on this relationship.
               :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
@@ -180,10 +185,9 @@
               :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                 :dashboard_id [:d 100]})
               :dimension               (vec (concat
-                                             ;; 20 with both IDs set
-                                             (many-random-fks 20 {}
-                                                              {:field_id                [:field 1000]
-                                                               :human_readable_field_id [:field 1000]})
+                                             (vec (repeatedly 20 #(let [f (random-keyword :field 1000)]
+                                                                    [1 {:refs {:field_id                f
+                                                                               :human_readable_field_id f}}])))
                                              ;; 20 with just :field_id
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
@@ -394,7 +398,7 @@
           ;; preparation
           (mt/test-helpers-set-global-values!
             (mt/with-temp
-              [:model/Database   db1s {:name "my-db"}
+              [:model/Database   db1s {:name "my-db" :engine :postgres}
                :model/Collection coll1s {:name "My Collection"}
                :model/Table      table1s {:name  "CUSTOMERS"
                                           :db_id (:id db1s)}
@@ -409,7 +413,7 @@
                                                            :type                 "category"
                                                            :name                 "CATEGORY"
                                                            :values_source_type   "card"
-                                                            ;; card_id is in a different collection with dashboard's collection
+                                                           ;; card_id is in a different collection with dashboard's collection
                                                            :values_source_config {:card_id     (:id card1s)
                                                                                   :value_field [:field (:id field1s) nil]}}]}
                :model/Dashboard  dash1s {:name          (mt/random-name)
@@ -418,7 +422,7 @@
                                                           :type                 "category"
                                                           :name                 "CATEGORY"
                                                           :values_source_type   "card"
-                                                           ;; card_id is in a different collection with dashboard's collection
+                                                          ;; card_id is in a different collection with dashboard's collection
                                                           :values_source_config {:card_id     (:id card1s)
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
 
@@ -456,7 +460,7 @@
 
               (testing "ingest and load"
                 (ts/with-db dest-db
-                 ;; ingest
+                  ;; ingest
                   (testing "doing ingestion"
                     (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                         "successful"))
@@ -500,7 +504,8 @@
                                                              :description "Linked Collection"}
              :model/Database      {db-id   :id
                                    db-name :name}           {:name        "Linked database"
-                                                             :description "Linked database desc"}
+                                                             :description "Linked database desc"
+                                                             :engine      :postgres}
              :model/Table         {table-id   :id
                                    table-name :name}        {:db_id        db-id
                                                              :schema      "Public"
@@ -554,10 +559,7 @@
                          [{:id coll-eid          :model "Collection"}]
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
-                         [{:id "Linked database" :model "Database"}]
-                         [{:model "Database" :id "Linked database"}
-                          {:model "Schema"   :id "Public"}
-                          {:model "Table"    :id "Linked table"}]}
+                         [{:id "Linked database" :model "Database"}]}
                        (set (serdes/dependencies extracted-dashboard))))
 
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
@@ -754,10 +756,11 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (mt/with-temp
-            [:model/Database {router-db-id :id} {:name "Router"}
+            [:model/Database {router-db-id :id} {:name "Router" :engine :postgres}
              :model/DatabaseRouter _ {:database_id router-db-id :user_attribute "foobar"}
              :model/Database _ {:router_database_id router-db-id
-                                :name "Destination"}]
+                                :name "Destination"
+                                :engine :postgres}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"

@@ -5,7 +5,7 @@ summary: Analyze how your transforms process data by inspecting input and output
 
 # Transform inspector
 
-> Transform inspector requires the **Advanced transforms** add-on.
+> Transform inspector requires the [Advanced transforms add-on](addons.md).
 
 _Data Studio > Transforms > [transform name] > Inspect_
 

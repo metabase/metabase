@@ -1167,6 +1167,81 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-complexity-score.api.node" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "error" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "measurement" : {
+              "type" : "number"
+            },
+            "rating" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "low", "medium", "high" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "rating_label" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "score" : {
+              "type" : "integer",
+              "minimum" : 0
+            }
+          },
+          "required" : [ "measurement", "score", "rating", "rating_label" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "components" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
+              }
+            },
+            "rating" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "low", "medium", "high" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "rating_label" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "score" : {
+              "oneOf" : [ {
+                "type" : "integer",
+                "minimum" : 0
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "score", "rating", "rating_label", "components" ],
+          "additionalProperties" : false
+        } ]
+      },
       "metabase-enterprise.data-studio.api.table.publish-table-selectors" : {
         "type" : "object",
         "properties" : {
@@ -2301,6 +2376,52 @@
         },
         "required" : [ "id", "db_id", "name" ]
       },
+      "metabase-enterprise.serialization.schema.import-status-response" : {
+        "description" : "Wire shape of `GET /metadata/import/:id`. Timestamps are ISO-8601 strings.\n  `:started-at`/`:finished-at`/`:wall-ms` are nil until the relevant lifecycle\n  stage is reached; `:error` is nil unless the import failed.",
+        "type" : "object",
+        "properties" : {
+          "enqueued-at" : {
+            "type" : "string"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "finished-at" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "started-at" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "queued", "running", "ok", "error" ]
+          },
+          "wall-ms" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "status", "enqueued-at", "started-at", "finished-at", "wall-ms", "error" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
         "type" : "object",
@@ -3369,37 +3490,37 @@
         "required" : [ "name", "base_type", "display_name" ]
       },
       "metabase.agent-api.api.construct-query-request" : {
-        "description" : "Request body for /v2/construct-query. Same as program-request, with an optional prompt\n  capturing the user's original intent when a caller has one.",
+        "description" : "Request body for /v2/construct-query and the fresh-query branch of /v2/query.\n  A single `:query` key whose value is a JSON object matching\n  [[metabase.lib.schema/external-query]] — the canonical portable MBQL 5 wire format. The\n  query is fully self-describing: the database is derived from the first stage's\n  `source-table:` or `source-card:`, all field references are portable FKs\n  (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary\n  `source_entity` / `referenced_entities` envelope. See\n  `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference\n  (including operators, joins, expressions, multi-stage queries, and FK conventions).\n\n  Closed map: any extra top-level keys (notably the legacy `source_entity` /\n  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so\n  callers don't silently send fields the server ignores.\n\n  The inner `:query` value is intentionally typed as a plain `:map` at this boundary rather\n  than `::lib.schema/external-query`. Reasons:\n\n  1. Deep MBQL-shape validation runs inside the representations pipeline\n     (`metabot.tools.construct/execute-representations-query` calls `repr/validate-query`\n     after the repair pass), so the boundary check would be redundant.\n\n  2. The strict-tool manifest lint (`assert-optional-fields-nullable!`) walks every map\n     reachable from the tool input schema. `::external-query` references `::query`, which\n     carries several `:optional` keys (`:lib/metadata`, `:database`, `:settings`, …) that\n     are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into\n     them would force a wide schema change just to satisfy the lint at the agent boundary.",
         "type" : "object",
         "properties" : {
-          "operations" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
-            }
-          },
           "prompt" : {
-            "type" : "string",
-            "minLength" : 1,
-            "maxLength" : 10000,
-            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1,
+              "maxLength" : 10000
+            }, {
+              "type" : "null"
+            } ]
           },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
+          "query" : {
+            "type" : "object",
+            "properties" : { }
           }
         },
-        "required" : [ "source", "operations" ],
+        "required" : [ "query" ],
         "additionalProperties" : false
       },
       "metabase.agent-api.api.construct-query-response" : {
-        "description" : "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute.",
+        "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional\n  `:prompt` echoes the request's prompt back so the MCP layer can store it with the\n  handle (see `metabase.mcp.tools/make-store-construct-query-result`).",
         "type" : "object",
         "properties" : {
           "prompt" : {
-            "type" : "string",
-            "minLength" : 1,
-            "maxLength" : 10000,
-            "description" : "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
           },
           "query" : {
             "type" : "string",
@@ -3847,12 +3968,8 @@
         },
         "required" : [ "id", "type", "name" ]
       },
-      "metabase.agent-api.api.program-request" : {
-        "description" : "Request body for /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
-        "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
-      },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query. Accepts either a structured program or a continuation_token.",
+        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -3861,9 +3978,10 @@
               "minLength" : 1
             }
           },
-          "required" : [ "continuation_token" ]
+          "required" : [ "continuation_token" ],
+          "additionalProperties" : false
         }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
+          "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
         } ]
       },
       "metabase.agent-api.api.query-response" : {
@@ -4280,302 +4398,6 @@
           }
         },
         "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
-      },
-      "metabase.agent-lib.schema.aggregation-ref-form" : {
-        "type" : "array",
-        "prefixItems" : [ {
-          "const" : "aggregation-ref"
-        }, {
-          "type" : "integer",
-          "minimum" : 0
-        } ]
-      },
-      "metabase.agent-lib.schema.expression-ref-form" : {
-        "type" : "array",
-        "prefixItems" : [ {
-          "const" : "expression-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.non-blank-string"
-        } ]
-      },
-      "metabase.agent-lib.schema.form" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.source-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.query-aware-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.nested-operator-form"
-        } ]
-      },
-      "metabase.agent-lib.schema.map-literal" : {
-        "type" : "object",
-        "additionalProperties" : {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
-        }
-      },
-      "metabase.agent-lib.schema.nested-operator-form" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
-        },
-        "minItems" : 1
-      },
-      "metabase.agent-lib.schema.node" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.scalar"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.program-literal"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.map-literal"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.vector-literal"
-        } ]
-      },
-      "metabase.agent-lib.schema.non-blank-string" : {
-        "type" : "string"
-      },
-      "metabase.agent-lib.schema.page" : {
-        "type" : "object",
-        "properties" : {
-          "items" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "page" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          }
-        },
-        "required" : [ "page", "items" ],
-        "additionalProperties" : false
-      },
-      "metabase.agent-lib.schema.program" : {
-        "type" : "object",
-        "properties" : {
-          "operations" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
-            }
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
-          }
-        },
-        "required" : [ "source", "operations" ],
-        "additionalProperties" : false
-      },
-      "metabase.agent-lib.schema.program-literal" : {
-        "type" : "object",
-        "properties" : {
-          "program" : {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
-          },
-          "type" : {
-            "const" : "program"
-          }
-        },
-        "required" : [ "type", "program" ],
-        "additionalProperties" : false
-      },
-      "metabase.agent-lib.schema.query-aware-ref" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.expression-ref-form"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.aggregation-ref-form"
-        } ]
-      },
-      "metabase.agent-lib.schema.scalar" : {
-        "anyOf" : [ {
-          "type" : "null"
-        }, {
-          "type" : "string"
-        }, {
-          "type" : "number"
-        }, {
-          "type" : "boolean"
-        } ]
-      },
-      "metabase.agent-lib.schema.source" : {
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "ref" : {
-              "const" : "source"
-            },
-            "type" : {
-              "const" : "context"
-            }
-          },
-          "required" : [ "type", "ref" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "type" : {
-              "type" : "string",
-              "enum" : [ "table", "card", "dataset", "metric" ]
-            }
-          },
-          "required" : [ "type", "id" ],
-          "additionalProperties" : false
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.program-literal"
-        } ]
-      },
-      "metabase.agent-lib.schema.source-ref" : {
-        "anyOf" : [ {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "field"
-          }, {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "table"
-          }, {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "card"
-          }, {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "metric"
-          }, {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          } ]
-        } ]
-      },
-      "metabase.agent-lib.schema.top-level-op" : {
-        "anyOf" : [ {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "filter"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "aggregate"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "breakout"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "with-fields"
-          }, {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-            }
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "limit"
-          }, {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "expression"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.non-blank-string"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "join"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-          } ]
-        }, {
-          "anyOf" : [ {
-            "type" : "array",
-            "prefixItems" : [ {
-              "const" : "order-by"
-            }, {
-              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-            } ]
-          }, {
-            "type" : "array",
-            "prefixItems" : [ {
-              "const" : "order-by"
-            }, {
-              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
-            }, {
-              "type" : "string",
-              "enum" : [ "asc", "desc" ]
-            } ]
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "append-stage"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "drop-stage"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "drop-empty-stages"
-          } ]
-        }, {
-          "type" : "array",
-          "prefixItems" : [ {
-            "const" : "with-page"
-          }, {
-            "$ref" : "#/components/schemas/metabase.agent-lib.schema.page"
-          } ]
-        } ]
-      },
-      "metabase.agent-lib.schema.vector-literal" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
-        }
       },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "description" : "value must be an array of valid results column metadata maps.",
@@ -5515,7 +5337,7 @@
       },
       "metabase.driver.connection.connection-type" : {
         "type" : "string",
-        "enum" : [ "default", "write-data" ]
+        "enum" : [ "default", "write-data", "admin", "transform" ]
       },
       "metabase.embedding-rest.api.theme.EmbeddingTheme" : {
         "type" : "object",
@@ -10014,16 +9836,6 @@
               "type" : "null"
             } ]
           },
-          "hour-distribution" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
           "latest" : {
             "oneOf" : [ {
               "type" : "string"
@@ -10051,16 +9863,6 @@
             }, {
               "type" : "null"
             } ]
-          },
-          "weekday-distribution" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-              }
-            }, {
-              "type" : "null"
-            } ]
           }
         }
       },
@@ -10068,14 +9870,14 @@
         "description" : "Schema for fingerprint information for Fields deriving from `:type/Text`.",
         "type" : "object",
         "properties" : {
-          "mode-fraction" : {
+          "average-length" : {
             "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+              "type" : "number"
             }, {
               "type" : "null"
             } ]
           },
-          "percent-json" : {
+          "mode-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
@@ -10089,7 +9891,14 @@
               "type" : "null"
             } ]
           },
-          "percent-url" : {
+          "percent-email" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "percent-json" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
             }, {
@@ -10103,30 +9912,9 @@
               "type" : "null"
             } ]
           },
-          "percent-email" : {
+          "percent-url" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "max-length" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "average-length" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "min-length" : {
-            "oneOf" : [ {
-              "type" : "number"
             }, {
               "type" : "null"
             } ]
@@ -15259,7 +15047,7 @@
       "post" : {
         "operationId" : "post-api-agent-v2-construct-query",
         "summary" : "POST /api/agent/v2/construct-query",
-        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query), `operations` (an array of operator\n  tuples), and `prompt` (the user's original request). Returns a base64-encoded\n  MBQL query that can be executed via /v1/execute. See the agent_api reference\n  for the full program syntax.",
+        "description" : "Construct an MBQL query from a portable MBQL 5 representations JSON payload.\n\n  The body is `{\"query\": <external-query>}` where `<external-query>` is a JSON object\n  matching `::lib.schema/external-query` — see the `construct_notebook_query` tool\n  documentation for the format reference. Returns a base64-encoded MBQL query that can be\n  executed via /v1/execute or paginated via /v2/query.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15295,7 +15083,7 @@
       "post" : {
         "operationId" : "post-api-agent-v2-query",
         "summary" : "POST /api/agent/v2/query",
-        "description" : "Execute a structured program and stream the results, with continuation-token pagination.\n\n  Accepts either a program (same shape as /v2/construct-query) or a\n  `continuation_token` from a previous response. Returns results with column\n  metadata and an optional `continuation_token` for fetching the next page.",
+        "description" : "Execute a portable MBQL 5 representations JSON query and stream the results, with\n  continuation-token pagination.\n\n  Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`\n  from a previous response. Returns results with column metadata and an optional\n  `continuation_token` for fetching the next page.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -21749,6 +21537,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "admin_details" : {
+                    "oneOf" : [ {
+                      "description" : "Value must be a map.",
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "refingerprint" : {
                     "oneOf" : [ {
                       "type" : "boolean"
@@ -22703,7 +22500,7 @@
       "post" : {
         "operationId" : "post-api-dataset-native",
         "summary" : "POST /api/dataset/native",
-        "description" : "Fetch a native version of an MBQL query.",
+        "description" : "Fetch a native version of an MBQL query.\n\n  Display path: workspace remapping is suppressed via\n  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL\n  in the 'Show me the SQL' panel. The query still executes against the workspace\n  isolation schema at warehouse time (separate code path); this endpoint only\n  affects what the user reads.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26031,179 +25828,7 @@
                   "type" : "object",
                   "properties" : {
                     "library" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     },
                     "meta" : {
                       "type" : "object",
@@ -26225,6 +25850,10 @@
                             "type" : "null"
                           } ]
                         },
+                        "format_version" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
                         "formula_version" : {
                           "type" : "integer",
                           "minimum" : 1
@@ -26233,357 +25862,13 @@
                           "type" : "number"
                         }
                       },
-                      "required" : [ "formula_version", "synonym_threshold" ]
+                      "required" : [ "formula_version", "format_version", "synonym_threshold" ]
                     },
                     "metabot" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     },
                     "universe" : {
-                      "type" : "object",
-                      "properties" : {
-                        "components" : {
-                          "type" : "object",
-                          "properties" : {
-                            "entity_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "field_count" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "name_collisions" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "repeated_measures" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            },
-                            "synonym_pairs" : {
-                              "anyOf" : [ {
-                                "type" : "object",
-                                "properties" : {
-                                  "measurement" : {
-                                    "type" : "number"
-                                  },
-                                  "score" : {
-                                    "type" : "integer",
-                                    "minimum" : 0
-                                  }
-                                },
-                                "required" : [ "measurement", "score" ],
-                                "additionalProperties" : false
-                              }, {
-                                "type" : "object",
-                                "properties" : {
-                                  "error" : {
-                                    "type" : "string"
-                                  },
-                                  "measurement" : {
-                                    "type" : "null"
-                                  },
-                                  "score" : {
-                                    "type" : "null"
-                                  }
-                                },
-                                "required" : [ "measurement", "score", "error" ],
-                                "additionalProperties" : false
-                              } ]
-                            }
-                          },
-                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ]
-                        },
-                        "total" : {
-                          "oneOf" : [ {
-                            "type" : "integer",
-                            "minimum" : 0
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      },
-                      "required" : [ "total", "components" ]
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-complexity-score.api.node"
                     }
                   },
                   "required" : [ "library", "universe", "metabot", "meta" ]
@@ -26810,7 +26095,7 @@
       "post" : {
         "operationId" : "post-api-ee-database-routing-destination-database",
         "summary" : "POST /api/ee/database-routing/destination-database",
-        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+        "description" : "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, this endpoint does not test that the database is actually\n  reachable before adding it — destination details are not required to be valid at creation time, and an\n  unreachable destination is fine.",
         "parameters" : [ {
           "in" : "query",
           "name" : "check_connection_details",
@@ -27998,7 +27283,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "message_count", "total_tokens" ]
+              "enum" : [ "created_at", "message_count", "total_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -31020,6 +30305,88 @@
         "tags" : [ "/api/ee/serialization" ]
       }
     },
+    "/api/ee/serialization/metadata/import" : {
+      "post" : {
+        "operationId" : "post-api-ee-serialization-metadata-import",
+        "summary" : "POST /api/ee/serialization/metadata/import",
+        "description" : "Import warehouse metadata previously emitted by `POST /metadata/export`. The\n  request body is the JSON document `{databases, tables, fields}`; sections are\n  parsed incrementally so memory stays bounded regardless of payload size.\n\n  To bypass the JSON-parsing request middleware, send with `Content-Type:\n  application/octet-stream`. Restricted to superusers.\n\n  Returns `202` immediately with an `:import-id`; the import runs\n  asynchronously. Poll `GET /metadata/import/:id` for its outcome.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "object",
+                      "properties" : {
+                        "import-id" : {
+                          "type" : "string"
+                        },
+                        "queued" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "queued", "import-id" ],
+                      "additionalProperties" : false
+                    },
+                    "status" : {
+                      "const" : 202
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
+    "/api/ee/serialization/metadata/import/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-serialization-metadata-import-id",
+        "summary" : "GET /api/ee/serialization/metadata/import/{id}",
+        "description" : "Status of a metadata import previously started by `POST /metadata/import`.\n  Status is retained in-memory and is not durable across server restarts.\n  Restricted to superusers.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.import-status-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
     "/api/ee/stale/{id}" : {
       "get" : {
         "operationId" : "get-api-ee-stale-id",
@@ -32008,6 +31375,1258 @@
           }
         },
         "tags" : [ "/api/ee/upload-management" ]
+      }
+    },
+    "/api/ee/workspace-instance/current" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-instance-current",
+        "summary" : "GET /api/ee/workspace-instance/current",
+        "description" : "Read-only summary of the workspace loaded on this instance.\n\n  Reads from the in-process atom populated at boot by the `:workspace` section of\n  `config.yml`. Returns `nil` when no workspace was loaded — i.e. this is a manager-only\n  instance, or no `config.yml` was present at boot.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "databases" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "type" : "object",
+                          "properties" : {
+                            "input_schemas" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "output" : {
+                              "type" : "object",
+                              "properties" : {
+                                "db" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "schema" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                }
+                              }
+                            }
+                          },
+                          "required" : [ "input_schemas", "output" ]
+                        }
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "name", "databases" ]
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      }
+    },
+    "/api/ee/workspace-instance/table-remappings" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-instance-table-remappings",
+        "summary" : "GET /api/ee/workspace-instance/table-remappings",
+        "description" : "Return all table remappings, ordered by id.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "from_db" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "to_table_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "database_id" : {
+                        "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                      },
+                      "to_db" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "created_at" : { },
+                      "from_schema" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "from_table_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "to_schema" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "database_id", "from_db", "from_schema", "from_table_name", "to_db", "to_schema", "to_table_name", "created_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      }
+    },
+    "/api/ee/workspace-manager" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager",
+        "summary" : "GET /api/ee/workspace-manager",
+        "description" : "List all Workspaces.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "created_at" : {
+                        "anyOf" : [ { }, { } ]
+                      },
+                      "creator" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "email" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            },
+                            "first_name" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            },
+                            "last_name" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          },
+                          "required" : [ "id", "first_name", "last_name", "email" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "databases" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "database_id" : {
+                              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                            },
+                            "input_schemas" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string",
+                                "minLength" : 1
+                              }
+                            },
+                            "output_namespace" : {
+                              "type" : "string"
+                            },
+                            "status" : {
+                              "type" : "string",
+                              "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                            }
+                          },
+                          "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                          "additionalProperties" : false
+                        }
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "updated_at" : {
+                        "anyOf" : [ { }, { } ]
+                      }
+                    },
+                    "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-workspace-manager",
+        "summary" : "POST /api/ee/workspace-manager",
+        "description" : "Create a new Workspace (name only, no databases).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "name" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager-id",
+        "summary" : "GET /api/ee/workspace-manager/{id}",
+        "description" : "Get a single Workspace by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-workspace-manager-id",
+        "summary" : "PUT /api/ee/workspace-manager/{id}",
+        "description" : "Update a workspace's name.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-workspace-manager-id",
+        "summary" : "DELETE /api/ee/workspace-manager/{id}",
+        "description" : "Delete a Workspace. Deprovisions all databases first (blocking).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "deleted" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "id", "deleted" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}/config" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager-id-config",
+        "summary" : "GET /api/ee/workspace-manager/{id}/config",
+        "description" : "Download the workspace's developer-instance config as a YAML file. 409 if any\n  of the workspace's databases is not `:provisioned`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "string"
+                    },
+                    "headers" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    },
+                    "status" : {
+                      "const" : 200
+                    }
+                  },
+                  "required" : [ "status", "headers", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}/database" : {
+      "post" : {
+        "operationId" : "post-api-ee-workspace-manager-id-database",
+        "summary" : "POST /api/ee/workspace-manager/{id}/database",
+        "description" : "Add a database to a workspace and provision it immediately (blocking).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  },
+                  "input_schemas" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "database_id", "input_schemas" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}/database/{db-id}" : {
+      "put" : {
+        "operationId" : "put-api-ee-workspace-manager-id-database-db-id",
+        "summary" : "PUT /api/ee/workspace-manager/{id}/database/{db-id}",
+        "description" : "Update a database's input namespaces. Deprovisions the old config and reprovisions\n   with the new one (blocking).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "db-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "input_schemas" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "input_schemas" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-workspace-manager-id-database-db-id",
+        "summary" : "DELETE /api/ee/workspace-manager/{id}/database/{db-id}",
+        "description" : "Deprovision and remove a database from a workspace (blocking).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "db-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ { }, { } ]
+                    },
+                    "creator" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ { }, { } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}/metadata/export" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager-id-metadata-export",
+        "summary" : "GET /api/ee/workspace-manager/{id}/metadata/export",
+        "description" : "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,\n  scoped to each database's `:input` namespaces. Same flag semantics as\n  `/api/ee/serialization/metadata/export` — sections must be opted into via the\n  `with-databases` / `with-tables` / `with-fields` query parameters.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "with-databases",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-tables",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-fields",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
       }
     },
     "/api/eid-translation/translate" : {

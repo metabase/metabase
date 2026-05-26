@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.validation :as validation]))
 
- ;; Test field definitions
+;; Test field definitions
 
 (def float-field
   {:name "price" :base_type :type/Float :database_required false})
@@ -272,7 +272,7 @@
              [nil [{"big_count" "-9223372036854775809"}] [biginteger-field]] ; Long.MIN_VALUE - 1
 
              ;; Invalid cases
-                          ;; Invalid cases
+             ;; Invalid cases
              [[{"big_count" "Must be an integer"}] [{"big_count" "123.45"}] [biginteger-field]]
              [[{"big_count" "Must be an integer"}] [{"big_count" "abc"}] [biginteger-field]]
              [[{"big_count" "Must be an integer"}] [{"big_count" 123.45}] [biginteger-field]]
