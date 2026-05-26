@@ -144,7 +144,6 @@
       100 2
       101 1)))
 
-
 (deftest ^:parallel locale-pluralization-test-6
   (testing "Russian, Ukrainian, Serbian"
     (are [n expected] (= expected (compute (str "n%10==1 && n%100!=11 ? 0 :"

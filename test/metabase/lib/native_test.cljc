@@ -77,7 +77,6 @@
                         :id           (:id old-tag)}}
                 (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
-
       (testing "works with other variables present, if they don't change"
         (let [other {:type         :text
                      :name         "other"
@@ -609,7 +608,6 @@
                 :name "mytag"
                 :display-name "My Tag"
                 :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))
-
   (testing "invalid template tags should return the correct errors"
     (mu/disable-enforcement
       (are

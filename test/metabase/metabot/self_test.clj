@@ -156,7 +156,6 @@
               {:type :text :id "text-1" :text "!"}
               {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
-
   (testing "still collects tool inputs for JSON parsing"
     (let [chunks [{:type :start :messageId "msg-1"}
                   {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
@@ -166,7 +165,6 @@
       (is (= [{:type :start :id "msg-1"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
-
   (testing "converts tool-output-available to tool-output"
     (let [chunks [{:type                   :tool-output-available
                    :toolCallId             "call-1"
@@ -455,7 +453,6 @@
         (is (= "call-123" (:toolCallId parsed)))
         ;; result should be JSON string
         (is (string? (:result parsed))))))
-
   (testing "formats tool error"
     (let [line (self.core/format-tool-result-line {:id "call-456"
                                                    :error {:message "Tool failed"}})]
@@ -463,7 +460,6 @@
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-456" (:toolCallId parsed)))
         (is (string? (:error parsed))))))
-
   (testing ":duration-ms is ignored"
     (let [line (self.core/format-tool-result-line {:id "call-789"
                                                    :result {:data [{:id 1}]}
@@ -518,7 +514,6 @@
               lines))
       (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
               (-> (last lines) (subs 2) (json/decode+kw))))))
-
   (testing ":external-id overrides the messageId on the start line"
     (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
                  {:type :text :text "hi"}]
@@ -621,11 +616,9 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
             (mt/with-log-level [metabase.metabot.self :fatal]
@@ -642,11 +635,9 @@
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                        (assoc labels :error-type "ExceptionInfo"))))
             (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-retries)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors on non-retryable failure, no retries"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (fn [_opts]
@@ -659,11 +650,9 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-errors)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
@@ -671,7 +660,6 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
-
         (testing "reports token usage metrics on :usage parts"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -684,12 +672,10 @@
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
-
         (analytics/clear! :metabase-metabot/llm-input-tokens)
         (analytics/clear! :metabase-metabot/llm-output-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-
         (testing "increments cache token counters when the :usage part carries cache fields"
           ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -704,12 +690,10 @@
             (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
           (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
-
         (analytics/clear! :metabase-metabot/llm-input-tokens)
         (analytics/clear! :metabase-metabot/llm-output-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-
         (testing "does not increment cache counters when cache fields are absent or zero"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -742,10 +726,8 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
             (mt/with-log-level [metabase.metabot.self :fatal]
@@ -760,11 +742,9 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-retries)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors on non-retryable failure, no retries"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (fn [_opts] (throw (ex-info "unauthorized" {:status 401})))]
@@ -774,11 +754,9 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-errors)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -787,7 +765,6 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
-
         (testing "reports token usage metrics on :usage parts"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response

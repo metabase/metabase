@@ -269,7 +269,6 @@
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
-
       (testing ":search-native-query is not included in context when nil or false"
         (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                          (is (not (contains? context :search-native-query)))
@@ -297,7 +296,6 @@
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
-
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -305,7 +303,6 @@
                                                              {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
-
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -327,7 +324,6 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
-
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -335,11 +331,9 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
-
         (testing "limit above 50 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 75}))))
-
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
@@ -388,7 +382,6 @@
                       analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
                   (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
                   (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
-
               (testing "handles nil collection descriptions"
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))

@@ -24,13 +24,11 @@
         (is (= {:database_id 1
                 :sql_engine  "h2"}
                (:structured-output result))))))
-
   (testing "returns missing-database message when no database references are present"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {}})]
       (let [result (document-tools/document-schema-collect-tool {})]
         (is (= "You must `@` mention a database to use when not querying an existing model"
                (:output result))))))
-
   (testing "returns multiple-database message when more than one database is referenced"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test DB 1"
                                                                             "database:2" "Test DB 2"}})]

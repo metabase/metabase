@@ -76,7 +76,6 @@
                     :device_id device
                     :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
                     :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
-
                   (is (malli= [:sequential {:min 1}
                                [:map {:closed true}
                                 [:from ms/Email]
@@ -99,7 +98,6 @@
                                               ;; `format-human-readable` has slightly different output on different JVMs
                                               (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]
                           (is (str/includes? message expected-str))))))
-
                   (testing "don't send email on subsequent login from same device"
                     (mt/reset-inbox!)
                     (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
@@ -149,12 +147,10 @@
                                     email :email} {:first_name "Ngoc"
                                                    :last_name  "Khuat"}]
           (is (contains? (new-login-email user-id email) "We've Noticed a New Metabase Login, Ngoc"))))
-
       (testing "fallback to last name if user has no first_name"
         (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil :last_name  "Khuat"}]
           (is (contains? (new-login-email user-id email)
                          "We've Noticed a New Metabase Login, Khuat"))))
-
       (testing "Else Use email if both first_name and last_name are null"
         (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil
                                                                :last_name  nil

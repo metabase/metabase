@@ -154,7 +154,6 @@
               :memory-atom memory-atom})]
       (is (= "SELECT 2" (some-> (get-in @memory-atom [:state :transforms "1" :source :query])
                                 lib/raw-native-query)))))
-
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
           _ (transforms-write/write-transform-sql
@@ -176,7 +175,6 @@
             {:transform_id 999
              :edit_action {:mode "replace" :new_content "SELECT 1"}
              :memory-atom memory-atom})))))
-
   (testing "fails when edit_action invalid"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "select 1")}}

@@ -50,18 +50,15 @@
     (let [cert-string (slurp "./test_resources/ssl/ca.pem")
           keystore (driver.u/generate-trust-store cert-string)]
       (is (true? (.containsAlias keystore test-ca-dn)))))
-
   (testing "bad cert provided"
     (is (thrown? java.security.cert.CertificateException
                  (driver.u/generate-trust-store "fooobar"))))
-
   (testing "multiple certs are read"
     (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
                            (slurp "./test_resources/ssl/server.pem"))
           keystore (driver.u/generate-trust-store cert-string)]
       (is (.containsAlias keystore test-server-dn))
       (is (.containsAlias keystore test-ca-dn))))
-
   (testing "can create SocketFactory for CA cert"
     ;; this is a tough method to test - the resulting `SSLSocketFactory`
     ;; doesn't have any public members to access the underlying `KeyStore`
@@ -150,20 +147,17 @@
                                       :secret-test-driver
                                       :details-fields)]
             (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))
-
     (testing "connection-props-server->client works as expected for info field types"
       (testing "info fields with placeholder defined are unmodified"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info, :placeholder "placeholder"}]))))
-
       (testing "info fields with getter defined invoke the getter to generate the placeholder"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info, :getter (constantly "placeholder")}]))))
-
       (testing "info fields are omitted if getter returns nil, a non-string value, or throws an exception"
         (is (= []
                (driver.u/connection-props-server->client
@@ -224,14 +218,12 @@
                 a
                 props-by-name
                 :test-driver))))
-
       (testing "property with single-level visible-if is preserved"
         (is (= b
                (#'driver.u/resolve-transitive-visible-if
                 b
                 props-by-name
                 :test-driver))))
-
       (testing "property with transitive visible-if includes all dependencies"
         (is (= {:name "prop-c" :visible-if {:prop-b true
                                             :prop-a true}}
@@ -305,7 +297,6 @@
         (is (= {"prop-a" {:name "prop-a"}
                 "prop-b" {:name "prop-b"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "single group with nested fields"
       (let [props [{:name "top-level"}
                    {:type :group
@@ -316,7 +307,6 @@
                 "nested-1" {:name "nested-1"}
                 "nested-2" {:name "nested-2"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "deeply nested groups"
       (let [props [{:name "top"}
                    {:type :group
@@ -329,7 +319,6 @@
                 "level-2" {:name "level-2"}
                 "level-2-b" {:name "level-2-b"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "properties without names are skipped"
       (let [props [{:name "has-name"}
                    {:type :info :placeholder "no name"}]]
@@ -350,7 +339,6 @@
                 group
                 props-by-name
                 :test-driver)))))
-
     (testing "nested field with transitive dependency"
       (let [props-by-name {"field-a" {:name "field-a"}
                            "field-b" {:name "field-b" :visible-if {:field-a true}}
@@ -364,7 +352,6 @@
                 group
                 props-by-name
                 :test-driver)))))
-
     (testing "top-level field depending on nested field"
       (let [props-by-name {"nested-a" {:name "nested-a"}
                            "nested-b" {:name "nested-b" :visible-if {:nested-a true}}}
@@ -387,7 +374,6 @@
         (is (= :group (:type (first result))))
         (is (= {:name "top-field" :visible-if {:nested-field true}}
                (second result)))))
-
     (testing "nested field depends on top-level field with transitive chain"
       (let [props [{:name "field-a"}
                    {:name "field-b" :visible-if {:field-a true}}
@@ -401,7 +387,6 @@
               nested-field (first (:fields group))]
           (is (= {:field-b true :field-a true}
                  (:visible-if nested-field))))))
-
     (testing "deeply nested groups with cross-boundary dependencies"
       (let [props [{:name "root-field"}
                    {:type :group
@@ -513,21 +498,18 @@
         (is (= 1 (count result)))
         (is (= "Test message" (:placeholder (first result))))
         (is (nil? (:getter (first result))) "Getter should be removed after processing")))
-
     (testing ":info type with nil getter returns empty vector"
       (let [info-prop {:name "test-info"
                        :type :info
                        :getter (constantly nil)}
             result (#'driver.u/process-connection-prop info-prop)]
         (is (= [] result) "Should return empty vector when getter returns nil")))
-
     (testing "regular property passes through unchanged"
       (let [regular-prop {:name "host"
                           :type :string
                           :display-name "Host"}
             result (#'driver.u/process-connection-prop regular-prop)]
         (is (= [regular-prop] result))))
-
     (testing ":group type with simple fields"
       (let [group-prop {:type :group
                         :container-style ["grid"]
@@ -537,7 +519,6 @@
         (is (= 1 (count result)))
         (is (= :group (:type (first result))))
         (is (= 2 (count (:fields (first result)))))))
-
     (testing ":group type flattens vectors in :fields array"
       (let [vector-of-props [{:name "tunnel-host" :type :string}
                              {:name "tunnel-port" :type :integer}]
@@ -551,7 +532,6 @@
               fields (:fields processed-group)]
           (is (= 3 (count fields)) "Vector should be flattened into 3 separate fields")
           (is (= ["ssl" "tunnel-host" "tunnel-port"] (map :name fields))))))
-
     (testing ":group type recursively processes :info fields"
       (let [group-prop {:type :group
                         :fields [{:name "regular" :type :string}
@@ -564,7 +544,6 @@
           (is (= 2 (count fields)))
           (is (= "Info message" (:placeholder (second fields))))
           (is (nil? (:getter (second fields))) "Getter should be removed"))))
-
     (testing ":group type handles nested groups"
       (let [nested-group {:type :group
                           :fields [{:name "inner1" :type :string}
@@ -600,18 +579,15 @@
                             :type :info
                             :getter (constantly "Group info message")}]}]
           result (driver.u/connection-props-server->client mock-driver props)]
-
       (testing "top-level :info property is processed"
         (let [top-info (first (filter #(= "top-level-info" (:name %)) result))]
           (is (some? top-info))
           (is (= "Top level message" (:placeholder top-info)))))
-
       (testing "group contains flattened fields"
         (let [group (first (filter #(= :group (:type %)) result))
               fields (:fields group)]
           (is (= 4 (count fields)) "Should have 4 fields: ssl, tunnel-host, tunnel-port, group-info")
           (is (= ["ssl" "tunnel-host" "tunnel-port" "group-info"] (map :name fields)))))
-
       (testing ":info property inside group is processed"
         (let [group (first (filter #(= :group (:type %)) result))
               group-info (first (filter #(= "group-info" (:name %)) (:fields group)))]

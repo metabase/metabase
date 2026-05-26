@@ -579,11 +579,9 @@
     (testing "default: finished true, no error"
       (let [[row] (start-and-finalize!)]
         (is (=? {:finished true :error nil} row))))
-
     (testing "aborted: finished false flows through, no error"
       (let [[row] (start-and-finalize! :finished? false)]
         (is (=? {:finished false :error nil} row))))
-
     (testing "errored map: JSON-encoded into column, decoded onto chat msg; partial parts persisted"
       (let [error-data     {:message "agent loop API error: 503"
                             :type    "java.lang.RuntimeException"
@@ -592,7 +590,6 @@
         (is (=? {:finished true :error string? :data seq} row))
         (is (= error-data (json/decode+kw (:error row))))
         (is (= error-data (:error chat-msg)))))
-
     (testing "errored string: any JSON-serializable value accepted"
       (let [[row chat-msg] (start-and-finalize! :error "boom")]
         (is (= "\"boom\"" (:error row)))

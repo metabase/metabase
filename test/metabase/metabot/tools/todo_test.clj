@@ -87,7 +87,6 @@
       (is (contains? result :structured-output))
       (is (= [] (get-in result [:structured-output :todos])))
       (is (= 0 (get-in result [:structured-output :todo_count])))))
-
   (testing "todo-read returns stored todos"
     (let [todos [{:id "1" :content "Task 1" :status "pending" :priority "high"}
                  {:id "2" :content "Task 2" :status "completed" :priority "low"}]
@@ -95,7 +94,6 @@
           result (todo/todo-read {:memory-atom memory-atom})]
       (is (= todos (get-in result [:structured-output :todos])))
       (is (= 2 (get-in result [:structured-output :todo_count])))))
-
   (testing "todo-read includes instructions for LLM"
     (let [memory-atom (atom {:state {:todos [{:id "1" :content "Task" :status "pending" :priority "medium"}]}})
           result (todo/todo-read {:memory-atom memory-atom})]

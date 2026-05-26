@@ -19,12 +19,10 @@
       ;; Should contain date components
       (is (re-find #"2024" result))
       (is (re-find #"14:30" result))))
-
   (testing "uses current_user_time when provided"
     (let [context {:current_user_time "2024-02-01T09:15:00"}
           result  (user-context/format-current-time context)]
       (is (= "2024-02-01T09:15:00" result))))
-
   (testing "handles missing timezone by using current time"
     (let [context {}
           result  (user-context/format-current-time context)]
@@ -32,7 +30,6 @@
       (is (string? result))
       ;; Should contain some date
       (is (re-find #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}" result))))
-
   (testing "handles invalid timezone gracefully"
     (is (string?
          (user-context/format-current-time {:current_time_with_timezone "invalid"})))))
@@ -43,26 +40,22 @@
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
-
   (testing "extracts sql_engine from adhoc item with native dataset-query (frontend payload)"
     (let [context {:user_is_viewing [{:type "adhoc"
                                       :query (lib/native-query (mt/metadata-provider) "select 1")
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
-
   (testing "returns nil for adhoc notebook (MBQL) query"
     (let [context {:user_is_viewing [{:type  "adhoc"
                                       :query (let [mp (mt/metadata-provider)]
                                                (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
-
   (testing "returns nil when no viewing context"
     (let [context {}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
-
   (testing "returns nil when no sql_engine in context"
     (let [context {:user_is_viewing [{:type "table" :id 1}]}
           result (user-context/extract-sql-dialect context)]
@@ -77,7 +70,6 @@
               (user-context/format-viewing-context
                {:user_is_viewing [{:type  "adhoc"
                                    :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
-
     (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -87,7 +79,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
         (is (re-find #"postgres" result))))
-
     (testing "formats adhoc native SQL query with error"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -97,7 +88,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM invalid" result))
         (is (re-find #"Table 'invalid' not found" result))))
-
     (testing "formats transform context"
       (let [context {:user_is_viewing [{:type "transform"
                                         :id 123
@@ -108,7 +98,6 @@
         (is (re-find #"Transform" result))
         (is (re-find #"Daily Revenue" result))
         (is (re-find #"sql" result))))
-
     (testing "formats transform context with error"
       (let [context {:user_is_viewing [{:type "transform"
                                         :id 123
@@ -119,7 +108,6 @@
         (is (some? result))
         (is (re-find #"Transform error" result))
         (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
-
     (testing "formats code editor context"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -131,7 +119,6 @@
         (is (re-find #"code editor" result))
         (is (re-find #"python" result))
         (is (re-find #"Line 10" result))))
-
     (testing "formats code editor with selection"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -145,7 +132,6 @@
         (is (some? result))
         (is (re-find #"Selected lines:" result))
         (is (re-find #"SELECT \* FROM foo" result))))
-
     (testing "formats code editor with no buffers"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers []}]}
@@ -246,18 +232,15 @@
       (is (re-find #"Revenue Query" result))
       (is (re-find #"Sales Dashboard" result))
       (is (re-find #"Daily revenue" result))))
-
   (testing "includes guidance text"
     (let [context {:user_recently_viewed [{:type "table" :id 1 :name "users"}]}
           result (user-context/format-recent-views context)]
       (is (re-find #"might be relevant" result))
       (is (re-find #"search tool" result))))
-
   (testing "returns empty string when no recent views"
     (let [context {}
           result (user-context/format-recent-views context)]
       (is (= "" result))))
-
   (testing "returns empty string when recent views is an empty vector (e.g. after verified-only filter)"
     (let [context {:user_recently_viewed []}
           result (user-context/format-recent-views context)]
@@ -275,7 +258,6 @@
                                    :email    "jane@example.com"
                                    :glossary {"ARR" "Annual Recurring Revenue"}})
              (user-context/format-current-user-info {})))))
-
   (testing "returns nil when there is no current user"
     (mt/with-dynamic-fn-redefs [entity-details/get-current-user (fn [_]
                                                                   {:output "current user not found"})]
@@ -305,7 +287,6 @@
         (is (= "<user>Jane Doe</user>" (:current_user_info result)))
         (is (string? (:viewing_context result)))
         (is (string? (:recent_views result))))))
-
   (testing "enriches context from frontend adhoc native query payload"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                    :first_day_of_week "Monday"
@@ -319,12 +300,10 @@
       (is (= "postgresql" (:sql_dialect result)))
       (is (re-find #"SQL editor" (:viewing_context result)))
       (is (re-find #"SELECT \* FROM users" (:viewing_context result)))))
-
   (testing "uses default first_day_of_week when not provided"
     (let [context {}
           result (user-context/enrich-context-for-template context)]
       (is (= "Sunday" (:first_day_of_week result)))))
-
   (testing "handles minimal context"
     (let [context {}
           result (user-context/enrich-context-for-template context)]
@@ -421,7 +400,6 @@
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"Retention Cohorts" result))
           (is (re-find #"Shows retention by cohort" result))))))
-
   (testing "question includes display_type in formatted output"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Card {card-id :id} {:name          "Revenue Pie Chart"
@@ -434,7 +412,6 @@
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"display_type=\"pie\"" result))))))
-
   (testing "dashboard with only type+id fetches name and description from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
@@ -443,7 +420,6 @@
                       {:user_is_viewing [{:type "dashboard" :id dash-id}]})]
           (is (re-find #"Executive Dashboard" result))
           (is (re-find #"Top-level KPIs" result))))))
-
   (testing "table with only type+id fetches details including fields from DB"
     (mt/with-test-user :rasta
       (let [result (user-context/format-viewing-context

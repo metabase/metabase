@@ -23,7 +23,6 @@
               resp))
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
-
   (testing "Weak ETag (W/) in request is treated as match"
     (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
           resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}} {})]
@@ -31,7 +30,6 @@
                :body    ""
                :headers {"ETag" (format "\"%s\"" config/mb-version-hash)}}
               resp))))
-
   (testing "Multiple ETags in If-None-Match; any match triggers 304"
     (let [header (format "\"other\", W/\"%s\", \"another\"" config/mb-version-hash)
           resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}} {})]
@@ -52,7 +50,6 @@
               resp))
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
-
   (testing "Missing If-None-Match -> 200; adds ETag only"
     (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}} {})]
       (is (=? {:status  200
@@ -85,7 +82,6 @@
                :body    ""
                :headers {"ETag" weak-etag}}
               resp))))
-
   (testing "Weak ETag in request matches and response contains weak ETag"
     (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
           resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}} {:weak? true})]
@@ -93,7 +89,6 @@
                :body    ""
                :headers {"ETag" etag-weak}}
               resp))))
-
   (testing "Multiple ETags in If-None-Match; match triggers 304 with weak ETag in response"
     (let [header (format "\"other\", \"%s\", \"another\"" config/mb-version-hash)
           resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}} {:weak? true})]
@@ -112,7 +107,6 @@
                :headers {"ETag"  (format "W/\"%s\"" config/mb-version-hash)
                          "X-Foo" "bar"}}
               resp))))
-
   (testing "Missing If-None-Match -> 200; adds weak ETag only"
     (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}} {:weak? true})]
       (is (=? {:status  200

@@ -89,7 +89,6 @@
      (validate
       (mock-change-set :id "v45.00-002")
       (mock-change-set :id "v45.00-001")))
-
     (is-thrown-with-error-info?
      "Change set IDs are not in order"
      {:out-of-order-ids [["v49.2023-12-14T08:54:54"
@@ -168,7 +167,6 @@
              [{:sql {:dbms "h2", :sql "1"}}
               {:sql {:dbms "postgresql", :sql "2"}}
               {:sql {:dbms "mysql,mariadb", :sql "3"}}])))))
-
   (testing "should fail if *any* change is missing dbms"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -178,7 +176,6 @@
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
             {:sql {:sql "2"}}])))))
-
   (testing "should fail if a DBMS is repeated"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -198,7 +195,6 @@
     (testing "Valid new-style ID"
       (is (= :ok
              (validate-id "v49.2024-01-01T10:30:00"))))
-
     (testing "invalid date components should throw an error"
       (let [validate-id-strict (fn [id]
                                  (validate-file (io/file "049_update_migrations.yaml")
@@ -367,7 +363,6 @@
      (validate (mock-change-set :id "v49.00-033"
                                 :changes [{:modifyDataType {:newDataType "boolean"}}]
                                 :rollback nil)))
-
     (is-thrown-with-error-info?
      "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
      {:invalid-ids ["v49.00-033"]
@@ -395,7 +390,6 @@
      (validate (mock-change-set :id "v49.00-033"
                                 :changes [{:modifyDataType {:newDataType "datetime"}}]
                                 :rollback nil)))
-
     (testing "(but not if it's an older migration)"
       (is (validate (mock-change-set :id "v45.12-345"
                                      :changes [{:createTable {:tableName "my_table"

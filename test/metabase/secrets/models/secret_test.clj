@@ -104,7 +104,6 @@
                         file-value "-2-key.pem"]
       (spit file-db "titok")
       (spit file-value "psszt!")
-
       (testing "from value"
         (is (= "titok"
                (secret/value-as-string
@@ -112,7 +111,6 @@
                 {:keystore-path    file-db
                  :keystore-options "local"}
                 "keystore"))))
-
       (testing "from the database"
         (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                                :kind       ::secret/pem-cert

@@ -464,7 +464,6 @@
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                                 :parse-fn parse-format-strings)))))
-
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
              (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
@@ -489,13 +488,11 @@
            (first (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {} []))))
     (is (= ["Col2" "Col1"]
            (first (xlsx-export [{:id 0, :name "Col2"} {:id 1, :name "Col1"}] {} [])))))
-
   (testing "Data in each row is reordered by output-order prior to export"
     (is (= [["b" "a"] ["d" "c"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                               {:output-order [1 0]}
                               [["a" "b"] ["c" "d"]])))))
-
   (testing "Rows not included by index in output-order are excluded from export"
     (is (= [["b"] ["d"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]

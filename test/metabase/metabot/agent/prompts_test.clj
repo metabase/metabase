@@ -11,13 +11,11 @@
       (is (string? template))
       (is (> (count template) 1000))
       (is (re-find #"metabot_name" template))))
-
   (testing "loads embedding-next.selmer template"
     (let [template (prompts/load-system-prompt-template "embedding-next.selmer")]
       (is (some? template))
       (is (string? template))
       (is (re-find #"metabot_name" template))))
-
   (testing "returns nil for non-existent template"
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
       (is (nil? template)))))
@@ -35,17 +33,14 @@
       (is (some? instructions))
       (is (string? instructions))
       (is (re-find #"PostgreSQL" instructions))))
-
   (testing "loads mysql dialect"
     (let [instructions (prompts/load-dialect-instructions "mysql")]
       (is (some? instructions))
       (is (string? instructions))
       (is (re-find #"MySQL" instructions))))
-
   (testing "returns nil for non-existent dialect"
     (let [instructions (prompts/load-dialect-instructions "non-existent")]
       (is (nil? instructions))))
-
   (testing "returns nil for nil dialect"
     (let [instructions (prompts/load-dialect-instructions nil)]
       (is (nil? instructions)))))
@@ -56,7 +51,6 @@
           context {:name "Metabot" :day "Monday"}
           rendered (prompts/render-system-prompt template context)]
       (is (= "Hello Metabot, today is Monday" rendered))))
-
   (testing "handles missing variables gracefully"
     (let [template "Hello {{name}}"
           context {}
@@ -65,14 +59,12 @@
       ;; Selmer leaves undefined variables as empty or the variable name
       (is (or (= "Hello " rendered)
               (= "Hello {{name}}" rendered)))))
-
   (testing "handles conditionals"
     (let [template "{% if show %}visible{% endif %}"
           context-true {:show true}
           context-false {:show false}]
       (is (= "visible" (prompts/render-system-prompt template context-true)))
       (is (= "" (prompts/render-system-prompt template context-false)))))
-
   (testing "handles loops"
     (let [template "{% for item in items %}{{item}} {% endfor %}"
           context {:items ["a" "b" "c"]}
@@ -83,35 +75,27 @@
   (testing "caches loaded templates"
     ;; Clear cache first
     (prompts/clear-cache!)
-
     ;; Load template - should cache it
     (let [template1 (prompts/get-cached-system-prompt "internal.selmer")]
       (is (some? template1))
-
       ;; Load again - should return from cache
       (let [template2 (prompts/get-cached-system-prompt "internal.selmer")]
         (is (= template1 template2)))))
-
   (testing "caches dialect instructions"
     ;; Clear cache first
     (prompts/clear-cache!)
-
     ;; Load dialect - should cache it
     (let [dialect1 (prompts/get-cached-dialect-instructions "postgresql")]
       (is (some? dialect1))
-
       ;; Load again - should return from cache
       (let [dialect2 (prompts/get-cached-dialect-instructions "postgresql")]
         (is (= dialect1 dialect2)))))
-
   (testing "clear-cache! removes all cached templates"
     ;; Load some templates
     (prompts/get-cached-system-prompt "internal.selmer")
     (prompts/get-cached-dialect-instructions "postgresql")
-
     ;; Clear cache
     (prompts/clear-cache!)
-
     ;; Cache should be empty (we can't directly test this, but we can reload)
     (let [template (prompts/get-cached-system-prompt "internal.selmer")]
       (is (some? template)))))

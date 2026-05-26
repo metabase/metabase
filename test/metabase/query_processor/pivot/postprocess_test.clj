@@ -65,7 +65,6 @@
       (is (= [["A"]
               ["B"]]
              result))))
-
   (testing "builds left headers with multi-level hierarchy"
     (let [left-header-items [{:depth 0 :value "A" :span 2 :offset 0}
                              {:depth 1 :value "X" :span 1 :offset 0}
@@ -77,7 +76,6 @@
               ["A" "Y"]
               ["B" "Z"]]
              result))))
-
   (testing "handles empty left header items without error"
     (let [left-header-items []
           result (#'pivot.postprocess/build-left-headers left-header-items)]

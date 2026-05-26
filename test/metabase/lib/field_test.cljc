@@ -665,7 +665,6 @@
                         (lib.binning/with-binning field-metadata)
                         lib.binning/binning
                         (lib/display-info query)))))))
-
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
           field-metadata (meta/field-metadata :people :latitude)
@@ -1065,7 +1064,6 @@
                          lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
-
       (testing "join :fields list"
         (let [join-fields-query (lib.util/update-query-stage
                                  query -1
@@ -1468,18 +1466,15 @@
           implied2         (clean-ref (second implicit-columns))]
       (is (= (map #(dissoc % :selected?) table-columns)
              (lib/returned-columns query)))
-
       (testing "attaching implicitly joined fields should alter the query"
         (is (not= query implied-query))
         (is (nil? (lib.equality/find-matching-ref (first implicit-columns)
                                                   (map lib/ref (lib/returned-columns query))))))
-
       (testing "with no :fields set does nothing"
         (is (=? query
                 (lib/remove-field query -1 (first implicit-columns))))
         (is (=? query
                 (lib/remove-field query -1 (second implicit-columns)))))
-
       (testing "with explicit :fields list"
         (is (=? (sorted-fields (conj table-fields implied2))
                 (-> implied-query
@@ -1538,7 +1533,6 @@
                 (-> query
                     (#'lib.field/populate-fields-for-stage 1)
                     fields-of))))
-
       (testing "removing each field"
         (is (=? [[:field {} "CREATED_AT"]]
                 (-> query
@@ -1548,7 +1542,6 @@
                 (-> query
                     (lib/remove-field 1 created-at)
                     fields-of))))
-
       (testing "removing and adding each field"
         (is (nil? (-> query
                       (lib/remove-field 1 sum)
@@ -1580,7 +1573,6 @@
                     (-> query
                         (lib/remove-field 1 (second columns))
                         fields-of))))
-
           (testing "removing and adding each field"
             (is (nil? (-> query
                           (lib/remove-field 1 (first columns))
@@ -1724,7 +1716,6 @@
                     (filter :selected? (lib.equality/mark-selected-columns
                                         (lib.metadata.calculation/visible-columns hidden)
                                         (lib.metadata.calculation/returned-columns hidden)))))
-
             (testing "and showing it again"
               (let [shown (lib/add-field query -1 to-hide)]
                 (is (=? exp-shown
@@ -1846,7 +1837,6 @@
       (testing "can add an implicit join"
         (is (= (inc (count (lib.metadata.calculation/returned-columns query)))
                (count (lib.metadata.calculation/returned-columns joined)))))
-
       (testing "correctly marks columns as selected"
         (testing "without the implicit join"
           (is (not (-> query mark-selected get-state :selected?))))
