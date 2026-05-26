@@ -17,7 +17,7 @@ export function QuestionModeSwitcher({ value }: QuestionModeSwitcherProps) {
   return (
     <SegmentedControl<QuestionMode>
       value={value}
-      w="16rem"
+      miw="16rem"
       onChange={(next) => {
         if (next === value) {
           return;

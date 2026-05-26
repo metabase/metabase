@@ -5,8 +5,6 @@ import { createPortal } from "react-dom";
 import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
-import { getDocumentHost } from "metabase/documents/selectors";
-import { useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
 import type { EntityId } from "metabase-types/api/comments";
@@ -38,7 +36,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     ref,
   ) {
     const commentUrl = useCommentUrl({ childTargetId });
-    const documentHost = useSelector(getDocumentHost);
 
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
 
@@ -51,7 +48,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         data-testid="comments-menu"
         draggable={false}
         mt={rem(-2)}
-        pl={documentHost === "exploration" ? "xl" : "lg"}
+        pl="lg"
         ref={ref}
         style={style}
       >
