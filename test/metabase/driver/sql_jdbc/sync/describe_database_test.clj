@@ -31,14 +31,14 @@
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest ^:parallel simple-select-probe-query-test
-  (is (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+  (is (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 1"]
          (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow"))))
 
 (deftest ^:parallel simple-select-probe-query-test-2
   ;; this is mostly a sanity check against some of our known drivers so ok to hardcode driver names.
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (testing "real drivers produce correct query"
-    (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+    (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 1"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
       :h2
       :postgres)))

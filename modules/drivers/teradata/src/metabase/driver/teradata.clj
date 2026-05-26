@@ -202,9 +202,14 @@
 (def ^:private ^:const now [:raw "CURRENT_TIMESTAMP"])
 
 (defmethod sql.qp/date [:teradata :default] [_ _ expr] expr)
-(defmethod sql.qp/date [:teradata :minute] [_ _ expr] (:to_timestamp (:raw "'yyyy-mm-dd hh24:mi'") expr))
+(defmethod sql.qp/date [:teradata :minute]
+  [_ _ expr]
+  (h2x/- expr (h2x/* [::h2x/extract :second expr] [:raw "INTERVAL '1' SECOND"])))
 (defmethod sql.qp/date [:teradata :minute-of-hour] [_ _ expr] [::h2x/extract :minute expr])
-(defmethod sql.qp/date [:teradata :hour] [_ _ expr] (:to_timestamp (:raw "'yyyy-mm-dd hh24'") expr))
+(defmethod sql.qp/date [:teradata :hour]
+  [_ _ expr]
+  (h2x/- expr (h2x/+ (h2x/* [::h2x/extract :minute expr] [:raw "INTERVAL '1' MINUTE"])
+                     (h2x/* [::h2x/extract :second expr] [:raw "INTERVAL '1' SECOND"]))))
 (defmethod sql.qp/date [:teradata :hour-of-day] [_ _ expr] [::h2x/extract :hour expr])
 (defmethod sql.qp/date [:teradata :day] [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:teradata :day-of-week]
@@ -221,8 +226,6 @@
 (defmethod sql.qp/date [:teradata :week]
   [driver _ expr]
   (sql.qp/adjust-start-of-week driver (partial trunc :day) expr))
-;; TODO(rileythomp, 2026-05-26): Remove this, it's just here to test without restarting the REPL
-(defmethod sql.qp/date [:teradata :week-of-year] [driver period expr] ((get-method sql.qp/date [:sql :week-of-year]) driver period expr))
 (defmethod sql.qp/date [:teradata :month] [_ _ expr] (trunc :month expr))
 (defmethod sql.qp/date [:teradata :month-of-year] [_ _ expr] [::h2x/extract :month expr])
 (defmethod sql.qp/date [:teradata :quarter] [_ _ expr] (trunc :q expr))
@@ -319,6 +322,11 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :teradata [_]
   excluded-schemas)
+
+;; Teradata integer division truncates, so we cast the numerator to float for `:share`.
+(defmethod sql.qp/->honeysql [:teradata :share]
+  [driver [_ pred]]
+  [:/ (sql.qp/->float driver (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :count-where pred))) :%count.*])
 
 ;; Teradata uses ByteInt with values `1`/`0` for boolean `TRUE`/`FALSE`.
 (defmethod sql.qp/->honeysql [:teradata Boolean]
