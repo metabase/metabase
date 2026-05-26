@@ -6,7 +6,7 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
-   [clojure.test :refer [deftest ^:parallel is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]

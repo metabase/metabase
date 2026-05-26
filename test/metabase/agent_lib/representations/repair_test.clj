@@ -1,7 +1,7 @@
 (ns metabase.agent-lib.representations.repair-test
   "Tests for the LLM-input repair pass."
   (:require
-   [clojure.test :refer [deftest ^:parallel is testing]]
+   [clojure.test :refer [deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
