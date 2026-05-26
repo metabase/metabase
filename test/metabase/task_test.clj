@@ -148,7 +148,6 @@
       (task/schedule-task! (job) (trigger-1))
       (testing "make sure the job is in the database before we start the scheduler"
         (is (t2/exists? (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job")))
-
       ;; update the job class to a non-existent class
       (t2/update! (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job"
                   {(capitalize-if-mysql :job_class_name) "NOT_A_REAL_CLASS"})

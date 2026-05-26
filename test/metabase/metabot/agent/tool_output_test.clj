@@ -84,12 +84,10 @@
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://table/" (mt/id :orders))]})
     #"<table\b"]
-
    ["read_resource: table with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
     #"<table\b"]
-
    ["read_resource: table field values"
     #(let [table-id (mt/id :orders)
            idx      (find-field-index table-id "QUANTITY")]
@@ -103,7 +101,6 @@
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://metric/" metric-id)]})
     #"<metric\b"]
-
    ["read_resource: metric with dimensions"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://metric/" metric-id "/dimensions")]})
@@ -115,7 +112,6 @@
       {:uris [(str "metabase://model/" model-id)]})
     ;; model->xml outputs <metabase-model> tag
     #"<metabase-model\b"]
-
    ["read_resource: model with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://model/" model-id "/fields")]})
@@ -138,7 +134,6 @@
                 (doseq [pattern edn-patterns]
                   (is (not (re-find pattern output)) (str "output contains EDN pattern " pattern))))
               (is (> 10000 (count output)) "Should be not too big"))))
-
         (let [metric-query (-> (lib/query (mt/metadata-provider)
                                           (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                                (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider)

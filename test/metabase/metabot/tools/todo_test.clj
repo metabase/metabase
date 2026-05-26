@@ -15,7 +15,6 @@
       (is (contains? result :instructions))
       ;; Check memory was updated
       (is (= todos (get-in @memory-atom [:state :todos])))))
-
   (testing "todo-write returns data-parts with todo_list type"
     (let [memory-atom (atom {:state {}})
           todos [{:id "1" :content "Task" :status "pending" :priority "low"}]
@@ -25,7 +24,6 @@
       (is (= "todo_list" (:data-type data-part)))
       (is (= 1 (:version data-part)))
       (is (= todos (:data data-part)))))
-
   (testing "todo-write rejects invalid status"
     (let [memory-atom (atom {:state {}})
           todos [{:id "1" :content "Task" :status "invalid_status" :priority "high"}]]
@@ -33,7 +31,6 @@
            clojure.lang.ExceptionInfo
            #"Invalid todo status"
            (todo/todo-write {:todos todos :memory-atom memory-atom})))))
-
   (testing "todo-write rejects invalid priority"
     (let [memory-atom (atom {:state {}})
           todos [{:id "1" :content "Task" :status "pending" :priority "critical"}]]
@@ -41,7 +38,6 @@
            clojure.lang.ExceptionInfo
            #"Invalid todo priority"
            (todo/todo-write {:todos todos :memory-atom memory-atom})))))
-
   (testing "todo-write rejects missing id"
     (let [memory-atom (atom {:state {}})
           todos [{:content "Task" :status "pending" :priority "high"}]]
@@ -49,7 +45,6 @@
            clojure.lang.ExceptionInfo
            #"missing required 'id' field"
            (todo/todo-write {:todos todos :memory-atom memory-atom})))))
-
   (testing "todo-write rejects missing content"
     (let [memory-atom (atom {:state {}})
           todos [{:id "1" :status "pending" :priority "high"}]]
@@ -57,14 +52,12 @@
            clojure.lang.ExceptionInfo
            #"missing required 'content' field"
            (todo/todo-write {:todos todos :memory-atom memory-atom})))))
-
   (testing "todo-write accepts all valid statuses"
     (let [memory-atom (atom {:state {}})]
       (doseq [status ["pending" "in_progress" "completed" "cancelled"]]
         (let [todos [{:id "1" :content "Task" :status status :priority "medium"}]
               result (todo/todo-write {:todos todos :memory-atom memory-atom})]
           (is (some? (:structured-output result)))))))
-
   (testing "todo-write accepts all valid priorities"
     (let [memory-atom (atom {:state {}})]
       (doseq [priority ["high" "medium" "low"]]
@@ -80,7 +73,6 @@
       (is (contains? result :structured-output))
       (is (= [] (get-in result [:structured-output :todos])))
       (is (= 0 (get-in result [:structured-output :todo_count])))))
-
   (testing "todo-read returns stored todos"
     (let [todos [{:id "1" :content "Task 1" :status "pending" :priority "high"}
                  {:id "2" :content "Task 2" :status "completed" :priority "low"}]
@@ -88,7 +80,6 @@
           result (todo/todo-read {:memory-atom memory-atom})]
       (is (= todos (get-in result [:structured-output :todos])))
       (is (= 2 (get-in result [:structured-output :todo_count])))))
-
   (testing "todo-read includes instructions for LLM"
     (let [memory-atom (atom {:state {:todos [{:id "1" :content "Task" :status "pending" :priority "medium"}]}})
           result (todo/todo-read {:memory-atom memory-atom})]

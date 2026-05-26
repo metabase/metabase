@@ -87,7 +87,6 @@
     (let [node (ast.build/table-node 1)]
       (is (= {:node/type :ast/table :id 1} node))
       (is (nil? (me/humanize (mr/explain ::ast.schema/table-node node))))))
-
   (testing "creates valid table node with name"
     (let [node (ast.build/table-node 1 "orders")]
       (is (= {:node/type :ast/table :id 1 :name "orders"} node))
@@ -98,7 +97,6 @@
     (let [node (ast.build/column-node 1)]
       (is (= {:node/type :ast/column :id 1} node))
       (is (nil? (me/humanize (mr/explain ::ast.schema/column-node node))))))
-
   (testing "creates valid column node with all fields"
     (let [node (ast.build/column-node 1 "category" 10)]
       (is (= {:node/type :ast/column :id 1 :name "category" :table-id 10} node))
@@ -131,27 +129,22 @@
 
 (deftest ^:parallel from-definition-test
   (let [ast (ast.build/from-definition (sample-definition))]
-
     (testing "creates valid AST structure"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
-
     (testing "has correct root structure"
       (is (= :ast/root (:node/type ast)))
       (is (nil? (:filter ast)))
       (is (= [] (:group-by ast)))
       (is (some? (:metadata-provider ast))))
-
     (testing "has correct source"
       (let [source (:source ast)]
         (is (= :source/metric (:node/type source)))
         (is (= 42 (:id source)))
         (is (= "Total Revenue" (:name source)))))
-
     (testing "has dimensions as nodes"
       (is (= 2 (count (:dimensions ast))))
       (is (every? #(= :ast/dimension (:node/type %)) (:dimensions ast)))
       (is (= uuid-1 (get-in ast [:dimensions 0 :id]))))
-
     (testing "has mappings as nodes"
       (is (= 2 (count (:mappings ast))))
       (is (every? #(= :ast/dimension-mapping (:node/type %)) (:mappings ast))))))
@@ -163,13 +156,10 @@
                      :projections       []
                      :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))}
         ast         (ast.build/from-definition measure-def)]
-
     (testing "creates valid AST for measure"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
-
     (testing "has measure source type"
       (is (= :source/measure (get-in ast [:source :node/type]))))
-
     (testing "extracts sum aggregation"
       (is (= :aggregation/sum (get-in ast [:source :aggregation :node/type]))))))
 
@@ -182,21 +172,18 @@
               :dimension-id uuid-1}
              result))
       (is (nil? (me/humanize (mr/explain ::ast.schema/dimension-ref-node result))))))
-
   (testing "converts dimension reference with temporal-unit option"
     (let [result (ast.build/dimension-ref->ast-dimension-ref [:dimension {"temporal-unit" "year"} uuid-1])]
       (is (= {:node/type    :ast/dimension-ref
               :dimension-id uuid-1
               :options      {:temporal-unit :year}}
              result))))
-
   (testing "converts dimension reference with binning option"
     (let [result (ast.build/dimension-ref->ast-dimension-ref [:dimension {"binning" {"strategy" "default"}} uuid-1])]
       (is (= {:node/type    :ast/dimension-ref
               :dimension-id uuid-1
               :options      {:binning {:strategy :default}}}
              result))))
-
   (testing "converts binning strategy string values to keywords"
     (let [result (ast.build/dimension-ref->ast-dimension-ref
                   [:dimension {"binning" {"strategy" "num-bins" "num-bins" 10}} uuid-1])]
@@ -255,7 +242,6 @@
       (is (= :filter/in (:node/type result)))
       (is (= :in (:operator result)))
       (is (= [1 2 3] (:values result)))))
-
   (testing "converts not-in filters"
     (let [result (ast.build/mbql-filter->ast-filter [:not-in {} [:dimension {} uuid-1] "a" "b"])]
       (is (= :filter/in (:node/type result)))
@@ -270,7 +256,6 @@
       (is (= -30 (:value result)))
       (is (= :day (:unit result)))
       (is (nil? (:offset-value result)))))
-
   (testing "converts relative-time-interval filter with positional offsets"
     (let [result (ast.build/mbql-filter->ast-filter
                   [:relative-time-interval {} [:dimension {} uuid-1] -7 "day" -1 "month"])]
@@ -280,7 +265,6 @@
       (is (= :day (:unit result)))
       (is (= -1 (:offset-value result)))
       (is (= :month (:offset-unit result)))))
-
   (testing "converts time-interval filter with offsets in opts map"
     (let [result (ast.build/mbql-filter->ast-filter
                   [:time-interval {:offset-value -1 :offset-unit :week} [:dimension {} uuid-1] -30 "day"])]
@@ -299,14 +283,12 @@
       (is (= :filter/and (:node/type result)))
       (is (= 2 (count (:children result))))
       (is (every? #(= :filter/comparison (:node/type %)) (:children result)))))
-
   (testing "converts or filter"
     (let [result (ast.build/mbql-filter->ast-filter [:or {}
                                                      [:= {} [:dimension {} uuid-1] 1]
                                                      [:= {} [:dimension {} uuid-2] 2]])]
       (is (= :filter/or (:node/type result)))
       (is (= 2 (count (:children result))))))
-
   (testing "converts not filter"
     (let [result (ast.build/mbql-filter->ast-filter [:not {} [:= {} [:dimension {} uuid-1] 1]])]
       (is (= :filter/not (:node/type result)))
@@ -361,13 +343,11 @@
   (testing "single filter returns that filter"
     (let [result (ast.build/mbql-filters->ast-filter [[:= {} [:dimension {} uuid-1] 42]])]
       (is (= :filter/comparison (:node/type result)))))
-
   (testing "multiple filters combined with and"
     (let [result (ast.build/mbql-filters->ast-filter [[:= {} [:dimension {} uuid-1] 1]
                                                       [:= {} [:dimension {} uuid-2] 2]])]
       (is (= :filter/and (:node/type result)))
       (is (= 2 (count (:children result))))))
-
   (testing "empty filters returns nil"
     (is (nil? (ast.build/mbql-filters->ast-filter [])))))
 
@@ -378,10 +358,8 @@
                                        :filters [{:lib/uuid expr-uuid
                                                   :filter [:= {} [:dimension {} uuid-1] 42]}])
         ast (ast.build/from-definition definition-with-filters)]
-
     (testing "creates valid AST structure with filter"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
-
     (testing "has filter node"
       (is (some? (:filter ast)))
       (is (= :filter/comparison (get-in ast [:filter :node/type])))
@@ -394,10 +372,8 @@
                                                           :projection [[:dimension {} uuid-1]
                                                                        [:dimension {"temporal-unit" "year"} uuid-2]]}])
         ast (ast.build/from-definition definition-with-projections)]
-
     (testing "creates valid AST structure with group-by"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
-
     (testing "has group-by dimension refs"
       (is (= 2 (count (:group-by ast))))
       (is (every? #(= :ast/dimension-ref (:node/type %)) (:group-by ast)))

@@ -98,7 +98,6 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -168,7 +167,6 @@
                                        ;; show it if:
                                        ;; - the card isn't archived
                                        [:= :card.archived false]
-
                                        ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
                                        [:and
                                         [:not= :card.dashboard_id nil]

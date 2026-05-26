@@ -197,7 +197,6 @@
                      :headers {"Authorization" "Bearer sk-or-v1-byok"}
                      :body    string?}
                     (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Uses ai proxy when explicitly requested"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (with-redefs [self.core/sse-reducible identity
@@ -208,14 +207,12 @@
                        :body    string?}
                       (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]
                                                   :ai-proxy? true}))))))
-
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Throws an error if nothing is defined"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
                                              llm.settings/llm-proxy-base-url    nil]

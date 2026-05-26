@@ -725,7 +725,6 @@ function(bin) {
     (with-rvalue-temporal-bucketing
       {"$cond" [{"$eq" [{"$type" rvalue} "string"]}
                 {"$toDate" rvalue}
-
                 rvalue]}
       :day)))
 
@@ -1125,31 +1124,24 @@ function(bin) {
   (driver-api/match-lite ag
     [:aggregation-options ag' _]
     (&recur ag')
-
     [:count]
     {$sum 1}
-
     [:count arg]
     {$sum {$cond {:if   (->rvalue arg)
                   :then 1
                   :else 0}}}
-
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
     [#{:avg :stddev :sum :min :max} & _]
     (->rvalue &match)
-
     [:distinct arg]
     {$addToSet (->rvalue arg)}
-
     [:sum-where arg pred]
     {$sum {$cond {:if   (compile-cond pred)
                   :then (->rvalue arg)
                   :else 0}}}
-
     [:count-where pred]
     (&recur [:sum-where [:value 1] pred])
-
     _
     (throw
      (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
@@ -1405,14 +1397,12 @@ function(bin) {
                    ;; if there is only one breakout, always use the user's sort order
                    (when (= (count id) 1)
                      (window-sort id user-sort))
-
                    ;; if we don't have a temporal breakout, sort by the last breakout, but
                    ;; use the user's sort direction if specified
                    (when-not finest-temporal-index
                      (->> user-sort
                           (filter #(= sort-name (first %)))
                           (window-sort id)))
-
                    default-sort)
 
         partition-expr (into {}
@@ -1465,10 +1455,8 @@ function(bin) {
       (driver-api/match-lite field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
-
         [:field (field-name :guard string?) _]
         (str/split (field-alias field-clause) #"\.")
-
         [:expression expr-name _]
         [expr-name])
       (->rvalue field-clause)))
@@ -1764,7 +1752,6 @@ function(bin) {
     (driver-api/replace-lite form
       [:field & _]
       (update-field-ref &match)
-
       (:and join
             {driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
       (&recur (assoc join :alias add-alias)))))

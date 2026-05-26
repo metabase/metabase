@@ -396,7 +396,6 @@
                    (into #{}
                          (filter (comp #{view-name} :name))
                          (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[1 "Red Medicine" "Asian"]
                   [2 "Stout Burgers & Beers" "Burger"]
@@ -420,7 +419,6 @@
                    (into #{}
                          (filter (comp #{view-name} :name))
                          (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[42]]
                  (mt/rows
@@ -554,12 +552,10 @@
                                              "partition_by_range_not_required"
                                              "partition_by_ingestion_time_not_required"} :name))
                              (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
-
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
                      (t2/select-fn->fn :name :database_require_filter :model/Table
                                        :name [:in (keys table-name->is-filter-required?)]))))
-
             (testing "partitioned fields are correctly identified"
               (is (= {["not_partitioned"                 "transaction_id"]   false
                       ["partition_by_range_not_required" "customer_id"]      true
@@ -707,7 +703,6 @@
                                                :parameter_mappings [{:parameter_id "_NAME_"
                                                                      :card_id      (:id card-product)
                                                                      :target       [:dimension (mt/$ids $cf_product.name)]}]}]
-
           (testing "chained filter works"
             (is (= {:has_more_values false
                     :values          [["Americano"] ["Cold brew"]]}
@@ -1257,7 +1252,6 @@
          [[12345678901234567890.1234567890M]
           [22345678901234567890.1234567890M]
           [32345678901234567890.1234567890M]]]])
-
       ;; Must sync field values
       (sync/sync-database! (mt/db))
       (is (= "BIGNUMERIC"
@@ -1380,4 +1374,3 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
-

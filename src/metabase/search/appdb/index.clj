@@ -453,7 +453,6 @@
     (when-not *mocking-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
-
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
 

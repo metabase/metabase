@@ -31,7 +31,6 @@
             (let [_resp (mt/user-http-request :rasta :post 204 "metabot/feedback" feedback)]
               (is (= {:url expected-url :body feedback}
                      @captured)))))))
-
     (testing "Returns 500 when http post fails"
       (mt/with-temporary-setting-values [store-api-url store-url]
         (mt/with-dynamic-fn-redefs
@@ -39,7 +38,6 @@
            http/post (fn [_url _opts]
                        (throw (ex-info "boom" {:status 404})))]
           (mt/user-http-request :rasta :post 500 "metabot/feedback" {:any "payload"}))))
-
     (testing "Throws when premium token is missing"
       (mt/with-dynamic-fn-redefs
         [premium-features/premium-embedding-token (constantly nil)]

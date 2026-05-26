@@ -76,7 +76,6 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-
                             ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
                             ;; the `after-select` method on users, which calls an EE method that needs ... a token
                             ;; check :|
@@ -456,7 +455,6 @@
                     ;; Expired (> hard-ttl): synchronous refresh
                     :else
                     (do-refresh! token token-hash)))
-
                 ;; No local cache, no DB row, or hash mismatch: synchronous fetch
                 (do-refresh! token token-hash)))))
         (-clear-cache! [_]

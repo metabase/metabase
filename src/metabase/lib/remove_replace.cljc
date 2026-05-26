@@ -151,7 +151,6 @@
              (lib.util/expression-name target-clause))
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
-
         [:aggregation]
         (-> result
             (remove-local-references
@@ -162,11 +161,9 @@
              target-uuid)
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
-
         (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
-
         _
         result)
       result)))

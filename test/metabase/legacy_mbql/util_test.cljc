@@ -37,16 +37,12 @@
     (t/is (= nil
              (mbql.u/simplify-compound-filter nil))
           "does `simplify-compound-filter` return `nil` for empty filter clauses?")
-
     (t/is (= nil
              (mbql.u/simplify-compound-filter [])))
-
     (t/is (= nil
              (mbql.u/simplify-compound-filter [nil nil nil])))
-
     (t/is (= nil
              (mbql.u/simplify-compound-filter [:and nil nil])))
-
     (t/is (= nil
              (mbql.u/simplify-compound-filter [:and nil [:and nil nil nil] nil])))
     (t/is (= [:= [:field 1 nil] 2]
@@ -479,7 +475,6 @@
     (doseq [[[op mode] unit] @#'mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
                (#'mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
-
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
                (#'mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
@@ -571,17 +566,14 @@
               [:field 1 {:temporal-unit :week}]
               [:relative-datetime 0 :week]]
              (mbql.u/negate-filter-clause [:time-interval [:field 1 nil] :current :week]))))
-
   (t/testing :time-interval
     (t/is (= [:!=
               [:expression "CC" {:temporal-unit :week}]
               [:relative-datetime 0 :week]]
              (mbql.u/negate-filter-clause [:time-interval [:expression "CC"] :current :week]))))
-
   (t/testing :is-null
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/negate-filter-clause [:is-null [:field 1 nil]]))))
-
   (t/testing :not-null
     (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/negate-filter-clause [:not-null [:field 1 nil]]))))

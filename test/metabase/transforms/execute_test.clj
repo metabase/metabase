@@ -237,7 +237,6 @@
                                                                :source {:type  :query
                                                                         :query query}
                                                                :target target-table}]
-
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
                            #"ERROR: permission denied for database transforms-test"

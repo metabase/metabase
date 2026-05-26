@@ -331,7 +331,6 @@
                  :source       :native
                  :field_ref    [:field "D" {:base-type :type/Date}]}
                 (first (:cols results)))))
-
       (testing "Results metadata should have the same type info"
         (is (=? {:base_type    :type/Date
                  :effective_type :type/Date

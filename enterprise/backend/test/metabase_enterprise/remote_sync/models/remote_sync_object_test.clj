@@ -331,7 +331,6 @@
     (testing "when no dirty items exist"
       (is (false? (rs-object/dirty?)))
       (is (empty? (rs-object/dirty-objects))))
-
     (testing "when dirty items exist"
       (mt/with-temp
         [:model/Collection collection {:name "Test Collection"

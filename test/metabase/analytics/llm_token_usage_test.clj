@@ -126,9 +126,7 @@
               (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
               (is (= 50.0  (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
               (is (= 150.0 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
-
     (clear-llm-metrics!)
-
     (testing "Snowplow suppressed when :snowplow false"
       (snowplow-test/with-fake-snowplow-collector
         (llm-token-usage/track-token-usage! {:snowplow            false
@@ -145,9 +143,7 @@
         (testing "Prometheus still fires"
           (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
                                         {:model "anthropic/claude-haiku-4-5" :source "test-tag"}))))))
-
     (clear-llm-metrics!)
-
     (testing "Prometheus suppressed when :prometheus false"
       (mt/with-temporary-setting-values [premium-embedding-token nil
                                          analytics-uuid           "uuid-prometheus-false"]
