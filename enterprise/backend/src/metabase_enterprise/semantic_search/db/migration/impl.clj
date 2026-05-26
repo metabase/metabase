@@ -100,30 +100,42 @@
        proper materialized-path lookup against the application DB.
 
   Only library root types are considered for the fallback; other root types (`trash`,
-  `instance-analytics`, etc.) are irrelevant to the `:library` scorer and stay NULL."
+  `instance-analytics`, etc.) are irrelevant to the `:library` scorer and stay NULL.
+
+  Library types are hardcoded rather than referenced from
+  `metabase.collections.models.collection/library-collection-types`: migrations are frozen
+  snapshots of intent at a point in time, and the semantic-search module doesn't `:use`
+  `collections` — a boundary expansion isn't warranted for a 3-string set."
   [tx index-metadata]
-  (let [gate-table       (:gate-table-name index-metadata)
-        library-types    [[:inline "library"]
-                          [:inline "library-data"]
-                          [:inline "library-metrics"]]]
-    (alter-index-tables! tx index-metadata 4
-                         (fn [execute! table-name]
-                           (execute! {:alter-table [(keyword table-name)]
-                                      :add-column  [[:root_collection_type :text :if-not-exists]]})
-                           (execute! {:update (keyword table-name)
-                                      :set    {:root_collection_type
-                                               [:coalesce
-                                                {:select [[[:->> (keyword gate-table "document")
-                                                            [:inline "root_collection_type"]]]]
-                                                 :from   [(keyword gate-table)]
-                                                 :where  [:= (keyword gate-table "id")
-                                                          [:|| (keyword table-name "model")
-                                                           [:inline "_"]
-                                                           (keyword table-name "model_id")]]}
-                                                [:case
-                                                 [:in :collection_type library-types]
-                                                 :collection_type]]}
-                                      :where  [:= :root_collection_type nil]})))))
+  (let [gate-table    (:gate-table-name index-metadata)
+        library-types [[:inline "library"] [:inline "library-data"] [:inline "library-metrics"]]]
+    (alter-index-tables!
+     tx index-metadata 4
+     (fn [execute! table-name]
+       (let [kw-tbl             (keyword table-name)
+             kw-gate            (keyword gate-table)
+             tbl-model          (keyword table-name "model")
+             tbl-model-id       (keyword table-name "model_id")
+             tbl-root-coll-type (keyword table-name "root_collection_type")
+             gate-id            (keyword gate-table "id")
+             gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
+             composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
+         ;; 1. Add the column.
+         (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
+         ;; 2. Backfill from gate document JSON via a set-based UPDATE..FROM join.
+         (execute! {:update kw-tbl
+                    :from   [kw-gate]
+                    :set    {:root_collection_type gate-doc-root}
+                    :where  [:and
+                             [:= gate-id composite-gate-id]
+                             [:= tbl-root-coll-type nil]
+                             [:!= gate-doc-root nil]]})
+         ;; 3. Fallback: rows still NULL whose collection_type is itself a library root type.
+         (execute! {:update kw-tbl
+                    :set    {:root_collection_type :collection_type}
+                    :where  [:and
+                             [:= :root_collection_type nil]
+                             [:in :collection_type library-types]]}))))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
