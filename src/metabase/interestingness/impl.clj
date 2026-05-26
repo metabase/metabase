@@ -2,12 +2,12 @@
   "Shared composition machinery and role-independent scorers for the interestingness
    engine.
 
-   Scorer contract: `(fn [field]) -> {:score double-or-nil, :reason string}`
+   Scorer contract: `(fn [field]) -> double-or-nil`
    - field:  map of field/dimension metadata (kebab-case keys)
-   - score:  double in [0.0, 1.0] where 0.0 = uninteresting, 1.0 = very interesting,
+   - return: a double in [0.0, 1.0] where 0.0 = uninteresting, 1.0 = very interesting,
              OR nil meaning \"this scorer has no signal for this field\" (e.g. a
              text scorer applied to a numeric field, or any scorer applied to a
-             field without a fingerprint). `score-field` excludes nil-scoring
+             field without a fingerprint). [[score-only]] excludes nil-scoring
              scorers from *both* the numerator and the denominator of the
              weighted average — missing signals neither penalize nor reward the
              field, they simply don't participate. If every scorer returns nil,
@@ -37,30 +37,26 @@
    - `:type/UpdatedTemporal` / `:type/DeletionTemporal`: audit fields that describe
      the record, not the entity (covers Date/Time/Timestamp variants)
 
-   Returns `:score 0.0` (hard-zero gate) for the above. Otherwise returns `:score nil`
-   (no signal): the absence of a penalty isn't a positive signal, it just means this
-   scorer has nothing to say about the field."
+   Returns `0.0` (hard-zero gate) for the above, otherwise `nil` (no signal): the
+   absence of a penalty isn't a positive signal, it just means this scorer has
+   nothing to say about the field."
   [field]
   (let [semantic-type (:semantic-type field)]
     (cond
-      (nil? semantic-type)                        {:score nil :reason "no semantic type"}
-      (isa? semantic-type :type/PK)               {:score 0.0 :reason "primary key"}
-      (isa? semantic-type :type/Collection)       {:score 0.0 :reason "structured blob"}
-      (isa? semantic-type :type/Structured)       {:score 0.0 :reason "structured blob"}
-      (isa? semantic-type :type/UpdatedTemporal)  {:score 0.0 :reason "updated timestamp"}
-      (isa? semantic-type :type/DeletionTemporal) {:score 0.0 :reason "deletion timestamp"}
-      :else                                       {:score nil :reason "no type penalty"})))
+      (nil? semantic-type)                        nil
+      (isa? semantic-type :type/PK)               0.0
+      (isa? semantic-type :type/Collection)       0.0
+      (isa? semantic-type :type/Structured)       0.0
+      (isa? semantic-type :type/UpdatedTemporal)  0.0
+      (isa? semantic-type :type/DeletionTemporal) 0.0
+      :else                                       nil)))
 
 (defn nullness
   "Linear penalty based on null percentage. Mostly-null fields are noise whether being
    used as a dimension (empty bars) or a measure (nothing to aggregate)."
   [field]
-  (if-let [nil-pct (get-in field [:fingerprint :global :nil%])]
-    {:score  (- 1.0 nil-pct)
-     :reason (if (> nil-pct 0.95)
-               "mostly null"
-               (str (long (* 100 nil-pct)) "% null"))}
-    {:score nil :reason "no null data"}))
+  (when-let [nil-pct (get-in field [:fingerprint :global :nil%])]
+    (- 1.0 nil-pct)))
 
 (defn numeric-variance
   "Score numeric fields by their statistical spread. Zero-variance fields are
@@ -68,73 +64,68 @@
    as a measure (SUM of a constant)."
   [field]
   (let [num-fp (get-in field [:fingerprint :type :type/Number])]
-    (if (nil? num-fp)
-      {:score nil :reason "not a numeric field"}
+    (when (some? num-fp)
       (let [{:keys [sd q1 q3 avg], mn :min, mx :max} num-fp]
         (cond
           (and (some? sd) (zero? sd))
-          {:score 0.0 :reason "zero variance"}
+          0.0
 
           (and (some? q1) (some? q3) (== q1 q3))
-          {:score 0.1 :reason "no interquartile spread"}
+          0.1
 
           (and (some? sd) (some? avg) (not (zero? avg)))
-          (let [cv    (abs (/ sd avg))
-                score (min 1.0 (max 0.2 (* 0.5 (+ 1.0 (Math/log (+ 1.0 cv))))))]
-            {:score score :reason (str "coefficient of variation: " (double cv))})
+          (let [cv (abs (/ sd avg))]
+            (min 1.0 (max 0.2 (* 0.5 (+ 1.0 (Math/log (+ 1.0 cv)))))))
 
           (and (some? q1) (some? q3) (some? mn) (some? mx) (not (== mn mx)))
-          (let [iqr   (- q3 q1)
-                rng   (- mx mn)
-                ratio (/ iqr rng)
-                score (min 1.0 (max 0.2 (+ 0.3 (* 0.7 ratio))))]
-            {:score score :reason (str "IQR ratio: " (double ratio))})
+          (let [ratio (/ (- q3 q1) (- mx mn))]
+            (min 1.0 (max 0.2 (+ 0.3 (* 0.7 ratio)))))
 
           :else
-          {:score nil :reason "insufficient numeric stats"})))))
+          nil)))))
 
 (defn- skewness-score
   [skewness]
   (let [abs-sk (abs (double skewness))]
     (cond
-      (< abs-sk 0.5) {:score 1.0  :reason (str "symmetric distribution (skewness " (format "%.2f" (double skewness)) ")")}
-      (< abs-sk 1.0) {:score 0.85 :reason (str "slightly skewed (skewness " (format "%.2f" (double skewness)) ")")}
-      (< abs-sk 2.0) {:score 0.6  :reason (str "moderately skewed (skewness " (format "%.2f" (double skewness)) ")")}
-      (< abs-sk 4.0) {:score 0.3  :reason (str "heavily skewed (skewness " (format "%.2f" (double skewness)) ")")}
-      :else          {:score 0.15 :reason (str "extremely skewed (skewness " (format "%.2f" (double skewness)) ")")})))
+      (< abs-sk 0.5) 1.0
+      (< abs-sk 1.0) 0.85
+      (< abs-sk 2.0) 0.6
+      (< abs-sk 4.0) 0.3
+      :else          0.15)))
 
 (defn- kurtosis-score
   [kurtosis]
   (let [k (double kurtosis)]
     (cond
-      (< -1.0 k 3.0)  {:score 1.0  :reason (str "normal-ish tails (kurtosis " (format "%.2f" k) ")")}
-      (< -2.0 k 7.0)  {:score 0.7  :reason (str "moderately heavy tails (kurtosis " (format "%.2f" k) ")")}
-      (< -3.0 k 15.0) {:score 0.4  :reason (str "heavy tails / outlier-dominated (kurtosis " (format "%.2f" k) ")")}
-      :else           {:score 0.15 :reason (str "extreme tail weight (kurtosis " (format "%.2f" k) ")")})))
+      (< -1.0 k 3.0)  1.0
+      (< -2.0 k 7.0)  0.7
+      (< -3.0 k 15.0) 0.4
+      :else           0.15)))
 
 (defn- mode-dominance-score
   [mode-fraction]
   (cond
-    (>= mode-fraction 0.95) {:score 0.05 :reason (str (long (* 100 mode-fraction)) "% single value (near-constant)")}
-    (>= mode-fraction 0.80) {:score 0.2  :reason (str (long (* 100 mode-fraction)) "% single value (heavily dominated)")}
-    (>= mode-fraction 0.60) {:score 0.5  :reason (str (long (* 100 mode-fraction)) "% single value")}
-    (>= mode-fraction 0.40) {:score 0.75 :reason (str (long (* 100 mode-fraction)) "% single value")}
-    :else                   {:score 1.0  :reason (str (long (* 100 mode-fraction)) "% single value (well-distributed)")}))
+    (>= mode-fraction 0.95) 0.05
+    (>= mode-fraction 0.80) 0.2
+    (>= mode-fraction 0.60) 0.5
+    (>= mode-fraction 0.40) 0.75
+    :else                   1.0))
 
 (defn- top-3-concentration-score
   [top-3-fraction]
   (cond
-    (>= top-3-fraction 0.99) {:score 0.1  :reason (str (long (* 100 top-3-fraction)) "% in top 3 (effectively 3 values)")}
-    (>= top-3-fraction 0.95) {:score 0.3  :reason (str (long (* 100 top-3-fraction)) "% in top 3")}
-    :else                    {:score 1.0  :reason (str (long (* 100 top-3-fraction)) "% in top 3")}))
+    (>= top-3-fraction 0.99) 0.1
+    (>= top-3-fraction 0.95) 0.3
+    :else                    1.0))
 
 (defn- zero-dominance-score
   [zero-fraction]
   (cond
-    (>= zero-fraction 0.95) {:score 0.05 :reason (str (long (* 100 zero-fraction)) "% zeros (sparse/empty)")}
-    (>= zero-fraction 0.80) {:score 0.2  :reason (str (long (* 100 zero-fraction)) "% zeros")}
-    (>= zero-fraction 0.60) {:score 0.6  :reason (str (long (* 100 zero-fraction)) "% zeros")}
-    :else                   {:score 1.0  :reason (str (long (* 100 zero-fraction)) "% zeros")}))
+    (>= zero-fraction 0.95) 0.05
+    (>= zero-fraction 0.80) 0.2
+    (>= zero-fraction 0.60) 0.6
+    :else                   1.0))
 
 (defn distribution-shape
   "Score fields by the shape of their value distribution. Penalizes fields where:
@@ -162,71 +153,40 @@
                      (some? zero-frac) (conj (zero-dominance-score zero-frac))
                      (some? skewness)  (conj (skewness-score skewness))
                      (some? kurtosis)  (conj (kurtosis-score kurtosis)))]
-    (if (empty? sub-scores)
-      {:score nil :reason "no distribution data"}
-      (let [worst (apply min-key :score sub-scores)]
-        {:score  (:score worst)
-         :reason (:reason worst)}))))
+    ;; worst-of-N: any single strong boringness signal dominates
+    (when (seq sub-scores)
+      (reduce min sub-scores))))
 
 ;;; -------------------------------------------------- Composition --------------------------------------------------
 
-(defn score-field
-  "Score a single field using weighted scorers. Returns:
-   {:score  double        ;; weighted average in [0.0, 1.0]
-    :scores {scorer-fn {:score double-or-nil, :reason string}}  ;; per-scorer breakdown
-    :field  field}        ;; the input field, passed through
+(defn score-only
+  "Compute a field's weighted interestingness score as a double — the canonical combiner.
 
-   A scorer may return `:score nil` to indicate \"no signal for this field\" (e.g.
-   a text scorer applied to a numeric field, or any scorer applied to a field
-   without a fingerprint). Nil-scoring scorers are excluded from *both* the
-   numerator and the denominator — missing signals neither penalize nor reward
-   the field. If every scorer returns nil, the result falls back to 0.5
-   (neutral baseline).
-
-   If any scorer with nonzero weight returns exactly 0.0, the final score is forced
-   to 0.0. This lets hard signals act as gates regardless of what other scorers return."
-  [scorer-weight-map field]
-  (let [results     (reduce-kv
-                     (fn [acc scorer weight]
-                       (let [{:keys [score] :as result} (scorer field)]
-                         (cond-> (assoc-in acc [:scores scorer] result)
-                           (number? score)
-                           (-> (update :weighted-sum + (* weight score))
-                               (update :total-weight + weight)
-                               (update :has-hard-zero?
-                                       #(or % (and (pos? weight) (zero? score))))))))
-                     {:weighted-sum 0.0 :total-weight 0.0 :scores {} :has-hard-zero? false}
-                     scorer-weight-map)
-        raw-score   (if (pos? (:total-weight results))
-                      (/ (:weighted-sum results) (:total-weight results))
-                      0.5)
-        final-score (if (:has-hard-zero? results)
-                      0.0
-                      raw-score)]
-    {:score          final-score
-     :scores         (:scores results)
-     :has-hard-zero? (:has-hard-zero? results)
-     :field          field}))
-
-(defn compose
-  "Combine multiple scorers with weights into a single scorer function.
-   Returns `(fn [field]) -> {:score double, :scores map, :field map}`."
-  [scorer-weight-map]
-  (fn [field] (score-field scorer-weight-map field)))
-
-(defn apply-cutoff
-  "Filter a sequence of scored field results, keeping only those at or above `threshold`."
-  [threshold scored-fields]
-  (filter #(>= (:score %) threshold) scored-fields))
-
-(defn score-and-filter
-  "Score all fields with the given scorer-weight-map and return only those at or above `cutoff`.
-   Results are sorted by score descending."
-  [scorer-weight-map fields cutoff]
-  (->> fields
-       (map #(score-field scorer-weight-map %))
-       (apply-cutoff cutoff)
-       (sort-by :score >)))
+   Each scorer in `scorer-weight-map` returns a double in [0.0, 1.0] or nil. Nil-scoring
+   scorers are excluded from *both* the numerator and the denominator of the weighted
+   average — missing signals neither penalize nor reward the field. If every scorer
+   returns nil the result is 0.5 (neutral baseline). If any scorer with nonzero weight
+   returns exactly 0.0, the final score is forced to 0.0, letting hard signals act as
+   gates regardless of what other scorers return."
+  ^double [scorer-weight-map field]
+  (loop [pairs        (seq scorer-weight-map)
+         weighted-sum 0.0
+         total-weight 0.0
+         hard-zero?   false]
+    (if-let [pair (first pairs)]
+      (let [weight (double (val pair))
+            score  ((key pair) field)]
+        (if (number? score)
+          (let [score (double score)]
+            (recur (next pairs)
+                   (+ weighted-sum (* weight score))
+                   (+ total-weight weight)
+                   (or hard-zero? (and (pos? weight) (zero? score)))))
+          (recur (next pairs) weighted-sum total-weight hard-zero?)))
+      (cond
+        hard-zero?          0.0
+        (pos? total-weight) (/ weighted-sum total-weight)
+        :else               0.5))))
 
 ;;; -------------------------------------------------- Field Normalization --------------------------------------------------
 
@@ -242,10 +202,3 @@
    Keys not in the rename map are passed through unchanged (e.g., :fingerprint)."
   [field]
   (set/rename-keys field snake->kebab-keys))
-
-(defn score-raw-field
-  "Score a snake_case field map by normalizing it first. Returns the same shape as `score-field`
-   but with the original (unnormalized) field in `:field`."
-  [scorer-weight-map field]
-  (let [result (score-field scorer-weight-map (normalize-field field))]
-    (assoc result :field field)))

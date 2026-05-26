@@ -484,4 +484,3 @@
                            :extract-fn     extract-doc
                            :validate-fn    #(validate-doc % categorical-chart-ids)
                            :repair-builder repair-prompt}))
-
