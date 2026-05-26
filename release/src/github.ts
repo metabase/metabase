@@ -229,12 +229,79 @@ export async function getChecksForRef({
   return checks;
 }
 
+// How `head` relates to `base` per GitHub's compare API.
+//   - "ahead"     => head has new commits on top of base
+//   - "behind"    => head is an ancestor of base (older)
+//   - "identical" => same commit
+//   - "diverged"  => neither is an ancestor of the other
+export type CommitComparisonStatus =
+  | "ahead"
+  | "behind"
+  | "identical"
+  | "diverged";
+
+export async function compareCommits({
+  github,
+  owner,
+  repo,
+  base,
+  head,
+}: GithubProps & { base: string; head: string }): Promise<CommitComparisonStatus> {
+  const { data } = await github.rest.repos.compareCommitsWithBasehead({
+    owner,
+    repo,
+    basehead: `${base}...${head}`,
+  });
+
+  return data.status as CommitComparisonStatus;
+}
+
+// The commit SHA the most recent release for this major points to, or null if
+// the major has never been released. This is the baseline every new release for
+// the major must be strictly ahead of.
+export async function getLastReleaseCommit({
+  github,
+  owner,
+  repo,
+  majorVersion,
+}: GithubProps & { majorVersion: number }): Promise<string | null> {
+  const lastTag = await getLastReleaseTag({
+    github,
+    owner,
+    repo,
+    version: `v0.${majorVersion}.0`,
+    ignorePatches: false,
+    ignorePreReleases: false,
+  });
+
+  if (!lastTag) {
+    return null;
+  }
+
+  const tagDetail = await github.rest.git.getRef({
+    owner,
+    repo,
+    ref: `tags/${lastTag}`,
+  });
+
+  return tagDetail.data.object.sha;
+}
+
+// Newest commit on `branch` whose checks pass AND that is strictly newer than
+// the last release (`sinceCommit`). The freshness bound is essential: a green
+// commit is only a release candidate if it is ahead of what already shipped.
+// Without it, the "latest green commit" can be an ancestor of the last release
+// — e.g. after a manual/override release from a not-yet-green commit — and we
+// would cut a higher version number from older code. We scan newest-first, so
+// the first green commit is the newest one; if that isn't ahead of the last
+// release, nothing on the branch is, and there is nothing new to release.
 export async function getLatestGreenCommit({
   github,
   owner,
   repo,
   branch,
-}: GithubProps & { branch: string }) {
+  sinceCommit = null,
+}: GithubProps & { branch: string; sinceCommit?: string | null }) {
   const MAX_COMMITS = 10;
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
@@ -254,42 +321,28 @@ export async function getLatestGreenCommit({
     });
 
     if (checksPassed(checks)) {
+      if (sinceCommit) {
+        const status = await compareCommits({
+          github,
+          owner,
+          repo,
+          base: sinceCommit,
+          head: commit.sha,
+        });
+
+        if (status !== "ahead") {
+          console.log(
+            `Newest green commit ${commit.sha} is "${status}" relative to last release ${sinceCommit}; no newer commit to release`,
+          );
+          return null;
+        }
+      }
+
       return commit.sha;
     }
   }
   console.log("No green commit found");
   return null;
-}
-
-// note: only checks if the commit is the last one released for the major version
-export async function hasCommitBeenReleased({
-  github,
-  owner,
-  repo,
-  ref,
-  majorVersion,
-}: GithubProps & { ref: string; majorVersion: number }) {
-  // TODO: a better approach would be to fetch the ref and see if it has any release tags
-  const lastTag = await getLastReleaseTag({
-    github,
-    owner,
-    repo,
-    version: `v0.${majorVersion}.0`,
-    ignorePatches: false,
-    ignorePreReleases: false,
-  });
-
-  const tagDetail = await github.rest.git.getRef({
-    owner,
-    repo,
-    ref: `tags/${lastTag}`,
-  });
-
-  const lastTagSha = tagDetail.data.object.sha;
-
-  console.log({ lastTag, lastTagSha, ref });
-
-  return lastTagSha === ref;
 }
 
 export async function getOpenBackportPrs({

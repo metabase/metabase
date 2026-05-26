@@ -32,8 +32,8 @@ describe("buildAutoReleaseSkipMessage", () => {
       expect(message).toContain(runLink);
     });
 
-    it("uses an info emoji (not a failure emoji) for already-released", () => {
-      const message = buildAutoReleaseSkipMessage({ ...patchArgs, reason: "already-released" });
+    it("uses an info emoji (not a failure emoji) for commit-not-ahead", () => {
+      const message = buildAutoReleaseSkipMessage({ ...patchArgs, reason: "commit-not-ahead" });
 
       expect(message).toContain(":information_source:");
       expect(message).not.toContain(":x:");
@@ -66,8 +66,8 @@ describe("buildAutoReleaseSkipMessage", () => {
       expect(message).toContain(runLink);
     });
 
-    it("uses an info emoji (not a failure emoji) for already-released", () => {
-      const message = buildAutoReleaseSkipMessage({ ...minorArgs, reason: "already-released" });
+    it("uses an info emoji (not a failure emoji) for commit-not-ahead", () => {
+      const message = buildAutoReleaseSkipMessage({ ...minorArgs, reason: "commit-not-ahead" });
 
       expect(message).toContain(":information_source:");
       expect(message).not.toContain(":x:");
