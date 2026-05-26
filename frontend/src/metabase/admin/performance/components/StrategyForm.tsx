@@ -575,23 +575,27 @@ const StrategySelector = ({
               ? getLabelString(option.description, model)
               : undefined;
             return (
-              <Radio
+              <Box
                 key={name}
-                value={name}
-                className={StrategyFormStyles.strategyOption}
-                label={
-                  <Stack gap={4}>
-                    <strong>{getLabelString(option.label, model)}</strong>
-                    {description && (
-                      <Text size="sm" c="text-secondary">
-                        {description}
-                      </Text>
-                    )}
-                  </Stack>
-                }
-                autoFocus={values.type === name}
-                role="radio"
-              />
+                onClick={(e) => {
+                  // Mantine renders Radio.description outside the `<label htmlFor>`,
+                  // so a click on the description text doesn't toggle the radio.
+                  // Forward those clicks to the input.
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === "P") {
+                    e.currentTarget.querySelector("input")?.click();
+                  }
+                }}
+              >
+                <Radio
+                  value={name}
+                  className={StrategyFormStyles.strategyOption}
+                  label={<strong>{getLabelString(option.label, model)}</strong>}
+                  description={description}
+                  autoFocus={values.type === name}
+                  role="radio"
+                />
+              </Box>
             );
           })}
         </Stack>
