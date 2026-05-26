@@ -1,9 +1,12 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import type { SourceReplacementModalProps } from "metabase/plugins";
+import type {
+  SourceReplacementModalProps,
+  SourceReplacementTriggeredFrom,
+} from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
@@ -11,6 +14,12 @@ import {
 } from "metabase-enterprise/api";
 import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
 import type { SourceReplacementEntry } from "metabase-types/api";
+
+import {
+  trackReplaceDataSourceConfirmed,
+  trackReplaceDataSourceStarted,
+  trackReplaceDataSourceSucceeded,
+} from "../../analytics";
 
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
@@ -29,9 +38,16 @@ import {
 export function SourceReplacementModal({
   initialSource,
   initialTarget,
+  triggeredFrom,
   opened,
   onClose,
 }: SourceReplacementModalProps) {
+  useEffect(() => {
+    if (opened) {
+      trackReplaceDataSourceStarted({ triggeredFrom });
+    }
+  }, [opened, triggeredFrom]);
+
   return (
     <Modal.Root opened={opened} fullScreen onClose={onClose}>
       <Modal.Overlay />
@@ -39,6 +55,7 @@ export function SourceReplacementModal({
         <ModalContent
           initialSource={initialSource}
           initialTarget={initialTarget}
+          triggeredFrom={triggeredFrom}
           onClose={onClose}
         />
       </Modal.Content>
@@ -49,12 +66,14 @@ export function SourceReplacementModal({
 type ModalContentProps = {
   initialSource: SourceReplacementEntry | undefined;
   initialTarget: SourceReplacementEntry | undefined;
+  triggeredFrom: SourceReplacementTriggeredFrom;
   onClose: () => void;
 };
 
 function ModalContent({
   initialSource,
   initialTarget,
+  triggeredFrom,
   onClose,
 }: ModalContentProps) {
   const [sourceEntry, setSourceEntry] = useState(initialSource);
@@ -110,12 +129,14 @@ function ModalContent({
       confirmButtonText: getConfirmSubmitLabel(dependents.length),
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
+        trackReplaceDataSourceConfirmed({ triggeredFrom });
         await replaceSource({
           source_entity_id: sourceEntry.id,
           source_entity_type: sourceEntry.type,
           target_entity_id: targetEntry.id,
           target_entity_type: targetEntry.type,
         }).unwrap();
+        trackReplaceDataSourceSucceeded({ triggeredFrom });
         onClose();
       },
     });

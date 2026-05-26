@@ -13,6 +13,8 @@ import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
+import { trackWorkspaceCreated } from "../../../analytics";
+
 type NewWorkspaceModalProps = {
   opened: boolean;
   onCreate: (workspace: Workspace) => void;
@@ -58,6 +60,7 @@ function NewWorkspaceForm({ onCreate, onClose }: NewWorkspaceFormProps) {
 
   const handleSubmit = async ({ name }: NewWorkspaceFormValues) => {
     const workspace = await createWorkspace({ name }).unwrap();
+    trackWorkspaceCreated({ workspaceId: workspace.id });
     onCreate(workspace);
   };
 
