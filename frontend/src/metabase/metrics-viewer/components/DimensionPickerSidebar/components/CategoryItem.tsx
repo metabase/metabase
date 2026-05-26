@@ -88,7 +88,10 @@ function getCategorySelectRows({
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
 }) {
-  const categoryTab = isCategorySelected(category, activeDimensionBreakout)
+  const categoryDimensionBreakout = isCategorySelected(
+    category,
+    activeDimensionBreakout,
+  )
     ? activeDimensionBreakout
     : {
         ...activeDimensionBreakout,
@@ -99,7 +102,7 @@ function getCategorySelectRows({
 
   return buildDimensionPickerSidebarCategorySelectRows({
     category,
-    activeDimensionBreakout: categoryTab,
+    activeDimensionBreakout: categoryDimensionBreakout,
     metricSlots,
     sourceDataById,
     sourceColors,

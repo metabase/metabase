@@ -52,7 +52,7 @@ export interface UseDefinitionQueriesResult {
   breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
 }
 
-function getModifiedDefinitionForTab(
+function getModifiedDefinitionForDimensionBreakout(
   definition: MetricsViewerDefinitionEntry,
   slotIndex: number,
   dimensionBreakout: MetricsViewerDimensionBreakoutState,
@@ -106,7 +106,7 @@ function buildArithmeticRequest(
     // Find the specific slot for this expression token
     const tokenSlot = findExpressionTokenSlot(metricSlots, entityIndex, i);
     const slotIndex = tokenSlot?.slotIndex ?? -1;
-    const modifiedDefinition = getModifiedDefinitionForTab(
+    const modifiedDefinition = getModifiedDefinitionForDimensionBreakout(
       definition,
       slotIndex,
       dimensionBreakout,
@@ -201,7 +201,7 @@ function buildQueryItems(
       if (!slot) {
         return;
       }
-      const modifiedDefinition = getModifiedDefinitionForTab(
+      const modifiedDefinition = getModifiedDefinitionForDimensionBreakout(
         effectiveEntry,
         slot.slotIndex,
         dimensionBreakout,

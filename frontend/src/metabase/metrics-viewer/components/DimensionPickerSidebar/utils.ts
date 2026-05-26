@@ -27,9 +27,10 @@ export function hasSameDimensions(
   }
 
   const itemEntries = getDimensionMappingEntries(item.dimensionBreakoutInfo);
-  const tabEntries = getDimensionMappingEntries(dimensionBreakout);
+  const dimensionBreakoutEntries =
+    getDimensionMappingEntries(dimensionBreakout);
   return (
-    itemEntries.length === tabEntries.length &&
+    itemEntries.length === dimensionBreakoutEntries.length &&
     itemEntries.every(
       ([slotIndex, dimensionId]) =>
         dimensionBreakout.dimensionMapping[Number(slotIndex)] === dimensionId,

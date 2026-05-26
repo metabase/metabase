@@ -8,7 +8,7 @@ import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
-import { MAX_AUTO_TABS } from "../constants";
+import { MAX_AUTO_DIMENSION_BREAKOUTS } from "../constants";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -143,7 +143,7 @@ export function recomputeDimensionBreakoutLabels(
 
   let changed = false;
   const result = dimensionBreakouts.map((dimensionBreakout) => {
-    const names = resolveTabDimensionNames(
+    const names = resolveDimensionBreakoutDimensionNames(
       dimensionBreakout.dimensionMapping,
       dimsBySlotIndex,
     );
@@ -176,7 +176,7 @@ function getDimensionDescriptorsBySlotIndex(
   return result;
 }
 
-function resolveTabDimensionNames(
+function resolveDimensionBreakoutDimensionNames(
   dimensionMapping: Record<number, string | null>,
   dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
 ): string[] {
@@ -493,7 +493,10 @@ export function computeDefaultDimensionBreakouts(
   })[] = [];
 
   for (const config of DIMENSION_BREAKOUT_TYPE_REGISTRY) {
-    if (!config.autoCreate || dimensionBreakouts.length >= MAX_AUTO_TABS) {
+    if (
+      !config.autoCreate ||
+      dimensionBreakouts.length >= MAX_AUTO_DIMENSION_BREAKOUTS
+    ) {
       continue;
     }
 
@@ -507,7 +510,10 @@ export function computeDefaultDimensionBreakouts(
         continue;
       }
 
-      const names = resolveTabDimensionNames(mapping, dimensionsBySlotIndex);
+      const names = resolveDimensionBreakoutDimensionNames(
+        mapping,
+        dimensionsBySlotIndex,
+      );
       dimensionBreakouts.push({
         id: config.fixedId,
         type: config.type,
@@ -544,7 +550,7 @@ export function computeDefaultDimensionBreakouts(
       dimensionId,
       { displayName, slotIndices },
     ] of sortedDimensions) {
-      if (dimensionBreakouts.length >= MAX_AUTO_TABS) {
+      if (dimensionBreakouts.length >= MAX_AUTO_DIMENSION_BREAKOUTS) {
         break;
       }
 
@@ -585,7 +591,7 @@ export function createDimensionBreakoutFromInfo(
 ): MetricsViewerDimensionBreakoutState | null {
   const { type, label, dimensionMapping } = dimensionBreakoutInfo;
   if (type === "scalar") {
-    return createScalarTab();
+    return createScalarDimensionBreakout();
   }
   const id = Object.values(dimensionMapping)[0];
   if (id == null) {
@@ -602,7 +608,7 @@ export function createDimensionBreakoutFromInfo(
   };
 }
 
-function createScalarTab(): MetricsViewerDimensionBreakoutState | null {
+function createScalarDimensionBreakout(): MetricsViewerDimensionBreakoutState | null {
   const config = getDimensionBreakoutConfig("scalar");
   if (config.matchMode !== "aggregate") {
     return null;
@@ -623,7 +629,7 @@ export function getScalarDimensionBreakoutLabel() {
 
 // ── DimensionBreakout dimension matching ──
 
-function findSubtypeFromExistingTab(
+function findSubtypeFromExistingDimensionBreakout(
   dimensionBreakout: StoredMetricsViewerDimensionBreakout,
   getSubtype: (dimension: DimensionMetadata) => string | null,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
@@ -664,7 +670,7 @@ function findBestSubtypeInDimensions(
   return pickBestGeoSubtype(found);
 }
 
-function findReferenceFromTab(
+function findReferenceFromDimensionBreakout(
   dimensionBreakout: StoredMetricsViewerDimensionBreakout,
   type: MetricsViewerDimensionBreakoutType,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
@@ -704,7 +710,7 @@ function resolveSubtypeFallback(
   slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const targetSubtype =
-    findSubtypeFromExistingTab(
+    findSubtypeFromExistingDimensionBreakout(
       dimensionBreakout,
       getSubtype,
       baseDefinitions,
@@ -741,7 +747,7 @@ function findExactColumnMatch(
     return exactMatch.id;
   }
 
-  const reference = findReferenceFromTab(
+  const reference = findReferenceFromDimensionBreakout(
     dimensionBreakout,
     dimensionBreakout.type,
     baseDefinitions,
@@ -763,7 +769,7 @@ function findAggregateMatch(
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
   slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
-  const reference = findReferenceFromTab(
+  const reference = findReferenceFromDimensionBreakout(
     dimensionBreakout,
     config.type,
     baseDefinitions,
