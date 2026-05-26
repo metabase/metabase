@@ -1833,7 +1833,13 @@
    - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
 
    This is an enterprise feature. Drivers must also return true for
-   (database-supports? driver :workspace database) to indicate support."
+   (database-supports? driver :workspace database) to indicate support.
+
+   Callers are expected to bind [[metabase.driver.connection/with-admin-connection]]
+   around this call so connections resolve against the database's `:admin-details`
+   overlay when configured. The default `dispatching-provisioner` in
+   `metabase-enterprise.workspaces.provisioning` does this; do not rely on
+   default connection details from inside impls."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1844,7 +1850,10 @@
    resources created by init-workspace-isolation!.
 
    Should be called when deleting a workspace. Implementations should be
-   idempotent - calling on an already-destroyed workspace should not error."
+   idempotent - calling on an already-destroyed workspace should not error.
+
+   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
+   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1862,7 +1871,10 @@
    - 3-slot (Snowflake, SQL Server, BigQuery): read `:db` + `:schema`. `:db`
      falls back to the connection's bound db when absent.
    - schema-less (MySQL): read `:db`; the `qualified-name-components` is `[]`
-     and the database name lives in the `:db` slot."
+     and the database name lives in the `:db` slot.
+
+   Same admin-connection-scope contract as [[init-workspace-isolation!]]: callers
+   bind [[metabase.driver.connection/with-admin-connection]] before invoking."
   {:added "0.59.0" :arglists '([driver database workspace input])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
