@@ -91,6 +91,9 @@
     :mine                1
     :exact               5
     :prefix              0
+    ;; Library membership is a hard tier: 200 exceeds :official-collection + :verified (80 each)
+    ;; combined, so a library item always outranks a non-library one; the base text/recency scorers
+    ;; (0–5 range) only order items *within* the library tier, where the constant +200 cancels out.
     :library             200
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}

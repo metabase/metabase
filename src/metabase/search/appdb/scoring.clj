@@ -64,16 +64,7 @@
                      (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
                      [:inline 0])
      :library      (search.scoring/library-score-expr :search_index.root_collection_type)
-     ;; :data-layer mirrors the :model/* pattern — one scorer, per-tier weights live under :data-layer/*
-     ;; (see metabase.search.config/scorer-param). Final/internal/hidden are mutually exclusive.
-     :data-layer   [:case
-                    [:= :search_index.data_layer [:inline "final"]]
-                    [:inline (or (search.config/scorer-param search-ctx :data-layer :final) 0)]
-                    [:= :search_index.data_layer [:inline "internal"]]
-                    [:inline (or (search.config/scorer-param search-ctx :data-layer :internal) 0)]
-                    [:= :search_index.data_layer [:inline "hidden"]]
-                    [:inline (or (search.config/scorer-param search-ctx :data-layer :hidden) 0)]
-                    :else [:inline 0]]}))
+     :data-layer   (search.scoring/data-layer-score-expr :search_index.data_layer search-ctx)}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

@@ -99,6 +99,21 @@
    [:inline 1]
    :else [:inline 0]])
 
+(defn data-layer-score-expr
+  "Score expression: per-tier weight when `data-layer-col` is one of `final`/`internal`/`hidden`, else 0.
+  Pass the engine-appropriate column reference (e.g. `:search_index.data_layer` for appdb,
+  `:data_layer` for semantic). Per-tier weights live under `:data-layer/*` keys in the active
+  weights map; mirrors the `:model/*` pattern (see `search.config/scorer-param`)."
+  [data-layer-col search-ctx]
+  [:case
+   [:= data-layer-col [:inline "final"]]
+   [:inline (or (search.config/scorer-param search-ctx :data-layer :final) 0)]
+   [:= data-layer-col [:inline "internal"]]
+   [:inline (or (search.config/scorer-param search-ctx :data-layer :internal) 0)]
+   [:= data-layer-col [:inline "hidden"]]
+   [:inline (or (search.config/scorer-param search-ctx :data-layer :hidden) 0)]
+   :else [:inline 0]])
+
 (defn model-rank-expr
   "Score an item based on its :model type."
   [search-ctx]

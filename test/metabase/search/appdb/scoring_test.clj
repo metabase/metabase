@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -325,16 +326,17 @@
                    :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
                    :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                    :model/Collection other     {:name "non-library"    :location "/"}]
+      ;; Row names start with "lib" iff the row sits in a library tree, so the predicate below reads
+      ;; off the name rather than a hand-counted set of ids.
       (with-index-contents
-        [{:model "card" :id 1 :name "card plain"           :collection_id (:id other)    :collection_location (:location other)}
-         {:model "card" :id 2 :name "card in library"      :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
-         {:model "card" :id 3 :name "card in library-data" :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
-         {:model "card" :id 4 :name "card in lib-metrics"  :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
-         {:model "card" :id 5 :name "card in sub of lib"   :collection_id (:id sub)      :collection_location (:location sub)}
-         {:model "card" :id 6 :name "card in sub of sub"   :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
-         {:model "card" :id 7 :name "card in trash"        :collection_type "trash"}]
-        (let [library-id? #{2 3 4 5 6}
-              in-library? (fn [[_ id _]] (boolean (library-id? id)))]
+        [{:model "card" :id 1 :name "plain card"       :collection_id (:id other)    :collection_location (:location other)}
+         {:model "card" :id 2 :name "lib direct card"  :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+         {:model "card" :id 3 :name "lib-data card"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-metrics card" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+         {:model "card" :id 5 :name "lib sub card"     :collection_id (:id sub)      :collection_location (:location sub)}
+         {:model "card" :id 6 :name "lib sub-sub card" :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+         {:model "card" :id 7 :name "trashed card"     :collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/starts-with? nm "lib"))]
           (testing "with positive :library weight, items inside library trees come first"
             (is (= [true true true true true false false]
                    (map in-library? (with-weights {:library 1} (search-results* "card"))))))

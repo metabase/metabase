@@ -24,15 +24,15 @@
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
 
 (deftest metabot-weights-test
-  (testing "the :metabot context defines the tuned curation tier weights"
-    (is (=? {:library             100
-             :official-collection 80
-             :verified            80
-             :data-layer          1
-             :data-layer/final    33
-             :data-layer/internal 10
-             :data-layer/hidden   1}
-            (search.config/weights {:context :metabot}))))
+  ;; Derive expectations from static-weights so retuning the magnitudes doesn't churn this test;
+  ;; what we're pinning is the inheritance contract, not the specific numbers.
+  (let [default (:default search.config/static-weights)
+        metabot (:metabot search.config/static-weights)]
+    (testing ":metabot inherits :default and layers its own curation overrides on top"
+      ;; (merge default metabot) being a submap proves both directions: keys :metabot doesn't
+      ;; define (e.g. :library, :text) survive at their :default value, and the curation keys win.
+      (is (=? (merge default metabot)
+              (search.config/weights {:context :metabot})))))
   (testing "request-level :weights override beats :metabot static weights"
     (is (= 7 (-> (search.config/weights {:context :metabot :weights {:library 7}})
                  :library)))))

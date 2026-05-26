@@ -74,8 +74,10 @@
                                     :add-column  [[:personal_owner_id :int :if-not-exists]]}))))
 
 (defn- add-collection-type-and-data-layer-columns!
-  "Migration 3: Add `collection_type` and `data_layer` columns to index tables for the new ranking signals
-  (`:library` on `collection_type`; `:data-layer` per-tier weights on `data_layer`)."
+  "Migration 3: Add `collection_type` and `data_layer` columns to index tables.
+  `collection_type` is surfaced for downstream consumers (e.g. `metabase.search.impl/serialize`);
+  `data_layer` powers the `:data-layer` scorer (per-tier weights under `:data-layer/*`).
+  The `:library` scorer was reworked in migration 4 to read `root_collection_type` instead."
   [tx index-metadata]
   (alter-index-tables! tx index-metadata 3
                        (fn [execute! table-name]

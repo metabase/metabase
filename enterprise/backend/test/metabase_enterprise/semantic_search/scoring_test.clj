@@ -253,6 +253,27 @@
             (is (= [false false true true true]
                    (map in-library? (semantic.tu/with-weights {:library -1} (search-results* "card")))))))))))
 
+(deftest data-layer-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
+      (with-index-contents!
+        [{:model "table" :id 1 :name "table no layer"}
+         {:model "table" :id 2 :name "table final"    :data_layer "final"}
+         {:model "table" :id 3 :name "table internal" :data_layer "internal"}
+         {:model "table" :id 4 :name "table hidden"   :data_layer "hidden"}]
+        (testing "final tables lead when only :data-layer/final is positive"
+          (is (= 2 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/final 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "internal tables lead when only :data-layer/internal is positive"
+          (is (= 3 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/internal 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "hidden tables lead when only :data-layer/hidden is positive"
+          (is (= 4 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/hidden 1}
+                         (search-results* "table"))
+                       first second))))))))
+
 (deftest verified-test
   (with-index-contents!
     [{:model "card" :id 1 :name "card normal" :verified false}
