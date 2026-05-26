@@ -10,6 +10,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
@@ -787,6 +788,7 @@
   [:map
    [:id            ms/PositiveInt]
    [:name          ms/NonBlankString]
+   [:url           :string]
    [:collection_id [:maybe ms/PositiveInt]]
    [:description   [:maybe :string]]
    [:dashcard_ids  [:sequential ms/PositiveInt]]])
@@ -800,7 +802,8 @@
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
-                             "Cards are auto-positioned on the dashboard grid.")}}
+                             "Cards are auto-positioned on the dashboard grid. "
+                             "Returns the dashboard URL.")}}
   [_route-params
    _query-params
    {:keys [description collection_id question_ids]
@@ -832,6 +835,7 @@
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     {:id           (:id dash)
      :name         (:name dash)
+     :url          (channel.urls/dashboard-url (:id dash))
      :collection_id (:collection_id dash)
      :description  (:description dash)
      :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))

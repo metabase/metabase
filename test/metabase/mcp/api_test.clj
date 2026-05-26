@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.channel.urls :as channel.urls]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
@@ -704,6 +705,8 @@
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})
                   _              (reset! dash-id (:id dash-data))
+                  _              (is (= (channel.urls/dashboard-url @dash-id)
+                                         (:url dash-data)))
                   _              (call-tool session-id "update_dashboard"
                                             {:id          (:id dash-data)
                                              :description "Smoke updated dashboard"})
