@@ -1,7 +1,9 @@
 import { Group, Text } from "metabase/ui";
 import type {
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationThread,
+  SingleSeries,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
@@ -25,6 +27,7 @@ interface ExplorationVisualizationHeaderProps {
    * single-chart `DocumentMenu`. Used by `ExplorationGroupVisualization`.
    */
   groupQueries?: ExplorationQuery[];
+  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
   interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
@@ -37,6 +40,7 @@ export function ExplorationVisualizationHeader({
   showTimelineDropdown,
   showDocumentMenu,
   groupQueries,
+  seriesByQueryId,
   interestingTimelineIds,
 }: ExplorationVisualizationHeaderProps) {
   const showGroupDocumentMenu =
@@ -72,12 +76,14 @@ export function ExplorationVisualizationHeader({
           <GroupDocumentMenu
             queries={groupQueries}
             explorationThread={explorationThread}
+            seriesByQueryId={seriesByQueryId}
           />
         )}
         {showSingleDocumentMenu && (
           <DocumentMenu
             explorationQuery={groupQueries?.[0]}
             explorationThread={explorationThread}
+            seriesByQueryId={seriesByQueryId}
           />
         )}
       </Group>

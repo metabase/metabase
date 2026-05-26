@@ -539,22 +539,19 @@
   document body. The embed is wrapped in a `resizeNode` to match the FE schema for all
   `cardEmbed` nodes (live and static).
 
-  `dataset-query` (when non-nil) is written into the embed's node attrs so the document
-  renderer can compose the variant's MBQL onto the fetched Card — preserving exploration
-  breakouts (`temporal-pattern-day` day-of-week bucket, `top-n-other` case expression,
-  `time-facet`'s second breakout, …) even though the materialized Card may render them
-  differently on its own.
+  `chart-href` is written onto the node so the FE turns the embed's title into a link back
+  to the chart's page in the exploration (instead of the saved-Card URL the title would
+  otherwise navigate to).
 
   Tolerates a missing/non-doc root by replacing it with an empty doc."
-  [doc card-id stored-result-id chart-href dataset-query]
+  [doc card-id stored-result-id chart-href]
   (let [base  (if (and (map? doc) (= "doc" (:type doc)))
                 doc
                 {:type "doc" :content []})
         embed {:type    "resizeNode"
                :content [{:type  "cardEmbed"
                           :attrs (cond-> {:id card-id :name nil :stored_result_id stored-result-id}
-                                   chart-href    (assoc :chart_href chart-href)
-                                   dataset-query (assoc :dataset_query dataset-query))}]}]
+                                   chart-href (assoc :chart_href chart-href))}]}]
     (update base :content (fnil into []) [embed])))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
@@ -565,23 +562,24 @@
   Card — the same snapshot can be embedded multiple times, possibly across documents, and
   each embed gets its own Card so settings can diverge later without touching the others.
 
-  The cardEmbed node also carries:
+  The cardEmbed node also carries `chart_href` — the exploration chart-page URL — so the
+  FE makes the embed's card title a link back to the source chart in the exploration view
+  (instead of the saved-Card URL the title would otherwise navigate to).
 
-  - `chart_href` — the exploration chart-page URL. The FE makes the embed's card title a
-    link to this URL so users can jump back to the source chart in the exploration view
-    (instead of the saved-Card URL the title would otherwise navigate to).
-
-  - `dataset_query` — the EQ's variant MBQL. The document renderer composes it onto the
-    fetched Card so the visualization pipeline sees the variant's breakouts
-    (`temporal-pattern-day` day-of-week bucket, `top-n-other` case expression,
-    `time-facet` second breakout, …) even when the materialized Card's own
-    `dataset_query` drifts."
+  Optional `display` and `visualization_settings` in the request body let the FE pass its
+  fully-computed render settings (from `buildSeries` / `getDisplay`) for the materialized
+  Card — preserving e.g. `graph.dimensions: [date, breakout]`, `graph.split_panels`,
+  `table.pivot`, axis-title clearing on labeled layouts, etc. that the BE's recompute
+  step wouldn't produce."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [exploration_query_id]} :- [:map
-                                      [:exploration_query_id ms/PositiveInt]]]
+   {:keys [exploration_query_id display visualization_settings]}
+   :- [:map
+       [:exploration_query_id    ms/PositiveInt]
+       [:display                 {:optional true} [:maybe :string]]
+       [:visualization_settings  {:optional true} [:maybe :map]]]]
   (write-check-thread thread-id)
   (let [doc        (get-thread-document-or-404 thread-id document-id)
         eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
@@ -590,11 +588,12 @@
                     (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                       :exploration_query_id exploration_query_id))
         card-id    (eqr/create-card-for-stored-result!
-                    sr-id (:id doc) (:collection_id doc) @api/*current-user*)
+                    sr-id (:id doc) (:collection_id doc) @api/*current-user*
+                    {:display-override                display
+                     :visualization-settings-override visualization_settings})
         exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
         chart-href (chart-page-url exp-id (:card_id eq) (:dimension_id eq))
-        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href
-                                       (:dataset_query eq))]
+        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href)]
     (t2/update! :model/Document (:id doc) {:document new-body})
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 

@@ -12,7 +12,6 @@ import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   Card,
   Dataset,
-  DatasetQuery,
   RawSeries,
   StoredResultSort,
 } from "metabase-types/api";
@@ -24,7 +23,6 @@ interface UseCardDataProps {
   id: number | null | undefined;
   storedResultId?: number; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   storedResultSort?: StoredResultSort; // Sort to apply in-memory when reading a static snapshot. Static-mode only
-  datasetQueryOverride?: DatasetQuery;
 }
 
 export interface UseCardDataResult {
@@ -96,7 +94,6 @@ export function useCardData({
   id: rawId,
   storedResultId,
   storedResultSort,
-  datasetQueryOverride,
 }: UseCardDataProps): UseCardDataResult {
   const id = rawId ?? 0;
   const isDraft = id < 0;
@@ -180,21 +177,14 @@ export function useCardData({
 
   const isLoading = isLoadingCard || isLoadingDataset;
 
-  const cardForRender = useMemo(() => {
-    if (!cardToUse || isDraft || !datasetQueryOverride) {
-      return cardToUse;
-    }
-    return { ...cardToUse, dataset_query: datasetQueryOverride };
-  }, [cardToUse, isDraft, datasetQueryOverride]);
-
-  const hasDataForVisualization = cardForRender && dataset?.data;
+  const hasDataForVisualization = cardToUse && dataset?.data;
   const series = hasDataForVisualization
-    ? buildSeries(cardForRender, dataset)
+    ? buildSeries(cardToUse, dataset)
     : null;
 
   const question = useMemo(
-    () => (cardForRender ? new Question(cardForRender, metadata) : undefined),
-    [cardForRender, metadata],
+    () => (cardToUse ? new Question(cardToUse, metadata) : undefined),
+    [cardToUse, metadata],
   );
 
   const hasTriedToLoad =
@@ -211,7 +201,7 @@ export function useCardData({
   const error = getError();
 
   return {
-    card: cardForRender,
+    card: cardToUse,
     dataset,
     isLoading,
     series,

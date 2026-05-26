@@ -942,19 +942,15 @@
               doc    (mt/user-http-request u :post 200
                                            (format "exploration/thread/%d/documents/%d/append" tid doc-id)
                                            {:exploration_query_id qid})
-              embed-attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
-                              :content last :content first :attrs)
-              card-id (:id embed-attrs)
-              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
-              eq-dq   (t2/select-one-fn :dataset_query :model/ExplorationQuery :id qid)]
+              card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                          :content last :content first :attrs :id)
+              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)]
           (is (empty? before)
               "no card-use row exists before the append")
           (is (some? use-row)
               "appending records a stored_result_use row for the materialized Card")
           (is (nil? (:exploration_id use-row))
-              "the card-use row has no exploration_id")
-          (testing "the EQ's dataset_query is carried on the cardEmbed node so the FE can compose it onto the fetched Card and preserve variant breakouts"
-            (is (= eq-dq (:dataset_query embed-attrs)))))))))
+              "the card-use row has no exploration_id"))))))
 
 (deftest exploration-user-interestingness-roundtrip-test
   (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
@@ -1140,8 +1136,7 @@
                   {:type "doc" :content []}
                   77
                   99
-                  "/question/research/7/group/auto%3A42%3Ad1"
-                  nil)
+                  "/question/research/7/group/auto%3A42%3Ad1")
           embed  (first (:content result))]
       (is (= "doc" (:type result)))
       (is (= 1 (count (:content result))))
@@ -1153,38 +1148,22 @@
                                  :chart_href "/question/research/7/group/auto%3A42%3Ad1"}}]}
              embed))))
   (testing "tolerates a missing/non-doc root by starting from an empty doc"
-    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x" nil)]
+    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x")]
       (is (= "doc" (:type result)))
       (is (= 1 (count (:content result))))))
   (testing "appends after existing content, preserving order"
     (let [existing {:type "doc" :content [{:type "paragraph" :content []}]}
-          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x" nil)]
+          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x")]
       (is (= 2 (count (:content result))))
       (is (= {:type "paragraph" :content []} (first (:content result))))))
-  (testing "when a non-nil `dataset-query` is passed, it lands on the cardEmbed node's :attrs"
-    (let [dq     {:type "query" :database 1 :query {:source-table 2 :breakout [["field" 3 nil]]}}
-          result (#'explorations.api/append-chart-nodes
-                  {:type "doc" :content []}
-                  77 99
-                  "/question/research/7/group/auto%3A42%3Ad1"
-                  dq)
-          attrs  (-> result :content first :content first :attrs)]
-      (is (= 77 (:id attrs)))
-      (is (= 99 (:stored_result_id attrs)))
-      (is (= dq (:dataset_query attrs))
-          "the variant's MBQL travels with the cardEmbed node so the FE renderer can compose it onto the fetched Card")))
-  (testing "when `dataset-query` is nil, the :dataset_query key is omitted from :attrs (no `nil` clutter on non-exploration embeds)"
-    (let [result (#'explorations.api/append-chart-nodes
-                  {:type "doc" :content []}
-                  77 99 "/x" nil)
-          attrs  (-> result :content first :content first :attrs)]
-      (is (false? (contains? attrs :dataset_query)))))
   (testing "when `chart-href` is nil, the :chart_href key is omitted from :attrs"
     (let [result (#'explorations.api/append-chart-nodes
                   {:type "doc" :content []}
-                  77 99 nil nil)
+                  77 99 nil)
           attrs  (-> result :content first :content first :attrs)]
-      (is (false? (contains? attrs :chart_href))))))
+      (is (false? (contains? attrs :chart_href)))
+      (testing "and no other override attrs leak in (cardEmbed stays minimal)"
+        (is (false? (contains? attrs :dataset_query)))))))
 
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"
