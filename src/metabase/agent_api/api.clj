@@ -529,17 +529,20 @@
   ;; Kill-switch check: refuse with 403 when the admin has disabled execute_sql.
   (when-not (agent-api.settings/mcp-execute-sql-enabled)
     (throw (ex-info "execute_sql is disabled on this instance" {:status-code 403})))
-  (let [query {:database database_id
-               :type     :native
-               :native   {:query sql}}]
+  (let [raw-query {:database database_id
+                   :type     :native
+                   :native   {:query sql}}]
     ;; Belt-and-suspenders: friendlier 403 from the tool layer than the QP's perms-exception.
     ;; The QP middleware (query-processor.middleware.permissions) will re-check inside process-query.
-    (when-not (qp.perms/current-user-has-adhoc-native-query-perms? query)
+    (when-not (qp.perms/current-user-has-adhoc-native-query-perms? raw-query)
       (throw (ex-info "You do not have permission to run native queries against this database."
                       {:status-code 403
                        :database_id database_id})))
+    ;; Run through the same userland prep the other Agent API query endpoints use, so we get
+    ;; the documented row cap, QueryExecution audit row, and `{:status :failed ...}` error
+    ;; shape instead of a raw 500. Review finding #1.
     (qp.streaming/streaming-response [rff :api]
-      (qp/process-query query rff))))
+      (qp/process-query (prepare-agent-query raw-query) rff))))
 
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
@@ -739,7 +742,15 @@
         ;; update-card pre-check stack so REST + agent-api can't drift; this single check is
         ;; only the most recent gap we noticed.
         _                  (when (api/column-will-change? :dataset_query card-before-update card-updates)
-                             (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
+                             (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
+                             ;; Reject cycles. `lib/check-card-overwrite` throws if the new query
+                             ;; references this card transitively. Mirror REST's wrapping that
+                             ;; promotes it to HTTP 400 instead of a 500.
+                             (try
+                               (lib/check-card-overwrite id (:dataset_query card-updates))
+                               (catch clojure.lang.ExceptionInfo e
+                                 (throw (ex-info (ex-message e)
+                                                 (assoc (ex-data e) :status-code 400))))))
         _                  (queries/update-card! {:card-before-update    card-before-update
                                                   :card-updates          card-updates
                                                   :actor                 @api/*current-user*
@@ -924,11 +935,21 @@
                                      other-placed
                                      (:size_x existing) (:size_y existing)
                                      autoplace/default-grid-width))]
+            ;; "top" parks the card at row 0; everything else has to shift down by the
+            ;; moved card's height or we get overlapping dashcards (review finding #2).
+            (when (= position "top")
+              (let [shift (:size_y existing)]
+                (doseq [{:keys [id row]} other-placed]
+                  (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
             (t2/update! :model/DashboardCard dashcard_id
                         (select-keys new-pos [:row :col]))
             (swap! state #(-> %
-                              (assoc :placed (conj other-placed
-                                                   (merge existing (select-keys new-pos [:row :col]))))
+                              (assoc :placed
+                                     (conj (if (= position "top")
+                                             (mapv (fn [c] (update c :row + (:size_y existing)))
+                                                   other-placed)
+                                             other-placed)
+                                           (merge existing (select-keys new-pos [:row :col]))))
                               (update :moved conj (merge existing new-pos))))))
         (catch Exception e
           ;; Re-throw with the mutation index so the LLM can tell which entry failed when
