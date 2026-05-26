@@ -189,29 +189,34 @@
           (f query))))))
 
 (defn- schedule-query-timeout-cancel!
-  "Schedule a put to `canceled-chan` after `*query-timeout-ms*`. Driver execution wires this channel to
-  `Statement.cancel()` (see [[metabase.driver.sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement!]]), which
-  for MySQL/MariaDB issues `KILL QUERY` on a side connection — so this is the cross-driver path that actually stops
-  a running query on the server when the timeout fires. If the query finishes first the channel closes, the
-  `alts!!` returns its value, and the timeout branch is never taken."
-  [canceled-chan]
+  "Schedule a put of `::timeout` to `canceled-chan` after `*query-timeout-ms*`. Driver execution wires this channel
+  to `Statement.cancel()` (see [[metabase.driver.sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement!]]),
+  which for MySQL/MariaDB issues `KILL QUERY` on a side connection — so this is the cross-driver path that actually
+  stops a running query on the server when the timeout fires. `done-ch` closes when the query completes, releasing
+  the go-block early. The timer never reads from `canceled-chan`, since callers (notably tests) may bind a regular
+  channel where `alts!`/`<!` would consume the cancel signal away from the driver's listener."
+  [canceled-chan done-ch]
   (let [timeout-ms (long driver.settings/*query-timeout-ms*)]
     (a/go
       (let [timeout-ch (a/timeout timeout-ms)
-            [_ port]   (a/alts! [canceled-chan timeout-ch])]
+            [_ port]   (a/alts! [done-ch timeout-ch])]
         (when (= port timeout-ch)
           (log/warnf "Query exceeded timeout of %d ms; canceling" timeout-ms)
-          (a/>! canceled-chan ::timeout))))))
+          (a/put! canceled-chan ::timeout))))))
 
 (mu/defn- do-with-canceled-chan :- fn?
   [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
-    (if qp.pipeline/*canceled-chan*
-      (do (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)
-          (f query))
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)
-        (f query)))))
+    (let [done-ch (a/promise-chan)]
+      (try
+        (if qp.pipeline/*canceled-chan*
+          (do (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
+              (f query))
+          (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+            (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
+            (f query)))
+        (finally
+          (a/close! done-ch))))))
 
 (def ^:private setup-middleware
   "Setup middleware has the signature

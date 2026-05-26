@@ -51,3 +51,30 @@
         (f {:type :internal})
         (is (nil? @observed-after-close)
             "a closed chan should poll nil — the timer must not have written ::timeout to it")))))
+
+(deftest ^:parallel canceled-chan-timer-does-not-consume-external-cancel-signal-test
+  (testing "Timer must not consume the cancel signal when callers bind a regular (a/chan)"
+    ;; Regression for mongo `kill-an-in-flight-query-test`: that test binds `*canceled-chan*` to a regular
+    ;; `(a/chan)` (not a promise-chan) and puts a cancel sentinel on it; the driver listener takes from the chan
+    ;; to abort the in-flight query. If the timer reads from `*canceled-chan*` (via `alts!`/`<!`), it races the
+    ;; driver listener for the value and on a regular chan one of them consumes it, breaking the other.
+    (binding [driver.settings/*query-timeout-ms* 60000]
+      (let [external-chan (a/chan)
+            seen          (promise)
+            slow-f        (fn [_query]
+                            (a/>!! qp.pipeline/*canceled-chan* ::external-cancel)
+                            ;; give the timer's go-block a moment to (incorrectly) consume the message
+                            (Thread/sleep 100)
+                            (deliver seen (a/<!! (a/timeout 200))))]
+        (binding [qp.pipeline/*canceled-chan* external-chan]
+          (let [f (#'qp.setup/do-with-canceled-chan slow-f)
+                ;; consume from the external chan on a separate thread, mimicking what a driver's cancel listener
+                ;; does. If the timer consumed the message, this take will time out.
+                taken (future (a/alts!! [external-chan (a/timeout 1000)]))]
+            (f {:type :internal})
+            @seen
+            (let [[v p] @taken]
+              (is (identical? external-chan p)
+                  "the external listener should win the take, not time out")
+              (is (= ::external-cancel v)
+                  "the external listener should see the original cancel sentinel"))))))))
