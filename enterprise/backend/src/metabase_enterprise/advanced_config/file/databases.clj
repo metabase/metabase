@@ -20,6 +20,9 @@
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/details
   map?)
 
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_stub
+  boolean?)
+
 (defn- valid-regex-patterns? [patterns]
   (every? (fn [pattern]
             (try
@@ -45,7 +48,8 @@
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]
-          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings]))
+          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/is_stub]))
 
 (defmethod advanced-config.file.i/section-spec :databases
   [_section]
@@ -78,7 +82,9 @@
         (t2/delete! :model/Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
-      (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
+      ;; Stubs are placeholders with no usable details, so we skip the connection test.
+      (when-not (:is_stub database)
+        (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions))
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (let [database (cond-> database
                          (:is_attached_dwh database) strip-attached-dwh-update-ks)]
@@ -87,9 +93,15 @@
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
           (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
-            (if (advanced-config.settings/config-from-file-sync-databases)
+            (cond
+              (:is_stub database)
+              (log/info "Created stub database; skipping sync.")
+
+              (advanced-config.settings/config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
                 (quick-task/submit-task! (fn [] (sync-database! db))))
+
+              :else
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases

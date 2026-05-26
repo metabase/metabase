@@ -8,6 +8,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -76,6 +77,27 @@
            :config  {:databases [{:name    (str test-db-name "-in-memory")
                                   :engine  "h2"
                                   :details {:db "mem:some-in-memory-db"}}]}})))))
+
+(deftest init-from-config-file-stub-test
+  (testing "stub databases skip the connection test and never trigger sync"
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (try
+        (let [submit-calls (atom 0)]
+          (with-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+            (testing "config entry with :is_stub true and empty :details is accepted"
+              (is (= :ok
+                     (advanced-config.file/initialize!
+                      {:version 1
+                       :config  {:databases [{:name    test-db-name
+                                              :engine  "h2"
+                                              :details {}
+                                              :is_stub true}]}}))))
+            (testing "row is created with :is_stub true"
+              (is (true? (t2/select-one-fn :is_stub :model/Database :name test-db-name))))
+            (testing "no sync task is submitted for stubs"
+              (is (zero? @submit-calls)))))
+        (finally
+          (t2/delete! :model/Database :name test-db-name))))))
 
 (deftest sync-test
   (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
