@@ -292,26 +292,22 @@
                                          ["multi-key-index"
                                           [{:field-name "url" :indexed? false :base-type :type/Text}]
                                           [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
-
         (try
           (testing "singly index"
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
-
           (testing "compound index"
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
             (sync/sync-database! (mt/db))
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
-
           (testing "multi key index"
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
             (sync/sync-database! (mt/db))
             (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
             (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
-
           (finally
             (t2/delete! :model/Database (mt/id)))))))
 
@@ -380,7 +376,6 @@
                                            {:field-name "text-field" :indexed? false :base-type :type/Text}
                                            {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
                                           [["Ngoc" "Khuat" [10 20]]]])
-
         (sync/sync-database! (mt/db))
         (try
           (let [describe-indexes (fn [table-name]
@@ -391,7 +386,6 @@
                 (is (= #{{:type :normal-column-index :value "_id"}
                          {:type :normal-column-index :value "a"}}
                        (describe-indexes :singly-index))))
-
               (testing "compound index column index"
                 ;; first index column is :a
                 (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :a 1 :b 1 :c 1))
@@ -401,7 +395,6 @@
                          {:type :normal-column-index :value "a"}
                          {:type :normal-column-index :value "e"}}
                        (describe-indexes :compound-index))))
-
               (testing "compound index that has many keys can still determine the first key"
                 ;; first index column is :j
                 (mongo.util/create-index (mongo.util/collection db "compound-index-big")
@@ -409,13 +402,11 @@
                 (is (= #{{:type :normal-column-index :value "_id"}
                          {:type :normal-column-index :value "j"}}
                        (describe-indexes :compound-index-big))))
-
               (testing "multi key indexes"
                 (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "a.b" 1))
                 (is (= #{{:type :nested-column-index :value ["a" "b"]}
                          {:type :normal-column-index :value "_id"}}
                        (describe-indexes :multi-key-index))))
-
               (testing "advanced-index: hashed index, text index, geospatial index"
                 (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "hashed-field" "hashed"))
                 (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "text-field" "text"))
@@ -425,7 +416,6 @@
                          {:type :normal-column-index :value "_id"}
                          {:type :normal-column-index :value "text-field"}}
                        (describe-indexes :advanced-index))))))
-
           (finally
             (t2/delete! :model/Database (mt/id)))))))
 
@@ -438,7 +428,6 @@
                 (mt/run-mbql-query tips
                   {:aggregation [[:count]]
                    :filter      [:= $tips.source.username "tupac"]})))))
-
       (testing "Can we breakout against nested columns?"
         (is (= [[nil 297]
                 ["amy" 20]
@@ -577,19 +566,16 @@
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]
                              :fields [$id $name $bird_id]})))))
-
         (testing "handle null ObjectId queries properly (#11134)"
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-null $bird_id]
                              :fields [$id $name $bird_id]})))))
-
         (testing "treat null ObjectId as empty (#15801)"
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-empty $bird_id]
                              :fields [$id $name $bird_id]}))))))
-
       (testing "treat non-null ObjectId as not-empty (#15801)"
         (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                 [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
@@ -615,19 +601,16 @@
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:= $bird_uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
                              :fields [$id $name $bird_uuid]})))))
-
         (testing "handle null UUID queries properly"
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-null $bird_uuid]
                              :fields [$id $name $bird_uuid]})))))
-
         (testing "treat null UUID as empty"
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-empty $bird_uuid]
                              :fields [$id $name $bird_uuid]}))))))
-
       (testing "treat non-null UUID as not-empty"
         (is (= [[1 "Rasta Toucan" #uuid "11111111-1111-1111-1111-111111111111"]
                 [2 "Lucky Pigeon" #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
@@ -830,7 +813,6 @@
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
-
     (testing "Any values after rubbish in versionArray are ignored"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
                                                         "versionArray" [4 0 "NaN" 29]})]

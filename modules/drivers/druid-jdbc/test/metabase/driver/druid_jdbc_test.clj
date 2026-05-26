@@ -349,7 +349,6 @@
                    {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ 3 args: count + sum + count"
       (is (= [[1  663]
               [2 2460]
@@ -363,7 +362,6 @@
                                    [:count $venue_price]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ a constant: count * 10"
       (is (= [[1 2210]
               [2 6150]
@@ -374,7 +372,6 @@
                    {:aggregation [[:* [:count $id] 10]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [[1  49062]
               [2 757065]
@@ -387,7 +384,6 @@
                                    [:* [:count $id] [:sum $venue_price]]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post-aggregation math w/ avg: count + avg"
       (is (= [[1  721.8506787330316]
               [2 1116.388617886179]
@@ -398,7 +394,6 @@
                    {:aggregation [[:+ [:count $id] [:avg $id]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "aggregation with math inside the aggregation :scream_cat:"
       (is (= [[1  442]
               [2 1845]
@@ -409,7 +404,6 @@
                    {:aggregation [[:sum [:+ $venue_price 1]]]
                     :breakout    [$venue_price]})
                  mt/rows))))
-
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
       (is (= [[1 -998]
               [2 -995]

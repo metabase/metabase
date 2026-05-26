@@ -628,16 +628,12 @@
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
       (doseq [[x y] (partition-all 2 ["1970-01-01 00:00:00"
                                       "to_date('1970-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.000"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.001"
                                       "timestamp '1970-01-01 10:09:08.001'"
-
                                       ;; Oracle can't resolve less than milliseconds, so cast to date since we don't lose anything
                                       "1970-01-01 10:09:08.0001"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"])]

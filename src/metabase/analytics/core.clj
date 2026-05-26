@@ -22,18 +22,13 @@
 
 (p/import-vars
  [metabase.analytics.llm-token-usage
-
   track-snowplow!
   track-prometheus!
   track-token-usage!]
-
  [metabase.analytics.util
-
   hashed-metabase-token-or-uuid
   uuid->ai-service-hex-uuid]
-
  [metabase.analytics.prometheus
-
   known-labels
   initial-value
   clear!
@@ -43,31 +38,21 @@
   set!
   setup!
   shutdown!]
-
  [metabase.analytics.quartz
-
   add-listeners-to-scheduler!]
-
  [metabase.analytics.sdk
-
   embedding-context?
   embedding-mw
   include-sdk-info
   with-client! get-client
   with-version! get-version]
-
  [metabase.analytics.settings
-
   anon-tracking-enabled
   anon-tracking-enabled!
   instance-creation]
-
  [metabase.analytics.snowplow
-
   track-event!]
-
  [metabase.analytics.stats
-
   environment-type
   legacy-anonymous-usage-stats
   phone-home-stats!])

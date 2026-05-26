@@ -39,7 +39,6 @@
               [:field 3 {:source-field 2}]]
              (lib.util.match/match [[:field 1 nil] [:field 3 {:source-field 2}]]
                [(:or :field) & _])))
-
     (t/is (= [[:field 10 nil]
               [:field 20 nil]]
              (lib.util.match/match {:query {:filter [:=
@@ -60,7 +59,6 @@
              ;; return just the dest IDs of Fields in a fk-> clause
              (lib.util.match/match a-query
                [:field dest-id {:source-field (_ :guard integer?)}] (inc dest-id))))
-
     (t/is (= [10 20]
              (lib.util.match/match (:breakout a-query) [:field id nil] id)))))
 
@@ -75,7 +73,6 @@
              (let [a-field-id 2]
                (lib.util.match/match {:fields [[:field 1 nil] [:field 2 nil]]}
                  [:field (id :guard (partial = a-field-id)) _])))))
-
   (t/testing "ok, if for some reason we can't use `:guard` in the pattern will `match` filter out nil results?"
     (t/is (= [2]
              (lib.util.match/match {:fields [[:field 1 nil] [:field 2 nil]]}
@@ -129,14 +126,12 @@
                integer?
                (when (= := (last &parents))
                  &match)))))
-
   (t/testing "how can we use predicates not named by a symbol?"
     (t/is (= [1 4000 2 5000]
              (lib.util.match/match {:filter [:and
                                              [:= [:field 1 nil] 4000]
                                              [:= [:field 2 nil] 5000]]}
                (&match :guard integer?)))))
-
   (t/testing "can we use a predicate and bind the match at the same time?"
     (t/is (= [2 4001 3 5001]
              (lib.util.match/match {:filter [:and
@@ -213,7 +208,6 @@
              (lib.util.match/replace-in a-query [:breakout]
                [:field (id :guard integer?) nil]
                [:field id {:temporal-unit :day}]
-
                [:field (id :guard string?) opts]
                [:field id (assoc opts :temporal-unit :month)])))))
 
@@ -317,7 +311,6 @@
                  ;; don't replace anything that's already wrapping a `field-id`
                  [_ [:field-id & _] & _]
                  &match
-
                  [:field (id :guard id-is-datetime-field?) opts]
                  [:field id (assoc opts :temporal-unit :day)]))))))
 
@@ -341,7 +334,6 @@
   (t/is (= "a=1 b=2 rest=[3 4 5]"
            (lib.util.match/match-lite [1 2 3 4 5]
              [a b & (rst :guard (> (count rst) 2))] (str "a=" a " b=" b " rest=" rst))))
-
   (t/testing "Edge cases"
     (t/testing "Empty collections"
       (t/is (= :empty-vec (lib.util.match/match-lite []
@@ -438,7 +430,6 @@
                [(_ :guard :b)] 2)))
   (t/is (= :ok (lib.util.match/match-lite [3]
                  [(_ :guard #{1 2 3})] :ok)))
-
   #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
                          (eval '(lib.util.match/match-lite [1]
                                   [(a :guard #(odd? %))] a)))))
@@ -466,11 +457,9 @@
   (t/is (= [100] (lib.util.match/match-many [[1 2 3] [4 5 6]]
                    (_ :guard keyword?) &match
                    _ 100)))
-
   (t/testing "absent of matches returns nil"
     (t/is (= nil (lib.util.match/match-many [[1 2 3] [4 5 6]]
                    (_ :guard keyword?) &match))))
-
   (t/testing "nils aren't recorded into the result"
     (t/is (= [15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
                     [a b c] (when (> a 1)

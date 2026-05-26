@@ -149,7 +149,6 @@
                                 {:name          default-card-name
                                  :dataset_query (mt/mbql-query products {:aggregation [[:count]]
                                                                          :breakout    [$category]})}
-
                                 card)]
     (do-with-temp-notification
      {:notification  (merge {:payload      (assoc notification-card
@@ -224,7 +223,6 @@
   (with-channel-fixtures (keys channel-type->assert-fn)
     (let [channel-type->captured-message (with-captured-channel-send!
                                            (notification/send-notification! notification))]
-
       (doseq [[channel-type assert-fn] channel-type->assert-fn]
         (testing (format "chanel-type = %s" channel-type)
           (assert-fn (get channel-type->captured-message channel-type)))))))

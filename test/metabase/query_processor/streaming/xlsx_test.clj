@@ -464,7 +464,6 @@
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                                 :parse-fn parse-format-strings)))))
-
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
              (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
@@ -489,13 +488,11 @@
            (first (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {} []))))
     (is (= ["Col2" "Col1"]
            (first (xlsx-export [{:id 0, :name "Col2"} {:id 1, :name "Col1"}] {} [])))))
-
   (testing "Data in each row is reordered by output-order prior to export"
     (is (= [["b" "a"] ["d" "c"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                               {:output-order [1 0]}
                               [["a" "b"] ["c" "d"]])))))
-
   (testing "Rows not included by index in output-order are excluded from export"
     (is (= [["b"] ["d"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
@@ -515,7 +512,6 @@
            (first (xlsx-export [{:display_name "Display name", :name "Name"}]
                                {::mb.viz/column-settings {{::mb.viz/column-name "Name"} {::mb.viz/column-title "Column title"}}}
                                [])))))
-
   (testing "Currency is included in column title if necessary"
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
@@ -573,7 +569,6 @@
                                                            ::mb.viz/currency-style "code",
                                                            ::mb.viz/currency-in-header false}}}
                                [])))))
-
   (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
     (is (= ["Correct title"]
            (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1" :field_ref [:field 0]}]

@@ -62,7 +62,6 @@
            (lib.filter/= (lib.util/fresh-uuids arg) ""))
           (lib.filter/= arg nil))
         (merge-options opts))
-
     [:not-empty opts arg]
     (-> (if (emptyable? arg)
           (lib.filter/and
@@ -87,7 +86,6 @@
     [:time-interval opts field-or-expression :current unit] (&recur [:time-interval opts field-or-expression  0 unit])
     [:time-interval opts field-or-expression :last    unit] (&recur [:time-interval opts field-or-expression -1 unit])
     [:time-interval opts field-or-expression :next    unit] (&recur [:time-interval opts field-or-expression  1 unit])
-
     [:time-interval (opts :guard (:include-current opts)) field-or-expression n unit]
     (if (neg? n)
       (-> (lib.filter/between
@@ -100,7 +98,6 @@
            (lib.expression/relative-datetime 0 unit)
            (lib.expression/relative-datetime n unit))
           (merge-options opts)))
-
     [:time-interval opts field-or-expression n unit]
     (cond (#{-1 0 1} n)
           (-> (lib.filter/= (update-temporal-unit-in-refs field-or-expression unit)
@@ -179,7 +176,6 @@
     [:in opts & args]
     (-> (apply lib.filter/= args)
         (merge-options opts))
-
     [:not-in opts & args]
     (-> (apply lib.filter/!= args)
         (merge-options opts))))
@@ -218,13 +214,11 @@
                                     (lib.filter/= (lib.util/fresh-uuids field) expr))
                                   (list* a b more)))
         (merge-options opts))
-
     [:!= opts field a b & more]
     (-> (apply lib.filter/and (map (fn [expr]
                                      (lib.filter/!= (lib.util/fresh-uuids field) expr))
                                    (list* a b more)))
         (merge-options opts))
-
     [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
      (opts :guard map?)
      field a b & more]

@@ -152,7 +152,6 @@
         (let [yaml-data (yaml/parse-string (slurp file))
               transformed (yaml->dev yaml-data user-email)]
           (spit target-file (yaml/generate-string transformed)))))
-
     (log/info "YAML transformation complete")
     (.getPath temp-path)))
 
@@ -170,7 +169,6 @@
             (throw (ex-info "Analytics plugin directory not found after copy" {:path plugins-dir})))
 
         temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
-
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
       (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {:backfill? false}))]

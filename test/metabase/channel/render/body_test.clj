@@ -136,13 +136,11 @@
                     :base_type       :type/Text
                     :semantic_type    nil
                     :visibility_type :normal}]]
-
       (testing "card contains custom column names"
         (is (= {:row       ["Custom Last Login" "Custom Name"]}
                (first (#'body/prep-for-html-rendering pacific-tz
                                                       card
                                                       {:cols cols :rows []})))))
-
       (testing "card does not contain custom column names"
         (is (= {:row       ["Last Login" "Name"]}
                (first (#'body/prep-for-html-rendering pacific-tz

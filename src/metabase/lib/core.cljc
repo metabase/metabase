@@ -802,7 +802,6 @@
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
-
  [lib.extraction
   column-extractions
   extract
@@ -842,7 +841,6 @@
   with-fields]
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
-
  [metabase.lib.filter.desugar
   desugar-filter-clause]
  [metabase.lib.filter.negate

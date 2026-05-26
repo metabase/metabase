@@ -568,7 +568,6 @@
                         (catch Throwable _e
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
-
             ;; Verify that the table AFTER the problematic view was still synced
             (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
               (is (some? table-after)

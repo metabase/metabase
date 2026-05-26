@@ -235,32 +235,25 @@
       [tag opts
        (add-type-info x {:base-type x-type :effective-type x-type})
        (add-type-info y {:base-type y-type :effective-type y-type})])
-
     ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
     [tag opts field (add-type-info x (*type-info* query path field))]
-
     ;; literal and field (literal on LHS)
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) field]
     [tag opts (add-type-info x (*type-info* query path field)) field]
-
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
-
     [(tag :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) opts (field :guard string?) & args]
     (into [tag opts (add-type-info (u.date/parse field) nil)] args)
-
     [:between opts field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
      opts
      field
      (add-type-info min-val (*type-info* query path field))
      (add-type-info max-val (*type-info* query path field))]
-
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
       (into [tag opts field s] more))
-
     ;; do not match inner clauses
     _ nil))
 

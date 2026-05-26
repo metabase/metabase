@@ -83,7 +83,6 @@
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
-
     (for [notification notifications]
       (assoc notification k
              (get payload-type+id->payload [(:payload_type notification)

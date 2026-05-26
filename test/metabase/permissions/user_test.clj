@@ -39,7 +39,6 @@
       (is (contains?
            (permissions.user/user-permissions-set (mt/user->id :lucky))
            (permissions.path/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
-
       (testing "...and for any descendant Collections of my Personal Collection?"
         (mt/with-temp [:model/Collection child-collection      {:name     "child"
                                                                 :location (collection/children-location

@@ -90,14 +90,11 @@
         (testing "A limit is added to MBQL queries if the user has limited download permissions for the DB"
           (is (= limited-download-max-rows
                  (download-limit (mbql-download-query)))))
-
         (testing "If the query already has a limit lower than the download limit, the limit is not changed"
           (is (= (dec limited-download-max-rows)
                  (download-limit (lib/limit (mbql-download-query) (dec limited-download-max-rows))))))
-
         (testing "Native queries are unmodified"
           (is (= (native-download-query) (ee.qp.perms/apply-download-limit (native-download-query))))))
-
       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues) :limited
                                                          (mt/id :checkins) :full}}}
         (mt/with-current-user (mt/user->id :rasta)
@@ -105,7 +102,6 @@
                      the query references"
             (is (= limited-download-max-rows
                    (download-limit (mbql-download-query)))))
-
           (testing "If the query does not reference the table, a limit is not added"
             (is (nil? (download-limit (mbql-download-query 'checkins))))))))))
 
@@ -122,7 +118,6 @@
         (testing "The number of rows in a native query result is limited if the user has limited download permissions"
           (is (= limited-download-max-rows
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))
-
     (with-download-perms-for-db! (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (testing "The number of rows in a native query result is not limited if the user has full download permissions"
@@ -223,7 +218,6 @@
                                     :limit    10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
-
           (streaming-test/do-test!
            "An admin has full download permissions, even if downloads for All Users are limited"
            {:query      {:database (mt/id)
@@ -233,7 +227,6 @@
             :user       :crowberto
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
-
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" :limited}}
           (streaming-test/do-test!
            "A user with limited download perms for a schema has their query results limited for queries on that schema"
@@ -243,7 +236,6 @@
                                     :limit    10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
-
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
                                                            (mt/id :categories) :full
                                                            (mt/id :venues)     :limited
@@ -260,7 +252,6 @@
                                     :limit        10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
-
           (streaming-test/do-test!
            "A user with limited download perms for a table still has full download perms for MBQL queries on other tables"
            {:query      {:database (mt/id)
@@ -269,7 +260,6 @@
                                     :limit        10}}
             :endpoints  [:card :dataset]
             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
-
           (streaming-test/do-test!
            "A user with limited download perms for a table has limited download perms for native queries on all tables"
            {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
@@ -292,7 +282,6 @@
                                    (is (partial=
                                         {:error "You do not have permissions to download the results of this query."}
                                         results)))}})
-
         (streaming-test/do-test!
          "An admin can always run download queries, even if the All Users group has no download permissions "
          {:query      {:database (mt/id)
@@ -302,7 +291,6 @@
           :user       :crowberto
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
-
       (with-download-perms! (mt/id) {:schemas {"PUBLIC" :none}}
         (streaming-test/do-test!
          "A user with no download perms for a schema receives an error response for download queries on that schema"
@@ -316,7 +304,6 @@
                                    (is (partial=
                                         {:error "You do not have permissions to download the results of this query."}
                                         results)))}}))
-
       (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :none
                                                          (mt/id :checkins)   :full
                                                          (mt/id :users)      :full
@@ -333,7 +320,6 @@
                                    (is (partial=
                                         {:error "You do not have permissions to download the results of this query."}
                                         results)))}})
-
         (streaming-test/do-test!
          "A user with no download perms for a table still has full download perms for MBQL queries on other tables"
          {:query      {:database (mt/id)
@@ -342,7 +328,6 @@
                                   :limit        10}}
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
-
         (streaming-test/do-test!
          "A user with no download perms for a table has no download perms for native queries on all tables"
          {:query           (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
@@ -372,7 +357,6 @@
                                    (is (partial=
                                         {:error "You do not have permissions to download the results of this query."}
                                         results)))}})
-
         (streaming-test/do-test!
          "A user has limited downloads for a query with a join if they have limited permissions for one of the tables"
          {:query (mt/mbql-query checkins
@@ -453,7 +437,6 @@
                                  :limit        10}}
               :endpoints  [:card :dataset]
               :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
-
           (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                              (mt/id :checkins)   :limited}}}
             (streaming-test/do-test!
@@ -464,7 +447,6 @@
                                       :limit        10}}
               :endpoints  [:card :dataset]
               :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
-
           (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                              (mt/id :checkins)   :none}}}
             (streaming-test/do-test!

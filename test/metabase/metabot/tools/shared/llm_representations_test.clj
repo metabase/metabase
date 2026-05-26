@@ -12,7 +12,6 @@
     (is (= "&quot;" (#'llm-rep/escape-xml "\"")))
     (is (= "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;"
            (#'llm-rep/escape-xml "<script>alert(\"xss\")</script>"))))
-
   (testing "escape-xml handles nil"
     (is (nil? (#'llm-rep/escape-xml nil)))))
 
@@ -34,7 +33,6 @@
       (is (str/includes? xml "database_type=\"INTEGER\""))
       (is (str/includes? xml "## Description"))
       (is (str/includes? xml "The user identifier"))))
-
   (testing "handles missing optional attributes with defaults"
     (let [field {:field_id "f1" :name "test"}
           xml (llm-rep/field->xml field)]
@@ -50,7 +48,6 @@
       (is (str/includes? xml "name=\"Finance\""))
       (is (str/includes? xml "authority_level=\"official\""))
       (is (str/includes? xml "<description>Finance reports</description>"))))
-
   (testing "uses default name for nil"
     (let [collection {:name nil}
           xml (llm-rep/collection->xml collection)]
@@ -78,7 +75,6 @@
       (is (str/includes? xml "The metric is stored in the following collection"))
       (is (str/includes? xml "Default Time Dimension Field: created_at"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
-
   (testing "handles metric without dimensions"
     (let [metric {:id 1 :name "Test" :verified false}
           xml (llm-rep/metric->xml metric)]
@@ -103,7 +99,6 @@
       (is (str/includes? xml "<definition>"))
       (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
-
   (testing "handles measure without description or definition"
     (let [measure {:id 2 :name "count_orders"}
           xml (llm-rep/measure->xml measure)]
@@ -113,7 +108,6 @@
       (is (not (str/includes? xml "<definition>")))
       (is (not (str/includes? xml "Definition:")))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
-
   (testing "uses name as display_name fallback"
     (let [measure {:id 3 :name "avg_price" :display-name nil}
           xml (llm-rep/measure->xml measure)]
@@ -137,7 +131,6 @@
       (is (str/includes? xml "<definition>"))
       (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
-
   (testing "handles segment without description or definition-description"
     (let [segment {:id 2 :name "new_users"}
           xml (llm-rep/segment->xml segment)]
@@ -146,7 +139,6 @@
       (is (not (str/includes? xml "<definition>")))
       (is (not (str/includes? xml "Definition:")))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
-
   (testing "uses name as display_name fallback"
     (let [segment {:id 3 :name "q4_orders" :display-name nil}
           xml (llm-rep/segment->xml segment)]
@@ -179,7 +171,6 @@
       (is (str/includes? xml "<related-table"))
       (is (str/includes? xml "metabase://table/10/fields/{field_id}"))
       (is (str/ends-with? (str/trim xml) "</table>"))))
-
   (testing "includes measures and segments when present"
     (let [table {:id 10
                  :name "order_facts"
@@ -199,7 +190,6 @@
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
       (is (str/includes? xml "<segment segment_id=\"2\""))
       (is (str/includes? xml "Q4 Orders"))))
-
   (testing "omits measures and segments sections when empty"
     (let [table {:id 10 :name "users" :database_id 1 :database_engine "postgres"}
           xml (llm-rep/table->xml table)]
@@ -230,7 +220,6 @@
       (is (str/includes? xml "metabase://model/5/fields/{field_id}"))
       ;; Python closes with </model>
       (is (str/ends-with? (str/trim xml) "</model>"))))
-
   (testing "includes measures and segments when present"
     (let [model {:id 5
                  :name "Sales Model"
@@ -249,7 +238,6 @@
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
       (is (str/includes? xml "<segment segment_id=\"1\""))
       (is (str/includes? xml "New Customers"))))
-
   (testing "omits measures and segments sections when empty"
     (let [model {:id 5 :name "Empty Model" :database_id 1 :database_engine "postgres"}
           xml (llm-rep/model->xml model)]
@@ -274,7 +262,6 @@
       (is (str/includes? xml "### Result Columns"))
       (is (str/includes? xml "### Result Rows"))
       (is (str/ends-with? (str/trim xml) "</query>"))))
-
   (testing "handles query with no result"
     (let [query {:query-type :notebook :query-id "m1" :database_id 1}
           xml (llm-rep/query->xml query)]
@@ -293,7 +280,6 @@
       (is (str/includes? xml "query-id=\"q1\""))
       (is (str/includes? xml "metabase://chart/ch-abc-123"))
       (is (str/ends-with? (str/trim xml) "</chart>"))))
-
   (testing "handles nil chart-type"
     (let [chart {:chart-id "c1" :query-id "q1" :chart-type nil}
           xml (llm-rep/chart->xml chart)]
@@ -391,7 +377,6 @@
       (is (str/includes? xml "Total revenue calculation"))
       (is (str/includes? xml "Collection: Finance"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
-
   (testing "table search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 133
                   :type "table"
@@ -406,7 +391,6 @@
       (is (str/includes? xml "database_id=\"2\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
       (is (str/includes? xml "fully_qualified_name=\"shopify_data.order\""))))
-
   (testing "table search result without schema omits schema prefix in fqn"
     (let [result {:id 10
                   :type "table"
@@ -416,7 +400,6 @@
           xml (llm-rep/search-result->xml result)]
       (is (str/includes? xml "fully_qualified_name=\"users\""))
       (is (str/includes? xml "database_engine=\"h2\""))))
-
   (testing "model search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 5
                   :type "model"
@@ -429,7 +412,6 @@
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
       (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\""))))
-
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
                   :type :dashboard
@@ -439,7 +421,6 @@
       (is (not (str/includes? xml "fully_qualified_name")))
       (is (not (str/includes? xml "database_id")))
       (is (not (str/includes? xml "database_engine")))))
-
   (testing "uses correct tag names for different types"
     (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :table :name "t"}) "<table"))
     ;; Model uses <metabase-model> tag
@@ -459,7 +440,6 @@
       (is (str/includes? xml "<metric id=\"1\""))
       (is (str/includes? xml "<table id=\"2\""))
       (is (str/includes? xml "</search-results>"))))
-
   (testing "handles empty results"
     (let [xml (llm-rep/search-results->xml [])]
       (is (str/includes? xml "<search-results>"))
@@ -476,7 +456,6 @@
       (is (str/includes? xml "| US |"))
       (is (str/includes? xml "**Field Statistics (SAMPLE-BASED)**"))
       (is (str/includes? xml "sample_distinct_count"))))
-
   (testing "handles empty field values"
     (let [metadata {:field_values []}
           xml (llm-rep/field-values-metadata->xml metadata)]
@@ -489,7 +468,6 @@
           xml (llm-rep/field-metadata->xml metadata)]
       (is (str/includes? xml "<field-metadata field_id=\"f1\">"))
       (is (str/includes? xml "**Sample Values"))))
-
   (testing "handles nil value_metadata"
     (let [metadata {:field_id "f1" :value_metadata nil}
           xml (llm-rep/field-metadata->xml metadata)]
@@ -508,12 +486,10 @@
       ;; Uses <metabase-models> to match Python
       (is (str/includes? xml "<metabase-models>"))
       (is (str/includes? xml "</metabase-models>"))))
-
   (testing "handles no metadata"
     (let [result {:metrics [] :tables [] :models []}
           xml (llm-rep/get-metadata-result->xml result)]
       (is (str/includes? xml "No metadata was returned"))))
-
   (testing "includes errors"
     (let [result {:metrics [] :tables [] :models [] :errors ["Error 1"]}
           xml (llm-rep/get-metadata-result->xml result)]
@@ -530,7 +506,6 @@
     (is (str/starts-with? (llm-rep/entity->xml {:type :dashboard :id 1 :name "d"}) "<dashboard"))
     (is (str/starts-with? (llm-rep/entity->xml {:type :user :id 1 :name "u" :email "u@test.com"}) "<user"))
     (is (str/starts-with? (llm-rep/entity->xml {:type :collection :name "c"}) "<collection")))
-
   (testing "falls back to pr-str for unknown types"
     (let [result (llm-rep/entity->xml {:type :unknown :data "test"})]
       (is (str/includes? result ":type")))))

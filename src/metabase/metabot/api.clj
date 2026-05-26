@@ -148,7 +148,6 @@
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
     (store-aiservice-messages! conversation_id profile-id [message])
-
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
      {:metabot-id      metabot-id

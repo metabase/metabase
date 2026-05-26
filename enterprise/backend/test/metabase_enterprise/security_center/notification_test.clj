@@ -271,7 +271,6 @@
                 ;; admin email appended
                 (is (= {:type :notification-recipient/raw-value :details {:value "boss@example.com"}}
                        (last recipients))))))))))
-
   (testing "no admin email appended when admin-email setting is nil"
     (let [sent         (atom nil)
           custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]

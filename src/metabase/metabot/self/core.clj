@@ -489,7 +489,6 @@
 
            ;; otherwise: do nothing
            nil)
-
          (rf result chunk))))))
 
 (defn rethrow-api-error!

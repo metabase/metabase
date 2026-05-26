@@ -49,13 +49,11 @@
   (let [path (subs uri 11) ; Remove "metabase://"
         parts (str/split path #"/")
         parts (remove str/blank? parts)]
-
     (when (< (count parts) 2)
       (throw (ex-info
               (str "Invalid URI format: " uri ". "
                    "Expected: metabase://{type}/{id}[/{sub_resource}[/{sub_resource_id}]]")
               {:uri uri :parts parts})))
-
     {:resource-type (first parts)
      :resource-id (second parts)
      :sub-resource (nth parts 2 nil)
@@ -207,12 +205,10 @@
     (let [parsed (parse-uri uri)
           {:keys [resource-type]} parsed
           handler (get resource-handlers resource-type)]
-
       (when-not handler
         (throw (ex-info (str "Unknown resource type '" resource-type "'. "
                              "Supported: " (str/join ", " (keys resource-handlers)))
                         {:resource-type resource-type :supported (keys resource-handlers)})))
-
       (let [result (handler parsed)]
         (if (:status-code result)
           {:uri uri :error (or (:output result) result)}
@@ -278,11 +274,9 @@
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
   (let [resources (mapv fetch-single-uri uris)
         formatted (format-resources resources)]
-
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))
                                    :errors     (count (filter :error resources))})
-
     {:resources resources
      :output formatted}))
 

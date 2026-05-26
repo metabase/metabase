@@ -12,17 +12,14 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"address not allowed by network restrictions"
                               (oidc.http/oidc-get "http://localhost/path"))))
-
       (testing "Rejects cloud metadata endpoint"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"address not allowed by network restrictions"
                               (oidc.http/oidc-get "http://169.254.169.254/latest/meta-data/"))))
-
       (testing "Rejects private network addresses"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"address not allowed by network restrictions"
                               (oidc.http/oidc-get "http://192.168.1.1/path"))))))
-
   (testing "oidc-get allows requests when oidc-allowed-networks is :allow-all"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
       (with-redefs [http/get (fn [_url _opts] {:status 200 :body {:ok true}})]
@@ -37,13 +34,11 @@
                               #"address not allowed by network restrictions"
                               (oidc.http/oidc-post "http://169.254.169.254/latest/meta-data/"
                                                    {:form-params {:grant_type "client_credentials"}}))))
-
       (testing "Rejects loopback"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"address not allowed by network restrictions"
                               (oidc.http/oidc-post "http://127.0.0.1/token"
                                                    {:form-params {:grant_type "client_credentials"}}))))))
-
   (testing "oidc-post allows requests when oidc-allowed-networks is :allow-all"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
       (with-redefs [http/post (fn [_url _opts] {:status 200 :body {:access_token "tok"}})]

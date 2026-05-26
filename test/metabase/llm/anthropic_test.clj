@@ -18,7 +18,6 @@
                                :input {:sql "SELECT 1"}}]}]
       (is (= {:sql "SELECT 1"}
              (#'anthropic/extract-tool-input response)))))
-
   (testing "multiple content blocks finds tool_use"
     (let [response {:content [{:type "text" :text "thinking..."}
                               {:type "tool_use"
@@ -27,19 +26,15 @@
                                :input {:sql "SELECT 1" :explanation "Simple query"}}]}]
       (is (= {:sql "SELECT 1" :explanation "Simple query"}
              (#'anthropic/extract-tool-input response)))))
-
   (testing "no tool_use block returns nil"
     (let [response {:content [{:type "text" :text "no tool"}]}]
       (is (nil? (#'anthropic/extract-tool-input response)))))
-
   (testing "empty content returns nil"
     (is (nil? (#'anthropic/extract-tool-input {:content []})))
     (is (nil? (#'anthropic/extract-tool-input {}))))
-
   (testing "tool_use without input returns nil"
     (let [response {:content [{:type "tool_use" :id "123" :name "generate_sql"}]}]
       (is (nil? (#'anthropic/extract-tool-input response)))))
-
   (testing "returns first tool_use when multiple present"
     (let [response {:content [{:type "tool_use"
                                :id "1"
@@ -73,19 +68,16 @@
         (is (= [{:role "user" :content "test"}] (:messages body)))
         (is (vector? (:tools body)))
         (is (= {:type "tool" :name "generate_sql"} (:tool_choice body))))))
-
   (testing "uses configured max_tokens setting"
     (mt/with-temporary-setting-values [llm-max-tokens 8192]
       (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                   :messages [{:role "user" :content "test"}]})]
         (is (= 8192 (:max_tokens body))))))
-
   (testing "includes system prompt when provided"
     (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                 :system "You are a SQL expert"
                                                 :messages [{:role "user" :content "test"}]})]
       (is (= "You are a SQL expert" (:system body)))))
-
   (testing "omits system when not provided"
     (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
                                                 :messages [{:role "user" :content "test"}]})]

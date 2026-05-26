@@ -31,7 +31,6 @@
       (is (str/includes? (:chart-content result) "line"))
       (is (str/starts-with? (:chart-link result) "metabase://chart/"))
       (is (contains? result :instructions))))
-
   (testing "edits chart to various types"
     (let [mp (mt/metadata-provider)
           charts-state {"chart-456" {:chart-id "chart-456"
@@ -43,7 +42,6 @@
                                  :charts-state charts-state})]
           (is (= new-type (:chart-type result))
               (str "New chart type " new-type " should be set correctly"))))))
-
   (testing "throws error for invalid chart type"
     (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
       (is (thrown-with-msg?
@@ -53,7 +51,6 @@
             {:chart-id "chart-789"
              :new-chart-type :invalid-type
              :charts-state charts-state})))))
-
   (testing "throws error when chart not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

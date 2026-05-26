@@ -410,7 +410,6 @@
     (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
       (is (= "CA, NY, and NJ"
              (params/value-string (first parameters) "en"))))
-
     (testing "If a filter has a single default value, it is formatted appropriately"
       (is (= "Q1, 2021"
              (params/value-string (second parameters) "en"))))))

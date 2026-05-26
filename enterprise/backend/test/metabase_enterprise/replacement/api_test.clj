@@ -130,13 +130,11 @@
 
                        :model/DashboardCard _
                        {:dashboard_id dashboard-id :card_id mbql-child-1-id}]
-
           (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
             ;; Populate dependencies via events
             (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
               (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
             (deps.test/synchronously-run-backfill!)
-
             (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                  {:source_entity_id   old-id
                                                   :source_entity_type :card
@@ -145,32 +143,26 @@
                   run-id   (:run_id response)
                   final    (poll-run run-id)]
               (is (= "succeeded" (:status final)))
-
               (testing "MBQL children have updated source-card"
                 (doseq [[label card-id] [["MBQL Child 1" mbql-child-1-id]
                                          ["MBQL Child 2" mbql-child-2-id]]]
                   (testing label
                     (let [q (t2/select-one-fn :dataset_query :model/Card :id card-id)]
                       (is (= new-id (lib/primary-source-card-id q)))))))
-
               (testing "Native child references new model in SQL"
                 (let [q   (t2/select-one-fn :dataset_query :model/Card :id native-child-id)
                       sql (get-in q [:stages 0 :native])]
                   (is (re-find (re-pattern (str "\\{\\{#" new-id "[^0-9]")) sql))
                   (is (not (re-find (re-pattern (str "\\{\\{#" old-id "[^0-9]")) sql)))))
-
               (testing "Grandchild still references its direct parent"
                 (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-id)]
                   (is (= mbql-child-1-id (lib/primary-source-card-id q)))))
-
               (testing "Grandchild via native still references native child"
                 (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-native-id)]
                   (is (= native-child-id (lib/primary-source-card-id q)))))
-
               (testing "Transform's source query references new model"
                 (let [src (t2/select-one-fn :source :model/Transform :id transform-id)]
                   (is (= new-id (lib/primary-source-card-id (:query src))))))
-
               (testing "Dependencies point to new model"
                 (let [deps-to-old (t2/select :model/Dependency
                                              :to_entity_type :card
@@ -377,7 +369,6 @@
                 (doseq [card [model-card question-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
                 (deps.test/synchronously-run-backfill!)
-
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"
                                                      {:card_id              model-id
@@ -389,12 +380,9 @@
                                                       :target_collection_id nil})
                       run-id   (:run_id response)
                       final    (poll-run run-id :timeout-ms 30000)]
-
                   (is (= "succeeded" (:status final)))
-
                   (testing "model is converted to a saved question"
                     (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
-
                   (testing "dependent question now references the output table"
                     (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
                           transform      (t2/select-one :model/Transform :name "Orders Transform")
@@ -425,13 +413,10 @@
                                                                        :database (mt/id)}})
                     run-id   (:run_id response)
                     final    (poll-run run-id)]
-
                 (testing "run reaches failed status"
                   (is (= "failed" (:status final))))
-
                 (testing "error message is captured"
                   (is (some? (:message final))))
-
                 (testing "model is NOT converted to a question"
                   (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))))))))))
 

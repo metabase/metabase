@@ -104,7 +104,6 @@
                (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
-
     (testing "if the existing last_used_at is greater than the updating values, do not override it"
       (mt/with-temp
         [:model/Card {card-id-2 :id} {:last_used_at now}]

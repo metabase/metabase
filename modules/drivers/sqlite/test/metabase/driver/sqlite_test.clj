@@ -155,7 +155,6 @@
               (testing "database should be synced"
                 (is (= {:tables (set (map default-table-result ["timestamp_table"]))}
                        (driver/describe-database driver db))))
-
               (testing "timestamp column should exist"
                 (is (=? {:name "timestamp_table"
                          :schema nil

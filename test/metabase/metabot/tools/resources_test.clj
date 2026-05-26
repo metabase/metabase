@@ -17,53 +17,45 @@
             :sub-resource nil
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://table/123"))))
-
   (testing "parses table with fields sub-resource"
     (is (= {:resource-type "table"
             :resource-id "123"
             :sub-resource "fields"
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://table/123/fields"))))
-
   (testing "parses table with specific field"
     (is (= {:resource-type "table"
             :resource-id "123"
             :sub-resource "fields"
             :sub-resource-id "456"}
            (#'read-resource/parse-uri "metabase://table/123/fields/456"))))
-
   (testing "parses field ID with slash"
     (is (= {:resource-type "table"
             :resource-id "123"
             :sub-resource "fields"
             :sub-resource-id "c75/17"}
            (#'read-resource/parse-uri "metabase://table/123/fields/c75/17"))))
-
   (testing "parses model URI"
     (is (= {:resource-type "model"
             :resource-id "456"
             :sub-resource nil
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://model/456"))))
-
   (testing "parses question URI"
     (is (= {:resource-type "question"
             :resource-id "456"
             :sub-resource nil
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://question/456"))))
-
   (testing "parses metric with dimensions"
     (is (= {:resource-type "metric"
             :resource-id "789"
             :sub-resource "dimensions"
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://metric/789/dimensions"))))
-
   (testing "rejects invalid scheme"
     (is (thrown? Exception
                  (#'read-resource/parse-uri "https://example.com"))))
-
   (testing "rejects incomplete URI"
     (is (thrown? Exception
                  (#'read-resource/parse-uri "metabase://table")))))
@@ -88,19 +80,16 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)]}))))
-
         (testing "fetches table with fields"
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id "/fields")]}))))
-
         (testing "handles multiple URIs"
           (is (=? {:resources [{:content {:structured-output map?}}
                                {:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)
                            (str "metabase://table/" table-id "/fields")]}))))
-
         (testing "returns errors for invalid URIs"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource
@@ -118,7 +107,6 @@
                   output (get-in result [:resources 0 :content :structured-output])]
               (is (nil? (:related_tables output))
                   "table resource should not include related_tables")))
-
           (testing "metabase://table/:id/fields excludes related_tables"
             (let [result (read-resource/read-resource
                           {:uris [(str "metabase://table/" orders-id "/fields")]})
@@ -135,11 +123,9 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
-
       (testing "rejects sub-resources"
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
-
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
@@ -157,11 +143,9 @@
             (is (=? {:resources [{:content {:structured-output map?}}]}
                     result))
             (is (str/includes? (:output result) transform-name))))
-
         (testing "rejects sub-resources"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id "/fields")]}))))
-
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
@@ -176,7 +160,6 @@
       (is (str/includes? formatted "Table details here"))
       (is (str/includes? formatted "</resource>"))
       (is (str/includes? formatted "</resources>"))))
-
   (testing "formats resources with errors"
     (let [resources [{:uri "metabase://table/123"
                       :error "Table not found"}]
@@ -192,7 +175,6 @@
         metadata (-> query
                      qp/process-query
                      :data :results_metadata :columns)]
-
     (mt/with-temp
       [:model/Card {question-id :id} {:name "My fav card"
                                       :dataset_query query

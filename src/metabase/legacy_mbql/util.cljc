@@ -199,7 +199,6 @@
     (if (emptyable? clause)
       [:or [:= clause nil] [:= clause ""]]
       [:= clause nil])
-
     [:not-empty clause]
     (if (emptyable? clause)
       [:and [:!= clause nil] [:!= clause ""]]
@@ -213,7 +212,6 @@
   (lib.util.match/replace-lite m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
-
     [:expression & _]
     (let [[_expression expression-name opts] &match]
       [:expression expression-name (assoc opts :temporal-unit unit)])))
@@ -225,45 +223,37 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace-lite m
     [:time-interval field-or-expression n unit] (&recur [:time-interval field-or-expression n unit nil])
-
     ;; replace current/last/next with corresponding value of n and recur
     [:time-interval field-or-expression :current unit options] (&recur [:time-interval field-or-expression  0 unit options])
     [:time-interval field-or-expression :last    unit options] (&recur [:time-interval field-or-expression -1 unit options])
     [:time-interval field-or-expression :next    unit options] (&recur [:time-interval field-or-expression  1 unit options])
-
     [:time-interval field-or-expression (n :guard #{-1}) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
-
     [:time-interval field-or-expression (n :guard #{1}) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
      [:relative-datetime n unit]]
-
     [:time-interval field-or-expression (n :guard #{-1 0 1}) unit _]
     [:= (replace-field-or-expression field-or-expression unit) [:relative-datetime n unit]]
-
     [:time-interval field-or-expression (n :guard neg?) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
-
     [:time-interval field-or-expression (n :guard neg?) unit _]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime -1 unit]]
-
     [:time-interval field-or-expression n unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
      [:relative-datetime n unit]]
-
     [:time-interval field-or-expression n unit _]
     [:between
      (replace-field-or-expression field-or-expression unit)
@@ -327,7 +317,6 @@
   (lib.util.match/replace-lite m
     [:in & args]
     (into [:=] args)
-
     [:not-in & args]
     (into [:!=] args)))
 
@@ -363,11 +352,9 @@
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
                         [:= field x]))
-
     [:!= field x y & more]
     (apply vector :and (for [x (concat [x y] more)]
                          [:!= field x]))
-
     [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
      (opts :guard map?)
      field x y & more]

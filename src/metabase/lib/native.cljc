@@ -51,17 +51,14 @@
            [current & more] parsed]
       (let [[found more] (lib.util.match/match-lite current
                            (_ :guard string?) [found more]
-
                            {:type ::lib.parse/param, :name tag-name}
                            (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
                              [(cond-> found
                                 (and normalized-name (not (found normalized-name)))
                                 (assoc normalized-name (fresh-tag normalized-name)))
                               more])
-
                            {:type ::lib.parse/optional, :contents contents}
                            [found (into more contents)]
-
                            _ [found nil])]
         (if more
           (recur found more)
@@ -405,7 +402,6 @@
                              (keep (fn [[tag-name {:keys [id] :as tag}]]
                                      (or (params-by-id id)
                                          (get-parameter-value query tag-name tag))))
-
                              ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))

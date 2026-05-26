@@ -75,7 +75,6 @@
        (lib.util.match/match-lite clause
          [:metric _opts (id :guard pos-int?)]
          (vswap! metric-ids conj! id)
-
          _ nil)
        nil))
     (not-empty (persistent! @metric-ids))))
@@ -90,7 +89,6 @@
        (lib.util.match/match-lite clause
          [:segment _opts (id :guard pos-int?)]
          (vswap! segment-ids conj! id)
-
          _ nil)
        nil))
     (not-empty (persistent! @segment-ids))))
@@ -105,7 +103,6 @@
        (lib.util.match/match-lite clause
          [:measure _opts (id :guard pos-int?)]
          (vswap! measure-ids conj! id)
-
          _ nil)
        nil))
     (not-empty (persistent! @measure-ids))))
@@ -169,7 +166,6 @@
                       (lib.util.match/match-lite clause
                         [:field _opts (id :guard pos-int?)]
                         (vswap! field-ids conj! id)
-
                         _ nil)
                       nil)]
     (if (map? query-or-clause)
@@ -187,7 +183,6 @@
                       (lib.util.match/match-lite clause
                         [:field (opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
                         (vswap! joined-field-ids conj! id)
-
                         _ nil)
                       nil)]
     (if (map? query-or-clause)
