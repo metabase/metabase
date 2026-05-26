@@ -61,7 +61,7 @@
          ;; This is necessary because future-cancel doesn't stop GraalVM execution
          (python.pool/interrupt! ~ctx 1000)
          (python.pool/poison! ~ctx)
-         (analytics/inc! :metabase-sql-parsing/timeouts)
+         (analytics/inc! :metabase-sql-parsing/context-timeouts)
          (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
          (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
        result#)))
