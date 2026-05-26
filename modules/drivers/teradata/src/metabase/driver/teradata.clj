@@ -304,7 +304,7 @@
                                              (inc (* items (dec page)))
                                              (* items page)))))
 
-(def ^:private schemas
+(def ^:private excluded-schemas
   #{"SystemFe" "SYSLIB" "LockLogShredder" "Sys_Calendar" "SYSBAR" "SYSUIF"
     "dbcmngr" "tdwm" "TDStats" "TDQCD" "SQLJ" "SysAdmin" "SYSSPATIAL" "DBC" "Crashdumps" "External_AP" "TDPUSER"})
 
