@@ -39,17 +39,20 @@
             (is (empty? unknown)
                 (str label " has keys that don't match any tool name: " (vec unknown)))))))))
 
-(defn- data-leaf?
+(defn- data-node?
   "True if `x` is a value type our published JSON-Schema-shaped tool schemas
-   are allowed to contain. Excludes functions, vars, atoms — anything that
-   would blow up `json/encode` or whose JSON encoding isn't byte-stable.
+   are allowed to contain. Visited via `walk/postwalk`, which traverses every
+   node (branches and leaves), so this predicate must accept both scalars and
+   the container types that hold them. Excludes functions, vars, atoms —
+   anything that would blow up `json/encode` or whose JSON encoding isn't
+   byte-stable.
 
    `java.util.regex.Pattern` is allowed: `mjs/transform` lowers `[:re #\"...\"]`
    to `{:type \"string\" :pattern #\"...\"}`, leaving the compiled Pattern in
    the schema. Note that `(hash Pattern)` is identity-based and unstable, but
    `(json/encode Pattern)` writes the regex source string — which is stable.
    `tools-hash` hashes the JSON bytes, never the Pattern object, so Pattern
-   leaves are safe in practice."
+   nodes are safe in practice."
   [x]
   (or (nil? x) (boolean? x) (number? x) (string? x)
       (keyword? x) (symbol? x)
@@ -69,11 +72,11 @@
               [label schema] [[:inputSchema inputSchema] [:outputSchema outputSchema]]
               :when schema]
         (testing (str tool-name " " label)
-          (testing "every leaf is a pure-data type"
+          (testing "every node is a pure-data type"
             (walk/postwalk
              (fn [x]
-               (is (data-leaf? x)
-                   (str "Non-data leaf in " tool-name " " label ": " (pr-str x) " (" (type x) ")"))
+               (is (data-node? x)
+                   (str "Non-data node in " tool-name " " label ": " (pr-str x) " (" (type x) ")"))
                x)
              schema))
           (testing "json-encodes without error"
