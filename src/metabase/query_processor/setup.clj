@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata :as lib.metadata]
@@ -187,12 +188,29 @@
         (setting/with-database db
           (f query))))))
 
+(defn- schedule-query-timeout-cancel!
+  "Schedule a put to `canceled-chan` after `*query-timeout-ms*`. Driver execution wires this channel to
+  `Statement.cancel()` (see [[metabase.driver.sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement!]]), which
+  for MySQL/MariaDB issues `KILL QUERY` on a side connection — so this is the cross-driver path that actually stops
+  a running query on the server when the timeout fires. If the query finishes first the channel closes, the
+  `alts!!` returns its value, and the timeout branch is never taken."
+  [canceled-chan]
+  (let [timeout-ms (long driver.settings/*query-timeout-ms*)]
+    (a/go
+      (let [timeout-ch (a/timeout timeout-ms)
+            [_ port]   (a/alts! [canceled-chan timeout-ch])]
+        (when (= port timeout-ch)
+          (log/warnf "Query exceeded timeout of %d ms; canceling" timeout-ms)
+          (a/>! canceled-chan ::timeout))))))
+
 (mu/defn- do-with-canceled-chan :- fn?
   [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
     (if qp.pipeline/*canceled-chan*
-      (f query)
+      (do (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)
+          (f query))
       (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+        (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)
         (f query)))))
 
 (def ^:private setup-middleware
