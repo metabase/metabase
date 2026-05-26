@@ -89,7 +89,7 @@
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]
   (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
-    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
+    (format "CREATE DATABASE IF NOT EXISTS %s;" db)))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
@@ -183,6 +183,7 @@
 (defonce ^:private deleted-old-test-data?
   (atom false))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- delete-old-test-data-if-needed!
   "Call [[delete-old-test-data!]], only if we haven't done so already."
   []
@@ -204,7 +205,15 @@
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
     ;; clean up any old test data (datasets and isolation schemas)
-    (delete-old-test-data-if-needed!)
+    ;; disabling this temporarily as it has caused very difficult-to-debug failures
+    ;; in CI. even tho the datasets *have* been accessed recently, they are still
+    ;; being deleted and reinserted, with race conditions that cause some data to be
+    ;; inserted three times. this does mean that if datasets change, old versions
+    ;; will not be cleaned up automatically and will need to be manually GCed.
+    ;; local testing shows that identifying old datasets works correctly, but
+    ;; sometimes randomly in CI it seems to decide that datasets are old and
+    ;; deletes them even tho they are not old.
+    ;; (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
