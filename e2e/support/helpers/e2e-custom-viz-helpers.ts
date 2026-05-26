@@ -6,10 +6,16 @@ export const CUSTOM_VIZ_FIXTURE_TGZ_2 =
   Cypress.config("projectRoot") +
   "/e2e/support/assets/example_custom_viz_plugin_2.tgz";
 
+export const CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_custom_viz_plugin_3_security.tgz";
+
 // Identifier comes from the manifest's `name` field in the packaged bundle.
 export const CUSTOM_VIZ_IDENTIFIER = "demo-viz";
 
 export const CUSTOM_VIZ_IDENTIFIER_2 = "demo-viz-2";
+
+export const CUSTOM_VIZ_IDENTIFIER_3_SECURITY = "demo-viz-security";
 
 // Frontend display type: "custom:{identifier}"
 export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
