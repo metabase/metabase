@@ -84,7 +84,8 @@
                    ;; a column will have `converted_timezone` metadata if it is the result of `convert-timezone`
                    ;; expression in that case, we'll format the results with the target timezone.  Otherwise
                    ;; format it with results-timezone
-                   true (format-value (t/zone-id (or converted-timezone timezone-id)))))]
+                   true (format-value (or (some-> converted-timezone t/zone-id)
+                                          timezone-id))))]
     (fn
       ([]
        (rf))

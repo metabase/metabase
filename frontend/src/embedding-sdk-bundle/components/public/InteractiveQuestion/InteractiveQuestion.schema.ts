@@ -46,6 +46,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
+  initialCollection: Yup.mixed().optional(),
   targetDashboardId: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),
