@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type {
-  ExplorationNavigation,
-  ExplorationSelection,
-} from "metabase/explorations/hooks";
+import {
+  makeMockNavigation,
+  makeMockSelection,
+} from "metabase/explorations/test-utils";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { MetricDimension, Timeline } from "metabase-types/api";
@@ -46,44 +46,6 @@ const plan = createMockMetricDimension({
   display_name: "Plan",
   sources: [{ type: "field", "field-id": 2 }],
 });
-
-/**
- * Static mock of `ExplorationSelection`. The component reads
- * `metrics` / `dimensions` / `timelines` for rendering and calls
- * `setMetrics` / `setDimensions` / `toggleTimeline` on the remove
- * handlers — all `jest.fn()` so tests can verify the exact calls.
- */
-function makeMockSelection(opts: {
-  metrics?: ExplorationMetric[];
-  dimensions?: MetricDimension[];
-  timelines?: Timeline[];
-}): ExplorationSelection {
-  return {
-    metrics: opts.metrics ?? [],
-    dimensions: opts.dimensions ?? [],
-    timelines: opts.timelines ?? [],
-    name: "",
-    setName: jest.fn(),
-    setMetrics: jest.fn(),
-    setDimensions: jest.fn(),
-    setTimelines: jest.fn(),
-    addMetric: jest.fn(),
-    toggleMetric: jest.fn(),
-    toggleDimension: jest.fn(),
-    toggleTimeline: jest.fn(),
-  };
-}
-
-/** Static mock of `ExplorationNavigation` — every fn is a `jest.fn()`. */
-function makeMockNavigation(): ExplorationNavigation {
-  return {
-    leftTab: "chat",
-    setLeftTab: jest.fn(),
-    browseTab: "metrics",
-    setBrowseTab: jest.fn(),
-    openBrowse: jest.fn(),
-  };
-}
 
 function setup({
   metrics = [],

@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import type { ExplorationSelection } from "metabase/explorations/hooks";
+import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
   MetabotChatMessage,
@@ -161,26 +161,6 @@ function mockMetabotAgentState({
   } as any);
 }
 
-function createMockSelection(
-  overrides: Partial<ExplorationSelection> = {},
-): ExplorationSelection {
-  return {
-    metrics: [],
-    dimensions: [],
-    timelines: [],
-    name: "New research",
-    setName: jest.fn(),
-    setMetrics: jest.fn(),
-    setDimensions: jest.fn(),
-    setTimelines: jest.fn(),
-    addMetric: jest.fn(),
-    toggleMetric: jest.fn(),
-    toggleDimension: jest.fn(),
-    toggleTimeline: jest.fn(),
-    ...overrides,
-  };
-}
-
 function setup() {
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
@@ -194,7 +174,7 @@ function setup() {
   });
   setupEnterprisePlugins();
 
-  const selection = createMockSelection();
+  const selection = makeMockSelection({});
 
   mockMetabotAgentState({
     messages: [userMessage],

@@ -25,3 +25,13 @@
   "Set the name of the research artifact."
   [{:keys [name]} :- set-exploration-name-schema]
   {:name  name})
+
+(def ^:private select-exploration-timelines-schema
+  [:map {:closed true}
+   [:timeline_ids [:sequential :int]]])
+
+(mu/defn ^{:tool-name "select_research_timelines"}
+  select-exploration-timelines-tool
+  "Select the timelines to include in the research. Populates the research artifact with the chosen timelines."
+  [{:keys [timeline_ids]} :- select-exploration-timelines-schema]
+  {:timeline_ids timeline_ids})

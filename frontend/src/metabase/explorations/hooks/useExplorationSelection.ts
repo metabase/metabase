@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 
+import { useListTimelinesQuery } from "metabase/api";
 import {
   getDefaultExplorationName,
   isInterestingDimension,
@@ -93,6 +94,10 @@ export interface ExplorationSelection {
   metrics: ExplorationMetric[];
   dimensions: MetricDimension[];
   timelines: Timeline[];
+  /** All timelines from the API (includes events). */
+  allTimelines: Timeline[];
+  timelinesLoading: boolean;
+  timelinesError: unknown;
   name: string;
 
   setName: Dispatch<SetStateAction<string>>;
@@ -128,6 +133,8 @@ export interface ExplorationSelection {
     context: ToggleDimensionContext,
   ) => void;
   toggleTimeline: (timeline: Timeline) => void;
+  /** Resolve ids against `allTimelines` and merge into the selection. Idempotent. */
+  addTimelinesById: (timelineIds: number[]) => void;
 }
 
 /**
@@ -142,6 +149,12 @@ export function useExplorationSelection(): ExplorationSelection {
   const [dimensions, setDimensions] = useState<MetricDimension[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
   const [name, setName] = useState<string>(getDefaultExplorationName());
+
+  const {
+    data: allTimelines = [],
+    isLoading: timelinesLoading,
+    error: timelinesError,
+  } = useListTimelinesQuery({ include: "events" });
 
   const addMetric = useCallback(
     (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
@@ -259,10 +272,32 @@ export function useExplorationSelection(): ExplorationSelection {
     });
   }, []);
 
+  const addTimelinesById = useCallback(
+    (timelineIds: number[]) => {
+      const timelinesById = new Map(allTimelines.map((t) => [t.id, t]));
+      setTimelines((prev) => {
+        const have = new Set(prev.map((t) => t.id));
+        const merged = [...prev];
+        for (const id of timelineIds) {
+          const timeline = timelinesById.get(id);
+          if (timeline && !have.has(id)) {
+            merged.push(timeline);
+            have.add(id);
+          }
+        }
+        return merged.length === prev.length ? prev : merged;
+      });
+    },
+    [allTimelines],
+  );
+
   return {
     metrics,
     dimensions,
     timelines,
+    allTimelines,
+    timelinesLoading,
+    timelinesError,
     name,
     setName,
     setMetrics,
@@ -272,5 +307,6 @@ export function useExplorationSelection(): ExplorationSelection {
     toggleMetric,
     toggleDimension,
     toggleTimeline,
+    addTimelinesById,
   };
 }

@@ -28,6 +28,7 @@ export const EXPLORATIONS_AGENT_ID = "explorations";
 
 const SELECT_RESEARCH_METRICS_TOOL = "select_research_metrics";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
+const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
 type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
   result: string;
@@ -38,7 +39,7 @@ export interface NewExplorationChatProps {
 }
 
 export function NewExplorationChat({ selection }: NewExplorationChatProps) {
-  const { addMetric, setName } = selection;
+  const { addMetric, setName, addTimelinesById } = selection;
   const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
@@ -116,6 +117,31 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     [setName],
   );
 
+  const handleSelectExplorationTimelinesToolCallMessages = useCallback(
+    (messages: MetabotToolCallMessageWithResult[]) => {
+      if (messages.length === 0) {
+        return;
+      }
+      try {
+        const timelineIds = messages.flatMap((message) => {
+          const parsed = JSON.parse(message.result) as {
+            timeline_ids: number[];
+          };
+          return parsed.timeline_ids;
+        });
+        addTimelinesById(timelineIds);
+      } catch (error) {
+        console.error(error);
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to add timelines`,
+        });
+      }
+    },
+    [addTimelinesById, sendToast],
+  );
+
   useEffect(() => {
     if (nextUnprocessedMessageIndexRef.current > messages.length) {
       nextUnprocessedMessageIndexRef.current = 0;
@@ -136,10 +162,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     handleSetExplorationNameToolCallMessages(
       unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
     );
+    handleSelectExplorationTimelinesToolCallMessages(
+      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+    );
   }, [
     isDoingScience,
     handleSelectExplorationMetricsToolCallMessages,
     handleSetExplorationNameToolCallMessages,
+    handleSelectExplorationTimelinesToolCallMessages,
     messages,
   ]);
 
@@ -248,6 +278,18 @@ function isSetExplorationNameToolCallMessage(
     message.role === "agent" &&
     message.type === "tool_call" &&
     message.name === SET_RESEARCH_NAME_TOOL &&
+    !message.is_error &&
+    !!message.result
+  );
+}
+
+function isSelectExplorationTimelinesToolCallMessage(
+  message: MetabotChatMessage,
+): message is MetabotToolCallMessageWithResult {
+  return (
+    message.role === "agent" &&
+    message.type === "tool_call" &&
+    message.name === SELECT_RESEARCH_TIMELINES_TOOL &&
     !message.is_error &&
     !!message.result
   );

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListTimelinesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { Box, Icon, Stack, TextInput } from "metabase/ui";
@@ -18,15 +17,15 @@ export interface BrowseTimelinesPanelProps {
 }
 
 export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
-  const { timelines: selectedTimelines, toggleTimeline } = selection;
+  const {
+    timelines: selectedTimelines,
+    allTimelines,
+    timelinesLoading,
+    timelinesError,
+    toggleTimeline,
+  } = selection;
 
   const [search, setSearch] = useState("");
-
-  const {
-    data: allTimelines = [],
-    isLoading,
-    error,
-  } = useListTimelinesQuery({ include: "events" });
 
   const filteredTimelines = useMemo(() => {
     const timelinesWithEvents = allTimelines.filter(
@@ -51,8 +50,8 @@ export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
       />
       <Box className={S.browseList}>
         <LoadingAndErrorWrapper
-          loading={isLoading}
-          error={error}
+          loading={timelinesLoading}
+          error={timelinesError}
           style={{ height: "100%" }}
         >
           <TimelineList

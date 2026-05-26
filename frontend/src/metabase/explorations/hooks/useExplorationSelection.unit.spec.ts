@@ -1,10 +1,17 @@
-import { act, renderHook } from "@testing-library/react";
+import { act } from "@testing-library/react";
 
+import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
+import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ExplorationMetric } from "metabase/explorations/types";
-import type { DimensionId, MetricDimension } from "metabase-types/api";
+import type {
+  DimensionId,
+  MetricDimension,
+  Timeline,
+} from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
+  createMockTimeline,
 } from "metabase-types/api/mocks";
 
 import { useExplorationSelection } from "./useExplorationSelection";
@@ -34,6 +41,11 @@ function makeDimensionsById(
   return new Map(dims.map((d) => [d.id, d]));
 }
 
+function renderSelection(timelines: Timeline[] = []) {
+  setupTimelinesEndpoints(timelines);
+  return renderHookWithProviders(() => useExplorationSelection(), {});
+}
+
 describe("useExplorationSelection", () => {
   describe("addMetric", () => {
     it("adds only interesting dimensions when at least one exists", () => {
@@ -42,7 +54,7 @@ describe("useExplorationSelection", () => {
       const metric = makeMetric(1, ["dim-high", "dim-low"]);
       const dimensionsById = makeDimensionsById([dimHigh, dimLow]);
 
-      const { result } = renderHook(() => useExplorationSelection());
+      const { result } = renderSelection();
 
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
@@ -60,7 +72,7 @@ describe("useExplorationSelection", () => {
       const metric = makeMetric(1, ["dim-a", "dim-b"]);
       const dimensionsById = makeDimensionsById([dimA, dimB]);
 
-      const { result } = renderHook(() => useExplorationSelection());
+      const { result } = renderSelection();
 
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
@@ -77,7 +89,7 @@ describe("useExplorationSelection", () => {
       const metric = makeMetric(1, ["dim-a"]);
       const dimensionsById = makeDimensionsById([dim]);
 
-      const { result } = renderHook(() => useExplorationSelection());
+      const { result } = renderSelection();
 
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
@@ -100,7 +112,7 @@ describe("useExplorationSelection", () => {
       const metric = makeMetric(1, ["dim-a"]);
       const dimensionsById = makeDimensionsById([dim]);
 
-      const { result } = renderHook(() => useExplorationSelection());
+      const { result } = renderSelection();
 
       act(() => {
         result.current.toggleMetric(metric, { dimensionsById });
@@ -120,7 +132,7 @@ describe("useExplorationSelection", () => {
       const metric2 = makeMetric(2, ["dim-b", "dim-shared"]);
       const dimensionsById = makeDimensionsById([dimA, dimShared, dimB]);
 
-      const { result } = renderHook(() => useExplorationSelection());
+      const { result } = renderSelection();
 
       act(() => {
         result.current.addMetric(metric1, { dimensionsById });
@@ -138,6 +150,71 @@ describe("useExplorationSelection", () => {
       expect(result.current.dimensions.map((d) => d.id).sort()).toEqual(
         ["dim-b", "dim-shared"].sort(),
       );
+    });
+  });
+
+  describe("addTimelinesById", () => {
+    it("adds timelines resolved from allTimelines", async () => {
+      const timeline1 = createMockTimeline({ id: 1, name: "Product launches" });
+      const timeline2 = createMockTimeline({ id: 2, name: "Marketing" });
+
+      const { result } = renderSelection([timeline1, timeline2]);
+
+      await waitFor(() => {
+        expect(result.current.allTimelines).toHaveLength(2);
+      });
+
+      act(() => {
+        result.current.addTimelinesById([1, 2]);
+      });
+
+      expect(result.current.timelines.map((t) => t.id)).toEqual([1, 2]);
+      expect(result.current.timelines[0]).toEqual(timeline1);
+      expect(result.current.timelines[1]).toEqual(timeline2);
+    });
+
+    it("ignores unknown ids and already-selected timelines", async () => {
+      const timeline1 = createMockTimeline({ id: 1, name: "Product launches" });
+      const timeline2 = createMockTimeline({ id: 2, name: "Marketing" });
+
+      const { result } = renderSelection([timeline1, timeline2]);
+
+      await waitFor(() => {
+        expect(result.current.allTimelines).toHaveLength(2);
+      });
+
+      act(() => {
+        result.current.toggleTimeline(timeline1);
+      });
+
+      act(() => {
+        result.current.addTimelinesById([1, 2, 999]);
+      });
+
+      expect(result.current.timelines.map((t) => t.id)).toEqual([1, 2]);
+      expect(result.current.timelines[0]).toEqual(timeline1);
+      expect(result.current.timelines[1]).toEqual(timeline2);
+    });
+
+    it("is a no-op when every id is unknown or already selected", async () => {
+      const timeline1 = createMockTimeline({ id: 1, name: "Product launches" });
+
+      const { result } = renderSelection([timeline1]);
+
+      await waitFor(() => {
+        expect(result.current.allTimelines).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.toggleTimeline(timeline1);
+      });
+      const timelinesAfterFirst = result.current.timelines;
+
+      act(() => {
+        result.current.addTimelinesById([1, 999]);
+      });
+
+      expect(result.current.timelines).toBe(timelinesAfterFirst);
     });
   });
 });
