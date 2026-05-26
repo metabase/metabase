@@ -47,7 +47,7 @@ const DefaultTemplate = ({ children, size, variant }: BadgeProps) => {
 };
 
 const GridTemplate = ({ children }: BadgeProps) => (
-  <Grid align="center" bg="background-primary" columns={3} p="xl" w="50rem">
+  <Grid align="center" columns={3} w="30rem">
     <Grid.Col span={1} />
 
     {argTypes.size.options.map((size) => (
