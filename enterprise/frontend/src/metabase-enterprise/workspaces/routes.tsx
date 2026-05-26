@@ -1,15 +1,13 @@
 import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
-import { WorkspaceInstancePage } from "./pages/WorkspaceInstancePage";
-import { WorkspaceListPage } from "./pages/WorkspaceListPage";
+import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 
 export function getDataStudioRoutes() {
   return (
     <Route path="workspaces">
-      <IndexRoute component={WorkspaceListPage} />
-      <Route path="instance" component={WorkspaceInstancePage} />
+      <IndexRoute component={WorkspaceIndexPage} />
       <Route path=":workspaceId" component={WorkspacePage} />
     </Route>
   );

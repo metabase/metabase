@@ -68,7 +68,7 @@ function SetupWorkspaceForm({ onClose }: SetupWorkspaceFormProps) {
     }
     await applyConfig({ config }).unwrap();
     onClose();
-    dispatch(push(Urls.workspaceInstance()));
+    dispatch(push(Urls.workspaces()));
   };
 
   return (

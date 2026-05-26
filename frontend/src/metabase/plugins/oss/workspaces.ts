@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { RouteComponent } from "react-router";
 
 import type { State } from "metabase/redux/store";
-import type { Database, WorkspaceInstance } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
@@ -10,25 +10,9 @@ export type AdminConnectionInfoSectionProps = {
   database: Database;
 };
 
-export type UseGetCurrentWorkspaceOptions = {
-  skip?: boolean;
-};
-
-export type UseGetCurrentWorkspaceResult = {
-  workspace: WorkspaceInstance | null;
-  isLoading: boolean;
-};
-
 const getDefaultWorkspaces = () => ({
   canManageWorkspaces: (_state: State): boolean => false,
   canManageWorkspaceInstance: (_state: State): boolean => false,
-  getIsDevelopmentMode: (_state: State): boolean => false,
-  useGetCurrentWorkspace: (
-    _options?: UseGetCurrentWorkspaceOptions,
-  ): UseGetCurrentWorkspaceResult => ({
-    workspace: null,
-    isLoading: false,
-  }),
   getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
   AdminConnectionInfoSection:

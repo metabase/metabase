@@ -150,8 +150,6 @@ export {
 export {
   PLUGIN_WORKSPACES,
   type AdminConnectionInfoSectionProps,
-  type UseGetCurrentWorkspaceOptions,
-  type UseGetCurrentWorkspaceResult,
 } from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
