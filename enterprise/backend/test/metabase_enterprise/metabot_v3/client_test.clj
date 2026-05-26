@@ -142,6 +142,26 @@
                   (is (not (contains? (:response data) :headers))
                       "Exception data should not contain :headers in response"))))))))))
 
+(deftest streaming-request-propagates-jvm-errors-test
+  (testing "JVM Errors (OOM, StackOverflow, …) propagate unwrapped — only Exceptions get re-wrapped"
+    ;; Regression lock: `streaming-request` catches `Exception`, not `Throwable`, so a JVM `Error`
+    ;; escapes instead of being obscured by `rethrow-with-context!` into an `:ai-service-error`
+    ;; `ExceptionInfo`. The other error-path tests drive the Exception branch (via a 500 response),
+    ;; which `catch Exception` still catches — only an `Error` exercises the narrowing.
+    (mt/with-premium-features #{:metabot-v3}
+      (let [req {:context         {:some "context"}
+                 :message         {:role :user :content "stuff"}
+                 :history         []
+                 :profile-id      "test-profile"
+                 :conversation-id (str (random-uuid))
+                 :session-id      "test-session"
+                 :state           {:some "state"}}]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
+                                                (throw (OutOfMemoryError. "boom")))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (thrown? OutOfMemoryError (metabot-v3.client/streaming-request req))
+                "the raw Error must escape, not be caught and re-wrapped into an ExceptionInfo")))))))
+
 (defn- check-response!-input
   "Build a failing-response + request pair that always includes secret-headers so each test
    exercise can independently verify they get stripped from `ex-data`."
