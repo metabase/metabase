@@ -1481,6 +1481,55 @@
   (when (public-create-grant? conn schema-name)
     (raise-public-create-grant! schema-name)))
 
+(defn- schema-owner
+  "Look up the owner of `schema-name` for diagnostics. Returns the rolname string
+   or nil if the schema doesn't exist on the current connection's database."
+  [conn schema-name]
+  (-> (jdbc/query conn
+                  ["SELECT r.rolname AS owner
+                    FROM pg_namespace n
+                    JOIN pg_roles r ON r.oid = n.nspowner
+                    WHERE n.nspname = ?"
+                   schema-name])
+      first
+      :owner))
+
+(defn assert-can-grant-usage!
+  "Throws when the current admin connection cannot grant USAGE on `schema-name`
+   to other roles. PostgreSQL only lets a role pass on USAGE if it either owns
+   the schema or holds `USAGE WITH GRANT OPTION` (ownership implies both). When
+   a workspace admin is a CREATEROLE role separate from the schema owner —
+   common in warehouses where dbt or other tooling owns input schemas — the
+   admin can connect and create the isolation user but cannot share access to
+   the input schemas. We catch this before issuing the GRANT batch so the
+   operator gets a clear remediation instead of a JDBC `permission denied for
+   schema X` dump."
+  [conn schema-name]
+  (let [{:keys [can_grant current_user_name]}
+        (first (jdbc/query conn
+                           ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant,
+                                    current_user AS current_user_name"
+                            schema-name]))]
+    (when-not can_grant
+      (let [owner (schema-owner conn schema-name)]
+        (throw (ex-info (format (str "Workspace admin %s cannot grant USAGE on schema \"%s\" "
+                                     "(owned by %s). PostgreSQL requires the granting role to own "
+                                     "the schema or hold USAGE WITH GRANT OPTION on it. Run as a "
+                                     "superuser or as the schema owner:\n\n"
+                                     "    GRANT USAGE ON SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
+                                     "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
+                                     "    ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" "
+                                     "GRANT SELECT ON TABLES TO %s WITH GRANT OPTION;\n\n"
+                                     "then retry workspace provisioning.")
+                                current_user_name schema-name (or owner "<unknown>")
+                                schema-name current_user_name
+                                schema-name current_user_name
+                                schema-name current_user_name)
+                        {:status-code  412
+                         :schema       schema-name
+                         :owner        owner
+                         :admin-user   current_user_name}))))))
+
 ;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
 ;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
 ;;; receive privileges either directly or through PUBLIC (the implicit pseudo-role
@@ -1555,14 +1604,20 @@
   [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
-        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
-        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
-        ;; isolation hole this catches. We probe per-schema so only the schemas
-        ;; actually used as inputs need to be locked down — schemas the workspace
-        ;; never touches can keep their default ACLs.
+        ;; Pre-flight checks per input schema:
+        ;;   1. Schema must not grant CREATE to PUBLIC (isolation hole — see comment
+        ;;      block above [[init-workspace-isolation! :postgres]]).
+        ;;   2. The current admin role must hold USAGE WITH GRANT OPTION on the
+        ;;      schema (or own it). PostgreSQL won't let a role pass on USAGE
+        ;;      otherwise, and the resulting JDBC error ("permission denied for
+        ;;      schema X") doesn't tell the operator what's missing.
+        ;; We probe per-schema so only the schemas actually used as inputs need to
+        ;; be locked down — schemas the workspace never touches can keep their
+        ;; default ACLs.
         _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
-                           (assert-no-public-create-grant! check-conn s)))
+                           (assert-no-public-create-grant! check-conn s)
+                           (assert-can-grant-usage! check-conn s)))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

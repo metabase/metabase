@@ -2358,3 +2358,38 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+(deftest ^:synchronized assert-can-grant-usage!-test
+  (testing "throws 412 with copy-pasteable SQL when admin lacks USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "has_schema_privilege")
+                                 [{:can_grant false :current_user_name "stats_admin"}]
+                                 (str/includes? sql "nspowner")
+                                 [{:owner "mbplayground"}]))]
+      (try
+        (postgres/assert-can-grant-usage! ::stub-conn "dbt_models")
+        (is false "expected assert-can-grant-usage! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "dbt_models" (:schema (ex-data e))))
+          (is (= "mbplayground" (:owner (ex-data e))))
+          (is (= "stats_admin" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT USAGE ON SCHEMA \"dbt_models\" TO stats_admin WITH GRANT OPTION"))
+          (is (str/includes? (ex-message e) "owned by mbplayground"))))))
+  (testing "no-op when admin holds USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               [{:can_grant true :current_user_name "stats_admin"}])]
+      (is (nil? (postgres/assert-can-grant-usage! ::stub-conn "dbt_models")))))
+  (testing "owner falls back to <unknown> when schema absent from pg_namespace"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "has_schema_privilege")
+                                 [{:can_grant false :current_user_name "stats_admin"}]
+                                 (str/includes? sql "nspowner")
+                                 []))]
+      (try
+        (postgres/assert-can-grant-usage! ::stub-conn "ghost_schema")
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (str/includes? (ex-message e) "owned by <unknown>")))))))
