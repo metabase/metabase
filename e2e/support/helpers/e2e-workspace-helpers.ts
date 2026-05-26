@@ -93,8 +93,10 @@ export const NewWorkspaceDatabaseModal = {
   get: () => modal(),
   databaseRadio: (name: string) =>
     NewWorkspaceDatabaseModal.get().findByRole("radio", { name }),
-  schemasInput: () =>
-    NewWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemasGroup: () =>
+    NewWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaCheckbox: (name: string) =>
+    NewWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
   submitButton: () =>
     NewWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Add database",
@@ -105,8 +107,10 @@ export const NewWorkspaceDatabaseModal = {
 
 export const UpdateWorkspaceDatabaseModal = {
   get: () => modal(),
-  schemasInput: () =>
-    UpdateWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemasGroup: () =>
+    UpdateWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaCheckbox: (name: string) =>
+    UpdateWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
   saveButton: () =>
     UpdateWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Save changes",
