@@ -166,9 +166,7 @@ function emptyGraphUrl(): string {
 /**
  * Adapt a SchemaViewer ErdNode into the TableDependencyNode shape consumed
  * by GraphInfoPanel. When a matching Database is passed, populate `data.db`
- * so PanelHeader renders the database + schema breadcrumbs. `transform` and
- * `owner` stay unset — the panel's optional sections degrade gracefully,
- * and the ERD payload doesn't carry that data.
+ * so PanelHeader renders the database + schema breadcrumbs.
  */
 function toTableDependencyNode(
   node: SchemaViewerFlowNode,
@@ -177,7 +175,13 @@ function toTableDependencyNode(
   const data: TableDependencyNodeData = {
     name: node.data.name,
     display_name: node.data.display_name,
-    description: null,
+    description: node.data.description,
+    // The owner payload from the ERD endpoint is either the full hydrated
+    // `TableOwner` shape, an email-only fallback (when the table only carries
+    // `owner_email`), or null. The downstream `getNodeOwner` / `getUserName`
+    // helpers in GraphInfoPanel only read the optional name/email fields, so
+    // the email-only shape is structurally compatible with `TableOwner`.
+    owner: node.data.owner as TableDependencyNodeData["owner"],
     db_id: node.data.db_id,
     schema: node.data.schema ?? "",
     db,

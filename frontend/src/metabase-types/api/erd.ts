@@ -4,6 +4,7 @@ import type {
   FieldId,
   SchemaName,
   TableId,
+  TableOwner,
 } from "./";
 
 export type ErdRelationship = "one-to-one" | "many-to-one";
@@ -28,6 +29,10 @@ export type ErdNode = {
   table_id: ConcreteTableId;
   name: string;
   display_name: string;
+  description: string | null;
+  // Mirrors the `:owner` hydration on Table: either the full `TableOwner`
+  // shape, an email-only fallback when only `owner_email` is set, or `null`.
+  owner: TableOwner | { email: string } | null;
   schema: SchemaName | null;
   db_id: DatabaseId;
   fields: ErdField[];

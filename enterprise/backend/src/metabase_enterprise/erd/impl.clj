@@ -28,11 +28,25 @@
    [:fk_target_field_id {:optional true} [:maybe :int]]
    [:fk_target_table_id {:optional true} [:maybe :int]]])
 
+;; Mirrors the `:owner` hydration on Table: when `owner_user_id` is set we
+;; return the full user shape, otherwise (`owner_email` only) we return a
+;; map carrying just `:email`. `nil` covers both no-owner and the
+;; `owner_user_id`-points-to-missing-user case.
+(mr/def ::erd-owner
+  [:maybe
+   [:map
+    [:id          {:optional true} :int]
+    [:email       :string]
+    [:first_name  {:optional true} [:maybe :string]]
+    [:last_name   {:optional true} [:maybe :string]]]])
+
 (mr/def ::erd-node
   [:map
    [:table_id :int]
    [:name :string]
    [:display_name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:owner       {:optional true} ::erd-owner]
    [:schema {:optional true} [:maybe :string]]
    [:db_id :int]
    [:fields [:sequential ::erd-field]]])
@@ -58,9 +72,12 @@
 
 ;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
 
-(def ^:private table-perm-columns
-  "Columns needed for mi/can-read? permission checks on Table."
-  [:id :db_id :name :display_name :schema :is_published :collection_id])
+(def ^:private table-select-columns
+  "Columns we read from Table: the perm columns needed for `mi/can-read?`
+   (`:db_id`, `:is_published`, `:collection_id`) plus the display columns the
+   ERD response surfaces (`:description`, owner fields hydrated below)."
+  [:id :db_id :name :display_name :schema :is_published :collection_id
+   :description :owner_user_id :owner_email])
 
 (defn- schema-clause
   "The rest of the database API treats a blank schema name as the union of nil
@@ -94,7 +111,7 @@
                   (contains? opts :table-ids) (conj [:in :id table-ids])
                   (contains? opts :schema)    (conj (schema-clause schema)))]
       (->> (t2/select :model/Table
-                      {:select table-perm-columns
+                      {:select table-select-columns
                        :where  where})
            (filter mi/can-read?)))))
 
@@ -161,7 +178,9 @@
                                  (readable-tables database-id :table-ids neighbor-table-ids))
         neighbor-table-ids     (into #{} (map :id) neighbor-tables)
         neighbor-fields        (fetch-fields-for-tables neighbor-table-ids)
-        all-tables             (concat focal-tables neighbor-tables)
+        ;; Batch-hydrate `:owner` once across the whole node set so the
+        ;; per-node build doesn't trigger N+1 user lookups.
+        all-tables             (t2/hydrate (concat focal-tables neighbor-tables) :owner)
         all-fields             (concat focal-fields neighbor-fields)]
     {:tables-by-id       (index-by-id all-tables)
      :fields-by-table    (group-by :table_id all-fields)
@@ -218,6 +237,8 @@
   {:table_id     (:id table)
    :name         (:name table)
    :display_name (:display_name table)
+   :description  (:description table)
+   :owner        (:owner table)
    :schema       (:schema table)
    :db_id        (:db_id table)
    :fields       (mapv #(build-erd-field % target-field-id->table-id) fields)})
