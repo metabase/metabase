@@ -1746,9 +1746,46 @@
           opts (get-in out ["stages" 1 "filters" 0 2 1])]
       (is (not (contains? opts "base-type"))))))
 
+(deftest cross-stage-field-type-strips-surrounding-double-quotes-test
+  (testing (str "BOT-1587: when the LLM quotes a cross-stage column name like a SQL identifier\n"
+                "(`\"count\"` instead of `count`), repair strips the surrounding double-quotes so\n"
+                "the name matches the previous stage's output, rewrites the ref to the canonical\n"
+                "name, and stamps `base-type`. Without this the typeless, mis-named ref reaches\n"
+                "the FE and crashes display-info calculation.")
+    (let [q   (assoc-in multi-stage-base-query
+                        ["stages" 1 "filters" 0 2 2] "\"count\"")
+          out (repair/repair mp-fks q)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])
+          opts (nth field-clause 1)]
+      (testing "name canonicalised (quotes stripped)"
+        (is (= "count" (nth field-clause 2))))
+      (testing "base-type / effective-type stamped from the previous stage"
+        (is (= "type/Integer" (get opts "base-type")))
+        (is (= "type/Integer" (get opts "effective-type")))))))
+
+(deftest cross-stage-field-type-unmatched-quoted-name-left-alone-test
+  (testing (str "Quote-stripping only rewrites when the stripped name matches a real column.\n"
+                "A quoted name whose stripped form still isn't produced by the previous stage is\n"
+                "left verbatim (the resolver surfaces the real error with a better message).")
+    (let [q   (assoc-in multi-stage-base-query
+                        ["stages" 1 "filters" 0 2 2] "\"no_such_column\"")
+          out (repair/repair mp-fks q)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])
+          opts (nth field-clause 1)]
+      (is (= "\"no_such_column\"" (nth field-clause 2)) "name left untouched")
+      (is (not (contains? opts "base-type"))))))
+
 (deftest cross-stage-field-type-idempotent-test
   (testing "cross-stage field-type inference is idempotent"
     (let [once  (repair/repair mp-fks multi-stage-base-query)
+          twice (repair/repair mp-fks once)]
+      (is (= once twice)))))
+
+(deftest cross-stage-field-type-quoted-name-idempotent-test
+  (testing "the quote-stripping rewrite is also idempotent"
+    (let [q     (assoc-in multi-stage-base-query
+                          ["stages" 1 "filters" 0 2 2] "\"count\"")
+          once  (repair/repair mp-fks q)
           twice (repair/repair mp-fks once)]
       (is (= once twice)))))
 
