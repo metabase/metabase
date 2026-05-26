@@ -14,7 +14,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (java.sql BatchUpdateException SQLException)
+   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
