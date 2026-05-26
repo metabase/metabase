@@ -20,30 +20,30 @@
     (are [dim] (nil? (me/humanize (mr/explain ::lib-metric.schema/dimension dim)))
       {:id "550e8400-e29b-41d4-a716-446655440000"}
       {:id             "550e8400-e29b-41d4-a716-446655440000"
-       :display-name   "Category"
-       :effective-type :type/Text
-       :semantic-type  :type/Category}
+       :display_name   "Category"
+       :effective_type :type/Text
+       :semantic_type  :type/Category}
       {:id             "550e8400-e29b-41d4-a716-446655440000"
-       :display-name   nil
-       :effective-type nil
-       :semantic-type  nil}
+       :display_name   nil
+       :effective_type nil
+       :semantic_type  nil}
       {:id           "550e8400-e29b-41d4-a716-446655440000"
-       :display-name "Product Name"}))
+       :display_name "Product Name"}))
   (testing "invalid dimensions"
     (testing "missing id"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension
-                                          {:display-name "Category"})))))
+                                          {:display_name "Category"})))))
     (testing "invalid id"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension
                                           {:id "not-a-uuid"})))))
     (testing "invalid effective-type"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension
                                           {:id             "550e8400-e29b-41d4-a716-446655440000"
-                                           :effective-type :not/a-type})))))
+                                           :effective_type :not/a-type})))))
     (testing "invalid semantic-type"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension
                                           {:id            "550e8400-e29b-41d4-a716-446655440000"
-                                           :semantic-type :not/a-semantic-type})))))))
+                                           :semantic_type :not/a-semantic-type})))))))
 
 (deftest ^:parallel dimension-mapping-type-test
   (testing "dimension-mapping.type must be :table"
@@ -66,12 +66,12 @@
   (testing "valid dimension mappings"
     (are [mapping] (nil? (me/humanize (mr/explain ::lib-metric.schema/dimension-mapping mapping)))
       {:type         :table
-       :table-id     1
-       :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+       :table_id     1
+       :dimension_id "550e8400-e29b-41d4-a716-446655440000"
        :target       [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 2]}
       {:type         :table
-       :table-id     100
-       :dimension-id "00000000-0000-0000-0000-000000000000"
+       :table_id     100
+       :dimension_id "00000000-0000-0000-0000-000000000000"
        :target       [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440001" :source-field 1} 2]}))
   (testing "invalid dimension mappings"
     (testing "missing required fields"
@@ -80,20 +80,20 @@
     (testing "invalid type"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension-mapping
                                           {:type         :invalid
-                                           :table-id     1
-                                           :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                           :table_id     1
+                                           :dimension_id "550e8400-e29b-41d4-a716-446655440000"
                                            :target       [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 2]})))))
     (testing "invalid table-id"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension-mapping
                                           {:type         :table
-                                           :table-id     -1
-                                           :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                           :table_id     -1
+                                           :dimension_id "550e8400-e29b-41d4-a716-446655440000"
                                            :target       [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440001"} 2]})))))
     (testing "invalid target"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension-mapping
                                           {:type         :table
-                                           :table-id     1
-                                           :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                           :table_id     1
+                                           :dimension_id "550e8400-e29b-41d4-a716-446655440000"
                                            :target       [:not-a-field {} 2]})))))))
 
 (deftest ^:parallel dimension-reference-options-test

@@ -59,6 +59,8 @@
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
+    :model/StoredResult
+    :model/StoredResultUse
     :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TaskRun

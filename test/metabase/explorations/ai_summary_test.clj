@@ -326,8 +326,8 @@
                                                   :permission/metabot-sql-generation :yes
                                                   :permission/metabot-nlq            :yes
                                                   :permission/metabot-other-tools    :no})
-                        ;; If the real provider adapter were reached, this would
-                        ;; bump — the permission check fires before that.
+                                      ;; If the real provider adapter were reached, this would
+                                      ;; bump — the permission check fires before that.
                                       metabase.metabot.self.claude/claude
                                       (fn [& _] (swap! adapter-calls inc) [])]
             (let [outcome (ai-summary/generate-ai-summary! (:id t))]

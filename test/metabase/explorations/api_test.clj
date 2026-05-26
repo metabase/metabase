@@ -45,7 +45,7 @@
   [& body]
   `(do-with-sample-metrics-archived (fn [] ~@body)))
 
-(defn- do-with-ai-summary-available
+(defn- do-with-ai-summary-available!
   "Run `thunk` with the conditions under which AI Summary are generated:
   AI features + Metabot enabled, an LLM provider configured, and the current user
   holding the metabot permission. Needed because a clean test instance has no
@@ -62,9 +62,9 @@
 
 (defmacro with-ai-summary-available
   "Execute `body` with AI Summary generation enabled (see
-  [[do-with-ai-summary-available]])."
+  [[do-with-ai-summary-available!]])."
   [& body]
-  `(do-with-ai-summary-available (fn [] ~@body)))
+  `(do-with-ai-summary-available! (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
@@ -1131,8 +1131,8 @@
     (is (= "/question/research/7/group/auto%3A42%3Aorders.created_at"
            (#'explorations.api/chart-page-url 7 42 "orders.created_at")))
     (testing "the encoded segment decodes back to the FE-routed leaf-group id"
-      (is (= (explorations.groups/leaf-group-id 42 "orders.created_at")
-             "auto:42:orders.created_at")))))
+      (is (= "auto:42:orders.created_at"
+             (explorations.groups/leaf-group-id 42 "orders.created_at"))))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"

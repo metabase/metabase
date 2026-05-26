@@ -2,11 +2,20 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(defn- venues-count-query
+  "A `:metric` card's `:dataset_query`: count over the venues table, built with Lib."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (deftest exploration-creates-entity-id-test
   (mt/with-temp [:model/User u {}
@@ -63,7 +72,7 @@
     (mt/with-temp [:model/User       owner    {}
                    :model/Card       card     {:type          :metric
                                                :creator_id    (:id owner)
-                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                               :dataset_query (venues-count-query)}
                    :model/Collection coll     {}
                    :model/Exploration e       {:name          "shared"
                                                :creator_id    (:id owner)
@@ -72,7 +81,7 @@
                    :model/ExplorationQuery  q {:exploration_thread_id (:id t)
                                                :card_id      (:id card)
                                                :dimension_id "d1"
-                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                               :dataset_query (venues-count-query)}]
       (mt/with-non-admin-groups-no-collection-perms (:id coll)
         (testing "user with no collection perms cannot read"
           (mt/with-test-user :rasta

@@ -1084,6 +1084,7 @@ databaseChangeLog:
                   name: completed_at
                   valueComputed: current_timestamp
             where: completed_at IS NULL
+      rollback:
 
   - changeSet:
       id: v62.startedat
@@ -1112,6 +1113,7 @@ databaseChangeLog:
                   name: analysis_started_at
                   valueComputed: current_timestamp
             where: analysis_started_at IS NULL
+      rollback:
 
   - changeSet:
       id: v62.gr324asd
@@ -1194,7 +1196,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.qresdesc
       author: nvoxland
-      comment: Add metric_description + chart_description columns to exploration_query_result
+      comment: Add metric_description column to exploration_query_result
       changes:
         - addColumn:
             tableName: exploration_query_result
@@ -1205,6 +1207,15 @@ databaseChangeLog:
                   remarks: Description of the underlying metric in business terms
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.87hjhh
+      author: nvoxland
+      comment: Add chart_description column to exploration_query_result
+      changes:
+        - addColumn:
+            tableName: exploration_query_result
+            columns:
               - column:
                   name: chart_description
                   type: ${text.type}
@@ -1340,7 +1351,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.qplanstate
       author: johnswanson
-      comment: Add query_plan_started_at + query_plan_transcript columns to exploration_thread
+      comment: Add query_plan_started_at column to exploration_thread
       changes:
         - addColumn:
             tableName: exploration_thread
@@ -1351,6 +1362,15 @@ databaseChangeLog:
                   remarks: CAS-claim marker for the background query-planning step. Set by the planning worker the moment it begins; subsequent workers skip threads whose marker is already set so planning runs exactly once per thread.
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.h9yuhk
+      author: johnswanson
+      comment: Add query_plan_transcript column to exploration_thread
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
               - column:
                   name: query_plan_transcript
                   type: ${text.type}

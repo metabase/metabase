@@ -6,10 +6,19 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
+
+(defn- venues-count-query
+  "A `:metric` card's `:dataset_query`: count over the venues table, built with Lib."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -27,7 +36,7 @@
                                            :type          :metric
                                            :creator_id    (:id owner)
                                            :database_id   (mt/id)
-                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                                           :dataset_query (venues-count-query)}
                  :model/Exploration e   {:name          "shared"
                                          :creator_id    (:id owner)
                                          :collection_id (:id coll)}
@@ -36,7 +45,7 @@
                                               :card_id      (:id metric)
                                               :dimension_id "d1"
                                               :status       "pending"
-                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                              :dataset_query (venues-count-query)}]
     (f {:exploration e :query q :collection coll :owner owner})))
 
 (deftest sandboxed-viewer-blocked-from-cached-result-test

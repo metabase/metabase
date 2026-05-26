@@ -136,7 +136,15 @@
     :model/MetabotMessage
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
-    :model/MetabotPrompt]
+    :model/MetabotPrompt
+    ;; 62+
+    :model/Exploration
+    :model/ExplorationThread
+    :model/ExplorationThreadDimension
+    :model/ExplorationThreadMetric
+    :model/ExplorationThreadTimeline
+    :model/ExplorationQuery
+    :model/ExplorationBookmark]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

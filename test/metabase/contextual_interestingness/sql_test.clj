@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.contextual-interestingness.sql :as contextual-sql]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -20,9 +22,11 @@
 (deftest dataset-query->sql-mbql-test
   (testing "MBQL queries compile to a SQL string mentioning the source table and aggregation"
     (mt/dataset test-data
-      (let [sql (contextual-sql/dataset-query->sql
-                 (mt/mbql-query venues {:aggregation [[:count]]
-                                        :breakout    [$category_id]}))]
+      (let [mp  (mt/metadata-provider)
+            sql (contextual-sql/dataset-query->sql
+                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))]
         (is (string? sql))
         (is (str/includes? (u/lower-case-en sql) "venues"))
         (is (str/includes? (u/lower-case-en sql) "count"))))))

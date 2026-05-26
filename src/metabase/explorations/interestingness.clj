@@ -7,8 +7,8 @@
   line chart. This namespace normalizes either shape into the `chart-config` consumed by
   `metabase.interestingness.chart/chart-interestingness`."
   (:require
-   [clojure.string :as str]
    [metabase.types.core]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n])
   (:import
    (java.time DayOfWeek LocalTime Month)
@@ -33,7 +33,7 @@
   (-> ((requiring-resolve 'metabase.settings.core/get) :start-of-week)
       (or :sunday)
       name
-      (str/upper-case)
+      (u/upper-case-en)
       (DayOfWeek/valueOf)))
 
 (defn- extraction-label

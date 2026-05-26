@@ -113,49 +113,49 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000001ing"
    :name           "category"
-   :display-name   "Category"
-   :effective-type :type/Text
-   :semantic-type  nil})
+   :display_name   "Category"
+   :effective_type :type/Text
+   :semantic_type  nil})
 
 (def ^:private number-dimension
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000002ber"
    :name           "amount"
-   :display-name   "Amount"
-   :effective-type :type/Float
-   :semantic-type  nil})
+   :display_name   "Amount"
+   :effective_type :type/Float
+   :semantic_type  nil})
 
 (def ^:private boolean-dimension
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000003ean"
    :name           "is_active"
-   :display-name   "Is Active"
-   :effective-type :type/Boolean
-   :semantic-type  nil})
+   :display_name   "Is Active"
+   :effective_type :type/Boolean
+   :semantic_type  nil})
 
 (def ^:private datetime-dimension
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000004"
    :name           "created_at"
-   :display-name   "Created At"
-   :effective-type :type/DateTime
-   :semantic-type  :type/CreationTimestamp})
+   :display_name   "Created At"
+   :effective_type :type/DateTime
+   :semantic_type  :type/CreationTimestamp})
 
 (def ^:private time-dimension
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000005"
    :name           "start_time"
-   :display-name   "Start Time"
-   :effective-type :type/Time
-   :semantic-type  nil})
+   :display_name   "Start Time"
+   :effective_type :type/Time
+   :semantic_type  nil})
 
 (def ^:private coordinate-dimension
   {:lib/type       :metadata/dimension
    :id             "dim-coord"
    :name           "latitude"
-   :display-name   "Latitude"
-   :effective-type :type/Float
-   :semantic-type  :type/Latitude})
+   :display_name   "Latitude"
+   :effective_type :type/Float
+   :semantic_type  :type/Latitude})
 
 (deftest ^:parallel operators-for-dimension-string-test
   (testing "String dimensions get string operators"
@@ -190,7 +190,7 @@
 (deftest ^:parallel operators-for-dimension-unknown-test
   (testing "Unknown type dimensions get default operators"
     (is (= [:is-null :not-null]
-           (lib-metric.filter/operators-for-dimension {:effective-type :type/Unknown})))))
+           (lib-metric.filter/operators-for-dimension {:effective_type :type/Unknown})))))
 
 ;;; -------------------------------------------------- filterable-dimension-operators --------------------------------------------------
 
@@ -260,7 +260,7 @@
 
 (deftest ^:parallel default-filter-clause-is-null-test
   (testing "default-filter-clause creates is-null clause"
-    (let [dimension {:id "dim-1" :effective-type :type/Unknown}
+    (let [dimension {:id "dim-1" :effective_type :type/Unknown}
           parts {:operator :is-null :dimension dimension}
           clause (lib-metric.filter/default-filter-clause parts)]
       (is (= :is-null (first clause)))
@@ -269,7 +269,7 @@
 
 (deftest ^:parallel default-filter-clause-not-null-test
   (testing "default-filter-clause creates not-null clause"
-    (let [dimension {:id "dim-1" :effective-type :type/Unknown}
+    (let [dimension {:id "dim-1" :effective_type :type/Unknown}
           parts {:operator :not-null :dimension dimension}
           clause (lib-metric.filter/default-filter-clause parts)]
       (is (= :not-null (first clause)))
@@ -277,7 +277,7 @@
 
 (deftest ^:parallel boolean-filter-clause-equals-test
   (testing "boolean-filter-clause creates equals clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000003" :effective-type :type/Boolean}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000003" :effective_type :type/Boolean}
           parts {:operator :=
                  :dimension dimension
                  :values [true]}
@@ -288,14 +288,14 @@
 
 (deftest ^:parallel boolean-filter-clause-is-null-test
   (testing "boolean-filter-clause creates is-null clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000003" :effective-type :type/Boolean}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000003" :effective_type :type/Boolean}
           parts {:operator :is-null :dimension dimension :values []}
           clause (lib-metric.filter/boolean-filter-clause parts)]
       (is (= :is-null (first clause))))))
 
 (deftest ^:parallel number-filter-clause-equals-test
   (testing "number-filter-clause creates equals clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective-type :type/Integer}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective_type :type/Integer}
           parts {:operator := :dimension dimension :values [42]}
           clause (lib-metric.filter/number-filter-clause parts)]
       (is (= := (first clause)))
@@ -304,7 +304,7 @@
 
 (deftest ^:parallel number-filter-clause-between-test
   (testing "number-filter-clause creates between clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective-type :type/Float}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective_type :type/Float}
           parts {:operator :between :dimension dimension :values [10 100]}
           clause (lib-metric.filter/number-filter-clause parts)]
       (is (= :between (first clause)))
@@ -315,7 +315,7 @@
 (deftest ^:parallel number-filter-clause-comparison-test
   (testing "number-filter-clause creates comparison clauses"
     (doseq [op [:> :>= :< :<=]]
-      (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective-type :type/Integer}
+      (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective_type :type/Integer}
             parts {:operator op :dimension dimension :values [50]}
             clause (lib-metric.filter/number-filter-clause parts)]
         (is (= op (first clause)))
@@ -324,7 +324,7 @@
 (deftest ^:parallel number-filter-clause-null-test
   (testing "number-filter-clause creates null check clauses"
     (doseq [op [:is-null :not-null]]
-      (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective-type :type/Integer}
+      (let [dimension {:id "00000000-0000-0000-0000-000000000002" :effective_type :type/Integer}
             parts {:operator op :dimension dimension :values []}
             clause (lib-metric.filter/number-filter-clause parts)]
         (is (= op (first clause)))
@@ -332,7 +332,7 @@
 
 (deftest ^:parallel string-filter-clause-equals-test
   (testing "string-filter-clause creates equals clause with multiple values"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective-type :type/Text}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective_type :type/Text}
           parts {:operator := :dimension dimension :values ["a" "b" "c"] :options {}}
           clause (lib-metric.filter/string-filter-clause parts)]
       (is (= := (first clause)))
@@ -343,7 +343,7 @@
 
 (deftest ^:parallel string-filter-clause-contains-test
   (testing "string-filter-clause creates contains clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective-type :type/Text}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective_type :type/Text}
           parts {:operator :contains :dimension dimension :values ["search"] :options {}}
           clause (lib-metric.filter/string-filter-clause parts)]
       (is (= :contains (first clause)))
@@ -351,7 +351,7 @@
 
 (deftest ^:parallel string-filter-clause-contains-with-options-test
   (testing "string-filter-clause creates contains clause with options"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective-type :type/Text}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective_type :type/Text}
           parts {:operator :contains :dimension dimension :values ["search"] :options {:case-sensitive false}}
           clause (lib-metric.filter/string-filter-clause parts)]
       (is (= :contains (first clause)))
@@ -362,7 +362,7 @@
 (deftest ^:parallel string-filter-clause-empty-test
   (testing "string-filter-clause creates is-empty and not-empty clauses"
     (doseq [op [:is-empty :not-empty]]
-      (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective-type :type/Text}
+      (let [dimension {:id "00000000-0000-0000-0000-000000000001" :effective_type :type/Text}
             parts {:operator op :dimension dimension :values [] :options {}}
             clause (lib-metric.filter/string-filter-clause parts)]
         (is (= op (first clause)))
@@ -370,7 +370,7 @@
 
 (deftest ^:parallel coordinate-filter-clause-standard-test
   (testing "coordinate-filter-clause creates standard comparison clauses"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000006" :effective-type :type/Float :semantic-type :type/Latitude}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000006" :effective_type :type/Float :semantic_type :type/Latitude}
           parts {:operator := :dimension dimension :longitude-dimension nil :values [40.7128]}
           clause (lib-metric.filter/coordinate-filter-clause parts)]
       (is (= := (first clause)))
@@ -378,8 +378,8 @@
 
 (deftest ^:parallel coordinate-filter-clause-inside-test
   (testing "coordinate-filter-clause creates inside clause"
-    (let [lat-dim {:id "00000000-0000-0000-0000-000000000006" :effective-type :type/Float :semantic-type :type/Latitude}
-          lon-dim {:id "00000000-0000-0000-0000-000000000007" :effective-type :type/Float :semantic-type :type/Longitude}
+    (let [lat-dim {:id "00000000-0000-0000-0000-000000000006" :effective_type :type/Float :semantic_type :type/Latitude}
+          lon-dim {:id "00000000-0000-0000-0000-000000000007" :effective_type :type/Float :semantic_type :type/Longitude}
           parts {:operator :inside
                  :dimension lat-dim
                  :longitude-dimension lon-dim
@@ -395,7 +395,7 @@
 
 (deftest ^:parallel specific-date-filter-clause-equals-test
   (testing "specific-date-filter-clause creates equals clause"
-    (let [dimension {:id "dim-date" :effective-type :type/Date}
+    (let [dimension {:id "dim-date" :effective_type :type/Date}
           parts {:operator := :dimension dimension :values ["2024-01-15"]}
           clause (lib-metric.filter/specific-date-filter-clause parts)]
       (is (= := (first clause)))
@@ -403,7 +403,7 @@
 
 (deftest ^:parallel specific-date-filter-clause-between-test
   (testing "specific-date-filter-clause creates between clause"
-    (let [dimension {:id "dim-date" :effective-type :type/Date}
+    (let [dimension {:id "dim-date" :effective_type :type/Date}
           parts {:operator :between :dimension dimension :values ["2024-01-01" "2024-12-31"]}
           clause (lib-metric.filter/specific-date-filter-clause parts)]
       (is (= :between (first clause)))
@@ -412,7 +412,7 @@
 
 (deftest ^:parallel relative-date-filter-clause-simple-test
   (testing "relative-date-filter-clause creates simple time-interval clause"
-    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+    (let [dimension {:id "dim-date" :effective_type :type/DateTime}
           parts {:dimension dimension :unit :day :value -30 :offset-unit nil :offset-value nil :options {}}
           clause (lib-metric.filter/relative-date-filter-clause parts)]
       (is (= :time-interval (first clause)))
@@ -423,7 +423,7 @@
 
 (deftest ^:parallel relative-date-filter-clause-with-offset-test
   (testing "relative-date-filter-clause creates time-interval clause with offset"
-    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+    (let [dimension {:id "dim-date" :effective_type :type/DateTime}
           parts {:dimension dimension :unit :day :value -7 :offset-unit :week :offset-value -1 :options {:include-current true}}
           clause (lib-metric.filter/relative-date-filter-clause parts)]
       (is (= :time-interval (first clause)))
@@ -434,7 +434,7 @@
 
 (deftest ^:parallel exclude-date-filter-clause-day-of-week-test
   (testing "exclude-date-filter-clause creates exclude by day-of-week"
-    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+    (let [dimension {:id "dim-date" :effective_type :type/DateTime}
           parts {:operator :!= :dimension dimension :unit :day-of-week :values [1 7]} ;; exclude Sunday and Saturday
           clause (lib-metric.filter/exclude-date-filter-clause parts)]
       (is (= :!= (first clause)))
@@ -446,21 +446,21 @@
 
 (deftest ^:parallel exclude-date-filter-clause-unknown-unit-throws-test
   (testing "unknown temporal unit throws instead of silently defaulting"
-    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+    (let [dimension {:id "dim-date" :effective_type :type/DateTime}
           parts {:operator :!= :dimension dimension :unit :year-of-era :values [2024]}]
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (lib-metric.filter/exclude-date-filter-clause parts))))))
 
 (deftest ^:parallel exclude-date-filter-clause-null-test
   (testing "exclude-date-filter-clause creates null check clause"
-    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+    (let [dimension {:id "dim-date" :effective_type :type/DateTime}
           parts {:operator :is-null :dimension dimension :unit nil :values []}
           clause (lib-metric.filter/exclude-date-filter-clause parts)]
       (is (= :is-null (first clause))))))
 
 (deftest ^:parallel time-filter-clause-greater-than-test
   (testing "time-filter-clause creates greater than clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000005" :effective-type :type/Time}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000005" :effective_type :type/Time}
           parts {:operator :> :dimension dimension :values ["09:00:00"]}
           clause (lib-metric.filter/time-filter-clause parts)]
       (is (= :> (first clause)))
@@ -468,7 +468,7 @@
 
 (deftest ^:parallel time-filter-clause-between-test
   (testing "time-filter-clause creates between clause"
-    (let [dimension {:id "00000000-0000-0000-0000-000000000005" :effective-type :type/Time}
+    (let [dimension {:id "00000000-0000-0000-0000-000000000005" :effective_type :type/Time}
           parts {:operator :between :dimension dimension :values ["09:00:00" "17:00:00"]}
           clause (lib-metric.filter/time-filter-clause parts)]
       (is (= :between (first clause)))
@@ -482,9 +482,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000001"
    :name           "category"
-   :display-name   "Category"
-   :effective-type :type/Text
-   :semantic-type  nil
+   :display_name   "Category"
+   :effective_type :type/Text
+   :semantic_type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -492,9 +492,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000002"
    :name           "amount"
-   :display-name   "Amount"
-   :effective-type :type/Float
-   :semantic-type  nil
+   :display_name   "Amount"
+   :effective_type :type/Float
+   :semantic_type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -502,9 +502,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000003"
    :name           "is_active"
-   :display-name   "Is Active"
-   :effective-type :type/Boolean
-   :semantic-type  nil
+   :display_name   "Is Active"
+   :effective_type :type/Boolean
+   :semantic_type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -512,9 +512,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000004"
    :name           "created_at"
-   :display-name   "Created At"
-   :effective-type :type/DateTime
-   :semantic-type  :type/CreationTimestamp
+   :display_name   "Created At"
+   :effective_type :type/DateTime
+   :semantic_type  :type/CreationTimestamp
    :source-type    :metric
    :source-id      1})
 
@@ -522,9 +522,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000005"
    :name           "start_time"
-   :display-name   "Start Time"
-   :effective-type :type/Time
-   :semantic-type  nil
+   :display_name   "Start Time"
+   :effective_type :type/Time
+   :semantic_type  nil
    :source-type    :metric
    :source-id      1})
 
@@ -532,9 +532,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000006"
    :name           "latitude"
-   :display-name   "Latitude"
-   :effective-type :type/Float
-   :semantic-type  :type/Latitude
+   :display_name   "Latitude"
+   :effective_type :type/Float
+   :semantic_type  :type/Latitude
    :source-type    :metric
    :source-id      1})
 
@@ -542,9 +542,9 @@
   {:lib/type       :metadata/dimension
    :id             "00000000-0000-0000-0000-000000000007"
    :name           "longitude"
-   :display-name   "Longitude"
-   :effective-type :type/Float
-   :semantic-type  :type/Longitude
+   :display_name   "Longitude"
+   :effective_type :type/Float
+   :semantic_type  :type/Longitude
    :source-type    :metric
    :source-id      1})
 
