@@ -5,15 +5,15 @@ import { t } from "ttag";
 import { useDimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import type {
   MetricSourceId,
+  MetricsViewerDimensionBreakoutType,
   MetricsViewerDisplayType,
-  MetricsViewerTabType,
 } from "metabase/metrics-viewer/types";
 import {
   type AvailableDimensionsResult,
   type DimensionFilterValue,
+  getDimensionBreakoutConfig,
   getDimensionIcon,
   getProjectionInfo,
-  getTabConfig,
 } from "metabase/metrics-viewer/utils";
 import { ActionIcon, Box, Button, Flex, Icon, Menu, Switch } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
@@ -26,19 +26,19 @@ import { ChartTypePicker } from "./ChartTypePicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
 import S from "./MetricControls.module.css";
 
-function isValidDisplayTypeForTab(
+function isValidDisplayTypeForDimensionBreakout(
   displayType: MetricsViewerDisplayType,
-  tabType: MetricsViewerTabType,
+  dimensionBreakoutType: MetricsViewerDimensionBreakoutType,
 ): boolean {
-  const config = getTabConfig(tabType);
+  const config = getDimensionBreakoutConfig(dimensionBreakoutType);
   return config.availableDisplayTypes.some((t) => t.type === displayType);
 }
 
 type MetricControlsProps = {
   definition: MetricDefinition;
   displayType: MetricsViewerDisplayType;
-  tabType: MetricsViewerTabType;
-  tabLabel?: string | null;
+  dimensionBreakoutType: MetricsViewerDimensionBreakoutType;
+  dimensionBreakoutLabel?: string | null;
   dimensionFilter?: DimensionFilterValue;
   allFilterDimensions?: DimensionMetadata[];
   availableDimensions: AvailableDimensionsResult;
@@ -64,8 +64,8 @@ function ControlSection({ children }: { children: ReactNode }) {
 export function MetricControls({
   definition,
   displayType,
-  tabType,
-  tabLabel,
+  dimensionBreakoutType,
+  dimensionBreakoutLabel,
   dimensionFilter,
   allFilterDimensions,
   availableDimensions,
@@ -99,9 +99,12 @@ export function MetricControls({
     projectionInfo.projectionDimension &&
     (projectionInfo.isBinnable || projectionInfo.hasBinning);
 
-  const config = getTabConfig(tabType);
+  const config = getDimensionBreakoutConfig(dimensionBreakoutType);
   const chartTypes = config.availableDisplayTypes;
-  const effectiveDisplayType = isValidDisplayTypeForTab(displayType, tabType)
+  const effectiveDisplayType = isValidDisplayTypeForDimensionBreakout(
+    displayType,
+    dimensionBreakoutType,
+  )
     ? displayType
     : config.defaultDisplayType;
 
@@ -111,7 +114,9 @@ export function MetricControls({
   );
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
   const columnPickerLabel =
-    tabType === "time" ? t`Time` : (tabLabel ?? t`Select column`);
+    dimensionBreakoutType === "time"
+      ? t`Time`
+      : (dimensionBreakoutLabel ?? t`Select column`);
   const columnPickerIcon = projectionInfo.projectionDimension
     ? getDimensionIcon(projectionInfo.projectionDimension)
     : undefined;

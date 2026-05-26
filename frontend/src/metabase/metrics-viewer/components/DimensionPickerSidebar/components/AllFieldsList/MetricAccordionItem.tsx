@@ -1,5 +1,5 @@
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type { MetricsViewerTabState } from "metabase/metrics-viewer/types";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type { DimensionPickerItem } from "metabase/metrics-viewer/utils";
 import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 
@@ -8,13 +8,13 @@ import S from "./MetricAccordionItem.module.css";
 import type { AllFieldsMetricGroup } from "./types";
 
 export function MetricAccordionItem({
-  activeTab,
+  activeDimensionBreakout,
   group,
   isExpanded,
   onToggle,
   onSelect,
 }: {
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   group: AllFieldsMetricGroup;
   isExpanded: boolean;
   onToggle: () => void;
@@ -43,7 +43,7 @@ export function MetricAccordionItem({
       {isExpanded && (
         <Box className={S.metricAccordionPanel}>
           <AllFieldsSectionList
-            activeTab={activeTab}
+            activeDimensionBreakout={activeDimensionBreakout}
             sections={group.sections}
             onSelect={onSelect}
           />

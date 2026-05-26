@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
   SourceColorMap,
 } from "metabase/metrics-viewer/types";
 import type {
@@ -18,7 +18,7 @@ import { MetricAccordionList } from "./MetricAccordionList";
 import { buildAllFieldsMetricGroups } from "./buildAllFieldsMetricGroups";
 
 type AllFieldsListProps = {
-  activeTab: MetricsViewerTabState;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
   sections: DimensionPickerSection[];
   metricSourceOrder: MetricSourceId[];
   metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -28,7 +28,7 @@ type AllFieldsListProps = {
 };
 
 export function AllFieldsList({
-  activeTab,
+  activeDimensionBreakout,
   sections,
   metricSourceOrder,
   metricSourceDataById,
@@ -53,7 +53,7 @@ export function AllFieldsList({
   if (metricSourceOrder.length > 1 && metricGroups.length > 1) {
     return (
       <MetricAccordionList
-        activeTab={activeTab}
+        activeDimensionBreakout={activeDimensionBreakout}
         defaultExpandedGroupKeys={metricSourceOrder.slice(0, 1)}
         groups={metricGroups}
         onSelect={onSelect}
@@ -63,7 +63,7 @@ export function AllFieldsList({
 
   return (
     <AllFieldsSectionList
-      activeTab={activeTab}
+      activeDimensionBreakout={activeDimensionBreakout}
       sections={sections}
       onSelect={onSelect}
     />

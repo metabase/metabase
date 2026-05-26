@@ -21,11 +21,11 @@ export type MetricsViewerDisplayType = Extract<
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 export type MetricExpressionId = `expression:${string}`;
 
-export type MetricsViewerTabType = DimensionType | "scalar";
+export type MetricsViewerDimensionBreakoutType = DimensionType | "scalar";
 
-export interface StoredMetricsViewerTab {
+export interface StoredMetricsViewerDimensionBreakout {
   id: string;
-  type: MetricsViewerTabType;
+  type: MetricsViewerDimensionBreakoutType;
   label: string;
   dimensionBySlotIndex: Record<number, DimensionId>;
 }
@@ -61,7 +61,7 @@ export type ExpressionSubToken =
  * The entry's definition has 0-1 projections where that projection IS the breakout.
  *
  * This is different from the computed/modified definition (from getModifiedDefinition)
- * which adds the tab's dimension as an additional projection.
+ * which adds the dimension breakout's dimension as an additional projection.
  */
 export interface MetricsViewerDefinitionEntry {
   id: MetricSourceId;
@@ -96,23 +96,23 @@ export function isExpressionEntry(
   return entry.type === "expression";
 }
 
-// ── Tab state ──
+// ── Dimension breakout state ──
 
-export interface MetricsViewerTabProjectionConfig {
+export interface MetricsViewerDimensionBreakoutProjectionConfig {
   temporalUnit?: TemporalUnit;
   binningStrategy?: string;
   dimensionFilter?: DimensionFilterValue;
 }
 
-export interface MetricsViewerTabState {
+export interface MetricsViewerDimensionBreakoutState {
   id: string;
-  type: MetricsViewerTabType;
+  type: MetricsViewerDimensionBreakoutType;
   label: string | null;
   display: MetricsViewerDisplayType;
   showColumnLabels?: boolean;
   visualizationSettings?: Partial<VisualizationSettings>;
   dimensionMapping: Record<number, DimensionId | null>;
-  projectionConfig: MetricsViewerTabProjectionConfig;
+  projectionConfig: MetricsViewerDimensionBreakoutProjectionConfig;
 }
 
 // ── Page state ──
@@ -120,16 +120,16 @@ export interface MetricsViewerTabState {
 export interface MetricsViewerPageState {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // pristine definitions for unique metrics used in formula
   formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
-  tabs: MetricsViewerTabState[]; // visualization settings for a tab
-  selectedTabId: string | null;
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[]; // visualization settings for a dimension breakout
+  selectedDimensionBreakoutId: string | null;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   return {
     definitions: {},
     formulaEntities: [],
-    tabs: [],
-    selectedTabId: null,
+    dimensionBreakouts: [],
+    selectedDimensionBreakoutId: null,
   };
 }
 

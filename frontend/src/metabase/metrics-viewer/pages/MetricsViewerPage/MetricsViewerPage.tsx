@@ -14,10 +14,10 @@ import {
 } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
   MetricsViewerEmptyState,
-  MetricsViewerNoTabsEmptyState,
+  MetricsViewerNoDimensionBreakoutEmptyState,
 } from "metabase/metrics-viewer/components/EmptyState";
 import { MetricSearchPanel } from "metabase/metrics-viewer/components/MetricSearchPanel";
-import { MetricsViewerTabContent } from "metabase/metrics-viewer/components/MetricsViewerTabs";
+import { MetricsViewerDimensionBreakoutContent } from "metabase/metrics-viewer/components/MetricsViewerDimensionBreakoutContent";
 import { useMetricsViewer } from "metabase/metrics-viewer/hooks";
 import type { SelectedMetric } from "metabase/metrics-viewer/types";
 import { Box, Center, Flex, Stack } from "metabase/ui";
@@ -43,7 +43,7 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
   const {
     definitions,
     formulaEntities,
-    activeTab,
+    activeDimensionBreakout,
     initialLoadComplete,
     queriesAreLoading,
     queriesError,
@@ -56,15 +56,15 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
     selectedMetrics,
     sourceOrder,
     sourceDataById,
-    activeTabAvailableDimensions,
+    activeDimensionBreakoutAvailableDimensions,
     sidebarAvailableDimensions,
     addMetric,
     swapMetric,
     removeMetric,
-    addAndSelectTab,
-    updateActiveTab,
-    changeTabDimension,
-    removeTabDimension,
+    selectDimensionBreakout,
+    updateActiveDimensionBreakout,
+    changeDimensionBreakoutDimension,
+    removeDimensionBreakoutDimension,
     setBreakoutDimension,
     setFormulaEntities,
   } = useMetricsViewerResult;
@@ -127,11 +127,11 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
             >
               {!hasDefinitions ? (
                 <MetricsViewerEmptyState />
-              ) : activeTab ? (
-                <MetricsViewerTabContent
+              ) : activeDimensionBreakout ? (
+                <MetricsViewerDimensionBreakoutContent
                   definitions={definitions}
                   formulaEntities={formulaEntities}
-                  tab={activeTab}
+                  dimensionBreakout={activeDimensionBreakout}
                   queriesAreLoading={queriesAreLoading}
                   queriesError={queriesError}
                   modifiedDefinitionsBySlotIndex={
@@ -141,33 +141,46 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                   series={series}
                   cardIdToEntityIndex={cardIdToEntityIndex}
                   sourceColors={sourceColors}
-                  availableDimensions={activeTabAvailableDimensions}
+                  availableDimensions={
+                    activeDimensionBreakoutAvailableDimensions
+                  }
                   sourceOrder={sourceOrder}
-                  onTabUpdate={updateActiveTab}
+                  onDimensionBreakoutUpdate={updateActiveDimensionBreakout}
                   onDimensionChange={(slotIndex, dim) =>
-                    changeTabDimension(activeTab.id, slotIndex, dim)
+                    changeDimensionBreakoutDimension(
+                      activeDimensionBreakout.id,
+                      slotIndex,
+                      dim,
+                    )
                   }
                   onDimensionRemove={(slotIndex) =>
-                    removeTabDimension(activeTab.id, slotIndex)
+                    removeDimensionBreakoutDimension(
+                      activeDimensionBreakout.id,
+                      slotIndex,
+                    )
                   }
                 />
               ) : hasLoadedDefinitions ? (
-                <MetricsViewerNoTabsEmptyState />
+                <MetricsViewerNoDimensionBreakoutEmptyState />
               ) : null}
             </Flex>
-            {activeTab &&
-              activeTab.type !== "scalar" &&
+            {activeDimensionBreakout &&
+              activeDimensionBreakout.type !== "scalar" &&
               (isDimensionPickerSidebarOpen ? (
                 <DimensionPickerSidebar
-                  activeTab={activeTab}
+                  activeDimensionBreakout={activeDimensionBreakout}
                   availableDimensions={sidebarAvailableDimensions}
-                  allFieldsAvailableDimensions={activeTabAvailableDimensions}
+                  allFieldsAvailableDimensions={
+                    activeDimensionBreakoutAvailableDimensions
+                  }
                   metricSlots={metricSlots}
                   sourceColors={sourceColors}
                   metricSourceOrder={sourceOrder}
                   metricSourceDataById={sourceDataById}
-                  onAddTab={addAndSelectTab}
-                  onUpdateActiveTab={updateActiveTab}
+                  onSelectDimensionBreakout={selectDimensionBreakout}
+                  onUpdateActiveDimensionBreakout={
+                    updateActiveDimensionBreakout
+                  }
                 />
               ) : (
                 <BreakoutLegend

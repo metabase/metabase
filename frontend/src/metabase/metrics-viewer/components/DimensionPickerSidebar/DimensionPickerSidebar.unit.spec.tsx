@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
   MetricSourceId,
-  MetricsViewerTabState,
+  MetricsViewerDimensionBreakoutState,
 } from "metabase/metrics-viewer/types";
 import type {
   AvailableDimensionsResult,
@@ -19,8 +19,8 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 const SOURCE_ID: MetricSourceId = "metric:1";
 const SECOND_SOURCE_ID: MetricSourceId = "metric:2";
 
-const activeTab: MetricsViewerTabState = {
-  id: "tab-category",
+const activeDimensionBreakout: MetricsViewerDimensionBreakoutState = {
+  id: "dimensionBreakout-category",
   type: "category",
   label: "Category",
   display: "bar",
@@ -28,7 +28,7 @@ const activeTab: MetricsViewerTabState = {
   projectionConfig: {},
 };
 
-const timeTab: MetricsViewerTabState = {
+const timeDimensionBreakout: MetricsViewerDimensionBreakoutState = {
   id: "dim-created-at",
   type: "time",
   label: "Created At",
@@ -43,7 +43,7 @@ const availableDimensions: AvailableDimensionsResult = {
     [SOURCE_ID]: [
       {
         icon: "label",
-        tabInfo: {
+        dimensionBreakoutInfo: {
           type: "category",
           label: "Category",
           dimensionMapping: { 0: "dim-category" },
@@ -51,7 +51,7 @@ const availableDimensions: AvailableDimensionsResult = {
       },
       {
         icon: "calendar",
-        tabInfo: {
+        dimensionBreakoutInfo: {
           type: "time",
           label: "Created At",
           dimensionMapping: { 0: "dim-created-at" },
@@ -59,7 +59,7 @@ const availableDimensions: AvailableDimensionsResult = {
       },
       {
         icon: "calendar",
-        tabInfo: {
+        dimensionBreakoutInfo: {
           type: "time",
           label: "Order Date",
           dimensionMapping: { 0: "dim-order-date" },
@@ -74,37 +74,37 @@ const sourceDataById: Record<MetricSourceId, SourceDisplayInfo> = {
 };
 
 function setup({
-  tab = activeTab,
+  dimensionBreakout = activeDimensionBreakout,
   dimensions = availableDimensions,
   slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
   sourceOrder = [SOURCE_ID],
   sources = sourceDataById,
 }: {
-  tab?: MetricsViewerTabState;
+  dimensionBreakout?: MetricsViewerDimensionBreakoutState;
   dimensions?: AvailableDimensionsResult;
   slots?: MetricSlot[];
   sourceOrder?: MetricSourceId[];
   sources?: Record<MetricSourceId, SourceDisplayInfo>;
 } = {}) {
-  const onAddTab = jest.fn();
-  const onUpdateActiveTab = jest.fn();
+  const onSelectDimensionBreakout = jest.fn();
+  const onUpdateActiveDimensionBreakout = jest.fn();
 
   renderWithProviders(
     <DimensionPickerSidebarProvider>
       <DimensionPickerSidebar
-        activeTab={tab}
+        activeDimensionBreakout={dimensionBreakout}
         availableDimensions={dimensions}
         metricSlots={slots}
         sourceColors={{ 0: ["#509ee3"], 1: ["#f9d45c"] }}
         metricSourceOrder={sourceOrder}
         metricSourceDataById={sources}
-        onAddTab={onAddTab}
-        onUpdateActiveTab={onUpdateActiveTab}
+        onSelectDimensionBreakout={onSelectDimensionBreakout}
+        onUpdateActiveDimensionBreakout={onUpdateActiveDimensionBreakout}
       />
     </DimensionPickerSidebarProvider>,
   );
 
-  return { onAddTab, onUpdateActiveTab };
+  return { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout };
 }
 
 describe("DimensionPickerSidebar", () => {
@@ -130,8 +130,8 @@ describe("DimensionPickerSidebar", () => {
 
   it("does not select a swapped multi-metric dimension mapping", async () => {
     setup({
-      tab: {
-        id: "tab-time",
+      dimensionBreakout: {
+        id: "dimensionBreakout-time",
         type: "time",
         label: "Time",
         display: "line",
@@ -144,7 +144,7 @@ describe("DimensionPickerSidebar", () => {
           [SOURCE_ID]: [
             {
               icon: "calendar",
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Swapped dates",
                 dimensionMapping: { 0: "dim-order-date", 1: "dim-created-at" },
@@ -197,14 +197,15 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("updates the active time tab with the clicked time field from all fields", async () => {
-    const { onAddTab, onUpdateActiveTab } = setup({ tab: timeTab });
+  it("updates the active time dimensionBreakout with the clicked time field from all fields", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({ dimensionBreakout: timeDimensionBreakout });
 
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
     await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
 
-    expect(onAddTab).not.toHaveBeenCalled();
-    expect(onUpdateActiveTab).toHaveBeenCalledWith({
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
       label: "Order Date",
       dimensionMapping: { 0: "dim-order-date" },
     });
@@ -217,7 +218,7 @@ describe("DimensionPickerSidebar", () => {
           {
             icon: "string",
             group: { id: "customers", type: "main", displayName: "Customers" },
-            tabInfo: {
+            dimensionBreakoutInfo: {
               type: "category",
               label: "Customer Name",
               dimensionMapping: {
@@ -236,7 +237,7 @@ describe("DimensionPickerSidebar", () => {
                 type: "main",
                 displayName: "Subscriptions",
               },
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "time",
                 label: "Placed At",
                 dimensionMapping: { 0: "dim-placed-at" },
@@ -247,7 +248,7 @@ describe("DimensionPickerSidebar", () => {
             {
               icon: "label",
               group: { id: "orders", type: "main", displayName: "Orders" },
-              tabInfo: {
+              dimensionBreakoutInfo: {
                 type: "category",
                 label: "Order Status",
                 dimensionMapping: { 1: "dim-order-status" },
@@ -431,7 +432,7 @@ describe("DimensionPickerSidebar", () => {
   });
 
   it("closes column selects when another category row is clicked", async () => {
-    setup({ tab: timeTab });
+    setup({ dimensionBreakout: timeDimensionBreakout });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Configure Time" }),
@@ -447,32 +448,33 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("adds a new dimension tab and tracks it", async () => {
-    const { onAddTab } = setup();
+  it("selects a new dimension breakout and tracks it", async () => {
+    const { onSelectDimensionBreakout } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Time" }));
 
-    expect(onAddTab).toHaveBeenCalledWith({
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
       type: "time",
       label: "Time",
       dimensionMapping: { 0: "dim-created-at" },
     });
     expect(trackSimpleEvent).toHaveBeenCalledWith({
-      event: "metrics_viewer_dimension_tab_added",
+      event: "metrics_viewer_dimension_selected",
     });
   });
 
   it("does not add or track the already-selected dimension", async () => {
-    const { onAddTab } = setup();
+    const { onSelectDimensionBreakout } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Category" }));
 
-    expect(onAddTab).not.toHaveBeenCalled();
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
-  it("updates the active tab mapping from a metric column select", async () => {
-    const { onAddTab, onUpdateActiveTab } = setup({ tab: timeTab });
+  it("updates the active dimensionBreakout mapping from a metric column select", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({ dimensionBreakout: timeDimensionBreakout });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Configure Time" }),
@@ -482,10 +484,10 @@ describe("DimensionPickerSidebar", () => {
     );
     await userEvent.click(screen.getByRole("option", { name: /Order Date/ }));
 
-    expect(onUpdateActiveTab).toHaveBeenCalledWith({
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
       dimensionMapping: { 0: "dim-order-date" },
     });
-    expect(onAddTab).not.toHaveBeenCalled();
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
     expect(trackSimpleEvent).not.toHaveBeenCalled();
     expect(screen.getByText("Group by")).toBeInTheDocument();
   });

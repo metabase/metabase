@@ -17,9 +17,9 @@ import {
   type BreakoutColorMap,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
+  type MetricsViewerDimensionBreakoutType,
   type MetricsViewerDisplayType,
   type MetricsViewerFormulaEntity,
-  type MetricsViewerTabType,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -57,8 +57,8 @@ type DisplayTypeDefinition = {
   ) => VisualizationSettings;
 };
 
-interface BaseTabTypeDefinition {
-  type: MetricsViewerTabType;
+interface BaseDimensionBreakoutTypeDefinition {
+  type: MetricsViewerDimensionBreakoutType;
   dimensionPredicate: (dimension: DimensionMetadata) => boolean;
   autoCreate: boolean;
   dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
@@ -68,16 +68,18 @@ interface BaseTabTypeDefinition {
   index?: number;
 }
 
-interface AggregateTabType extends BaseTabTypeDefinition {
+interface AggregateDimensionBreakoutType extends BaseDimensionBreakoutTypeDefinition {
   matchMode: "aggregate";
   fixedId: string;
 }
 
-interface ExactColumnTabType extends BaseTabTypeDefinition {
+interface ExactColumnDimensionBreakoutType extends BaseDimensionBreakoutTypeDefinition {
   matchMode: "exact-column";
 }
 
-export type TabTypeDefinition = AggregateTabType | ExactColumnTabType;
+export type DimensionBreakoutTypeDefinition =
+  | AggregateDimensionBreakoutType
+  | ExactColumnDimensionBreakoutType;
 
 // ── Chart type presets ──
 
@@ -97,74 +99,79 @@ const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
   { type: "scatter", icon: "bubble" },
 ];
 
-// ── Tab type registry ──
+// ── DimensionBreakout type registry ──
 
-export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
-  {
-    type: "time",
-    dimensionPredicate: DIMENSION_PREDICATES.time,
-    autoCreate: true,
-    matchMode: "aggregate",
-    fixedId: "time",
-    defaultDisplayType: "line",
-    availableDisplayTypes: STANDARD_CHART_TYPES,
-    minDimensions: 1,
-  },
-  {
-    type: "geo",
-    dimensionPredicate: DIMENSION_PREDICATES.geo,
-    autoCreate: true,
-    matchMode: "aggregate",
-    fixedId: "geo",
-    dimensionSubtype: getGeoSubtype,
-    defaultDisplayType: "map",
-    availableDisplayTypes: GEO_CHART_TYPES,
-    minDimensions: 1,
-  },
-  {
-    type: "scalar",
-    autoCreate: true,
-    matchMode: "aggregate",
-    fixedId: "scalar",
-    dimensionPredicate: () => false,
-    defaultDisplayType: "scalar",
-    availableDisplayTypes: [{ type: "scalar", icon: "number" }],
-    index: 5,
-    minDimensions: 0,
-  },
-  {
-    type: "category",
-    dimensionPredicate: DIMENSION_PREDICATES.category,
-    autoCreate: true,
-    matchMode: "exact-column",
-    defaultDisplayType: "bar",
-    availableDisplayTypes: STANDARD_CHART_TYPES,
-    minDimensions: 1,
-  },
-  {
-    type: "boolean",
-    dimensionPredicate: DIMENSION_PREDICATES.boolean,
-    autoCreate: true,
-    matchMode: "exact-column",
-    defaultDisplayType: "bar",
-    availableDisplayTypes: STANDARD_CHART_TYPES,
-    minDimensions: 1,
-  },
-  {
-    type: "numeric",
-    dimensionPredicate: DIMENSION_PREDICATES.numeric,
-    autoCreate: false,
-    matchMode: "exact-column",
-    defaultDisplayType: "bar",
-    availableDisplayTypes: NUMERIC_CHART_TYPES,
-    minDimensions: 1,
-  },
-];
+export const DIMENSION_BREAKOUT_TYPE_REGISTRY: DimensionBreakoutTypeDefinition[] =
+  [
+    {
+      type: "time",
+      dimensionPredicate: DIMENSION_PREDICATES.time,
+      autoCreate: true,
+      matchMode: "aggregate",
+      fixedId: "time",
+      defaultDisplayType: "line",
+      availableDisplayTypes: STANDARD_CHART_TYPES,
+      minDimensions: 1,
+    },
+    {
+      type: "geo",
+      dimensionPredicate: DIMENSION_PREDICATES.geo,
+      autoCreate: true,
+      matchMode: "aggregate",
+      fixedId: "geo",
+      dimensionSubtype: getGeoSubtype,
+      defaultDisplayType: "map",
+      availableDisplayTypes: GEO_CHART_TYPES,
+      minDimensions: 1,
+    },
+    {
+      type: "scalar",
+      autoCreate: true,
+      matchMode: "aggregate",
+      fixedId: "scalar",
+      dimensionPredicate: () => false,
+      defaultDisplayType: "scalar",
+      availableDisplayTypes: [{ type: "scalar", icon: "number" }],
+      index: 5,
+      minDimensions: 0,
+    },
+    {
+      type: "category",
+      dimensionPredicate: DIMENSION_PREDICATES.category,
+      autoCreate: true,
+      matchMode: "exact-column",
+      defaultDisplayType: "bar",
+      availableDisplayTypes: STANDARD_CHART_TYPES,
+      minDimensions: 1,
+    },
+    {
+      type: "boolean",
+      dimensionPredicate: DIMENSION_PREDICATES.boolean,
+      autoCreate: true,
+      matchMode: "exact-column",
+      defaultDisplayType: "bar",
+      availableDisplayTypes: STANDARD_CHART_TYPES,
+      minDimensions: 1,
+    },
+    {
+      type: "numeric",
+      dimensionPredicate: DIMENSION_PREDICATES.numeric,
+      autoCreate: false,
+      matchMode: "exact-column",
+      defaultDisplayType: "bar",
+      availableDisplayTypes: NUMERIC_CHART_TYPES,
+      minDimensions: 1,
+    },
+  ];
 
-export function getTabConfig(type: MetricsViewerTabType): TabTypeDefinition {
-  const config = TAB_TYPE_REGISTRY.find((config) => config.type === type);
+export function getDimensionBreakoutConfig(
+  type: MetricsViewerDimensionBreakoutType,
+): DimensionBreakoutTypeDefinition {
+  const config = DIMENSION_BREAKOUT_TYPE_REGISTRY.find(
+    (config) => config.type === type,
+  );
   if (!config) {
-    throw new Error(`No tab config found for type: ${type}`);
+    throw new Error(`No dimension breakout config found for type: ${type}`);
   }
   return config;
 }

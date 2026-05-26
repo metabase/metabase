@@ -1,34 +1,39 @@
 import { t } from "ttag";
 
-import type { MetricsViewerTabState } from "metabase/metrics-viewer/types";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type {
+  DimensionBreakoutInfo,
   DimensionPickerItem,
   DimensionPickerSection,
   DimensionPickerSidebarCategory,
-  TabInfo,
 } from "metabase/metrics-viewer/utils";
 
-function getDimensionMappingEntries(tabInfo: TabInfo | MetricsViewerTabState) {
-  return Object.entries(tabInfo.dimensionMapping).filter(
+function getDimensionMappingEntries(
+  dimensionBreakoutInfo:
+    | DimensionBreakoutInfo
+    | MetricsViewerDimensionBreakoutState,
+) {
+  return Object.entries(dimensionBreakoutInfo.dimensionMapping).filter(
     (entry): entry is [string, string] => entry[1] != null,
   );
 }
 
 export function hasSameDimensions(
   item: DimensionPickerItem,
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
-  if (item.tabInfo.type !== tab.type) {
+  if (item.dimensionBreakoutInfo.type !== dimensionBreakout.type) {
     return false;
   }
 
-  const itemEntries = getDimensionMappingEntries(item.tabInfo);
-  const tabEntries = getDimensionMappingEntries(tab);
+  const itemEntries = getDimensionMappingEntries(item.dimensionBreakoutInfo);
+  const dimensionBreakoutEntries =
+    getDimensionMappingEntries(dimensionBreakout);
   return (
-    itemEntries.length === tabEntries.length &&
+    itemEntries.length === dimensionBreakoutEntries.length &&
     itemEntries.every(
       ([slotIndex, dimensionId]) =>
-        tab.dimensionMapping[Number(slotIndex)] === dimensionId,
+        dimensionBreakout.dimensionMapping[Number(slotIndex)] === dimensionId,
     )
   );
 }
@@ -62,22 +67,25 @@ export function getSidebarSectionName(sectionName?: string) {
 
 export function getSelectedCategoryKey(
   categories: DimensionPickerSidebarCategory[],
-  activeTab: MetricsViewerTabState,
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
-  return categories.find((category) => isCategorySelected(category, activeTab))
-    ?.key;
+  return categories.find((category) =>
+    isCategorySelected(category, activeDimensionBreakout),
+  )?.key;
 }
 
 export function isCategorySelected(
   category: DimensionPickerSidebarCategory,
-  activeTab: MetricsViewerTabState,
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
   if (category.tabInfo.type === "time" && activeTab.type === "time") {
     return true;
   }
 
   return (
-    hasSameDimensions(category, activeTab) ||
-    category.targetItems.some((item) => hasSameDimensions(item, activeTab))
+    hasSameDimensions(category, activeDimensionBreakout) ||
+    category.targetItems.some((item) =>
+      hasSameDimensions(item, activeDimensionBreakout),
+    )
   );
 }
