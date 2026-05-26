@@ -269,3 +269,78 @@
     (is (= semantic.db.migration.impl/dynamic-schema-version
            (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
                :version)))))
+
+(defn- active-index-table-name!
+  [pgvector]
+  (-> (jdbc/execute-one! pgvector
+                         (sql/format {:select [:im.table_name]
+                                      :from   [[:index_control :ic]]
+                                      :join   [[:index_metadata :im] [:= :ic.active_id :im.id]]}))
+      :index_metadata/table_name))
+
+(defn- insert-index-row!
+  "Raw INSERT into the active index table for backfill tests. Fills in the minimum NOT NULL
+  columns with placeholder values; `row` supplies anything else (model, model_id,
+  collection_type, root_collection_type)."
+  [pgvector kw-tbl row]
+  (jdbc/execute! pgvector
+                 (sql/format {:insert-into kw-tbl
+                              :values      [(merge {:name                                 [:inline ""]
+                                                    :content                              [:inline ""]
+                                                    :text_search_vector                   [:to_tsvector [:inline "simple"] [:inline ""]]
+                                                    :text_search_with_native_query_vector [:to_tsvector [:inline "simple"] [:inline ""]]
+                                                    :embedding                            [:raw "'[0,0,0,0]'::vector"]}
+                                                   row)]}
+                             :quoted true)))
+
+(deftest migration-4-backfill-test
+  (testing "migration 4 backfills root_collection_type from the gate doc, then from collection_type when it's a library root"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db-defaults!
+        (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
+          (semantic.core/init! (semantic.tu/mock-documents) nil)
+          (let [pgvector (semantic.env/get-pgvector-datasource!)
+                kw-tbl   (keyword (active-index-table-name! pgvector))]
+            ;; row 1: NULL root_collection_type; matching gate doc carries "library" in its document JSON
+            (insert-index-row! pgvector kw-tbl {:model [:inline "card"] :model_id [:inline "1"]})
+            ;; row 2: NULL root_collection_type; collection_type itself is a library root
+            (insert-index-row! pgvector kw-tbl {:model           [:inline "card"]
+                                                :model_id        [:inline "2"]
+                                                :collection_type [:inline "library"]})
+            ;; row 3: NULL root_collection_type; collection_type is "trash" (non-library root)
+            (insert-index-row! pgvector kw-tbl {:model           [:inline "card"]
+                                                :model_id        [:inline "3"]
+                                                :collection_type [:inline "trash"]})
+            ;; row 4: already-populated root_collection_type — backfill must leave it alone
+            (insert-index-row! pgvector kw-tbl {:model                [:inline "card"]
+                                                :model_id             [:inline "4"]
+                                                :root_collection_type [:inline "library-data"]})
+            ;; Gate doc for row 1 — JSON includes root_collection_type
+            (jdbc/execute! pgvector
+                           (sql/format {:insert-into :index_gate
+                                        :values [{:id            [:inline "card_1"]
+                                                  :model         [:inline "card"]
+                                                  :model_id      [:inline "1"]
+                                                  :updated_at    [:now]
+                                                  :document      [:cast [:inline "{\"root_collection_type\":\"library\"}"] :jsonb]
+                                                  :document_hash [:inline "h"]}]}
+                                       :quoted true))
+            ;; Roll metadata.index_version back to 3 so migration 4 re-runs against the table.
+            (jdbc/execute! pgvector
+                           (sql/format {:update :index_metadata
+                                        :set    {:index_version 3}}))
+            ;; Trigger re-migration via init.
+            (semantic.core/init! (semantic.tu/mock-documents) nil)
+            ;; Verify each backfill branch.
+            (let [rows-by-id (->> (jdbc/execute! pgvector
+                                                 (sql/format {:select   [[:model_id :mid] [:root_collection_type :rct]]
+                                                              :from     [kw-tbl]
+                                                              :order-by [:model_id]}
+                                                             :quoted true))
+                                  (map (juxt :mid :rct))
+                                  (into {}))]
+              (is (= {"1" "library"        ; pulled from gate.document->>'root_collection_type'
+                      "2" "library"        ; pulled from collection_type (library root)
+                      "3" nil              ; collection_type wasn't a library root, no gate doc
+                      "4" "library-data"}  ; pre-existing value preserved
+                     rows-by-id)))))))))
