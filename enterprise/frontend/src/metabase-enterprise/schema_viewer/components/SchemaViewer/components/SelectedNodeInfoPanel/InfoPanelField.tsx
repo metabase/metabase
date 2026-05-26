@@ -13,8 +13,9 @@ import {
 import * as Lib from "metabase-lib";
 import type { ErdField, Field } from "metabase-types/api";
 
-import S from "../../SchemaViewer.module.css";
 import type { SchemaViewerFlowNode } from "../../types";
+
+import S from "./SelectedNodeInfoPanel.module.css";
 
 type InfoPanelFieldProps = {
   field: Field;
@@ -62,8 +63,8 @@ export function InfoPanelField({
         <Loader size="xs" data-testid="schema-viewer-info-panel-fetch-loader" />
       )}
       {targetNode != null && (
-        <Group gap="xs" wrap="nowrap" flex="1 1 auto" miw={0}>
-          <Text c="text-tertiary" lh={1}>
+        <Group gap="xs" wrap="nowrap" flex="1 1 auto" h="100%" miw={0}>
+          <Text c="text-tertiary" lh={1} fz="1rem">
             →
           </Text>
           <UnstyledButton
@@ -71,14 +72,8 @@ export function InfoPanelField({
             c="brand"
             onClick={() => onZoomToNode(targetNode.id)}
           >
-            <Group
-              gap={4}
-              wrap="nowrap"
-              display="inline-flex"
-              style={{ alignItems: "center" }}
-              w="100%"
-            >
-              <FixedSizeIcon name="table2" />
+            <Group gap={4} wrap="nowrap" style={{ alignItems: "end" }} w="100%">
+              <FixedSizeIcon name="table" size={14} />
               <span className={S.targetName}>
                 {formatTargetTableName(selectedNode, targetNode)}
               </span>

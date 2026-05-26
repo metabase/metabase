@@ -1,0 +1,26 @@
+.infoPanel {
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  max-height: calc(100% - var(--minimap-height));
+  z-index: var(--canvas-element-z-index);
+
+  .fieldName {
+    flex: 0 1 auto;
+    white-space: nowrap;
+  }
+
+  .fkLink {
+    line-height: 1;
+
+    &:hover span {
+      text-decoration: underline;
+    }
+  }
+
+  /* Fixed-height field rows so FK rows (with target-table link) and plain
+     rows occupy the same vertical space. */
+  .fieldRow {
+    height: 1rem;
+  }
+}

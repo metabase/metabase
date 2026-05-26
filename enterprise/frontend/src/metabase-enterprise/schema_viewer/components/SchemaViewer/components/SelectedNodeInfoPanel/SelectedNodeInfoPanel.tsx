@@ -12,12 +12,12 @@ import type {
   TableDependencyNodeData,
 } from "metabase-types/api";
 
-import S from "../../SchemaViewer.module.css";
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
 import { getEdgeId } from "../../utils";
 
 import { InfoPanelField } from "./InfoPanelField";
+import S from "./SelectedNodeInfoPanel.module.css";
 
 type SelectedNodeInfoPanelProps = {
   nodes: SchemaViewerFlowNode[];
@@ -181,6 +181,10 @@ function toTableDependencyNode(
     db_id: node.data.db_id,
     schema: node.data.schema ?? "",
     db,
+    // The cast to Field here is necessary, because GraphInfoPanel component
+    // is too coupled with TableDependencyNode type, and to avoid duplicating
+    // most of its internal code to create the same popup, it's easier
+    // to cast it to expected type here.
     fields: node.data.fields.map(
       (f): Field =>
         ({
