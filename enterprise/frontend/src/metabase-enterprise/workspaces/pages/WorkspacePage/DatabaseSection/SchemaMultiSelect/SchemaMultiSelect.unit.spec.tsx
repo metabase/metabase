@@ -38,9 +38,8 @@ describe("SchemaMultiSelect", () => {
   it("can select the first schema", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "public" }),
+      await screen.findByRole("checkbox", { name: "public" }),
     );
 
     expect(onChange).toHaveBeenCalledWith(["public"]);
@@ -49,11 +48,30 @@ describe("SchemaMultiSelect", () => {
   it("can select the second schema", async () => {
     const { onChange } = setup({ value: ["public"] });
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "analytics" }),
+      await screen.findByRole("checkbox", { name: "analytics" }),
     );
 
     expect(onChange).toHaveBeenCalledWith(["public", "analytics"]);
+  });
+
+  it("selects all schemas via the top-level checkbox", async () => {
+    const { onChange } = setup({ value: ["public"] });
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Select all" }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith(["public", "analytics"]);
+  });
+
+  it("clears all schemas when all are already selected", async () => {
+    const { onChange } = setup({ value: ["public", "analytics"] });
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Select none" }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith([]);
   });
 });

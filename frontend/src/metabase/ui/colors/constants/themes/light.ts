@@ -35,6 +35,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     overlay: baseColors.orionAlpha[60],
     "background-error": baseColors.lobster[10],
     "background-success": baseColors.palm[5],
+    "background-success-secondary": baseColors.palm[20],
     brand: baseColors.blue[40],
     "brand-hover": baseColors.brand[50],
     danger: baseColors.lobster[50],

@@ -4,10 +4,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
+import { WorkspaceListEmptyState } from "./WorkspaceListEmptyState";
 
 function setup() {
-  renderWithProviders(<Route path="*" component={WorkspaceEmptyState} />, {
+  renderWithProviders(<Route path="*" component={WorkspaceListEmptyState} />, {
     withRouter: true,
     storeInitialState: {
       settings: createMockSettingsState(
@@ -17,7 +17,15 @@ function setup() {
   });
 }
 
-describe("WorkspaceEmptyState", () => {
+describe("WorkspaceListEmptyState", () => {
+  it("renders the create workspace button", () => {
+    setup();
+
+    expect(
+      screen.getByRole("button", { name: "Create a workspace" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders docs link buttons", () => {
     setup();
 
