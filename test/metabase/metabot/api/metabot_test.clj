@@ -154,7 +154,6 @@
                     (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
                       (is (=? {:status "generated" :prompt_count pos-int?}
                               (mt/user-http-request :crowberto :post 200 url)))))))
-
               (let [new-prompt-ids (current-prompt-ids)]
                 (is (= (count all-prompt-ids) (count new-prompt-ids)))
                 (is (empty? (set/intersection all-prompt-ids new-prompt-ids)))

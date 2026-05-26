@@ -50,7 +50,6 @@
               (is (=? {:status "generated" :prompt_count 10}
                       (mt/user-http-request :crowberto :post 200
                                             (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
-
             (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
                                      :metabot_id metabot-id
                                      {:join     [[:report_card :card] [:= :card.id :card_id]]
