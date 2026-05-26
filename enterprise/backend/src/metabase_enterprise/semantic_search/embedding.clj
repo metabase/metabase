@@ -277,7 +277,7 @@
       (throw (ex-info "Embedding service and ai service base URLs and not configured"
                       {:setting ["ee-embedding-service-base-url"
                                  "ai-service-base-url"]}))
-      [(llm.settings/ai-service-base-url) nil])
+      [(str (llm.settings/ai-service-base-url) "/v1/embeddings") nil])
     (let [base-url (semantic-settings/ee-embedding-service-base-url)
           api-key  (semantic-settings/ee-embedding-service-api-key)]
       [(str base-url "/v1/embeddings") api-key])))
