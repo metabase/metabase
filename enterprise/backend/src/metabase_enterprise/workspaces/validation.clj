@@ -200,7 +200,6 @@
         internal-dependents      (get internal-dependents-map ref_id)
         has-internal-dependents? (seq internal-dependents)
         table-coord              {:db_id db_id :schema global_schema :table global_table}]
-
     (cond
       ;; Case 1: Isolated table doesn't exist yet
       (nil? isolated_table_id)

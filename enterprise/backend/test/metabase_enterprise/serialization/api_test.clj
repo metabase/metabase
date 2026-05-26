@@ -127,13 +127,11 @@
                                               :all_collections false :data_model false :settings true)]
                   (is (= #{:log :dir :settings :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export two collections"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :collection (:id coll2)
@@ -142,25 +140,21 @@
                          (->> (tar-file-types f true)
                               (filter #(= :collection (first %)))
                               count)))))
-
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
                   (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
-
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
                   (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
                          (tar-file-types f)))))
-
               (testing "On exception API returns log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                                   (mt/dynamic-value serdes/extract-one))]
@@ -178,14 +172,12 @@
                                :table     :report_card
                                :cause     "[test] deliberate error message"}
                               (extract-and-sanitize-exception-map log)))))))
-
               (testing "You can pass specific directory name"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :dirname "check" :all_collections false :data_model false :settings false)]
                   (is (= "check/"
                          (with-open [tar (open-tar f)]
                            (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))
-
               (testing "Invalid entity ID returns an error instead of falling back to root collection"
                 (let [fake-eid "abcdefghijklmnopqrstu"
                       res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
@@ -218,7 +210,6 @@
       (search/delete! :model/Card [(str (:id card))])
       (is (= 0 (search-result-count "dashboard" "thraddash")))
       (is (= 0 (search-result-count "dataset" "frobinate")))
-
       (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                           :collection (:id coll) :data_model false :settings false)
                     io/input-stream)
@@ -236,7 +227,6 @@
                                                    (count (line-seq (io/reader tar))))))
                           nil)
                         (.getName e))))))))
-
         (testing "Snowplow export event was sent"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -260,16 +250,13 @@
       ;; Clear entities from search index
       (search/delete! :model/Dashboard [(str (:id dash))])
       (search/delete! :model/Card [(str (:id card))])
-
       ;; Export the data
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         ;; Modify entities in the database
         (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
         (t2/delete! :model/Card (:id card))
-
         (let [re-indexed? (atom false)
               res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
@@ -278,11 +265,9 @@
           (testing "Log contains imported entity types"
             (is (= #{"Collection" "Dashboard" "Card" "PythonLibrary" "TransformJob" "TransformTag"}
                    (log-types (line-seq (io/reader (io/input-stream res)))))))
-
           (testing "Entities are restored in the database"
             (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
             (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
-
           (testing "Snowplow import event was sent"
             (is (=? {"event"         "serialization"
                      "direction"     "import"
@@ -294,10 +279,8 @@
                      "success"       true
                      "error_message" nil}
                     (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
-
           (testing "Full reindex was not triggered (reindex=false)"
             (is (false? @re-indexed?)))
-
           (testing "Entities are added to the search index"
             (is (= 1 (search-result-count "dashboard" "thraddash")))
             (is (= 0 (search-result-count "dashboard" "urquan")))
@@ -309,7 +292,6 @@
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
@@ -322,7 +304,6 @@
                 log (slurp (io/input-stream res))]
             (testing "Error message indicates missing collection"
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
-
             (testing "Snowplow failure event was sent"
               (is (=? {"success"       false
                        "event"         "serialization"
@@ -340,7 +321,6 @@
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
-
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
@@ -355,7 +335,6 @@
               (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "PythonLibrary"}
                      (log-types (str/split-lines log))))
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
-
             (testing "Snowplow event shows partial success with error count"
               (is (=? {"success"     true
                        "event"       "serialization"
@@ -392,7 +371,6 @@
                       :table     :report_card
                       :cause     "[test] deliberate error message"}
                      (extract-and-sanitize-exception-map log))))))
-
         (testing "Snowplow failure event was sent"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -408,7 +386,6 @@
                    "success"         false
                    "error_message"   #"(?s)Error extracting Card \d+ .*"}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
-
         (testing "full_stacktrace parameter includes full stack trace"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
@@ -435,7 +412,6 @@
                                   (is (= (+ #_extract 12 #_error 1 #_store 11)
                                          (count (line-seq (io/reader tar))))))
                 nil))))
-
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -459,7 +435,6 @@
       (testing "Non-admin cannot export"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/serialization/export"))))
-
       (testing "Non-admin cannot import"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/serialization/import"
@@ -473,7 +448,6 @@
         (let [ba (do-export (:id coll))]
           ;; Consume the export response
           (snowplow-test/pop-event-data-and-user-id!)
-
           ;; Do an import to exercise that code path too
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}
@@ -481,7 +455,6 @@
             ;; Consume the import response
             (slurp (io/input-stream res))
             (snowplow-test/pop-event-data-and-user-id!))))
-
       ;; Verify no new files were left behind
       ;; if this breaks, check if you consumed every response with io/input-stream. Or `future` is taking too long
       ;; in `api/on-response!`, so maybe add some Thread/sleep here.

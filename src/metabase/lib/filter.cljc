@@ -133,7 +133,6 @@
       [(op :guard #{:= :in :!= :not-in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} {1} {2}" (->unbucketed-display-name a) (if (#{:= :in} op) "is at" "excludes the hour of")
                 (u.time/format-unit b :hour-of-day))
-
       [(op :guard #{:= :in :!= :not-in}) _ [:get-day-of-week _ (a :guard temporal?) :iso] & (args :guard (every? int? args))]
       (let [cnt (count args)
             in? (#{:= :in} op)]
@@ -145,41 +144,30 @@
 
               :else (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a)
                               (inflections/plural (u.time/format-unit (first args) :day-of-week-iso)))))
-
       [(_ :guard #{:= :in}) _ [(f :guard #{:get-month :get-quarter :get-year}) _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} is in {1}" (->unbucketed-display-name a) (u.time/format-unit b (->unit f)))
-
       [(_ :guard #{:!= :not-in}) _ [:get-month _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (u.time/format-unit b :month-of-year))
-
       [(_ :guard #{:!= :not-in}) _ [:get-quarter _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (u.time/format-unit b :quarter-of-year))
-
       [(_ :guard #{:!= :not-in}) _ [:get-year _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year))
-
       [(op :guard #{:= :in :!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard (every? int? args))]
       (i18n/tru "{0} {1} {2} {3} selections"
                 (->unbucketed-display-name a)
                 (if (#{:= :in} op) "is one of" "excludes")
                 (count args)
                 (-> f ->unit lib.temporal-bucket/describe-temporal-unit u/lower-case-en))
-
       [(_ :guard #{:= :in}) _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
-
       [(_ :guard #{:= :in}) _ (a :guard (unit= a lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
       (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
-
       [(_ :guard #{:= :in}) _ (a :guard (unit= a :day-of-week)) (b :guard (clojure.core/or (int? b) (string? b)))]
       (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
-
       [(_ :guard #{:= :in}) _ (a :guard temporal?) (b :guard (clojure.core/or (int? b) (string? b)))]
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
-
       [(_ :guard #{:!= :not-in}) _ (a :guard numeric?) b]
       (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
-
       [(_ :guard #{:!= :not-in}) _ (a :guard temporal?) (b :guard (clojure.core/or (int? b) (string? b)))]
       (let [tname (->temporal-name a b)]
         (cond (unit= a :day-of-week)
@@ -192,43 +180,34 @@
               (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) tname)
               (temporal? a)
               (i18n/tru "{0} excludes {1}" (->display-name a) (->temporal-name a b))))
-
       [(_ :guard #{:!= :not-in}) _ (a :guard temporal?) & args]
       (i18n/tru "{0} excludes {1} {2} selections" (->unbucketed-display-name a) (count args) (->bucket-name a))
-
       [(op :guard #{:= :in :!= :not-in}) _ (a :guard numeric?) & args]
       (i18n/tru "{0} is {1} to {2} selections" (->display-name a) (if (#{:= :in} op) "equal" "not equal") (count args))
-
       [(op :guard #{:= :in :!= :not-in}) _ a b]
       (i18n/tru "{0} {1} {2}" (->display-name a) (if (#{:= :in} op) "is" "is not") (if (string? b) b (->display-name b)))
-
       [(op :guard #{:= :in :!= :not-in}) _ a & args]
       (i18n/tru "{0} {1} {2} selections" (->display-name a) (if (#{:= :in} op) "is" "is not") (count args))
-
       [:starts-with _ x & args]
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} starts with {1}" (->display-name x) (if (string? y) y (->display-name y))))
         (i18n/tru "{0} starts with {1} selections" (->display-name x) (count args)))
-
       [:ends-with _ x & args]
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} ends with {1}" (->display-name x) (if (string? y) y (->display-name y))))
         (i18n/tru "{0} ends with {1} selections" (->display-name x) (count args)))
-
       [:contains _ x & args]
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} contains {1}" (->display-name x) (if (string? y) y (->display-name y))))
         (i18n/tru "{0} contains {1} selections" (->display-name x) (count args)))
-
       [:does-not-contain _ x & args]
       (if (clojure.core/= (count args) 1)
         (let [y (first args)]
           (i18n/tru "{0} does not contain {1}" (->display-name x) (if (string? y) y (->display-name y))))
         (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -240,22 +219,16 @@
     (lib.util.match/match-lite expr
       [:< _ (x :guard temporal?) (y :guard string?)]
       ((binary-filter-display-fns :is-before)                   (->display-name x) (->temporal-name y))
-
       [:< _ x y]
       ((binary-filter-display-fns :is-less-than)                (->display-name x) (->display-name y))
-
       [:<= _ x y]
       ((binary-filter-display-fns :is-less-than-or-equal-to)    (->display-name x) (->display-name y))
-
       [:> _ (x :guard temporal?) (y :guard string?)]
       ((binary-filter-display-fns :is-after)                    (->display-name x) (->temporal-name y))
-
       [:> _ x y]
       ((binary-filter-display-fns :is-greater-than)             (->display-name x) (->display-name y))
-
       [:>= _ x y]
       ((binary-filter-display-fns :is-greater-than-or-equal-to) (->display-name x) (->display-name y))
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -270,7 +243,6 @@
       ((binary-filter-display-fns :is)
        (->unbucketed-display-name x)
        (u.time/format-diff y z))
-
       [:between _
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
@@ -279,7 +251,6 @@
        (->display-name x)
        (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
        (lib.temporal-bucket/describe-relative-datetime (- n) unit))
-
       [:between _
        [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ 0 _]
@@ -288,13 +259,11 @@
        (->display-name x)
        (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
        (lib.temporal-bucket/describe-relative-datetime (- n) unit))
-
       [:between _ x y z]
       ((ternary-filter-display-fns :is-between)
        (->display-name x)
        (->display-name y)
        (->display-name z))
-
       ;; do not match inner clauses
       _ nil)))
 

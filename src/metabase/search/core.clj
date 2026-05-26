@@ -24,24 +24,19 @@
 (p/import-vars
  [search.config
   SearchableModel]
-
  [search.engine
   model-set]
-
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
-
  [search.ingestion
   bulk-ingest!
   max-searchable-value-length
   searchable-value-trim-sql]
-
  [search.spec
   spec
   define-spec]
-
  [search.util
   collapse-id
   indexed-entity-id->model-index-id

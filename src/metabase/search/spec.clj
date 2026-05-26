@@ -296,7 +296,6 @@
                 (assoc res model #{{:search-model s
                                     :fields       table-fields
                                     :where        (replace-qualification join-condition table-alias :updated)}})))
-
             {(:model spec) #{{:search-model s
                               :fields       (:this (find-fields spec))
                               :where        (construct-source-where (-> spec :attrs :id))}}}

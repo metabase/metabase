@@ -128,7 +128,6 @@
                     selected-prompt (rand-nth (:prompts all-prompts))
                     url (format "ee/metabot-v3/metabot/%d/prompt-suggestions/%d" metabot-id (:id selected-prompt))
                     remaining-prompt-ids (disj all-prompt-ids (:id selected-prompt))]
-
                 (testing "deleting a specific prompt"
                   (testing "normal users cannot delete"
                     (mt/user-http-request :rasta :delete 403 url)
@@ -136,7 +135,6 @@
                   (testing "admins can delete"
                     (mt/user-http-request :crowberto :delete 204 url)
                     (is (= remaining-prompt-ids (current-prompt-ids)))))
-
                 (testing "generating new prompts"
                   (let [url (format "ee/metabot-v3/metabot/%d/prompt-suggestions/regenerate" metabot-id)]
                     (testing "normal users are not allowed"
@@ -145,7 +143,6 @@
                     (testing "admin users are allowed"
                       (with-redefs [metabot-v3.client/generate-example-questions prompt-generator]
                         (mt/user-http-request :crowberto :post 204 url)))))
-
                 (let [new-prompt-ids (current-prompt-ids)]
                   (is (= (count all-prompt-ids) (count new-prompt-ids)))
                   (is (empty? (set/intersection all-prompt-ids new-prompt-ids)))
@@ -165,7 +162,6 @@
         (mt/with-temp [:model/Metabot {metabot-id-1 :id} {:name "Alpha Metabot"}
                        :model/Metabot {metabot-id-2 :id} {:name "Beta Metabot"}
                        :model/Metabot {metabot-id-3 :id} {:name "Gamma Metabot"}]
-
           (testing "should return all metabots in alphabetical order by name"
             (let [{response :items} (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/metabot")]
               (is (= 3 (count response)))
@@ -173,7 +169,6 @@
                      (mapv :name response)))
               (is (= [metabot-id-1 metabot-id-2 metabot-id-3]
                      (mapv :id response)))))
-
           (testing "should require superuser permissions"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "ee/metabot-v3/metabot")))))))))
@@ -186,7 +181,6 @@
                                                       :description "Test Description"
                                                       :use_verified_content true
                                                       :collection_id collection-id}]
-
         (testing "should return metabot with all fields"
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-v3/metabot/%d" metabot-id))]
@@ -195,12 +189,10 @@
             (is (= "Test Description" (:description response)))
             (is (true? (:use_verified_content response)))
             (is (= collection-id (:collection_id response)))))
-
         (testing "should require superuser permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
                                        (format "ee/metabot-v3/metabot/%d" metabot-id)))))
-
         (testing "should return 404 for non-existent metabot"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :get 404
@@ -214,7 +206,6 @@
                      :model/Metabot {metabot-id :id} {:name "Test Metabot"
                                                       :use_verified_content false
                                                       :collection_id collection-id-1}]
-
         (testing "should update use_verified_content field"
           (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
@@ -225,7 +216,6 @@
               ;; Verify in database
               (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
                 (is (true? (:use_verified_content updated-metabot)))))))
-
         (testing "should update collection_id field"
           (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
@@ -236,7 +226,6 @@
               ;; Verify in database
               (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
                 (is (= collection-id-2 (:collection_id updated-metabot)))))))
-
         (testing "should update collection_id to null"
           (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
@@ -246,7 +235,6 @@
               ;; Verify in database
               (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
                 (is (= nil (:collection_id updated-metabot)))))))
-
         (testing "should update all fields simultaneously"
           (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
@@ -255,19 +243,16 @@
                                                   :collection_id collection-id-1})]
               (is (= false (:use_verified_content response)))
               (is (= collection-id-1 (:collection_id response))))))
-
         (testing "should require superuser permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403
                                        (format "ee/metabot-v3/metabot/%d" metabot-id)
                                        {:use_verified_content true}))))
-
         (testing "should return 404 for non-existent metabot"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
                                        (format "ee/metabot-v3/metabot/%d" Integer/MAX_VALUE)
                                        {:use_verified_content true}))))
-
         (testing "should prevent enabling verified content without premium feature"
           (mt/with-premium-features #{:metabot-v3}  ; Only metabot-v3, no content-verification
             (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
@@ -309,9 +294,7 @@
                                                                  :prompt "old prompt 2"
                                                                  :model :model
                                                                  :card_id card-id-2}]
-
             (let [original-prompt-ids #{prompt-id-1 prompt-id-2}]
-
               (testing "should regenerate prompts when use_verified_content changes"
                 (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
                               (fn [metabot-id]
@@ -322,14 +305,12 @@
                   (mt/user-http-request :crowberto :put 200
                                         (format "ee/metabot-v3/metabot/%d" metabot-id)
                                         {:use_verified_content true})
-
                   ;; Verify old prompts were deleted and new ones created
                   (let [current-prompts (t2/select :model/MetabotPrompt :metabot_id metabot-id)
                         current-prompt-ids (set (map :id current-prompts))]
                     (is (= 1 (count current-prompts)))
                     (is (empty? (set/intersection original-prompt-ids current-prompt-ids)))
                     (is (= "new prompt after verified change" (:prompt (first current-prompts)))))))
-
               (testing "should regenerate prompts when collection_id changes"
                 (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
                               (fn [metabot-id]
@@ -340,12 +321,10 @@
                   (mt/user-http-request :crowberto :put 200
                                         (format "ee/metabot-v3/metabot/%d" metabot-id)
                                         {:collection_id collection-id-2})
-
                   ;; Verify prompts were regenerated again
                   (let [current-prompts (t2/select :model/MetabotPrompt :metabot_id metabot-id)]
                     (is (= 1 (count current-prompts)))
                     (is (= "new prompt after collection change" (:prompt (first current-prompts)))))))
-
               (testing "should NOT regenerate prompts when no relevant fields change"
                 ;; First, establish a baseline
                 (t2/delete! :model/MetabotPrompt :metabot_id metabot-id)
@@ -355,7 +334,6 @@
                                                   :card_id card-id-5})
                 (let [baseline-prompts (t2/select :model/MetabotPrompt :metabot_id metabot-id)
                       baseline-ids (set (map :id baseline-prompts))]
-
                   ;; Make a PUT request that doesn't change verified content or collection_id
                   ;; (This would be if we add other fields to update in the future)
                   (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
@@ -398,7 +376,6 @@
                                                  :card_id restricted-card-id}]
             ;; Revoke default All Users access to restricted collection
             (perms/revoke-collection-permissions! (perms-group/all-users) restricted-coll-id)
-
             (testing "admin sees all prompts"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id))
@@ -406,7 +383,6 @@
                 (is (= 2 (:total response)))
                 (is (contains? prompts "Accessible prompt"))
                 (is (contains? prompts "Restricted prompt"))))
-
             (testing "non-admin user only sees prompts for cards in accessible collections"
               (let [response (mt/user-http-request :rasta :get 200
                                                    (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id))

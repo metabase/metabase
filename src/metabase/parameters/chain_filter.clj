@@ -488,7 +488,6 @@
          :has_more_values (if (nil? query-limit)
                             true
                             (= (count values) query-limit))})
-
       (catch Throwable e
         (throw (ex-info (tru "Error executing chain filter query")
                         {:field-id    field-id

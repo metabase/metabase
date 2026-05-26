@@ -497,7 +497,6 @@
                                       {:model    model-name
                                        :key      k
                                        :instance instance})))
-
                     [export-k res])))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
@@ -1124,24 +1123,19 @@
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
-
         ;; `integer?` guard is here to make the operation idempotent
         ;; field-id is still used within parameter mapping dimensions
         ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
         [(tag :guard #{:field :field-id}) (id :guard integer?)]
         [tag (*export-field-fk* id)]
-
         {:source-table (id :guard integer?)}
         (assoc &match :source-table (*export-table-fk* id))
-
         ;; source-field is also used within parameter mapping dimensions
         ;; example relevant clause - [:field 2 {:source-field 1}]
         {:source-field (id :guard integer?)}
         (assoc &match :source-field (*export-field-fk* id))
-
         [:dimension (dim :guard vector?)]
         [:dimension (mbql-id->fully-qualified-name dim)]
-
         [(tag :guard #{:metric :segment :measure}) (id :guard integer?)]
         [tag (*export-fk* id (case tag
                                :metric  'Card
@@ -1164,10 +1158,8 @@
   (lib.util.match/replace-lite entity
     (_ :guard mbql-entity-reference?)
     (mbql-id->fully-qualified-name &match)
-
     (_ :guard sequential?)
     (mapv ids->fully-qualified-names &match)
-
     (_ :guard map?)
     (reduce-kv
      (fn [entity k _v]
@@ -1210,17 +1202,14 @@
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [#{:field-id "field-id"} fully-qualified-name]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name])
-
     [#{:field "field"} (fully-qualified-name :guard vector?) opts]
     [:field (*import-field-fk* fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
     [#{:field "field"} (fully-qualified-name :guard vector?)]
     [:field (*import-field-fk* fully-qualified-name)]
-
     ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
     {:source-field (fully-qualified-name :guard vector?)}
     (assoc &match :source-field (*import-field-fk* fully-qualified-name))
-
     {:database (fully-qualified-name :guard string?)}
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
@@ -1235,28 +1224,22 @@
 
     [#{:metric "metric"} (entity-id :guard portable-id?)]
     [:metric (*import-fk* entity-id 'Card)]
-
     [#{:segment "segment"} (fully-qualified-name :guard portable-id?)]
     [:segment (*import-fk* fully-qualified-name 'Segment)]
-
     [#{:measure "measure"} (fully-qualified-name :guard portable-id?)]
     [:measure (*import-fk* fully-qualified-name 'Measure)]
-
     {:source-table (_ :guard vector?)}
     (-> &match
         (update :source-table *import-table-fk*)
         mbql-fully-qualified-names->ids*)
-
     {:source_table (_ :guard vector?)}
     (-> &match
         (update :source_table *import-table-fk*)
         mbql-fully-qualified-names->ids*)
-
     {:source-table (id :guard portable-id?)}
     (-> &match
         (assoc :source-table (str "card__" (*import-fk* id 'Card)))
         mbql-fully-qualified-names->ids*)
-
     {:source_table (id :guard portable-id?)}
     (-> &match
         (assoc :source_table (str "card__" (*import-fk* id 'Card)))
@@ -1513,10 +1496,8 @@
     [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
     ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
     [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
-
     (_ :guard map?)
     (m/map-vals export-visualizations &match)
-
     (_ :guard vector?)
     (mapv export-visualizations &match)))
 
@@ -1593,15 +1574,12 @@
     [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
     [:field-id (*import-field-fk* fully-qualified-name)]
-
     [#{:field "field"} (fully-qualified-name :guard vector?) tail]
     [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
     [#{:field "field"} (fully-qualified-name :guard vector?)]
     [:field (*import-field-fk* fully-qualified-name)]
-
     (_ :guard map?)
     (m/map-vals import-visualizations &match)
-
     (_ :guard vector?)
     (mapv import-visualizations &match)))
 

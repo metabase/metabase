@@ -26,7 +26,6 @@
                 source-table (get-in saved [:source :source-tables "input"])]
             (is (= table-id (:table_id source-table))
                 "table_id should be resolved from database lookup"))))
-
       (testing "table_id remains nil when table doesn't exist"
         (mt/with-temp [:model/Transform transform {:name   "Transform with missing ref"
                                                    :source {:type            "python"
@@ -43,7 +42,6 @@
                 source-table (get-in saved [:source :source-tables "input"])]
             (is (nil? (:table_id source-table))
                 "table_id should be nil for non-existent table"))))
-
       (testing "existing table_id is preserved"
         (mt/with-temp [:model/Transform transform {:name   "Transform with explicit table_id"
                                                    :source {:type            "python"

@@ -10,18 +10,15 @@
     (let [config {:discovery-document {:authorization_endpoint "https://provider.com/authorize"}}
           endpoint (oidc.discovery/get-authorization-endpoint config)]
       (is (= "https://provider.com/authorize" endpoint))))
-
   (testing "Gets authorization endpoint from manual config"
     (let [config {:authorization-endpoint "https://provider.com/manual/authorize"}
           endpoint (oidc.discovery/get-authorization-endpoint config)]
       (is (= "https://provider.com/manual/authorize" endpoint))))
-
   (testing "Prefers discovery document over manual config"
     (let [config {:discovery-document {:authorization_endpoint "https://provider.com/discovery/authorize"}
                   :authorization-endpoint "https://provider.com/manual/authorize"}
           endpoint (oidc.discovery/get-authorization-endpoint config)]
       (is (= "https://provider.com/discovery/authorize" endpoint))))
-
   (testing "Returns nil when not found"
     (let [config {}
           endpoint (oidc.discovery/get-authorization-endpoint config)]
@@ -32,18 +29,15 @@
     (let [config {:discovery-document {:token_endpoint "https://provider.com/token"}}
           endpoint (oidc.discovery/get-token-endpoint config)]
       (is (= "https://provider.com/token" endpoint))))
-
   (testing "Gets token endpoint from manual config"
     (let [config {:token-endpoint "https://provider.com/manual/token"}
           endpoint (oidc.discovery/get-token-endpoint config)]
       (is (= "https://provider.com/manual/token" endpoint))))
-
   (testing "Prefers discovery document over manual config"
     (let [config {:discovery-document {:token_endpoint "https://provider.com/discovery/token"}
                   :token-endpoint "https://provider.com/manual/token"}
           endpoint (oidc.discovery/get-token-endpoint config)]
       (is (= "https://provider.com/discovery/token" endpoint))))
-
   (testing "Returns nil when not found"
     (let [config {}
           endpoint (oidc.discovery/get-token-endpoint config)]
@@ -54,18 +48,15 @@
     (let [config {:discovery-document {:jwks_uri "https://provider.com/jwks"}}
           uri (oidc.discovery/get-jwks-uri config)]
       (is (= "https://provider.com/jwks" uri))))
-
   (testing "Gets JWKS URI from manual config"
     (let [config {:jwks-uri "https://provider.com/manual/jwks"}
           uri (oidc.discovery/get-jwks-uri config)]
       (is (= "https://provider.com/manual/jwks" uri))))
-
   (testing "Prefers discovery document over manual config"
     (let [config {:discovery-document {:jwks_uri "https://provider.com/discovery/jwks"}
                   :jwks-uri "https://provider.com/manual/jwks"}
           uri (oidc.discovery/get-jwks-uri config)]
       (is (= "https://provider.com/discovery/jwks" uri))))
-
   (testing "Returns nil when not found"
     (let [config {}
           uri (oidc.discovery/get-jwks-uri config)]
@@ -153,13 +144,11 @@
         ;; First call should fetch
         (oidc.discovery/discover-oidc-configuration "https://github.com")
         (is (= 1 @fetch-count))
-
         ;; Manually expire the cache entry by setting fetched-at to 25 hours ago (TTL is 24h)
         (let [twenty-five-hours-ago (t/to-millis-from-epoch (t/minus (t/instant) (t/hours 25)))]
           (swap! @#'oidc.discovery/discovery-cache
                  assoc "https://github.com"
                  {:document test-discovery-doc :fetched-at twenty-five-hours-ago}))
-
         ;; Next call should re-fetch because cache is expired
         (oidc.discovery/discover-oidc-configuration "https://github.com")
         (is (= 2 @fetch-count))))))
@@ -175,10 +164,8 @@
         ;; Populate cache
         (oidc.discovery/discover-oidc-configuration "https://microsoft.com")
         (is (= 1 @fetch-count))
-
         ;; Invalidate the cache entry
         (oidc.discovery/invalidate-cache! "https://microsoft.com")
-
         ;; Next call should re-fetch
         (oidc.discovery/discover-oidc-configuration "https://microsoft.com")
         (is (= 2 @fetch-count))))))
@@ -194,10 +181,8 @@
         ;; Populate cache without trailing slash
         (oidc.discovery/discover-oidc-configuration "https://apple.com")
         (is (= 1 @fetch-count))
-
         ;; Invalidate with trailing slash (should still work)
         (oidc.discovery/invalidate-cache! "https://apple.com/")
-
         ;; Next call should re-fetch
         (oidc.discovery/discover-oidc-configuration "https://apple.com")
         (is (= 2 @fetch-count))))))
@@ -210,25 +195,21 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Invalid issuer URL: internal addresses not allowed"
                           (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
-
   (testing "Rejects internal addresses (127.0.0.1)"
     (oidc.discovery/clear-cache!)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Invalid issuer URL: internal addresses not allowed"
                           (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
-
   (testing "Rejects cloud metadata endpoint"
     (oidc.discovery/clear-cache!)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Invalid issuer URL: internal addresses not allowed"
                           (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
-
   (testing "Rejects private network addresses (192.168.x.x)"
     (oidc.discovery/clear-cache!)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Invalid issuer URL: internal addresses not allowed"
                           (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
-
   (testing "Rejects private network addresses (10.x.x.x)"
     (oidc.discovery/clear-cache!)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

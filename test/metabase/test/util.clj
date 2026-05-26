@@ -505,7 +505,6 @@
     (testing "Setting value"
       (is (= "abc"
              (with-temp-env-var-value-test-setting)))))
-
   (testing "override multiple env vars"
     (with-temp-env-var-value! [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
@@ -514,7 +513,6 @@
       (testing "should handle CAPITALS/SNAKE_CASE"
         (is (= "def"
                (:another-fake-env-var env/env))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
@@ -1140,31 +1138,25 @@
     [:model/Card {card-id :id :as card} {:name "A Card"}
      :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
-
       (testing "with single model"
         (with-discard-model-updates! [:model/Card]
           (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= card (t2/select-one :model/Card card-id)))))
-
       (testing "with multiple models"
         (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
             (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-
             (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= (dissoc card :updated_at)
                  (dissoc (t2/select-one :model/Card card-id) :updated_at)))
           (is (= (dissoc dash :updated_at)
                  (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
-
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
                (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
@@ -1476,7 +1468,6 @@
         (reset! temp-filename filename))
       (testing "File should be deleted at end of macro form"
         (is (not (.exists (io/file @temp-filename)))))))
-
   (testing "explicit filename"
     (with-temp-file [filename "parrot-list.txt"]
       (is (string? filename))
@@ -1486,7 +1477,6 @@
       (testing "should delete existing file"
         (with-temp-file [filename "parrot-list.txt"]
           (is (not (.exists (io/file filename))))))))
-
   (testing "multiple bindings"
     (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
       (is (string? filename))
@@ -1495,13 +1485,11 @@
       (is (not (.exists (io/file filename-2))))
       (is (not (str/ends-with? filename "parrot-list.txt")))
       (is (str/ends-with? filename-2 "parrot-list.txt"))))
-
   (testing "should delete existing file"
     (with-temp-file [filename "parrot-list.txt"]
       (spit filename "wow")
       (with-temp-file [filename "parrot-list.txt"]
         (is (not (.exists (io/file filename)))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException

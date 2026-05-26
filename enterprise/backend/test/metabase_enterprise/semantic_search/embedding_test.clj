@@ -31,7 +31,6 @@
               :model-name "mxbai-embed-large"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "ollama"
                                        ee-embedding-model "mxbai-embed-large"
                                        ee-embedding-model-dimensions 1024]
@@ -39,7 +38,6 @@
               :model-name "mxbai-embed-large"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
-
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"
                                        ee-embedding-model "text-embedding-3-small"
                                        ee-embedding-model-dimensions 1536]
@@ -52,7 +50,6 @@
   (testing "model-dimensions uses setting defaults when override is nil"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions nil]
       (is (= 1024 (:vector-dimensions (embedding/get-configured-model))))))
-
   (testing "model-dimensions uses override when specified"
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
@@ -83,20 +80,17 @@
   (testing "create-batches handles empty input"
     (is (empty? (#'embedding/create-batches 10 count [])))
     (is (empty? (#'embedding/create-batches 10 count nil))))
-
   (testing "create-batches with single short text"
     (let [texts ["Short text"]
           batches (#'embedding/create-batches 10 count texts)]
       (is (= 1 (count batches)))
       (is (= texts (first batches)))))
-
   (testing "create-batches splits texts appropriately with smaller token limit"
     ;; Use a smaller token limit to make testing more predictable
     (let [texts ["This is document 1" "This is document 2" "This is document 3"]
           batches (#'embedding/create-batches 10 #'embedding/count-tokens texts)]
       (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
              batches))))
-
   (testing "create-batches skips texts that exceed token limit"
     (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
@@ -132,7 +126,6 @@
       (is (= 1 (count result)))
       (is (= (count test-embedding) (count (first result))))
       (is (float-vectors-approx= test-embedding (first result)))))
-
   (testing "extracts multiple embeddings correctly"
     (let [embedding1 [1.0 2.0 3.0]
           embedding2 [-1.0 -2.0 -3.0]
@@ -148,25 +141,21 @@
       (is (float-vectors-approx= embedding1 (nth result 0)))
       (is (float-vectors-approx= embedding2 (nth result 1)))
       (is (float-vectors-approx= embedding3 (nth result 2)))))
-
   (testing "edge cases that return empty results"
     (testing "handles empty data array"
       (let [response {:data []}
             result (#'embedding/extract-base64-response-embeddings response)]
         (is (= [] result))))
-
     (testing "handles missing :data key"
       (let [response {}
             result (#'embedding/extract-base64-response-embeddings response)]
         (is (= [] result))))
-
     (testing "handles zero-length embedding"
       (let [base64-str (encode-floats-to-base64 [])
             response {:data [{:embedding base64-str}]}
             result (#'embedding/extract-base64-response-embeddings response)]
         (is (= 1 (count result)))
         (is (= [] (first result))))))
-
   (testing "handles large embedding vectors"
     (let [large-embedding (vec (map float (range 1536)))
           base64-str (encode-floats-to-base64 large-embedding)
@@ -176,18 +165,15 @@
       (is (= 1536 (count (first result))))
       (is (float-vectors-approx= (take 5 large-embedding) (take 5 (first result))))
       (is (float-vectors-approx= (take-last 5 large-embedding) (take-last 5 (first result))))))
-
   (testing "error cases"
     (testing "invalid base64 string throws exception"
       (is (thrown? Exception
                    (#'embedding/extract-base64-response-embeddings
                     {:data [{:embedding "not-valid-base64!@#$"}]}))))
-
     (testing "non-string embedding value throws exception"
       (is (thrown? Exception
                    (#'embedding/extract-base64-response-embeddings
                     {:data [{:embedding 123}]}))))
-
     (testing "base64 string with invalid byte count (not multiple of 4) throws exception"
       ;; Create a base64 string that decodes to 3 bytes
       (let [encoder (Base64/getEncoder)
@@ -216,9 +202,7 @@
                {:provider "ollama"
                 :mock-response {:embedding mock-embedding}
                 :counts-tokens? false}]]
-
         (t2/delete! :model/SemanticSearchTokenTracking)
-
         (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
                                                      (swap! analytics-calls conj [metric args]))
                                     http/post (fn post-mock [_url & _options]
@@ -273,10 +257,8 @@
                     indexing-state (semantic.indexer/init-indexing-state metadata-row)
                     gate-docs (mapv #(semantic.gate/search-doc->gate-doc % (java.sql.Timestamp. 1000))
                                     (semantic.tu/mock-documents))]
-
                 (semantic.gate/gate-documents! pgvector index-metadata gate-docs)
                 (t2/delete! :model/SemanticSearchTokenTracking)
-
                 (testing "Indexing tokens are tracked"
                   (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
                   (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
@@ -284,7 +266,6 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :index request_type))
                     (is (= 13 total_tokens))))
-
                 (testing "Querying tokens are tracked"
                   (t2/delete! :model/SemanticSearchTokenTracking)
                   (semantic.index/query-index pgvector index {:search-string "elephant"})

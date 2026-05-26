@@ -34,10 +34,8 @@
                 (mt/with-temp [:model/Transform transform initial-transform]
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
                   (transforms.tu/wait-for-table table-name 10000)
-
                   (let [initial-rows (transforms.tu/table-rows table-name)]
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
-
                     (t2/update! :model/Transform (:id transform)
                                 {:source {:type            "python"
                                           :source-tables   {}
@@ -46,7 +44,6 @@
                                                                 "\n"
                                                                 "def transform():\n"
                                                                 "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
-
                   (let [swap-latch (CountDownLatch. 1)
                         original-rename-tables-atomic! transforms.util/rename-tables!]
                     (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
@@ -86,14 +83,11 @@
                 (mt/with-temp [:model/Transform transform transform-def]
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
                   (transforms.tu/wait-for-table table-name 10000)
-
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
-
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)]
                     (is (not-any? transforms.util/is-temp-transform-table? tables)
                         "No temp tables should remain after successful Python transform")
-
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
                         "Table should contain the expected data after swap")))))))))))
 

@@ -21,10 +21,8 @@
       (is (= :postgres (#'api/database-engine (:id postgres-db))))
       (is (= :mysql (#'api/database-engine (:id mysql-db))))
       (is (= :bigquery (#'api/database-engine (:id bigquery-db)))))
-
     (testing "nil database returns nil"
       (is (nil? (#'api/database-engine nil))))
-
     (testing "non-existent database returns nil"
       (is (nil? (#'api/database-engine 99999999))))))
 
@@ -35,7 +33,6 @@
     (let [instructions (#'api/load-dialect-instructions :postgres)]
       (is (string? instructions))
       (is (str/includes? instructions "PostgreSQL"))))
-
   (testing "nil engine returns nil"
     (is (nil? (#'api/load-dialect-instructions nil)))))
 
@@ -52,14 +49,12 @@
                   (filter #(= "table" (:model %)))
                   (map :id)
                   set)))))
-
   (testing "returns empty set for empty input"
     (is (= #{}
            (->> []
                 (filter #(= "table" (:model %)))
                 (map :id)
                 set))))
-
   (testing "returns empty set when no tables present"
     (let [entities [{:model "card" :id 1}
                     {:model "question" :id 2}]]
@@ -78,7 +73,6 @@
              (set/union (or frontend #{})
                         (or explicit #{})
                         (or implicit #{}))))))
-
   (testing "nil sources treated as empty sets"
     (is (= #{1 2}
            (set/union (or nil #{})
@@ -92,7 +86,6 @@
     (let [prompt "Join [Orders](metabase://table/123) with [Users](metabase://table/456)"]
       (is (= #{123 456}
              (llm.context/parse-table-mentions prompt)))))
-
   (testing "multiple mentions of same table deduplicated"
     (let [prompt "[Orders](metabase://table/123) and again [Orders](metabase://table/123)"]
       (is (= #{123}
@@ -107,13 +100,11 @@
       (is (string? prompt))
       (is (str/includes? prompt "PostgreSQL"))
       (is (str/includes? prompt "CREATE TABLE users"))))
-
   (testing "includes dialect instructions when provided"
     (let [prompt (#'api/build-system-prompt {:dialect "PostgreSQL"
                                              :schema-ddl "CREATE TABLE users (id INTEGER);"
                                              :dialect-instructions "Use LIMIT instead of TOP"})]
       (is (str/includes? prompt "Use LIMIT instead of TOP"))))
-
   (testing "includes source SQL when provided"
     (let [prompt (#'api/build-system-prompt {:dialect "PostgreSQL"
                                              :schema-ddl "CREATE TABLE users (id INTEGER);"
@@ -130,7 +121,6 @@
                                              {:prompt "test"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "not configured")))))
-
     (testing "400 when no tables found"
       (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
         (let [response (mt/user-http-request :rasta :post 400 "llm/generate-sql"

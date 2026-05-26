@@ -68,7 +68,6 @@
        (when-not (.isEmpty ^List coll)
          (.get ^List coll 0))
        (clojure.core/first coll)))
-
    :cljs
    (def first
      "Returns the first item in the collection. Calls seq on its argument. If coll is nil, returns nil."
@@ -79,7 +78,6 @@
      "Like `clojure.core/second`, but uses `RT/nth` directly for allocation-free access."
      [coll]
      (RT/nth coll 1 nil))
-
    :cljs
    (def second
      "Same as (first (next x))"
@@ -140,7 +138,6 @@
                   @res
                   (recur res)))
               res))))))
-
    :cljs
    (defn reduce
      "Passthrough fallback to `clojure.core/reduce`."
@@ -160,7 +157,6 @@
 
      (persistent [_]
        (LazilyPersistentVector/createOwning arr)))
-
    :cljs
    (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
 

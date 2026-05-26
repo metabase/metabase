@@ -107,7 +107,6 @@
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
              (impl/source-error-message e)))))
-
   (testing "source-error-message produces helpful message for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]})
@@ -224,23 +223,19 @@
               export-result (impl/export! (source.p/snapshot mock-main) (:id export-task) "Test export")]
           (remote-sync.task/complete-sync-task! (:id export-task))
           (is (= :success (:status export-result)))
-
           (let [files-after-export (get @(:files-atom mock-main) "test-branch")]
             (is (map? files-after-export))
             (is (not-empty files-after-export))
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
-
           (t2/delete! :model/RemoteSyncTask :id (:id export-task))
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
-
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
-
             (let [collection (t2/select-one :model/Collection :id coll-id)
                   card (t2/select-one :model/Card :id card-id)]
               (is (= "Test Collection" (:name collection)))
@@ -264,7 +259,6 @@
               mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
               result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
-
           (is (t2/exists? :model/Card :id card1-id))
           (is (not (t2/exists? :model/Collection :id coll2-id)))
           (is (not (t2/exists? :model/Card :id card2-id))))))))

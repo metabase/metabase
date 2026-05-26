@@ -249,7 +249,6 @@
       "insert into venues (name) values ('bill')"
       "create table venues"
       "alter table venues add column address varchar(255)")
-
     (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
@@ -257,9 +256,7 @@
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
-
     (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
-
     (is (= nil (#'h2/check-action-commands-allowed
                 {:database (mt/id)
                  :engine :h2

@@ -132,18 +132,15 @@
                           (when-not parent-source-card-id
                             {:card-ids #{(:qp/stage-is-from-source-card m)}})
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
-
               (m :guard (and (map? m) (:query-permissions/sandboxed-table m)))
               (merge-with merge-source-ids
                           {:table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
-
               {:native (_ :guard identity)}
               (when-not parent-source-card-id
                 {:native? true})
-
               (m :guard (and (map? m) (pos-int? (:source-table m))))
               (merge-with merge-source-ids
                           {:table-ids #{(:source-table m)}}
@@ -380,12 +377,10 @@
     (when-let [paths (:paths required-perms)]
       (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
           (throw (perms-exception paths))))
-
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
-
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -398,11 +393,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))

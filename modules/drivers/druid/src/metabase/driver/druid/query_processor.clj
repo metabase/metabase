@@ -331,7 +331,6 @@
   (driver-api/replace-lite clause
     [:absolute-datetime t :default]
     [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
-
     _
     (add-datetime-units* clause n)))
 
@@ -339,13 +338,10 @@
   (driver-api/match-lite clause
     [:absolute-datetime t :default]
     t
-
     [:absolute-datetime t unit]
     (u.date/truncate t unit)
-
     [:relative-datetime amount unit]
     (u.date/truncate (u.date/add unit amount) unit)
-
     _
     nil))
 
@@ -631,11 +627,8 @@
       ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name
       ;; it :___count so it gets discarded automatically
       [nil     nil]    [[(or output-name-kwd :___count)] {:aggregations [(ag:count (or output-name :___count))]}]
-
       [:count  nil]    [[(or output-name-kwd :count)] {:aggregations [(ag:count (or output-name :count))]}]
-
       [:count    _]    [[(or output-name-kwd :count)] {:aggregations [(ag:count ag-field (or (name output-name) :count))]}]
-
       [:avg      _]    (let [count-name (genname "___count_")
                              sum-name   (genname "___sum_")]
                          [[(keyword count-name) (keyword sum-name) (or output-name-kwd :avg)]
@@ -646,14 +639,11 @@
                                                :fn     :/
                                                :fields [{:type :fieldAccess, :fieldName sum-name}
                                                         {:type :fieldAccess, :fieldName count-name}]}]}])
-
       [:sum-where _]   (let [[pred] args]
                          [[(or output-name-kwd :sum-where)]
                           {:aggregations [(ag:sumWhere ag-field pred output-name-kwd)]}])
-
       [:count-where _] [[(or output-name-kwd :count-where)]
                         {:aggregations [(ag:countWhere ag-field output-name-kwd)]}]
-
       [:share    _]    (let [total-count-name (genname "___total_count_")
                              true-count-name  (genname "___true_count_")]
                          [[(keyword total-count-name) (keyword true-count-name) (or output-name-kwd :share)]
@@ -664,7 +654,6 @@
                                                :fn     :/
                                                :fields [{:type :fieldAccess, :fieldName true-count-name}
                                                         {:type :fieldAccess, :fieldName total-count-name}]}]}])
-
       [:distinct _]    [[(or output-name-kwd :distinct___count)]
                         {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
       [:sum      _]    [[(or output-name-kwd :sum)]
@@ -715,7 +704,6 @@
   (driver-api/replace-lite expression
     [:aggregation-options ag options]
     (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
-
     [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
     [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
@@ -734,7 +722,6 @@
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
     [:aggregation-options ag _]
     (assoc (expression-post-aggregation ag) :name (driver-api/aggregation-name *query* expression))
-
     _
     {:type   :arithmetic
      :name   (driver-api/aggregation-name *query* expression)
@@ -743,13 +730,10 @@
                     (driver-api/match-lite arg
                       (_ :guard number?)
                       {:type :constant, :name (str &match), :value &match}
-
                       [:aggregation-options ag {:name name}]
                       {:type (post-aggregator-type ag), :fieldName name}
-
                       [#{:+ :- :/ :*} & _]
                       (expression-post-aggregation &match)
-
                       ;; we should never get here unless our code is B U S T E D
                       _
                       (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
@@ -799,10 +783,8 @@
        (driver-api/match-lite aggregation
          [:aggregation-options [#{:+ :- :/ :*} & _] _]
          (handle-expression-aggregation query-type &match druid-query)
-
          [#{:+ :- :/ :*} & _]
          (handle-expression-aggregation query-type &match druid-query)
-
          _
          (handle-aggregation query-type aggregation druid-query)))
      druid-query
@@ -957,7 +939,6 @@
   (driver-api/match-lite field-clause
     [:field (id :guard integer?) _]
     (:name (driver-api/field (driver-api/metadata-provider) id))
-
     [:field (field-name :guard string?) _]
     field-name))
 
@@ -1030,7 +1011,6 @@
     (driver-api/match-lite field
       [:field _id-or-name (_opts :guard :temporal-unit)]
       true
-
       [:field (id :guard pos-int?) _opts]
       (driver-api/temporal? (driver-api/field (driver-api/metadata-provider) id)))))
 

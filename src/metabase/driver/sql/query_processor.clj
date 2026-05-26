@@ -768,25 +768,18 @@
                (unix-timestamp->honeysql driver
                                          (semantic-type->unix-timestamp-unit coercion-strategy)
                                          honeysql-form)
-
                [:type/Text (:isa? :Coercion/String->Temporal)]
                (cast-temporal-string driver coercion-strategy honeysql-form)
-
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
-
                [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
                (->date driver honeysql-form)
-
                [:type/Text (:isa? :Coercion/String->Float)]
                (->float driver honeysql-form)
-
                [:type/Text (:isa? :Coercion/String->Integer)]
                (->integer driver honeysql-form)
-
                [:type/Float (:isa? :Coercion/Float->Integer)]
                (->integer driver honeysql-form)
-
                :else honeysql-form)
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
@@ -1326,27 +1319,20 @@
   (driver-api/match-lite (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
-
     [:aggregation-options ag {driver-api/qp.add.source-alias source-alias}]
     (->honeysql driver (h2x/identifier :field-alias source-alias))
-
     [:aggregation-options ag {:name name}]
     (->honeysql driver (h2x/identifier :field-alias name))
-
     [:aggregation-options ag options]
     (&recur ag)
-
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
     [:distinct & _]
     (->honeysql driver (h2x/identifier :field-alias :count))
-
     [#{:+ :- :* :/} & _]
     (->honeysql driver &match)
-
     [:offset {:name name} _expr _n]
     (->honeysql driver (h2x/identifier :field-alias name))
-
     ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
@@ -2134,7 +2120,6 @@
         (u/prog1 (apply-clauses driver {} inner-query)
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
-
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
                               (:database query)

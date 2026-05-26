@@ -36,7 +36,6 @@
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
       (.call command)
       (catch Exception e
@@ -49,7 +48,6 @@
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
         credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
       (-> command
           (.setCredentialsProvider credentials-provider)
@@ -206,7 +204,6 @@
         push-results (->> push-response
                           (map #(into [] (.getRemoteUpdates ^PushResult %)))
                           flatten)]
-
     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
@@ -268,7 +265,6 @@
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (.resolve repo version)]
-
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
@@ -288,7 +284,6 @@
                                     (map :path)
                                     (remove str/blank?))
                                    files)]
-
         ;; Add new/updated files to the index
         (doseq [{:keys [path content remove?]} files
                 :when (and (not remove?) (not (str/blank? path)))]
@@ -297,7 +292,6 @@
                         (.setFileMode FileMode/REGULAR_FILE)
                         (.setObjectId blob-id))]
             (.add builder entry)))
-
         ;; Copy existing tree entries, excluding:
         ;; 1. Files in collections being written to (using write-prefixes)
         ;; 2. Files matching explicit removal prefixes
@@ -316,9 +310,7 @@
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))]
                       (.add builder entry))))))))
-
         (.finish builder)
-
         ;; Create commit
         (let [tree-id (.writeTree index inserter)
               commit-builder (doto (CommitBuilder.)
@@ -328,7 +320,6 @@
                                (.setMessage message))]
           (when parent-id
             (.setParentId commit-builder parent-id))
-
           (let [commit-id (.insert inserter commit-builder)]
             (.flush inserter)
             (doto (.updateRef repo branch-ref)

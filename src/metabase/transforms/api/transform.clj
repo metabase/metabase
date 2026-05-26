@@ -276,7 +276,6 @@
   (check-database-feature body)
   (check-feature-enabled! body)
   (validate-incremental-column-type! body)
-
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -385,7 +384,6 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)

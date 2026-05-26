@@ -278,10 +278,8 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
-
    :timezone
    (.getID (.getTimeZone trigger))
-
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...
    (condp = (.getMisfireInstruction trigger)

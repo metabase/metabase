@@ -82,7 +82,6 @@
         (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
               {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
               (lib/with-join-conditions [(lib/= [:field

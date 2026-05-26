@@ -215,7 +215,6 @@
         drilled (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
-
     (testing "drilled query"
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
@@ -245,7 +244,6 @@
         drilled  (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
-
     (testing "drilled query"
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
@@ -398,11 +396,9 @@
     (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
     ;; somehow the column (as printed out in console.log) has :source-alias but not :metabase.lib.join/join-alias
     (assert (:source-alias people-orders-clicked-column))
-
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
     (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
     (assert (nil? (:source-alias orders-people-clicked-column)))
-
     (testing "zoom-in binning should not depend on join order"
       (is (= orders-people-zoom
              (some-> people-orders-zoom

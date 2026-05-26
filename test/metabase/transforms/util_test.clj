@@ -20,14 +20,12 @@
   (testing "temp-table-name generates valid table names respecting driver limits"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [driver driver/*driver*]
-
         (testing "Basic table name generation"
           (let [result (driver.u/temp-table-name driver nil)
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
             (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
-
         (testing "Table name preserves namespace when present"
           (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
@@ -87,7 +85,6 @@
             (testing "Creating table with ordered columns"
               (transforms.util/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
-
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
@@ -98,7 +95,6 @@
                   (is (= expected-names column-names)
                       (str "Expected column order " expected-names
                            " but got " column-names)))))
-
             (finally
               (try
                 (driver/drop-table! driver db-id qualified-table-name)
@@ -117,7 +113,6 @@
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
           range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
-
       (testing "with both start and end bounds"
         (are [expected timestamp]
              (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
@@ -157,17 +152,14 @@
       (testing "returns nil for empty input"
         (is (nil? (transforms.util/batch-lookup-table-ids [])))
         (is (nil? (transforms.util/batch-lookup-table-ids nil))))
-
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
               result (transforms.util/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
-
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
               result (transforms.util/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
-
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
@@ -175,7 +167,6 @@
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
-
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms.util/batch-lookup-table-ids refs)]
@@ -191,26 +182,21 @@
           (is (= (:id db) (get-in result ["t" :database_id])))
           (is (= "existing_table" (get-in result ["t" :table])))
           (is (= (:id t1) (get-in result ["t" :table_id])))))
-
       (testing "throws for non-existent integer table ID"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
                               (transforms.util/normalize-source-tables {"t" 999999}))))
-
       (testing "populates table_id for existing table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
               result (transforms.util/normalize-source-tables source-tables)]
           (is (= (:id t1) (get-in result ["t" :table_id])))))
-
       (testing "preserves existing table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
               result (transforms.util/normalize-source-tables source-tables)]
           (is (= 999 (get-in result ["t" :table_id])))))
-
       (testing "leaves table_id nil for non-existent table ref"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
               result (transforms.util/normalize-source-tables source-tables)]
           (is (nil? (get-in result ["t" :table_id])))))
-
       (testing "handles mixed int and map entries"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
@@ -226,25 +212,20 @@
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "passes through integer entries (old format)"
         (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
-
       (testing "resolves map with table_id"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
           (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
-
       (testing "looks up table_id for map without it"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
           (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
-
       (testing "throws for non-existent table"
         (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
                                 (transforms.util/resolve-source-tables source-tables)))))
-
       (testing "throws with schema in error message"
         (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms.util/resolve-source-tables source-tables)))))
-
       (testing "handles mixed entries (old and new format)"
         (let [source-tables {"t1" (:id t1)
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
@@ -263,12 +244,10 @@
                 (let [transform {:source {:type :query
                                           :query {:database db-id}}}]
                   (is (true? (transforms.util/source-tables-readable? transform)))))
-
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
                                           :source-tables {"t1" table-id}}}]
                   (is (true? (transforms.util/source-tables-readable? transform)))))
-
               (testing "handles source tables with table_id in map format"
                 (let [transform {:source {:type :python
                                           :source-tables {"t1" {:table_id table-id}}}}]
@@ -281,7 +260,6 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
                        :model/Table {table2-id :id} {:db_id db-id :name "test_table_2"}]
-
           (testing "Query transforms - blocked database access"
             (let [transform {:source {:type  :query
                                       :query {:database db-id}}}]
@@ -292,7 +270,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source database")))))))
-
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
                                       :source-tables {"t1" table1-id}}}]
@@ -303,7 +280,6 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source tables")))))))
-
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
                                       :source-tables {"t1" table1-id
@@ -345,7 +321,6 @@
           (let [hydrated (t2/hydrate table :transform)]
             (is (some? (:transform hydrated)))
             (is (= transform-id (-> hydrated :transform :id))))))))
-
   (testing "hydrating :transform returns nil when transform_id is nil"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Table table {:transform_id nil}]

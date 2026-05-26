@@ -414,7 +414,6 @@
                 3]]
               (lib/expressions query)))
       (is (= 1 (count (lib/joins query))))
-
       (let [dropped (lib/remove-join query join)]
         (is (empty? (lib/joins dropped)))
         (is (empty? (lib/expressions dropped)))))))

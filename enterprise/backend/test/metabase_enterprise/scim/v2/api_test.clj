@@ -53,17 +53,13 @@
   (with-scim-setup!
     (testing "SCIM endpoints require a valid SCIM API key passed in the authorization header"
       (scim-client :get 200 "ee/scim/v2/Users"))
-
     (testing "SCIM endpoints cannot be used if SCIM is not enabled"
       (mt/with-temporary-setting-values [scim-enabled false]
         (scim-client :get 401 "ee/scim/v2/Users")))
-
     (testing "The SCIM API key cannot be used for non-SCIM endpoints"
       (scim-client :get 401 "user"))
-
     (testing "SCIM endpoints do not allow normal auth"
       (mt/user-http-request :crowberto :get 401 "ee/scim/v2/Users"))
-
     (testing "A SCIM API key cannot be passed via the x-api-key header"
       (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" *scim-api-key*}}}))))
 
@@ -75,13 +71,11 @@
           (scim-client :get 200 "ee/scim/v2/Users")
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 0 (mt/metric-value system :metabase-scim/response-error))))
-
         (testing "Bad request (400)"
           (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                         (codec/url-encode "id ne \"newuser@metabase.com\"")))
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 1 (mt/metric-value system :metabase-scim/response-error))))
-
         (testing "Unexpected server error (500)"
           (with-redefs [scim-api/scim-response #(throw (Exception.))]
             (scim-client :get 500 "ee/scim/v2/Users")
@@ -109,7 +103,6 @@
                             :display "Test Group"}]
                 :meta     {:resourceType "User"}}
                response)))))
-
     (testing "404 is returned when fetching a non-existent user"
       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
@@ -118,7 +111,6 @@
     (testing "Fetch users with default pagination"
       (let [response (scim-client :get 200 "ee/scim/v2/Users")]
         (is (malli= scim-api/SCIMUserList response))))
-
     (testing "Fetch users with custom pagination"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
         (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
@@ -126,28 +118,24 @@
         (is (= 1 (get response :startIndex)))
         (is (= 2 (get response :itemsPerPage)))
         (is (= 2 (count (get response :Resources))))))
-
     (testing "Fetch user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
-
     (testing "Fetch deactivated user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"trashbird@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
-
     (testing "Fetch non-existent user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 0 (get response :totalResults)))
         (is (= 0 (count (get response :Resources))))))
-
     (testing "Error if unsupported filter operation is provided"
       (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                     (codec/url-encode "id ne \"newuser@metabase.com\""))))))
@@ -171,7 +159,6 @@
                     (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
                                    :entity_id (:id response)))))
           (finally (t2/delete! :model/User :email (:email user))))))
-
     (testing "Error when creating a user with an existing email"
       (let [existing-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                            :userName "rasta@metabase.com"
@@ -202,7 +189,6 @@
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedTest" (get-in response [:name :givenName])))
             (is (= "UpdatedUser" (get-in response [:name :familyName]))))
-
           (testing "Error when trying to update the email of an existing user"
             (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                                :id entity-id
@@ -213,7 +199,6 @@
                   response    (scim-client :put 400 (format "ee/scim/v2/Users/%s" entity-id) update-user)]
               (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
               (is (= "You may not update the email of an existing user." (get response :detail)))))
-
           (testing "Error when trying to update a non-existent user"
             (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
                                :id (str (random-uuid))
@@ -241,7 +226,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= false (:active response)))))
-
         (testing "Reactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -251,7 +235,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (true? (:active response)))))
-
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -260,7 +243,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedUser" (get-in response [:name :familyName])))))
-
         (testing "Update multiple attributes of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -278,7 +260,6 @@
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
             (is (true? (response :active)))))
-
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "replace"
@@ -287,7 +268,6 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -312,7 +292,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= false (:active response)))))
-
         (testing "Reactivate an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -320,7 +299,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (true? (:active response)))))
-
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -328,7 +306,6 @@
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedUser" (get-in response [:name :familyName])))))
-
         (testing "Update multiple attributes of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -343,7 +320,6 @@
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
             (is (true? (response :active)))))
-
         (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "replace"
@@ -351,7 +327,6 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -359,14 +334,12 @@
                 response   (scim-client :patch 404 (format "ee/scim/v2/Users/%s" (random-uuid)) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "User not found" (get response :detail)))))
-
         (deftest list-groups-test
           (with-scim-setup!
             (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
               (testing "Fetch groups with default pagination"
                 (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
                   (is (malli= scim-api/SCIMGroupList response))))
-
               (testing "Fetch groups with custom pagination"
                 (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
                   (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
@@ -374,25 +347,21 @@
                   (is (= 1 (get response :startIndex)))
                   (is (= 2 (get response :itemsPerPage)))
                   (is (= 2 (count (get response :Resources))))))
-
               (testing "Fetch group by name"
                 (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
                                                              (codec/url-encode "displayName eq \"Group 1\"")))]
                   (is (malli= scim-api/SCIMGroupList response))
                   (is (= 1 (get response :totalResults)))
                   (is (= 1 (count (get response :Resources))))))
-
               (testing "Fetch non-existent group by name"
                 (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
                                                              (codec/url-encode "displayName eq \"Fake Group\"")))]
                   (is (malli= scim-api/SCIMUserList response))
                   (is (= 0 (get response :totalResults)))
                   (is (= 0 (count (get response :Resources))))))
-
               (testing "Error if unsupported filter operation is provided"
                 (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                               (codec/url-encode "displayName ne \"Group 1\"")))))))))
-
     (deftest fetch-group-test
       (with-scim-setup!
         (testing "A single group can be fetched in the SCIM format by entity ID with its members"
@@ -409,10 +378,8 @@
                                    :display "rasta@metabase.com"}]
                     :meta        {:resourceType "Group"}}
                    response)))))
-
         (testing "404 is returned when fetching a non-existent group"
           (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
-
         (testing "404 is returned when fetching the Admin or All Users group"
           (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
                                              {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
@@ -462,10 +429,8 @@
           (scim-client :delete 204 (format "ee/scim/v2/Groups/%s" entity-id))
           (is (not (t2/exists? :model/PermissionsGroup :id (:id group))))
           (is (not (t2/exists? :model/PermissionsGroupMembership :group_id (:id group)))))))
-
     (testing "404 is returned when trying to delete a non-existent group"
       (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
-
     (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"
       (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]

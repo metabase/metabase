@@ -82,7 +82,6 @@
     (is (#'dictionary/is-msgstr-usable "Hello"))
     (is (#'dictionary/is-msgstr-usable "Hello, world!"))
     (is (#'dictionary/is-msgstr-usable "123")))
-
   (testing "Unusable translations"
     (is (not (#'dictionary/is-msgstr-usable "")))
     (is (not (#'dictionary/is-msgstr-usable "   ")))
@@ -136,7 +135,6 @@
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
             (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))
-
     (testing "CSV without header row is imported correctly"
       (mt/with-premium-features #{:content-translation}
         (let [csv-without-header "de,Thank you,Danke\nit,Good morning,Buongiorno"
@@ -146,7 +144,6 @@
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "de") (= (:msgid %) "Thank you") (= (:msgstr %) "Danke")) translations))
             (is (some #(and (= (:locale %) "it") (= (:msgid %) "Good morning") (= (:msgstr %) "Buongiorno")) translations))))))
-
     (testing "CSV with headers in different order is imported correctly"
       (mt/with-premium-features #{:content-translation}
         (let [csv-different-order "Translation,Language,String\nHola,es,Hello\nAu revoir,fr,Goodbye"
@@ -168,7 +165,6 @@
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
             (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))
-
     (testing "CSV with 'locale code' header is imported correctly"
       (mt/with-premium-features #{:content-translation}
         (let [csv-with-locale-code "locale code,string,translation\nde,Thank you,Danke\nit,Good morning,Buongiorno"
@@ -178,7 +174,6 @@
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "de") (= (:msgid %) "Thank you") (= (:msgstr %) "Danke")) translations))
             (is (some #(and (= (:locale %) "it") (= (:msgid %) "Good morning") (= (:msgstr %) "Buongiorno")) translations))))))
-
     (testing "CSV with 'language' header is imported correctly"
       (mt/with-premium-features #{:content-translation}
         (let [csv-with-language "language,string,translation\npt_BR,Welcome,Bem-vindo\nzh_CN,Hello,你好"
@@ -265,7 +260,6 @@
                     ["pt-br" "Thank you" "Obrigado"]]]
           (#'dictionary/import-translations! rows)
           (is (= 4 (count-translations)) "All translations should be imported")
-
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "es")
                             (= (:msgid %) "Hello")

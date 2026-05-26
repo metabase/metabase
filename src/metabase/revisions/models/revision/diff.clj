@@ -9,43 +9,30 @@
   (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
-
     [:description nil _]
     (deferred-tru "added a description")
-
     [:description (_ :guard some?) _]
     (deferred-tru "changed the description")
-
     [:document _ _]
     (deferred-tru "edited the content")
-
     [:private true false]
     (deferred-tru "made {0} public" identifier)
-
     [:private false true]
     (deferred-tru "made {0} private" identifier)
-
     [:public_uuid _ nil]
     (deferred-tru "made {0} private" identifier)
-
     [:public_uuid nil _]
     (deferred-tru "made {0} public" identifier)
-
     [:enable_embedding false true]
     (deferred-tru "enabled embedding")
-
     [:enable_embedding true false]
     (deferred-tru "disabled embedding")
-
     [:embedding_type _ _]
     (deferred-tru "changed the embedding type")
-
     [:parameters _ _]
     (deferred-tru "changed the filters")
-
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")
-
     :else nil))
 
 (defn- match-2 [k v1 v2 identifier]
@@ -54,15 +41,12 @@
     (if after
       (deferred-tru "trashed {0}" identifier)
       (deferred-tru "untrashed {0}" identifier))
-
     [:collection_position _ _]
     (deferred-tru "changed pin position")
-
     [:collection_id nil coll-id]
     (deferred-tru "moved {0} to {1}" identifier (if coll-id
                                                   (t2/select-one-fn :name 'Collection coll-id)
                                                   (deferred-tru "Our analytics")))
-
     [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
                   identifier
@@ -70,35 +54,26 @@
                   (if coll-id
                     (t2/select-one-fn :name 'Collection coll-id)
                     (deferred-tru "Our analytics")))
-
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")
-
     ;;  Card specific
     [:parameter_mappings _ _]
     (deferred-tru "changed the filter mapping")
-
     [:collection_preview _ after]
     (if after
       (deferred-tru "enabled collection review")
       (deferred-tru "disabled collection preview"))
-
     [:dataset_query _ _]
     (deferred-tru "modified the query")
-
     ;; report_card.type
     [:type (_ :guard #{:question "question"}) (_ :guard #{:model "model"})]
     (deferred-tru "turned this to a model")
-
     [:type old new]
     (deferred-tru "type changed from {0} to {1}" old new)
-
     [:display _ _]
     (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
-
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
-
     [:dashboard_id v1 v2]
     (cond
       (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
@@ -108,20 +83,16 @@
                               (t2/select-one-fn :name :model/Dashboard :id v2))
       (nil? v2) (deferred-tru "moved this question from {0}"
                               (t2/select-one-fn :name :model/Dashboard :id v1)))
-
     [:width v1 v2]
     (if (and v1 v2)
       (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
       (deferred-tru "changed the width setting"))
-
     [:source _ _]
     (deferred-tru "changed the source")
-
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
     nil
-
     :else nil))
 
 (defn- diff-string [k v1 v2 identifier]

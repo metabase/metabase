@@ -212,7 +212,6 @@
                                     :schema (:schema orders-table)
                                     :table  (:name orders-table)}]})
         (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
-
         ;; Update to depend on products instead
         (write-analysis! (:id workspace) "test_isolated_schema" :transform (:ref_id wt)
                          {:output {:db_id  (mt/id)
@@ -221,10 +220,8 @@
                           :inputs [{:db_id  (:db_id products-table)
                                     :schema (:schema products-table)
                                     :table  (:name products-table)}]})
-
         ;; Trigger clean-up
         (#'ws.impl/cleanup-old-transform-versions! (:id workspace) (:ref_id wt))
-
         (testing "old input is removed, new input exists"
           (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
           (is (t2/exists? :model/WorkspaceInput
@@ -259,7 +256,6 @@
                                          :name     "orders_analysis"}}
               analysis         (ws.deps/analyze-entity :transform transform-entity)]
           (write-analysis! (:id workspace) "test_isolated_schema" :transform (:ref_id wt) analysis)
-
           (testing "output record created"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace)))))
           (testing "input record created for ORDERS table with ref_id"

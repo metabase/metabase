@@ -319,7 +319,6 @@
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
-
       (if (> (count new-name) 256)
         (log/warnf "Cannot archive table %s, name too long" (:name table))
         (do
@@ -377,7 +376,6 @@
      (sync-util/with-error-handling (format "Error updating table schemas for %s"
                                             (sync-util/name-for-logging database))
        (adjust-table-schemas! database schemas-to-update))
-
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -393,14 +391,11 @@
      (when (seq old-table-metadatas)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
          (retire-tables! database old-table-metadatas)))
-
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
-
      (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
                                                                   (sync-util/name-for-logging database))
                              (archive-tables! database))]
-
        {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
         :total-tables   (count our-metadata)}))))

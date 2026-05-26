@@ -98,25 +98,20 @@
                  :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id-3 :card_id card-id-3}]
     (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
-
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"

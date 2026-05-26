@@ -481,7 +481,6 @@
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 402 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
           "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
-
   (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -497,7 +496,6 @@
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
           "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
-
   (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -515,7 +513,6 @@
           "Should set Access-Control-Allow-Headers to * for OPTIONS /auth/sso")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
           "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
-
   (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
     (doseq [status [200 201 500 503]]
       (let [wrapped-handler (mw.security/add-security-headers
@@ -536,46 +533,39 @@
         (let [headers (mw.security/security-headers)]
           (is (= "cross-origin" (get headers "Cross-Origin-Resource-Policy"))
               "Should include Cross-Origin-Resource-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy"))
               "Should not include Cross-Origin-Resource-Policy header when env var is not set")))))
-
   (testing "Cross-Origin-Embedder-Policy header from environment variable"
     (testing "Should add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy"))
               "Should include Cross-Origin-Embedder-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))
               "Should not include Cross-Origin-Embedder-Policy header when env var is not set")))))
-
   (testing "Both Cross-Origin headers can be set independently"
     (testing "Only CORP set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-origin"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Only COEP set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "credentialless"}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy")))
           (is (= "credentialless" (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Both set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-site"
                              :mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-site" (get headers "Cross-Origin-Resource-Policy")))
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy")))))))
-
   (testing "Cross-Origin headers are included in middleware response"
     (testing "Headers are present in actual HTTP response"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"
