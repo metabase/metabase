@@ -95,12 +95,13 @@
     :library             200
     :official-collection 80
     :verified            80
-    ;; :data-layer is one scorer with per-tier weights under :data-layer/* — see
-    ;; metabase.search.config/scorer-param. Final/internal/hidden are mutually exclusive.
-    :data-layer          1
-    :data-layer/final    33
-    :data-layer/internal 10
-    :data-layer/hidden   1
+    ;; :data-layer is the overall magnitude; per-tier weights are pure ratios with final=1.
+    ;; Contribution = :data-layer × :data-layer/<tier> — sits naturally alongside the other
+    ;; curation magnitudes above. Final/internal/hidden are mutually exclusive.
+    :data-layer          33
+    :data-layer/final    1
+    :data-layer/internal 0.3
+    :data-layer/hidden   0.03
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}
    :command-palette

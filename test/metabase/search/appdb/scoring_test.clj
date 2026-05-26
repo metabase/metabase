@@ -363,15 +363,15 @@
         (is (= 4 (-> (with-weights {:data-layer 1 :data-layer/hidden 1}
                        (search-results* "table"))
                      first second))))))
-  (testing "Metabot tier ordering: final > internal > hidden when all weights active"
+  (testing "Production tier ordering: final > internal > hidden under :default magnitudes"
     (with-index-contents
-      [{:model "table" :id 1 :name "metabot table final"    :data_layer "final"}
-       {:model "table" :id 2 :name "metabot table internal" :data_layer "internal"}
-       {:model "table" :id 3 :name "metabot table hidden"   :data_layer "hidden"}]
+      [{:model "table" :id 1 :name "production table final"    :data_layer "final"}
+       {:model "table" :id 2 :name "production table internal" :data_layer "internal"}
+       {:model "table" :id 3 :name "production table hidden"   :data_layer "hidden"}]
       (is (= [1 2 3]
-             (->> (with-weights {:data-layer          1
-                                 :data-layer/final    33
-                                 :data-layer/internal 10
-                                 :data-layer/hidden   1}
-                    (search-results* "metabot table"))
+             (->> (with-weights {:data-layer          33
+                                 :data-layer/final    1
+                                 :data-layer/internal 0.3
+                                 :data-layer/hidden   0.03}
+                    (search-results* "production table"))
                   (map second)))))))

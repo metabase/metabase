@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring-test
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
@@ -238,14 +239,15 @@
 (deftest library-test
   (mt/with-premium-features #{:semantic-search}
     (testing "Items whose root ancestor collection is a library type rank above non-library items"
+      ;; Mirror the appdb library-test predicate style: tag library rows with `lib-tree` so the
+      ;; check reads off the result name instead of a hand-counted set of ids.
       (with-index-contents!
-        [{:model "card" :id 1 :name "card plain"}
-         {:model "card" :id 2 :name "card in library"      :root_collection_type "library"}
-         {:model "card" :id 3 :name "card in library-data" :root_collection_type "library-data"}
-         {:model "card" :id 4 :name "card in lib-metrics"  :root_collection_type "library-metrics"}
-         {:model "card" :id 5 :name "card in trash"        :root_collection_type "trash"}]
-        (let [library-id? #{2 3 4}
-              in-library? (fn [[_ id _]] (boolean (library-id? id)))]
+        [{:model "card" :id 1 :name "plain card"}
+         {:model "card" :id 2 :name "lib-tree card library"            :root_collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"       :root_collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics"    :root_collection_type "library-metrics"}
+         {:model "card" :id 5 :name "trashed card"                     :root_collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
           (testing "with positive :library weight, library items come first"
             (is (= [true true true false false]
                    (map in-library? (semantic.tu/with-weights {:library 1} (search-results* "card"))))))
@@ -272,7 +274,15 @@
         (testing "hidden tables lead when only :data-layer/hidden is positive"
           (is (= 4 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/hidden 1}
                          (search-results* "table"))
-                       first second))))))))
+                       first second))))
+        (testing "tier ordering: final > internal > hidden under :default magnitudes"
+          (is (= [2 3 4]
+                 (->> (semantic.tu/with-weights {:data-layer          33
+                                                 :data-layer/final    1
+                                                 :data-layer/internal 0.3
+                                                 :data-layer/hidden   0.03}
+                        (search-results* "table"))
+                      (map second)))))))))
 
 (deftest verified-test
   (with-index-contents!

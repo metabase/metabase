@@ -86,12 +86,10 @@
                 :else :search_index.model]]]}))
 
 (defn library-score-expr
-  "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0.
-  The attribute is computed at ingestion time by walking the collection's materialized path
-  (see `collection/root-collection-type`), so items in arbitrarily deep sub-collections of a
-  library tree still match. Column is unqualified — works in any scorer subquery where
-  `root_collection_type` resolves unambiguously to the search index table."
+  "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
   []
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; materialized path), so deeply nested items in a library tree still match.
   [:case
    (into [:or]
          (for [t (sort collection/library-collection-types)]
@@ -99,25 +97,16 @@
    [:inline 1]
    :else [:inline 0]])
 
-(def ^:private data-layer-tiers
-  "Data-layer tier names, in the order they appear in `:case`. Mutually exclusive."
-  [:final :internal :hidden])
-
-(defn- data-layer-tier-clauses
-  [search-ctx]
-  (mapcat (fn [tier]
-            [[:= :data_layer [:inline (name tier)]]
-             [:inline (or (search.config/scorer-param search-ctx :data-layer tier) 0)]])
-          data-layer-tiers))
-
 (defn data-layer-score-expr
-  "Score expression: per-tier weight when `:data_layer` is one of `final`/`internal`/`hidden`,
-  else 0. Per-tier weights live under `:data-layer/*` keys in the active weights map; mirrors
-  the `:model/*` pattern (see `search.config/scorer-param`)."
+  "Score expression: per-tier weight when `:data_layer` is `final`/`internal`/`hidden`, else 0.
+  Per-tier weights are read from `:data-layer/*` keys via [[search.config/scorer-param]]."
   [search-ctx]
-  (into [:case]
-        (concat (data-layer-tier-clauses search-ctx)
-                [:else [:inline 0]])))
+  (let [tier-weight #(or (search.config/scorer-param search-ctx :data-layer %) 0)]
+    [:case
+     [:= :data_layer [:inline "final"]]    [:inline (tier-weight :final)]
+     [:= :data_layer [:inline "internal"]] [:inline (tier-weight :internal)]
+     [:= :data_layer [:inline "hidden"]]   [:inline (tier-weight :hidden)]
+     :else                                 [:inline 0]]))
 
 (defn model-rank-expr
   "Score an item based on its :model type."
