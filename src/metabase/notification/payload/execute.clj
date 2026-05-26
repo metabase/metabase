@@ -190,7 +190,7 @@
                                                                 (^:once fn* [query info]
                                                                   (qp
                                                                    (qp/userland-query query info)
-                                                               ;; Pass streaming rff with 2000 row threshold
+                                                                   ;; Pass streaming rff with 2000 row threshold
                                                                    (notification.temp-storage/notification-rff
                                                                     cells-to-disk-threshold
                                                                     {:dashboard_id dashboard_id
@@ -311,7 +311,7 @@
                                                                     (^:once fn* [query info]
                                                                       (qp
                                                                        (qp/userland-query query info)
-                                                                      ;; Pass streaming rff with 2000 row threshold
+                                                                       ;; Pass streaming rff with 2000 row threshold
                                                                        (notification.temp-storage/notification-rff
                                                                         cells-to-disk-threshold
                                                                         {:card-id card-id})))))

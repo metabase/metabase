@@ -206,7 +206,7 @@
                               (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)
-                                                   ;; Twitter is the current value so effectively a no-op
+                                                    ;; Twitter is the current value so effectively a no-op
                                                     {:parameters {:id 1 :source "Twitter"}})))))))
         (testing "When actions are enabled on the other database"
           (mt/dataset test-data

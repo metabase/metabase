@@ -6,7 +6,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
@@ -40,7 +40,7 @@
    `preamble` is optional text placed before the query XML inside <result>
    (e.g. \"SQL query successfully constructed.\")."
   [structured instruction-text & {:keys [preamble?]}]
-  (let [query-xml (llm-rep/query->xml structured)]
+  (let [query-xml (llm-shape/query->xml structured)]
     (te/lines
      "<result>"
      (when preamble?

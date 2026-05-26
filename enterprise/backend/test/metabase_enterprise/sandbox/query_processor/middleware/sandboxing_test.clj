@@ -122,8 +122,8 @@
               (format-honeysql
                {:select [[(identifier :checkins :id)]
                          [(identifier :checkins :user_id)]
-                          ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
-                          ;; We should complain loudly and then ignore them.
+                         ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
+                         ;; We should complain loudly and then ignore them.
                          [(identifier :venues :name)]
                          [(identifier :venues :category_id)]]
                 :from [[(identifier :checkins)]]
@@ -1240,8 +1240,8 @@
           (mt/with-temp [:model/Card model {:type :model
                                             :dataset_query (mt/mbql-query
                                                              products
-                                                              ;; note does not include the field we have to filter on. No way
-                                                              ;; to use the sandbox filter on the cached table
+                                                             ;; note does not include the field we have to filter on. No way
+                                                             ;; to use the sandbox filter on the cached table
                                                              {:fields [$id $price]})}]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
@@ -1254,7 +1254,7 @@
               (is (string? (:table_name persisted-info)))
 
               (let [query (mt/mbql-query nil
-                                    ;; just generate a select count(*) from card__<id>
+                            ;; just generate a select count(*) from card__<id>
                             {:aggregation [:count]
                              :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
@@ -1351,7 +1351,7 @@
     (met/with-gtaps! (mt/$ids orders
                        {:attributes {"user_id" 1}
                         :gtaps {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
-                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                ;; Since noone's zipcode == 1, this sandboxed table will return nothing
                                 :people {:remappings {"user_id" [:dimension $people.zip]}}}})
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
       (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))
@@ -1720,6 +1720,46 @@
           (testing "Preprocessing fails when we don't have a valid token"
             (mt/with-premium-features #{}
               (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (qp.preprocess/preprocess query))))))))))
+
+(deftest sandboxed-implicit-join-omits-hidden-columns-test
+  (testing "Implicit joins to a native-GTAP-sandboxed table must not project columns the GTAP omits (#73339)"
+    ;; Native GTAP that drops ADDRESS from People. With an FK remapping Orders.user_id → People.name,
+    ;; the add-remaps middleware causes an implicit join into the sandboxed People table even though
+    ;; the user's Orders query references no People columns. The projection for that join must not
+    ;; reference ADDRESS, or the DB errors with: Column "__mb_source.ADDRESS" not found.
+    (met/with-gtaps! {:gtaps {:people {:query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT ID, EMAIL, NAME, CITY, STATE FROM PEOPLE")}
+                              ;; Empty GTAP just to grant the sandbox group create-queries on Orders.
+                              :orders {}}
+                      :attributes {}}
+      (let [mp           (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                         (mt/id :orders :user_id)
+                                                         (mt/id :people :name))
+            base         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            fieldable    (lib/fieldable-columns base)
+            orders-id    (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "ID"})
+            orders-total (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "Total"})
+            ;; Plain Orders query — no People columns referenced. The implicit join into People
+            ;; comes from the FK remapping above, mirroring what the FE sends when "visiting" a table.
+            query        (-> base
+                             (lib/with-fields [orders-id orders-total])
+                             (lib/order-by orders-id :asc)
+                             (lib/limit 3))]
+        (testing "Preprocessed query does not project the dropped ADDRESS column"
+          (let [preprocessed (qp.preprocess/preprocess query)
+                address-id   (mt/id :people :address)
+                field-refs   (filter #(and (vector? %)
+                                           (= :field (first %))
+                                           (= address-id (nth % 2 nil)))
+                                     (tree-seq coll? seq preprocessed))]
+            (is (empty? field-refs)
+                "preprocessed query should not contain any field ref to people.address")))
+        (testing "Query executes successfully"
+          (let [result (qp/process-query query)]
+            (is (= :completed (:status result)))
+            (is (= 3 (count (mt/rows result))))))))))
 
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)

@@ -31,39 +31,34 @@
 ;; describes its own wire schema, and this layer patches the manifest to publish the MCP-visible
 ;; shape.
 
-;; Shared sub-shapes for the program-shaped tools (`construct_query`, `query`). Extracted so the two
-;; tools can't drift on what a program looks like to the LLM — both reuse the same `:source` map and
-;; the same flattened `:operations` (`[:sequential [:sequential :any]]`, no tuple-of-anys, no `:and`).
-;; The wire schemas under `agent_api` use the precise tuple/composite grammar; this layer publishes
-;; the permissive variant strict MCP clients (ChatGPT) accept.
+;; Shared sub-shapes for the representations-shaped tools (`construct_query`, `query`).
+;;
+;; The wire schemas under `agent-api` describe the body as `{:query <::lib.schema/external-query>}`,
+;; and `::external-query` references `::lib.schema/query`, which carries `:optional` keys (notably
+;; `:lib/metadata`) that are not `[:maybe ...]`. The new `assert-optional-fields-nullable!` lint in
+;; `tools-manifest` walks every reachable map and fails on those — which is the right behaviour for
+;; tool inputs but not for the lib-internal query map we never want strict MCP clients to populate.
+;;
+;; The override here publishes a permissive `:query` field (an opaque JSON object) and conveys the
+;; real grammar through the tool description + `metabase://docs/construct-query.md`. Strict MCP
+;; clients (ChatGPT) get a clean JSON Schema (no `prefixItems` / `allOf`); the agent learns the
+;; actual MBQL 5 shape from the prompt.
 
-(def ^:private program-source-malli
-  [:map
-   [:type {:tool/description "Entity kind."}
-    [:enum "table" "card" "dataset" "metric"]]
-   [:id ms/PositiveInt]])
-
-(def ^:private program-operations-malli
-  [:sequential
-   [:sequential
-    {:tool/description (str "First element is the operator string; remaining "
-                            "elements are operator-specific arguments (scalars, "
-                            "references, or nested arrays).")}
-    :any]])
-
-(def ^:private operations-description
-  (str "Array of operator tuples like [\"filter\", clause] or [\"aggregate\", agg-clause]. "
-       "See metabase://docs/construct-query.md for the full grammar."))
+(def ^:private external-query-mcp-malli
+  "MCP-visible shape for the `query` field of `construct_query` / `query`. Deliberately opaque:
+  publishing the full `::lib.schema/external-query` recursively would pull in `::query`'s optional
+  non-nullable `:lib/metadata` (which trips the manifest's strict-tool lint) and emit `prefixItems` /
+  `allOf` JSON Schema constructs that strict MCP clients (ChatGPT) reject."
+  [:map {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
+                                "`construct_notebook_query` tool for the format reference.")}])
 
 (def ^:private construct-query-mcp-input-malli
   "MCP-visible input for `construct_query`.
-  Deliberately flatter than the wire schema — the operator/ref grammar is conveyed through the tool
-  description and the construct-query.md MCP resource, not the schema."
+  Deliberately flatter than the wire schema — the MBQL 5 representations grammar is conveyed through
+  the tool description and the construct-query.md MCP resource, not the schema."
   [:map
-   [:source     {:tool/description "Database entity to query."}
-    program-source-malli]
-   [:operations {:tool/description operations-description}
-    program-operations-malli]
+   [:query  {:tool/description "Metabase MBQL 5 query."}
+    external-query-mcp-malli]
    ;; Length bounds + description go on the inner `:string` so they end up on the JSON Schema branch
    ;; (and not as an `:allOf`, which ChatGPT's strict validator rejects).
    [:prompt {:optional true}
@@ -73,22 +68,20 @@
                                               "Pass it as-is without summarizing or rewriting.")}]]]])
 
 (def ^:private query-mcp-input-malli
-  "MCP-visible input for `query`. The wire body is a `:multi` whose `:program` branch references
-  agent-lib tuple/composite schemas — those emit `prefixItems`/`allOf` JSON Schema constructs that
-  strict MCP clients (ChatGPT) reject. This override publishes the same flattened program shape used
-  by `construct_query`, plus the `:continuation_token` alternative for pagination."
+  "MCP-visible input for `query`. The wire body is a `:multi` whose `:fresh` branch references
+  `::lib.schema/external-query` — that pulls in `::query`'s `:optional` non-nullable
+  `:lib/metadata` (and emits `prefixItems` / `allOf` JSON Schema constructs that strict MCP
+  clients reject). This override publishes the same opaque-object `:query` field used by
+  `construct_query`, plus the `:continuation_token` alternative for pagination."
   [:map
-   [:source             {:optional true
-                         :tool/description (str "Database entity to query. Omit when paginating via "
-                                                "`continuation_token`.")}
-    [:maybe program-source-malli]]
-   [:operations         {:optional true
-                         :tool/description operations-description}
-    [:maybe program-operations-malli]]
+   [:query              {:optional true
+                         :tool/description (str "Metabase MBQL 5 query. "
+                                                "Omit when paginating via `continuation_token`.")}
+    [:maybe external-query-mcp-malli]]
    [:continuation_token {:optional true
                          :tool/description (str "Token returned by a previous `query` response — pass "
                                                 "it back to fetch the next page. Mutually exclusive "
-                                                "with `source`/`operations`.")}
+                                                "with `query`.")}
     [:maybe ms/NonBlankString]]])
 
 (def ^:private execute-query-mcp-input-malli

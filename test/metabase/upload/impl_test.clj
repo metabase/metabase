@@ -458,7 +458,7 @@
                    (is (= (ddl.i/format-name driver/*driver* "chu_se_de_20240628000000")
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
-         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
           (let [max-bytes 15]
             (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                           upload/max-bytes (constantly max-bytes)]
@@ -1483,7 +1483,7 @@
         (t2/update! :model/Table table-id {:is_upload is-upload})
         (try (update-csv! action {:table-id table-id, :file file})
              (finally
-                 ;; Drop the table in the testdb if a new one was created.
+               ;; Drop the table in the testdb if a new one was created.
                (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
                  (driver/drop-table! driver/*driver*
                                      (mt/id)
@@ -2036,7 +2036,7 @@
         (with-uploads-enabled!
           (testing "Append should handle new columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
                     file     (csv-file-with csv-rows)]
                 (testing "The new row is inserted with the values correctly reordered"
@@ -2056,7 +2056,7 @@
             (with-upload-table! [table (create-upload-table!)]
               (is (= (header-with-auto-pk ["Name"])
                      (column-display-names-for-table table)))
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
                     file     (csv-file-with csv-rows)]
@@ -2078,10 +2078,10 @@
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!
                                         :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
-             ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
+              ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
               (is (= (header-with-auto-pk [(u/upper-case-en "α")])
                      (column-display-names-for-table table)))
-             ;; Reorder as well for good measure
+              ;; Reorder as well for good measure
               (let [csv-rows ["α,ϐ"
                               "omega,Everything"]
                     file     (csv-file-with csv-rows)]

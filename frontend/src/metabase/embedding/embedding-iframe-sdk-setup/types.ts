@@ -26,7 +26,6 @@ export type SdkIframeEmbedSetupExperience =
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
-  | "select-embed-resource"
   | "select-embed-options"
   | "get-code";
 
