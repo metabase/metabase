@@ -16,15 +16,18 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
-   (java.util UUID)
+   (java.nio.charset StandardCharsets)
+   (java.util Base64 UUID)
    (javax.crypto Mac)
    (javax.crypto.spec SecretKeySpec)))
 
@@ -77,17 +80,61 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
+(def ^:private session-payload-version 1)
+
+(defn- encode-session-payload
+  [payload]
+  (-> (json/encode payload)
+      (.getBytes StandardCharsets/UTF_8)
+      (->> (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
+
+(defn- decode-session-payload
+  [encoded]
+  (when-not (str/blank? encoded)
+    (try
+      (-> (Base64/getUrlDecoder)
+          (.decode ^String encoded)
+          (String. StandardCharsets/UTF_8)
+          json/decode+kw)
+      (catch Exception _
+        nil))))
+
+(defn- session-parts
+  [session-id]
+  (when (string? session-id)
+    (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
+      (when (and (#{1 2} (count parts)) (not (str/blank? uuid)))
+        (if (= 1 (count parts))
+          {:uuid uuid}
+          (when-let [decoded-payload (decode-session-payload payload)]
+            {:uuid     uuid
+             :payload  decoded-payload
+             :extended true}))))))
+
+(defn- session-uuid
+  [session-id]
+  (when-let [uuid (:uuid (session-parts session-id))]
+    (try
+      (UUID/fromString uuid)
+      (catch IllegalArgumentException _
+        nil))))
+
+(defn- create-session-id
+  [{:keys [supports-mcp-ui?]}]
+  (str (UUID/randomUUID)
+       "."
+       (encode-session-payload {:v  session-payload-version
+                                :ui (true? supports-mcp-ui?)})))
+
 (defn valid-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces).
+  "Return true if `session-id` has a UUID correlator (the format `create!` produces).
    Format check only — authentication is handled separately by cookie or bearer token,
    not by the session ID itself."
   [session-id]
-  (and (string? session-id)
-       (try (UUID/fromString session-id) true
-            (catch IllegalArgumentException _ false))))
+  (some? (session-uuid session-id)))
 
 (defn create!
-  "Create a new MCP session. Returns a UUID string.
+  "Create a new MCP session. Returns a session id string.
    No database row is written — the session is just an opaque correlator until
    a resource read materializes it into a `core_session`.
 
@@ -95,8 +142,19 @@
    stateless (no server-side token store), we don't validate the user against
    future requests. This parameter exists so we can add durable, user-scoped
    sessions in the future without changing the call-site contract."
-  [_user-id]
-  (str (UUID/randomUUID)))
+  ([user-id]
+   (create! user-id nil))
+  ([_user-id metadata]
+   (create-session-id metadata)))
+
+(defn supports-mcp-ui?
+  "Return true if the client advertised MCP Apps UI support during initialize."
+  [session-id]
+  (when-let [{:keys [payload extended]} (session-parts session-id)]
+    (if extended
+      (true? (:ui payload))
+      ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
+      true)))
 
 (defn- get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.

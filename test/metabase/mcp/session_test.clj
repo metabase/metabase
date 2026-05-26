@@ -1,5 +1,6 @@
 (ns metabase.mcp.session-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
    [metabase.mcp.session :as mcp.session]
@@ -17,13 +18,39 @@
   [session-id]
   (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
 
+(defn- session-correlator
+  [session-id]
+  (first (str/split session-id #"\.")))
+
 (deftest create-returns-uuid-string-test
-  (testing "create! returns a UUID string without writing to the database"
+  (testing "create! returns a session id with a UUID correlator without writing to the database"
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       (is (string? session-id))
-      (is (some? (parse-uuid session-id)))
+      (is (some? (parse-uuid (session-correlator session-id))))
       (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
           "No core_session should exist yet"))))
+
+(deftest session-ui-capability-is-stateless-test
+  (testing "create! encodes MCP Apps UI support in an unsigned client capability hint"
+    (let [ui-session-id    (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})
+          plain-session-id (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? false})]
+      (is (= 2 (count (str/split ui-session-id #"\.")))
+          "New MCP session ids should include a UUID correlator and a base64url JSON capability hint")
+      (is (some? (parse-uuid (session-correlator ui-session-id))))
+      (is (true? (mcp.session/supports-mcp-ui? ui-session-id)))
+      (is (false? (mcp.session/supports-mcp-ui? plain-session-id)))
+      (is (not (t2/exists? :core_session :key_hashed (derived-hash ui-session-id)))
+          "Capability tracking should not materialize a core_session")
+      (is (not (t2/exists? :core_session :key_hashed (derived-hash plain-session-id)))
+          "Capability tracking should not materialize a core_session"))))
+
+(deftest legacy-session-ui-capability-test
+  (testing "plain UUID sessions minted before capability hints keep the old tools/list behavior"
+    (is (true? (mcp.session/supports-mcp-ui? (str (java.util.UUID/randomUUID)))))))
+
+(deftest malformed-session-payload-test
+  (testing "two-part session ids must include a decodable capability hint"
+    (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64"))))))
 
 (deftest derive-embedding-session-key-is-uuid-formatted-test
   (testing "derived key is UUID-formatted so it passes server.middleware.session/valid-session-key?"
@@ -104,6 +131,8 @@
       (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
       (is (some? (parse-uuid h2)))
       (is (not= h1 h2) "successive calls must produce distinct handles")
+      (is (= session-id (t2/select-one-fn :mcp_session_id :model/McpQueryHandle :id h1))
+          "store-handle! stores the full MCP session id, including capability hints")
       (is (= "first"  (mcp.session/read-handle session-id user-id h1)))
       (is (= "second" (mcp.session/read-handle session-id user-id h2)))
       (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))

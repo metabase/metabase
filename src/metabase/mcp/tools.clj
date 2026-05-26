@@ -152,16 +152,27 @@
     (generate-manifest)
     @manifest-delay))
 
+(def ^:private ui-tool-names
+  "Tool names that return MCP Apps UI payloads and require client UI support."
+  #{"visualize_query" "render_drill_through"})
+
+(defn- ui-tool?
+  [tool]
+  (contains? ui-tool-names (:name tool)))
+
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
-  [token-scopes]
-  (let [{:keys [tools]} (manifest)]
-    (into []
-          (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
-                (map (fn [tool]
-                       (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
-          (concat tools (mcp.resources/list-ui-tools)))))
+  ([token-scopes]
+   (list-tools token-scopes {:supports-mcp-ui? true}))
+  ([token-scopes {:keys [supports-mcp-ui?]}]
+   (let [{:keys [tools]} (manifest)]
+     (into []
+           (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
+                 (remove #(and (ui-tool? %) (not supports-mcp-ui?)))
+                 (map (fn [tool]
+                        (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
+           (concat tools (mcp.resources/list-ui-tools))))))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
@@ -424,22 +435,31 @@
    `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
    as opts in case a tool needs to scope reads to the calling MCP session.
    Returns MCP content on success, or error content on failure."
-  [token-scopes session-id tool-name arguments]
-  (let [arguments (drop-nil-args arguments)]
-    (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
-      (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
-        (error-content (str "Insufficient scope to call tool: " tool-name))
-        ((:response-fn ui-tool) arguments {:session-id session-id}))
-      (if-let [tool-def (get (tool-index) tool-name)]
-        (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
-          (error-content (str "Insufficient scope to call tool: " tool-name))
-          (let [arguments (if (tools-accepting-query-handle tool-name)
-                            (resolve-query-arg session-id tool-name arguments)
-                            arguments)]
-            (if (= arguments ::handle-not-found)
-              (error-content "Query handle not found. The query may have expired — try running construct_query again.")
-              (try
-                (dispatch-via-agent-api tool-def arguments token-scopes session-id)
-                (catch Exception e
-                  (error-content (or (ex-message e) "Internal error")))))))
-        (error-content (str "Unknown tool: " tool-name))))))
+  ([token-scopes session-id tool-name arguments]
+   (call-tool token-scopes session-id tool-name arguments {:supports-mcp-ui? true}))
+  ([token-scopes session-id tool-name arguments {:keys [supports-mcp-ui?]}]
+   (let [arguments (drop-nil-args arguments)]
+     (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
+       (cond
+         (not supports-mcp-ui?)
+         (error-content (str tool-name " requires a client that supports MCP Apps UI. "
+                             "Reconnect from a client that advertises text/html;profile=mcp-app."))
+
+         (not (mcp.scope/matches? token-scopes (:scope ui-tool)))
+         (error-content (str "Insufficient scope to call tool: " tool-name))
+
+         :else
+         ((:response-fn ui-tool) arguments {:session-id session-id}))
+       (if-let [tool-def (get (tool-index) tool-name)]
+         (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
+           (error-content (str "Insufficient scope to call tool: " tool-name))
+           (let [arguments (if (tools-accepting-query-handle tool-name)
+                             (resolve-query-arg session-id tool-name arguments)
+                             arguments)]
+             (if (= arguments ::handle-not-found)
+               (error-content "Query handle not found. The query may have expired — try running construct_query again.")
+               (try
+                 (dispatch-via-agent-api tool-def arguments token-scopes session-id)
+                 (catch Exception e
+                   (error-content (or (ex-message e) "Internal error")))))))
+         (error-content (str "Unknown tool: " tool-name)))))))

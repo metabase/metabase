@@ -93,21 +93,38 @@
   ([method params]
    {:jsonrpc "2.0" :method method :params params}))
 
-(defn- initialize!
-  "Perform the full MCP initialize handshake (initialize + notifications/initialized).
+(def ^:private mcp-app-ui-capabilities
+  {:extensions [{:mimeTypes ["text/html;profile=mcp-app"]}]})
+
+(defn- initialize-with-params!
+  "Perform the full MCP initialize handshake with custom initialize params.
    Returns [session-id init-response]."
-  []
-  (let [response   (mcp-request (jsonrpc-request "initialize"))
+  [params]
+  (let [response   (mcp-request (jsonrpc-request "initialize" params))
         session-id (get-in response [:headers "Mcp-Session-Id"])]
     ;; Complete the handshake so the session is marked initialized
     (mcp-request (jsonrpc-notification "notifications/initialized")
                  {"mcp-session-id" session-id})
     [session-id response]))
 
+(defn- initialize!
+  "Perform the full MCP initialize handshake (initialize + notifications/initialized).
+   Returns [session-id init-response]."
+  []
+  (initialize-with-params! {:capabilities mcp-app-ui-capabilities}))
+
+(defn- initialize-without-ui!
+  "Perform the full MCP initialize handshake without MCP Apps UI capability.
+   Returns [session-id init-response]."
+  []
+  (initialize-with-params! {}))
+
 (defn- initialize-as!
   "Like `initialize!` but authenticates as the given test username."
   [username]
-  (let [response   (mcp-request-as username (jsonrpc-request "initialize") {})
+  (let [response   (mcp-request-as username
+                                   (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities})
+                                   {})
         session-id (get-in response [:headers "Mcp-Session-Id"])]
     (mcp-request-as username
                     (jsonrpc-notification "notifications/initialized")
@@ -250,6 +267,21 @@
         (is (contains? annotations :readOnlyHint)    (str name " missing :readOnlyHint"))
         (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
         (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
+
+(deftest tools-list-omits-ui-tools-without-ui-capability-test
+  (testing "clients that do not advertise MCP Apps UI support do not see UI-only tools"
+    (let [[session-id _] (initialize-without-ui!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (= (disj all-tool-names "visualize_query" "render_drill_through") tool-names))
+      (is (not (contains? tool-names "visualize_query")))
+      (is (not (contains? tool-names "render_drill_through")))))
+  (testing "clients that advertise MCP Apps UI support see UI-only tools"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (contains? tool-names "visualize_query"))
+      (is (contains? tool-names "render_drill_through")))))
 
 (deftest text-content-includes-structured-content-for-maps-test
   (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
@@ -688,6 +720,18 @@
       (is (=? {:content           [{:type "text"}]
                :structuredContent {:query "card__1"}}
               result)))))
+
+(deftest tools-call-rejects-ui-tools-without-ui-capability-test
+  (testing "direct calls to UI-only tools are rejected for clients without MCP Apps UI support"
+    (let [[session-id _] (initialize-without-ui!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query "card__1"}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "requires a client that supports MCP Apps UI")}]}}}
+              response)))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"

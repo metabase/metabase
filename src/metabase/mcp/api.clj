@@ -70,13 +70,31 @@
     :capabilities    {:tools {} :resources {}}
     :serverInfo      server-info}))
 
-(defn- handle-tools-list [id _params token-scopes]
-  (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
+(defn- mcp-app-ui-capability?
+  "Return true if initialize params advertise support for MCP Apps HTML resources.
+
+   Some clients expose this under capabilities.extensions, but we walk the nested capability value rather than
+   depending on one exact extension shape while the client-side capability envelope is still settling."
+  [params]
+  (boolean
+   (some #(= "text/html;profile=mcp-app" %)
+         (tree-seq coll? seq (get-in params [:capabilities])))))
+
+(defn- handle-tools-list [id _params token-scopes session-id]
+  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
+                                                                     supports-mcp-ui?})})))
 
 (defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
-        arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes session-id tool-name arguments))))
+        arguments (or (:arguments params) {})
+        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes
+                                              session-id
+                                              tool-name
+                                              arguments
+                                              {:supports-mcp-ui?
+                                               supports-mcp-ui?}))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -103,7 +121,7 @@
   (try
     (case method
       "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params token-scopes)
+      "tools/list"                (handle-tools-list id params token-scopes session-id)
       "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
@@ -230,7 +248,10 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (mcp.session/create! user-id)
+      (let [params           (:params body)
+            supports-mcp-ui? (mcp-app-ui-capability? params)
+            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
+                                                           supports-mcp-ui?})
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
