@@ -57,12 +57,14 @@
       (when (not= old-vals metabot-updates)
         (t2/update! :model/Metabot id metabot-updates)
         (when-not (metabot.usage/managed-free-limit-reached?)
-          (metabot.suggested-prompts/delete-all-metabot-prompts id)
+          ;; Delete + regenerate atomically so a raced managed-AI lock (the 402 swallowed below) or
+          ;; any other failure rolls back the delete instead of leaving the Metabot with zero
+          ;; prompts. The 402 still triggers the rollback because it escapes the transaction body
+          ;; before we catch it. Swallowing it keeps a settings-only PUT from failing on a race.
           (try
-            (metabot.suggested-prompts/generate-sample-prompts id)
-            ;; Best-effort: if the managed-AI lock kicks in between the pre-check above and the
-            ;; canonical check inside `generate-sample-prompts`, swallow the 402 so a PUT to
-            ;; update Metabot settings doesn't fail just because prompt regeneration was raced.
+            (t2/with-transaction [_conn]
+              (metabot.suggested-prompts/delete-all-metabot-prompts id)
+              (metabot.suggested-prompts/generate-sample-prompts id))
             (catch clojure.lang.ExceptionInfo e
               (when-not (= "metabase_ai_managed_locked" (:error-code (ex-data e)))
                 (throw e))))))
