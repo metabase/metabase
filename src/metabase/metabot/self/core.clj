@@ -516,7 +516,6 @@
 
            ;; otherwise: do nothing
            nil)
-
          (rf result chunk))))))
 
 (def ^:private max-body-preview-chars

@@ -30,16 +30,13 @@
                            [:type              [:maybe :string]]]
                           resp))
               (is (= :official (t2/select-one-fn :authority_level :model/Collection (:id resp))))))
-
           (testing "but the type has to be valid"
             (mt/user-http-request :crowberto :post 400 "collection"
                                   {:name "foo" :authority_level "invalid-type"})))
-
         (testing "non-admins get 403"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "collection" {:name            "An official collection"
                                                                       :authority_level "official"}))))))
-
     (testing "fails to add an official collection if doesn't have any premium features"
       (mt/with-premium-features #{}
         (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
@@ -55,21 +52,18 @@
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
             (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))
-
         (testing "Non-admins can patch without the :authority_level"
           (mt/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
             (is (= "official"
                    (-> (mt/user-http-request :rasta :put 200 (str "collection/" (:id collection))
                                              {:name "foo"})
                        :authority_level)))))
-
         (testing "non-admins get 403"
           (mt/with-temp
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
             (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))))
-
     (testing "fails to update if doesn't have any premium features"
       (mt/with-premium-features #{}
         (mt/with-temp
@@ -85,7 +79,6 @@
           [:model/Collection {id :id} {:authority_level "official"}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official" :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id)))))
-
       (testing "authority_level is not set and update payload contains the key but does not change"
         (mt/with-temp
           [:model/Collection {id :id} {}]
@@ -106,7 +99,6 @@
                                                                                           {:moderated_item_id   model-id
                                                                                            :moderated_item_type :card
                                                                                            :status              :verified}))))
-
     (testing "can use verified questions/models if has :content-verification feature"
       (mt/with-premium-features #{:content-verification}
         (is (pos-int? (:id (mt/user-http-request :crowberto :post 200 "moderation-review"

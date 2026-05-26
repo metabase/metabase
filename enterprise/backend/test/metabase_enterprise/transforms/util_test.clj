@@ -20,7 +20,6 @@
       (mt/with-premium-features #{:hosting :transforms-basic}
         (is (transforms.u/is-temp-transform-table? table-without-schema))
         (is (transforms.u/is-temp-transform-table? table-with-schema)))))
-
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms-basic}
       (is (false? (transforms.u/is-temp-transform-table? {:name :orders})))

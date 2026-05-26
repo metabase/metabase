@@ -475,13 +475,11 @@
            [:< x y]
            [:> (extract :day x) (extract :day y)]]
           [:inline -1]
-
           ;; if x>y but x<y in the month calendar then add one month
           [:and
            [:> x y]
            [:< (extract :day x) (extract :day y)]]
           [:inline 1]
-
           :else
           [:inline 0]]))
 
@@ -558,7 +556,6 @@
         (keep (fn [param]
                 (if (contains? param :name)
                   [(:name param) (:value param)]
-
                   (when-let [field-id (driver-api/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (perf/some #{:dimension} &parents)

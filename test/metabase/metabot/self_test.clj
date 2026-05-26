@@ -162,7 +162,6 @@
               {:type :text :id "text-1" :text "!"}
               {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
-
   (testing "still collects tool inputs for JSON parsing"
     (let [chunks [{:type :start :messageId "msg-1"}
                   {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
@@ -172,7 +171,6 @@
       (is (= [{:type :start :id "msg-1"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
-
   (testing "converts tool-output-available to tool-output"
     (let [chunks [{:type                   :tool-output-available
                    :toolCallId             "call-1"
@@ -197,7 +195,6 @@
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= chunks result)
           "Non-tool chunks should pass through unchanged")))
-
   (testing "tool-executor-xf executes tool calls and appends results"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-123"}
@@ -214,7 +211,6 @@
                  :toolName   "get-time"
                  :result     string?}
                 tool-result)))))
-
   (testing "tool-executor-xf handles multiple concurrent tool calls"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-456"}
@@ -228,7 +224,6 @@
             "Last two chunks should be tool outputs")
         (is (= #{"call-1" "call-2"}
                (set (map :toolCallId tool-results)))))))
-
   (testing "tool-executor-xf handles tools returning reducibles"
     (let [llm-id "wut-1"
           input  "Little bits and pieces"
@@ -245,7 +240,6 @@
               :id   llm-id
               :text input}
              (last (into [] (self.core/aisdk-xf) result))))))
-
   (testing "tool-executor-xf handles tool execution errors gracefully"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
@@ -258,7 +252,6 @@
                :error      {:message string?
                             :type    string?}}
               (last result)))))
-
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-nil"}
@@ -269,7 +262,6 @@
                :toolName   "no-arg"
                :result     {:output "ok"}}
               (last result)))))
-
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
@@ -455,7 +447,6 @@
         (is (= "call-123" (:toolCallId parsed)))
         ;; result should be JSON string
         (is (string? (:result parsed))))))
-
   (testing "formats tool error"
     (let [line (self.core/format-tool-result-line {:id "call-456"
                                                    :error {:message "Tool failed"}})]
@@ -463,7 +454,6 @@
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-456" (:toolCallId parsed)))
         (is (string? (:error parsed))))))
-
   (testing ":duration-ms is ignored"
     (let [line (self.core/format-tool-result-line {:id "call-789"
                                                    :result {:data [{:id 1}]}
@@ -518,7 +508,6 @@
               lines))
       (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
               (-> (last lines) (subs 2) (json/decode+kw))))))
-
   (testing ":external-id overrides the messageId on the start line"
     (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
                  {:type :text :text "hi"}]
@@ -631,11 +620,9 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         ;; mt/with-prometheus-system! is slow, so clear! metrics between tests rather than creating a fresh system
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
             (mt/with-log-level [metabase.metabot.self :fatal]
@@ -652,11 +639,9 @@
             (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                        (assoc labels :error-type "ExceptionInfo"))))
             (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels))))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-retries)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors on non-retryable failure, no retries"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (fn [_opts]
@@ -669,11 +654,9 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-errors)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response [{:type :error :errorText "content policy violation"}]))]
@@ -681,7 +664,6 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
-
         (testing "reports token usage metrics on :usage parts"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -694,12 +676,10 @@
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
           (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
-
         (analytics/clear! :metabase-metabot/llm-input-tokens)
         (analytics/clear! :metabase-metabot/llm-output-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-
         (testing "increments cache token counters when the :usage part carries cache fields"
           ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -714,12 +694,10 @@
             (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
           (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
-
         (analytics/clear! :metabase-metabot/llm-input-tokens)
         (analytics/clear! :metabase-metabot/llm-output-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
         (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
-
         (testing "does not increment cache counters when cache fields are absent or zero"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -752,10 +730,8 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-retries on transient failures, no errors on eventual success"
           (let [calls (atom 0)]
             (mt/with-log-level [metabase.metabot.self :fatal]
@@ -770,11 +746,9 @@
           (is (== 0 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-retries)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors on non-retryable failure, no retries"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (fn [_opts] (throw (ex-info "unauthorized" {:status 401})))]
@@ -784,11 +758,9 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "ExceptionInfo"))))
           (is (pos? (:sum (mt/metric-value system :metabase-metabot/llm-duration-ms labels)))))
-
         (analytics/clear! :metabase-metabot/llm-requests)
         (analytics/clear! :metabase-metabot/llm-errors)
         (analytics/clear! :metabase-metabot/llm-duration-ms)
-
         (testing "increments llm-errors with :error-type llm-sse-error on inline SSE errors"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -797,7 +769,6 @@
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests labels)))
           (is (== 1 (mt/metric-value system :metabase-metabot/llm-errors
                                      (assoc labels :error-type "llm-sse-error")))))
-
         (testing "reports token usage metrics on :usage parts"
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                       (constantly (test-util/mock-llm-response
@@ -1147,7 +1118,6 @@
       (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
                :status 500 :body {:error {:message "model decommissioned"}}}
               (ex-data ex)))))
-
   (testing "non-JSON bodies still get a preview appended"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
@@ -1161,7 +1131,6 @@
       (is (str/includes? (ex-message ex) "upstream gateway timeout"))
       (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
-
   (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
     (let [upstream (ex-info "clj-http error"
                             {:status 500 :reason-phrase "Internal Server Error"
@@ -1191,7 +1160,6 @@
       (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex)))))
-
   (testing "no-body branch drops the trailing colon when ex-message is blank"
     (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
       (is (= "openai API request failed" (ex-message ex)))
@@ -1211,7 +1179,6 @@
                              upstream))]
       (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
       (is (=? {:error {:message "model decommissioned"}} (:body (ex-data ex))))))
-
   (testing "Large InputStream bodies are bounded — not fully slurped into memory"
     ;; ByteArrayInputStream.available() returns the unread byte count, so we can
     ;; measure how much rethrow-api-error! pulled off the stream without proxying.
@@ -1230,7 +1197,6 @@
       (is (str/ends-with? (ex-message ex) "…"))
       (is (< consumed (alength body-bytes))
           "should not consume the entire 2MB stream just to surface an error preview")))
-
   (testing "Truncated InputStream JSON bodies fall back to the raw bounded string"
     ;; A small slurp cap forces the JSON to be cut mid-envelope. We should fall back
     ;; to surfacing the raw bounded string rather than throwing on parse failure.

@@ -443,13 +443,11 @@
       (is (= :status/active (:status normalized)))
       (is (= :search (:has_field_values normalized)))
       (is (= :field (get-in normalized [:sources 0 :type])))))
-
   (testing "leaves already-keywordized values unchanged"
     (let [dim        {:id "dim-2" :name "col" :status :status/active :has_field_values :list}
           normalized (lib-metric.dimension/normalize-persisted-dimension dim)]
       (is (= :status/active (:status normalized)))
       (is (= :list (:has_field_values normalized)))))
-
   (testing "no-op when optional fields are absent"
     (let [dim {:id "dim-3" :name "col"}]
       (is (= dim (lib-metric.dimension/normalize-persisted-dimension dim))))))
