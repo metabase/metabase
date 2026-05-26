@@ -44,6 +44,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_APP_DEMO,
   PLUGIN_LANDING_PAGE,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
@@ -141,6 +142,11 @@ export const getRoutes = (store) => {
         {/* MAIN */}
         <Route component={IsAuthenticated}>
           {getMetabotRoutes()}
+
+          {/* PoC data-app host — admin-only; backend bundle endpoint is superuser-only. */}
+          <Route path="data-app-demo" component={IsAdmin}>
+            <IndexRoute component={PLUGIN_DATA_APP_DEMO.DataAppDemo} />
+          </Route>
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
