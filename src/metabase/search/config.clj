@@ -95,13 +95,13 @@
     :library             200
     :official-collection 80
     :verified            80
-    ;; :data-layer is the overall magnitude; per-tier weights are pure ratios with final=1.
-    ;; Contribution = :data-layer × :data-layer/<tier> — sits naturally alongside the other
-    ;; curation magnitudes above. Final/internal/hidden are mutually exclusive.
+    ;; :data-layer is the overall magnitude; per-tier weights are parameters (ratios with
+    ;; final=1), not strict weights. Contribution = :data-layer × :data-layer/<tier>.
+    ;; Final/internal/hidden are mutually exclusive. Trailing comments show effective products.
     :data-layer          33
-    :data-layer/final    1
-    :data-layer/internal 0.3
-    :data-layer/hidden   0.03
+    :data-layer/final    1     ; ≈ 33
+    :data-layer/internal 0.3   ; ≈ 10
+    :data-layer/hidden   0.03  ; ≈ 1
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}
    :command-palette
