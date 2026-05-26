@@ -1,5 +1,5 @@
 .root {
-  --badge-height-xs: 1.25rem;
+  --badge-height-xs: 1rem;
   --badge-height-sm: 1.5rem;
   --badge-lh: 0.9375rem;
   --badge-fz-xs: 0.6875rem;
@@ -11,10 +11,18 @@
   &[data-variant="light"] {
     background-color: var(--mb-color-background-disabled);
     color: var(--mb-color-text-primary);
+
+    [data-mantine-color-scheme="dark"] & {
+      background-color: var(--mb-color-border);
+    }
   }
 
   &[data-variant="filled"] {
     background-color: var(--mb-color-background-brand);
     color: var(--mb-color-text-primary-inverse);
+
+    [data-mantine-color-scheme="dark"] & {
+      color: var(--mb-color-text-primary);
+    }
   }
 }

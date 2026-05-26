@@ -17,11 +17,11 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   bg: {
-    options: [undefined, "brand" as const, "background-error" as const],
+    options: [undefined, "brand" as const, "error" as const],
     control: { type: "inline-radio" },
   },
   color: {
-    options: [undefined, "brand" as const, "error" as const],
+    options: [undefined, "white" as const, "error" as const],
     control: { type: "inline-radio" },
   },
   children: {
@@ -42,8 +42,8 @@ const DefaultTemplate = ({
 );
 
 const GridTemplate = ({ children }: BadgeProps) => (
-  <Grid align="center" bg="background-primary" columns={4} p="xl" w="50rem">
-    <Grid.Col span={2} />
+  <Grid align="center" bg="background-primary" columns={3} p="xl" w="50rem">
+    <Grid.Col span={1} />
 
     {argTypes.size.options.map((size) => (
       <Grid.Col span={1} key={size}>
@@ -51,7 +51,7 @@ const GridTemplate = ({ children }: BadgeProps) => (
       </Grid.Col>
     ))}
 
-    <Grid.Col span={2}>
+    <Grid.Col span={1}>
       <Text fw="bold">light</Text>
     </Grid.Col>
 
@@ -67,34 +67,34 @@ const GridTemplate = ({ children }: BadgeProps) => (
       </Badge>
     </Grid.Col>
 
-    <Grid.Col span={2}>
+    <Grid.Col span={1}>
       <Text fw="bold">filled / brand</Text>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge bg="brand" color="white" size="xs" variant="filled">
+      <Badge bg="brand" size="xs" variant="filled">
         {children}
       </Badge>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge bg="brand" color="white" size="sm" variant="filled">
+      <Badge bg="brand" size="sm" variant="filled">
         {children}
       </Badge>
     </Grid.Col>
 
-    <Grid.Col span={2}>
+    <Grid.Col span={1}>
       <Text fw="bold">filled / error</Text>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge bg="error" color="white" size="xs" variant="filled">
+      <Badge bg="error" size="xs" variant="filled">
         {children}
       </Badge>
     </Grid.Col>
 
     <Grid.Col span={1}>
-      <Badge bg="error" color="white" size="sm" variant="filled">
+      <Badge bg="error" size="sm" variant="filled">
         {children}
       </Badge>
     </Grid.Col>
