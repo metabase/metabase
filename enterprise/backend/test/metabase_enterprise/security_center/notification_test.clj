@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -251,42 +252,62 @@
 
 ;;; -------------------------------------------- Recipient resolution -------------------------------------------------
 
+(defn- admin-group-recipient []
+  {:type :notification-recipient/group :permissions_group_id (:id (perms/admin-group))})
+
 (deftest admin-email-included-when-set-test
-  (testing "site admin email is appended as a raw-value recipient"
-    (let [sent         (atom nil)
-          custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+  (testing "site admin email is appended when recipients target the admin group"
+    (let [sent   (atom nil)
+          recips [(admin-group-recipient)
+                  {:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
       (mt/with-temp [:model/SecurityAdvisory advisory
                      (advisory-fixture {:advisory_id  "SC-ADMIN-001"
                                         :severity     "critical"
                                         :match_status "active"})]
         (mt/with-temporary-setting-values [admin-email "boss@example.com"]
-          (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+          (with-redefs [settings/security-center-email-recipients (constantly recips)]
             (with-send-redef (fn [notif & _] (reset! sent notif))
               (notification/notify-advisory! advisory)
               (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
                     recipients    (:recipients email-handler)]
-                (is (= 2 (count recipients)))
-                ;; configured recipient
-                (is (= :notification-recipient/external-email (:type (first recipients))))
-                ;; admin email appended
+                ;; admin group recipient + external email + raw admin email
+                (is (= 3 (count recipients)))
                 (is (= {:type :notification-recipient/raw-value :details {:value "boss@example.com"}}
                        (last recipients))))))))))
 
   (testing "no admin email appended when admin-email setting is nil"
-    (let [sent         (atom nil)
-          custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+    (let [sent   (atom nil)
+          recips [(admin-group-recipient)
+                  {:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
       (mt/with-temp [:model/SecurityAdvisory advisory
                      (advisory-fixture {:advisory_id  "SC-ADMIN-002"
                                         :severity     "high"
                                         :match_status "active"})]
         (mt/with-temporary-setting-values [admin-email nil]
-          (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+          (with-redefs [settings/security-center-email-recipients (constantly recips)]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
+                    recipients    (:recipients email-handler)]
+                (is (every? #(not= :notification-recipient/raw-value (:type %)) recipients))))))))))
+
+(deftest admin-email-excluded-when-send-to-all-admins-off-test
+  (testing "admin-email is NOT appended when the configured recipient list omits the admin group (GDGT-2422)"
+    (let [sent   (atom nil)
+          recips [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-ADMIN-OFF-001"
+                                        :severity     "critical"
+                                        :match_status "active"})]
+        (mt/with-temporary-setting-values [admin-email "boss@example.com"]
+          (with-redefs [settings/security-center-email-recipients (constantly recips)]
             (with-send-redef (fn [notif & _] (reset! sent notif))
               (notification/notify-advisory! advisory)
               (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
                     recipients    (:recipients email-handler)]
                 (is (= 1 (count recipients)))
-                (is (= :notification-recipient/external-email (:type (first recipients))))))))))))
+                (is (= :notification-recipient/external-email (:type (first recipients))))
+                (is (every? #(not= :notification-recipient/raw-value (:type %)) recipients))))))))))
 
 (deftest email-recipients-custom-list-test
   (testing "when security-center-email-recipients is set, those specific recipients are used"

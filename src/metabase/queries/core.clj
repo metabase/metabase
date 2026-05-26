@@ -39,7 +39,7 @@
   sole-dashboard-id
   starting-card-schema-version
   update-card!
-   ;; TODO -- not convinced whether this belongs here or in `permissions`
+  ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
   infer-metadata

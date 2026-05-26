@@ -5,12 +5,12 @@ on:
   workflow_call:
     inputs:
       self_hosting:
-        description: 'Deploy self-hosting stack'
+        description: "Deploy self-hosting stack"
         required: false
         type: boolean
         default: false
       analytics_dev_mode:
-        description: 'Enable analytics development mode'
+        description: "Enable analytics development mode"
         required: false
         type: boolean
         default: false
@@ -28,7 +28,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v6
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -49,7 +49,7 @@ jobs:
           jar xf target/uberjar/metabase.jar
           mv target/uberjar/metabase.jar bin/docker/metabase.jar
       - name: Build container
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: bin/docker/
           platforms: linux/amd64
@@ -108,7 +108,7 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -177,7 +177,7 @@ jobs:
         if: ${{ inputs.self_hosting }}
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
-          version: 'latest'
+          version: "latest"
       - name: Login to Quay.io
         if: ${{ inputs.self_hosting }}
         run: |

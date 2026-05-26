@@ -70,8 +70,8 @@
           (semantic.core/update-index! initial-docs)
           (semantic.tu/index-all!)
 
-            ;; Ensure repair-index! brings index into consistency with new documents et.
-            ;; Note: card 2 and dashboard 3 are missing - should be deleted
+          ;; Ensure repair-index! brings index into consistency with new documents et.
+          ;; Note: card 2 and dashboard 3 are missing - should be deleted
           (let [modified-docs [(create-test-document "card" 1 "Dog Training Guide")        ; existing - should remain
                                (create-test-document "card" 4 "Bird Watching Tips")        ; new - should be added
                                (create-test-document "dashboard" 5 "Wildlife Dashboard")]] ; new - should be added

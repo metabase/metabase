@@ -61,23 +61,23 @@
                       lines    (str/split-lines response)
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-              ;; Native agent emits AI SDK v4 line protocol directly
+                  ;; Native agent emits AI SDK v4 line protocol directly
                   (testing "response contains expected line types"
-                ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
+                    ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
                     (is (=? [#"f:.*"
                              #"0:.*"
                              #"2:.*"
                              #"d:.*"]
                             (m/distinct-by #(subs % 0 2) lines)))
-                ;; Text chunks reassemble to full message
+                    ;; Text chunks reassemble to full message
                     (let [text-lines (filter #(str/starts-with? % "0:") lines)]
                       (is (= "Hello from native agent!"
                              (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                ;; Finish line includes usage
+                    ;; Finish line includes usage
                     (is (str/includes? (last lines) "promptTokens")))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-              ;; Native agent stores parts in raw format
+                  ;; Native agent stores parts in raw format
                   (is (=? [{:total_tokens 0
                             :role         :user
                             :data         [{:role "user" :content (:content question)}]}

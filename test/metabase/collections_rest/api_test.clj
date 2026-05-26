@@ -2816,7 +2816,7 @@
             (let [;; Create a parent collection with snippets namespace
                   lib-root         (t2/select-one :model/Collection :entity_id entity-id)
                   child-collection (mt/user-http-request :crowberto :post 200 "collection"
-                                                       ;; Deliberately not setting `:type` here - it's automatic.
+                                                         ;; Deliberately not setting `:type` here - it's automatic.
                                                          {:name      "Child Collection"
                                                           :parent_id (u/the-id lib-root)})
                   child-id         (:id child-collection)]
@@ -2826,7 +2826,7 @@
                        :name "Grandchild Collection"
                        :type collection-type}
                       (mt/user-http-request :crowberto :post 200 "collection"
-                                          ;; Likewise, deliberately no `:type`.
+                                            ;; Likewise, deliberately no `:type`.
                                             {:name      "Grandchild Collection"
                                              :parent_id child-id}))
                   "Grandchild collection should also inherit the :type of their non-magic parent"))))))))
