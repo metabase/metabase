@@ -545,7 +545,10 @@ export const getChartsGroupLayoutStrategy = (
     SPECIAL_QUERY_TYPES.includes(seriesGroups[1].queryType);
 
   if (isTwoChartsWithOneSpecial) {
-    if (seriesGroups[1].series[0].card.display === "table") {
+    if (
+      seriesGroups[0].series[0].card.display !== "table" &&
+      seriesGroups[1].series[0].card.display === "table"
+    ) {
       return "chart-and-table-vertically";
     }
     return "two-same-size-charts-vertically";
