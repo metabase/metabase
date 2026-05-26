@@ -54,7 +54,4 @@ export {
   updateSetting,
 } from "./updateSetting";
 export { updateSnippet } from "./updateSnippet";
-export {
-  clearWorkspaceInstanceConfig,
-  setWorkspaceInstanceConfig,
-} from "./setWorkspaceInstanceConfig";
+export { clearWorkspaceInstanceConfig } from "./setWorkspaceInstanceConfig";
