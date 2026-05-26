@@ -539,15 +539,23 @@
   materialized Card carrying display / visualization_settings / dataset_query) and
   `stored-result-id` (the cached snapshot the static renderer reads bytes from), to the end
   of a prose-mirror document body. The embed is wrapped in a `resizeNode` to match the FE
-  schema for all `cardEmbed` nodes (live and static). Tolerates a missing/non-doc root by
-  replacing it with an empty doc."
-  [doc card-id stored-result-id chart-href chart-name]
+  schema for all `cardEmbed` nodes (live and static).
+
+  `dataset-query` (when non-nil) is written into the embed's node attrs so the document
+  renderer can compose the variant's MBQL onto the fetched Card — preserving exploration
+  breakouts (`temporal-pattern-day` day-of-week bucket, `top-n-other` case expression,
+  `time-facet`'s second breakout, …) even though the materialized Card may render them
+  differently on its own.
+
+  Tolerates a missing/non-doc root by replacing it with an empty doc."
+  [doc card-id stored-result-id chart-href chart-name dataset-query]
   (let [base  (if (and (map? doc) (= "doc" (:type doc)))
                 doc
                 {:type "doc" :content []})
         embed {:type    "resizeNode"
                :content [{:type  "cardEmbed"
-                          :attrs {:id card-id :name nil :stored_result_id stored-result-id}}]}
+                          :attrs (cond-> {:id card-id :name nil :stored_result_id stored-result-id}
+                                   dataset-query (assoc :dataset_query dataset-query))}]}
         link  {:type    "paragraph"
                :content [{:type  "text"
                           :text  chart-name
@@ -561,7 +569,12 @@
   particular document embed (carrying display / visualization_settings / dataset_query), and
   writes both ids into the node attrs. Each append produces a fresh Card — the same snapshot
   can be embedded multiple times, possibly across documents, and each embed gets its own Card
-  so settings can diverge later without touching the others."
+  so settings can diverge later without touching the others.
+
+  The EQ's `dataset_query` (with the variant's breakouts) is also copied onto the node so
+  the document renderer composes it onto the fetched Card — preserving the exploration
+  variant's MBQL shape (day-of-week bucket, Top-K case, time-facet second breakout, …)
+  even when the saved Card's `dataset_query` drifts from the variant."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
@@ -580,7 +593,8 @@
         exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
         chart-href (chart-page-url exp-id (:card_id eq) (:dimension_id eq))
         chart-name (or (:name eq) (tru "Chart"))
-        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href chart-name)]
+        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href chart-name
+                                       (:dataset_query eq))]
     (t2/update! :model/Document (:id doc) {:document new-body})
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 

@@ -12,6 +12,7 @@ import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   Card,
   Dataset,
+  DatasetQuery,
   RawSeries,
   StoredResultSort,
 } from "metabase-types/api";
@@ -21,13 +22,9 @@ import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
   id: number | null | undefined;
-  /**
-   * When set, the card-query call serves the cached snapshot identified by this id instead
-   * of running the card's query live. Used by static `cardEmbed`s.
-   */
-  storedResultId?: number;
-  /** In-memory re-sort applied to the cached rows. Only honored with `storedResultId`. */
-  storedResultSort?: StoredResultSort;
+  storedResultId?: number; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  storedResultSort?: StoredResultSort; // Sort to apply in-memory when reading a static snapshot. Static-mode only
+  datasetQueryOverride?: DatasetQuery;
 }
 
 export interface UseCardDataResult {
@@ -99,6 +96,7 @@ export function useCardData({
   id: rawId,
   storedResultId,
   storedResultSort,
+  datasetQueryOverride,
 }: UseCardDataProps): UseCardDataResult {
   const id = rawId ?? 0;
   const isDraft = id < 0;
@@ -182,14 +180,21 @@ export function useCardData({
 
   const isLoading = isLoadingCard || isLoadingDataset;
 
-  const hasDataForVisualization = cardToUse && dataset?.data;
+  const cardForRender = useMemo(() => {
+    if (!cardToUse || isDraft || !datasetQueryOverride) {
+      return cardToUse;
+    }
+    return { ...cardToUse, dataset_query: datasetQueryOverride };
+  }, [cardToUse, isDraft, datasetQueryOverride]);
+
+  const hasDataForVisualization = cardForRender && dataset?.data;
   const series = hasDataForVisualization
-    ? buildSeries(cardToUse, dataset)
+    ? buildSeries(cardForRender, dataset)
     : null;
 
   const question = useMemo(
-    () => (cardToUse ? new Question(cardToUse, metadata) : undefined),
-    [cardToUse, metadata],
+    () => (cardForRender ? new Question(cardForRender, metadata) : undefined),
+    [cardForRender, metadata],
   );
 
   const hasTriedToLoad =
@@ -206,7 +211,7 @@ export function useCardData({
   const error = getError();
 
   return {
-    card: cardToUse,
+    card: cardForRender,
     dataset,
     isLoading,
     series,
