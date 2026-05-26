@@ -103,19 +103,27 @@ describe("MetricCachingModal", () => {
     ).toBe(false);
   });
 
-  it("prompts before discarding when the close button is pressed with a dirty form", async () => {
-    const { onClose } = setup();
+  it.each([
+    ["close button", /close/i],
+    ["Cancel button", /^Cancel$/i],
+  ])(
+    "prompts before discarding when the %s is pressed with a dirty form",
+    async (_label, name) => {
+      const { onClose } = setup();
 
-    await userEvent.click(
-      await screen.findByRole("radio", { name: /^Duration$/i }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+      await userEvent.click(
+        await screen.findByRole("radio", { name: /^Duration$/i }),
+      );
+      await userEvent.click(screen.getByRole("button", { name }));
 
-    expect(
-      await screen.findByRole("heading", { name: /Discard your changes\?/i }),
-    ).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
-  });
+      expect(
+        await screen.findByRole("heading", {
+          name: /Discard your changes\?/i,
+        }),
+      ).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
 
   it("renders the Clear cache button labelled for the metric", async () => {
     setup();

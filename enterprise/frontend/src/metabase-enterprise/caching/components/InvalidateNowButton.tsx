@@ -9,7 +9,7 @@ import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { FormProvider, FormSubmitButton } from "metabase/forms";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
-import { FixedSizeIcon, Group, Icon, Loader, Text } from "metabase/ui";
+import { Group, Icon, Loader, Text } from "metabase/ui";
 
 /** Button that clears the cache of a particular object (the "target") */
 export const InvalidateNowButton = ({
@@ -75,25 +75,25 @@ const InvalidateNowFormBody = ({
         }}
         disabled={wasFormRecentlyPending}
         p="sm"
-        miw={40}
-        h={40}
+        miw="2.5rem"
+        h="2.5rem"
         style={{ alignSelf: "flex-start" }}
         label={
-          <Group gap="sm">
+          <Group gap="sm" align="center">
             <Icon c="danger" name="trash" />
             <Text>{buttonText}</Text>
           </Group>
         }
         activeLabel={
-          <Group gap="sm">
+          <Group gap="sm" align="center">
             <Loader size="1rem" />
             <Text>{c("Shown when a cache is being cleared")
               .t`Clearing cache… `}</Text>
           </Group>
         }
         successLabel={
-          <Group gap="sm">
-            <FixedSizeIcon name="check" c="success" pos="relative" top={1} />
+          <Group gap="sm" align="center">
+            <Icon name="check" c="success" />
             <Text>{t`Cache cleared`}</Text>
           </Group>
         }
