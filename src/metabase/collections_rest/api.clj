@@ -1442,10 +1442,8 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
-
         (api/check
          (not (collection/shared-tenant-collection? new-parent)))
-
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location
                                      (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
@@ -1460,7 +1458,6 @@
     (collection/archive-or-unarchive-collection!
      collection-before-update
      (select-keys collection-updates [:parent_id :archived]))
-
     (maybe-send-archived-notifications! {:collection-before-update collection-before-update
                                          :collection-updates       collection-updates
                                          :actor                    @api/*current-user*})))

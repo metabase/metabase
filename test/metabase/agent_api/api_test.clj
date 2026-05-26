@@ -47,7 +47,6 @@
           response    (client/client :get 200 "agent/v1/ping"
                                      {:request-options {:headers {"x-metabase-session" session-key}}})]
       (is (= {:message "pong"} response))))
-
   (testing "Invalid session token returns 401"
     (let [fake-session-key (str (random-uuid))
           response         (client/client :get 401 "agent/v1/ping"
@@ -176,13 +175,11 @@
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
-
   (testing "Respects explicit limit on the stage"
     (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                          {:query (orders-query :limit 10)})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
-
   (testing "Returns 400 with `:unknown-table` ex-data for an unknown table FK"
     ;; Note: the new repr contract surfaces unknown-input errors as 400 (`:agent-error?`)
     ;; rather than the old 404 — the LLM is expected to read the message and self-correct.
@@ -192,7 +189,6 @@
                                                   :stages   [{:lib/type     "mbql.stage/mbql"
                                                               :source-table [(db-name) "PUBLIC" "NOT_A_TABLE"]}]}})]
       (is (=? {:error "unknown-table"} response))))
-
   (testing "Rejects a non-aggregation in the aggregation slot with a 400"
     ;; The endpoint's wire schema is intentionally permissive (`:query :map`); deep
     ;; validation happens inside the representations pipeline. A `field` clause where an
@@ -210,7 +206,6 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
                                    {:query (orders-query :aggregation [["count" {}]])})))))
-
   (testing "Rejects a first-stage source-card the current user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [mp (mt/metadata-provider)]
@@ -222,7 +217,6 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
                                        {:query (source-card-query (:entity_id card))})))))))
-
   (testing "Rejects a metric aggregation the current user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection _collection {}
@@ -301,7 +295,6 @@
                                         (every? :base_type cols)))
                            :rows (fn [rows] (= 5 (count rows)))}}
               execute-resp))))
-
   (testing "Enforces agent query row limit even when query specifies a higher limit"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:query (orders-query :limit 300)})
@@ -309,7 +302,6 @@
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
               execute-resp))))
-
   (testing "Rejects native queries with 400; force callers onto /v1/execute-sql"
     ;; The scope `agent:query:execute` gates /v1/execute; `agent:sql:execute` gates
     ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying :type :native,
@@ -336,7 +328,6 @@
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded)))
           (is (= 1 (count (lib/aggregations decoded)))))))
-
     (testing "Returns 400 with `:unknown-card` ex-data for an unknown metric entity_id"
       ;; The entity_id must be a syntactically-valid 21-char NanoID for the resolver to
       ;; even attempt the lookup; otherwise the metric clause's literal string survives to
@@ -377,7 +368,6 @@
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
-
   (testing "Continuation token returns next page of results when the total limit exceeds the page size"
     (let [page-size  200
           total-rows 250
@@ -397,13 +387,11 @@
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
           "Pages should return different rows")))
-
   (testing "No continuation_token when all rows are returned"
     (is (=? {:status             "completed"
              :continuation_token nil?}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                   {:query (orders-query :aggregation [["count" {}]])}))))
-
   (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
@@ -472,7 +460,6 @@
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
       (t2/delete! :model/Card :id (:id create-resp))))
-
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -490,7 +477,6 @@
                  :description   "A test question"}
                 create-resp))
         (t2/delete! :model/Card :id (:id create-resp)))))
-
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
     ;; to save a card whose query references data the user cannot run.
@@ -505,7 +491,6 @@
                                   {:name          "Should Not Save"
                                    :query         (:query construct-resp)
                                    :collection_id writable-id}))))))
-
   (testing "Returns 403 when caller cannot write to target collection"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
@@ -530,7 +515,6 @@
                :dashcard_ids  []}
               resp))
       (t2/delete! :model/Dashboard :id (:id resp))))
-
   (testing "Creates a dashboard with questions"
     (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
                                                :dataset_query (orders-count-query)
@@ -554,7 +538,6 @@
                             (pos? (:size_x %)) (pos? (:size_y %)))
                       dashcards)))
         (t2/delete! :model/Dashboard :id (:id resp)))))
-
   (testing "Creates a dashboard in a specific collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
       (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
@@ -562,7 +545,6 @@
                                         :collection_id coll-id})]
         (is (= coll-id (:collection_id resp)))
         (t2/delete! :model/Dashboard :id (:id resp)))))
-
   (testing "Returns 404 when a question_id does not exist"
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
@@ -580,7 +562,6 @@
                  :description nil}
                 resp))
         (t2/delete! :model/Collection :id (:id resp)))))
-
   (testing "Creates a nested collection under a parent"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
@@ -595,12 +576,10 @@
         ;; location should encode the parent's id in the materialized path
         (is (= (str "/" parent-id "/") (:location resp)))
         (t2/delete! :model/Collection :id (:id resp)))))
-
   (testing "Returns 404 when parent_collection_id does not exist"
     (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
                           {:name                 "Bad Parent Coll"
                            :parent_collection_id 999999}))
-
   (testing "Returns 403 when caller lacks write access on the parent"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {parent-id :id} {:name "Locked Parent"}]
@@ -608,7 +587,6 @@
         (mt/user-http-request :rasta :post 403 "agent/v1/collection"
                               {:name                 "Should Fail"
                                :parent_collection_id parent-id}))))
-
   ;; Parent-inheritance behaviors (:namespace, :type "library*", :is_remote_synced, exclusion of
   ;; :type "trash") are unit-tested directly against `apply-defaults-to-collection` in
   ;; `metabase.collections.create-test`, since the HTTP boundary is gated by other checks
@@ -634,7 +612,6 @@
       ;; verify persisted
       (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card :id card-id)))
       (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id)))))
-
   (testing "Moving a card sets collection_id (subsumes move_card)"
     (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Move Dest"}
                    :model/Card       {card-id :id}      {:name          "Card To Move"
@@ -644,7 +621,6 @@
                                        {:collection_id dest-coll-id})]
         (is (= dest-coll-id (:collection_id resp))))
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
-
   (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Archive"
                                               :dataset_query (orders-count-query)
@@ -656,7 +632,6 @@
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
       (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))
-
   (testing "Replacing the underlying query via :query (base64)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
                                               :dataset_query (orders-count-query)
@@ -681,11 +656,9 @@
         (is (= products-id source-table)
             (str "Expected persisted dataset_query :source-table to be the products table id "
                  products-id ", got " source-table)))))
-
   (testing "Returns 404 when card does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/question/999999"
                           {:name "doesn't matter"}))
-
   (testing "Returns 403 when caller lacks write access on the card"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll"}
@@ -695,7 +668,6 @@
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                               {:name "Forbidden Rename"}))))
-
   (testing "Returns 403 when caller can write source collection but not target"
     ;; Guard against an LLM moving a card into a collection the user can't normally write.
     ;; api/write-check on the card covers the source side; collection/check-allowed-to-change-
@@ -711,7 +683,6 @@
          (perms-group/all-users) writable-id)
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
                               {:collection_id locked-id}))))
-
   (testing "Rejects unknown :display values with 400"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card Display Validation"
                                               :dataset_query (orders-count-query)
@@ -719,7 +690,6 @@
       ;; The Malli enum on ::card-display should reject "potato" with a validation error.
       (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
                             {:display "potato"})))
-
   (testing "Returns 400 when swapping :query introduces a self-referencing cycle"
     ;; Mirror REST's `lib/check-card-overwrite` gate. A query whose source is the very
     ;; card being updated would persist a cyclic card otherwise (branch review A1).
@@ -736,7 +706,6 @@
       (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
         (is (= (mt/id :orders) (some :source-table (:stages persisted)))
             "dataset_query should not have been swapped to a card__ reference"))))
-
   (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
     ;; Guard against the gap retro identified in branch review:
     ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
@@ -781,7 +750,6 @@
                 resp)))
       (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
       (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))
-
   (testing "Moving a dashboard sets collection_id and moves its cards"
     (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Dash Dest"}
                    :model/Dashboard  {dash-id :id}      {:name "Dash To Move"}
@@ -795,7 +763,6 @@
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
       ;; cards on the dashboard should follow
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
-
   (testing "Archiving a dashboard cascades to its cards"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
                    :model/Card      {card-id :id} {:name          "Cascading Card"
@@ -807,11 +774,9 @@
         (is (true? (:archived resp))))
       (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
-
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
-
   (testing "Returns 403 when caller lacks write access on the dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll For Dash"}
@@ -819,7 +784,6 @@
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:name "Forbidden Rename"}))))
-
   (testing "Returns 403 when caller can write source collection but not target"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Dash Src"}
@@ -846,7 +810,6 @@
           ;; Autoplaced - row and col are set even though we didn't provide them.
           (is (nat-int? (:row (first dashcards))))
           (is (nat-int? (:col (first dashcards))))))))
-
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
                    :model/Card      {c1 :id}      {:name "C1" :dataset_query (orders-count-query) :display :table}
@@ -858,7 +821,6 @@
             positions (map (juxt :row :col) dashcards)]
         (is (= 2 (count dashcards)))
         (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col"))))
-
   (testing "Remove a dashcard"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}
                    :model/Card          {card-id :id} {:name "to remove" :dataset_query (orders-count-query) :display :table}
@@ -867,7 +829,6 @@
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
       (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id))))))
-
   (testing "Move a dashcard to the top"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move"}
                    :model/Card          {card-id :id} {:name "movable" :dataset_query (orders-count-query) :display :table}
@@ -878,7 +839,6 @@
       (let [moved (t2/select-one :model/DashboardCard :id dashcard-id)]
         (is (= 0 (:row moved)))
         (is (= 0 (:col moved))))))
-
   (testing "Move to top shifts other cards down by the moved card's :size_y - no overlap"
     ;; Regression for branch review #2: previously slammed the moved card at {:row 0 :col 0}
     ;; without reflowing the rest, leaving cards on top of each other.
@@ -899,7 +859,6 @@
         ;; Bounding boxes don't intersect.
         (is (>= (:row a) (+ (:row b) (:size_y b)))
             "A should sit entirely below B after the move-to-top reflow"))))
-
   (testing "Mix add + remove + metadata patch in a single call"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Mix"}
                    :model/Card          {keep-card :id} {:name "keep" :dataset_query (orders-count-query) :display :table}
@@ -918,17 +877,14 @@
         (is (= #{keep-card add-card} card-ids))
         (is (some #(= keep-dc (:id %)) dashcards) "Untouched dashcard survives")
         (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id))))))
-
   (testing "Returns 404 when add references a missing card"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Missing Card"}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add" :card_id 999999}]})))
-
   (testing "Returns 404 when remove references a dashcard not on this dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Wrong Dashcard"}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id 999999}]})))
-
   (testing "Move requires :position - omitting it returns 400"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move Validation"}
                    :model/Card          {card-id :id} {:name "x" :dataset_query (orders-count-query) :display :table}
@@ -946,19 +902,16 @@
                                       :sql         "SELECT 1 AS one"})]
       (is (= "completed" (:status resp)))
       (is (= [[1]] (-> resp :data :rows)))))
-
   (testing "Returns 403 when the user lacks native-query permission"
     (mt/with-no-data-perms-for-all-users!
       (mt/user-http-request :rasta :post 403 "agent/v1/execute-sql"
                             {:database_id (mt/id)
                              :sql         "SELECT 1"})))
-
   (testing "Returns 403 when the kill-switch setting is disabled"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (mt/user-http-request :crowberto :post 403 "agent/v1/execute-sql"
                             {:database_id (mt/id)
                              :sql         "SELECT 1"})))
-
   (testing "Malformed SQL returns the userland :failed envelope (HTTP 400), not a raw 500"
     ;; Regression for branch review #1: previously bypassed userland middleware, so a
     ;; bad query threw `ExceptionInfo` and surfaced as HTTP 500. Now goes through
@@ -970,7 +923,6 @@
       ;; The streaming pipeline wraps the failure in :via[0]/:status.
       (is (= "failed" (some-> resp :via first :status)))
       (is (string? (some-> resp :via first :error)))))
-
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
     ;; written. Verify a row lands and carries the agent context. The QueryExecution
@@ -1000,18 +952,15 @@
       ;; Output is XML-shaped for LLM consumption.
       (is (str/includes? (:output resp) "<resources>"))
       (is (str/includes? (:output resp) "metabase://databases"))))
-
   (testing "Fetches a single-entity URI"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-
   (testing "Returns 400 when too many URIs"
     (let [uris (vec (repeat 10 "metabase://databases"))]
       (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
                             {:uris uris})))
-
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]

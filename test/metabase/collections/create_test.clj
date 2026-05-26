@@ -22,7 +22,6 @@
                          {:name "Snippet Child" :parent_id (:id parent)})]
           (is (= :snippets (:namespace defaulted))
               "Namespace propagates from parent when child doesn't specify one")))))
-
   (testing "Caller's explicit :namespace wins over parent's"
     (mt/with-temp [:model/Collection parent {:name "Snippet Parent 2" :namespace "snippets"}]
       (with-redefs [api/write-check (fn [& _])]
@@ -30,7 +29,6 @@
         (let [defaulted (collections.create/apply-defaults-to-collection
                          {:name "Explicit NS Child" :parent_id (:id parent) :namespace "default"})]
           (is (= "default" (:namespace defaulted)))))))
-
   (testing "Child inherits :type from a library-typed parent"
     (mt/with-temp [:model/Collection parent {:name "Library Parent" :type "library"}]
       (with-redefs [api/write-check (fn [& _])]
@@ -38,7 +36,6 @@
                          {:name "Library Child" :parent_id (:id parent)})]
           (is (= "library" (:type defaulted))
               "Library type propagates so the child stays inside the library hierarchy")))))
-
   (testing "Child does NOT inherit :type \"trash\" from a trash parent"
     (mt/with-temp [:model/Collection parent {:name "Trashy Parent" :type "trash"}]
       (with-redefs [api/write-check (fn [& _])]
@@ -47,7 +44,6 @@
                          {:name "Not-Trash Child" :parent_id (:id parent)})]
           (is (nil? (:type defaulted))
               "Trash type does not propagate to children")))))
-
   (testing "Child inherits :is_remote_synced from a remote-synced parent"
     (mt/with-temp [:model/Collection parent {:name "RS Parent" :is_remote_synced true}]
       (with-redefs [api/write-check (fn [& _])]
@@ -55,7 +51,6 @@
                          {:name "RS Child" :parent_id (:id parent)})]
           (is (true? (:is_remote_synced defaulted))
               "Remote-synced flag propagates so the child participates in remote sync")))))
-
   (testing "Plain parent: child gets is_remote_synced=false, no type, no namespace"
     (mt/with-temp [:model/Collection parent {:name "Plain Parent"}]
       (with-redefs [api/write-check (fn [& _])]
@@ -64,7 +59,6 @@
           (is (false? (:is_remote_synced defaulted)))
           (is (not (contains? defaulted :type)))
           (is (not (contains? defaulted :namespace)))))))
-
   (testing "Location reflects parent path"
     (mt/with-temp [:model/Collection parent {:name "Path Parent"}]
       (with-redefs [api/write-check (fn [& _])]

@@ -198,7 +198,7 @@
       (is (= 1 (get-in response [:body :id])))
       (let [result (get-in response [:body :result])]
         (is (= "2025-03-26" (:protocolVersion result)))
-        (is (= {:tools {} :resources {}} (:capabilities result)))
+        (is (= {:tools {:listChanged true} :resources {}} (:capabilities result)))
         (is (= {:name "metabase" :version "0.1.0"} (:serverInfo result)))))))
 
 (deftest notifications-initialized-test
@@ -213,7 +213,6 @@
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code])))))
-
   (testing "requests with an invalid session ID return 404"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
@@ -405,7 +404,6 @@
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
           (is (contains? search-data :total_count))))))
-
   (testing "search accepts a singleton string as a one-element query list"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
@@ -418,7 +416,6 @@
         (is (nil? (:isError result)))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))))))
-
   (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
@@ -447,7 +444,6 @@
       (is (string? (:body response)))
       (is (str/includes? (:body response) "event: message"))
       (is (str/includes? (:body response) "data: "))))
-
   (testing "POST without Accept: text/event-stream returns JSON (backward-compatible)"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "ping")
@@ -489,7 +485,6 @@
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
       (is (some? (get-in list-response [:body :result :tools])))))
-
   (testing "notifications/initialized is accepted as a no-op for compatibility"
     (let [response   (mcp-request (jsonrpc-request "initialize"))
           session-id (get-in response [:headers "Mcp-Session-Id"])]
@@ -524,7 +519,6 @@
           result (get-in response [:body :result])]
       (is (= 200 (:status response)))
       (is (true? (:isError result)))))
-
   (testing "tools/call with missing path params returns an error"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
@@ -797,14 +791,12 @@
       (is (string? (:output result)))
       (is (str/includes? (:output result) "<resources>")
           "Output is XML-shaped for LLM consumption")))
-
   (testing "read_resource fetches a single-entity URI"
     (let [[session-id _] (initialize!)
           uri            (str "metabase://table/" (mt/id :orders))
           result         (call-tool session-id "read_resource" {:uris [uri]})]
       (is (= [uri] (mapv :uri (:resources result))))
       (is (some? (-> result :resources first :content)))))
-
   (testing "read_resource reports a per-URI error rather than failing the whole call"
     (let [[session-id _] (initialize!)
           result         (call-tool session-id "read_resource"
@@ -829,7 +821,6 @@
                                             {:name      "render_drill_through"
                                              :arguments {:handle handle}})
                            {"mcp-session-id" session-id})))))
-
   (testing "render_drill_through returns an error when the handle is unknown"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -848,7 +839,6 @@
                                             {:name      "visualize_query"
                                              :arguments {:query "ZW5jb2RlZA=="}})
                            {"mcp-session-id" session-id})))))
-
   (testing "visualize_query resolves a stored handle"
     (let [user-id        (mt/user->id :crowberto)
           [session-id _] (initialize!)
@@ -860,7 +850,6 @@
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
                            {"mcp-session-id" session-id})))))
-
   (testing "visualize_query includes the prompt stored with a construct_query handle"
     ;; Mirrors master's assertion that the user's original prompt round-trips through the
     ;; construct→store→visualize flow so the iframe can include it when submitting
@@ -884,7 +873,6 @@
                :body   {:result {:structuredContent {:query  string?
                                                      :prompt "show 5 orders"}}}}
               response))))
-
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -894,7 +882,6 @@
                                             {:name      "visualize_query"
                                              :arguments {}})
                            {"mcp-session-id" session-id})))))
-
   (testing "visualize_query returns 'handle not found' when query_handle is unknown"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -1168,7 +1155,6 @@
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
       (is (= all-tool-names (set (map :name tools))))))
-
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
           tool-names (set (map :name tools))]
@@ -1177,15 +1163,12 @@
       ;; Should NOT include tools with other scopes
       (is (not (contains? tool-names "update_question")))
       (is (not (contains? tool-names "construct_query")))))
-
   (testing "tools/list with wildcard scope matches all agent and UI tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
       (is (= all-tool-names (set (map :name tools))))))
-
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
       (is (= all-tool-names (set (map :name tools))))))
-
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
       (is (empty? tools)

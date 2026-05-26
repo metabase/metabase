@@ -11,7 +11,6 @@
       (is (= :data (:type part)))
       (is (= "navigate_to" (:data-type part)))
       (is (= url (:data part)))))
-
   (testing "works with various URL formats"
     (let [part1 (streaming/navigate-to-part "/model/123")
           part2 (streaming/navigate-to-part "/metric/456")
@@ -26,7 +25,6 @@
           url (streaming/query->question-url query)]
       (is (str/starts-with? url "/question#"))
       (is (> (count url) 10))))
-
   (testing "handles complex queries"
     (let [query {:database 1
                  :type :query
@@ -44,7 +42,6 @@
       (is (= :data (:type (first parts))))
       (is (= "navigate_to" (:data-type (first parts))))
       (is (= "/question#xyz" (:data (first parts))))))
-
   (testing "handles multiple reactions"
     (let [reactions [{:type :metabot.reaction/redirect :url "/model/1"}
                      {:type :metabot.reaction/redirect :url "/metric/2"}]
@@ -52,7 +49,6 @@
       (is (= 2 (count parts)))
       (is (= "/model/1" (:data (first parts))))
       (is (= "/metric/2" (:data (second parts))))))
-
   (testing "ignores non-redirect reactions"
     (let [reactions [{:type :metabot.reaction/message :message "hello"}
                      {:type :metabot.reaction/redirect :url "/model/1"}
@@ -60,7 +56,6 @@
           parts (streaming/reactions->data-parts reactions)]
       (is (= 1 (count parts)))
       (is (= "/model/1" (:data (first parts))))))
-
   (testing "returns empty vector for empty reactions"
     (is (= [] (streaming/reactions->data-parts [])))
     (is (= [] (streaming/reactions->data-parts nil)))))
@@ -84,7 +79,6 @@
       (is (= "todo_list" (:data-type part)))
       (is (= 1 (:version part)))
       (is (= todos (:data part)))))
-
   (testing "handles empty todo list"
     (let [part (streaming/todo-list-part [])]
       (is (= :data (:type part)))
@@ -101,7 +95,6 @@
       (is (= "code_edit" (:data-type part)))
       (is (= 1 (:version part)))
       (is (= edit-data (:data part)))))
-
   (testing "handles complex edit data"
     (let [edit-data {:buffer_id "buf-1"
                      :mode "edit"
@@ -121,7 +114,6 @@
       (is (= "transform_suggestion" (:data-type part)))
       (is (= 1 (:version part)))
       (is (= suggestion (:data part)))))
-
   (testing "handles Python transform suggestion"
     (let [suggestion {:id 2
                       :name "Python Transform"
@@ -141,7 +133,6 @@
       (is (= "adhoc_viz" (:data-type part)))
       (is (= 1 (:version part)))
       (is (= value (:data part)))))
-
   (testing "handles minimal value without title/display"
     (let [value {:query {:database 1} :link "/question#xyz"}
           part (streaming/adhoc-viz-part value)]
@@ -188,19 +179,16 @@
       (is (= :tool-output (:type (first result))))
       (is (= :data (:type (second result))))
       (is (= "navigate_to" (:data-type (second result))))))
-
   (testing "passes through non-tool-output parts unchanged"
     (let [parts [{:type :text :text "hello"}
                  {:type :usage :tokens 100}]
           result (into [] streaming/expand-reactions-xf parts)]
       (is (= parts result))))
-
   (testing "handles tool-output without reactions"
     (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
           result (into [] streaming/expand-reactions-xf parts)]
       (is (= 1 (count result)))
       (is (= :tool-output (:type (first result))))))
-
   (testing "handles multiple reactions from single tool"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -222,17 +210,14 @@
       (is (= 2 (count result)))
       (is (= :tool-output (:type (first result))))
       (is (= todo-part (second result)))))
-
   (testing "passes through non-tool-output parts unchanged"
     (let [parts [{:type :text :text "hello"}]
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= parts result))))
-
   (testing "handles tool-output without data-parts"
     (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= 1 (count result)))))
-
   (testing "handles multiple data-parts from single tool"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -250,12 +235,10 @@
           result (into [] (streaming/post-process-xf {"q1" query} {} (atom {})) parts)]
       (is (= 1 (count result)))
       (is (re-find #"\[Results\]\(/question#" (:text (first result))))))
-
   (testing "passes through non-text parts unchanged"
     (let [parts [{:type :tool-input :id "t1" :function "search"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= parts result))))
-
   (testing "accumulates queries from tool-output structured-output"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :tool-output
@@ -265,7 +248,6 @@
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= 2 (count result)))
       (is (re-find #"\[Results\]\(/question#" (:text (second result))))))
-
   (testing "flushes incomplete links at end"
     (let [parts [{:type :text :text "Check [incomplete"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
@@ -273,7 +255,6 @@
       (is (<= 1 (count result)))
       (let [all-text (->> result (filter #(= :text (:type %))) (map :text) (apply str))]
         (is (= "Check [incomplete" all-text)))))
-
   (testing "resolves model/metric/dashboard links without state"
     (let [parts [{:type :text :text "[Model](metabase://model/123)"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
@@ -295,11 +276,9 @@
       (is (= "navigate_to" (:data-type (nth result 1))))
       (is (= "todo_list" (:data-type (nth result 2))))
       (is (re-find #"\[Link\]\(/question#" (:text (nth result 3))))))
-
   (testing "works with empty parts"
     (let [result (into [] (streaming/post-process-xf {} {} (atom {})) [])]
       (is (= [] result))))
-
   (testing "preserves order: tool-output, reactions, data-parts, text"
     (let [parts [{:type :tool-output
                   :id "t1"

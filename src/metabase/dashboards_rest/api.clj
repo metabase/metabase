@@ -984,7 +984,6 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -1041,7 +1040,6 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-
            (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]

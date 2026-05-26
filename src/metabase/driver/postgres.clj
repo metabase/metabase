@@ -225,7 +225,6 @@
               driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
-
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -707,7 +706,6 @@
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
@@ -1026,7 +1024,6 @@
       (m/assoc-some :sslcert (driver-api/secret-value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
       (assoc :sslpassword (or (driver-api/secret-value-as-string :postgres db-details "ssl-key-password") ""))
-
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)

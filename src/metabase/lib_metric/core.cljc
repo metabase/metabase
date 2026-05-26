@@ -79,7 +79,6 @@
      add-projection-positions
      default-breakout-dimensions
      projectable-dimensions])
-
    :cljs
    (do
      (def remove-clause "See [[lib-metric.clause/remove-clause]]." lib-metric.clause/remove-clause)

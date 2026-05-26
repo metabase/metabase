@@ -223,7 +223,6 @@
                :lib/source                :source/table-defaults
                :lib/source-column-alias   "CATEGORY"
                :lib/type                  :metadata/column}]]
-
     (is (= cols
            (#'mi/result-metadata-out (json/encode cols))))))
 

@@ -66,7 +66,6 @@
                           :Coercion/UNIXMilliSeconds->DateTime
                           :Coercion/UNIXSeconds->DateTime}}
          (types/coercion-possibilities :type/Decimal)))
-
   (testing "Should work for for subtypes of a the coercion base type(s)"
     (is (= {:type/Text    #{::Coerce-Int-To-Str}
             :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
@@ -75,7 +74,6 @@
                             :Coercion/UNIXSeconds->DateTime
                             ::Coerce-BigInteger-To-Instant}}
            (types/coercion-possibilities :type/BigInteger))))
-
   (testing "Should *not* work for ancestor types of the coercion base type(s)"
     (is (= nil
            (types/coercion-possibilities :type/Number))))

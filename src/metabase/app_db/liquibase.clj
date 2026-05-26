@@ -579,7 +579,6 @@
                          latest-applied latest-available latest-applied)
                  {:latest-available latest-available
                   :latest-applied   latest-applied})))
-
        (log/infof "Rolling back app database schema to version %d" target-version)
        (if (empty? ids-to-drop)
          (log/info "No changesets to roll back")

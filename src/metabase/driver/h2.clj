@@ -474,10 +474,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 

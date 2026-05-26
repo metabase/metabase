@@ -168,7 +168,6 @@
                  (migrate :up nil))
                 ([direction]
                  (migrate direction nil))
-
                 ([direction version]
                  (case direction
                    :up
@@ -254,14 +253,12 @@
       (let [ran (migrations-run conn)]
         (is (contains? ran "v00.00-000") "start should be included (inclusive)")
         (is (contains? ran "v45.00-002") "end should be included (inclusive)"))))
-
   (testing "single-item range (start == end)"
     (with-temp-empty-app-db [conn :h2]
       (run-migrations-in-range! conn ["v45.00-001" "v45.00-001"])
       (let [ran (migrations-run conn)]
         (is (contains? ran "v45.00-001") "the single migration should be included")
         (is (not (contains? ran "v45.00-002")) "the next migration should NOT be included"))))
-
   (testing "exclusive end excludes the endpoint"
     (with-temp-empty-app-db [conn :h2]
       ;; Run v00.00-000 through v45.00-002 with exclusive end — v45.00-002 should NOT be run
@@ -270,7 +267,6 @@
         (is (contains? ran "v00.00-000") "start should be included (inclusive by default)")
         (is (not (contains? ran "v45.00-002")) "end should be excluded (exclusive)")
         (is (contains? ran "v45.00-001") "migration before end should be included"))))
-
   (testing "exclusive start excludes the start point"
     (with-temp-empty-app-db [conn :h2]
       ;; First run all migrations up through v45.00-001 so the DB has the required schema
@@ -283,13 +279,11 @@
           (is (not (contains? newly-ran "v45.00-001")) "v45.00-001 should NOT be re-run (exclusive start)")
           (is (contains? newly-ran "v45.00-002") "v45.00-002 should be included (between exclusive start and end)")
           (is (contains? newly-ran "v45.00-011") "end should be included (inclusive by default)")))))
-
   (testing "unknown start-id throws"
     (with-temp-empty-app-db [conn :h2]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Migration ID not found in changelog"
                             (run-migrations-in-range! conn ["v99.bogus-999" "v45.00-002"])))))
-
   (testing "unknown end-id throws"
     (with-temp-empty-app-db [conn :h2]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo

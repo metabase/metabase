@@ -275,7 +275,6 @@
                 (testing "attached-results-text should return nil since it's a slack message"
                   (is (= [nil]
                          (pulse.test-util/output @#'body/attached-results-text))))))}}
-
           "11 rows in the results no longer causes a CSV attachment per issue #36441."
           {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 
@@ -403,7 +402,6 @@
                 (is (=? {:channel "#general"
                          :blocks (default-slack-blocks card-id true)}
                         message)))}}
-
             "with no data"
             {:card
              (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
@@ -412,7 +410,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "too much data"
             {:card
              (pulse.test-util/checkins-query-card {:limit 21, :aggregation nil})
@@ -456,7 +453,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has reached its goal of 5\.9\."))))}}
-
             "no data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
@@ -471,7 +467,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "max")
@@ -512,7 +507,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has gone below its goal of 1\.1\."))))}}
-
             "with no satisfying data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
@@ -527,7 +521,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "min")

@@ -87,7 +87,6 @@
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
       (jdbc/execute! {:connection conn} sql-args))
-
     ;; We've found a delightful bug in H2 where if you:
     ;; - create a table, then
     ;; - create a view based on the table, then
