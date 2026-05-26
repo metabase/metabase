@@ -617,13 +617,22 @@
    [:legacy
     [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
+;;; TODO (Cam 2026-05-26) check whether we can change `::card.query` to point to `:metabase.lib.schema/query` now that
+;;; Cards should always have MBQL 5
+
+(defn- normalize-card-query [query]
+  (when query
+    (let [query (lib.schema.common/normalize-map query)]
+      ;; we will do more normalization/conversion later.
+      (-> query
+          (m/update-existing :type keyword)
+          (m/update-existing :lib/type keyword)))))
+
 (mr/def ::card.query
-  "`dataset_query` column of a `report_card` (saved question). Should already be normalized to MBQL 5. For historical
-  purposes (mostly in certain tests) Cards are allowed to be saved with empty (`{}`) queries; not sure we can actually
-  do anything useful with them here tho."
-  [:multi {:dispatch empty?}
-   [true  [:= {:description "empty map"} {}]]
-   [false [:ref :metabase.lib.schema/query]]])
+  "Saved query. This is possibly still a legacy query, but should already be normalized.
+  Call [[metabase.lib.convert/->mbql5]] on it as needed."
+  [:map
+   {:decode/normalize normalize-card-query}])
 
 (defn- normalize-card [card]
   (when card
