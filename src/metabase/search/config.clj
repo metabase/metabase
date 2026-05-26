@@ -84,17 +84,23 @@
     :user-recency        5
     :dashboard           0
     :model               2
-    :official-collection 1
-    :verified            1
     :view-count          2
     :text                5
     :mine                1
     :exact               5
     :prefix              0
-    ;; Library membership is a hard tier: 200 exceeds :official-collection + :verified (80 each)
-    ;; combined, so a library item always outranks a non-library one; the base text/recency scorers
-    ;; (0–5 range) only order items *within* the library tier, where the constant +200 cancels out.
+    ;; Curation tiers, from strongest to weakest. :library at 200 exceeds
+    ;; :official-collection + :verified (80 each) combined, so a library item always outranks
+    ;; a non-library one. Base text/recency scorers (0–5 range) only break ties *within* a tier.
     :library             200
+    :official-collection 80
+    :verified            80
+    ;; :data-layer is one scorer with per-tier weights under :data-layer/* — see
+    ;; metabase.search.config/scorer-param. Final/internal/hidden are mutually exclusive.
+    :data-layer          1
+    :data-layer/final    33
+    :data-layer/internal 10
+    :data-layer/hidden   1
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}
    :command-palette
@@ -111,14 +117,7 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}
-   :metabot
-   {:official-collection 80
-    :verified            80
-    :data-layer          1     ; overall multiplier; per-tier weights live under :data-layer/* below
-    :data-layer/final    33
-    :data-layer/internal 10
-    :data-layer/hidden   1}})
+    :model/question 0}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."

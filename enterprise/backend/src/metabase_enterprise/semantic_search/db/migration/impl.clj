@@ -87,14 +87,34 @@
                                     :add-column  [[:data_layer :text :if-not-exists]]}))))
 
 (defn- add-root-collection-type-column!
-  "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can match items
-  in arbitrarily deep sub-collections of a library tree (the existing `collection_type` only matches the
-  direct parent collection)."
+  "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can
+  match items in arbitrarily deep sub-collections of a library tree.
+  Backfills existing rows from the gate's stored document JSON, falling back to the row's own
+  `collection_type` when it equals a library root type. Items whose gate doc lacks the field
+  remain NULL until re-ingested naturally."
   [tx index-metadata]
-  (alter-index-tables! tx index-metadata 4
-                       (fn [execute! table-name]
-                         (execute! {:alter-table [(keyword table-name)]
-                                    :add-column  [[:root_collection_type :text :if-not-exists]]}))))
+  (let [gate-table       (:gate-table-name index-metadata)
+        library-types    [[:inline "library"]
+                          [:inline "library-data"]
+                          [:inline "library-metrics"]]]
+    (alter-index-tables! tx index-metadata 4
+                         (fn [execute! table-name]
+                           (execute! {:alter-table [(keyword table-name)]
+                                      :add-column  [[:root_collection_type :text :if-not-exists]]})
+                           (execute! {:update (keyword table-name)
+                                      :set    {:root_collection_type
+                                               [:coalesce
+                                                {:select [[[:->> (keyword gate-table "document")
+                                                            [:inline "root_collection_type"]]]]
+                                                 :from   [(keyword gate-table)]
+                                                 :where  [:= (keyword gate-table "id")
+                                                          [:|| (keyword table-name "model")
+                                                           [:inline "_"]
+                                                           (keyword table-name "model_id")]]}
+                                                [:case
+                                                 [:in :collection_type library-types]
+                                                 :collection_type]]}
+                                      :where  [:= :root_collection_type nil]})))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
