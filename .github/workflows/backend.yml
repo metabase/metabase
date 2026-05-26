@@ -203,7 +203,7 @@ jobs:
           previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"
@@ -215,7 +215,7 @@ jobs:
 
       - name: Upload Logs on Failure
         if: always() && !success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.test-group-name }}
           path: logs/test-log.json

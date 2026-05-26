@@ -261,14 +261,12 @@
 (register-resource!
  {:uri         "metabase://docs/construct-query.md"
   :name        "Construct Query Reference"
-  :description (str "Program syntax for `construct_query` and `query`: source shapes "
-                    "(table/card/dataset/metric), top-level operations (filter, aggregate, "
-                    "breakout, expression, with-fields, order-by, limit, join, append-stage, "
-                    "with-page), reference forms, filter/aggregation/temporal operator "
-                    "vocabularies, worked examples, and common pitfalls (stage boundaries, "
-                    "ref shapes, joins, metric/date handling).")
+  :description (str "Format reference for `construct_query` and `query`: top-level / "
+                    "stage shape, field references, filter / aggregation / temporal "
+                    "operators, joins, expressions, multi-stage queries, worked examples, "
+                    "and common pitfalls.")
   :mimeType    "text/markdown"
-  :render-fn   (classpath-text-resource "metabase/agent_api/construct_query.md")})
+  :render-fn   (classpath-text-resource "metabot/prompts/tools/construct_notebook_query.md")})
 
 (register-ui-resource!
  :visualize-query

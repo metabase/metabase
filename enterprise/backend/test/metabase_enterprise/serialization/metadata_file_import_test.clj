@@ -176,6 +176,29 @@
           (is (= 1 (t2/count :model/Field :table_id tbl-id :name "x")))
           (is (= "v1" (:description (t2/select-one :model/Field :table_id tbl-id :name "x")))))))))
 
+(deftest re-import-reactivates-deactivated-table-test
+  (testing "re-importing a table that was deactivated after the first import reactivates it in place
+            rather than inserting a duplicate (which violates idx_uniq_table_db_id_schema_name). The
+            field path already matches + reactivates regardless of `active`; tables must too."
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "reactivate-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "reactivate-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "orders"}]
+                        :fields    [{:id 1000 :table_id 100 :name "id"
+                                     :base_type "type/Integer" :database_type "integer"}]})]
+        (loader/import-metadata-file! meta-file)
+        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "orders"))]
+          ;; simulate sync (or a prior run) deactivating the table after the first import
+          (t2/update! :model/Table tbl-id {:active false})
+          ;; re-import the same file: must reactivate in place, not insert a duplicate
+          (loader/import-metadata-file! meta-file)
+          (testing "no duplicate row was inserted (would otherwise collide on the unique index)"
+            (is (= 1 (t2/count :model/Table :db_id tgt-db :schema "public" :name "orders"))))
+          (testing "the existing row was reactivated in place (same id, active=true)"
+            (let [tbl (t2/select-one :model/Table :db_id tgt-db :schema "public" :name "orders")]
+              (is (= tbl-id (:id tbl)))
+              (is (true? (:active tbl))))))))))
+
 ;;; ============================== Pre-flight orphan bail ==============================
 
 (deftest pre-flight-orphan-bail-test

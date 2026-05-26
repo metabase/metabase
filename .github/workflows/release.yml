@@ -152,7 +152,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         overwrite: true
@@ -171,7 +171,7 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
@@ -182,7 +182,7 @@ jobs:
           .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -221,7 +221,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -507,7 +507,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}

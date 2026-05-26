@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -69,7 +69,7 @@
     (let [parsed (#'read-resource/parse-uri "metabase://database/1/schemas/weird%2Fname/tables")]
       (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed))))
     (testing "round-trips through metabase-uri"
-      (let [uri    (llm-rep/metabase-uri :database 1 "schemas" "weird/name" "tables")
+      (let [uri    (llm-shape/metabase-uri :database 1 "schemas" "weird/name" "tables")
             parsed (#'read-resource/parse-uri uri)]
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
         (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
@@ -701,7 +701,7 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table _              {:db_id db-id :schema "weird/name" :name "WEIRD-TABLE" :active true}
                      :model/Table _              {:db_id db-id :schema "other"      :name "OTHER-TABLE" :active true}]
-        (let [emitted-uri (llm-rep/metabase-uri :database db-id "schemas" "weird/name" "tables")]
+        (let [emitted-uri (llm-shape/metabase-uri :database db-id "schemas" "weird/name" "tables")]
           (testing "the URI builder emits an encoded segment"
             (is (str/includes? emitted-uri "weird%2Fname")))
           (testing "the encoded URI dispatches and filters to the right schema"
@@ -789,8 +789,7 @@
               output (:output read-result)
               structured (get-in read-result [:resources 0 :content :structured-output])]
           (testing "Output references expected fields"
-            (is (re-find #"display_name\S+Count" output))
-            (is (re-find #"display_name\S+Category" output)))
+            (is (re-find #"<name>\S*My fav card" output)))
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}

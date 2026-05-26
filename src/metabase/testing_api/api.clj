@@ -25,7 +25,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as ws]
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
@@ -254,25 +253,6 @@
   []
   (refresh-cache-configs!))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/workspace-instance"
-  "Install a workspace config atom on this instance for E2E testing. The body
-   is passed straight through to `metabase.workspaces.core/set-instance-workspace!`
-   — same shape the `:workspace` section of `config.yml` resolves to at boot.
-   Validation happens inside that fn against the `::ws/workspace-instance-config`
-   schema. No-op on OSS."
-  [_route-params _query-params body :- ::ws/workspace-instance-config]
-  (ws/set-instance-workspace! body)
-  {:ok true})
-
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/workspace-instance"
-  "Clear the in-process workspace config atom installed by POST `/workspace-instance`.
-   No-op on OSS."
-  []
-  (ws/clear-instance-workspace!)
-  {:ok true})
-
 (api.macros/defendpoint :post "/query" :- ::lib.schema/query
   "Creates a query from a test query spec."
   [_route-params
@@ -353,7 +333,6 @@
 (defn- delete-seeded-usage-auditing-data!
   []
   (t2/delete! :model/AiUsageLog {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
-  (t2/delete! :model/MetabotMessage {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
   (t2/delete! :model/MetabotConversation {:where [:in :id e2e-usage-auditing-conversation-ids]}))
 
 (defn- insert-seeded-usage-auditing-conversation!

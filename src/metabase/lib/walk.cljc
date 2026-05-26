@@ -23,7 +23,7 @@
      (let [path-to-item (conj (vec path-to-items) absolute-item-number)]
        (walk-item-fn query path-to-item f)))
    query
-    ;; With 3 items, we want (2 1 0), so (range 2 -1 -1).
+   ;; With 3 items, we want (2 1 0), so (range 2 -1 -1).
    (range (dec (count (get-in query path-to-items []))) -1 -1)))
 
 (defn- walk-items-forward* [query path-to-items walk-item-fn f]

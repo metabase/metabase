@@ -106,7 +106,7 @@ jobs:
           fi
         shell: bash
       - name: Upload Metabase ${{ matrix.edition }} JAR as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
           path: |
@@ -125,13 +125,13 @@ jobs:
         java-version: [21]
     steps:
       - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.2.0
         with:
           java-package: jre
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - run: java -version
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         name: Retrieve uberjar artifact
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
@@ -193,7 +193,7 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
@@ -236,7 +236,7 @@ jobs:
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-failed-tests-recording

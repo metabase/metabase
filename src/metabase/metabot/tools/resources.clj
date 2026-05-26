@@ -30,7 +30,7 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
@@ -563,11 +563,11 @@
     (case (:result-type structured)
       ;; NOTE: keep in sync with agent/tools/metadata.clj/format-field-metadata-output
       :field-metadata (format-with-instructions
-                       (llm-rep/field-metadata->xml structured)
+                       (llm-shape/field-metadata->xml structured)
                        instructions/field-metadata-instructions)
       :mbr-entity     (json/encode (:entity structured))
       :mbr-list       (json/encode (select-keys structured [:list-type :items :total :truncated]))
-      :entity         (llm-rep/entity->xml structured))
+      :entity         (llm-shape/entity->xml structured))
     ;; error case — :output is already a string
     (:formatted content)))
 

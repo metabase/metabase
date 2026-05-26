@@ -270,13 +270,23 @@
          result-attachments
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
-                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
-                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
-                                     result-attachment             (email.result-attachment/result-attachment part creator_id)]
-                                 [(merge merged-attachments attachments)
-                                  (into result-attachments result-attachment)
-                                  (when-not attachment_only
-                                    (conj html-contents (html content)))]))
+                               ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
+                               ;; abort the whole subscription. On failure, substitute the error placeholder so
+                               ;; the remaining cards still deliver (#74007).
+                               (try
+                                 (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                                 :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
+                                       result-attachment             (email.result-attachment/result-attachment part creator_id)]
+                                   [(merge merged-attachments attachments)
+                                    (into result-attachments result-attachment)
+                                    (when-not attachment_only
+                                      (conj html-contents (html content)))])
+                                 (catch Throwable e
+                                   (log/error e "Error rendering dashboard subscription part; substituting error placeholder")
+                                   [merged-attachments
+                                    result-attachments
+                                    (when-not attachment_only
+                                      (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
                              [{} [] []]
                              (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))

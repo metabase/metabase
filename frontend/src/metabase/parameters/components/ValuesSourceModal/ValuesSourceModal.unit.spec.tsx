@@ -739,7 +739,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -762,7 +762,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -836,7 +836,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
         });
@@ -858,7 +858,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -882,7 +882,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -898,6 +898,92 @@ describe("ValuesSourceModal", () => {
         expect(screen.getByText("do it once in a model")).toBeInTheDocument();
         expect(screen.getByText("do it once in a model").tagName).not.toBe("A");
       });
+    });
+  });
+
+  describe("id parameter", () => {
+    it("should offer only numeric columns as the value field for a numeric id parameter", async () => {
+      const { onSubmit } = await setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "id",
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 1,
+                name: "id",
+                display_name: "ID",
+                base_type: "type/BigInteger",
+                effective_type: "type/BigInteger",
+                semantic_type: "type/PK",
+              }),
+              createMockField({
+                id: 2,
+                name: "category",
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /Pick a column/ }),
+      );
+      expect(
+        screen.queryByRole("heading", { name: "Category" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("heading", { name: "ID" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+      expect(onSubmit).toHaveBeenCalledWith("card", {
+        card_id: 1,
+        value_field: ["field", "id", { "base-type": "type/BigInteger" }],
+      });
+    });
+
+    it("should show a message when a numeric id parameter has no number columns", async () => {
+      await setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "id",
+          values_source_type: "card",
+          values_source_config: {
+            card_id: 1,
+          },
+        }),
+        cards: [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                name: "category",
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                semantic_type: "type/Category",
+              }),
+            ],
+          }),
+        ],
+      });
+
+      expect(
+        screen.getByText(/This question doesn’t have any number columns/),
+      ).toBeInTheDocument();
     });
   });
 });

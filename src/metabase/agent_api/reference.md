@@ -14,8 +14,9 @@ Base path: /api/agent
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
-  inspect a metric's dimensions, and POST /v2/construct-query with a program
-  whose `source` is `{"type": "metric", "id": <id>}` to query one.
+  inspect a metric's dimensions, and reference the metric in a representations
+  JSON query as `"aggregation": [["metric", {}, "<portable_entity_id>"]]` (see
+  the representations format reference linked from /v2/construct-query).
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
@@ -285,51 +286,47 @@ Response:
 
 ### POST /v2/construct-query
 
-Construct an MBQL query from a structured agent-lib program. Returns a
+Construct an MBQL query from a representations JSON payload. Returns a
 base64-encoded query string to pass to `/v1/execute`.
 
-**Important**: All field IDs used in operations must come from the detail
-endpoints (`/v1/table/{id}` or `/v1/metric/{id}`). Always fetch entity details
-first.
-
-The request body **is** the program — there is no envelope. A program is a
-JSON object with two keys:
-
-- `source` — identifies the entity to query (`table`, `card`, `dataset`, or
-  `metric` plus an `id`).
-- `operations` — an ordered array of operator tuples to apply on top of the
-  source. Each operation is itself an array: `["operator", arg1, arg2, ...]`.
-
-The agent-lib backend automatically repairs small mistakes (operator aliases,
-casing, scalar wrapping) before validation, so you don't need to be perfectly
-precise about every detail — but the canonical operator names listed below
-will always work.
-
-#### Request format
+#### Request body
 
 ```json
-{
-  "source": {"type": "table", "id": 42},
-  "operations": [
-    ["filter", [">", ["field", 302], 100]],
-    ["aggregate", ["sum", ["field", 302]]],
-    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]],
-    ["order-by", ["aggregation-ref", 0], "desc"],
-    ["limit", 100]
-  ]
-}
+{"query": <external-query-object>}
 ```
 
-For a metric source (the metric supplies its own aggregation, so additional
-aggregates are usually unnecessary):
+The `query` value is a JSON object matching `::lib.schema/external-query` —
+Metabase's canonical MBQL 5 *portable representations format*, a
+self-describing serialization that uses portable FKs
+(`["<db-name>", "<schema>", "<table-name>", "<column-name>"]`) instead of
+numeric IDs, encodes operators as `["<name>", {opts}, <args>...]` clauses, and
+derives the application database from the first stage's `source-table` /
+`source-card`. There is **no** auxiliary `source_entity` envelope, and no
+standalone integer IDs.
+
+The full format reference — including every operator (filters, aggregations,
+expressions, temporal helpers), join syntax, multi-stage queries, FK
+conventions, and worked examples — lives in the `construct_notebook_query`
+tool prompt:
+
+  `resources/metabot/prompts/tools/construct_notebook_query.md`
+
+Minimal example:
 
 ```json
 {
-  "source": {"type": "metric", "id": 10},
-  "operations": [
-    ["filter", [">", ["field", 305], "2024-01-01"]],
-    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
-  ]
+  "query": {
+    "lib/type": "mbql/query",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+        "breakout":    [["field", {}, ["Sample Database", "PUBLIC", "PEOPLE", "STATE"]]],
+        "limit": 100
+      }
+    ]
+  }
 }
 ```
 
@@ -339,185 +336,46 @@ aggregates are usually unnecessary):
 {"query": "eyJkYXRhYmFzZSI6MSwi..."}
 ```
 
-#### Source types
-
-The top-level `source` must be one of these — `context` and nested `program`
-sources are reserved for in-process callers and are rejected at the HTTP
-boundary.
-
-| Type      | Meaning                                                       |
-|-----------|---------------------------------------------------------------|
-| `table`   | Query a database table directly (`id` is a table ID)         |
-| `card`    | Query a saved question (`id` is a card ID)                   |
-| `dataset` | Query a model (`id` is the model's card ID)                  |
-| `metric`  | Query a metric, inheriting its aggregation and time dimension |
-
-#### Top-level operations
-
-Each operation is an array starting with the operator name. Operations are
-applied in order to the query stage produced from `source`.
-
-| Operator               | Shape                                           | Description                                              |
-|------------------------|-------------------------------------------------|----------------------------------------------------------|
-| `filter`               | `["filter", clause]`                            | Add a filter clause to the current stage                 |
-| `aggregate`            | `["aggregate", agg-clause]`                     | Add an aggregation                                       |
-| `breakout`             | `["breakout", ref-or-bucketed]`                 | Add a grouping dimension                                 |
-| `expression`           | `["expression", "Name", expr]`                  | Define a named computed column                           |
-| `with-fields`          | `["with-fields", [refs]]`                       | Restrict the returned columns                            |
-| `order-by`             | `["order-by", ref]` or `["order-by", ref, dir]` | Sort by a field, expression-ref, or aggregation-ref      |
-| `limit`                | `["limit", N]`                                  | Cap the number of returned rows                          |
-| `join`                 | `["join", join-clause]`                         | Join another table or card                               |
-| `append-stage`         | `["append-stage"]`                              | Start a new query stage (e.g. for post-aggregation ops)  |
-| `with-page`            | `["with-page", {"page": N, "items": M}]`        | Apply pagination on the current stage                    |
-
-The full canonical list lives in
-[src/metabase/agent_lib/capabilities/catalog/](../agent_lib/capabilities/catalog/).
-
-#### References
-
-References are nested operator forms used inside operations to point at fields,
-expressions, or earlier aggregations.
-
-| Form                              | Meaning                                                |
-|-----------------------------------|--------------------------------------------------------|
-| `["field", N]`                    | Reference a database field by ID                       |
-| `["expression-ref", "Name"]`      | Reference a named expression defined earlier           |
-| `["aggregation-ref", N]`          | Reference the Nth aggregation defined earlier (0-based)|
-| `["measure", N]`                  | Reference a pre-defined measure on the source entity   |
-| `["with-temporal-bucket", r, b]`  | Bucket a temporal field by `b` (`day`, `month`, …)     |
-
-#### Filter operators (used inside `["filter", …]`)
-
-| Operator             | Example                                              |
-|----------------------|------------------------------------------------------|
-| `=`, `!=`            | `["=", ["field", 101], "active"]`                    |
-| `<`, `<=`, `>`, `>=` | `[">", ["field", 302], 100]`                         |
-| `between`            | `["between", ["field", 305], "2024-01-01", "2024-12-31"]` |
-| `in`, `not-in`       | `["in", ["field", 302], [10, 20, 30]]`               |
-| `is-null`, `not-null`| `["is-null", ["field", 101]]`                        |
-| `is-empty`, `not-empty` | `["is-empty", ["field", 101]]`                    |
-| `contains`, `does-not-contain` | `["contains", ["field", 303], "acme"]`     |
-| `starts-with`, `ends-with` | `["starts-with", ["field", 303], "acme"]`      |
-| `time-interval`      | `["time-interval", ["field", 305], -7, "day"]`       |
-| `and`, `or`, `not`   | `["and", filter1, filter2]`                          |
-| `segment`            | `["segment", 5]` — apply a pre-defined segment        |
-
-#### Aggregation operators (used inside `["aggregate", …]`)
-
-`count`, `sum`, `avg`, `min`, `max`, `distinct`, `median`, `stddev`, `var`,
-`percentile`, `count-where`, `sum-where`, `distinct-where`, `share`,
-`cum-count`, `cum-sum`.
-
-```json
-["aggregate", ["count"]]
-["aggregate", ["sum", ["field", 302]]]
-["aggregate", ["count-where", ["=", ["field", 101], "completed"]]]
-```
-
-#### Temporal helpers (commonly used in `expression` and `breakout`)
-
-`get-year`, `get-quarter`, `get-month`, `get-week`, `get-day`,
-`get-day-of-week`, `get-hour`, `get-minute`, `datetime-add`, `datetime-diff`,
-`datetime-subtract`, `now`, `today`, `relative-datetime`, `absolute-datetime`,
-`with-temporal-bucket`, `convert-timezone`.
-
-#### Worked examples
-
-**Top 5 customers by revenue**
-
-```json
-{
-  "source": {"type": "table", "id": 42},
-  "operations": [
-    ["aggregate", ["sum", ["field", 302]]],
-    ["breakout", ["field", 101]],
-    ["order-by", ["aggregation-ref", 0], "desc"],
-    ["limit", 5]
-  ]
-}
-```
-
-**Conditional sum with a named expression**
-
-```json
-{
-  "source": {"type": "table", "id": 42},
-  "operations": [
-    ["expression", "Discount", ["-", ["field", 302], ["field", 303]]],
-    ["aggregate", ["sum", ["expression-ref", "Discount"]]]
-  ]
-}
-```
-
-**Orders per month using a metric**
-
-```json
-{
-  "source": {"type": "metric", "id": 10},
-  "operations": [
-    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
-  ]
-}
-```
-
-**Multi-stage: filter on an aggregated value**
-
-```json
-{
-  "source": {"type": "table", "id": 42},
-  "operations": [
-    ["aggregate", ["sum", ["field", 302]]],
-    ["breakout", ["field", 101]],
-    ["append-stage"],
-    ["filter", [">", ["aggregation-ref", 0], 1000]]
-  ]
-}
-```
+The value is a base64-encoded resolved MBQL 5 query map suitable for
+`/v1/execute` or for embedding in a `/v2/query` continuation token. Treat it
+as opaque.
 
 #### Error responses
 
-Validation, repair, and resolution errors are returned as `400 Bad Request`
-with a structured JSON body:
+The representations pipeline distinguishes user-facing input errors (the
+LLM-/agent-authored query can't be resolved or doesn't validate) from internal
+failures. Input errors are returned as `400 Bad Request` with the originating
+ex-data fields surfaced in the body — most commonly `error`, `path`, and
+`candidates`. Examples:
 
-```json
-{
-  "status-code": 400,
-  "error": "invalid-generated-program",
-  "path": "operations[2].field_id",
-  "details": "operations[2].field_id: field 12345 is not accessible",
-  "recovery": {
-    "available": ["field 1001", "field 1002"],
-    "suggestion": "Did you mean field 1001?"
-  }
-}
-```
+| `error`                       | When                                                                              |
+|-------------------------------|-----------------------------------------------------------------------------------|
+| `unknown-database`            | First-stage source uses a database name that doesn't exist                        |
+| `unknown-table`               | Portable FK names a table that doesn't exist (with closest-match candidates)      |
+| `unknown-field`               | Portable FK names a column that doesn't exist on the resolved table               |
+| `unknown-card`                | `source-card:` / `[metric, {}, <eid>]` references a missing entity_id             |
+| `missing-source-in-first-stage` | Neither `source-table:` nor `source-card:` was supplied on `stages[0]`          |
+| `ambiguous-fk` / `no-fk-path` | An implicit-join field reference can't be auto-wired (multiple FKs / no FK)       |
+| `uri-in-source-table`         | `source-table:` got a `metabase://...` URI instead of a portable FK               |
 
-A non-existent table, card, or metric in `source` returns `404 Not Found`.
+All input errors carry `:agent-error? true` in the underlying ex-data; LLM
+callers are expected to read the message and self-correct on the next turn.
 
 ### POST /v2/query
 
 Combined construct-and-execute endpoint with built-in pagination via
 continuation tokens.
 
-The body is either:
-- A program (same shape as `/v2/construct-query`), **or**
-- `{"continuation_token": "..."}` returned from a previous response.
+The request body is either:
+- A representations JSON payload (`{"query": <external-query-object>}`, same
+  shape as `/v2/construct-query`), **or**
+- A continuation token from a previous response: `{"continuation_token": "..."}`.
 
-Pagination is automatic. The per-page row limit is taken from your program's
-`["limit", N]` operation if present, otherwise defaults to 200, and is hard-
-capped at 200 rows for memory and LLM-context safety. If the page is full and
-more rows may exist, the response includes a `continuation_token` you can
-post back to fetch the next page.
-
-```json
-{
-  "source": {"type": "table", "id": 42},
-  "operations": [
-    ["order-by", ["field", 101]],
-    ["limit", 50]
-  ]
-}
-```
+Pagination is automatic. The per-page row limit is taken from the query's
+`limit:` field if present, otherwise defaults to 200, and is hard-capped at 200
+rows per page for memory and LLM-context safety. If the page is full and more
+rows may exist, the response includes a `continuation_token` you post back to
+fetch the next page.
 
 Response (HTTP 202, streaming):
 
@@ -600,28 +458,105 @@ Row limits:
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 
+### POST /v1/question
+
+Save a previously constructed query as a named question (card).
+
+Request:
+
+```json
+{
+  "name": "Q3 Revenue by Region",
+  "query": "eyJkYXRhYmFzZSI6MSwi...",
+  "display": "bar",
+  "description": "Sum of order totals grouped by region",
+  "collection_id": 7,
+  "visualization_settings": {}
+}
+```
+
+| Field                  | Required | Description                                                                                  |
+|------------------------|----------|----------------------------------------------------------------------------------------------|
+| name                   | yes      | Question name                                                                                |
+| query                  | yes      | Base64-encoded query string returned by /v2/construct-query                                  |
+| display                | no       | Visualization type (`table`, `bar`, `line`, `pie`, etc.). Defaults to `table`.               |
+| description            | no       | Free-text description                                                                        |
+| collection_id          | no       | Target collection. Omit / null to save at the user's personal-collection root.               |
+| visualization_settings | no       | Map of viz settings                                                                          |
+
+Response:
+
+```json
+{
+  "id": 42,
+  "name": "Q3 Revenue by Region",
+  "display": "bar",
+  "collection_id": 7,
+  "description": "Sum of order totals grouped by region"
+}
+```
+
+### POST /v1/dashboard
+
+Create a new dashboard, optionally populated with existing saved questions.
+When `question_ids` is provided, cards are auto-placed on the grid based on
+their display type.
+
+Request:
+
+```json
+{
+  "name": "Q3 Revenue Overview",
+  "description": "Top-line Q3 metrics",
+  "collection_id": 7,
+  "question_ids": [42, 43, 44]
+}
+```
+
+| Field         | Required | Description                                                                |
+|---------------|----------|----------------------------------------------------------------------------|
+| name          | yes      | Dashboard name                                                             |
+| description   | no       | Free-text description                                                      |
+| collection_id | no       | Target collection. Omit / null to save at the user's personal-collection root. |
+| question_ids  | no       | Existing card IDs to add as dashcards. User must have read access to each. |
+
+Response:
+
+```json
+{
+  "id": 11,
+  "name": "Q3 Revenue Overview",
+  "collection_id": 7,
+  "description": "Top-line Q3 metrics",
+  "dashcard_ids": [101, 102, 103]
+}
+```
+
 ## Typical workflow
 
 1. **Search** — POST /v1/search to find relevant tables or metrics
-2. **Inspect** — GET /v1/table/{id} or /v1/metric/{id} to get field IDs and
-   understand the schema
+2. **Inspect** — GET /v1/table/{id} or /v1/metric/{id} to get the column-name /
+   schema / portable-FK info needed to write a query
 3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
    you need to know valid filter values or field statistics
-4. **Build query** — POST /v2/construct-query with a structured program
-   (`source` + `operations`)
+4. **Build query** — POST /v2/construct-query with a representations JSON
+   payload (`{"query": <external-query-object>}`); see the
+   `construct_notebook_query` tool prompt for the format reference
 5. **Execute** — POST /v1/execute with the base64-encoded query, or use
    POST /v2/query to construct and execute in one round-trip with pagination
-6. **Iterate** — Adjust the program and repeat steps 4-5
+6. **Iterate** — Adjust the query and repeat steps 4-5
+7. **Save (optional)** — POST /v1/question to persist the query as a card, and
+   POST /v1/dashboard to assemble saved cards into a dashboard
 
 ## Error handling
 
-| HTTP Status | Meaning                                                       |
-|-------------|---------------------------------------------------------------|
-| 200         | Success (GET endpoints, construct-query)                      |
-| 202         | Success (execute / query — streaming response)                |
-| 400         | Invalid program (validation, repair, or resolution failure)   |
-| 401         | Authentication failure                                        |
-| 403         | Insufficient permissions                                      |
-| 404         | Entity not found                                              |
+| HTTP Status | Meaning                                                              |
+|-------------|----------------------------------------------------------------------|
+| 200         | Success (GET endpoints, construct-query)                             |
+| 202         | Success (execute / query — streaming response)                       |
+| 400         | Invalid representations query (validation, repair, or resolution failure; `:agent-error?` paths) |
+| 401         | Authentication failure                                               |
+| 403         | Insufficient permissions                                             |
+| 404         | Entity not found (GET endpoints only)                                |
 
 ---
