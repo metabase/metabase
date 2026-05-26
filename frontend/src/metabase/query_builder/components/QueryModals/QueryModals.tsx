@@ -194,7 +194,6 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
@@ -223,7 +222,6 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          initialCollectionId={initialCollectionId}
         />
       );
     case MODAL_TYPES.MOVE:
