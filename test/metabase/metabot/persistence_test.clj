@@ -20,14 +20,12 @@
       (is (= {:role "user" :type "text" :message "hello"}
              (select-keys (first result) [:role :type :message])))
       (is (string? (:id (first result))))))
-
   (testing "assistant standard text block preserves block id"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
                    :data [{:type "text" :text "hi there" :id "block-1"}]})]
       (is (= [{:id "block-1" :role "agent" :type "text" :message "hi there"}]
              (mapv #(select-keys % [:id :role :type :message]) result)))))
-
   (testing "assistant standard text block without id gets a generated one"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -35,7 +33,6 @@
       (is (= 1 (count result)))
       (is (string? (:id (first result))))
       (is (= "no id" (:message (first result))))))
-
   (testing "assistant slack-format text block"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -43,7 +40,6 @@
       (is (= 1 (count result)))
       (is (= {:role "agent" :type "text" :message "from slack"}
              (select-keys (first result) [:role :type :message])))))
-
   (testing "tool-input merged with matching tool-output"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -60,7 +56,6 @@
              (select-keys (first result) [:id :role :type :name :status :is_error])))
       (is (= {:query "foo"} (json/decode+kw (:args (first result)))))
       (is (= {:rows [1 2 3]} (json/decode+kw (:result (first result)))))))
-
   (testing "tool-output flagged as error"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -68,7 +63,6 @@
                           {:type "tool-output" :id "call-2" :error "exploded"}]})]
       (is (true? (:is_error (first result))))
       (is (nil? (:result (first result))))))
-
   (testing "tool-input without matching output is left as-is"
     (let [result (metabot-persistence/message->chat-messages
                   {:role :assistant
@@ -77,14 +71,12 @@
       (is (= "tool_call" (:type (first result))))
       (is (not (contains? (first result) :result)))
       (is (not (contains? (first result) :is_error)))))
-
   (testing "unknown block types are dropped"
     (is (= []
            (metabot-persistence/message->chat-messages
             {:role :assistant
              :data [{:type "data-foo" :payload {}}
                     {:type "mystery"}]}))))
-
   (testing "data parts are converted to data_part chat messages"
     (let [blocks [{:type "data" :data-type "navigate_to" :data "/question/1"}
                   {:type "data" :data-type "todo_list"   :version 1 :data [{:id "t1"}]}
@@ -93,7 +85,6 @@
                {:role "agent" :type "data_part" :part {:type "todo_list"   :version 1 :value [{:id "t1"}]}}
                {:role "agent" :type "data_part" :part {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}}]
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks})))))
-
   (testing "nil :data yields no messages"
     (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil})))))
 
@@ -570,11 +561,9 @@
     (testing "default: finished true, no error"
       (let [[row] (start-and-finalize!)]
         (is (=? {:finished true :error nil} row))))
-
     (testing "aborted: finished false flows through, no error"
       (let [[row] (start-and-finalize! :finished? false)]
         (is (=? {:finished false :error nil} row))))
-
     (testing "errored map: JSON-encoded into column, decoded onto chat msg; partial parts persisted"
       (let [error-data     {:message "agent loop API error: 503"
                             :type    "java.lang.RuntimeException"
@@ -583,7 +572,6 @@
         (is (=? {:finished true :error string? :data seq} row))
         (is (= error-data (json/decode+kw (:error row))))
         (is (= error-data (:error chat-msg)))))
-
     (testing "errored string: any JSON-serializable value accepted"
       (let [[row chat-msg] (start-and-finalize! :error "boom")]
         (is (= "\"boom\"" (:error row)))

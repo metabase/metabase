@@ -32,20 +32,16 @@
                    :data            [{:_type "TEXT" :role "assistant" :content "hi"}
                                      {:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "x"}]}
                                      {:_type "TOOL_RESULT" :role "tool" :tool_call_id "x" :content "y"}]})
-
       (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
           (is (= 2 (count (get result "1709567890.000002"))))
           (is (every? #(#{:assistant :tool} (:role %)) (get result "1709567890.000002")))))
-
       (testing "user messages are excluded, only assistant role is queried"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000001"})]
           (is (empty? result))))
-
       (testing "non-matching slack_msg_ids return empty map"
         (let [result (slackbot.persistence/message-history conv-id #{"nonexistent-id"})]
           (is (empty? result))))
-
       (testing "soft-deleted messages are excluded from message-history but included in deleted-message-ids"
         (let [deleted-ts "1709567890.000003"]
           (t2/insert! :model/MetabotMessage
@@ -180,7 +176,6 @@
             (is (some? (:deleted_at msg))))
           (testing "deleted_by_user_id is set"
             (is (= user-id (:deleted_by_user_id msg))))))))
-
   (testing "returns nil when required inputs are missing"
     (is (nil? (slackbot.persistence/soft-delete-response! nil "ts" 1)))
     (is (nil? (slackbot.persistence/soft-delete-response! "C123" nil 1)))
@@ -211,7 +206,6 @@
           (is (nil? (slackbot.persistence/response-owner-user-id channel-id "nonexistent-ts"))))
         (testing "returns nil when channel does not match"
           (is (nil? (slackbot.persistence/response-owner-user-id "C-WRONG" slack-ts))))
-
         (testing "two users in the same thread each own only their own bot response"
           (let [second-slack-ts "1709567890.333333"]
             (t2/insert! :model/MetabotMessage

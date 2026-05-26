@@ -197,7 +197,6 @@
                               "created_at" "$_id.created_at"
                               "sum"        true}}]
           formatted-query (driver/prettify-native-form :mongo query)]
-
       (testing "Formatting a mongo query returns a JSON-like string"
         (is (= (str/join "\n"
                          ["["
@@ -244,10 +243,8 @@
                           "  }"
                           "]"])
                formatted-query)))
-
       (testing "The formatted JSON-like string is equivalent to the query"
         (is (= query (json/decode formatted-query))))
-
       ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
       (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
             ;; This is a corner case since the system should always be using the right driver

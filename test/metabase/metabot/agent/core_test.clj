@@ -37,17 +37,14 @@
     (testing "continues when iteration < max and has tool calls"
       (is (#'agent/should-continue? 0 max-iter [{:type :tool-input}]))
       (is (#'agent/should-continue? 1 max-iter [{:type :tool-input}])))
-
     (testing "continues when text AND tool calls present (LLM thinking aloud)"
       (is (#'agent/should-continue? 0 max-iter [{:type :tool-input}
                                                 {:type :text}]))
       (is (#'agent/should-continue? 0 max-iter [{:type :text}
                                                 {:type :tool-input}])))
-
     (testing "stops at max iterations (1-based: iteration >= max means done)"
       (is (not (#'agent/should-continue? 3 max-iter [{:type :tool-input}])))
       (is (not (#'agent/should-continue? 4 max-iter [{:type :tool-input}]))))
-
     (testing "stops when no tool calls (text-only is final answer)"
       (is (not (#'agent/should-continue? 0 max-iter [{:type :text}])))
       (is (not (#'agent/should-continue? 0 max-iter [{:type :usage}])))
@@ -70,7 +67,6 @@
             (is (pos? (count result)))
             ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
-
       (testing "sql profile requests required tool choice"
         (let [captured (atom nil)]
           (with-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
@@ -83,7 +79,6 @@
                        :profile-id :sql
                        :context    {}}))
             (is (= {:tool-choice "required"} @captured)))))
-
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (with-redefs [openrouter/openrouter (fn [_]
@@ -108,7 +103,6 @@
               (is (some #(= :data (:type %)) result))
               ;; Should have tool-related parts
               (is (some #(= :tool-input (:type %)) result))))))
-
       (testing "handles errors gracefully"
         (with-redefs [openrouter/openrouter (fn [_]
                                               (throw (ex-info "Mock error" {})))]
@@ -131,14 +125,12 @@
                                       :query {:database 1 :type :query :query {:source-table 1}}}]}
           seeded (#'agent/seed-state {} context)]
       (is (contains? (get seeded :queries) "query-123"))))
-
   (testing "does not seed native SQL string queries"
     (let [context {:user_is_viewing [{:type "native"
                                       :id "query-456"
                                       :query "SELECT * FROM users"}]}
           seeded (#'agent/seed-state {} context)]
       (is (empty? (get seeded :queries)))))
-
   (testing "ignores viewing items without ids or queries"
     (let [context {:user_is_viewing [{:type "native" :query {:database 1}}
                                      {:type "adhoc" :id "no-query"}]}
@@ -184,7 +176,6 @@
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
       (is (= query (get-in (memory/get-state updated) [:queries "q-123"])))))
-
   (testing "ignores parts without structured-output"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -193,7 +184,6 @@
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
       (is (empty? (:queries (memory/get-state updated))))))
-
   (testing "ignores non-tool-output parts"
     (let [parts [{:type :text :text "hello"}
                  {:type :tool-input :id "t1" :function "search"}]
@@ -383,7 +373,6 @@
               (testing "second usage is cumulative (iteration 1 + 2)"
                 (is (= {:promptTokens 250 :completionTokens 50}
                        (:usage (second usages)))))))))
-
       (testing "cumulative usage works across multiple models"
         (let [call-count (atom 0)]
           (with-redefs [openrouter/openrouter
@@ -480,14 +469,12 @@
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
                                          {:profile-id "internal"})))))
-
       ;; clear! is much faster than a new mt/with-prometheus-system!
       (analytics/clear! :metabase-metabot/agent-requests)
       (analytics/clear! :metabase-metabot/agent-iterations)
       (analytics/clear! :metabase-metabot/agent-errors)
       (analytics/clear! :metabase-metabot/agent-duration-ms)
       (analytics/clear! :metabase-metabot/llm-requests)
-
       (testing "records agent-errors on failure"
         (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
           (mt/with-log-level [metabase.metabot.agent.core :fatal]
@@ -558,7 +545,6 @@
                                       "event_details" {"tool_name" "search"
                                                        "step"      1}}}]
                           tool-events)))))))))
-
     (testing "fires 'agent_used_tool' with result=error when tool fails"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]

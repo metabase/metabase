@@ -63,7 +63,6 @@
              (field/nested-field-names->field-id table-id ["top"])))
       (is (= nested-field-id
              (field/nested-field-names->field-id table-id ["top" "nested"]))))
-
     (testing "return nothing if field does not exist"
       (is (= nil
              (field/nested-field-names->field-id table-id ["top" "nested" "not-exists"]))))))

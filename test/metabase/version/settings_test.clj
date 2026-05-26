@@ -27,7 +27,6 @@
     (is (not (prevent? 45 {:version 45} 75)) "version not a version string")
     ;; misshape
     (is (not (prevent? 45 {:latest {:version "0.46" :rollout 80}} 75)) "Wrong shape"))
-
   (testing "Knows when to upgrade"
     (let [threshold 25
           above     50

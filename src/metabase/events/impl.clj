@@ -70,16 +70,13 @@
   {:arglists            '([topic event])
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
-
   :combo
   (methodical/do-method-combination)
-
   ;; work around https://github.com/camsaul/methodical/issues/97
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
    (fn dispatch-fn [topic _event]
      (keyword topic)))
-
   ;; work around https://github.com/camsaul/methodical/issues/98
   :cache
   (u.methodical.null-cache/null-cache))

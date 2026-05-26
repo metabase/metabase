@@ -45,7 +45,6 @@
           response    (client/client :get 200 "agent/v1/ping"
                                      {:request-options {:headers {"x-metabase-session" session-key}}})]
       (is (= {:message "pong"} response))))
-
   (testing "Invalid session token returns 401"
     (let [fake-session-key (str (random-uuid))
           response         (client/client :get 401 "agent/v1/ping"
@@ -97,11 +96,9 @@
                :fields         sequential?
                :related_tables sequential?}
               (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404 "agent/v1/table/999999"))))
-
   (testing "Respects query parameters"
     (let [table-id (mt/id :orders)]
       (is (=? {:type   "table"
@@ -109,12 +106,10 @@
                :fields empty?}
               (mt/user-http-request :rasta :get 200
                                     (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
-
   (testing "Field values are excluded by default"
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))]
       (is (every? #(nil? (:field_values %)) (:fields table)))))
-
   (testing "Field values are included when explicitly requested"
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
@@ -161,14 +156,12 @@
                :name                 "Test Metric"
                :queryable_dimensions sequential?}
               (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
-
     (testing "Respects query parameters"
       (is (=? {:type "metric"
                :id   (:id metric)}
               (mt/user-http-request :rasta :get 200
                                     (str "agent/v1/metric/" (:id metric)
                                          "?with-queryable-dimensions=false&with-field-values=false")))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999"))))))
@@ -193,7 +186,6 @@
 (deftest get-table-field-values-test
   ;; Ensure field values exist for the field we'll test
   (ensure-fresh-field-values! (mt/id :people :state))
-
   (testing "Returns field statistics and values with default limit of 30"
     (let [table-id (mt/id :people)
           field-id (visible-field-id table-id "State")]
@@ -204,18 +196,15 @@
                                   :field_values sequential?}}
                 result))
         (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
-
   (testing "Respects explicit limit parameter"
     (let [table-id (mt/id :people)
           field-id (visible-field-id table-id "State")]
       (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
               (mt/user-http-request :crowberto :get 200
                                     (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
-
   (testing "Returns 404 for non-existent field"
     (let [table-id (mt/id :people)]
       (is (= "Field 999999 not found"
@@ -263,7 +252,6 @@
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
-
   (testing "Respects explicit limit operation"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -271,7 +259,6 @@
                                           :operations [["limit" 10]]})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
@@ -295,7 +282,6 @@
                                         (every? :base_type cols)))
                            :rows (fn [rows] (= 5 (count rows)))}}
               execute-resp))))
-
   (testing "Enforces agent query row limit even when query specifies a higher limit"
     (let [table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -321,11 +307,9 @@
                                     :field_values sequential?}}
                   (mt/user-http-request :rasta :get 200
                                         (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
-
     (testing "Returns 404 for non-existent field on metric"
       (is (= "Field 999999 not found"
              (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
@@ -343,7 +327,6 @@
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded))))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
@@ -383,7 +366,6 @@
       (testing "with-measures=false (default) does not include measures"
         (let [table (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
           (is (nil? (:measures table)))))
-
       (testing "with-measures=true includes measures for the table"
         (let [table (mt/user-http-request :rasta :get 200
                                           (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
@@ -406,7 +388,6 @@
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
-
   (testing "Continuation token returns next page of results when the total limit exceeds the page size"
     (let [table-id   (mt/id :orders)
           field-id   (visible-field-id table-id "ID")
@@ -429,14 +410,12 @@
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
           "Pages should return different rows")))
-
   (testing "No continuation_token when all rows are returned"
     (is (=? {:status             "completed"
              :continuation_token nil?}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                   {:source     {:type "table" :id (mt/id :orders)}
                                    :operations [["aggregate" ["count"]]]}))))
-
   (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
@@ -507,7 +486,6 @@
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
       (t2/delete! :model/Card :id (:id create-resp))))
-
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -540,7 +518,6 @@
                :dashcard_ids  []}
               resp))
       (t2/delete! :model/Dashboard :id (:id resp))))
-
   (testing "Creates a dashboard with questions"
     (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
                                                :dataset_query (orders-count-query)
@@ -564,7 +541,6 @@
                             (pos? (:size_x %)) (pos? (:size_y %)))
                       dashcards)))
         (t2/delete! :model/Dashboard :id (:id resp)))))
-
   (testing "Creates a dashboard in a specific collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
       (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
@@ -572,7 +548,6 @@
                                         :collection_id coll-id})]
         (is (= coll-id (:collection_id resp)))
         (t2/delete! :model/Dashboard :id (:id resp)))))
-
   (testing "Returns 404 when a question_id does not exist"
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"

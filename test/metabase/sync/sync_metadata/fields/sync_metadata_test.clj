@@ -174,7 +174,6 @@
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
             (merge default-metadata {:database-partitioned nil :id 1})))))
-
   (testing "flip the state"
     (is (= [["Field" 1 {:database_partitioned false}]]
            (updates-that-will-be-performed!
@@ -202,7 +201,6 @@
              :database-required          false
              :database-is-auto-increment false
              :json-unfolding             false}))))
-
   (testing (str "if `database-type` comes back as `nil` and was already saved in application DB as `NULL` no changes "
                 "should be made")
     (is (= []
@@ -297,7 +295,6 @@
                    {:id             1
                     :base-type      :type/Integer
                     :effective-type :type/Integer}))))
-
     (testing "and sync will re-fingerprint and analyze this field"
       (mt/with-temp-test-data [["table"
                                 [{:field-name "field"

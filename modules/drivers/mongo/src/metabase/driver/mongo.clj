@@ -292,7 +292,6 @@
             (->> (get-in ftree* (conj path :children))
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
-
           (ftree-prewalk*
             [ftree* path]
             (reduce ftree-prewalk*

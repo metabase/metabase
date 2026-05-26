@@ -97,7 +97,6 @@
                (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
-
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
       (mt/with-temp
         [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
@@ -120,13 +119,11 @@
                 :has_access nil
                 :context    nil}
                (latest-view (u/id user) (u/id table)))))
-
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
             (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
-
             ;; Bind the user again to flush the perms cache
             (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
@@ -550,7 +547,6 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -563,7 +559,6 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -590,7 +585,6 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -603,7 +597,6 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-
                 (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))

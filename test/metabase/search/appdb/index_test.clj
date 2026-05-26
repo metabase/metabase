@@ -82,7 +82,6 @@
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
-
         ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
         #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
@@ -109,14 +108,12 @@
       (testing "It does not match partial words"
         ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
-
       ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
           (is (= (search.index/search a)
                  (search.index/search b)))))
-
       (testing "Or we match a completion of the final word"
         (is (seq (search.index/search "sat")))
         (is (seq (search.index/search "satisf")))
@@ -234,7 +231,6 @@
                       :last_editor_id           nil
                       :verified                 nil})
                     (ingest-then-fetch! model-type card-name))))))
-
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
               yesterday    (t/- (now) (t/days 1))
@@ -417,7 +413,6 @@
                                                          :timestamp   two-days-ago
                                                          :most_recent true
                                                          :object      {}}]
-
         (is (=? (index-entity
                  {:model            "dashboard"
                   :model_id         (str dashboard-id)
@@ -601,7 +596,6 @@
               pending-old  (search.index/gen-table-name)
               pending-new  (search.index/gen-table-name)
               version      (search.spec/index-version-hash)]
-
           ;; Set up old pending table (more than a day old)
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
@@ -609,18 +603,14 @@
                       {:index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
           (#'search.index/sync-tracking-atoms!)
-
           (testing "Active table is returned"
             (is (= active-table (search.index/active-table))))
-
           (testing "Old pending table is ignored (more than a day old)"
             (is (nil? (#'search.index/pending-table))))
-
           ;; Create new pending table (less than a day old)
           (search.index/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
           (#'search.index/sync-tracking-atoms!)
-
           (testing "New pending table is included (less than a day old)"
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
@@ -721,10 +711,8 @@
       (try
         (let [table-name (search.index/gen-table-name)
               version (search.spec/index-version-hash)]
-
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))
-
           (testing "Returns age of active table"
             (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
               (search.index/create-table! table-name)
@@ -733,7 +721,6 @@
               (t2/update! :model/SearchIndexMetadata
                           :index_name  (name table-name)
                           {:created_at  update-time})
-
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")

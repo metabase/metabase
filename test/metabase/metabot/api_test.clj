@@ -714,17 +714,14 @@
              {:type :tool-input :id "t1"}
              ;; second usage is cumulative (subsumes first)
              {:type :usage :usage {:promptTokens 250 :completionTokens 50} :model "gpt-4"}]))))
-
   (testing "handles multiple models independently"
     (is (= {"model-a" {:prompt 100 :completion 20}
             "model-b" {:prompt 200 :completion 40}}
            (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "model-a"}
              {:type :usage :usage {:promptTokens 200 :completionTokens 40} :model "model-b"}]))))
-
   (testing "returns empty map when no usage parts"
     (is (= {} (metabot.persistence/extract-usage [{:type :text :text "hi"}]))))
-
   (testing "missing model defaults to unknown"
     (is (= {"unknown" {:prompt 50 :completion 10}}
            (metabot.persistence/extract-usage
@@ -735,13 +732,11 @@
     (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
            (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :tool, :id 1} {:type :tool, :id 2}]))))
-
   (testing "combines consecutive text parts"
     (is (= [{:type :text, :text "hello world"}]
            (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "hello "}
                   {:type :text, :text "world"}]))))
-
   (testing "combines multiple runs"
     (is (= [{:type :text, :text "ab"}
             {:type :tool, :id 1}
@@ -752,10 +747,8 @@
                   {:type :tool, :id 1}
                   {:type :text, :text "c"}
                   {:type :text, :text "d"}]))))
-
   (testing "handles empty input"
     (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
-
   (testing "handles single text part"
     (is (= [{:type :text, :text "solo"}]
            (into [] (metabot.persistence/combine-text-parts-xf)
@@ -792,7 +785,6 @@
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))
           "usage keys should be bare model names, not metabase/anthropic/...")))
-
   (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
     (let [msg (start-and-finalize-with-provider! "anthropic/claude-sonnet-4-6")]
       (is (false? (:ai_proxied msg)))

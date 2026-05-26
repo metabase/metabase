@@ -293,7 +293,6 @@
                                   (field-id->name (mt/id :user :name))     "New User"}
                        :table-id (mt/id :user)}
                       created-user)))
-
             (testing ":table.row/update"
               (is (=? {:op       :updated
                        :row      {(field-id->name (mt/id :user :group-id)) 1
@@ -357,16 +356,13 @@
                        {:database (mt/id)
                         :table-id (mt/id :group)
                         :row      {group-id-col created-group-id}})))))
-
           (testing "group with user fails due to FK constraint"
             (let [created-group-id (new-group)]
               ;; create 2 users
               (new-user created-group-id)
               (new-user created-group-id)
-
               (testing "sanity check that we have the users"
                 (is (= 2 (users-of-group created-group-id))))
-
               (testing "we fail if there are children without cascade-on-delete behavior"
                 (is (thrown-with-msg?
                      ExceptionInfo

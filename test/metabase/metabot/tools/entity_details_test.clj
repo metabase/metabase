@@ -150,10 +150,8 @@
               output (:structured-output result)
               related-tables (:related_tables output)
               products-related (first (filter #(= products-id (:id %)) related-tables))]
-
           (testing "Orders table has Products as a related table"
             (is (some? products-related)))
-
           (testing "Related Products table has correct number of fields (excluding implicitly joinable fields)"
             (is (= expected-products-field-count
                    (count (:fields products-related)))
@@ -190,7 +188,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:measures output)))))
-
           (testing "with_measures: true includes measures for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -217,7 +214,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -271,7 +267,6 @@
             (let [result (entity-details/get-metric-details {:metric-id metric-id})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the metric"
             (let [result (entity-details/get-metric-details {:metric-id metric-id
                                                              :with-segments? true})
