@@ -2,6 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   getEmbedSidebar,
@@ -113,6 +114,23 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       visitNewEmbedPage({ waitForResource: false });
 
       cy.findByLabelText("Metabase account (SSO)").should("be.enabled");
+    });
+
+    it("defaults to SSO when opening the wizard from the command palette with JWT configured (EMB-1783)", () => {
+      enableJwtAuth();
+
+      cy.visit("/");
+      H.commandPaletteButton().click();
+      H.commandPaletteInput().should("be.visible").type("new embed");
+      H.commandPalette()
+        .findByRole("option", { name: "New embed" })
+        .should("be.visible")
+        .click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").should("be.checked");
+        cy.findByLabelText("Guest").should("not.be.checked");
+      });
     });
 
     it("should not reset experience when changing auth type for Embed JS wizard opened from an entity page", () => {
