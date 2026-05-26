@@ -185,25 +185,28 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    (if (seq reportable-escaped)
+    (if (and (seq reportable-escaped)
+             (not (:continue-on-error opts))
       (log-escape-report! reportable-escaped)
-      (let [coll-set        (get by-model "Collection")
+      (let [_                   (when (seq reportable-escaped)
+                                  (log-escape-report! reportable-escaped))
+            coll-set            (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
             targeted-data-model (when (seq targets)
                                   (select-keys by-model serdes.models/data-model-in-collection))
-            by-model        (cond-> (select-keys by-model models)
-                              ;; Add Tables back if they were found in descendants
-                              (seq targeted-data-model) (merge targeted-data-model)
-                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
-                              ;; so cards that reference them can still be exported and imported correctly
-                              (and analytics-card-ids (contains? by-model "Card"))
-                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
-            extract-by-ids  (fn [[model ids]]
-                              (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                     :where          [:in :id ids]})))
-            extract-all     (fn [model]
-                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+            by-model            (cond-> (select-keys by-model models)
+                                  ;; Add Tables back if they were found in descendants
+                                  (seq targeted-data-model) (merge targeted-data-model)
+                                  ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                                  ;; so cards that reference them can still be exported and imported correctly
+                                  (and analytics-card-ids (contains? by-model "Card"))
+                                  (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+            extract-by-ids      (fn [[model ids]]
+                                  (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                         :where          [:in :id ids]})))
+            extract-all         (fn [model]
+                                  (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
                   [(if (seq targets)
                      (eduction (map extract-by-ids) cat by-model)
