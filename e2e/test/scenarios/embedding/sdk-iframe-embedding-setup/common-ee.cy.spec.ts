@@ -116,20 +116,91 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       cy.findByLabelText("Metabase account (SSO)").should("be.enabled");
     });
 
-    it("defaults to SSO when opening the wizard from the command palette with JWT configured (EMB-1783)", () => {
-      enableJwtAuth();
+    describe("default auth mode follows SSO configuration", () => {
+      const openFromCommandPalette = () => {
+        cy.visit("/");
+        H.commandPaletteButton().click();
+        H.commandPaletteInput().should("be.visible").type("new embed");
+        H.commandPalette()
+          .findByRole("option", { name: "New embed" })
+          .should("be.visible")
+          .click();
+      };
 
-      cy.visit("/");
-      H.commandPaletteButton().click();
-      H.commandPaletteInput().should("be.visible").type("new embed");
-      H.commandPalette()
-        .findByRole("option", { name: "New embed" })
-        .should("be.visible")
-        .click();
+      const openFromAdminEmbedding = () => {
+        cy.visit("/admin/embedding");
+        cy.findAllByTestId("sdk-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+      };
 
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").should("be.checked");
-        cy.findByLabelText("Guest").should("not.be.checked");
+      const openFromSharingMenu = () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        H.openSharingMenu("Embed");
+      };
+
+      describe("when JWT SSO is configured", () => {
+        beforeEach(() => {
+          enableJwtAuth();
+        });
+
+        it("defaults to SSO from the command palette (EMB-1783)", () => {
+          openFromCommandPalette();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
+            cy.findByLabelText("Guest").should("not.be.checked");
+          });
+        });
+
+        it("defaults to SSO from admin → Embedding → New embed", () => {
+          openFromAdminEmbedding();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
+            cy.findByLabelText("Guest").should("not.be.checked");
+          });
+        });
+
+        it("defaults to SSO from a resource's sharing menu", () => {
+          openFromSharingMenu();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
+            cy.findByLabelText("Guest").should("not.be.checked");
+          });
+        });
+      });
+
+      describe("when SSO is not configured", () => {
+        it("defaults to Guest from the command palette", () => {
+          openFromCommandPalette();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Guest").should("be.checked");
+            cy.findByLabelText("Metabase account (SSO)").should(
+              "not.be.checked",
+            );
+          });
+        });
+
+        it("defaults to Guest from admin → Embedding → New embed", () => {
+          openFromAdminEmbedding();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Guest").should("be.checked");
+            cy.findByLabelText("Metabase account (SSO)").should(
+              "not.be.checked",
+            );
+          });
+        });
+
+        it("defaults to Guest from a resource's sharing menu", () => {
+          openFromSharingMenu();
+          getEmbedSidebar().within(() => {
+            cy.findByLabelText("Guest").should("be.checked");
+            cy.findByLabelText("Metabase account (SSO)").should(
+              "not.be.checked",
+            );
+          });
+        });
       });
     });
 
