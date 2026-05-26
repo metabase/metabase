@@ -18,7 +18,6 @@ import type { SourceReplacementEntry } from "metabase-types/api";
 import {
   trackReplaceDataSourceConfirmed,
   trackReplaceDataSourceStarted,
-  trackReplaceDataSourceSucceeded,
 } from "../../analytics";
 
 import { ModalBody } from "./ModalBody";
@@ -136,7 +135,6 @@ function ModalContent({
           target_entity_id: targetEntry.id,
           target_entity_type: targetEntry.type,
         }).unwrap();
-        trackReplaceDataSourceSucceeded({ triggeredFrom });
         onClose();
       },
     });

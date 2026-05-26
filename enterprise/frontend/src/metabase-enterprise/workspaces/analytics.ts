@@ -40,12 +40,6 @@ export function trackWorkspaceSetupButtonClicked() {
   });
 }
 
-export function trackWorkspaceInstanceSetup() {
-  trackSimpleEvent({
-    event: "workspaces_instance_setup",
-  });
-}
-
 export function trackWorkspaceInstanceTeardown() {
   trackSimpleEvent({
     event: "workspaces_instance_teardown",

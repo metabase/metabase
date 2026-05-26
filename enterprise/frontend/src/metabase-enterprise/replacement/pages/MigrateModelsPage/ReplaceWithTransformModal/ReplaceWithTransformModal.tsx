@@ -34,12 +34,6 @@ import { slugify } from "metabase/visualizations/lib/formatting/url";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 
-import {
-  trackModelToTransformsMigrationFailure,
-  trackModelToTransformsMigrationStarted,
-  trackModelToTransformsMigrationSuccess,
-} from "../../../analytics";
-
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
@@ -141,27 +135,20 @@ function ReplaceWithTransformForm({
   );
 
   const handleSubmit = async (values: ReplaceWithTransformValues) => {
-    trackModelToTransformsMigrationStarted({ cardId: card.id });
-    try {
-      const action = replaceModelWithTransform({
-        card_id: card.id,
-        transform_name: values.name,
-        transform_target: {
-          type: "table",
-          name: values.targetName,
-          schema: values.targetSchema,
-          database: database.id,
-        },
-        target_collection_id: values.collectionId,
-        transform_tag_ids: values.tagIds,
-      });
-      await action.unwrap();
-      trackModelToTransformsMigrationSuccess({ cardId: card.id });
-      onClose();
-    } catch (error) {
-      trackModelToTransformsMigrationFailure({ cardId: card.id });
-      throw error;
-    }
+    const action = replaceModelWithTransform({
+      card_id: card.id,
+      transform_name: values.name,
+      transform_target: {
+        type: "table",
+        name: values.targetName,
+        schema: values.targetSchema,
+        database: database.id,
+      },
+      target_collection_id: values.collectionId,
+      transform_tag_ids: values.tagIds,
+    });
+    await action.unwrap();
+    onClose();
   };
 
   return (

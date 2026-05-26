@@ -13,39 +13,6 @@ export function trackModelToTransformsMigrationModalOpened({
   });
 }
 
-export function trackModelToTransformsMigrationStarted({
-  cardId,
-}: {
-  cardId: CardId;
-}) {
-  trackSimpleEvent({
-    event: "model_to_transforms_migration_started",
-    target_id: cardId,
-  });
-}
-
-export function trackModelToTransformsMigrationSuccess({
-  cardId,
-}: {
-  cardId: CardId;
-}) {
-  trackSimpleEvent({
-    event: "model_to_transforms_migration_success",
-    target_id: cardId,
-  });
-}
-
-export function trackModelToTransformsMigrationFailure({
-  cardId,
-}: {
-  cardId: CardId;
-}) {
-  trackSimpleEvent({
-    event: "model_to_transforms_migration_failure",
-    target_id: cardId,
-  });
-}
-
 export function trackReplaceDataSourceStarted({
   triggeredFrom,
 }: {
@@ -64,17 +31,6 @@ export function trackReplaceDataSourceConfirmed({
 }) {
   trackSimpleEvent({
     event: "replace_data_source_confirmed",
-    triggered_from: triggeredFrom,
-  });
-}
-
-export function trackReplaceDataSourceSucceeded({
-  triggeredFrom,
-}: {
-  triggeredFrom: SourceReplacementTriggeredFrom;
-}) {
-  trackSimpleEvent({
-    event: "replace_data_source_succeeded",
     triggered_from: triggeredFrom,
   });
 }

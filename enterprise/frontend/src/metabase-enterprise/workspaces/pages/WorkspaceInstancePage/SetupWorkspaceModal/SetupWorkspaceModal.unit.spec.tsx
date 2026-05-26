@@ -6,8 +6,6 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { SetupWorkspaceModal } from "./SetupWorkspaceModal";
 
-const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
-
 function setup() {
   const onClose = jest.fn();
 
@@ -40,27 +38,11 @@ async function uploadConfigAndSubmit() {
 }
 
 describe("SetupWorkspaceModal", () => {
-  beforeEach(() => {
-    trackSimpleEvent.mockClear();
-  });
-
   it("uploads the config and closes the modal", async () => {
     const { onClose } = setup();
 
     await uploadConfigAndSubmit();
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-  });
-
-  it("tracks an analytics event when the instance is set up", async () => {
-    setup();
-
-    await uploadConfigAndSubmit();
-
-    await waitFor(() =>
-      expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "workspaces_instance_setup",
-      }),
-    );
   });
 });
