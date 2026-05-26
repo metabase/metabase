@@ -625,17 +625,21 @@
                   (analytics/inc! :metabase-metabot/agent-errors labels)
                   (let [{:keys [api-error status provider body]} (ex-data e)
                         msg (ex-message e)]
-                    (if api-error
-                      (if status
-                        (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
-                                    msg status provider (pr-str body))
-                        (log/errorf e "Agent loop API error: %s provider=%s"
-                                    msg provider))
+                    (cond
+                      (and api-error status)
+                      (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
+                                  msg status provider (pr-str body))
+
+                      api-error
+                      (log/errorf e "Agent loop API error: %s provider=%s" msg provider)
+
                       ;; ex-message can be nil/blank for exceptions thrown without a message
                       ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
-                      (if (str/blank? msg)
-                        (log/error e "Agent loop error")
-                        (log/errorf e "Agent loop error: %s" msg))))
+                      (str/blank? msg)
+                      (log/error e "Agent loop error")
+
+                      :else
+                      (log/errorf e "Agent loop error: %s" msg)))
                   (rf init (error-part e)))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
