@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.request.core :as request]
    [metabase.system.core :as system]))
@@ -105,23 +106,30 @@
                        (mcp.resources/read-resource uri #{"agent:visualize"} {})))]
       (with-redefs [system/site-url (constantly site-url)]
         (testing "no request bound → CSP origins still emitted, :domain suppressed"
-          (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
-            (is (=? {:prefersBorder true
-                     :csp           {:connectDomains  [origin]
-                                     :resourceDomains [origin]}}
-                    ui-meta))
-            (is (not (contains? ui-meta :domain)))))
-        (testing "non-ChatGPT User-Agent → :domain suppressed"
-          (request/with-current-request {:headers {"user-agent" "claude-ai/0.1.0"}}
+          (with-redefs [config/is-dev? false]
             (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
+              (is (=? {:prefersBorder true
+                       :csp           {:connectDomains  [origin]
+                                       :resourceDomains [origin]}}
+                      ui-meta))
               (is (not (contains? ui-meta :domain))))))
+        (testing "development metadata allows resources from the frontend dev server"
+          (with-redefs [config/is-dev? true]
+            (is (=? {:csp {:resourceDomains [origin "http://localhost:8080"]}}
+                    (-> (read-ui) :contents first :_meta :ui)))))
+        (testing "non-ChatGPT User-Agent → :domain suppressed"
+          (with-redefs [config/is-dev? false]
+            (request/with-current-request {:headers {"user-agent" "claude-ai/0.1.0"}}
+              (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
+                (is (not (contains? ui-meta :domain)))))))
         (testing "ChatGPT User-Agent (`openai-mcp/...`) → :domain = origin"
-          (request/with-current-request {:headers {"user-agent" "openai-mcp/1.0.0 (ChatGPT)"}}
-            (is (=? {:status   :ok
-                     :contents [{:uri      uri
-                                 :mimeType "text/html;profile=mcp-app"
-                                 :_meta    {:ui {:prefersBorder true
-                                                 :domain        origin
-                                                 :csp           {:connectDomains  [origin]
-                                                                 :resourceDomains [origin]}}}}]}
-                    (read-ui)))))))))
+          (with-redefs [config/is-dev? false]
+            (request/with-current-request {:headers {"user-agent" "openai-mcp/1.0.0 (ChatGPT)"}}
+              (is (=? {:status   :ok
+                       :contents [{:uri      uri
+                                   :mimeType "text/html;profile=mcp-app"
+                                   :_meta    {:ui {:prefersBorder true
+                                                   :domain        origin
+                                                   :csp           {:connectDomains  [origin]
+                                                                   :resourceDomains [origin]}}}}]}
+                      (read-ui))))))))))

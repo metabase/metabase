@@ -11,8 +11,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.config.core :as config]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.request.core :as request]
@@ -27,6 +29,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private embed-mcp-template-path "frontend_client/embed-mcp.html")
+(def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
+(def ^:private frontend-dev-origin (str "http://localhost:" frontend-dev-port))
 
 ;; The built template is emitted by HtmlWebpackPlugin into resources/frontend_client/
 ;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
@@ -111,6 +115,11 @@
       (cond-> (str scheme "://" host)
         (not (neg? port)) (str ":" port)))))
 
+(defn- resource-domains
+  [url]
+  (cond-> [url]
+    config/is-dev? (conj frontend-dev-origin)))
+
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
    Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this
@@ -131,7 +140,7 @@
   [resource]
   (let [url (site-origin)]
     {:ui (cond-> {:csp {:connectDomains  [url]
-                        :resourceDomains [url]}}
+                        :resourceDomains (resource-domains url)}}
            (contains? resource :prefersBorder)
            (assoc :prefersBorder (:prefersBorder resource))
 
