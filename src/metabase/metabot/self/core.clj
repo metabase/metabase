@@ -578,8 +578,11 @@
 
 (defn- bounded-pr-str
   "`pr-str` a body for error surfacing without first allocating an unbounded string.
-  String bodies are sliced to `limit` before printing; collections render under
-  `*print-length*`/`*print-level*` bounds. Callers still [[truncate-to]] the printed result."
+  String bodies are sliced to `limit` before printing. Collections render under
+  `*print-length*`/`*print-level*`, which bound element count and nesting depth but *not* the
+  size of an individual scalar leaf — a map whose value is a near-cap string is still printed
+  in full, so callers must [[truncate-to]] the printed result to cap that case. The transient
+  allocation stays bounded by the upstream slurp cap ([[max-body-slurp-chars]]) regardless."
   [body limit]
   (binding [*print-length* 100
             *print-level*  10]
@@ -618,6 +621,8 @@
         ;; the user-facing exception message should.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
+                        ;; body is a collection here, so bounded-pr-str's limit arg is a no-op
+                        ;; (it only slices string bodies); truncate-to-preview-limit does the capping.
                         (let [capped (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))]
                           (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
                           capped)))]
