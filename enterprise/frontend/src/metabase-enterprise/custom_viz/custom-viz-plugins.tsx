@@ -39,6 +39,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import type { SandboxMode } from "./sandbox";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -255,6 +256,7 @@ export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   cacheBustSuffix?: string,
   onInfo?: (message: string) => void,
+  sandboxMode: SandboxMode = "hosted",
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
@@ -291,7 +293,7 @@ export async function loadCustomVizPlugin(
     // up in the static-viz bundle, which is evaluated by GraalVM and has no
     // DOM constructors.
     const { createPluginSandbox } = await import("./sandbox");
-    const sandbox = await createPluginSandbox(plugin.id);
+    const sandbox = await createPluginSandbox(plugin.id, sandboxMode);
     const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
