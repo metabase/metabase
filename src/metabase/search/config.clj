@@ -89,15 +89,18 @@
     :mine                1
     :exact               5
     :prefix              0
-    ;; Curation tiers, from strongest to weakest. :library at 200 exceeds
-    ;; :official-collection + :verified (80 each) combined, so a library item always outranks
-    ;; a non-library one. Base text/recency scorers (0–5 range) only break ties *within* a tier.
+    ;; Curation tiers, from strongest to weakest.
+    ;; :library at 200 exceeds :official-collection + :verified (80 each) combined,
+    ;; so a library item always outranks a non-library one.
+    ;; Base text/recency scorers (0–5 range) only break ties *within* a tier.
     :library             200
     :official-collection 80
     :verified            80
-    ;; :data-layer is the overall magnitude; per-tier weights are parameters (ratios with
-    ;; final=1), not strict weights. Contribution = :data-layer × :data-layer/<tier>.
-    ;; Final/internal/hidden are mutually exclusive. Trailing comments show effective products.
+    ;; :data-layer is the overall magnitude.
+    ;; Per-tier values are parameters (ratios with final=1), not strict weights.
+    ;; Contribution = :data-layer × :data-layer/<tier>.
+    ;; Final/internal/hidden are mutually exclusive.
+    ;; Trailing comments show effective products.
     :data-layer          33
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
