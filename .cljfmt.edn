@@ -30,6 +30,7 @@
   cond->                                                                 :all
   cond->>                                                                :all
   condp                                                                  :all
+  clojure.spec.alpha/or                                                  :all
   clojure.test/are                                                       :all
   metabase.driver-api.core/match-many                                    :all
   metabase.driver-api.core/match-one                                     :all
