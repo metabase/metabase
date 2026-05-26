@@ -6,8 +6,10 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -21,6 +23,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -355,10 +358,11 @@
                 :widget-type  :date/all-options}
                nil))))))
 
-(defn- query->params-map
+(mu/defn- query->params-map
   ([inner-query]
    (query->params-map meta/metadata-provider inner-query))
-  ([metadata-provider inner-query]
+  ([metadata-provider :- ::lib.schema.metadata/metadata-provider
+    inner-query       :- ::mbql.s/SourceQuery]
    (let [query (lib/query-from-legacy-inner-query metadata-provider (:id (lib.metadata/database metadata-provider)) inner-query)]
      (params.values/stage->params-map query (lib/query-stage query -1)))))
 
@@ -566,38 +570,42 @@
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
 
-(defn- legacy-native-query-with-snippet [& {:as snippet-properties}]
-  (mt/native-query {:query         "SELECT * FROM {{expensive-venues}}"
-                    :template-tags {"expensive-venues" (merge
-                                                        {:type         :snippet
-                                                         :name         "expensive-venues"
-                                                         :display-name "Expensive Venues"
-                                                         :snippet-name "expensive-venues"}
-                                                        snippet-properties)}}))
+(defn- native-query-with-snippet [metadata-provider & {:as snippet-properties}]
+  (-> (lib/native-query metadata-provider "SELECT * FROM {{expensive_venues}}")
+      (lib/with-template-tags {"expensive_venues" (merge
+                                                   {:type         :snippet
+                                                    :name         "expensive_venues"
+                                                    :display-name "Expensive Venues"
+                                                    :snippet-name "expensive_venues"}
+                                                   snippet-properties)})))
 
 (deftest ^:parallel snippet-validation-test
   (testing "`:snippet-id` should be required"
-    (is (thrown?
-         clojure.lang.ExceptionInfo
-         (query->params-map (legacy-native-query-with-snippet)))))
+    (let [query (native-query-with-snippet meta/metadata-provider)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"\QUnable to resolve Snippet: missing `:snippet-id`\E"
+           (params.values/stage->params-map query (lib/query-stage query -1))))))
   (testing "If no such Snippet exists, it should throw an Exception"
-    (is (thrown?
-         clojure.lang.ExceptionInfo
-         (query->params-map (legacy-native-query-with-snippet :snippet-id Integer/MAX_VALUE))))))
+    (let [query (native-query-with-snippet meta/metadata-provider :snippet-id Integer/MAX_VALUE)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Snippet [\d,]+ \"expensive_venues\" not found\."
+           (params.values/stage->params-map query (lib/query-stage query -1)))))))
 
 (deftest ^:parallel snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
     (let [mp       (lib.tu/mock-metadata-provider
                     meta/metadata-provider
                     {:native-query-snippets [{:id      1
-                                              :name    "expensive-venues"
+                                              :name    "expensive_venues"
                                               :content "venues WHERE price = 4"}]})
-          expected {"expensive-venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-          query    (lib/query mp (legacy-native-query-with-snippet :snippet-id 1))]
+          expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+          query    (native-query-with-snippet mp :snippet-id 1)]
       (is (= expected
              (#'params.values/stage->params-map query (lib/query-stage query -1))))
       (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
-        (let [query (lib/query mp (legacy-native-query-with-snippet :snippet-id 1, :snippet-name "Old Name"))]
+        (let [query (native-query-with-snippet mp :snippet-id 1, :snippet-name "Old Name")]
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
@@ -606,14 +614,14 @@
     (let [mp       (lib.tu/mock-metadata-provider
                     meta/metadata-provider
                     {:native-query-snippets [{:id      1
-                                              :name    "expensive-venues"
+                                              :name    "expensive_venues"
                                               :content "venues WHERE price = 4"}]})
-          expected {"snippet: expensive-venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-          query    (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive-venues}}")
-                       (lib/with-template-tags {"expensive-venues" {:type         :snippet
-                                                                    :name         "expensive-venues"
+          expected {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+          query    (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
+                       (lib/with-template-tags {"expensive_venues" {:type         :snippet
+                                                                    :name         "expensive_venues"
                                                                     :display-name "Expensive Venues"
-                                                                    :snippet-name "expensive-venues"
+                                                                    :snippet-name "expensive_venues"
                                                                     :snippet-id   1}}))]
       (is (= expected
              (params.values/stage->params-map query (lib/query-stage query -1)))))))

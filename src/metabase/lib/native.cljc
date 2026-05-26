@@ -242,7 +242,10 @@
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
 (mu/defn with-template-tags :- ::lib.schema/query
-  "Updates the native query's template tags."
+  "Updates the native query's template tags.
+
+  Note that this only updates existing tags, and will not blindly set them to `template-tags`; however, initializing a
+  query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
   [query        :- ::lib.schema/query
    updated-tags :- ::lib.schema.template-tag/template-tag-map]
   (letfn [(update-template-tags [existing-tags]
@@ -251,18 +254,18 @@
             ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
             ;;
             ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
-            (let [tags (reduce-kv
-                        (fn [m k v]
-                          (cond-> m
-                            (contains? existing-tags k) (assoc k v)))
-                        {}
-                        updated-tags)]
+            (let [updates (reduce-kv
+                           (fn [m updated-k updated-v]
+                             (cond-> m
+                               (contains? existing-tags updated-k) (assoc updated-k updated-v)))
+                           {}
+                           updated-tags)]
               ;; merge in old values that weren't in the `updated-tags` map
               (reduce-kv
-               (fn [m k v]
-                 (cond-> m
-                   (not (contains? m k)) (assoc k v)))
-               tags
+               (fn [updates existing-k existing-v]
+                 (cond-> updates
+                   (not (contains? updates existing-k)) (assoc existing-k existing-v)))
+               updates
                existing-tags)))
           (update-stage [stage]
             (assert-native-query stage)
