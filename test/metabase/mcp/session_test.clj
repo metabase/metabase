@@ -7,7 +7,11 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.util Base64)))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +25,13 @@
 (defn- session-correlator
   [session-id]
   (first (str/split session-id #"\.")))
+
+(defn- extended-session-id
+  [payload]
+  (str (random-uuid)
+       "."
+       (->> (.getBytes (json/encode payload) StandardCharsets/UTF_8)
+            (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
 
 (deftest create-returns-uuid-string-test
   (testing "create! returns a session id with a UUID correlator without writing to the database"
@@ -50,7 +61,13 @@
 
 (deftest malformed-session-payload-test
   (testing "two-part session ids must include a decodable capability hint"
-    (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64"))))))
+    (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64")))))
+  (testing "two-part session ids must match the supported capability hint shape"
+    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1}))))
+    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui "true"}))))
+    (is (false? (mcp.session/valid-id? (extended-session-id {:v 2 :ui true})))))
+  (testing "two-part session ids must fit the persisted query-handle session id column"
+    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui true :padding (apply str (repeat 300 "x"))}))))))
 
 (deftest derive-embedding-session-key-is-uuid-formatted-test
   (testing "derived key is UUID-formatted so it passes server.middleware.session/valid-session-key?"

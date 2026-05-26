@@ -85,6 +85,10 @@
   "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
   1)
 
+(def ^:private max-session-id-length
+  "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
+  254)
+
 (defn- encode-session-payload
   "Encode a small JSON map for the second segment of `Mcp-Session-Id`.
 
@@ -114,7 +118,7 @@
   "Parse the optional base64url JSON capability segment.
 
    Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
-   must include a decodable payload so malformed capability hints do not silently fall back to legacy behavior."
+   must include a supported payload shape so malformed capability hints do not silently fall back to legacy behavior."
   [payload]
   (cond
     (nil? payload)
@@ -125,8 +129,11 @@
 
     :else
     (when-let [decoded-payload (decode-session-payload payload)]
-      {:extended true
-       :payload  decoded-payload})))
+      (when (and (map? decoded-payload)
+                 (= session-payload-version (:v decoded-payload))
+                 (boolean? (:ui decoded-payload)))
+        {:extended true
+         :payload  decoded-payload}))))
 
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
@@ -136,7 +143,8 @@
    from this server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly
    across multiple Metabase webservers."
   [session-id]
-  (when (string? session-id)
+  (when (and (string? session-id)
+             (<= (count session-id) max-session-id-length))
     (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
       (when (and (#{1 2} (count parts))
                  (u.str/valid-uuid? uuid))
