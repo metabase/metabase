@@ -3,17 +3,14 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import type { ExplorationMetric } from "metabase/explorations/types";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  GetExplorationDataResponse,
-  MetricDimension,
-} from "metabase-types/api";
+import type { GetExplorationDataResponse } from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -164,6 +161,26 @@ function mockMetabotAgentState({
   } as any);
 }
 
+function createMockSelection(
+  overrides: Partial<ExplorationSelection> = {},
+): ExplorationSelection {
+  return {
+    metrics: [],
+    dimensions: [],
+    timelines: [],
+    name: "New research",
+    setName: jest.fn(),
+    setMetrics: jest.fn(),
+    setDimensions: jest.fn(),
+    setTimelines: jest.fn(),
+    addMetric: jest.fn(),
+    toggleMetric: jest.fn(),
+    toggleDimension: jest.fn(),
+    toggleTimeline: jest.fn(),
+    ...overrides,
+  };
+}
+
 function setup() {
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
@@ -177,9 +194,7 @@ function setup() {
   });
   setupEnterprisePlugins();
 
-  const setMetrics = jest.fn();
-  const setDimensions = jest.fn();
-  const setName = jest.fn();
+  const selection = createMockSelection();
 
   mockMetabotAgentState({
     messages: [userMessage],
@@ -187,11 +202,7 @@ function setup() {
   });
 
   const view = renderWithProviders(
-    <NewExplorationChat
-      setMetrics={setMetrics}
-      setDimensions={setDimensions}
-      setName={setName}
-    />,
+    <NewExplorationChat selection={selection} />,
     {
       storeInitialState: createMockState({ settings }),
     },
@@ -205,16 +216,10 @@ function setup() {
     isDoingScience: boolean;
   }) => {
     mockMetabotAgentState({ messages, isDoingScience });
-    view.rerender(
-      <NewExplorationChat
-        setMetrics={setMetrics}
-        setDimensions={setDimensions}
-        setName={setName}
-      />,
-    );
+    view.rerender(<NewExplorationChat selection={selection} />);
   };
 
-  return { setMetrics, setDimensions, setName, rerender };
+  return { selection, rerender };
 }
 
 describe("NewExplorationChat", () => {
@@ -223,7 +228,7 @@ describe("NewExplorationChat", () => {
   });
 
   it("adds metrics and dimensions from an exploration data tool call response", async () => {
-    const { setMetrics, setDimensions, rerender } = setup();
+    const { selection, rerender } = setup();
 
     rerender({
       messages: [userMessage, searchToolCallMessage],
@@ -238,8 +243,7 @@ describe("NewExplorationChat", () => {
       isDoingScience: true,
     });
 
-    expect(setMetrics).not.toHaveBeenCalled();
-    expect(setDimensions).not.toHaveBeenCalled();
+    expect(selection.addMetric).not.toHaveBeenCalled();
 
     rerender({
       messages: [
@@ -252,50 +256,50 @@ describe("NewExplorationChat", () => {
     });
 
     await waitFor(() => {
-      expect(setMetrics).toHaveBeenCalledWith(expect.any(Function));
+      expect(selection.addMetric).toHaveBeenCalledTimes(2);
     });
-    expect(setDimensions).toHaveBeenCalledWith(expect.any(Function));
 
-    const updateMetrics = setMetrics.mock.calls[0][0] as (
-      metrics: ExplorationMetric[],
-    ) => ExplorationMetric[];
-    const updateDimensions = setDimensions.mock.calls[0][0] as (
-      dimensions: MetricDimension[],
-    ) => MetricDimension[];
-
-    // All metrics returned by the tool are auto-added; metrics don't carry
-    // an interestingness score so we don't filter them.
-    expect(updateMetrics([])).toEqual([
+    // Each metric is passed to addMetric with a dimensionsById map built
+    // from the response's dimension_groups.
+    expect(selection.addMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         id: metricRevenue.id,
         name: metricRevenue.name,
       }),
+      { dimensionsById: expect.any(Map) },
+    );
+    expect(selection.addMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         id: metricChurn.id,
         name: metricChurn.name,
       }),
-    ]);
-    // Only dims that pass the interestingness threshold are auto-added.
-    // - revenueDateDimension (0.85) → kept
-    // - customerSegmentDimension (0.3) → dropped
-    // - productCategoryDimension (null) → dropped
-    expect(updateDimensions([])).toEqual([
-      expect.objectContaining({
-        id: revenueDateDimension.id,
-        display_name: revenueDateDimension.display_name,
-      }),
-    ]);
+      { dimensionsById: expect.any(Map) },
+    );
+
+    // The dimensionsById map should contain every dimension from the groups.
+    const { dimensionsById } = jest.mocked(selection.addMetric).mock
+      .calls[0][1];
+    expect(dimensionsById.size).toBe(3);
+    expect(dimensionsById.get(revenueDateDimension.id)).toEqual(
+      revenueDateDimension,
+    );
+    expect(dimensionsById.get(customerSegmentDimension.id)).toEqual(
+      customerSegmentDimension,
+    );
+    expect(dimensionsById.get(productCategoryDimension.id)).toEqual(
+      productCategoryDimension,
+    );
   });
 
   it("sets the exploration name from a set name tool call response", async () => {
-    const { setName, rerender } = setup();
+    const { selection, rerender } = setup();
 
     rerender({
       messages: [userMessage, setNameToolCallMessage],
       isDoingScience: true,
     });
 
-    expect(setName).not.toHaveBeenCalled();
+    expect(selection.setName).not.toHaveBeenCalled();
 
     rerender({
       messages: [userMessage, setNameToolCallMessage, agentMessage],
@@ -303,7 +307,7 @@ describe("NewExplorationChat", () => {
     });
 
     await waitFor(() => {
-      expect(setName).toHaveBeenCalledWith("Revenue investigation");
+      expect(selection.setName).toHaveBeenCalledWith("Revenue investigation");
     });
   });
 });

@@ -67,6 +67,7 @@ function makeMockSelection(opts: {
     setMetrics: jest.fn(),
     setDimensions: jest.fn(),
     setTimelines: jest.fn(),
+    addMetric: jest.fn(),
     toggleMetric: jest.fn(),
     toggleDimension: jest.fn(),
     toggleTimeline: jest.fn(),

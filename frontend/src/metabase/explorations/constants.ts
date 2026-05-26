@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { MetricDimension } from "metabase-types/api";
 
-export const DIMENSION_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
+export const DIMENSION_INTERESTINGNESS_SCORE_THRESHOLD = 0.8;
 
 export function isInterestingDimension(dimension: MetricDimension): boolean {
   return (
