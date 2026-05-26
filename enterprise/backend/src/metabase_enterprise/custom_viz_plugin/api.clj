@@ -279,24 +279,16 @@
    sandbox. The response carries a per-document `Content-Security-Policy` that permits
    `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
    nonce-based CSP."
-  [_route-params
-   _query-params
-   _body
-   _request
-   respond
-   raise]
-  (try
-    (respond {:status  200
-              :headers {"Content-Type"                 "text/html; charset=utf-8"
-                        "Content-Security-Policy"      sandbox-host-csp
-                        "X-Frame-Options"              "SAMEORIGIN"
-                        "X-Content-Type-Options"       "nosniff"
-                        "Cross-Origin-Resource-Policy" "same-origin"
-                        "Referrer-Policy"              "no-referrer"
-                        "Cache-Control"                "public, max-age=60"}
-              :body    sandbox-host-html})
-    (catch Throwable e
-      (raise e))))
+  []
+  {:status  200
+   :headers {"Content-Type"                 "text/html; charset=utf-8"
+             "Content-Security-Policy"      sandbox-host-csp
+             "X-Frame-Options"              "SAMEORIGIN"
+             "X-Content-Type-Options"       "nosniff"
+             "Cross-Origin-Resource-Policy" "same-origin"
+             "Referrer-Policy"              "no-referrer"
+             "Cache-Control"                "public, max-age=60"}
+   :body    sandbox-host-html})
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.
