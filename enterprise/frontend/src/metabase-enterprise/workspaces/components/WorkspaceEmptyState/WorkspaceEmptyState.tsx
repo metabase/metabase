@@ -1,13 +1,10 @@
-import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
 import {
   Box,
-  Button,
   Card,
   FixedSizeIcon,
   Group,
@@ -15,25 +12,22 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type { Workspace } from "metabase-types/api";
-
-import { NewWorkspaceModal } from "../NewWorkspaceModal";
 
 import S from "./WorkspaceEmptyState.module.css";
 
-export function WorkspaceEmptyState() {
-  const [opened, { open, close }] = useDisclosure(false);
-  const dispatch = useDispatch();
+type WorkspaceEmptyStateProps = {
+  description: ReactNode;
+  children?: ReactNode;
+};
+
+export function WorkspaceEmptyState({
+  description,
+  children,
+}: WorkspaceEmptyStateProps) {
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
-
-  const handleCreate = (workspace: Workspace) => {
-    close();
-    dispatch(push(Urls.workspace(workspace.id)));
-  };
 
   return (
     <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
@@ -42,20 +36,10 @@ export function WorkspaceEmptyState() {
           order={3}
           mb="sm"
         >{t`Isolated spaces for agents and developers`}</Title>
-        <Text c="text-secondary" mb="sm">
-          {t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
-        </Text>
         <Text c="text-secondary" mb="md">
-          {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-            t`Create a workspace here, or with Metabase’s CLI. That will set up an isolated sandbox with a dedicated schema and database user in the data warehouse(s) you choose.`
-          }
+          {description}
         </Text>
-        <Box pb="xl">
-          <Button variant="filled" onClick={open}>
-            {t`Create a workspace`}
-          </Button>
-        </Box>
+        {children}
         {(showFileBasedDevLink || showRemoteSyncLink) && (
           <Group pt="md" gap="sm" align="stretch">
             {showFileBasedDevLink && (
@@ -68,21 +52,13 @@ export function WorkspaceEmptyState() {
             {showRemoteSyncLink && (
               <DocsLink
                 title={t`Using remote sync`}
-                description={
-                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-                  t`How to sync and review Metabase content with git.`
-                }
+                description={t`How to sync and review instance content with git.`}
                 link={remoteSyncDocsUrl}
               />
             )}
           </Group>
         )}
       </Box>
-      <NewWorkspaceModal
-        opened={opened}
-        onCreate={handleCreate}
-        onClose={close}
-      />
     </Card>
   );
 }

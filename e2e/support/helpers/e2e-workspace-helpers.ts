@@ -1,4 +1,6 @@
-import type { WorkspaceId } from "metabase-types/api";
+import yaml from "js-yaml";
+
+import type { AdvancedConfig, WorkspaceId } from "metabase-types/api";
 
 import { modal } from "./e2e-ui-elements-helpers";
 
@@ -24,6 +26,25 @@ export const NewWorkspaceModal = {
     NewWorkspaceModal.get().findByRole("button", { name: "Create" }),
   cancelButton: () =>
     NewWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+};
+
+export const SetupWorkspaceModal = {
+  get: () => modal(),
+  configInput: () => SetupWorkspaceModal.get().get('input[type="file"]'),
+  setupButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Set up" }),
+  cancelButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+  uploadConfig: (config: AdvancedConfig) => {
+    SetupWorkspaceModal.configInput().selectFile(
+      {
+        contents: Cypress.Buffer.from(yaml.dump(config)),
+        fileName: "config.yml",
+        mimeType: "application/yaml",
+      },
+      { force: true },
+    );
+  },
 };
 
 export const WorkspacePage = {
@@ -72,8 +93,10 @@ export const NewWorkspaceDatabaseModal = {
   get: () => modal(),
   databaseRadio: (name: string) =>
     NewWorkspaceDatabaseModal.get().findByRole("radio", { name }),
-  schemasInput: () =>
-    NewWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemasGroup: () =>
+    NewWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaCheckbox: (name: string) =>
+    NewWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
   submitButton: () =>
     NewWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Add database",
@@ -84,8 +107,10 @@ export const NewWorkspaceDatabaseModal = {
 
 export const UpdateWorkspaceDatabaseModal = {
   get: () => modal(),
-  schemasInput: () =>
-    UpdateWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemasGroup: () =>
+    UpdateWorkspaceDatabaseModal.get().findByText("Schemas to include"),
+  schemaCheckbox: (name: string) =>
+    UpdateWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
   saveButton: () =>
     UpdateWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Save changes",
@@ -113,7 +138,7 @@ export const WorkspaceSetupSection = {
 export const WorkspaceInstancePage = {
   get: () => cy.findByTestId("workspace-instance-page"),
   visit: () => {
-    cy.visit("/data-studio/workspaces/instance");
+    cy.visit("/data-studio/workspaces");
     WorkspaceInstancePage.get().should("be.visible");
   },
   database: (name: string) =>
@@ -124,4 +149,22 @@ export const WorkspaceInstancePage = {
     ),
   remappingRow: (canonicalName: string) =>
     WorkspaceInstancePage.get().findByText(canonicalName),
+  setupButton: () =>
+    WorkspaceInstancePage.get().findByRole("button", {
+      name: "Set up a workspace",
+    }),
+  exitButton: () =>
+    WorkspaceInstancePage.get().findByRole("button", {
+      name: "Leave workspace",
+    }),
+};
+
+export const ExitWorkspaceModal = {
+  get: () => modal(),
+  confirmButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", {
+      name: "Leave workspace",
+    }),
+  cancelButton: () =>
+    ExitWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };

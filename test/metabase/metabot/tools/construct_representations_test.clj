@@ -741,3 +741,71 @@
           (is false "expected throw")
           (catch clojure.lang.ExceptionInfo e
             (is (true? (:agent-error? (ex-data e))))))))))
+
+;;; ============================================================
+;;; Quoted source-card column names are canonicalised before type inference (BOT-1587)
+;;; ============================================================
+
+(deftest source-card-quoted-column-name-canonicalized-test
+  (testing
+   (str "Regression (BOT-1587): the LLM sometimes references a `source-card:` column by a name\n"
+        "that doesn't EXACTLY match a column the card returns - it quotes the name the way it\n"
+        "would a SQL identifier, e.g. `[\"field\" {} \"\\\"TOTAL\\\"\"]` instead of\n"
+        "`[\"field\" {} \"TOTAL\"]`. Without canonicalisation the `infer-source-card-field-types*`\n"
+        "repair pass can't match a column, leaves `base-type` off, and (since `resolve-query`\n"
+        "only transforms and production runs with Malli instrumentation off) the typeless\n"
+        "string-named ref is stored on the card - then the FE crashes computing display info\n"
+        "(`unable to determine the type of [\"field\" {} \"\\\"TOTAL\\\"\"]`).\n\n"
+        "The repair pass now strips surrounding double-quotes when that makes the name match a\n"
+        "real column, rewrites the ref to the canonical name, and stamps `base-type`.")
+    (let [quoted-name "\"TOTAL\""              ; the literal value the LLM emitted: TOTAL wrapped in quotes
+          query       (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     ;; quoted name in both a filter and the field selection
+                                     "filters"     [["=" {} ["field" {} quoted-name] 100]]
+                                     "fields"      [["field" {} quoted-name]]}]})]
+      (with-card-mp-and-stubs!
+        (fn []
+          ;; No throw under default instrumentation - the canonicalised ref is now schema-valid.
+          (let [result        (construct/execute-representations-query query)
+                q             (get-in result [:structured-output :query])
+                fields-ref    (get-in q [:stages 0 :fields 0])
+                filter-clause (get-in q [:stages 0 :filters 0])
+                filter-ref    (nth filter-clause 2)
+                exported      (get-in result [:structured-output :query-json])
+                exported-ref  (get-in exported ["stages" 0 "fields" 0])]
+            (testing "field-selection ref: quotes stripped + base-type stamped"
+              (is (= :field (first fields-ref)))
+              (is (= "TOTAL" (nth fields-ref 2)) "surrounding double-quotes stripped to the canonical name")
+              (is (= :type/Float (get-in fields-ref [1 :base-type]))))
+            (testing "filter ref: same canonicalisation applies to nested clauses"
+              (is (= "TOTAL" (nth filter-ref 2)))
+              (is (= :type/Float (get-in filter-ref [1 :base-type]))))
+            (testing "exported query-json carries the canonical name and base-type"
+              (is (= "TOTAL" (nth exported-ref 2)))
+              (is (= "type/Float" (get-in exported-ref [1 "base-type"]))))))))))
+
+(deftest source-card-correct-column-name-stamps-base-type-test
+  (testing
+   (str "Control for `source-card-quoted-column-name-canonicalized-test`: the identical query\n"
+        "with the *exact* column name `TOTAL` (no surrounding quotes) resolves cleanly and the\n"
+        "exported field ref carries `base-type` from the card's result-metadata. Confirms the\n"
+        "canonicalisation pass leaves already-correct names untouched.")
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result    (construct/execute-representations-query
+                         (query-data
+                          {"lib/type" "mbql/query"
+                           "database" "Sample"
+                           "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                        "source-card" card-entity-id
+                                        "filters"     [["=" {} ["field" {} "TOTAL"] 100]]
+                                        "fields"      [["field" {} "TOTAL"]]}]}))
+              exported  (get-in result [:structured-output :query-json])
+              field-ref (get-in exported ["stages" 0 "fields" 0])
+              opts      (nth field-ref 1)]
+          (is (= "TOTAL" (nth field-ref 2)))
+          (is (= "type/Float" (get opts "base-type"))))))))

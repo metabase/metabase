@@ -1,5 +1,7 @@
+import { t } from "ttag";
+
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
-import { Box, FixedSizeIcon, Group } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Text } from "metabase/ui";
 import type { Database, TableRemapping } from "metabase-types/api";
 
 import { TableRemappingTable } from "./TableRemappingTable";
@@ -23,7 +25,13 @@ export function TableRemappingSection({
           </Group>
         }
       >
-        <TableRemappingTable remappings={remappings} />
+        {remappings.length === 0 ? (
+          <Text p="lg">
+            {t`Tables will be remapped here the first time a transform runs in this workspace for this database.`}
+          </Text>
+        ) : (
+          <TableRemappingTable remappings={remappings} />
+        )}
       </TitleSection>
     </Box>
   );
