@@ -211,8 +211,8 @@
     (testing "after the binding pops, the root value is unchanged"
       (is (= 41 (mc/current k2-handle))))))
 
-(deftest ^:synchronized swap-2arity-in-binding-cascades-current-value-test
-  (testing "the 2-arity swap! also reads the cascaded current value for un-overridden keys"
+(deftest ^:synchronized swap-with-args-in-binding-cascades-current-value-test
+  (testing "the `swap! [handle f args]` arm also reads the cascaded current value for un-overridden keys"
     (mc/alter-root k1-handle :root-k1)
     (mc/alter-root k2-handle {:answer 41})
     (mc/binding k1-handle :bound-k1
@@ -221,7 +221,9 @@
                   (testing "swap! read the cascaded root map and applied (update m :answer inc)"
                     (is (= {:answer 42} (mc/current k2-handle))))
                   (testing "root is unchanged"
-                    (is (= {:answer 41} (mc/root k2-handle))))))))
+                    (is (= {:answer 41} (mc/root k2-handle))))))
+    (testing "after the binding pops, the root value is unchanged"
+      (is (= {:answer 41} (mc/current k2-handle))))))
 
 (deftest ^:synchronized binding-nil-override-shadows-root-test
   (testing "binding a key to nil explicitly shadows root's non-nil value"
