@@ -518,19 +518,29 @@
         (s (:detail m))
         (s (:message m)))))
 
+(def ^:private body-slurp-chunk-chars
+  "Read-chunk size for [[slurp-bounded]]. Keeps the transient buffer small so a tiny error
+  envelope costs a tiny allocation; only a body that actually reaches the cap pays for it."
+  8192)
+
 (defn- slurp-bounded
-  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input."
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input.
+  Grows a `StringBuilder` in [[body-slurp-chunk-chars]] chunks so memory scales with the real
+  body rather than pre-allocating the worst-case `limit`-sized buffer up front."
   [r limit]
   (try
     (with-open [rdr (io/reader r :encoding "UTF-8")]
-      (let [buf (char-array limit)]
-        (loop [off 0]
-          (if (= off limit)
-            (String. ^chars buf (int 0) (int limit))
-            (let [n (.read ^java.io.Reader rdr buf off (- limit off))]
-              (if (neg? n)
-                (when (pos? off) (String. ^chars buf (int 0) (int off)))
-                (recur (+ off n))))))))
+      (let [buf (char-array body-slurp-chunk-chars)
+            sb  (StringBuilder.)]
+        (loop []
+          (let [remaining (- limit (.length sb))]
+            (if (<= remaining 0)
+              (str sb)
+              (let [n (.read ^java.io.Reader rdr buf 0 (min remaining body-slurp-chunk-chars))]
+                (if (neg? n)
+                  (when (pos? (.length sb)) (str sb))
+                  (do (.append sb buf 0 n)
+                      (recur)))))))))
     (catch Exception _ nil)))
 
 (def ^:private max-body-slurp-chars
@@ -538,6 +548,12 @@
   ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
   ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
   1000000)
+
+(def ^:private max-body-log-chars
+  "Cap on the body `pr-str` spliced into warn/error log lines. Larger than the user-facing
+  preview cap since operators want more context, but still bounded so a multi-MB body — or
+  a near-cap slurped stream — can't flood the logs. The full body always survives in `ex-data`."
+  2000)
 
 (defn- decode-bounded-body
   "Decode a clj-http response map's `:body` for error surfacing.
@@ -554,12 +570,22 @@
       (json/decode-body bounded)
       (catch Exception _ bounded))))
 
+(defn- truncate-to
+  "Cap `s` at `limit` with a trailing ellipsis when it overflows."
+  [s limit]
+  (if (<= (count s) limit)
+    s
+    (str (subs s 0 limit) "…")))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
-  (if (<= (count s) max-body-preview-chars)
-    s
-    (str (subs s 0 max-body-preview-chars) "…")))
+  (truncate-to s max-body-preview-chars))
+
+(defn- body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+  [body]
+  (truncate-to (pr-str body) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
@@ -614,8 +640,10 @@
             msg     (cond-> base
                       preview (str " — " preview))]
         ;; warnf (not warn) so the body renders into the message string, not as MDC.
+        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
+        ;; the full body still survives in ex-data below.
         (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (pr-str (:body res)))
+                   provider (:status res) (body-for-log (:body res)))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header
