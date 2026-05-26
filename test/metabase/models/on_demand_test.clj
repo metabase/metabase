@@ -23,7 +23,6 @@
     (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values!
                                 (fn [field & _]
                                   (swap! updated-field-names conj (:name field)))
-
                                 union-distinct/sync-fields-grouped-by-table!
                                 (fn [fields]
                                   (swap! updated-field-names into (map :name fields)))]
