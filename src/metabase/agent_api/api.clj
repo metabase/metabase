@@ -15,6 +15,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
@@ -724,7 +725,14 @@
 
                              (contains? body :query)
                              (assoc :dataset_query
-                                    (-> (:query body) u/decode-base64 json/decode+kw)))
+                                    ;; Normalize like the REST update path so downstream
+                                    ;; helpers (cycle detection, permission check) see the
+                                    ;; canonical MBQL shape regardless of whether the LLM
+                                    ;; sent legacy or MBQL 5.
+                                    (-> (:query body)
+                                        u/decode-base64
+                                        json/decode+kw
+                                        lib-be/normalize-query)))
         ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived).
         ;; The REST endpoint runs this in `update-card!` on every update; we need it too so
         ;; LLM-archived cards behave the same as UI-archived ones.
@@ -749,8 +757,11 @@
                              (try
                                (lib/check-card-overwrite id (:dataset_query card-updates))
                                (catch clojure.lang.ExceptionInfo e
-                                 (throw (ex-info (ex-message e)
-                                                 (assoc (ex-data e) :status-code 400))))))
+                                 ;; Don't downgrade a more specific status if the throwing fn
+                                 ;; ever starts setting one (e.g. a 404 for a missing card).
+                                 (let [data (ex-data e)]
+                                   (throw (ex-info (ex-message e)
+                                                   (assoc data :status-code (or (:status-code data) 400))))))))
         _                  (queries/update-card! {:card-before-update    card-before-update
                                                   :card-updates          card-updates
                                                   :actor                 @api/*current-user*

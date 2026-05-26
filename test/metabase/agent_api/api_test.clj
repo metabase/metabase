@@ -720,6 +720,23 @@
       (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
                             {:display "potato"})))
 
+  (testing "Returns 400 when swapping :query introduces a self-referencing cycle"
+    ;; Mirror REST's `lib/check-card-overwrite` gate. A query whose source is the very
+    ;; card being updated would persist a cyclic card otherwise (branch review A1).
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card About To Cycle"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [cycle-query  {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (str "card__" card-id)}}
+            base64-query (u/encode-base64 (json/encode cycle-query))]
+        (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
+                              {:query base64-query}))
+      ;; Persisted query unchanged - source-table still the orders table id, not the card.
+      (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+        (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+            "dataset_query should not have been swapped to a card__ reference"))))
+
   (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
     ;; Guard against the gap retro identified in branch review:
     ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
@@ -862,6 +879,27 @@
         (is (= 0 (:row moved)))
         (is (= 0 (:col moved))))))
 
+  (testing "Move to top shifts other cards down by the moved card's :size_y - no overlap"
+    ;; Regression for branch review #2: previously slammed the moved card at {:row 0 :col 0}
+    ;; without reflowing the rest, leaving cards on top of each other.
+    (mt/with-temp [:model/Dashboard     {dash-id :id}    {:name "Move-Top Reflow"}
+                   :model/Card          {a-card :id}     {:name "A" :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {b-card :id}     {:name "B" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}       {:dashboard_id dash-id :card_id a-card
+                                                          :row 0 :col 0 :size_x 12 :size_y 6}
+                   :model/DashboardCard {b-dc :id}       {:dashboard_id dash-id :card_id b-card
+                                                          :row 6 :col 0 :size_x 12 :size_y 6}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id b-dc :position "top"}]})
+      (let [a (t2/select-one :model/DashboardCard :id a-dc)
+            b (t2/select-one :model/DashboardCard :id b-dc)]
+        ;; b lands at row 0; a shifts down by b's :size_y (6).
+        (is (= 0 (:row b)))
+        (is (= 6 (:row a)))
+        ;; Bounding boxes don't intersect.
+        (is (>= (:row a) (+ (:row b) (:size_y b)))
+            "A should sit entirely below B after the move-to-top reflow"))))
+
   (testing "Mix add + remove + metadata patch in a single call"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Mix"}
                    :model/Card          {keep-card :id} {:name "keep" :dataset_query (orders-count-query) :display :table}
@@ -919,7 +957,35 @@
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (mt/user-http-request :crowberto :post 403 "agent/v1/execute-sql"
                             {:database_id (mt/id)
-                             :sql         "SELECT 1"}))))
+                             :sql         "SELECT 1"})))
+
+  (testing "Malformed SQL returns the userland :failed envelope (HTTP 400), not a raw 500"
+    ;; Regression for branch review #1: previously bypassed userland middleware, so a
+    ;; bad query threw `ExceptionInfo` and surfaced as HTTP 500. Now goes through
+    ;; `prepare-agent-query`, which wraps errors in the documented `:failed` envelope
+    ;; and surfaces them as a 400 with a structured body.
+    (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
+                                     {:database_id (mt/id)
+                                      :sql         "SELECT * FROM table_that_does_not_exist"})]
+      ;; The streaming pipeline wraps the failure in :via[0]/:status.
+      (is (= "failed" (some-> resp :via first :status)))
+      (is (string? (some-> resp :via first :error)))))
+
+  (testing "A successful query records a QueryExecution audit row tagged :agent"
+    ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
+    ;; written. Verify a row lands and carries the agent context. The QueryExecution
+    ;; insert is async, so poll for the new row.
+    (let [before (t2/count :model/QueryExecution)]
+      (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1 AS audit_probe"})
+      (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
+                                                               {:order-by [[:started_at :desc]]}))
+                            :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
+                            :timeout-ms  5000
+                            :interval-ms 50})]
+        (is (some? latest) "QueryExecution row should be inserted within 5s")
+        (is (= :agent (:context latest)))))))
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 

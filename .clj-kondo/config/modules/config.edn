@@ -164,6 +164,7 @@
               dashboards
               events
               lib
+              lib-be
               llm
               metabot
               queries
