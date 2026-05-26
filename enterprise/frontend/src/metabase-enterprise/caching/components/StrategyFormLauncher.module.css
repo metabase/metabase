@@ -1,6 +1,3 @@
-/* Outer card: a "launcher" row that opens the strategy form when clicked.
- * `data-for-root` marks the system-wide default policy (gray fill, no bold);
- * `data-inherits-root` marks a database that hasn't overridden the default. */
 .launcher {
   display: flex;
   flex-direction: row;
@@ -26,8 +23,6 @@
   font-weight: normal;
 }
 
-/* The "policy" pill on the right of each launcher. Mantine sets data-variant
- * on the button root, so the brand-border override targets it directly. */
 .token {
   border-width: 1px;
   border-style: solid;

@@ -35,8 +35,7 @@ function setup({ cardId = 19, cardName = "Number of Orders" }: SetupOpts = {}) {
   const onClose = jest.fn();
   const storeInitialState = createMockState({ settings });
 
-  // Wrap in a <Route> so the `useConfirmIfFormIsDirty` hook (which calls
-  // `useRouter`) finds a matched route on `/`.
+  // `useConfirmIfFormIsDirty` needs router context.
   renderWithProviders(
     <Route
       path="/"
@@ -107,18 +106,14 @@ describe("MetricCachingModal", () => {
   it("prompts before discarding when the close button is pressed with a dirty form", async () => {
     const { onClose } = setup();
 
-    // Dirty the form
     await userEvent.click(
       await screen.findByRole("radio", { name: /^Duration$/i }),
     );
-
-    // Trigger Modal.onClose (the X button), not Cancel/reset
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
 
     expect(
       await screen.findByRole("heading", { name: /Discard your changes\?/i }),
     ).toBeInTheDocument();
-    // onClose isn't called until the user confirms the discard
     expect(onClose).not.toHaveBeenCalled();
   });
 

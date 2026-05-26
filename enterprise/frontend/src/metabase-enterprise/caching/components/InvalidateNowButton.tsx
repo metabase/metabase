@@ -64,11 +64,7 @@ const InvalidateNowFormBody = ({
     [targetModel],
   );
 
-  // No outer <form> wrapper here: `StrategyForm` already renders the enclosing
-  // <form>, and nesting forms is invalid HTML. The button still gets Formik
-  // context from <FormProvider> (which is just React context, not a DOM form),
-  // and the click handler routes through the confirmation modal -> `submitForm`
-  // rather than relying on native form submission.
+  // Nested `<form>` would be invalid HTML; the parent `StrategyForm` owns the form element.
   return (
     <>
       <FormSubmitButton

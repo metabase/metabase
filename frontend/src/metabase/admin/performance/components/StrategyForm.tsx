@@ -56,21 +56,9 @@ interface ButtonLabels {
   discard: string;
 }
 
-/**
- * Layout variant of the form's footer + wrapper styling.
- *
- * - `"default"` (full page): scrolling `FormBox` with bordered Save/Discard
- *   bar; `InvalidateNowButton` appears alone when the form is clean.
- * - `"sidebar"`: right-aligned Save/Cancel without the bordered bar; no
- *   `FormBox` padding override (handled by the sidebar surface itself).
- * - `"modal"`: drops the `FormBox` padding so the modal's own inset wins,
- *   and always renders Invalidate + Cancel + Save in one row.
- */
 export type StrategyFormLayout = "default" | "sidebar" | "modal";
 
-/** Module-level, frozen so the form's initialValues reference is stable
- * across renders. The targetId picks one of the two when no saved strategy
- * is set yet. */
+// Module-level so initialValues stay reference-stable across renders.
 const ROOT_DEFAULT_STRATEGY: CacheStrategy = { type: "nocache" };
 const INHERIT_DEFAULT_STRATEGY: CacheStrategy = { type: "inherit" };
 
@@ -231,8 +219,6 @@ const StrategyFormBody = ({
         style={{
           overflow: layout === "default" ? "auto" : undefined,
           flexDirection: "column",
-          // In the modal layout the Modal sizes itself, so the form shouldn't
-          // claim flex-grow on its parent.
           flexGrow: layout === "modal" ? undefined : 1,
         }}
         aria-labelledby={headingId}

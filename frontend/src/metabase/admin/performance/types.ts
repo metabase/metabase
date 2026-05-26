@@ -12,12 +12,7 @@ export type StrategyLabel =
   | ((model?: CacheableModel) => string | undefined);
 
 export type StrategyData = {
-  /**
-   * The human-readable title for the strategy (e.g. "Default", "Duration"),
-   * either a literal string or a function that takes a model and returns
-   * one. Wraps in a ttag function to defer evaluation until locale is set. */
   label: StrategyLabel;
-  /** Optional explanation rendered next to the title in radio pickers. */
   description?: StrategyLabel;
   shortLabel?: StrategyLabel;
   /** Schema used to validate the value. This field can optionally be set to a function that returns a schema. This helps ensure that calls to ttag functions do not run until after the locale is set */

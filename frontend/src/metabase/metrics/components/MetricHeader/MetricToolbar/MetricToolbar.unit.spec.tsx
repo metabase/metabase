@@ -46,9 +46,6 @@ interface SetupOpts {
   isAdmin?: boolean;
   showDataStudioLink?: boolean;
   collectionType?: CollectionType | null;
-  /** Opt in to the wiring required for the Caching modal to actually mount
-   * (matched route + cache-config endpoints). Default `false` keeps existing
-   * menu-shape tests untouched. */
   withModal?: boolean;
 }
 
@@ -136,7 +133,6 @@ describe("MetricToolbar", () => {
   // PLUGIN_APPLICATION_PERMISSIONS default, so the alert item is always visible.
 
   beforeAll(() => {
-    // Enable cache_granular_controls so the Caching menu item is reachable in tests.
     mockSettings({
       "token-features": createMockTokenFeatures({
         library: true,
@@ -251,11 +247,9 @@ describe("MetricToolbar", () => {
       await openMenu();
       await userEvent.click(screen.getByText("Caching"));
 
-      // The modal lives outside the menu; find it via its title.
       expect(
         await screen.findByRole("dialog", { name: /Caching/i }),
       ).toBeInTheDocument();
-      // The strategy radios confirm the modal body actually mounted.
       expect(
         await screen.findByRole("radio", { name: /^Default$/i }),
       ).toBeInTheDocument();

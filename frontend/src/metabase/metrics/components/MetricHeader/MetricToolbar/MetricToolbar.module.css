@@ -1,6 +1,3 @@
-/* Mantine's ActionIcon variant="default" has no visible border; the new
- * metric header design wants the overflow trigger to read as an outlined
- * square. */
 .moreOptionsButton {
   border: 1px solid var(--mb-color-border);
 }

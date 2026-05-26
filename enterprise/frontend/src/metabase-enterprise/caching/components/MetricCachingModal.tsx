@@ -17,9 +17,7 @@ export function MetricCachingModal({
   cardName,
   onClose,
 }: MetricCachingModalProps) {
-  // Metric cache configs live under the `question` model on the API (metrics
-  // are `card`s in the backend). The writer hook handles the metric/question
-  // translation, but the reader takes the API-side model name directly.
+  // Metric cache configs live under the `question` model on the API.
   const { configs, isLoading, error } = useCacheConfigs({
     model: QUESTION_MODELS,
     id: cardId,

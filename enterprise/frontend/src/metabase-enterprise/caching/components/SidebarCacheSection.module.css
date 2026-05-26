@@ -1,7 +1,3 @@
-/* Tint the strategy label brand-blue on hover/focus so the trigger still
- * reads as the affordance it replaces, without resurrecting an underlined
- * anchor (the element is a `UnstyledButton` for keyboard a11y, since the
- * trigger has no href). */
 .formLauncher:hover,
 .formLauncher:focus-visible {
   color: var(--mb-color-brand);

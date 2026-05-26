@@ -65,8 +65,6 @@ const ResetAllToDefaultButtonFormBody = () => {
               </Text>
             }
             variant="subtle"
-            // Suppress the hover background while the form is mid-submission or
-            // showing the post-submit success state.
             className={status === "idle" ? S.highlightOnHover : undefined}
           />
         </Flex>
