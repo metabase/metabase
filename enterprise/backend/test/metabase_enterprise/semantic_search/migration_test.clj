@@ -17,7 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
 
@@ -271,12 +272,14 @@
                :version)))))
 
 (defn- active-index-table-name!
-  [pgvector]
-  (-> (jdbc/execute-one! pgvector
-                         (sql/format {:select [:im.table_name]
-                                      :from   [[:index_control :ic]]
-                                      :join   [[:index_metadata :im] [:= :ic.active_id :im.id]]}))
-      :index_metadata/table_name))
+  [pgvector index-metadata]
+  (let [{:keys [control-table-name metadata-table-name]} index-metadata]
+    (->> (jdbc/execute-one! pgvector
+                            (sql/format {:select [:im.table_name]
+                                         :from   [[(keyword metadata-table-name) :im]]
+                                         :join   [[(keyword control-table-name) :ic] [:= :ic.active_id :im.id]]}))
+         vals
+         first)))
 
 (defn- insert-index-row!
   "Raw INSERT into the active index table for backfill tests. Fills in the minimum NOT NULL
@@ -296,11 +299,15 @@
 (deftest migration-4-backfill-test
   (testing "migration 4 backfills root_collection_type from the gate doc, then from collection_type when it's a library root"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db-defaults!
+      ;; :mock-initialized puts the 4-dim mock embedding model in scope so the placeholder
+      ;; `[0,0,0,0]` embedding in [[insert-index-row!]] matches the index column's dimensions.
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
-          (semantic.core/init! (semantic.tu/mock-documents) nil)
-          (let [pgvector (semantic.env/get-pgvector-datasource!)
-                kw-tbl   (keyword (active-index-table-name! pgvector))]
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)
+                gate-tbl       (keyword (:gate-table-name index-metadata))
+                meta-tbl       (keyword (:metadata-table-name index-metadata))
+                kw-tbl         (keyword (active-index-table-name! pgvector index-metadata))]
             ;; row 1: NULL root_collection_type; matching gate doc carries "library" in its document JSON
             (insert-index-row! pgvector kw-tbl {:model [:inline "card"] :model_id [:inline "1"]})
             ;; row 2: NULL root_collection_type; collection_type itself is a library root
@@ -317,7 +324,7 @@
                                                 :root_collection_type [:inline "library-data"]})
             ;; Gate doc for row 1 — JSON includes root_collection_type
             (jdbc/execute! pgvector
-                           (sql/format {:insert-into :index_gate
+                           (sql/format {:insert-into gate-tbl
                                         :values [{:id            [:inline "card_1"]
                                                   :model         [:inline "card"]
                                                   :model_id      [:inline "1"]
@@ -327,17 +334,18 @@
                                        :quoted true))
             ;; Roll metadata.index_version back to 3 so migration 4 re-runs against the table.
             (jdbc/execute! pgvector
-                           (sql/format {:update :index_metadata
+                           (sql/format {:update meta-tbl
                                         :set    {:index_version 3}}))
             ;; Trigger re-migration via init.
             (semantic.core/init! (semantic.tu/mock-documents) nil)
             ;; Verify each backfill branch.
             (let [rows-by-id (->> (jdbc/execute! pgvector
-                                                 (sql/format {:select   [[:model_id :mid] [:root_collection_type :rct]]
+                                                 (sql/format {:select   [:model_id :root_collection_type]
                                                               :from     [kw-tbl]
                                                               :order-by [:model_id]}
-                                                             :quoted true))
-                                  (map (juxt :mid :rct))
+                                                             :quoted true)
+                                                 {:builder-fn jdbc.rs/as-unqualified-maps})
+                                  (map (juxt :model_id :root_collection_type))
                                   (into {}))]
               (is (= {"1" "library"        ; pulled from gate.document->>'root_collection_type'
                       "2" "library"        ; pulled from collection_type (library root)
