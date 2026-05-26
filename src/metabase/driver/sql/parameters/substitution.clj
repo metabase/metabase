@@ -388,10 +388,16 @@
 (mu/defmethod ->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/temporal-unit]
   [driver                      :- :keyword
    {:keys [value field alias]} :- :metabase.lib.parameters.parse.types/temporal-unit]
-  (let [replacement-snippet-info (->> (cond-> field
-                                        (not= value lib/parsed-param-no-value-placeholder)
-                                        (lib/with-temporal-bucket (keyword value)))
-                                      lib/ref
+  (let [field-ref                (-> (cond-> field
+                                       (not= value lib/parsed-param-no-value-placeholder)
+                                       (lib/with-temporal-bucket (keyword value)))
+                                     lib/ref
+                                     ;; like a field filter, this field reference is spliced into user-written native
+                                     ;; SQL, so it must be qualified the same way the user's own FROM clause is.
+                                     (lib/update-options assoc
+                                                         driver-api/qp.add.source-table (:table-id field)
+                                                         ::compiling-field-filter?      true))
+        replacement-snippet-info (->> field-ref
                                       (->honeysql driver)
                                       (honeysql->replacement-snippet-info driver))]
     (replace-alias driver field alias replacement-snippet-info)))
