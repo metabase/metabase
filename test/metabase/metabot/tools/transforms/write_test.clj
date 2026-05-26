@@ -19,7 +19,6 @@
       (is (= "SELECT * FROM users"
              (some-> (get-in result [:structured-output :transform :source :query])
                      lib/raw-native-query)))))
-
   (testing "edit mode with single edit"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -35,7 +34,6 @@
       (is (= "SELECT id FROM customers"
              (some-> (get-in result [:structured-output :transform :source :query])
                      lib/raw-native-query)))))
-
   (testing "edit mode with multiple edits"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -52,7 +50,6 @@
       (is (= "SELECT col_x, col_y FROM table2"
              (some-> (get-in result [:structured-output :transform :source :query])
                      lib/raw-native-query)))))
-
   (testing "edit mode fails when text not found"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -68,7 +65,6 @@
                            :edits [{:old_string "nonexistent"
                                     :new_string "replacement"}]}
              :memory-atom memory-atom})))))
-
   (testing "edit mode fails for ambiguous matches without replace_all"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -84,7 +80,6 @@
                            :edits [{:old_string "foo"
                                     :new_string "bar"}]}
              :memory-atom memory-atom})))))
-
   (testing "edit mode with replace_all replaces all occurrences"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -149,7 +144,6 @@
               :memory-atom memory-atom})]
       (is (= "SELECT 2" (some-> (get-in @memory-atom [:state :transforms "1" :source :query])
                                 lib/raw-native-query)))))
-
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
           _ (transforms-write/write-transform-sql
@@ -171,7 +165,6 @@
             {:transform_id 999
              :edit_action {:mode "replace" :new_content "SELECT 1"}
              :memory-atom memory-atom})))))
-
   (testing "fails when edit_action invalid"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "select 1")}}

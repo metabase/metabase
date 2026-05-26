@@ -327,7 +327,6 @@
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
               to-delete (remove indexed-pairs passed-documents)]
-
           (update! documents to-delete))
         {}))))
 

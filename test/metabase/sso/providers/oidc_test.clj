@@ -44,7 +44,6 @@
         (is (str/includes? (:redirect-url result) "https://provider.example.com/authorize"))
         (is (str/includes? (:redirect-url result) "client_id=test-client-id"))
         (is (str/includes? (:redirect-url result) "response_type=code")))))
-
   (testing "Uses manual endpoints when provided"
     (let [config (assoc test-config
                         :authorization-endpoint "https://provider.example.com/manual/authorize")
@@ -52,7 +51,6 @@
           result (provider/authenticate :provider/oidc request)]
       (is (= :redirect (:success? result)))
       (is (str/includes? (:redirect-url result) "https://provider.example.com/manual/authorize"))))
-
   (testing "Includes custom scopes in authorization URL"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] test-discovery-doc)]
@@ -61,7 +59,6 @@
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result)))
         (is (str/includes? (:redirect-url result) "scope=openid%20email%20profile%20groups")))))
-
   (testing "Returns error when authorization endpoint not found"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] nil)]
@@ -78,14 +75,12 @@
           result (provider/authenticate :provider/oidc request)]
       (is (false? (:success? result)))
       (is (= :invalid-callback (:error result)))))
-
   (testing "Returns error when code is missing"
     (let [request {:oidc-config test-config
                    :state "some-state"}
           result (provider/authenticate :provider/oidc request)]
       (is (false? (:success? result)))
       (is (= :invalid-callback (:error result)))))
-
   (testing "Returns error when state is missing"
     (let [request {:oidc-config test-config
                    :code "some-code"}
@@ -107,7 +102,6 @@
             result (provider/authenticate :provider/oidc request)]
         (is (false? (:success? result)))
         (is (= :token-exchange-failed (:error result))))))
-
   (testing "Returns error when token response missing id_token"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] test-discovery-doc)
@@ -196,7 +190,6 @@
         (is (= "user123" (get-in result [:user-data :provider-id])))
         (is (= :oidc (get-in result [:user-data :sso_source])))
         (is (= "user123" (:provider-id result))))))
-
   (testing "Successfully authenticates with minimal claims"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] test-discovery-doc)
@@ -262,14 +255,12 @@
       (let [request {:oidc-config test-config}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result))))))
-
   (testing "Extracts config from :auth-identity metadata"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] test-discovery-doc)]
       (let [request {:auth-identity {:metadata test-config}}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result))))))
-
   (testing "Extracts config from direct request keys"
     (with-redefs [oidc.discovery/discover-oidc-configuration
                   (fn [_issuer] test-discovery-doc)]
@@ -280,6 +271,5 @@
 (deftest provider-hierarchy-test
   (testing "OIDC provider derives from base provider"
     (is (isa? :provider/oidc ::provider/provider)))
-
   (testing "OIDC provider derives from create-user-if-not-exists"
     (is (isa? :provider/oidc ::provider/create-user-if-not-exists))))

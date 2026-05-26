@@ -71,13 +71,11 @@
              Exception
              #"You cannot update the creator_id of a Segment"
              (t2/update! :model/Segment id {:creator_id (mt/user->id :crowberto)}))))
-
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
              (t2/update! :model/Segment id {:creator_id nil}))))
-
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))

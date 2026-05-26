@@ -71,7 +71,6 @@
 
 (deftest smtp-override-enabled
   (mt/with-premium-features [:cloud-custom-smtp]
-
     (testing "cannot enable cloud-smtp without hostname set"
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override nil]

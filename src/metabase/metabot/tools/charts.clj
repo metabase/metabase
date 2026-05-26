@@ -82,12 +82,10 @@
             :charts-state (shared/current-charts-state)})
 
           structured (assoc result :result-type :chart)]
-
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
       (when (and (:chart_id new-chart-data) shared/*memory-atom*)
         (swap! shared/*memory-atom* assoc-in [:state :charts (:chart_id new-chart-data)]
                new-chart-data))
-
       {:output (format-chart-output structured)
        :structured-output structured
        :data-parts [(streaming/navigate-to-part
@@ -95,7 +93,6 @@
                       {:dataset_query query
                        :display new-viz
                        :displayIsLocked true}))]})
-
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))

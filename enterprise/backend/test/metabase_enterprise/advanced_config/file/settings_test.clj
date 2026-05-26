@@ -28,7 +28,6 @@
     (testing "Wrong value type should throw an error."
       (binding [advanced-config.file/*config* {:version 1
                                                :config  {:settings {:config-from-file-settings-test-setting 1000}}}]
-
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid input: .*"

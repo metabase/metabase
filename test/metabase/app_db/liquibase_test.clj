@@ -59,19 +59,14 @@
         (liquibase/with-liquibase [liquibase conn]
           (let [table-name (liquibase/changelog-table-name liquibase)]
             (.update liquibase "")
-
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
-
             (testing "makes sure the change log filename are correctly set"
               (is (= (set (mdb.test-util/liquibase-file->included-ids "liquibase_legacy_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
-
               (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml")))
-
               (is (= []
                      (remove #(str/starts-with? % "v56.") (t2/select-fn-set :id table-name :filename "migrations/056_update_migrations.yaml"))))
-
               (is (= (t2/select-fn-set :id table-name)
                      (set (mdb.test-util/all-liquibase-ids true driver/*driver* conn)))))))))))
 
@@ -164,19 +159,15 @@
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
         (.update liquibase "")
-
         (let [actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase))
               actual-latest-available-version (liquibase/latest-available-major-version liquibase)]
           (testing "Can downgrade and re-upgrade version"
             (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))
             (is (= (dec actual-latest-applied-version) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
-
             (liquibase/rollback-major-version! conn liquibase false (- actual-latest-available-version 2))
             (is (= (- actual-latest-available-version 2) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
-
             (.update liquibase "")
             (is (= actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase)))))
-
           (testing "Cannot downgrade when there are changests from a newer version already ran which are not in the changelog file"
             (with-redefs [liquibase/latest-applied-major-version (constantly (inc actual-latest-applied-version))]
               (is (thrown-with-msg? ExceptionInfo #"Cannot downgrade.*"

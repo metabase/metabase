@@ -125,7 +125,6 @@
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
             (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                     :user_attribute "db_name"}]
-
               (mt/with-test-user :crowberto
                 (is (= [["router"]]
                        (-> (qp/process-query {:database (u/the-id router-db)

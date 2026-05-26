@@ -47,61 +47,51 @@
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
-
     (testing "created at"
       (is (= #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric" "transform" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
-
       (is (= #{"dashboard" "table" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-at "past3days"})))))
-
     (testing "verified"
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :verified true})))))
-
     (testing "last edited by"
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-by #{1}}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models         #{"dashboard" "dataset" "table"}
                       :last-edited-by #{1}})))))
-
     (testing "last edited at"
       (is (= #{"dashboard" "dataset" "action" "metric" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-at "past3days"}))))
-
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :last-edited-at "past3days"})))))
-
     (testing "search native query"
       (is (= #{"dataset" "action" "card" "metric" "transform"}
              (search.filter/search-context->applicable-models
@@ -117,7 +107,6 @@
                    {:is-superuser? true
                     :models #{"dashboard" "card" "transform"}}))
            "transform")))
-
     (testing "Non-superuser does not see transform in applicable models"
       (is (not (contains?
                 (search.filter/search-context->applicable-models
@@ -125,7 +114,6 @@
                         {:is-superuser? false
                          :models #{"dashboard" "card" "transform"}}))
                 "transform"))))
-
     (testing "Non-superuser with transform in models set - transform is filtered out"
       (is (= #{"dashboard" "card"}
              (search.filter/search-context->applicable-models
@@ -167,7 +155,6 @@
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
-
     (is (= [:and
             [:= :table.active true]
             [:= :table.visibility_type nil]
@@ -262,7 +249,6 @@
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
-
     (testing "do not join twice if has both last-edited-at and last-edited-by"
       (is (= {:select [:*]
               :from   [:table]
@@ -278,7 +264,6 @@
               base-search-query "dataset"
               (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
                                          :last-edited-by #{1}})))))
-
     (testing "for actiion"
       (is (= {:select [:*]
               :from   [:table]

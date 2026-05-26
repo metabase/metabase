@@ -137,7 +137,6 @@
                              {:type "button",
                               :text {:type "plain_text", :text "Download the report", :emoji true},
                               :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
-
       (testing "should post bug report to Slack with correct blocks"
         (with-redefs [slack/upload-file! (constantly mock-file-info)
                       slack/post-chat-message! (constantly nil)
@@ -149,7 +148,6 @@
               (is (= {:success true
                       :file-url "https://slack.com/files/123/diagnostic.json"}
                      response))))))
-
       (testing "should handle anonymous reports"
         (with-redefs [slack/upload-file! (constantly mock-file-info)
                       slack/post-chat-message! (constantly nil)

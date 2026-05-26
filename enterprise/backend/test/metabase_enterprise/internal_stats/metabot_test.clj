@@ -83,91 +83,71 @@
             ;; conv-1: yesterday, one model
             (send-message! conv-1 "What is 2+2?" model 100 50)
             (backdate-messages! conv-1 yesterday)
-
             ;; conv-2: yesterday, same model different usage
             (send-message! conv-2 "Tell me a joke" model 200 80)
             (backdate-messages! conv-2 yesterday)
-
             ;; conv-3: two days ago — out of window
             (send-message! conv-3 "Old question" model 999 999)
             (backdate-messages! conv-3 two-days-ago)
-
             ;; conv-4: today — in rolling window
             (send-message! conv-4 "Today's question" model 888 888)
             (backdate-messages! conv-4 today)
-
             ;; conv-6: today, same model — exercises rolling aggregation
             (send-message! conv-6 "Another today question" model 100 100)
             (backdate-messages! conv-6 today))
-
           ;; -- BYOK conversation (no metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                              "anthropic/claude-sonnet-4-6"]
             (send-message! conv-5 "BYOK question" model 777 777)
             (backdate-messages! conv-5 yesterday))
-
           ;; -- Verify stored data --
 
           (testing "ai-proxy messages have ai_proxied = true on ALL rows (user + assistant)"
             (let [msgs (t2/select :model/MetabotMessage :conversation_id conv-1)]
               (is (= 2 (count msgs)) "should have user + assistant messages")
               (is (every? true? (map :ai_proxied msgs)))))
-
           (testing "ai-proxy usage log has ai_proxied = true"
             (let [logs (t2/select :model/AiUsageLog :conversation_id conv-1)]
               (is (= 1 (count logs)) "should have one usage log row per LLM call")
               (is (every? true? (map :ai_proxied logs)))))
-
           (testing "BYOK messages have ai_proxied = false on ALL rows"
             (let [msgs (t2/select :model/MetabotMessage :conversation_id conv-5)]
               (is (= 2 (count msgs)))
               (is (every? false? (map :ai_proxied msgs)))))
-
           (testing "BYOK usage log has ai_proxied = false"
             (let [logs (t2/select :model/AiUsageLog :conversation_id conv-5)]
               (is (= 1 (count logs)) "should have one usage log row per LLM call")
               (is (every? false? (map :ai_proxied logs)))))
-
           (testing "usage keys are provider/model (metabase/ prefix stripped)"
             ;; accumulate-usage-xf strips metabase/ prefix → "anthropic/claude-sonnet-4-6"
             ;; JSON roundtrip keywordizes → :anthropic/claude-sonnet-4-6
             (let [msg (t2/select-one :model/MetabotMessage :conversation_id conv-1 :role :assistant)]
               (is (contains? (:usage msg) (keyword "anthropic" "claude-sonnet-4-6"))
                   "usage key should be provider/model without metabase/ prefix")))
-
           ;; -- Verify stats aggregation --
 
           (let [stats (sut/metabot-stats)]
             (testing ":metabot-tokens sums total_tokens for yesterday's ai-proxied messages only"
               ;; conv-1: 150, conv-2: 280 → total 430
               (is (= 430 (:metabot-tokens stats))))
-
             (testing ":metabot-usage aggregates combined tokens by model"
               (is (= {"anthropic:claude-sonnet-4-6:tokens" 430}
                      (:metabot-usage stats))))
-
             (testing ":metabot-queries counts ai-proxied user messages for yesterday"
               (is (= 2 (:metabot-queries stats))))
-
             (testing ":metabot-users counts distinct users for yesterday"
               (is (= 1 (:metabot-users stats))))
-
             (testing ":metabot-usage-date is yesterday's date"
               (is (= "2026-03-31" (:metabot-usage-date stats))))
-
             (testing ":metabot-rolling-usage aggregates today's combined tokens by model"
               (is (= {"anthropic:claude-sonnet-4-6:tokens" 1976}
                      (:metabot-rolling-usage stats))))
-
             (testing ":metabot-rolling-usage-date is today's date"
               (is (= "2026-04-01" (:metabot-rolling-usage-date stats)))))
-
           ;; -- BYOK-only scenario --
           (cleanup! conv-1 conv-2 conv-3 conv-4 conv-6)
-
           (testing "returns nil when only BYOK (non-proxied) messages exist yesterday"
             (is (nil? (sut/metabot-stats))))
-
           (finally
             (apply cleanup! all-convs)))))))
 
@@ -387,22 +367,18 @@
                                              "metabase/anthropic/claude-sonnet-4-6"]
             ;; Yesterday's generation
             (generate-example-questions! tables model 400 100)
-
             (testing "ai_usage_log row is created with ai_proxied = true"
               (is (=? [{:ai_proxied true
                         :total_tokens 500}]
                       (t2/select :model/AiUsageLog :id [:> baseline]))))
-
             ;; backdate so it lands in yesterday's window
             (t2/update! :model/AiUsageLog {:id [:> baseline]}
                         {:created_at yesterday})
-
             ;; Today's generation — exercises rolling usage
             (let [before-today (max-usage-log-id)]
               (generate-example-questions! tables model 200 60)
               (t2/update! :model/AiUsageLog {:id [:> before-today]}
                           {:created_at today})))
-
           (testing "metabot-stats includes yesterday totals and today's rolling usage"
             (is (=? {:metabot-tokens             500
                      :metabot-usage              {"anthropic:claude-sonnet-4-6:tokens" 500}
@@ -424,14 +400,11 @@
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                              "openrouter/anthropic/claude-haiku-4-5"]
             (generate-example-questions! tables model 400 100)
-
             (testing "ai_usage_log row is created with ai_proxied = false for BYOK"
               (is (=? [{:ai_proxied false}]
                       (t2/select :model/AiUsageLog :id [:> baseline]))))
-
             (t2/update! :model/AiUsageLog {:id [:> baseline]}
                         {:created_at yesterday}))
-
           (testing "BYOK example question usage does not appear in metabot-stats"
             (is (nil? (sut/metabot-stats))))
           (finally
@@ -452,13 +425,11 @@
             ;; Chat conversation
             (send-message! conv-id "What is 2+2?" model 200 50)
             (backdate-messages! conv-id yesterday)
-
             ;; Example question generation (no conversation)
             (generate-example-questions! tables model 300 100)
             (t2/update! :model/AiUsageLog {:id [:> baseline]
                                            :source "example_question_generation_batch"}
                         {:created_at yesterday}))
-
           (testing "metabot-stats includes both chat and example question generation"
             ;; chat: 250, eqg: 400 → total 650
             (is (=? {:metabot-tokens  650
