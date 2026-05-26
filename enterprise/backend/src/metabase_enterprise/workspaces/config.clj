@@ -125,10 +125,12 @@
                         {:status-code  409
                          :workspace_id workspace-id})))
       (let [workspace-db-ids (mapv :database_id wsds)
-            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
-                               (into {} (map (juxt :id identity))
-                                     (t2/select :model/Database :id [:in ids]))
-                               {})
+            ;; Chunk the IN clause into batches of 500 — see [[stub-databases]] for the same reason.
+            dbs-by-id        (into {}
+                                   (map (juxt :id identity))
+                                   (mapcat (fn [chunk]
+                                             (t2/select :model/Database :id [:in (vec chunk)]))
+                                           (partition-all 500 workspace-db-ids)))
             pairs            (for [wsd wsds
                                    :let [db (get dbs-by-id (:database_id wsd))]]
                                [wsd db])
