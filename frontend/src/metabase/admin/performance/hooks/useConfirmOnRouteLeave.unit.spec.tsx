@@ -2,7 +2,7 @@ import type { History } from "history";
 import { Route } from "react-router";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
 

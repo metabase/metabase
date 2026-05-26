@@ -5,9 +5,9 @@ import { c, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
-import { formatCronExpressionForUI } from "metabase/lib/cron";
-import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, Flex, type FlexProps } from "metabase/ui";
+import { formatCronExpressionForUI } from "metabase/utils/cron";
+import { removeNullAndUndefinedValues } from "metabase/utils/types";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {

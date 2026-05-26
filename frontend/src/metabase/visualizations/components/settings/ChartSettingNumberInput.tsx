@@ -2,8 +2,10 @@ import { NumberInput } from "metabase/ui";
 
 import type { ChartSettingWidgetProps } from "./types";
 
-interface ChartSettingNumberInputProps
-  extends Omit<ChartSettingWidgetProps<number>, "onChangeSettings"> {
+interface ChartSettingNumberInputProps extends Omit<
+  ChartSettingWidgetProps<number>,
+  "onChangeSettings"
+> {
   id?: string;
   placeholder?: string;
   min?: number;

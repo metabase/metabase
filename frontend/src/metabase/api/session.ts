@@ -1,9 +1,9 @@
+import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
-} from "metabase/lib/color-scheme";
-import MetabaseSettings from "metabase/lib/settings";
-import { loadSettings } from "metabase/redux/settings";
+} from "metabase/utils/color-scheme";
+import MetabaseSettings from "metabase/utils/settings";
 import type {
   EnterpriseSettings,
   PasswordResetTokenStatus,
@@ -33,6 +33,13 @@ export const sessionApi = Api.injectEndpoints({
         body: { email },
       }),
     }),
+    checkPassword: builder.mutation<void, { password: string }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/password-check",
+        body,
+      }),
+    }),
     getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",
@@ -60,6 +67,7 @@ export const sessionApi = Api.injectEndpoints({
 export const {
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
+  useCheckPasswordMutation,
   useGetSessionPropertiesQuery,
 } = sessionApi;
 

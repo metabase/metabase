@@ -21,3 +21,17 @@
     padding-bottom: 1rem;
   }
 }
+
+.StepRoot .StepHeader {
+  visibility: hidden;
+}
+
+.StepRoot:hover .StepHeader {
+  visibility: visible;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .StepRoot .StepHeader {
+    visibility: visible;
+  }
+}

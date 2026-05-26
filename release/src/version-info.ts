@@ -2,7 +2,6 @@ import fetch from "node-fetch";
 
 import { getChangelogUrl } from "./release-notes";
 import type {
-  ReleaseChannel,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
@@ -128,59 +127,22 @@ export async function getVersionInfo({
   return newVersionJson;
 }
 
-// for updating the version in version info for a specific channel
-export const updateVersionInfoChannel = async ({
-  channel,
+// for promoting a released version to `latest` in version-info.json
+export async function updateVersionInfoLatest({
   newVersion,
   rollout = 100,
 }: {
-  channel: ReleaseChannel;
   newVersion: string;
   rollout?: number;
-}) => {
+}) {
   const url = getVersionInfoUrl(newVersion);
   const existingFile = (await fetch(url).then(r =>
     r.json(),
   )) as VersionInfoFile;
 
-  const newVersionJson = updateVersionInfoChannelJson({
-    channel,
-    version: newVersion,
+  return updateVersionInfoLatestJson({
+    newLatestVersion: newVersion,
     existingVersionInfo: existingFile,
     rollout,
   });
-
-  return newVersionJson;
-};
-
-export function updateVersionInfoChannelJson({
-  existingVersionInfo,
-  channel,
-  version,
-  rollout = 100,
-}: {
-  existingVersionInfo: VersionInfoFile;
-  channel: ReleaseChannel;
-  version: string;
-  rollout?: number;
-}): VersionInfoFile {
-  if (channel === "latest") {
-    // tagging latest requires moving the current latest to the "older" array
-    return updateVersionInfoLatestJson({
-      newLatestVersion: version,
-      existingVersionInfo,
-      rollout,
-    });
-  }
-
-  // everything else is just setting the correct key in the version info
-  return {
-    ...existingVersionInfo,
-    [channel]: {
-      version,
-      released: new Date().toISOString().slice(0, 10),
-      rollout,
-      highlights: [],
-    },
-  };
 }

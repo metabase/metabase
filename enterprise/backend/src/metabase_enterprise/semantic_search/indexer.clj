@@ -26,7 +26,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -125,7 +125,7 @@
 
           (clear-stall-if-needed []
             (when (:stalled-at @indexing-state)
-              (analytics/set! :metabase-search/semantic-indexer-stalled 0)
+              (analytics/set-gauge! :metabase-search/semantic-indexer-stalled 0)
               (clear-stall! pgvector index-metadata index)
               (vswap! indexing-state assoc :stalled-at nil)))]
     (let [poll-result           (poll)
@@ -208,7 +208,7 @@
         ;; according to appropriate policies.
         :else
         (do
-          (analytics/set! :metabase-search/semantic-indexer-stalled 1)
+          (analytics/set-gauge! :metabase-search/semantic-indexer-stalled 1)
           (log/debugf "Processing %d documents in stalled mode (using DLQ) for index %s" (count gate-docs) (:table-name index))
           (let [{:keys [failures]} (semantic.dlq/try-batch! pgvector index gate-docs)]
             (when (seq failures)

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Ellipsified } from "metabase/ui";
 
 import S from "./ScalarValueContainer.module.css";
 

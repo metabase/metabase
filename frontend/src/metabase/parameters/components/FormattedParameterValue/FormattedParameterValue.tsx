@@ -1,16 +1,17 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { Ellipsified } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
   hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isBooleanParameter,
   isDateParameter,
@@ -47,23 +48,20 @@ function FormattedParameterValue({
   const formattingSettings = useSetting("custom-formatting");
 
   if (parameterHasNoDisplayValue(value)) {
-    return placeholder;
+    return (
+      <Ellipsified showTooltip={!isPopoverOpen}>{placeholder}</Ellipsified>
+    );
   }
 
   const first = getValue(value);
-  const values = parameter?.values_source_config?.values;
-  const displayValue = values?.find(
-    (value) => getValue(value)?.toString() === first?.toString(),
-  );
-
-  const label = !isBooleanParameter(parameter)
-    ? getLabel(displayValue)
-    : getBooleanLabel(first as boolean);
+  const label = isBooleanParameter(parameter)
+    ? getBooleanLabel(first as boolean)
+    : undefined;
 
   const renderContent = () => {
     if (
-      isFieldFilterUiParameter(parameter) &&
-      hasFields(parameter) &&
+      ((isFieldFilterUiParameter(parameter) && hasFields(parameter)) ||
+        hasRemappedParameterValues(parameter, getFields(parameter))) &&
       !isDateParameter(parameter) &&
       !isTemporalUnitParameter(parameter)
     ) {
@@ -88,7 +86,9 @@ function FormattedParameterValue({
     }
 
     return (
-      <span>{formatParameterValue(value, parameter, formattingSettings)}</span>
+      <span>
+        {formatParameterValue(tc(value), parameter, formattingSettings)}
+      </span>
     );
   };
 
@@ -115,15 +115,6 @@ function getValue(
 ): RowValue | undefined {
   if (Array.isArray(value)) {
     return value[0];
-  }
-  return value?.toString();
-}
-
-function getLabel(
-  value: boolean | string | ParameterValue | undefined,
-): string | undefined {
-  if (Array.isArray(value)) {
-    return value[1];
   }
   return value?.toString();
 }

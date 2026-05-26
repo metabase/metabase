@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import { isEmpty } from "metabase/lib/validate";
 import { aliases, colors } from "metabase/ui/colors";
+import { isEmpty } from "metabase/utils/validate";
 
 const ACCENT_KEY_PREFIX = "accent";
 

@@ -36,6 +36,7 @@ export type InitializationStatus =
   | InitializationStatusError;
 
 export type { ButtonProps } from "metabase/ui";
+export type { MetabaseFontFamily } from "metabase/ui/fonts";
 export type {
   ChartColor,
   MetabaseTheme,
@@ -43,7 +44,6 @@ export type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-export type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 
 export type SdkErrorComponentProps = {
   type?: "relative" | "fixed";

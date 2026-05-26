@@ -1,6 +1,5 @@
 import type { ResizableBoxProps } from "react-resizable";
 
-import { useSelector } from "metabase/lib/redux";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
@@ -9,6 +8,7 @@ import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/querying/editor/types";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

@@ -30,7 +30,7 @@ Database routing is **not supported** on:
 - Spark SQL
 - Vertica.
 
-Different database have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
+Different databases have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
 
 - Athena: Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
 - BigQuery: Only routing between databases in different projects is supported.

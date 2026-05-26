@@ -279,7 +279,7 @@
                           [:or [:> $id 10] [:< $id 20]]
                           [:not [:> $id 10]]]]
         (is (=? {:base-type :type/Boolean}
-                (expression-metadata :people "expression" (lib.convert/->pMBQL expression))))))))
+                (expression-metadata :people "expression" (lib.convert/->mbql5 expression))))))))
 
 (deftest ^:parallel converted-timezone-test
   (testing "col-info for convert-timezone should have a `converted-timezone` property"
@@ -349,7 +349,7 @@
 
   ([query ag-clause]
    (let [query (-> query
-                   (lib/aggregate (lib/->pMBQL ag-clause)))]
+                   (lib/aggregate (lib/->mbql5 ag-clause)))]
      (-> (column-info query {:cols []})
          first))))
 
@@ -517,7 +517,7 @@
                  [:sum [:expression "double-price"]])))))))
 
 (defn- infered-col-type [expr]
-  (let [metadata (expression-metadata :checkins "expression" (lib.convert/->pMBQL expr))]
+  (let [metadata (expression-metadata :checkins "expression" (lib.convert/->mbql5 expr))]
     (select-keys metadata [:base-type :effective-type :semantic-type])))
 
 (defn- expression-type
@@ -857,9 +857,9 @@
                               {:name "a", :base-type :type/*, :effective-type :type/*}
                               {:name "a", :base-type :type/Integer}]
             :let             [expected-base-type (if (= (:base-type initial-metadata) :type/Integer)
-                                       ;; if the initial driver type comes back as something other than `:type/*`, we
-                                       ;; should use that. Otherwise if it comes back as `:type/*` use the type
-                                       ;; calculated by Lib.
+                                                   ;; if the initial driver type comes back as something other than `:type/*`, we
+                                                   ;; should use that. Otherwise if it comes back as `:type/*` use the type
+                                                   ;; calculated by Lib.
                                                    :type/Integer
                                                    :type/BigInteger)]]
       ;; should work with and without rows

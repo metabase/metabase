@@ -1,0 +1,18 @@
+name: PEOPLE
+display_name: People
+created_at: '2024-08-28T14:38:42.774331Z'
+db_id: Sample Database
+schema: PUBLIC
+entity_type: entity/UserTable
+active: true
+field_order: database
+initial_sync_status: complete
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: PEOPLE
+  model: Table
+data_authority: unconfigured
+data_layer: internal

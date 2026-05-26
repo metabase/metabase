@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
-  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}
+                                 :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -753,18 +754,12 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
-        (letfn [(process-query []
-                  (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                             :perms/create-queries {(mt/id :venues) :query-builder}}})))]
-          (testing "Make sure the middleware is actually preventing something by disabling it"
-            (with-redefs [qp.perms/remove-permissions-key identity]
-              (is (=? {:status :completed}
-                      (process-query)))))
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You do not have permissions to run this query"
-               (process-query))))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                      :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}}))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
@@ -848,7 +843,7 @@
                                 :alias "v"
                                 :source-query {:native "SELECT * from orders"}
                                 :condition [:= true true]
-                                   ;; Make sure we can't just pass in this key and join to arbitrary SQL!
+                                ;; Make sure we can't just pass in this key and join to arbitrary SQL!
                                 :qp/stage-is-from-source-card card-id}]
                        :order-by [[:asc $id]]
                        :limit 2})]

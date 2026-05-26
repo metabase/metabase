@@ -1,4 +1,5 @@
 (ns metabase.query-permissions.impl-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-permissions.impl-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
@@ -244,8 +245,8 @@
                  (qp.preprocess/preprocess
                   query)))))))))
 
-(deftest ^:parallel pmbql-query-test
-  (testing "Should be able to calculate permissions for a pMBQL query (#39024)"
+(deftest ^:parallel mbql5-query-test
+  (testing "Should be able to calculate permissions for a MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
@@ -253,8 +254,8 @@
               :perms/create-queries {(mt/id :venues) :query-builder}}
              (query-perms/required-perms-for-query query))))))
 
-(deftest ^:parallel pmbql-native-query-test
-  (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
+(deftest ^:parallel mbql5-native-query-test
+  (testing "Should be able to calculate permissions for a MBQL 5 native query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
           query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                           :native   "SELECT *;"})]
@@ -293,14 +294,14 @@
                   :paths                #{(format "/collection/%d/read/" collection-1-id)
                                           (format "/collection/%d/read/" collection-2-id)}}
                  (query-perms/required-perms-for-query native-query)))
-          (testing "pMBQL query"
+          (testing "MBQL 5 query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
-                               (lib/->pMBQL native-query)))))))))))
+                               (lib/->mbql5 native-query)))))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test
   (testing "MBQL query with native source card (#30077)"

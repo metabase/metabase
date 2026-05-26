@@ -1,5 +1,4 @@
 (ns metabase.util.malli.registry
-  (:refer-clojure :exclude [declare def])
   (:require
    #?(:clj [metabase.config.core :as config])
    #?@(:clj ([malli.experimental.time :as malli.time]

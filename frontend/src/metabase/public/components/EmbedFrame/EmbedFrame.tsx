@@ -14,19 +14,24 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
+import {
+  ActionButtonsContainer,
+  type FooterVariant,
+} from "metabase/embedding/components/EmbedFooter.styled";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+import EmbedThemeS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getDashboardType } from "metabase/lib/dashboard";
-import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
+import { getDashboardType } from "metabase/utils/dashboard";
+import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -40,9 +45,7 @@ import type {
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
-import type { FooterVariant } from "./EmbedFrame.styled";
 import {
-  ActionButtonsContainer,
   Body,
   ContentContainer,
   DashboardTabsContainer,
@@ -182,8 +185,8 @@ export const EmbedFrame = ({
       hasScroll={hasFrameScroll}
       isBordered={bordered}
       hasVisibleOverflowWhenPriting={isPublicDashboard}
-      className={cx(className, EmbedFrameS.EmbedFrame, {
-        [EmbedFrameS.NoBackground]: !background,
+      className={cx(className, EmbedThemeS.EmbedFrame, {
+        [EmbedThemeS.NoBackground]: !background,
       })}
       data-testid="embed-frame"
       data-embed-theme={theme}
@@ -191,8 +194,8 @@ export const EmbedFrame = ({
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
         className={cx(contentClassName, {
-          [EmbedFrameS.ContentContainer]: true,
-          [EmbedFrameS.WithThemeBackground]: true,
+          [EmbedThemeS.ContentContainer]: true,
+          [EmbedThemeS.WithThemeBackground]: true,
 
           // If we are showing a standalone question, make the entire card a hover parent
           [CS.hoverParent]: question,
@@ -202,7 +205,7 @@ export const EmbedFrame = ({
         {hasHeader && (
           <Header
             className={cx(
-              EmbedFrameS.EmbedFrameHeader,
+              EmbedThemeS.EmbedFrameHeader,
               SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
             )}
             data-testid="embed-frame-header"
@@ -246,7 +249,7 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            {finalName && <Separator className={EmbedFrameS.Separator} />}
+            {finalName && <Separator className={EmbedThemeS.Separator} />}
           </Header>
         )}
 

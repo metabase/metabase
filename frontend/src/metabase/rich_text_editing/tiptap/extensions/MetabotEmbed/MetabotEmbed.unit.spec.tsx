@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockTokenFeatures,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 
 import { MetabotComponent } from "./MetabotEmbed";
 import {
@@ -28,8 +32,12 @@ describe("MetabotEmbed", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchMock.get(
+      "path:/api/metabot/permissions/user-permissions",
+      createMockUserMetabotPermissions(),
+    );
     mockSettings({
-      "token-features": createMockTokenFeatures({ metabot_v3: true }),
+      "token-features": createMockTokenFeatures({ ai_controls: true }),
     });
     setupEnterprisePlugins();
   });
@@ -67,7 +75,7 @@ describe("MetabotEmbed", () => {
       });
 
       const runButton = screen.getByRole("button", { name: /run/i });
-      expect(runButton).toBeEnabled();
+      await waitFor(() => expect(runButton).toBeEnabled());
 
       await userEvent.hover(runButton);
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();

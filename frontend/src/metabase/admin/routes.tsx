@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
 import {
   IndexRedirect,
@@ -14,7 +15,10 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
+import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
+import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
+import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -41,26 +45,30 @@ import {
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
-  EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_AI_CONTROLS,
+  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
+  PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
+  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
 
+import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
+import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
@@ -68,6 +76,7 @@ import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { getTasksRoutes } from "./tools/routes";
+import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,
@@ -75,7 +84,7 @@ import {
 } from "./utils";
 
 export const getRoutes = (
-  store: { getState: () => State },
+  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -95,6 +104,7 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
+          {PLUGIN_WORKSPACES.getAdminConnectionInfoRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -152,7 +162,13 @@ export const getRoutes = (
 
             {/* Tenants */}
             <Route path="tenants" component={createTenantsRouteGuard()}>
-              {PLUGIN_TENANTS.tenantsRoutes}
+              {PLUGIN_TENANTS.tenantsRoutes ?? (
+                <>
+                  <IndexRoute component={UpsellTenants} />
+                  <Route path="groups" component={UpsellTenants} />
+                  <Route path="people" component={UpsellTenants} />
+                </>
+              )}
             </Route>
 
             <Route path="" component={PeopleListingApp}>
@@ -200,22 +216,18 @@ export const getRoutes = (
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
-              <>
-                <Route path="guest" component={GuestEmbedsSettings} />
-
-                <Route path="security" component={EmbeddingSecuritySettings} />
-              </>
+              <Route path="guest" component={GuestEmbedsSettings} />
             )}
+
+            <Route path="security" component={EmbeddingSecuritySettings} />
+            <Route path="themes" component={EmbeddingThemeListingApp} />
+            <Route path="themes/:themeId" component={EmbeddingThemeEditorApp} />
           </Route>
         </Route>
 
         {/* OSS/Starter has all embedding settings on the same page */}
         {!hasSimpleEmbedding && (
-          <>
-            <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
-
-            <Redirect from="/admin/embedding/security" to="/admin/embedding" />
-          </>
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
         )}
 
         {/* Backwards compatibility for embedding settings */}
@@ -240,7 +252,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
@@ -265,8 +277,34 @@ export const getRoutes = (
 
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {getMetabotAdminRoutes()}
+          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          <Route key="index-layout" component={MetabotAdminLayout}>
+            <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="mcp" path="mcp" component={McpSettingsPage} />
+          </Route>
+          <Route
+            key="layout"
+            component={(props) => (
+              <MetabotAdminLayout
+                {...props}
+                fullWidth={!PLUGIN_AI_CONTROLS.isEnabled}
+                innerContentProps={{
+                  fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+                  fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
+                }}
+              />
+            )}
+          >
+            {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
+          </Route>
         </Route>
+
+        {PLUGIN_SECURITY_CENTER.isEnabled && (
+          <Route
+            path="security-center"
+            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+          />
+        )}
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route component={ToolsApp}>

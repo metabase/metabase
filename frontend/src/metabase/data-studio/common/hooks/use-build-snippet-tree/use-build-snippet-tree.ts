@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 
 import { buildActiveSnippetTree, buildArchivedSnippetTree } from "./utils";
 
@@ -15,13 +15,20 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
   const {
     data: snippets,
     isLoading: loadingSnippets,
+    isFetching: fetchingSnippets,
     error,
-  } = useListSnippetsQuery({ archived });
-  const { data: snippetCollections, isLoading: loadingCollections } =
-    useListCollectionsQuery({
+  } = useListSnippetsQuery({ archived }, { refetchOnMountOrArgChange: true });
+  const {
+    data: snippetCollections,
+    isLoading: loadingCollections,
+    isFetching: fetchingCollections,
+  } = useListCollectionsQuery(
+    {
       namespace: "snippets",
       archived,
-    });
+    },
+    { refetchOnMountOrArgChange: true },
+  );
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -29,7 +36,9 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
   return useMemo(() => {
     if (
       loadingSnippets ||
+      fetchingSnippets ||
       loadingCollections ||
+      fetchingCollections ||
       !snippets ||
       !snippetCollections
     ) {
@@ -53,7 +62,9 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     };
   }, [
     loadingSnippets,
+    fetchingSnippets,
     loadingCollections,
+    fetchingCollections,
     snippets,
     snippetCollections,
     error,

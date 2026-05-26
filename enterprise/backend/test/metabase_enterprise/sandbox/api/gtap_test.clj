@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.gtap-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
@@ -23,8 +24,7 @@
    :card_id              true
    :table_id             true
    :group_id             true
-   :attribute_remappings {:foo 1}
-   :dependency_analysis_version 0})
+   :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup!
   "Invokes `body` ensuring any `Sandbox` created will be removed afterward. Leaving behind a GTAP can

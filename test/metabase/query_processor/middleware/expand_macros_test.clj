@@ -13,7 +13,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]))
 
 (defn- expand-macros
-  "If input is a legacy query, convert to pMBQL, call [[expand-macros/expand-macros]], then convert back to legacy. This
+  "If input is a legacy query, convert to MBQL 5, call [[expand-macros/expand-macros]], then convert back to legacy. This
   way we don't need to update all the tests below right away."
   [query]
   (if (:type query) ; legacy query

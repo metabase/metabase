@@ -225,14 +225,14 @@
                    :model/Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
-          (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"]
                  (->> results :steps (map first)))))
         (testing "has start and finish times"
           (is (seq (select-keys results [:start-time :end-time]))))))))
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")

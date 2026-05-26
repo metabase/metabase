@@ -3,7 +3,7 @@ import _ from "underscore";
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
   line: {

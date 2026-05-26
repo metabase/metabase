@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -96,6 +97,7 @@ Before calling the tool, ensure you have ALL of the following:
 If any required information is missing, ask the user for it rather than assuming or fabricating values.")
 
 (mu/defn ^{:tool-name           "create_dashboard_subscription"
+           :scope               scope/agent-dashboard-subscribe
            :system-instructions create-dashboard-subscription-system-instructions}
   slackbot-create-dashboard-subscription-tool
   "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."

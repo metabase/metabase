@@ -19,10 +19,10 @@ import {
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Group } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";

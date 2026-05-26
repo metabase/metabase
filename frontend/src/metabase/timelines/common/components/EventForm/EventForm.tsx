@@ -4,6 +4,10 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import {
+  getTimelineIcons,
+  getTimelineName,
+} from "metabase/common/utils/timelines";
+import {
   Form,
   FormDateInput,
   FormErrorMessage,
@@ -13,20 +17,12 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
-import {
-  Button,
-  Flex,
-  Group,
-  Icon,
-  type IconName,
-  Stack,
-  TimeInput,
-} from "metabase/ui";
+import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
   FormattingSettings,
+  IconName,
   Timeline,
   TimelineEventData,
 } from "metabase-types/api";

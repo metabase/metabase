@@ -4,9 +4,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.models.transforms.transform-run :as transform-run]
-   [metabase.models.transforms.transform-run-cancelation :as wr.cancelation]
    [metabase.task.core :as task]
+   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import

@@ -23,6 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
@@ -66,15 +67,21 @@
   [:map
    ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
    ;; filter clause. :eyeroll:
-   [:query-string {:optional true} :any]])
+   [:query-string {:optional true} :any]
+   ;; when present, the matching column is added as a second breakout so that each row becomes a
+   ;; [value label] pair used for remapping
+   [:label-field {:optional true} [:maybe [:or :mbql.clause/field :mbql.clause/expression]]]
+   ;; when present, restrict the values to an exact match on the value column (used to fetch the
+   ;; remapped label for a single selected value)
+   [:exact-value {:optional true} :any]])
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
   [{query :dataset_query, :keys [id], :as _card} :- [:and
                                                      :metabase.queries.schema/card
                                                      [:map
                                                       [:id ::lib.schema.id/card]]]
-   field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
-   {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
+   field-ref                                    :- [:or :mbql.clause/field :mbql.clause/expression]
+   {:keys [query-string label-field exact-value] :as _opts} :- [:maybe ::values-from-card-query.options]]
   (when (seq query)
     ;; start a new query using this Card as a starting point
     (let [query (lib/query query (lib.metadata/card query id))]
@@ -86,20 +93,40 @@
                                                id
                                                (pr-str field-ref)
                                                (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
-          (let [textual?     (lib.types.isa/string? value-column)
-                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-                query-filter (when query-string
-                               (if textual?
-                                 (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                                 (lib/= value-column query-string)))]
+          (let [label-column   (when label-field
+                                 (or (lib/find-matching-column query -1 label-field visible-columns)
+                                     (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
+                                                id
+                                                (pr-str label-field))))
+                search-column   (or label-column value-column)
+                value-textual?  (lib.types.isa/string? value-column)
+                search-textual? (lib.types.isa/string? search-column)
+                nonempty        ((if value-textual? lib/not-empty lib/not-null) value-column)
+                query-filter    (cond
+                                  (some? exact-value) (lib/= value-column exact-value)
+                                  query-string        (if search-textual?
+                                                        (lib/ignore-case (lib/contains search-column query-string))
+                                                        (lib/= search-column query-string)))]
             (-> query
                 (lib/limit *max-rows*)
                 (lib/filter nonempty)
-                (cond-> #_query query-filter (lib/filter query-filter))
+                (cond-> query-filter (lib/filter query-filter))
                 (lib/breakout value-column)
-                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-                ;; "internal" query in the BE.
-                (assoc-in [:middleware :disable-remaps?] true))))))))
+                ;; add the label as a second breakout so each row is a [value label] pair
+                (cond-> label-column (lib/breakout label-column)))))))))
+
+(defn- result->rows
+  "Extract rows from a QP result, dropping values for any display columns the QP injected for
+  remapped breakouts. Those columns are referenced by a `:remapped_to` entry on their source
+  column; when none are present the raw rows are returned as-is."
+  [result]
+  (let [cols       (get-in result [:data :cols])
+        rows       (get-in result [:data :rows])
+        drop-names (into #{} (keep :remapped_to) cols)]
+    (if (empty? drop-names)
+      rows
+      (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
+        (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -121,10 +148,10 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (let [mbql-query   (values-from-card-query card field-ref opts)
-         result       (some-> mbql-query qp/process-query)
-         values       (get-in result [:data :rows])]
-     {:values         (or values [])
+   (let [mbql-query (values-from-card-query card field-ref opts)
+         result     (some-> mbql-query qp/process-query)
+         values     (some-> result result->rows)]
+     {:values          (or values [])
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))
@@ -135,7 +162,10 @@
    query-string                              :- [:maybe ms/NonBlankString]]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
-    (values-from-card card (lib/->pMBQL (:value_field config)) {:query-string query-string})))
+    (values-from-card card
+                      (lib/->mbql5 (:value_field config))
+                      (cond-> {:query-string query-string}
+                        (:label_field config) (assoc :label-field (lib/->mbql5 (:label_field config)))))))
 
 (defn- can-get-card-values?
   [card value-field]
@@ -200,6 +230,21 @@
             ;; more than two groups are always ambiguous, so no match
             nil))))))
 
+(mu/defn- card-remapped-value
+  "For a card source configured with a `:label_field`, fetch the [value label] pair for a single
+  `value` by querying the card filtered to that exact value. Returns nil when there is no label
+  field, the card is unreadable/archived, or no matching row is found."
+  [{config :values_source_config :as _param} value]
+  (when-let [label-field (:label_field config)]
+    (when-let [card (t2/select-one :model/Card :id (:card_id config))]
+      (when (and (not (:archived card))
+                 (mi/can-read? card)
+                 (can-get-card-values? card (:value_field config)))
+        (first (:values (values-from-card card
+                                          (lib/->mbql5 (:value_field config))
+                                          {:exact-value value
+                                           :label-field (lib/->mbql5 label-field)})))))))
+
 (mu/defn parameter-remapped-value
   "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
   the function `default-case-thunk`.
@@ -211,7 +256,7 @@
   (case (:values_source_type param)
     :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
                                (get-in param [:values_source_config :values]))
-    :card        nil
+    :card        (card-remapped-value param value)
     nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
                     {:status-code 400

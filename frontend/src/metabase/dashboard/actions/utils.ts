@@ -1,8 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getIframeDomainName } from "metabase/dashboard/visualizations/IFrameViz/utils";
-import { isActionDashCard } from "metabase/lib/dashboard";
+import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import { isActionDashCard } from "metabase/utils/dashboard";
+import { getIframeDomainName } from "metabase/visualizations/lib/iframe";
 import type {
   DashCardId,
   Dashboard,
@@ -10,7 +11,6 @@ import type {
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
-import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
 import { trackIFrameDashcardsSaved } from "../analytics";
 import { isIFrameDashCard } from "../utils";

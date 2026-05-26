@@ -1,6 +1,8 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
@@ -15,7 +17,15 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import {
+  startCustomVizDevServer,
+  stopCustomVizDevServer,
+} from "./helpers/e2e-custom-viz-dev-server-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
+import {
+  startMockLlmServer,
+  stopMockLlmServer,
+} from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -60,22 +70,31 @@ const defaultConfig = {
       : undefined,
   },
 
-  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
-  // plugin still uses Cypress.env() internally
-  // FIXME: enable once we upgrade (DEV-1620)
-  // allowCypressEnv: false,
+  allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
 
+    // Build custom-viz .tgz fixtures from sources
+    execFileSync(
+      "node",
+      [
+        path.resolve(
+          __dirname,
+          "../../enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
+        ),
+      ],
+      { stdio: "inherit" },
+    );
+
     // Use cypress-on-fix to enable multiple handlers
     const on = cypressOnFix(cypressOn);
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    config.expose.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -136,6 +155,10 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      startMockLlmServer,
+      stopMockLlmServer,
+      startCustomVizDevServer,
+      stopCustomVizDevServer,
     });
 
     /********************************************************************
@@ -144,11 +167,11 @@ const defaultConfig = {
 
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../";
-    config.env.grepFilterSpecs = true;
-    config.env.grepOmitFiltered = true;
+    config.expose.grepIntegrationFolder = "../../";
+    config.expose.grepFilterSpecs = true;
+    config.expose.grepOmitFiltered = true;
 
-    require("@cypress/grep/src/plugin")(config);
+    cypressGrepPlugin(config);
 
     if (isCI) {
       cypressSplit(on, config);
@@ -182,7 +205,7 @@ const defaultConfig = {
   viewportWidth: 1280,
   // enable video recording in run mode
   video: process.env["CYPRESS_VIDEO"] !== "false",
-  videoCompression: true,
+  videoCompression: false,
 };
 
 const mainConfig = {
@@ -216,7 +239,7 @@ const mainConfig = {
     runMode:
       process.env["CYPRESS_RETRIES"] != null
         ? parseInt(process.env["CYPRESS_RETRIES"], 10)
-        : 2,
+        : 1,
     openMode: 0,
   },
 };

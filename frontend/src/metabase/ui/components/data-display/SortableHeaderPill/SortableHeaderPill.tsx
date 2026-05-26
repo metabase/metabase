@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Icon } from "metabase/ui";
+import { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
 
 import S from "./SortableHeaderPill.module.css";
 

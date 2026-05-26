@@ -15,11 +15,25 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
-  (cond->  ["collection" "dashboard" "segment" "measure" "database" "action" "document" "transform"]
-    ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
-    ;; table and indexed-entity moved to the end because there can be a large number of them
-    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
+  "Search model string names, ordered by indexing priority.
+   Important / cheaper models come first so partial index is usable as soon as possible during a full index."
+  ["collection"
+   "dashboard"
+   "segment"
+   "measure"
+   "database"
+   "action"
+   "document"
+   "transform"
+   ;; The following come last as they can be slow to index due to:
+   ;; - cardinality (table, indexed-entity),
+   ;; - cost (e.g. computing has_temporal_dim for cards)
+   "table"
+   "metric"
+   "card"
+   "dataset"
+   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+   "indexed-entity"])
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -46,12 +60,19 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]
+    [:provides {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
+
+(defn function-attr-provides
+  "Returns the attr keys that a function attr provides when it returns a map.
+  Used to determine which filters a function attr satisfies."
+  [attr-def]
+  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -61,6 +82,17 @@
        (filter function-attr?)
        (mapcat :fields)
        distinct))
+
+(def legacy-input-excluded-keys
+  "Keys present on the ingestion document `m` that must NOT be encoded into `legacy_input`. These are
+   internal signals (ranking, filtering, ingestion bookkeeping) that the search API response should not
+   surface to clients. Consumers: `metabase.search.ingestion/->document`."
+  ;; `:collection_type` and `:collection_location` deliberately stay IN `legacy_input`:
+  ;; - `metabase.search.impl/serialize` reads `:collection_type` to build the response's `:collection.type`
+  ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
+  ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
+  ;;   the toucan instance (which the render-term keeps populated).
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -84,9 +116,14 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
+   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
-   :source-type             :text})
+   :source-type             :text
+   :collection-type         :text
+   :collection-location     :text
+   :root-collection-type    :text
+   :data-layer              :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -108,10 +145,13 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :non-temporal-dim-ids
-         :has-temporal-dim
+         :temporal-info
          :is-published
-         :source-type])
+         :source-type
+         :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
+         :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
+         :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
+         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
        distinct
        vec))
 

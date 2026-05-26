@@ -13,9 +13,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Flex, Modal } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem } from "../../types";

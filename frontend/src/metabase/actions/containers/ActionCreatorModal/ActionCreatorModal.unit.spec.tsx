@@ -14,7 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,

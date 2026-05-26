@@ -4,7 +4,7 @@ import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { useUnmountLayout } from "metabase/common/hooks/use-unmount-layout";
+import { useUnmountLayout } from "metabase/ui/hooks/use-unmount-layout";
 
 type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
 
@@ -35,8 +35,12 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
 }: TextInputBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLInputElement>(null);
+  const blurChangeFiredRef = useRef(false);
 
-  useLayoutEffect(() => setInternalValue(value), [value]);
+  useLayoutEffect(() => {
+    setInternalValue(value);
+    blurChangeFiredRef.current = false;
+  }, [value]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +59,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
       onBlur?.(event);
 
       if (onBlurChange && String(value ?? "") !== event.target.value) {
+        blurChangeFiredRef.current = true;
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
@@ -73,6 +78,10 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   );
 
   useUnmountLayout(() => {
+    if (blurChangeFiredRef.current) {
+      return;
+    }
+
     const lastPropsValue = String(value ?? "");
     const currentValue = ref.current?.value || "";
 

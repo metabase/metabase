@@ -7,17 +7,14 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { isMac } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -29,12 +26,14 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Loader,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { isMac } from "metabase/utils/browser";
+import type { IconName } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
@@ -88,11 +87,14 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
-  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const canManageWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaces,
+  );
+  const hasActiveWorkspace = useSelector(PLUGIN_WORKSPACES.hasActiveWorkspace);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -136,7 +138,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
           {canAccessDataModel && (
             <DataStudioTab
-              label={t`Data structure`}
+              label={t`Tables`}
               icon="open_folder"
               to={Urls.dataStudioData()}
               isSelected={currentTab === "data"}
@@ -182,9 +184,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
-          {(canAccessTransforms || isAdmin) && (
-            <PLUGIN_WORKSPACES.WorkspacesSection showLabel={isNavbarOpened} />
-          )}
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (
@@ -200,6 +199,24 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isSelected={currentTab === "git-sync"}
               showLabel={isNavbarOpened}
               isGated
+            />
+          )}
+          {hasActiveWorkspace && (
+            <DataStudioTab
+              label={t`Workspace`}
+              icon="folder"
+              to={Urls.workspaceInstance()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {!hasActiveWorkspace && canManageWorkspaces && (
+            <DataStudioTab
+              label={t`Workspaces`}
+              icon="folder"
+              to={Urls.workspaceList()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
             />
           )}
           {canAccessTransforms && (

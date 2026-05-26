@@ -7,11 +7,10 @@ import type { NumericInputProps } from "metabase/common/components/NumericInput"
 import { NumericInput } from "metabase/common/components/NumericInput";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
-export interface FormNumericInputProps
-  extends Omit<
-    NumericInputProps,
-    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
-  > {
+export interface FormNumericInputProps extends Omit<
+  NumericInputProps,
+  "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+> {
   name: string;
   title?: string;
   actions?: ReactNode;

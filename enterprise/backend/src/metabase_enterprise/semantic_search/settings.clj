@@ -61,7 +61,8 @@
   :doc        false)
 
 (defsetting ee-embedding-service-api-key
-  (deferred-tru "API key for authenticating with the embedding service.")
+  (deferred-tru (str "API key for authenticating with the embedding service. Leave empty for proxying thorugh"
+                     " ai-service. In that case premium-embedding-token is used for authentication."))
   :sensitive? true
   :visibility :settings-manager
   :export?    false

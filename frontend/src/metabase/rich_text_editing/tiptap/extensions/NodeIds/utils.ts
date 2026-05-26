@@ -1,7 +1,7 @@
 import type { Attribute } from "@tiptap/core";
 import { Plugin } from "prosemirror-state";
 
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 
 import { ID_ATTRIBUTE_NAME } from "./constants";
 

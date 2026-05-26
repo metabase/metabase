@@ -2,7 +2,8 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -15,6 +16,7 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
+  rewriteRemappedReferences,
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
@@ -34,7 +36,6 @@ import type {
   VisualizerDataSourceId,
   XAxisScale,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
@@ -83,6 +84,16 @@ export const cartesianDropHandler = (
         columnRef,
         dataSource,
       );
+      const dataset = datasetMap[dataSource.id];
+      if (dataset) {
+        attachRemappedDisplayColumn(
+          state,
+          columnRef,
+          column,
+          dataset,
+          dataSource,
+        );
+      }
       maybeImportDimensionsFromOtherDataSources(
         state,
         settings,
@@ -399,9 +410,10 @@ function removeDimensionFromMultiSeriesChart(
     state.settings["graph.dimensions"] = originalDimensions.filter(
       (name) => !isDate(dimensionColumnMap[name]),
     );
-  } else if (isString(column)) {
-    state.settings["graph.dimensions"] = originalDimensions.filter(
-      (name) => !isString(dimensionColumnMap[name]),
+  } else {
+    // Non-date dim: clear all non-date dims (string, integer-Category, binned numeric, etc.).
+    state.settings["graph.dimensions"] = originalDimensions.filter((name) =>
+      isDate(dimensionColumnMap[name]),
     );
   }
 
@@ -409,10 +421,58 @@ function removeDimensionFromMultiSeriesChart(
     (name) => !state.settings["graph.dimensions"]?.includes(name),
   );
 
-  removedColumns.forEach((name) => {
+  // Strip orphan display columns too, or stale remapped_from refs misalign render-time rows.
+  const removedNameSet = new Set(removedColumns);
+  const orphanedDisplayCols = state.columns
+    .filter(
+      (col) =>
+        col.remapped_from != null && removedNameSet.has(col.remapped_from),
+    )
+    .map((col) => col.name);
+
+  [...removedColumns, ...orphanedDisplayCols].forEach((name) => {
     state.columns = state.columns.filter((col) => col.name !== name);
     delete state.columnValuesMapping[name];
   });
+}
+
+// Silently attach a base dim's display-value column (in state.columns/columnValuesMapping
+// but not graph.dimensions) and point both cols' remapped refs at the new COLUMN_N names.
+export function attachRemappedDisplayColumn(
+  state:
+    | Draft<VisualizerVizDefinitionWithColumns>
+    | VisualizerVizDefinitionWithColumns,
+  baseColRef: VisualizerColumnReference,
+  originalBaseCol: DatasetColumn,
+  dataset: Dataset,
+  dataSource: VisualizerDataSource,
+) {
+  const displayCol = dataset.data.cols.find(
+    (col) => col.remapped_from === originalBaseCol.name,
+  );
+  if (!displayCol) {
+    return;
+  }
+
+  const displayRef = createVisualizerColumnReference(
+    dataSource,
+    displayCol,
+    extractReferencedColumns(state.columnValuesMapping),
+  );
+  state.columns.push(
+    copyColumn(displayRef.name, displayCol, dataSource.name, state.columns),
+  );
+  state.columnValuesMapping[displayRef.name] = [displayRef];
+
+  const columnRenames = new Map([
+    [originalBaseCol.name, baseColRef.name],
+    [displayCol.name, displayRef.name],
+  ]);
+  state.columns = state.columns.map((col) =>
+    col.name === baseColRef.name || col.name === displayRef.name
+      ? rewriteRemappedReferences(col, columnRenames)
+      : col,
+  );
 }
 
 export function maybeImportDimensionsFromOtherDataSources(
@@ -450,6 +510,13 @@ export function maybeImportDimensionsFromOtherDataSources(
         settings,
         matchingDimension,
         columnRef,
+        dataSource,
+      );
+      attachRemappedDisplayColumn(
+        state,
+        columnRef,
+        matchingDimension,
+        dataset,
         dataSource,
       );
     }
@@ -504,11 +571,13 @@ export function combineWithCartesianChart(
   const { data } = dataset;
 
   const metrics = data.cols.filter((col) => isMetric(col));
+  // Display-value columns are attached separately below, not as graph.dimensions slots.
   const dimensions = data.cols.filter(
-    (col) => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !isMetric(col) && col.remapped_from == null,
   );
 
   const columnsToRefs: Record<string, string> = {};
+  const firstNewIndex = state.columns.length;
 
   metrics.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
@@ -560,6 +629,35 @@ export function combineWithCartesianChart(
       columnsToRefs[column.name] = columnRef.name;
     }
   });
+
+  // Silent display-column attach: in columnValuesMapping/state.columns, NOT graph.dimensions
+  // (extra dim slots break cross-source axis merging).
+  data.cols
+    .filter(
+      (col) =>
+        col.remapped_from != null && columnsToRefs[col.remapped_from] != null,
+    )
+    .forEach((column) => {
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        extractReferencedColumns(state.columnValuesMapping),
+      );
+      state.columns.push(
+        copyColumn(columnRef.name, column, dataSource.name, state.columns),
+      );
+      state.columnValuesMapping[columnRef.name] = [columnRef];
+      columnsToRefs[column.name] = columnRef.name;
+    });
+
+  // Point remapped_from/to at the new COLUMN_N names so extractRemappedColumns can pair them.
+  const columnRenames = new Map(Object.entries(columnsToRefs));
+  for (let i = firstNewIndex; i < state.columns.length; i++) {
+    state.columns[i] = rewriteRemappedReferences(
+      state.columns[i],
+      columnRenames,
+    );
+  }
 
   if (vizSettings && vizSettings.column_settings) {
     const remappedSettings = updateVizSettingsWithRefs(

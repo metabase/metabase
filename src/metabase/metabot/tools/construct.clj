@@ -1,229 +1,305 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
-   [clojure.walk :as walk]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
+   [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.representations.repair :as repr.repair]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.filters :as filter-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
-   [metabase.metabot.util :as metabot-u]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- normalize-ai-args
-  "Normalize nested tool arguments to kebab-case keys and keyword enums."
-  [value]
-  (let [normalized (when value
-                     (metabot-u/recursive-update-keys value metabot-u/safe->kebab-case-en))
-        enum-keys #{:operation :bucket :function :sort-order :direction :field-granularity}
-        normalize-enum (fn [v]
-                         (cond
-                           (keyword? v) v
-                           (string? v) (case v
-                                         "ascending" :asc
-                                         "descending" :desc
-                                         (keyword v))
-                           :else v))]
-    (walk/postwalk
-     (fn [x]
-       (if (map? x)
-         (reduce-kv (fn [m k v]
-                      (assoc m k (if (enum-keys k) (normalize-enum v) v)))
-                    {}
-                    x)
-         x))
-     normalized)))
-
-;; Query construction is handled by construct_notebook_query for parity with ai-service.
-
-(def ^:private construct-field-schema
-  [:map {:closed true}
-   [:field_id :string]
-   [:field_granularity {:optional true} [:maybe :string]]
-   [:bucket {:optional true} [:maybe :string]]])
-
-(def ^:private construct-field-aggregation-schema
-  [:map {:closed true}
-   [:field_id {:optional true} :string]
-   [:function [:enum "count" "count-distinct" "distinct" "sum" "min" "max" "avg"]]
-   [:sort_order {:optional true} [:maybe [:enum "ascending" "descending"]]]
-   [:bucket {:optional true} [:maybe :string]]])
-
-(def ^:private construct-measure-aggregation-schema
-  [:map {:closed true}
-   [:measure_id :int]
-   [:sort_order {:optional true} [:maybe :string]]])
-
-(def ^:private construct-metric-schema
-  [:or construct-field-aggregation-schema construct-measure-aggregation-schema])
-
-(def ^:private construct-order-by-schema
-  [:map {:closed true}
-   [:field construct-field-schema]
-   [:direction :string]])
-
-;; Canonical operation values per filter_type.
-;; These appear as enum constraints in the JSON Schema sent to the LLM.
-(def ^:private multi-value-operations
-  ["equals"             "not-equals"
-   "string-starts-with" "string-ends-with"
-   "string-contains"    "string-not-contains"
-   ;; aliases the LLM may send from system-instruction shorthand
-   "contains"           "not-contains"
-   "starts-with"        "ends-with"])
-
-(def ^:private single-value-operations
-  ["greater-than"          "greater-than-or-equal"
-   "less-than"             "less-than-or-equal"
-   ;; LLM may use equals/not-equals with a single value instead of multi_value
-   "equals"                "not-equals"])
-
-(def ^:private no-value-operations
-  ["is-null"            "is-not-null"
-   "string-is-empty"    "string-is-not-empty"
-   "is-true"            "is-false"
-   ;; aliases
-   "is-empty"           "is-not-empty"])
-
-(def ^:private construct-multi-value-filter-schema
-  [:map {:closed true
-         :decode/tool filter-tools/decode-temporal-filter}
-   [:filter_type [:enum "multi_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] multi-value-operations)]
-   [:bucket {:optional true} [:maybe :string]]
-   [:value {:optional true} [:maybe :any]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
-
-(def ^:private construct-single-value-filter-schema
-  [:map {:closed true
-         :decode/tool filter-tools/decode-temporal-filter}
-   [:filter_type [:enum "single_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] single-value-operations)]
-   [:bucket {:optional true} [:maybe :string]]
-   [:value {:optional true} [:maybe :any]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
-
-(def ^:private construct-no-value-filter-schema
-  [:map {:closed true}
-   [:filter_type [:enum "no_value"]]
-   [:field_id :string]
-   [:operation (into [:enum] no-value-operations)]])
-
-(def ^:private construct-segment-filter-schema
-  [:map {:closed true}
-   [:filter_type [:enum "segment"]]
-   [:segment_id :int]])
-
-(def ^:private construct-filter-schema
-  [:or
-   construct-multi-value-filter-schema
-   construct-single-value-filter-schema
-   construct-no-value-filter-schema
-   construct-segment-filter-schema])
-
-(def ^:private construct-source-metric-schema
-  [:map {:closed true}
-   [:metric_id :int]])
-
-(def ^:private construct-source-model-schema
-  [:map {:closed true}
-   [:model_id :int]])
-
-(def ^:private construct-source-table-schema
-  [:map {:closed true}
-   [:table_id :int]])
+;;; ------------------------------------------------ Schema ------------------------------------------------
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
    [:chart_type :string]])
 
-;; The LLM sometimes nests visualization inside query, so we accept it as optional
-;; in each query variant and pull it out during normalization.
-(def ^:private construct-query-metric-schema
+(def ^:private construct-notebook-query-args-schema
+  "Args schema for `construct_notebook_query`.
+
+  `:query` is a JSON object matching the canonical portable MBQL 5 wire format
+  ([[metabase.lib.schema/external-query]]). The structural shape (stages, clauses, portable
+  FKs, etc.) is documented for the LLM at
+  `resources/metabot/prompts/tools/construct_notebook_query.md`.
+
+  Validation against `::external-query` happens at the entry-point boundaries (HTTP defendpoint
+  via the string-transformer, `execute-representations-query` post-repair via
+  `lib.normalize/normalize ::lib.schema/query`); the args schema here only asserts `:query`
+  is map-shaped so the LLM-input forgiveness layer in repair has a chance to fix common
+  shortcuts (missing `{}` options, etc.). Per `repr-plan.md` step 13, this schema deliberately
+  omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
-   [:query_type [:enum "metric"]]
-   [:source construct-source-metric-schema]
-   [:filters [:sequential construct-filter-schema]]
-   [:group_by [:sequential construct-field-schema]]
+   [:reasoning {:optional true} :string]
+   [:query :map]
    [:visualization {:optional true} construct-visualization-schema]])
 
-(def ^:private construct-query-aggregate-schema
-  [:map {:closed true}
-   [:query_type [:enum "aggregate"]]
-   [:source [:or construct-source-model-schema construct-source-table-schema]]
-   [:aggregations [:sequential construct-metric-schema]]
-   [:filters [:sequential construct-filter-schema]]
-   [:group_by [:sequential construct-field-schema]]
-   [:limit [:maybe :int]]
-   [:visualization {:optional true} construct-visualization-schema]])
+;;; ---------------------------------------- Source resolution ----------------------------------------
 
-(def ^:private construct-query-raw-schema
-  [:map {:closed true}
-   [:query_type [:enum "raw"]]
-   [:source [:or construct-source-model-schema construct-source-table-schema]]
-   [:filters [:sequential construct-filter-schema]]
-   [:fields [:sequential construct-field-schema]]
-   [:order_by [:sequential construct-order-by-schema]]
-   [:limit [:maybe :int]]
-   [:visualization {:optional true} construct-visualization-schema]])
+(defn- first-stage-source-table-fk
+  "Pull the portable `[db schema table]` FK out of `stages[0].source-table`, or `nil`
+  if not present / wrong shape."
+  [parsed-query]
+  (let [fk (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (and (vector? fk)
+               (= 3 (count fk))
+               (string? (nth fk 0)))
+      fk)))
 
-(def construct-query-schema
-  "Schema for the query parameter of construct_notebook_query.
-  Shared with the slackbot query tool variant."
-  [:or construct-query-metric-schema construct-query-aggregate-schema construct-query-raw-schema])
+(def ^:private metabase-uri-source-table-pattern
+  "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
+  `metabase://<entity-type>/<id>` URIs (which appear in prompts as a way to read entities)
+  with a query source handle. Examples we've observed: `metabase://metric/76`,
+  `metabase://table/123`, `metabase://model/42`, `metabase://question/9`.
 
-(def ^:private construct-operation-aliases
-  {"contains"     :string-contains
-   "not-contains" :string-not-contains
-   "starts-with"  :string-starts-with
-   "ends-with"    :string-ends-with
-   "is-empty"     :string-is-empty
-   "is-not-empty" :string-is-not-empty})
+  The regex is deliberately permissive — we catch anything starting with `metabase://` so
+  the error message is always the directive one instead of falling through to the generic
+  `:missing-source-in-first-stage` message."
+  #"^metabase://([^/]+)/(\d+)")
 
-(defn- normalize-construct-operation
-  [operation]
-  (let [op (cond
-             (keyword? operation) operation
-             (string? operation) (keyword operation)
-             :else operation)]
-    (get construct-operation-aliases (name op) op)))
+(defn- detect-metabase-uri-source-table!
+  "If `stages[0].source-table` is a `metabase://<type>/<id>` URI string, throw a targeted
+  agent-error explaining how to use the referenced entity correctly (typically: the LLM
+  meant to reference a metric — metrics are aggregations, not sources — but wrote the URI
+  as a source). No-op on well-formed sources."
+  [parsed-query]
+  (let [raw (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (string? raw)
+      (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
+        (let [hint (case entity-type
+                     "metric"
+                     (str "Metrics are aggregations, not sources. To use metric " entity-id
+                          ", put its `base_table_portable_fk` (from `entity_details` on the metric) "
+                          "into `source-table:` and reference the metric as "
+                          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                     ("question" "model" "card")
+                     (str "To reference saved " entity-type " " entity-id
+                          " as a query source, put its `portable_entity_id` (a 21-char "
+                          "string from `entity_details`) into `source-card:` — not a URI.")
+                     "table"
+                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` from "
+                          "`entity_details` in `source-table:` — not a URI.")
+                     (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
+                          "or, via `source-card:`, a saved-card `portable_entity_id`."))]
+          (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
+                               raw hint)
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :uri-in-source-table
+                           :source-table raw
+                           :entity-type  entity-type
+                           :entity-id    entity-id})))))))
 
-(defn- normalize-construct-filter
-  [filter]
-  (let [normalized (normalize-ai-args filter)
-        filter-type (:filter-type normalized)
-        normalized (assoc normalized :operation (normalize-construct-operation (:operation normalized)))]
-    (case filter-type
-      :multi-value (-> normalized
-                       (dissoc :filter-type :value)
-                       (update :values (fn [vals]
-                                         (cond
-                                           (sequential? vals) (vec vals)
-                                           (some? (:value normalized)) [(:value normalized)]
-                                           :else []))))
-      :single-value (-> normalized
-                        (dissoc :filter-type :values)
-                        (assoc :value (or (:value normalized)
-                                          (first (:values normalized)))))
-      :no-value (-> normalized
-                    (dissoc :filter-type :value :values))
-      :segment (-> normalized
-                   (dissoc :filter-type :field-id :operation :bucket :value :values))
-      (dissoc normalized :filter-type))))
+(defn- first-stage-source-card-eid
+  "Pull the `source-card:` entity_id string from `stages[0]`, or `nil` if not present."
+  [parsed-query]
+  (let [eid (get-in parsed-query ["stages" 0 "source-card"])]
+    (when (string? eid) eid)))
 
-(defn- normalize-construct-filters
-  [filters]
-  (mapv normalize-construct-filter filters))
+(def ^:private permission-aware-content-store
+  "ContentStore for agent query construction. Alias for
+  [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
+  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all five
+  ContentStore methods. The unchecked underlying store gates non-NanoID entity-id values to
+  avoid a full-table scan via `find-by-identity-hash`."
+  shared.content-store/default-store)
+
+(defn- check-first-stage-source-table-query-permissions!
+  "Ensure the current user can query the table named by `stages[0].source-table`.
+
+  The metadata provider intentionally exposes database metadata without applying user data
+  permissions. Before any repair pass can inspect fields/FKs on the requested source table,
+  resolve the portable table FK and run the normal API query permission check."
+  [metadata-provider parsed-query]
+  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
+    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
+          table-id (serdes.resolve/import-table-fk resolver table-fk)]
+      (api/query-check :model/Table table-id)
+      nil)))
+
+(defn resolve-database-id-from-first-stage
+  "Resolve the application database id from the first stage's source.
+
+  Public only so tests can stub it. Strategy:
+
+    * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
+      by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
+      agent-errors.
+    * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
+      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`.
+    * Otherwise, surface `:missing-source-in-first-stage`.
+
+  All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
+  message to the LLM instead of a stack trace.
+
+  Note: the `database:` field at the top level of the query is intentionally NOT consulted.
+  It's a spec-mandated but redundant field (the source already identifies the database); a
+  repair pass stamps it after we've resolved the id via this function. See `repr-plan.md`
+  step 14 follow-up."
+  [parsed-query]
+  (detect-metabase-uri-source-table! parsed-query)
+  (if-let [table-fk (first-stage-source-table-fk parsed-query)]
+    (let [db-name (nth table-fk 0)
+          ids     (t2/select-pks-vec :model/Database :name db-name)]
+      (case (count ids)
+        0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
+                                    "reported by `entity_details` / metadata tools (it appears "
+                                    "as the first element of every portable FK, e.g. "
+                                    "`source-table: [<db-name>, <schema>, <table>]`).")
+                               db-name)
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-database
+                           :database     db-name}))
+        1 (first ids)
+        (throw (ex-info (tru (str "Multiple databases share the name `{0}` (ids: {1}). The "
+                                  "agent has no way to disambiguate; ask the user to rename "
+                                  "one of the databases or use a more specific identifier.")
+                             db-name (pr-str (vec (sort ids))))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :ambiguous-database-name
+                         :database     db-name
+                         :database-ids (vec (sort ids))}))))
+    (if-let [eid (first-stage-source-card-eid parsed-query)]
+      (if-let [card (tools.u/get-card-by-entity-id eid)]
+        (:database_id card)
+        (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
+                                  "or guess entity_ids: call `entity_details` with `entity-type: question` "
+                                  "or `entity-type: model` and the card''s numeric id first, then copy the "
+                                  "exact `portable_entity_id` from the response into `source-card:`.")
+                             (pr-str eid))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :unknown-card
+                         :entity-id    eid})))
+      (throw (ex-info (tru (str "First stage must have either `source-table:` (as a portable FK "
+                                "`[<db-name>, <schema>, <table>]`) or `source-card:` (as an "
+                                "entity_id string). Neither was found in `stages[0]`."))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :missing-source-in-first-stage})))))
+
+;;; ---------------------------------------- Result columns ----------------------------------------
+
+(defn- result-columns-for-query
+  "Generate result columns from a MBQL 5 query for LLM consumption."
+  [mbql5-query metadata-provider]
+  (let [query (lib/query metadata-provider mbql5-query)
+        cols  (lib/returned-columns query)]
+    (mapv #(tools.u/->result-column query %) cols)))
+
+;;; ---------------------------------------- Query execution ----------------------------------------
+
+(defn- as-agent-input-error
+  "Wrap `e` as an agent-input error.
+
+  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
+  HTTP callers additionally need a status code; default representation/repair failures to
+  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
+  Existing statuses are preserved (notably permission 403s, which callers should normally
+  avoid wrapping in the first place)."
+  [^clojure.lang.ExceptionInfo e]
+  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+        data   (cond-> base
+                 (nil? (:status-code base)) (assoc :status-code 400))]
+    (ex-info (ex-message e) data e)))
+
+(defn execute-representations-query
+  "Execute a notebook query in the canonical portable MBQL 5 representations format.
+
+  `external-query` is a keyword-keyed Clojure map matching [[metabase.lib.schema/external-query]]
+  — what the JSON middleware decodes from the HTTP body, or what the MCP tool layer hands in
+  after schema-coercion. Strict shape validation against `::external-query` is the
+  responsibility of the entry-point (defendpoint / mu/defn) — this function trusts the input
+  shape and concentrates on the LLM-friendly repair passes.
+
+  Pipeline:
+    1. Boundary-validate the keyword-keyed input against `::lib.schema/external-query`
+       ([[repr/validate-external-query]]). Catches structural issues — missing `stages`,
+       typo'd stage keys (e.g. `aggreagation` vs `aggregation`), wrong top-level `lib/type`,
+       etc. — that the loose `:map` wire schema doesn't catch.
+    2. Convert to the string-keyed portable form the repair pipeline operates on.
+    3. Resolve the database id from the first stage's `source-table:` / `source-card:`
+       ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
+       `MetadataProvider`.
+    4. Run the repair pass (fill in `{}` options, missing `lib/type` markers, stamp the
+       top-level `database:`, auto-wire `source-field` for implicit joins, rewrite inline
+       `order-by` aggregations to refs, etc.).
+    5. Sanity-check the post-repair shape against the portable repair schema.
+    6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
+       metadata-provider.
+    7. Export that final numeric pMBQL back to the portable form for the LLM-facing
+       `:query-json` / `query-content` output.
+
+  Returns a map with `:structured-output` and `:instructions` keys. Throws with an
+  `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
+  surface a helpful message to the LLM without a stack trace.
+
+  Per `repr-plan.md` step 13, there is no `source_entity` parameter — the query body carries
+  everything needed. Per the step-14 follow-up, there is also no top-level `database:` in the
+  LLM-facing contract: the database is derived from the first stage's source, and a repair
+  pass stamps `database:` into the portable form before lib.schema / resolve need it."
+  [external-query]
+  (let [parsed      (try
+                      ;; Step 1 — convert to the string-keyed portable form the repair pipeline
+                      ;; operates on.
+                      ;; Step 2 — boundary check that every stage's top-level keys are known.
+                      ;; Catches LLM-authored typos (e.g. `aggreagation` for `aggregation`)
+                      ;; that `lib.schema` does not enforce — `::lib.schema.mbql-stage/mbql` is
+                      ;; not a closed map, so unknown stage keys would otherwise be silently
+                      ;; dropped at resolve / lib.normalize time.
+                      (let [portable (repr/external-query->portable external-query)]
+                        (repr/assert-known-stage-keys! portable)
+                        portable)
+                      (catch clojure.lang.ExceptionInfo e
+                        (throw (as-agent-input-error e))))
+        database-id (resolve-database-id-from-first-stage parsed)
+        mp          (lib-be/application-database-metadata-provider database-id)]
+    ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
+    ;; never inspects table/card metadata that the current user cannot use.
+    (check-first-stage-source-table-query-permissions! mp parsed)
+    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
+    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
+    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
+    ;; them reach the tool wrapper with the flag set.
+    (try
+      (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+            _validated    (repr/validate-query repaired)
+            pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
+            _validated'   (repr/validate-query exported-repr)
+            query-id      (u/generate-nano-id)]
+        {:structured-output {:query-id       query-id
+                             :query          pmbql-query
+                             :query-json     exported-repr
+                             :result-columns (result-columns-for-query pmbql-query mp)}
+         :instructions      (instructions/query-created-instructions-for query-id)})
+      (catch clojure.lang.ExceptionInfo e
+        ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
+        ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
+        (if (= 403 (:status-code (ex-data e)))
+          (throw e)
+          (throw (as-agent-input-error e)))))))
+
+;;; ---------------------------------------- Chart helpers ----------------------------------------
 
 (defn- chart-type->keyword
   [chart-type]
@@ -232,102 +308,62 @@
     (string? chart-type)  (keyword chart-type)
     :else                 chart-type))
 
-(defn- query-type->keyword
-  [query-type]
-  (cond
-    (keyword? query-type) query-type
-    (string? query-type)  (keyword query-type)
-    :else                 query-type))
-
-(def ^:private construct-notebook-query-args-schema
-  "Schema for the `construct_notebook_query` tool arguments.
-  Filter sub-schemas carry `:decode/tool` transforms for temporal value coercion."
-  [:map {:closed true}
-   [:reasoning {:optional true} :string]
-   [:query construct-query-schema]
-   [:visualization {:optional true} construct-visualization-schema]])
+(defn- query-json->llm-content
+  "Render the portable repr-form `query-json` map as the JSON code block embedded inside
+  `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
+  with pretty-printing and a triple-backtick fence so the LLM sees the same syntactic frame it
+  would in a tool description or assistant turn."
+  [query-json]
+  (when (map? query-json)
+    (str "```json\n"
+         (json/encode query-json {:pretty true})
+         "\n```")))
 
 (defn- structured->query-data
-  "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
-  Converts the pMBQL query to legacy MBQL, JSON-encodes it, and wraps result columns."
-  [{:keys [query-id query result-columns]}]
+  "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
+
+  `:query-content` is the **canonical portable representations JSON** for the final pMBQL
+  query we actually constructed: repaired and resolved to numeric IDs, normalized by lib,
+  then exported back to portable FK paths/entity_ids. By feeding the LLM this final portable
+  form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next turn it can
+  reference exactly the field paths and aggregation UUIDs that will execute.
+
+  See repr-plan.md step 18."
+  [{:keys [query-id query query-json result-columns]}]
   (let [legacy-query (when (and (map? query) (:lib/type query))
                        #_{:clj-kondo/ignore [:discouraged-var]}
                        (lib/->legacy-MBQL query))]
     {:query-type    "notebook"
      :query-id      query-id
      :database_id   (:database legacy-query)
-     :query-content (when legacy-query (json/encode legacy-query))
+     :query-content (query-json->llm-content query-json)
      :result        (when (seq result-columns)
                       {:result_columns result-columns})}))
 
 (defn- structured->chart-xml
-  "Render the full chart XML (matching Python Visualization.llm_representation)
-  for the construct_notebook_query tool result."
+  "Render the full chart XML for the construct_notebook_query tool result."
   [structured chart-id chart-type]
-  (llm-rep/visualization->xml
+  (llm-shape/visualization->xml
    {:chart-id               chart-id
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
-(def ^:private tool-arg-transformer
-  "Malli transformer that applies `:decode/tool` transforms declared on sub-schemas.
-  Used by [[decode-tool-args]] to coerce LLM arguments (e.g., date strings → integers
-  for extraction buckets) before the tool function runs."
-  (mtx/transformer {:name :tool}))
-
-(defn- decode-tool-args
-  "Decode tool arguments through the Malli schema, applying `:decode/tool` transforms.
-  This is attached as `:decode` metadata on the tool var so that [[run-tool]] calls it
-  before invoking the tool function."
-  [args]
-  (mc/decode construct-notebook-query-args-schema args tool-arg-transformer))
-
-(defn execute-query
-  "Execute a notebook query based on normalized query parameters.
-  Returns the raw query result from filter-tools.
-  Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
-  [query]
-  (let [normalized-query (normalize-ai-args query)
-        query-type (query-type->keyword (:query-type normalized-query))]
-    (log/debug "execute-query" {:query-type query-type})
-    (case query-type
-      :metric
-      (filter-tools/query-metric
-       {:metric-id (get-in normalized-query [:source :metric-id])
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :group-by (normalize-ai-args (:group-by normalized-query))})
-      :aggregate
-      (filter-tools/query-datasource
-       {:model-id (get-in normalized-query [:source :model-id])
-        :table-id (get-in normalized-query [:source :table-id])
-        :aggregations (normalize-ai-args (:aggregations normalized-query))
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :group-by (normalize-ai-args (:group-by normalized-query))
-        :limit (:limit normalized-query)})
-      :raw
-      (filter-tools/query-datasource
-       {:model-id (get-in normalized-query [:source :model-id])
-        :table-id (get-in normalized-query [:source :table-id])
-        :fields (normalize-ai-args (:fields normalized-query))
-        :filters (normalize-construct-filters (:filters normalized-query))
-        :order-by (normalize-ai-args (:order-by normalized-query))
-        :limit (:limit normalized-query)})
-      {:output (str "Unsupported query_type: " query-type)})))
+;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args}
+           :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table."
+  "Construct and visualize a notebook query from a metric, model, or table.
+
+  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`. See
+  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
   (try
-    (let [;; LLM sometimes nests visualization inside query — pull it out
-          effective-viz    (or visualization (:visualization query))
-          normalized-visualization (normalize-ai-args effective-viz)
-          chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
-                                       :table)
-          query-result             (execute-query (dissoc query :visualization))
-          structured               (or (:structured-output query-result) (:structured_output query-result))]
+    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
+          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
+                                      :table)
+          query-result            (execute-representations-query query)
+          structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
@@ -357,14 +393,21 @@
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-rep/query->xml (structured->query-data s))
+          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
                 instruction-text (instructions/query-created-instructions-for (:query-id s))]
             (assoc query-result
                    :output (str "<result>\n" query-xml "\n</result>\n"
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      (log/error e "Failed to construct notebook query")
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
+        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
+        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
+        (do
+          (log/debug e "construct_notebook_query returned agent-error to the LLM")
+          {:output (ex-message e)})
+        ;; Genuine unexpected failure — keep full stacktrace.
+        (do
+          (log/error e "Failed to construct notebook query")
+          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))

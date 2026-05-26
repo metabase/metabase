@@ -11,6 +11,7 @@ import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import {
   createMockDatabase,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
@@ -25,11 +26,6 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
-jest.mock("metabase/metabot/hooks", () => ({
-  ...jest.requireActual("metabase/metabot/hooks"),
-  useMetabotEnabledEmbeddingAware: () => true,
-}));
-
 jest.mock("metabase/query_builder/actions", () => ({
   ...jest.requireActual("metabase/query_builder/actions"),
   setIsNativeEditorOpen: jest.fn(),
@@ -38,6 +34,10 @@ jest.mock("metabase/query_builder/actions", () => ({
 describe("metabot > context", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchMock.get(
+      "path:/api/metabot/permissions/user-permissions",
+      createMockUserMetabotPermissions(),
+    );
     jest.mocked(setIsNativeEditorOpen).mockImplementation(
       (isNativeEditorOpen: boolean) =>
         ({

@@ -16,7 +16,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 
 describe("scenarios > embedding-sdk > requests", () => {
   describe("cache preflight requests", () => {
@@ -45,7 +45,7 @@ describe("scenarios > embedding-sdk > requests", () => {
 
       const sessionIds: string[] = [];
 
-      cy.intercept("GET", "/auth/sso?jwt=**", (req) => {
+      cy.intercept("POST", "/auth/sso", (req) => {
         req.continue((res) => {
           sessionIds.push(res.body.id);
         });

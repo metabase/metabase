@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -12,6 +13,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { SettingsState } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -20,12 +23,10 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import type { SettingsState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   CommandSuggestion,
@@ -130,6 +131,10 @@ const setup = ({
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupDatabasesEndpoints([MOCK_DATABASE]);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
+  );
 
   renderWithProviders(
     <TestWrapper
@@ -148,6 +153,13 @@ const setup = ({
 };
 
 describe("CommandSuggestion", () => {
+  beforeEach(() => {
+    fetchMock.get(
+      "path:/api/metabot/permissions/user-permissions",
+      createMockUserMetabotPermissions(),
+    );
+  });
+
   it("renders with default commands", async () => {
     setup();
 
@@ -454,9 +466,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        mockSettings({
-          "token-features": createMockTokenFeatures({ metabot_v3: true }),
-        });
+        mockSettings({});
         setupEnterprisePlugins();
       });
 
@@ -468,7 +478,7 @@ describe("CommandSuggestion", () => {
           }),
         });
 
-        expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

@@ -71,6 +71,30 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     mockAuthProviderAndJwtSignIn();
   };
 
+  it("should show drill-through results after drilling from a metabot question", () => {
+    setup(metabotResponseWithNavigateTo);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+      cy.findByTestId("visualization-root").should("exist");
+
+      H.tableInteractiveBody().findAllByRole("gridcell", { name: "2" }).click();
+    });
+
+    H.popover().findByText("View this Product's Orders").click();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+
+      H.assertTableData({
+        columns: ["Product ID", "Max of Quantity"],
+        firstRows: [["2", "18"]],
+      });
+    });
+  });
+
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
     setup(metabotResponseWithNavigateTo);
 

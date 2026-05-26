@@ -57,25 +57,35 @@
   definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
-    (let [card-ids    (into #{} (map :card-id refresh-defs))
-          cards-by-id (t2/select-pk->fn identity :model/Card :id [:in card-ids])]
+    (let [card-ids      (into #{} (map :card-id refresh-defs))
+          cards-by-id   (t2/select-pk->fn identity :model/Card :id [:in card-ids])
+          all-db-ids    (into #{} (keep (comp :database_id val)) cards-by-id)
+          router-db-ids (if (seq all-db-ids)
+                          (t2/select-fn-set :database_id
+                                            :model/DatabaseRouter
+                                            :database_id [:in all-db-ids])
+                          #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
-        ;; Annotate the query with its cache strategy in the format expected by the QP
-        (let [cache-strategy (strategies/cache-strategy (get cards-by-id card-id) dashboard-id)]
-          (doseq [query queries]
-            (try
-              (qp/process-query
-               (qp/userland-query
-                (-> query
-                    (assoc-in [:middleware :ignore-cached-results?] true)
-                    (assoc :cache-strategy cache-strategy))
-                {:executed-by  nil
-                 :context      :cache-refresh
-                 :card-id      card-id
-                 :dashboard-id dashboard-id})
-               discarding-rff)
-              (catch Exception e
-                (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))
+        (let [card (get cards-by-id card-id)]
+          ;; Skip cards on router databases — cache refresh runs without a user context, so database
+          ;; routing will always fail for these cards (anonymous access is not allowed).
+          (when-not (contains? router-db-ids (:database_id card))
+            ;; Annotate the query with its cache strategy in the format expected by the QP
+            (let [cache-strategy (strategies/cache-strategy card dashboard-id)]
+              (doseq [query queries]
+                (try
+                  (qp/process-query
+                   (qp/userland-query
+                    (-> query
+                        (assoc-in [:middleware :ignore-cached-results?] true)
+                        (assoc :cache-strategy cache-strategy))
+                    {:executed-by  nil
+                     :context      :cache-refresh
+                     :card-id      card-id
+                     :dashboard-id dashboard-id})
+                   discarding-rff)
+                  (catch Exception e
+                    (log/debugf "Error refreshing cache for card %s: %s" card-id (ex-message e))))))))))))
 
 (defn- duration-ago
   [{:keys [duration unit]}]
@@ -112,9 +122,9 @@
                          (if parameterized?
                            [:and
                             [:= :qe.parameterized true]
-                             ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
+                            ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
                             [:= :qe.cache_hit true]
-                             ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
+                            ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                             [:not= :qe.context (name :cache-refresh)]]
                            [:= :qe.parameterized false])]
               :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]

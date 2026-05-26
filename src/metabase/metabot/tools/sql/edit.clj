@@ -4,21 +4,12 @@
    [clojure.string :as str]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-(defn- extract-sql-content
-  "Extract SQL content from a dataset_query map.
-  Handles both legacy format and lib/query format."
-  [query]
-  (or
-   ;; Try lib/query format (with stages)
-   (get-in query [:stages 0 :native])
-   ;; Try legacy format
-   (get-in query [:native :query])))
 
 (defn- apply-sql-edit
   "Apply a targeted string replacement to SQL content."
@@ -68,7 +59,7 @@
                        :query-id query-id
                        :available-queries (keys queries-state)})))
 
-    (let [current-sql (extract-sql-content query)]
+    (let [current-sql (metabot.u/extract-sql-content query)]
       (when-not current-sql
         (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
                         {:agent-error? true

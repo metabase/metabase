@@ -249,23 +249,86 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (with-redefs [search-core/search (fn [context]
-                                           (is (true? (:search-native-query context)))
-                                           {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                         (is (true? (:search-native-query context)))
+                                                         {:data []})]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
 
       (testing ":search-native-query is not included in context when nil or false"
-        (with-redefs [search-core/search (fn [context]
-                                           (is (not (contains? context :search-native-query)))
-                                           {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                         (is (not (contains? context :search-native-query)))
+                                                         {:data []})]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query nil}))))))
+
+(deftest tool-default-entity-types-test
+  (testing "tool variants restrict default entity types to their allowed set"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["x"]}))
+            (is (= #{"table" "dataset" "metric" "card"} @captured))
+            (is (not (contains? @captured "dashboard")))
+            (is (not (contains? @captured "transform")))
+            (is (not (contains? @captured "database")))))
+
+        (testing "sql-search-tool with no entity_types searches only table/model"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
+            (is (= #{"table" "dataset"} @captured))))
+
+        (testing "agent-supplied entity_types narrow the default allowed set"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
+            (is (= #{"metric"} @captured))))))))
+
+(deftest tool-limit-test
+  (testing "tool variants apply the :limit arg with default 10 and cap 50"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "default limit is 10 when not provided"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"]}))
+            (is (= 10 @captured))))
+
+        (testing "explicit limit is honored"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"] :limit 25}))
+            (is (= 25 @captured))))
+
+        (testing "limit above 50 is rejected by schema validation"
+          (is (thrown? Exception
+                       (search/search-tool {:keyword_queries ["x"] :limit 75}))))
+
+        (testing "limit below 1 is rejected by schema validation"
+          (is (thrown? Exception
+                       (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
@@ -316,6 +379,73 @@
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest enrich-with-portable-entity-ids-test
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
+                                                                :type :question
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)
+                                                                                           :aggregation  [[:count]]}}}
+                       :model/Card {m-id :id m-eid :entity_id} {:name "PortableEID Sample Model"
+                                                                :type :model
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)}}}
+                       :model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
+          (let [results      (search/search {:term-queries ["PortableEID Sample"]})
+                by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
+                question-res (get by-id [q-id "question"])
+                model-res    (get by-id [m-id "model"])
+                dash-res     (get by-id [dash-id "dashboard"])]
+            (testing "question results carry :portable_entity_id copied from the card's entity_id"
+              (is (some? question-res) "expected the question to appear in search results")
+              (is (= q-eid (:portable_entity_id question-res))))
+            (testing "model results carry :portable_entity_id too"
+              (is (some? model-res) "expected the model to appear in search results")
+              (is (= m-eid (:portable_entity_id model-res))))
+            (testing "dashboard results do NOT get :portable_entity_id (source-card only accepts cards)"
+              (is (some? dash-res) "expected the dashboard to appear in search results")
+              (is (not (contains? dash-res :portable_entity_id))))))))))
+
+(deftest enrich-with-metric-base-tables-test
+  (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
+                "`source-table:` without a separate entity_details call. We look up\n"
+                "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
+                "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
+                "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"
+                "hallucinated the base table (`[<db>, public, customers]`).")
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {metric-id :id} {:name        "BaseTable Sample Metric"
+                                                    :type        :metric
+                                                    :database_id (mt/id)
+                                                    :table_id    (mt/id :orders)
+                                                    :dataset_query
+                                                    {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :orders)
+                                                                :aggregation  [[:count]]}}}]
+          (let [results   (search/search {:term-queries ["BaseTable Sample Metric"]})
+                by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
+                metric-res (get by-id [metric-id "metric"])
+                db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-t  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (some? metric-res) "metric should appear in search results")
+            (testing "base_table_* fields are populated"
+              (is (= (mt/id :orders) (:base_table_id metric-res)))
+              (is (= (:name orders-t) (:base_table_name metric-res)))
+              (is (= (:schema orders-t) (:base_table_schema metric-res))))
+            (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
+              (is (= [db-name (:schema orders-t) (:name orders-t)]
+                     (:base_table_portable_fk metric-res))))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"

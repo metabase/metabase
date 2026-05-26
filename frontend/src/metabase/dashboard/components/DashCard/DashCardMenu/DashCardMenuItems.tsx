@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
-import { canDownloadResults } from "metabase/lib/downloads";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";

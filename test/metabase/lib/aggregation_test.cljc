@@ -7,6 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -113,7 +114,7 @@
 ;;; make sure that given an existing query, the expected description was generated correctly.
 
 (defn- describe-legacy-query [query]
-  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))))
 
 (deftest ^:parallel describe-multiple-aggregations-test
   (let [query {:database (meta/id)
@@ -630,6 +631,49 @@
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
 
+(deftest ^:parallel preserve-model-column-settings-metadata-test
+  (testing "Aggregation metadata should return the `:settings` from model's result_metadata for the column being aggregated (#68692)"
+    (let [;; Create a model with a column that has custom settings (like "multiply by a number")
+          model-result-metadata [{:id             (meta/id :venues :id)
+                                  :name           "ID"
+                                  :base-type      :type/BigInteger
+                                  :effective-type :type/BigInteger
+                                  :display-name   "ID"}
+                                 {:id             (meta/id :venues :price)
+                                  :name           "PRICE"
+                                  :base-type      :type/Integer
+                                  :effective-type :type/Integer
+                                  :display-name   "Price"
+                                  ;; Custom settings like "multiply by a number" (scale: 0.01)
+                                  :settings       {:scale 0.01}}]
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :name            "Venues Model"
+                        :database-id     (meta/id)
+                        :type            :model
+                        :dataset-query   {:lib/type :mbql/query
+                                          :database (meta/id)
+                                          :stages   [{:lib/type     :mbql.stage/mbql
+                                                      :source-table (meta/id :venues)}]}
+                        :result-metadata model-result-metadata}]})
+          ;; Query the model and do a Sum on the Price column
+          model-query (lib/query mp (lib.metadata/card mp 1))
+          price-col   (first (filter #(= (:name %) "PRICE")
+                                     (lib/returned-columns model-query)))
+          agg-query   (lib/aggregate model-query (lib/sum price-col))
+          agg-meta    (first (lib/aggregations-metadata agg-query))]
+      (testing "the price column from model should have :settings"
+        (is (=? {:settings {:scale 0.01}}
+                price-col)))
+      (testing "the aggregation metadata should preserve the :settings from the model column"
+        (is (=? {:settings       {:scale 0.01}
+                 :lib/type       :metadata/column
+                 :name           "sum"
+                 :display-name   "Sum of Price"
+                 :lib/source     :source/aggregations}
+                agg-meta))))))
+
 (deftest ^:parallel count-aggregation-type-test
   (testing "Count aggregation should produce numeric columns"
     (let [query (-> (lib.tu/venues-query)
@@ -802,7 +846,7 @@
                           (lib/expression "Zero" (lib/+ 0 0))
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
           converted-query (lib/query meta/metadata-provider
-                                     (lib.convert/->pMBQL
+                                     (lib.convert/->mbql5
                                       (lib.tu.macros/mbql-query orders
                                         {:expressions {"Zero"          [:+ 0 0]
                                                        "Total of Zero" [:coalesce $total 0]}})))

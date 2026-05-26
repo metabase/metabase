@@ -1,5 +1,5 @@
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 
 import {
   type DashboardParameterListProps,

@@ -6,7 +6,17 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
+
+(defn- decode-question-url
+  "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
+  [url]
+  (-> url
+      (subs (count "/question#"))
+      u/decode-base64
+      (json/decode+kw)))
 
 ;;; resolve-metabase-uri tests
 
@@ -20,6 +30,19 @@
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
 
+(deftest ^:parallel resolve-metabase-uri-query-link-produces-renderable-pseudo-card-test
+  (testing "decoded /question# hash from a query link is a pseudo card the frontend can render"
+    (let [query-id      "abc-123"
+          query         (lib.tu/venues-query)
+          result        (links/resolve-metabase-uri "metabase://query/abc-123" {query-id query} {})
+          decoded       (decode-question-url result)]
+      (testing "dataset_query is populated so the query can be executed"
+        (is (map? (:dataset_query decoded)))
+        (is (some? (get-in decoded [:dataset_query :database]))))
+      (testing "type and visualization_settings are present so renderers like `getAlertType` don't crash"
+        (is (= "question" (:type decoded)))
+        (is (= {} (:visualization_settings decoded)))))))
+
 (deftest ^:parallel resolve-metabase-uri-missing-query-test
   (testing "returns nil for missing query"
     (let [result (links/resolve-metabase-uri "metabase://query/missing" {} {})]
@@ -31,8 +54,15 @@
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" {} {})))
     (is (= "/dashboard/789" (links/resolve-metabase-uri "metabase://dashboard/789" {} {})))
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
-    (is (= "/admin/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))
-    (is (= "/table/123" (links/resolve-metabase-uri "metabase://table/123" {} {})))))
+    (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
+
+(deftest ^:parallel resolve-metabase-uri-table-link-test
+  (testing "resolves table links to ad-hoc question URLs"
+    (let [result (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
+  (testing "returns nil for non-existent table"
+    (is (nil? (links/resolve-metabase-uri "metabase://table/999999999" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"
@@ -55,7 +85,7 @@
           chart-id      "chart-123"
           query         (lib.tu/venues-query)
           queries-state {query-id query}
-          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          charts-state  {chart-id {:chart_id chart-id :queries [query] :visualization_settings {:chart_type :bar}}}
           result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
@@ -250,7 +280,7 @@
           chart-id      "chart-xyz-789"
           query         (lib.tu/venues-query)
           queries-state {query-id query}
-          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          charts-state  {chart-id {:chart_id chart-id :queries [query] :visualization_settings {:chart-type :bar}}}
           result        (links/resolve-metabase-uri (str "metabase://chart/" chart-id) queries-state charts-state)]
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
@@ -372,14 +402,13 @@
       (is (= 1 (count @registry)))
       (is (= "metabase://query/q1" (get @registry resolved-url))))))
 
-(deftest ^:parallel resolve-links-records-dashboard-table-transform-links-test
-  (testing "records dashboard, table, and transform links"
+(deftest ^:parallel resolve-links-records-dashboard-transform-links-test
+  (testing "records dashboard and transform links"
     (let [registry (atom {})
-          text     "[Dash](metabase://dashboard/10) [Tbl](metabase://table/20) [Tx](metabase://transform/30)"
+          text     "[Dash](metabase://dashboard/10) [Tx](metabase://transform/30)"
           _result  (links/resolve-links text {} {} registry)]
-      (is (= {"/dashboard/10"        "metabase://dashboard/10"
-              "/table/20"            "metabase://table/20"
-              "/admin/transforms/30" "metabase://transform/30"}
+      (is (= {"/dashboard/10"              "metabase://dashboard/10"
+              "/data-studio/transforms/30" "metabase://transform/30"}
              @registry)))))
 
 (deftest ^:parallel resolve-links-does-not-record-failed-resolutions-test
@@ -459,12 +488,13 @@
       (is (= original inverted)))))
 
 (deftest ^:parallel round-trip-mixed-link-types-test
-  (testing "round-trip: mixed link types"
+  (testing "round-trip: mixed link types including table"
     (let [query-id      "q1"
           queries-state {query-id (lib.tu/venues-query)}
+          table-id      (mt/id :venues)
           original      (str "See [Model](metabase://model/1), "
                              "[Query](metabase://query/q1), and "
-                             "[Table](metabase://table/42)")
+                             "[Table](metabase://table/" table-id ")")
           registry      (atom {})
           resolved      (links/resolve-links original queries-state {} registry)
           inverted      (links/invert-links resolved @registry)]

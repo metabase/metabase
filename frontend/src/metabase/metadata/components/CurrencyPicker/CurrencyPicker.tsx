@@ -1,7 +1,5 @@
-import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { currency } from "metabase/lib/formatting";
 import {
   Combobox,
   Flex,
@@ -11,6 +9,7 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
+import { currency } from "metabase/utils/formatting";
 
 import S from "./CurrencyPicker.module.css";
 
@@ -26,14 +25,8 @@ export const CurrencyPicker = ({
   comboboxProps,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
-  };
-
   return (
     <Select
       comboboxProps={{
@@ -83,7 +76,6 @@ export const CurrencyPicker = ({
       searchable
       value={value}
       onChange={(value) => onChange(value)}
-      onFocus={handleFocus}
       {...props}
     />
   );

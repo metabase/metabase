@@ -10,7 +10,7 @@ import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 async function setup(options: SetupOpts = {}) {
-  await baseSetup({
+  return await baseSetup({
     enterprisePlugins: ["snippets"],
     tokenFeatures: { snippet_collections: true },
     ...options,
@@ -41,5 +41,22 @@ describe("SnippetSidebar (EE with token feature)", () => {
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
     expect(screen.getByText("New folder")).toBeInTheDocument();
+  });
+
+  it("should open the collection modal when creating a new folder", async () => {
+    const { store } = await setup();
+
+    await userEvent.click(getIcon("add"));
+    await userEvent.click(await screen.findByText("New folder"));
+
+    expect(store.getState().modal).toMatchObject({
+      id: "collection",
+      props: {
+        initialCollectionId: null,
+        namespaces: ["snippets"],
+        showAuthorityLevelPicker: false,
+        shouldNavigateOnCreate: false,
+      },
+    });
   });
 });

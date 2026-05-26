@@ -1,8 +1,10 @@
 (ns metabase.query-processor.timeseries-test
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  {:clj-kondo/config '{:hooks {:analyze-call {metabase.query-processor.timeseries-test/run-mbql-query
-                                              hooks.metabase.test.data/mbql-query}}}}
+  {:clj-kondo/config '{:hooks   {:analyze-call {metabase.query-processor.timeseries-test/run-mbql-query
+                                                hooks.metabase.test.data/mbql-query}}
+                       :linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.timeseries-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.timeseries-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -691,7 +693,7 @@
                ["2014-01-01" 498]
                ["2015-01-01" 267]]
               [iso8601-date-part int]]]
-             ;; TODO: Find a way how to make those work with Druid JDBC.
+            ;; TODO: Find a way how to make those work with Druid JDBC.
             :when (not (#{:week-of-year :day-of-week :week} unit))]
       (testing unit
         (testing "topN query"
@@ -705,8 +707,8 @@
                    columns))
             (is (= expected-rows
                    rows))))
-       ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
-       ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
+        ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
+        ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
         (testing "group timeseries query"
           (let [{:keys [columns rows]} (mt/formatted-rows+column-names
                                         format-fns
@@ -852,7 +854,7 @@
                (mt/first-row
                 (run-mbql-query checkins
                   {:aggregation [[:count]]
-                                 ;; test data is all in the past so nothing happened today <3
+                   ;; test data is all in the past so nothing happened today <3
                    :filter      [:not [:time-interval $timestamp :current :day]]}))))))))
 
 (deftest ^:parallel min-test

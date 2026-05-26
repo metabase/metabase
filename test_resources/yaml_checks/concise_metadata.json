@@ -1,0 +1,28 @@
+{
+  "databases": [
+    {"id": 1, "name": "Test Database", "engine": "h2"},
+    {"id": 2, "name": "SQLite DB",     "engine": "sqlite"}
+  ],
+  "tables": [
+    {"id": 10, "db_id": 1, "name": "orders",   "schema": "public"},
+    {"id": 11, "db_id": 1, "name": "products", "schema": "public"},
+    {"id": 20, "db_id": 2, "name": "orders"},
+    {"id": 21, "db_id": 2, "name": "users"}
+  ],
+  "fields": [
+    {"id": 100, "table_id": 10, "name": "id",         "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "BIGINT"},
+    {"id": 101, "table_id": 10, "name": "total",      "base_type": "type/Float",      "database_type": "DOUBLE PRECISION"},
+    {"id": 102, "table_id": 10, "name": "product_id", "base_type": "type/Integer",    "semantic_type": "type/FK", "database_type": "INTEGER"},
+    {"id": 103, "table_id": 10, "name": "created_at", "base_type": "type/DateTime",   "database_type": "TIMESTAMP"},
+
+    {"id": 110, "table_id": 11, "name": "id",    "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "BIGINT"},
+    {"id": 111, "table_id": 11, "name": "title", "base_type": "type/Text",       "database_type": "CHARACTER VARYING"},
+    {"id": 112, "table_id": 11, "name": "price", "base_type": "type/Float",      "database_type": "DOUBLE PRECISION"},
+
+    {"id": 200, "table_id": 20, "name": "id",      "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "INTEGER"},
+    {"id": 201, "table_id": 20, "name": "user_id", "base_type": "type/Integer",    "semantic_type": "type/FK", "database_type": "INTEGER"},
+
+    {"id": 210, "table_id": 21, "name": "id",   "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "INTEGER"},
+    {"id": 211, "table_id": 21, "name": "name", "base_type": "type/Text",       "database_type": "TEXT"}
+  ]
+}

@@ -13,9 +13,9 @@ jobs:
     outputs:
       frontend_embedding_sources: ${{ steps.changes.outputs.frontend_embedding_sources }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -31,12 +31,12 @@ jobs:
       !cancelled() &&
       needs.files-changed.outputs.frontend_embedding_sources == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
       - name: Check if the PR title is already following Conventional Commits style
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         id: is-conventional-commit
         with:
           result-encoding: string
@@ -48,7 +48,7 @@ jobs:
 
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const { updateCommentForEmbedding } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")

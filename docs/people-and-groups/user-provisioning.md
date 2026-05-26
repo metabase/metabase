@@ -30,7 +30,7 @@ Metabase will tell you the SCIM endpoint URL and SCIM token to share with your i
 
 ## SCIM endpoint URL
 
-The SCIM endpoint is `/api/ee/scim/v2`. So your URL will looks something like:
+The SCIM endpoint is `/api/ee/scim/v2`. So your URL will look something like:
 
 ```
 https://metabase.example.com/api/ee/scim/v2

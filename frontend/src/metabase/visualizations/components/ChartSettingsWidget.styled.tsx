@@ -6,9 +6,8 @@ import styled from "@emotion/styled";
 export const Root = styled.div<{
   inline?: boolean;
 }>`
-  margin-left: 2rem;
-  margin-right: 2rem;
-  margin-bottom: 1.5em;
+  margin-inline: 1.5rem;
+  margin-bottom: 1.5rem;
 
   ${(props) =>
     props.hidden &&
@@ -25,13 +24,4 @@ export const Root = styled.div<{
       justify-content: space-between;
       align-items: center;
     `}
-
-  input {
-    transition: border 0.3s;
-
-    &:hover {
-      transition: border 0.3s;
-      border-color: var(--mb-color-brand);
-    }
-  }
 `;

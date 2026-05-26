@@ -239,14 +239,17 @@
 (defn ^:export projections
   "Get the projection clauses from a metric definition.
    1-arity: returns flat dimension-ref projections (single-source only).
-   2-arity: returns projections scoped to a specific source metadata."
+   2-arity: returns projections scoped to a specific source instance."
   ([definition]
    (assert-single-source! definition)
    (to-array (lib-metric.definition/flat-projections
               (lib-metric.definition/projections definition))))
-  ([definition source-metadata]
-   (let [dims (lib-metric.projection/projectable-dimensions-for-source definition source-metadata)]
-     (to-array (filterv :projection-positions dims)))))
+  ([definition source-instance]
+   (let [inst (->source-instance source-instance)
+         uuid (lib-metric.definition/expression-leaf-uuid inst)
+         typed-proj (some #(when (= uuid (:lib/uuid %)) %)
+                          (or (:projections definition) []))]
+     (to-array (or (:projection typed-proj) [])))))
 
 (defn ^:export fromJsMetricDefinition
   "Convert a JS metric definition (from JSON) to a MetricDefinition.
@@ -278,6 +281,7 @@
             norm-projections (mapv (fn [tp]
                                      {:type       (keyword (:type tp))
                                       :id         (:id tp)
+                                      :lib/uuid   (:lib/uuid tp)
                                       :projection (into [] (keep lib-metric.schema/normalize-dimension-ref) (:projection tp))})
                                    raw-projections)]
         {:lib/type          :metric/definition
@@ -329,10 +333,11 @@
 
 (defn- typed-projection->js
   "Convert a typed-projection map to JS."
-  [{:keys [type id projection]}]
+  [{:keys [type id lib/uuid projection]}]
   (let [obj #js {}]
     (gobject/set obj "type" (name type))
     (gobject/set obj "id" id)
+    (gobject/set obj "lib/uuid" uuid)
     (gobject/set obj "projection" (to-array (map expression->js projection)))
     obj))
 
@@ -384,6 +389,37 @@
    Unlike metabase.lib which wraps operators in maps, this returns simple strings."
   [dimension]
   (to-array (map name (lib-metric.filter/filterable-dimension-operators dimension))))
+
+(defn ^:export availableSegments
+  "Return segments that can be applied as filters on this metric definition.
+   Segments are scoped to the source table(s) of the definition's expression leaves.
+   Each segment metadata is annotated with `:lib-metric/instance-uuid` so the FE
+   can pass the same opaque value back to `addSegmentFilter` / `filter`.
+   Returns a JS array of (opaque) CLJS segment metadata maps."
+  [definition]
+  (to-array (lib-metric.filter/available-segments definition)))
+
+(defn ^:export isSegmentFilter
+  "Return true if the filter-clause is a segment reference."
+  [filter-clause]
+  (lib-metric.filter/segment-clause? filter-clause))
+
+(defn ^:export segmentMetadataForFilter
+  "Return the segment metadata referenced by a segment filter-clause, or nil."
+  [definition filter-clause]
+  (lib-metric.filter/segment-metadata-for-clause definition filter-clause))
+
+(defn ^:export addSegmentFilter
+  "Add a segment as a filter on this metric definition. `segment-metadata` is an
+   opaque CLJS segment metadata map returned by `availableSegments`."
+  [definition segment-metadata]
+  (lib-metric.filter/add-segment-filter definition segment-metadata))
+
+(defn ^:export segmentMetadataId
+  "Return the numeric id of a segment metadata map returned by `availableSegments`
+   or `segmentMetadataForFilter`."
+  [segment-metadata]
+  (:id segment-metadata))
 
 ;;; -------------------------------------------------- Filter Parts JS Conversion --------------------------------------------------
 
@@ -589,13 +625,13 @@
 (defn ^:export projectionableDimensions
   "Get dimensions that can be used for projections.
    1-arity: returns dimensions for single-source definition.
-   2-arity: returns dimensions scoped to a specific source metadata."
+   2-arity: returns dimensions scoped to a specific source instance."
   ([definition]
    (assert-single-source! definition)
    (to-array (lib-metric.projection/projectable-dimensions definition)))
-  ([definition source-metadata]
+  ([definition source-instance]
    (to-array (lib-metric.projection/projectable-dimensions-for-source
-              definition source-metadata))))
+              definition (->source-instance source-instance)))))
 
 (defn ^:export defaultBreakoutDimensions
   "Get dimensions corresponding to the source metric's default breakout columns."
@@ -613,12 +649,12 @@
    The dimension-ref must be a dimension reference (from dimensionReference,
    withTemporalBucket, or withBinning).
    2-arity: adds projection to single-source definition.
-   3-arity: adds projection scoped to a specific source metadata."
+   3-arity: adds projection scoped to a specific source instance."
   ([definition dimension-ref]
    (assert-single-source! definition)
    (lib-metric.projection/project definition dimension-ref))
-  ([definition dimension source-metadata]
-   (lib-metric.projection/project-for-source definition dimension source-metadata)))
+  ([definition dimension-ref source-instance]
+   (lib-metric.projection/project-for-source definition dimension-ref (->source-instance source-instance))))
 
 (defn ^:export projectionDimension
   "Get the dimension metadata for a projection clause.
@@ -843,3 +879,18 @@
     (boolean
      (when (and (seq sources1) (seq sources2))
        (some (set sources1) sources2)))))
+
+(defn ^:export isCompatibleType
+  "Check if two dimensions have compatible effective types for cross-database matching.
+   Two date/datetime dimensions are compatible, two time dimensions are compatible,
+   otherwise requires exact type match. Returns false if either type is nil."
+  [dimension1 dimension2]
+  (let [type1 (types.isa/column-type dimension1)
+        type2 (types.isa/column-type dimension2)]
+    (boolean
+     (when (and type1 type2)
+       (or (= type1 type2)
+           (and (isa? type1 :type/HasDate)
+                (isa? type2 :type/HasDate))
+           (and (isa? type1 :type/Time)
+                (isa? type2 :type/Time)))))))

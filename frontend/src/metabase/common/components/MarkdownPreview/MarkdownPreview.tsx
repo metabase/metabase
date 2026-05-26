@@ -1,8 +1,8 @@
 import classNames from "classnames";
 import type { ComponentProps, LegacyRef } from "react";
 
-import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Tooltip } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 
 import { Markdown } from "../Markdown";
 

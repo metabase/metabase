@@ -3,10 +3,9 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Icon, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
 import { LegendItemDot } from "./legend/LegendItemDot";

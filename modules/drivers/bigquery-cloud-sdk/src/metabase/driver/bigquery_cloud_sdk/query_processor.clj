@@ -9,7 +9,6 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -35,12 +34,9 @@
     LocalTime
     OffsetDateTime
     OffsetTime
-    ZonedDateTime)
-   (metabase.driver.common.parameters FieldFilter)))
+    ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.driver.common.parameters/keep-me)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -676,10 +672,6 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
-  [_driver [_ nfc-path]]
-  nfc-path)
-
 (defn- with-base-temporal-type
   [[_ _id-or-name {:keys [base-type]} :as clause]]
   (if (not (instance? clojure.lang.IObj clause))
@@ -709,7 +701,7 @@
         (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
                      (= source-table driver-api/qp.add.source)))
-          (keyword source-alias)
+          (h2x/identifier :field-alias source-alias)
           result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
@@ -1043,12 +1035,12 @@
   [_driver]
   :mysql)
 
-(mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
+(mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk :metabase.lib.parameters.parse.types/field-filter]
   [driver                            :- :keyword
    {:keys [field], :as field-filter} :- [:map
                                          [:field driver-api/schema.metadata.column]]]
   (let [field-temporal-type (temporal-type field)
-        parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
+        parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql :metabase.lib.parameters.parse.types/field-filter])
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]

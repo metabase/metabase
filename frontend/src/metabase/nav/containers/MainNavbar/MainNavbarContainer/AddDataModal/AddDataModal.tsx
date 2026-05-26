@@ -5,7 +5,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Box, Icon, type IconName, Modal, Tabs } from "metabase/ui";
+import { Box, Icon, Modal, Tabs } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";
@@ -24,6 +25,7 @@ interface AddDataModalProps {
   onClose: () => void;
 
   initialTab?: AddDataTab;
+  fromEmbeddingSetupGuide?: boolean;
 }
 
 interface Tabs {
@@ -37,6 +39,7 @@ export const AddDataModal = ({
   opened,
   onClose,
   initialTab,
+  fromEmbeddingSetupGuide,
 }: AddDataModalProps) => {
   const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
     useAddDataPermissions();
@@ -152,7 +155,10 @@ export const AddDataModal = ({
               />
             </Tabs.Panel>
             <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel canSeeContent={isAdmin} />
+              <DatabasesPanel
+                canSeeContent={isAdmin}
+                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel

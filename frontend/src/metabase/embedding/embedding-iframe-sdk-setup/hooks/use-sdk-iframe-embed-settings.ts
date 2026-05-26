@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
@@ -25,14 +24,12 @@ const getSettingsToPersist = ({
   isSimpleEmbedFeatureAvailable: boolean;
   settings: Partial<SdkIframeEmbedSetupSettings>;
 }): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
-  const keys = [];
-
-  // We don't allow theme change when `simple embedding` feature is not available.
-  if (isSimpleEmbedFeatureAvailable) {
-    keys.push("theme");
+  // Theme customization requires the `simple embedding` feature.
+  if (!isSimpleEmbedFeatureAvailable || !settings.theme) {
+    return {};
   }
 
-  return _.pick(settings, keys);
+  return { theme: settings.theme };
 };
 
 const usePersistedSettings = ({
@@ -91,6 +88,14 @@ export const useSdkIframeEmbedSettings = ({
   const exampleDashboardId = useSetting("example-dashboard-id");
 
   const defaultSettings = useMemo(() => {
+    // Default to SSO when it's available and configured; otherwise default
+    // to guest. Callers that need a specific mode pass `initialState.isGuest`
+    // explicitly.
+    const defaultMode: "sso" | "guest" =
+      isSimpleEmbedFeatureAvailable && isSsoEnabledAndConfigured
+        ? "sso"
+        : "guest";
+
     return match(initialState)
       .with(
         { resourceType: "dashboard", resourceId: P.nonNullable },
@@ -101,7 +106,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -114,7 +119,7 @@ export const useSdkIframeEmbedSettings = ({
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
-            isGuest: !!initialState.isGuest,
+            isGuest: initialState.isGuest ?? defaultMode === "guest",
             useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
@@ -129,7 +134,7 @@ export const useSdkIframeEmbedSettings = ({
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
-          isGuest: !!initialState?.isGuest,
+          isGuest: initialState?.isGuest ?? defaultMode === "guest",
           useExistingUserSession: !!initialState?.useExistingUserSession,
         }),
       );

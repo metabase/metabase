@@ -1,5 +1,5 @@
-import { isNotFalsy } from "metabase/lib/types";
-import { compareVersions } from "metabase/lib/utils";
+import { isNotFalsy } from "metabase/utils/types";
+import { compareVersions } from "metabase/utils/version";
 import type { VersionInfoRecord } from "metabase-types/api";
 import type { VersionInfo } from "metabase-types/api/settings";
 /**

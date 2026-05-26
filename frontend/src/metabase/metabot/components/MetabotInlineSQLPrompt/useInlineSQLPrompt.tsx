@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -57,7 +57,8 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
-  const isEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
 
   const databaseId = question.databaseId();
 
@@ -87,14 +88,6 @@ export function useInlineSQLPrompt(
     return portalTarget?.view?.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
 
-  const prevDatabaseIdRef = useRef(databaseId);
-  useEffect(() => {
-    if (prevDatabaseIdRef.current !== databaseId) {
-      setPromptValue("");
-      prevDatabaseIdRef.current = databaseId;
-    }
-  }, [databaseId]);
-
   const generatedSqlRef = useRef(generatedSource);
   generatedSqlRef.current = generatedSource;
 
@@ -122,14 +115,22 @@ export function useInlineSQLPrompt(
     [generatedSource, hideInput],
   );
 
+  const prevDatabaseIdRef = useRef(databaseId);
+  useEffect(() => {
+    if (prevDatabaseIdRef.current !== databaseId) {
+      resetSuggestionState();
+      prevDatabaseIdRef.current = databaseId;
+    }
+  }, [databaseId, resetSuggestionState]);
+
   useEffect(
-    function resetOnDbChangeAndUnmount() {
+    function resetOnUnmount() {
       return () => {
         hideInputRef.current();
         resetSuggestionState();
       };
     },
-    [resetSuggestionState, databaseId],
+    [resetSuggestionState],
   );
 
   const resetInput = useCallback(() => {
@@ -169,7 +170,7 @@ export function useInlineSQLPrompt(
 
   const extensions = useMemo(
     () =>
-      isEnabled
+      hasSqlGenerationAccess
         ? [
             createPromptInputExtension(setPortalTarget),
             keymap.of([
@@ -201,13 +202,13 @@ export function useInlineSQLPrompt(
             }),
           ]
         : [],
-    [isEnabled],
+    [hasSqlGenerationAccess],
   );
 
   return {
     extensions,
     portalElement:
-      isEnabled && portalTarget
+      hasSqlGenerationAccess && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -224,8 +225,12 @@ export function useInlineSQLPrompt(
             portalTarget.container,
           )
         : null,
-    proposedQuestion: isEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
-    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
+    proposedQuestion: canUseSqlGeneration ? proposedQuestion : undefined,
+    handleRejectProposed: canUseSqlGeneration
+      ? handleRejectProposed
+      : undefined,
+    handleAcceptProposed: canUseSqlGeneration
+      ? handleAcceptProposed
+      : undefined,
   };
 }

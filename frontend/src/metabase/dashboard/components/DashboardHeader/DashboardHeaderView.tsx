@@ -21,17 +21,18 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
-import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
+import { DashboardTabs } from "../DashboardTabs";
+import { DashboardTitle } from "../DashboardTitle";
 
 import S from "./DashboardHeaderView.module.css";
 
@@ -139,7 +140,7 @@ export function DashboardHeaderView({
                   })}
                 >
                   <Flex className={S.HeaderCaptionContainer} gap={2}>
-                    <Dashboard.Title className={S.HeaderCaption} />
+                    <DashboardTitle className={S.HeaderCaption} />
 
                     <Flex
                       align="center"
@@ -183,7 +184,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <Dashboard.Tabs />
+            <DashboardTabs />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>

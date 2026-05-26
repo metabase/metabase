@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { useUserSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";

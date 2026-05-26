@@ -5,7 +5,8 @@ import _ from "underscore";
 import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
-import { isObscured } from "metabase/lib/dom";
+import { Icon } from "metabase/ui";
+import { isObscured } from "metabase/utils/dom";
 import {
   KEYCODE_BACKSPACE,
   KEYCODE_DOWN,
@@ -16,8 +17,7 @@ import {
   KEY_BACKSPACE,
   KEY_COMMA,
   KEY_ENTER,
-} from "metabase/lib/keyboard";
-import { Icon } from "metabase/ui";
+} from "metabase/utils/keyboard";
 
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 

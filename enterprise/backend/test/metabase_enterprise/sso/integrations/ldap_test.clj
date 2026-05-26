@@ -138,22 +138,23 @@
       (ldap.test/with-ldap-server!
         (testing "when creating a new user via provider/login!, user attributes should get synced"
           (let [result (auth-identity/login! :provider/ldap
-                                             {:username "jsmith1"
-                                              :password "strongpassword"
-                                              :device-info {:device_id "test-device"
+                                             {:username    "jsmith1"
+                                              :password    "strongpassword"
+                                              :device-info {:device_id          "test-device"
                                                             :device_description "Test Device"
-                                                            :ip_address "127.0.0.1"
-                                                            :embedded false}})]
+                                                            :ip_address         "127.0.0.1"
+                                                            :embedded           false
+                                                            :token_exchange     false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name "John"
-                    :last_name "Smith"
-                    :email "john.smith@metabase.com"
-                    :login_attributes {"uid" "jsmith1"
-                                       "mail" "John.Smith@metabase.com"
+            (is (= {:first_name       "John"
+                    :last_name        "Smith"
+                    :email            "john.smith@metabase.com"
+                    :login_attributes {"uid"       "jsmith1"
+                                       "mail"      "John.Smith@metabase.com"
                                        "givenname" "John"
-                                       "sn" "Smith"
-                                       "cn" "John Smith"}
-                    :common_name "John Smith"}
+                                       "sn"        "Smith"
+                                       "cn"        "John Smith"}
+                    :common_name      "John Smith"}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com"))))))))))
 
@@ -164,18 +165,19 @@
         (testing "when creating a new user via provider/login! and attribute sync is disabled, attributes should not be synced"
           (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
             (let [result (auth-identity/login! :provider/ldap
-                                               {:username "jsmith1"
-                                                :password "strongpassword"
-                                                :device-info {:device_id "test-device"
+                                               {:username    "jsmith1"
+                                                :password    "strongpassword"
+                                                :device-info {:device_id          "test-device"
                                                               :device_description "Test Device"
-                                                              :ip_address "127.0.0.1"
-                                                              :embedded false}})]
+                                                              :ip_address         "127.0.0.1"
+                                                              :embedded           false
+                                                              :token_exchange     false}})]
               (is (true? (:success? result)))
-              (is (= {:first_name "John"
-                      :last_name "Smith"
-                      :email "john.smith@metabase.com"
+              (is (= {:first_name       "John"
+                      :last_name        "Smith"
+                      :email            "john.smith@metabase.com"
                       :login_attributes nil
-                      :common_name "John Smith"}
+                      :common_name      "John Smith"}
                      (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              :email "john.smith@metabase.com")))))))))))
 
@@ -185,30 +187,32 @@
       (ldap.test/with-ldap-server!
         (testing "Existing user's attributes are updated via provider/login!"
           (let [result1 (auth-identity/login! :provider/ldap
-                                              {:username "jsmith1"
-                                               :password "strongpassword"
-                                               :device-info {:device_id "test-device"
+                                              {:username    "jsmith1"
+                                               :password    "strongpassword"
+                                               :device-info {:device_id          "test-device"
                                                              :device_description "Test Device"
-                                                             :ip_address "127.0.0.1"
-                                                             :embedded false}})
+                                                             :ip_address         "127.0.0.1"
+                                                             :embedded           false
+                                                             :token_exchange     false}})
                 result2 (auth-identity/login! :provider/ldap
-                                              {:username "jsmith1"
-                                               :password "strongpassword"
-                                               :device-info {:device_id "test-device"
+                                              {:username    "jsmith1"
+                                               :password    "strongpassword"
+                                               :device-info {:device_id          "test-device"
                                                              :device_description "Test Device"
-                                                             :ip_address "127.0.0.1"
-                                                             :embedded false}})]
+                                                             :ip_address         "127.0.0.1"
+                                                             :embedded           false
+                                                             :token_exchange     false}})]
             (is (true? (:success? result1)))
             (is (true? (:success? result2)))
-            (is (= {:first_name "John"
-                    :last_name "Smith"
-                    :common_name "John Smith"
-                    :email "john.smith@metabase.com"
-                    :login_attributes {"uid" "jsmith1"
-                                       "mail" "John.Smith@metabase.com"
+            (is (= {:first_name       "John"
+                    :last_name        "Smith"
+                    :common_name      "John Smith"
+                    :email            "john.smith@metabase.com"
+                    :login_attributes {"uid"       "jsmith1"
+                                       "mail"      "John.Smith@metabase.com"
                                        "givenname" "John"
-                                       "sn" "Smith"
-                                       "cn" "John Smith"}}
+                                       "sn"        "Smith"
+                                       "cn"        "John Smith"}}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                            :email "john.smith@metabase.com"))))))))))
 
@@ -219,25 +223,27 @@
         (testing "Existing user's attributes are not updated via provider/login! when attribute sync is disabled"
           (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
             (let [result1 (auth-identity/login! :provider/ldap
-                                                {:username "jsmith1"
-                                                 :password "strongpassword"
-                                                 :device-info {:device_id "test-device"
+                                                {:username    "jsmith1"
+                                                 :password    "strongpassword"
+                                                 :device-info {:device_id          "test-device"
                                                                :device_description "Test Device"
-                                                               :ip_address "127.0.0.1"
-                                                               :embedded false}})
+                                                               :ip_address         "127.0.0.1"
+                                                               :embedded           false
+                                                               :token_exchange     false}})
                   result2 (auth-identity/login! :provider/ldap
-                                                {:username "jsmith1"
-                                                 :password "strongpassword"
-                                                 :device-info {:device_id "test-device"
+                                                {:username    "jsmith1"
+                                                 :password    "strongpassword"
+                                                 :device-info {:device_id          "test-device"
                                                                :device_description "Test Device"
-                                                               :ip_address "127.0.0.1"
-                                                               :embedded false}})]
+                                                               :ip_address         "127.0.0.1"
+                                                               :embedded           false
+                                                               :token_exchange     false}})]
               (is (true? (:success? result1)))
               (is (true? (:success? result2)))
-              (is (= {:first_name "John"
-                      :last_name "Smith"
-                      :common_name "John Smith"
-                      :email "john.smith@metabase.com"
+              (is (= {:first_name       "John"
+                      :last_name        "Smith"
+                      :common_name      "John Smith"
+                      :email            "john.smith@metabase.com"
                       :login_attributes nil}
                      (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              :email "john.smith@metabase.com")))))))))))
@@ -248,17 +254,18 @@
       (ldap.test/with-ldap-server!
         (testing "a new user is created via provider/login! when they don't already exist"
           (let [result (auth-identity/login! :provider/ldap
-                                             {:username "jsmith1"
-                                              :password "strongpassword"
-                                              :device-info {:device_id "test-device"
+                                             {:username    "jsmith1"
+                                              :password    "strongpassword"
+                                              :device-info {:device_id          "test-device"
                                                             :device_description "Test Device"
-                                                            :ip_address "127.0.0.1"
-                                                            :embedded false}})]
+                                                            :ip_address         "127.0.0.1"
+                                                            :embedded           false
+                                                            :token_exchange     false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name "John"
-                    :last_name "Smith"
+            (is (= {:first_name  "John"
+                    :last_name   "Smith"
                     :common_name "John Smith"
-                    :email "john.smith@metabase.com"}
+                    :email       "john.smith@metabase.com"}
                    (into {} (t2/select-one [:model/User :first_name :last_name :email] :email "john.smith@metabase.com"))))))))))
 
 (deftest create-user-without-givenname-test
@@ -267,15 +274,16 @@
       (ldap.test/with-ldap-server!
         (testing "a user without a givenName attribute has nil for that attribute"
           (let [result (auth-identity/login! :provider/ldap
-                                             {:username "jmiller"
-                                              :password "n0peeking"
-                                              :device-info {:device_id "test-device"
+                                             {:username    "jmiller"
+                                              :password    "n0peeking"
+                                              :device-info {:device_id          "test-device"
                                                             :device_description "Test Device"
-                                                            :ip_address "127.0.0.1"
-                                                            :embedded false}})]
+                                                            :ip_address         "127.0.0.1"
+                                                            :embedded           false
+                                                            :token_exchange     false}})]
             (is (true? (:success? result)))
-            (is (= {:first_name nil
-                    :last_name "Miller"
+            (is (= {:first_name  nil
+                    :last_name   "Miller"
                     :common_name "Miller"}
                    (into {} (t2/select-one [:model/User :first_name :last_name] :email "jane.miller@metabase.com"))))))))))
 
@@ -285,14 +293,15 @@
       (ldap.test/with-ldap-server!
         (testing "an error is thrown when a new user attempts to login via provider/login! and user provisioning is not enabled"
           (with-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
-                        appearance.settings/site-name (constantly "test")]
+                        appearance.settings/site-name                (constantly "test")]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
                  (auth-identity/login! :provider/ldap
-                                       {:username "jsmith1"
-                                        :password "strongpassword"
-                                        :device-info {:device_id "test-device"
+                                       {:username    "jsmith1"
+                                        :password    "strongpassword"
+                                        :device-info {:device_id          "test-device"
                                                       :device_description "Test Device"
-                                                      :ip_address "127.0.0.1"
-                                                      :embedded false}})))))))))
+                                                      :ip_address         "127.0.0.1"
+                                                      :embedded           false
+                                                      :token_exchange     false}})))))))))

@@ -4,11 +4,12 @@
    [medley.core :as m]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -16,7 +17,7 @@
 
 (defn- format-chart-output
   [{:keys [chart-id] :as structured}]
-  (let [chart-xml (llm-rep/chart->xml structured)]
+  (let [chart-xml (llm-shape/chart->xml structured)]
     (str "<result>\n" chart-xml "\n</result>\n"
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
@@ -32,7 +33,8 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "create_chart"}
+(mu/defn ^{:tool-name "create_chart"
+           :scope     scope/agent-viz-create}
   create-chart-tool
   "Create a chart from a query.
 
@@ -60,7 +62,8 @@
    [:new_viz_settings [:map {:closed true}
                        [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "edit_chart"}
+(mu/defn ^{:tool-name "edit_chart"
+           :scope     scope/agent-viz-edit}
   edit-chart-tool
   "Edit an existing chart's visualization type.
 

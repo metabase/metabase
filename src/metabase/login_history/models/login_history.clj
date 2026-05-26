@@ -1,8 +1,11 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
+   [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -50,7 +53,7 @@
    device-info :- request/DeviceInfo]
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}
-                             (dissoc device-info :embedded))]
+                             (dissoc device-info :embedded :token_exchange))]
     (t2/insert! :model/LoginHistory login-history)
     login-history))
 
@@ -74,6 +77,29 @@
   (some-> (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
           count
           (= 1)))
+
+(def ^:private new-device-email-rate-limit-window-hours 24)
+
+(defn too-many-new-device-emails-recently?
+  "Per-user circuit breaker — true if this user has already triggered
+   `new-device-email-rate-limit-cap` first-time `(user_id, device_id)` events in the last
+   window. Over-counts first-login-ever rows (those never email) — safe direction for a
+   breaker."
+  [user-id]
+  (let [cutoff (h2x/add-interval-honeysql-form
+                (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]
+    (> (t2/count :model/LoginHistory
+                 {:where [:and
+                          [:= :user_id user-id]
+                          [:> :timestamp cutoff]
+                          [:not [:exists
+                                 {:select [1]
+                                  :from   [[:login_history :lh2]]
+                                  :where  [:and
+                                           [:= :lh2.user_id   :login_history.user_id]
+                                           [:= :lh2.device_id :login_history.device_id]
+                                           [:< :lh2.id        :login_history.id]]}]]]})
+       (login-history.settings/new-device-email-rate-limit-cap))))
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))

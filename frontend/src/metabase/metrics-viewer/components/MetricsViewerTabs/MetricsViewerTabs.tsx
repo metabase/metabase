@@ -1,6 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import {
+  trackMetricsViewerDimensionTabRemoved,
+  trackMetricsViewerDimensionTabSwitched,
+} from "metabase/metrics-viewer/analytics";
+import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { ActionIcon, Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
@@ -23,7 +28,7 @@ type MetricsViewerTabsProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   onTabChange: (tabId: string) => void;
-  onAddTab: (dimensionId: string) => void;
+  onAddTab: (tabInfo: TabInfo) => void;
   onRemoveTab: (tabId: string) => void;
 };
 
@@ -42,8 +47,17 @@ export function MetricsViewerTabs({
     (e: React.MouseEvent, tabId: string) => {
       e.stopPropagation();
       onRemoveTab(tabId);
+      trackMetricsViewerDimensionTabRemoved();
     },
     [onRemoveTab],
+  );
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      onTabChange(value);
+      trackMetricsViewerDimensionTabSwitched();
+    },
+    [onTabChange],
   );
 
   const hasSharedDimensions = availableDimensions.shared.length > 0;
@@ -57,10 +71,12 @@ export function MetricsViewerTabs({
     return null;
   }
 
+  const canAddScalarTab = !tabs.some((tab) => tab.type === "scalar");
+
   return (
     <Tabs
       value={activeTabId}
-      onChange={(value) => value && onTabChange(value)}
+      onChange={(value) => value && handleTabChange(value)}
       w="auto"
     >
       <Tabs.List className={S.list} justify="flex-start">
@@ -98,6 +114,7 @@ export function MetricsViewerTabs({
             sourceDataById={sourceDataById}
             hasMultipleSources={hasMultipleSources}
             onAddTab={onAddTab}
+            canAddScalarTab={canAddScalarTab}
           />
         )}
       </Tabs.List>

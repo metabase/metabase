@@ -7,10 +7,11 @@ import {
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/ui";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
@@ -62,7 +63,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map((schema) => ({
             schema,
-            name: tc(schema.displayName()) ?? "",
+            name: tc(getSchemaDisplayName(schema.name)) ?? "",
           }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : undefined,

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.share-test
   "Tests for the `:share` aggregation."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.share-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.share-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

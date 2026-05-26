@@ -1,10 +1,9 @@
+import type { LocationDescriptorObject } from "history";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { open } from "metabase/lib/dom";
+import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
-import type { Dispatch } from "metabase-types/store";
 
 import type {
   ClickAction,
@@ -12,10 +11,13 @@ import type {
   QuestionChangeClickAction,
 } from "../types";
 
+import { openUrl } from "./open-url";
+
 type ActionProps = {
   dispatch: Dispatch;
   onChangeCardAndRun?: OnChangeCardAndRun;
   onUpdateQuestion?: (question: Question) => void;
+  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
 };
 
 export function performAction(
@@ -42,10 +44,13 @@ export function performAction(
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      open(url, {
+      openUrl(url, {
         openInSameOrigin: (location) => {
-          dispatch(push(location));
-          dispatch(setParameterValuesFromQueryParams(location.query));
+          if (props.onSameOriginNavigation) {
+            props.onSameOriginNavigation(location);
+          } else {
+            dispatch(push(location));
+          }
         },
         ignoreSiteUrl,
       });
@@ -66,6 +71,7 @@ export function performAction(
           nextCard: question.card(),
           ...extra,
           objectId,
+          drillName: action.name,
         });
       } else if (questionChangeBehavior === "updateQuestion") {
         onUpdateQuestion?.(question);

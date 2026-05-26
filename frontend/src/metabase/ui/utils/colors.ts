@@ -1,8 +1,8 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName, MetabaseColorKey } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 const ORIGINAL_COLORS = [

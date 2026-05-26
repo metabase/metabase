@@ -1,26 +1,27 @@
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
-export type OnBeforeRequestHandlerData = {
+export type OnBeforeRequestHandlerConfig = {
   method: "GET" | "POST";
   url: string;
   options: {
     headers?: Record<string, string>;
     hasBody: boolean;
   } & Record<string, unknown>;
+  data: Record<string, unknown>;
 };
 
 export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerData,
-) => Promise<void | OnBeforeRequestHandlerData>;
+  data: OnBeforeRequestHandlerConfig,
+) => Promise<void | OnBeforeRequestHandlerConfig>;
 
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
     overrideRequestsForPublicEmbeds: async (
-      _data: OnBeforeRequestHandlerData,
-    ): Promise<OnBeforeRequestHandlerData | void> => {},
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
     overrideRequestsForStaticEmbeds: async (
-      _data: OnBeforeRequestHandlerData,
-    ): Promise<OnBeforeRequestHandlerData | void> => {},
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
   },
   getRemappedCardParameterValueUrl: (
     cardId: CardId | string | undefined,

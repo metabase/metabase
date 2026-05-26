@@ -98,7 +98,8 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
-  (events/publish-event! :event/document-update {:object instance})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/document-update {:object instance}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -192,13 +193,15 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
                           :import-with-context import-document-content}
                :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}
+   :defaults {:archived          false
+              :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

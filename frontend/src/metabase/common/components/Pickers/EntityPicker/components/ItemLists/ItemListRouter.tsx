@@ -1,9 +1,9 @@
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import {
   ItemListLoader,
   type OmniPickerFolderItem,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import { CollectionItemList } from "./CollectionItemList";
@@ -12,6 +12,7 @@ import { DbItemList } from "./DbItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RecentsItemList } from "./RecentsItemList";
 import { SearchResultsItemList } from "./SearchResultsItemList";
+import { TableItemList } from "./TableItemList";
 
 const isDbItem = (item: OmniPickerItem) => {
   return (
@@ -79,6 +80,10 @@ export const ItemListRouter = ({
 
   if (isDbItem(parentItem)) {
     return <DbItemList parentItem={parentItem} pathIndex={pathIndex} />;
+  }
+
+  if (parentItem.model === "table") {
+    return <TableItemList parentItem={parentItem} pathIndex={pathIndex} />;
   }
 
   return <CollectionItemList parentItem={parentItem} pathIndex={pathIndex} />;

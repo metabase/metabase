@@ -15,9 +15,9 @@ jobs:
     outputs:
       yaml: ${{ steps.changes.outputs.yaml }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -28,7 +28,7 @@ jobs:
     if: needs.files-changed.outputs.yaml == 'true'
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - run: bun run lint-yaml

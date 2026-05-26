@@ -64,6 +64,20 @@
       (is (= expected
              (i18n.impl/available-locale? locale))))))
 
+(deftest ^:parallel available-locale?-accepts-pseudo-locale-test
+  (testing "The `en_ZZ` pseudo-locale is accepted"
+    (doseq [[locale expected] {"en_ZZ" true
+                               "en-ZZ" true
+                               "en-zz" true
+                               "EN-ZZ" true
+                               ;; Unrelated unknown locales are still rejected
+                               "zz"    false
+                               "xx_YY" false
+                               "en_XX" false}]
+      (testing (pr-str (list 'available-locale? locale))
+        (is (= expected
+               (i18n.impl/available-locale? locale)))))))
+
 (deftest ^:parallel fallback-locale-test
   (doseq [[locale expected] {nil                             nil
                              :es                             nil
@@ -130,7 +144,7 @@
       (binding [config/*disable-setting-cache* true]
         (is (= "en" (i18n.impl/site-locale-from-setting)))
         ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
-        (with-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
             (is (nil? (i18n/site-locale))
                 `i18n/site-locale)

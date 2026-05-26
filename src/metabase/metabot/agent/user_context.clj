@@ -5,12 +5,16 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
@@ -58,8 +62,7 @@
   [context]
   (when-let [viewing (:user_is_viewing context)]
     (some (fn [item]
-            (when (= "native" (effective-context-type item))
-              (some-> (:sql_engine item) u/lower-case-en)))
+            (some-> item :sql_engine u/lower-case-en))
           viewing)))
 
 ;;; Context Normalization
@@ -78,12 +81,12 @@
 
   The frontend sends `type: \"adhoc\"` for *both* notebook (MBQL) and native SQL
   queries. We distinguish them by inspecting the query: a dataset-query with
-  `{:type \"native\"}` (or `:native`) is a native SQL query, as is an MLv2/pMBQL
+  `{:type \"native\"}` (or `:native`) is a native SQL query, as is an MBQL 4 (legacy) or MBQL 5
   query with a single native stage."
   [item]
   (let [query (:query item)]
     (or (= "native" (normalize-context-type (:type query)))
-        ;; MLv2/pMBQL: normalize and use lib to detect native queries
+        ;; MBQL 4/MBQL 5: normalize and use lib to detect native queries
         (when (and (map? query) (:database query))
           (try
             (lib/native-only-query? (lib-be/normalize-query query))
@@ -95,10 +98,7 @@
   Handles the fact that the frontend sends `type: \"adhoc\"` for both notebook
   and native SQL queries by inspecting the inner dataset-query type."
   [item]
-  (let [t (normalize-context-type (:type item))]
-    (if (and (= "adhoc" t) (native-query-item? item))
-      "native"
-      t)))
+  (normalize-context-type (:type item)))
 
 ;;; Entity Formatting
 
@@ -125,10 +125,11 @@
 
 ;; For saved entities (table, model, question, metric, dashboard), the frontend only sends
 ;; type + id. We fetch full details from the DB using entity-details and render them via
-;; llm-representations, mirroring what the Python AI service did via HTTP callbacks.
+;; llm-shape (the output-side XML formatters), mirroring what the Python AI service did
+;; via HTTP callbacks.
 
 (defn- fetch-and-format
-  "Fetch entity details and format with llm-rep. Falls back to format-simple-entity on failure."
+  "Fetch entity details and format with llm-shape. Falls back to format-simple-entity on failure."
   [entity preamble details-fn format-fn]
   (try
     (let [{:keys [structured-output]} (details-fn)]
@@ -143,19 +144,25 @@
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:table-id (:id entity)
+                    #(entity-details/get-table-details {:entity-type :table
+                                                        :entity-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
-                    llm-rep/table->xml))
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
+                    llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:model-id (:id entity)
+                    #(entity-details/get-table-details {:entity-type :model
+                                                        :entity-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
-                    llm-rep/model->xml))
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
+                    llm-shape/model->xml))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
@@ -166,15 +173,40 @@
       (str id)
       (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
+(defn- native-query-details
+  "Extract query details from legacy or modern native query."
+  [query]
+  {:database-id (:database query)
+   :query-str   (metabot.u/extract-sql-content query)})
+
+(defn- format-native-query
+  "Format viewing `item`"
+  [item]
+  (let [{:keys [database-id query-str]} (native-query-details (:query item))]
+    (te/lines
+     "The user is currently in the SQL editor."
+     (when (:id item)
+       (te/field "Query ID" (:id item)))
+     (te/field "Current SQL query" (te/code query-str "sql"))
+     (te/field "Database ID" database-id)
+     (te/field "Database SQL engine" (:sql_engine item))
+     (when-some [error (:error item)]
+       (te/field "Query error" (te/code error)))
+     (when-let [config-ids (format-chart-config-ids item)]
+       (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+     (te/field "Tables used" (some->> (:used_tables item)
+                                      (map format-entity)
+                                      te/lines)))))
+
 (defmethod format-entity "question"
   [entity]
   (if (native-query-item? entity)
-    (format-entity "native" entity)
+    (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
                       #(entity-details/get-report-details {:report-id (:id entity)
                                                            :with-field-values? false})
-                      llm-rep/question->xml)))
+                      llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
@@ -182,79 +214,68 @@
                     "The user is currently looking at the details of a metric:"
                     #(entity-details/get-metric-details {:metric-id (:id entity)
                                                          :with-field-values? false})
-                    llm-rep/metric->xml))
+                    llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a dashboard:"
                     #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
-                    llm-rep/dashboard->xml))
+                    llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
-  (te/lines "The user is currently in the notebook editor viewing a query."
-            (te/field "Query ID" (:id item))
-            (te/field "Database ID" (get-in item [:query :database]))
-            (when-let [config-ids (format-chart-config-ids item)]
-              (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-            (te/field "Tables used" (some->> (:used_tables item)
-                                             (map format-entity)
-                                             te/lines))))
-
-;; Format native SQL query viewing context.
-;; The :query field can be either a plain SQL string (legacy / explicit `type: "native"`)
-;; or a dataset-query map (from the frontend with `type: "adhoc"`) where the actual SQL
-;; lives at [:native :query].
-(defmethod format-entity "native"
-  [item]
-  (let [query-val (:query item)
-        sql-text  (cond
-                    ;; Plain SQL string (legacy)
-                    (string? query-val) query-val
-                    ;; MLv2/pMBQL or legacy dataset-query map: normalize and use lib
-                    (and (map? query-val) (:database query-val))
-                    (try
-                      (lib/raw-native-query (lib-be/normalize-query query-val))
-                      (catch Exception _
-                        ;; Fall back to manual extraction
-                        (or (some :native (:stages query-val))
-                            (get-in query-val [:native :query]))))
-                    ;; Other map shapes
-                    (map? query-val) (get-in query-val [:native :query])
-                    :else nil)]
-    (te/lines
-     "The user is currently in the SQL editor."
-     (te/field "Query ID" (:id item))
-     (te/field "Current SQL query" (te/code sql-text "sql"))
-     (te/field "Database SQL engine" (:sql_engine item))
-     (te/field "Query error" (te/code (:error item)))
-     (when-let [config-ids (format-chart-config-ids item)]
-       (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-     (te/field "Tables used" (some->> (:used_tables item)
-                                      (map format-entity)
-                                      te/lines)))))
+  (if (native-query-item? item)
+    (format-native-query item)
+    (te/lines "The user is currently in the notebook editor viewing a query."
+              (te/field "Query ID" (:id item))
+              (te/field "Database ID" (get-in item [:query :database]))
+              (when-let [config-ids (format-chart-config-ids item)]
+                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+              (te/field "Tables used" (some->> (:used_tables item)
+                                               (map format-entity)
+                                               te/lines)))))
 
 (defn- transform-query-source-text
+  "Format a transform's `:query` source for the LLM.
+
+  When the source carries a query map with a `:database` key, we normalise it and export to
+  the same canonical portable representations form the `construct_notebook_query` tool
+  consumes (rendered as a JSON code block). Both structured (`mbql.stage/mbql`) and native
+  (`mbql.stage/native`) stages go through this path - the latter is intentional: the repr
+  export preserves portable `card-id` / `snippet-id` references inside `template-tags`, and
+  stays in lockstep with the freshly-built-query payloads `construct_notebook_query` returns
+  to the LLM.
+
+  Pre-resolved string sources (`:query` is itself a string, or carries `:query-content` -
+  the SQL-tool's already-rendered shape) pass through unchanged: there's no map to
+  normalise.
+
+  Falls back to a `pprint`'d query map only as a last resort, when repr export is
+  unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
   (let [query (:query source)]
     (cond
       (string? query) query
       (string? (:query-content query)) (:query-content query)
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (and (map? query) (:database query))
       (try
-        (let [normalized (lib-be/normalize-query query)]
-          (if (lib/native-only-query? normalized)
-            (or (lib/raw-native-query normalized)
-                (some :native (:stages normalized))
-                (get-in normalized [:native :query]))
+        (let [normalized (lib-be/normalize-query query)
+              database-id (:database normalized)
+              mp (when database-id
+                   (lib-be/application-database-metadata-provider database-id))
+              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+          (if exported
+            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
             (u/pprint-to-str normalized)))
         (catch Exception _
           (u/pprint-to-str query)))
+      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
+      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
+      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (map? query) (u/pprint-to-str query)
       :else (some-> query str))))
 
@@ -353,9 +374,9 @@
 
   Returns formatted string for template variable {{recent_views}}."
   [context]
-  (if-not (:user_recently_viewed context)
-    ""
-    (let [items (:user_recently_viewed context)]
+  (let [items (:user_recently_viewed context)]
+    (if-not (seq items)
+      ""
       (te/lines "Here are some items the user has recently viewed:"
                 (for [item items]
                   (format-simple-entity (select-keys item [:type :id :name :description])))
@@ -371,10 +392,10 @@
   [_context]
   (try
     (when-let [{:keys [id name email-address glossary]} (:structured-output (entity-details/get-current-user nil))]
-      (llm-rep/user->xml {:id       id
-                          :name     name
-                          :email    email-address
-                          :glossary glossary}))
+      (llm-shape/user->xml {:id       id
+                            :name     name
+                            :email    email-address
+                            :glossary glossary}))
     (catch Exception e
       (log/error e "Error formatting current user info")
       nil)))

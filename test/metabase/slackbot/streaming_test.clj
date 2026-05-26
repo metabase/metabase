@@ -1,7 +1,11 @@
 (ns metabase.slackbot.streaming-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
+   [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.streaming :as slackbot.streaming]
    [metabase.slackbot.test-util :as tu]
@@ -37,17 +41,17 @@
 
 (deftest thread->history-strips-bot-mentions-test
   (testing "User messages have bot mentions stripped"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "<@UBOT123> hello" :user "U123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :user :content "hello"}] result))))))
 
 (deftest thread->history-merges-tool-calls-test
   (testing "Bot messages include tool call data from DB before text"
-    (with-redefs [slackbot.persistence/message-history
-                  (constantly {"1709567890.000002"
-                               [{:role :assistant :tool_calls [{:id "tc1" :name "run_query"}]}
-                                {:role :tool :tool_call_id "tc1" :content "42"}]})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history
+                                (constantly {"1709567890.000002"
+                                             [{:role :assistant :tool_calls [{:id "tc1" :name "run_query"}]}
+                                              {:role :tool :tool_call_id "tc1" :content "42"}]})]
       (let [thread {:messages [{:ts "1709567890.000002" :text "The answer is 42" :bot_id "B123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= 3 (count result)))
@@ -57,7 +61,7 @@
 
 (deftest thread->history-excludes-thinking-test
   (testing "Thinking placeholder messages are excluded from history"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "question" :user "U123"}
                                {:ts "1709567890.000002" :text "_Thinking..._" :bot_id "B123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
@@ -66,7 +70,7 @@
 
 (deftest thread->history-excludes-blank-bot-messages-test
   (testing "Bot messages with blank text are excluded"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "" :bot_id "B123"}
                                {:ts "1709567890.000002" :text "   " :bot_id "B123"}
                                {:ts "1709567890.000003" :text "real" :bot_id "B123"}]}
@@ -75,9 +79,9 @@
 
 (deftest thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
-    (with-redefs [slackbot.persistence/message-history  (constantly {})
-                  slackbot.persistence/deleted-message-ids
-                  (fn [_conv-id _ids] #{"1709567890.000002"})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history  (constantly {})
+                                slackbot.persistence/deleted-message-ids
+                                (fn [_conv-id _ids] #{"1709567890.000002"})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "User question" :user "U123"}
                                {:ts "1709567890.000002" :text "Deleted bot response" :bot_id "B123"}
                                {:ts "1709567890.000003" :text "Live bot response" :bot_id "B123"}]}
@@ -111,8 +115,9 @@
 
 (deftest feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
-    (let [conversation-id "test-conv-123"
-          blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
+    (let [conversation-id     "test-conv-123"
+          message-external-id "msg-ext-abc"
+          blocks              (#'slackbot.streaming/feedback-blocks conversation-id message-external-id)]
       (is (= 1 (count blocks)))
       (let [{:keys [type block_id elements]} (first blocks)]
         (is (= "context_actions" type))
@@ -122,10 +127,14 @@
           (is (= "feedback_buttons" (:type fb)))
           (is (= "metabot_feedback" (:action_id fb)))
           (testing "positive button"
-            (is (= {:conversation_id conversation-id :positive true}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            true}
                    (json/decode (get-in fb [:positive_button :value]) true))))
           (testing "negative button"
-            (is (= {:conversation_id conversation-id :positive false}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
 (deftest streaming-response-includes-feedback-blocks-test
@@ -147,6 +156,132 @@
                   (is (= 1 (count blocks)))
                   (is (= "metabot_feedback" (:block_id (first blocks))))
                   (is (= "feedback_buttons" (:type (first (:elements (first blocks)))))))))))))))
+
+(deftest slackbot-posts-free-trial-limit-error-when-managed-provider-is-locked-test
+  (let [posted-message (atom nil)
+        event          {:channel "C1" :ts "123.456" :channel_type "im"}]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                       "metabase/anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                  (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                             :is-locked   true}}})
+                                  slackbot.events/event->reply-context
+                                  (constantly {:channel "C1" :thread_ts "123.456"})
+                                  slackbot.events/dm?
+                                  (constantly true)
+                                  slackbot.client/post-thread-reply
+                                  (fn [_ message-ctx text & _]
+                                    (reset! posted-message {:message-ctx message-ctx :text text})
+                                    {:ok true})]
+        (slackbot.streaming/send-response {:token "xoxb-test"} event)
+        (is (= {:message-ctx {:channel "C1" :thread_ts "123.456"}
+                :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
+               @posted-message))))))
+
+(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+  (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
+            for metabase/ prefixed provider"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            start-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+              (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                          (constantly nil)
+                                          metabot.persistence/start-turn!
+                                          (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                            (swap! start-opts conj opts)
+                                            {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                          metabot.persistence/finalize-assistant-turn!
+                                          (fn [& _] nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})))
+            (testing "start-turn! received ai-proxy? = true"
+              (is (=? [{:ai-proxy? true}] @start-opts)))))))))
+
+(deftest slackbot-streaming-persists-failed-conversations-test
+  (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
+            start-turn! inserts user + placeholder atomically before any setup runs."
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            stored     (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (mt/with-dynamic-fn-redefs [metabot.persistence/start-turn!
+                                        (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                          (deliver stored opts)
+                                          {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        ;; Force setup to throw *after* start-turn! has run.
+                                        slackbot.persistence/message-history
+                                        (fn [& _] (throw (ex-info "boom" {})))]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref stored 5000 ::timeout)]
+                (testing "start-turn! was called before the failure"
+                  (is (not= ::timeout opts))
+                  (is (some? (:slack-msg-id opts))))))))))))
+
+(deftest slackbot-streaming-never-writes-pii-columns-test
+  (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
+    (mt/with-premium-features #{:audit-app}
+      (tu/with-slackbot-setup
+        (let [event-body tu/base-dm-event]
+          (doseq [flag-on? [true false]]
+            (testing (str "with analytics-pii-retention-enabled=" flag-on?)
+              (let [start-opts (atom [])]
+                (tu/with-slackbot-mocks
+                  {:ai-text "Hello!"}
+                  (fn [{:keys [stop-stream-calls]}]
+                    (mt/with-temporary-setting-values [analytics-pii-retention-enabled flag-on?]
+                      (mt/with-dynamic-fn-redefs [metabot.persistence/start-turn!
+                                                  (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                                    (swap! start-opts conj opts)
+                                                    {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                                  metabot.persistence/finalize-assistant-turn!
+                                                  (fn [& _] nil)]
+                        (mt/client :post 200 "metabot/slack/events"
+                                   (tu/slack-request-options event-body)
+                                   event-body)
+                        (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                                 :done?      true?
+                                 :timeout-ms 5000})))
+                    (testing "start-turn! never received :hostname or :pii-info from the slackbot path"
+                      (doseq [opts @start-opts]
+                        (is (not (contains? opts :hostname)))
+                        (is (not (contains? opts :pii-info)))))))))))))))
+
+(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+  (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
+            for direct BYOK provider"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            start-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-haiku-4-5"]
+              (mt/with-dynamic-fn-redefs [metabot.persistence/start-turn!
+                                          (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                            (swap! start-opts conj opts)
+                                            {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                          metabot.persistence/finalize-assistant-turn!
+                                          (fn [& _] nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})))
+            (testing "start-turn! received ai-proxy? = false"
+              (is (=? [{:ai-proxy? false}] @start-opts)))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 

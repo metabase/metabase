@@ -55,7 +55,7 @@
 
 (defn remember-query
   "Store a query in memory state by its query-id.
-  Query should be an MBQL/MLv2 query map."
+  Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
   (update-in memory [:state :queries] assoc query-id query))
 

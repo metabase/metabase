@@ -3,14 +3,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import {
-  dataStudioMetric,
-  dataStudioPublishedTableMeasure,
-} from "metabase/lib/urls/data-studio";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -25,14 +19,12 @@ import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricPill.module.css";
 
-type PillPopoverState = "closed" | "swap" | "context-menu" | "breakout-picker";
+type PillPopoverState = "closed" | "menu" | "swap" | "breakout-picker";
 
 type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -43,15 +35,12 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
-  selectedMetricIds,
-  selectedMeasureIds,
   onSwap,
   onRemove,
   onSetBreakout,
   onOpen,
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
-  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const dimensions = useMemo(
     () =>
@@ -93,26 +82,12 @@ export function MetricPill({
 
   const handleOpen = useCallback(() => {
     onOpen?.();
-    setPopoverState("swap");
+    setPopoverState("menu");
   }, [onOpen]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setPopoverState("context-menu");
+  const handleOpenReplace = useCallback(() => {
+    setPopoverState("swap");
   }, []);
-
-  const handleEditInDataStudio = useCallback(() => {
-    if (metric.sourceType === "measure" && metric.tableId != null) {
-      window.open(
-        dataStudioPublishedTableMeasure(metric.tableId, metric.id),
-        "_blank",
-      );
-    } else {
-      window.open(dataStudioMetric(metric.id), "_blank");
-    }
-    setPopoverState("closed");
-  }, [metric]);
 
   const handleOpenBreakoutPicker = useCallback(() => {
     setPopoverState("breakout-picker");
@@ -136,6 +111,9 @@ export function MetricPill({
         shadow="md"
         withinPortal
         trapFocus
+        // these are the defaults, but listing them explicitly
+        // since we're going to add listeners to stop propagation
+        clickOutsideEvents={["mousedown", "touchstart"]}
       >
         <Popover.Target>
           <Pill
@@ -153,7 +131,6 @@ export function MetricPill({
               e.stopPropagation();
               handleOpen();
             }}
-            onContextMenu={handleContextMenu}
             removeButtonProps={{
               mr: 0,
               "aria-label": metric.name
@@ -179,27 +156,32 @@ export function MetricPill({
             </Flex>
           </Pill>
         </Popover.Target>
-        <Popover.Dropdown p={0}>
-          <MetricSearchDropdown
-            selectedMetricIds={selectedMetricIds}
-            selectedMeasureIds={selectedMeasureIds}
-            onSelect={handleSelect}
-            onClose={handleClose}
-            excludeMetric={{
-              id: metric.id,
-              sourceType: metric.sourceType,
-            }}
-            showSearchInput
-          />
+        <Popover.Dropdown
+          p={0}
+          mt="-0.15rem"
+          bd="none" // the border causes the minipicker to be slightly mispositioned
+        >
+          <div
+            // prevent clicks in mini or entity picker from closing the popover
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <MetricSearchDropdown
+              onSelect={handleSelect}
+              onClose={handleClose}
+              selectedMetric={metric}
+              menuProps={{
+                offset: 0,
+              }}
+            />
+          </div>
         </Popover.Dropdown>
       </Popover>
       <Menu
-        opened={popoverState === "context-menu"}
+        opened={popoverState === "menu"}
         onChange={(opened) => {
           if (!opened) {
-            setPopoverState((prev) =>
-              prev === "context-menu" ? "closed" : prev,
-            );
+            setPopoverState((prev) => (prev === "menu" ? "closed" : prev));
           }
         }}
         position="bottom-start"
@@ -213,7 +195,13 @@ export function MetricPill({
             className={S.menuTarget}
           />
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown mt="-0.15rem">
+          <Menu.Item
+            leftSection={<Icon name="sync" />}
+            onClick={handleOpenReplace}
+          >
+            {t`Replace`}
+          </Menu.Item>
           {dimensions.size > 0 && definition && (
             <>
               {breakoutDimension && (
@@ -230,18 +218,11 @@ export function MetricPill({
               >
                 {breakoutDimension ? t`Change breakout` : t`Break out`}
               </Menu.Item>
-              <Menu.Divider />
             </>
           )}
-          {hasDataStudioAccess && (
-            <Menu.Item
-              leftSection={<Icon name="pencil" />}
-              rightSection={<Icon name="external" />}
-              onClick={handleEditInDataStudio}
-            >
-              {t`Edit in Data Studio`}
-            </Menu.Item>
-          )}
+          {metric.sourceType === "metric" &&
+            dimensions.size > 0 &&
+            definition && <Menu.Divider role="separator" />}
           {metric.sourceType === "metric" && (
             <Menu.Item
               leftSection={<Icon name="info" />}
@@ -277,7 +258,7 @@ export function MetricPill({
               className={S.menuTarget}
             />
           </Popover.Target>
-          <Popover.Dropdown p={0}>
+          <Popover.Dropdown p={0} mt="-0.15rem">
             <BreakoutDimensionPicker
               definition={definition}
               currentBreakoutDimension={breakoutDimension}

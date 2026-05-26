@@ -1,7 +1,7 @@
 // SKIPPED eslint-disable-next-line no-external-references-for-sdk-package-code
 import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 // SKIPPED eslint-disable-next-line no-external-references-for-sdk-package-code
-import { versionToNumericComponents } from "metabase/lib/utils";
+import { versionToNumericComponents } from "metabase/utils/version";
 
 // They are mostly used for local development
 export const isInvalidMetabaseVersion = (mbVersion: string) => {

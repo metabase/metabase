@@ -60,7 +60,6 @@ export const DataGridRow = <TData,>({
   return (
     <div
       role="row"
-      key={row.origin.id}
       ref={rowMeasureRef}
       {...{
         [datasetIndexAttributeName]: row.origin.index,

@@ -5,64 +5,44 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]))
 
-(deftest mock-source-write-files-removal-test
-  (testing "MockSource handles removal entries correctly"
+(deftest mock-source-write-files-managed-dir-cleanup-test
+  (testing "MockSource removes files in managed dirs not in write set"
     (let [source (th/create-mock-source
                   :initial-files {"main" {"collections/abc/file1.yaml" "content1"
                                           "collections/abc/file2.yaml" "content2"
                                           "collections/def/file3.yaml" "content3"
-                                          "other/file4.yaml" "content4"}})
+                                          "other/file4.yaml" "content4"}}
+                  :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Remove abc collection"
-                             [{:path "collections/abc" :remove? true}])
-      (is (= #{"collections/def/file3.yaml" "other/file4.yaml"}
+      (source.p/write-files! snapshot "Write only abc"
+                             [{:path "collections/abc/file1.yaml" :content "new-content1"}])
+      (is (= #{"collections/abc/file1.yaml" "other/file4.yaml"}
              (set (source.p/list-files snapshot)))
-          "Should remove all files under collections/abc recursively"))))
+          "Only written files in managed dirs should remain; unmanaged dirs untouched"))))
 
-(deftest mock-source-write-files-removal-exact-path-test
-  (testing "MockSource removal matches exact path"
+(deftest mock-source-write-files-unmanaged-preserved-test
+  (testing "MockSource preserves files in unmanaged directories"
     (let [source (th/create-mock-source
-                  :initial-files {"main" {"collections/abc.yaml" "content1"
-                                          "collections/abcdef/file.yaml" "content2"}})
+                  :initial-files {"main" {"collections/abc/file1.yaml" "content1"
+                                          "unmanaged/file2.yaml" "content2"}}
+                  :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Remove abc.yaml"
-                             [{:path "collections/abc.yaml" :remove? true}])
-      (is (= #{"collections/abcdef/file.yaml"}
+      (source.p/write-files! snapshot "Write collections"
+                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
+      (is (= #{"collections/abc/file1.yaml" "unmanaged/file2.yaml"}
              (set (source.p/list-files snapshot)))
-          "Should only remove exact path match, not prefix match without slash"))))
+          "Unmanaged directory files should be preserved"))))
 
-(deftest mock-source-write-files-mixed-write-and-removal-test
-  (testing "MockSource handles both write and removal entries"
+(deftest mock-source-write-files-empty-managed-dir-cleanup-test
+  (testing "MockSource cleans managed dir even when no files written to it"
     (let [source (th/create-mock-source
-                  :initial-files {"main" {"collections/old/file1.yaml" "old-content"
-                                          "collections/keep/file2.yaml" "keep-content"}})
+                  :initial-files {"main" {"collections/abc/file1.yaml" "content1"
+                                          "snippets/old.yaml" "old-snippet"}}
+                  :managed-dirs #{"collections" "snippets"})
           snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Mixed operations"
-                             [{:path "collections/old" :remove? true}
-                              {:path "collections/new/file3.yaml" :content "new-content"}])
-      (is (= #{"collections/keep/file2.yaml" "collections/new/file3.yaml"}
-             (set (source.p/list-files snapshot)))
-          "Should remove old files and add new files"))))
-
-(deftest mock-source-write-files-empty-removal-path-test
-  (testing "MockSource ignores removal entries with empty paths"
-    (let [source (th/create-mock-source
-                  :initial-files {"main" {"collections/abc/file1.yaml" "content1"}})
-          snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Empty removal"
-                             [{:path "" :remove? true}
-                              {:path "   " :remove? true}])
+      ;; Write only to collections, nothing to snippets
+      (source.p/write-files! snapshot "Write only collections"
+                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
       (is (= #{"collections/abc/file1.yaml"}
              (set (source.p/list-files snapshot)))
-          "Should not remove anything when removal path is empty or blank"))))
-
-(deftest mock-source-write-files-nonexistent-removal-path-test
-  (testing "MockSource handles removal of non-existent paths (no-op)"
-    (let [source (th/create-mock-source
-                  :initial-files {"main" {"collections/abc/file1.yaml" "content1"}})
-          snapshot (source.p/snapshot source)]
-      (source.p/write-files! snapshot "Remove nonexistent"
-                             [{:path "collections/xyz" :remove? true}])
-      (is (= #{"collections/abc/file1.yaml"}
-             (set (source.p/list-files snapshot)))
-          "Should be a no-op when removing non-existent path"))))
+          "Snippets dir should be cleaned even though no snippet files were written"))))

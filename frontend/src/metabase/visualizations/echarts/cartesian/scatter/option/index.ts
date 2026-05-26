@@ -99,7 +99,6 @@ export function getScatterPlotOption(
   if (isSplitPanels) {
     const baseXAxis = buildDimensionAxis(
       chartModel,
-      chartWidth,
       settings,
       chartLayout,
       hasTimelineEvents,
@@ -116,7 +115,6 @@ export function getScatterPlotOption(
   } else {
     const axes = buildAxes(
       chartModel,
-      chartWidth,
       chartLayout,
       settings,
       hasTimelineEvents,

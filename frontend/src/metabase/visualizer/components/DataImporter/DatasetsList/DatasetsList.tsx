@@ -3,11 +3,9 @@ import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getDashboard } from "metabase/dashboard/selectors";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Skeleton } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDataSources,
@@ -33,6 +31,8 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
+import { trackVisualizerDataChanged } from "../../analytics";
+
 import { DatasetsListItem, type Item } from "./DatasetsListItem";
 import { getIsCompatible } from "./getIsCompatible";
 
@@ -55,6 +55,12 @@ interface DatasetsListProps {
    * so next time it is rendered, it will show the data immediately.
    */
   muted?: boolean;
+  /**
+   * The id of the dashboard the visualizer was opened from, or `undefined` when
+   * it wasn't opened from a dashboard. Used to filter out dashboard questions
+   * that belong to other dashboards.
+   */
+  dashboardId: DashboardId | undefined;
 }
 
 export function DatasetsList({
@@ -62,8 +68,8 @@ export function DatasetsList({
   setDataSourceCollapsed,
   style,
   muted,
+  dashboardId,
 }: DatasetsListProps) {
-  const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const dataSourceIds = useMemo(
@@ -85,11 +91,7 @@ export function DatasetsList({
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
-      trackSimpleEvent({
-        event: "visualizer_data_changed",
-        event_detail: "visualizer_datasource_added",
-        triggered_from: "visualizer-modal",
-      });
+      trackVisualizerDataChanged("visualizer_datasource_added");
 
       dispatch(addDataSource(source.id));
       setDataSourceCollapsed(source.id, false);
@@ -99,11 +101,7 @@ export function DatasetsList({
 
   const handleRemoveDataSource = useCallback(
     (source: VisualizerDataSource, forget?: boolean) => {
-      trackSimpleEvent({
-        event: "visualizer_data_changed",
-        event_detail: "visualizer_datasource_removed",
-        triggered_from: "visualizer-modal",
-      });
+      trackVisualizerDataChanged("visualizer_datasource_removed");
 
       dispatch(removeDataSource({ source, forget }));
       setDataSourceCollapsed(source.id, true);
@@ -159,11 +157,7 @@ export function DatasetsList({
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
-      trackSimpleEvent({
-        event: "visualizer_data_changed",
-        event_detail: "visualizer_datasource_replaced",
-        triggered_from: "visualizer-modal",
-      });
+      trackVisualizerDataChanged("visualizer_datasource_replaced");
 
       dataSources.forEach((dataSource) => {
         handleRemoveDataSource(dataSource, true);

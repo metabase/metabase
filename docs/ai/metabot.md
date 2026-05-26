@@ -15,16 +15,17 @@ To set up Metabot, see [Metabot settings](./settings.md).
 
 ## What Metabot can do
 
-Metabot can help you to:
+Here's a non-exhaustive list of things Metabot can help with:
 
-- [AI exploration](#ai-exploration).
+- [Answer data questions asked with natural language](#ai-exploration).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- Answer questions from our documentation (as in, the literature you're reading right now).
-- [Chat with Metabot in Slack](./metabot-slack.md).
+- [Generate transforms](../data-studio/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
+- [Generate charts in documents](../documents/introduction.md)
+- [Answer questions from Slack](./metabot-slack.md).
 
 Like with all generative AI, you'll always need to double-check results.
 
@@ -101,11 +102,13 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
-2. Press Cmd+shift+i on Mac or Ctrl+shift+i on Windows.
-3. Describe the SQL you want to generate or modify.
-4. Review the generated code and accept or reject it.
+2. Press **Cmd+Shift+I** (Mac) or **Ctrl+Shift+I** (Windows).
+3. Enter one or more tables.
+4. Type a prompt describing the query you want to write.
+5. Click **Generate** to create the SQL.
+6. Accept or reject the change. Always review the code before running it (AI is not magic).
 
-Once you start typing or editing your SQL, you can continue using the keyboard shortcut to refine your code.
+You can also edit existing SQL. Place your cursor in the query, press **Cmd/Ctrl+Shift+I**, and describe the change you want to make (like "add a filter for orders from this year"). Metabase will suggest edits that you can accept or reject.
 
 ## Navigating after Metabot creates a chart
 
@@ -127,8 +130,6 @@ When answering questions in AI exploration, Metabot searches a limited set of co
 
 Metabot is getting smarter all the time, but there are some things it can't do yet:
 
-- **Custom expressions.** Metabot can't use [custom expressions](../questions/query-builder/expressions-list.md) in query builder questions.
-- **Multi-level aggregation.** Metabot is limited to a single level of aggregation and grouping.
 - **SQL variables.** Metabot can't generate SQL queries that include [SQL parameters](../questions/native-editor/sql-parameters.md) (like filters or field filters).
 - **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
 - **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.

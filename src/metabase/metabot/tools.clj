@@ -6,6 +6,8 @@
   `:capabilities`, `:prompt`, `:decode`, and `:system-instructions`. The var itself
   is a function that takes the tool arguments and returns a result map."
   (:require
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
@@ -26,6 +28,7 @@
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.tools.todo :as tools.todo]
    [metabase.metabot.tools.transforms :as tools.transforms]
+   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -56,9 +59,7 @@
   create-sql-query-tool
   create-sql-query-code-edit-tool
   edit-sql-query-tool
-  edit-sql-query-code-edit-tool
-  replace-sql-query-tool
-  replace-sql-query-code-edit-tool]
+  replace-sql-query-tool]
  [tools.charts
   create-chart-tool
   edit-chart-tool]
@@ -87,6 +88,15 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool])
 
+(def query-generation-tool-names
+  "Tool names that produce a runnable query (SQL or notebook). Both the in-app
+  and slackbot variants of `construct_notebook_query` register under the same
+  `:tool-name`, so a single string covers both."
+  #{"create_sql_query"
+    "edit_sql_query"
+    "replace_sql_query"
+    "construct_notebook_query"})
+
 (def ^:private state-dependent-tools
   "Set of tool names that require access to agent state."
   #{"analyze_chart"
@@ -95,6 +105,18 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"})
+
+(defn- wrap-with-scope-check
+  "Wrap a tool function with a scope check. Returns a function that checks
+  `*current-user-scope*` against `required-scope` before calling `f`.
+  Returns a denial message if the scope is not satisfied."
+  [f tool-name required-scope]
+  (fn [args]
+    (if (api-scope/scope-matches? scope/*current-user-scope* required-scope)
+      (f args)
+      (do (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
+                     tool-name required-scope scope/*current-user-scope*)
+          {:output "You do not have permission to use this tool."}))))
 
 (defn wrap-tools-with-state
   "Wrap state-dependent tools with access to the memory atom.
@@ -111,22 +133,28 @@
   [tools memory-atom metabot-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
-     (let [m        (meta tool-var)
-           tool-def {:tool-name            (:tool-name m)
-                     :doc                  (:doc m)
-                     :schema               (:schema m)
-                     :prompt               (:prompt m)
-                     :decode               (:decode m)
-                     :system-instructions  (:system-instructions m)
-                     :capabilities         (:capabilities m)
-                     :fn                   (if (contains? state-dependent-tools tool-name)
-                                             (fn [args]
-                                               (binding [shared/*memory-atom* memory-atom
-                                                         shared/*metabot-id*  metabot-id]
-                                                 (tool-var args)))
-                                             (fn [args]
-                                               (binding [shared/*metabot-id* metabot-id]
-                                                 (tool-var args))))}]
+     (let [m          (meta tool-var)
+           base-fn    (if (contains? state-dependent-tools tool-name)
+                        (fn [args]
+                          (binding [shared/*memory-atom* memory-atom
+                                    shared/*metabot-id*  metabot-id]
+                            (tool-var args)))
+                        (fn [args]
+                          (binding [shared/*metabot-id* metabot-id]
+                            (tool-var args))))
+           tool-scope (:scope m)
+           tool-fn    (if tool-scope
+                        (wrap-with-scope-check base-fn tool-name tool-scope)
+                        base-fn)
+           tool-def   {:tool-name            (:tool-name m)
+                       :doc                  (:doc m)
+                       :schema               (:schema m)
+                       :prompt               (:prompt m)
+                       :decode               (:decode m)
+                       :system-instructions  (:system-instructions m)
+                       :capabilities         (:capabilities m)
+                       :scope                (:scope m)
+                       :fn                   tool-fn}]
        (assoc acc tool-name tool-def)))
    {}
    tools))

@@ -33,7 +33,7 @@ title: DatetimeAdd
 `amount`:
 
 - An integer. You cannot use fractional values. For example, you cannot add "half a year" (0.5).
-- May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
+- May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-02-25`.
 
 ## Calculating an end date
 

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -488,7 +489,7 @@
 ;;; `partial=`, which ended up asserting nothing of value. However, other tests for this
 ;;; issue, [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]], and a test
 ;;; in `e2e/test/scenarios/joins/joins.cy.spec.js`, are still passing. So I'm not sure what to do with this test. I
-;;; updated it to use MLv2, but it's commented out for now.
+;;; updated it to use Lib, but it's commented out for now.
 ;;;
 ;;; Note that it mostly passes if you
 ;;; update [[metabase.query-processor.middleware.add-remaps/remap-column-infos]] not to ignore `:field`

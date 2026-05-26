@@ -44,7 +44,7 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
- ;; collection write events
+;; collection write events
 
 (mr/def ::collection
   [:map {:closed true}
@@ -247,3 +247,17 @@
 (mr/def :event/field-create ::field)
 (mr/def :event/field-update ::field)
 (mr/def :event/field-delete ::field)
+
+;; security advisory events
+
+(mr/def :event/security-advisory-match
+  [:map {:closed true}
+   [:object [:map
+             [:advisory_id       :string]
+             [:severity          [:enum :critical :high :medium :low]]
+             [:title             :string]
+             [:description       :string]
+             [:match_status      [:enum :active :error]]
+             [:advisory_url      {:optional true} [:maybe :string]]
+             [:remediation       :string]
+             [:affected_versions [:sequential :map]]]]])

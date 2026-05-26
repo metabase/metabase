@@ -1,15 +1,15 @@
 import { cardApi, datasetApi } from "metabase/api";
-import { Tables } from "metabase/entities/tables";
-import { entityCompatibleQuery } from "metabase/lib/entities";
+import { entityCompatibleQuery } from "metabase/entities/utils";
+import type { Dispatch } from "metabase/redux/store";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
-import type { Dispatch } from "metabase-types/store";
 
 export const loadMetadataForTable =
   (tableId: TableId) => async (dispatch: Dispatch) => {
     try {
-      await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+      await dispatch(fetchTableMetadata({ id: tableId }));
     } catch (error) {
       console.error("Error in loadMetadataForTable", error);
     }

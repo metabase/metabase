@@ -10,8 +10,8 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { isWithinIframe } from "metabase/lib/dom";
 import { Collapse, Divider, Group, Icon, Stack, Text } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { Dashboard } from "metabase-types/api";
 
 import Styles from "./DashboardEntityIdCard.module.css";

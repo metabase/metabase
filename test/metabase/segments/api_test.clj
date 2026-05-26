@@ -1,5 +1,6 @@
 (ns metabase.segments.api-test
   "Tests for /api/segment endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
@@ -21,7 +22,7 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id :dependency_analysis_version)
+      (dissoc :id :table_id)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)
@@ -34,7 +35,7 @@
   {:source-table table-id
    :filter [:= [:field field-id nil] value]})
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -87,7 +88,7 @@
 
 (deftest create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
-                                       "pMBQL" (partial pmbql-segment-definition (mt/id :users))}]
+                                       "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
     (testing format-name
       (is (= {:name                    "A Segment"
               :description             "I did it!"
@@ -145,7 +146,7 @@
     (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :users)
                                                 :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
       (doseq [[format-name eq-fn] [["MBQL4" (partial mbql4-segment-definition (mt/id :users))]
-                                   ["pMBQL" (partial pmbql-segment-definition (mt/id :users))]]]
+                                   ["MBQL5" (partial mbql5-segment-definition (mt/id :users))]]]
         (testing format-name
           (is (= {:name                    "Costa Rica"
                   :description             nil
@@ -276,7 +277,7 @@
 (deftest fetch-segment-test
   (testing "GET /api/segment/:id"
     (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
-                                         "pMBQL" (partial pmbql-segment-definition (mt/id :users))}]
+                                         "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
       (testing format-name
         (mt/with-temp [:model/Segment {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                     :table_id   (mt/id :users)

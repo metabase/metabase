@@ -39,8 +39,11 @@ export const BranchDropdown = ({
 }: BranchDropdownProps) => {
   const [sendToast] = useToast();
   const [searchValue, setSearchValue] = useState("");
-  const { data: branchesData, isLoading: branchesLoading } =
-    useGetBranchesQuery();
+  const {
+    data: branchesData,
+    isLoading: branchesLoading,
+    isError: branchesError,
+  } = useGetBranchesQuery();
   const [createBranch, { isLoading: isCreating }] = useCreateBranchMutation();
 
   const branches = useMemo(() => branchesData?.items || [], [branchesData]);
@@ -118,6 +121,12 @@ export const BranchDropdown = ({
           <Flex justify="center" align="center" p="xl">
             <Loader size="sm" />
           </Flex>
+        ) : branchesError ? (
+          <Box p="md">
+            <Text size="sm" c="error" ta="center">
+              {t`Failed to load branches — check your authentication token`}
+            </Text>
+          </Box>
         ) : (
           <>
             {filteredBranches.length === 0 && !showCreateOption ? (

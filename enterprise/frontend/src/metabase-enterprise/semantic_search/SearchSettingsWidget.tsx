@@ -7,8 +7,8 @@ import { BasicAdminSettingInput } from "metabase/admin/settings/components/widge
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import type { SearchSettingsWidgetProps } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";

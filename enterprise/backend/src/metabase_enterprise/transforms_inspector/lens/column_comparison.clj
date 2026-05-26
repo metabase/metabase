@@ -20,7 +20,7 @@
 ;;; -------------------------------------------------- Query Building --------------------------------------------------
 
 (defn- make-distribution-query
-  "Generate a pMBQL query for field distribution."
+  "Generate a MBQL 5 query for field distribution."
   [db-id table-id field-id]
   (let [mp (lib-be/application-database-metadata-provider db-id)
         table-metadata (lib.metadata/table mp table-id)

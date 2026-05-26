@@ -9,13 +9,13 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
 (def ^:private optimizable-units
@@ -29,7 +29,7 @@
                (isa? expr-type :type/Temporal))))))
 
 (defn- optimizable-expr? [expr]
-  (lib.util.match/match-lite expr
+  (match/match-one expr
     [#{:field :expression} & _]
     (and (temporal-ref? &match)
          (let [unit (or (lib/raw-temporal-bucket &match) :default)]
@@ -43,8 +43,8 @@
 (defn- optimizable-temporal-value?
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
-  (lib.util.match/match-lite temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+  (match/match-one temporal-value
+    [:relative-datetime _opts #{0 :current}]
     true
 
     [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
@@ -56,11 +56,11 @@
   "Do datetime `field` clause and `temporal-value` clause have 'compatible' units that mean we'll be able to optimize
   the filter clause they're in?"
   [field temporal-value]
-  (lib.util.match/match-lite temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+  (match/match-one temporal-value
+    [:relative-datetime _opts #{0 :current}]
     true
 
-    [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
+    [#{:absolute-datetime :relative-datetime} _opts _n _unit]
     (let [field-unit (or (lib/raw-temporal-bucket field) :default)
           value-unit (or (lib/raw-temporal-bucket &match) :default)]
       (cond
@@ -70,7 +70,7 @@
 
 (defmethod can-optimize-filter? :default
   [filter-clause]
-  (lib.util.match/match-lite filter-clause
+  (match/match-one filter-clause
     [_tag
      _opts
      (field :guard optimizable-expr?)
@@ -89,7 +89,7 @@
 
 (defmethod can-optimize-filter? :>=
   [filter-clause]
-  (lib.util.match/match-lite
+  (match/match-one
     filter-clause
     [_tag
      _opts
@@ -100,7 +100,7 @@
 
 (defmethod can-optimize-filter? :<
   [filter-clause]
-  (lib.util.match/match-lite filter-clause
+  (match/match-one filter-clause
     [_tag
      _opts
      ;; Don't optimize < with column that has default temporal bucket
@@ -110,12 +110,13 @@
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
-  (lib.util.match/match-lite filter-clause
+  (match/match-one filter-clause
     [:between
      _opts
      [(_offset :guard #{:+ :-})
       _plus_minus_opts
-      (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
+      (:and [#{:field :expression} & _]
+            (field :guard optimizable-expr?))
       [:interval _interval_opts _n _unit]]
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
@@ -124,7 +125,8 @@
 
     [:between
      _opts
-     (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
+     (:and [#{:field :expression} & _]
+           (field :guard optimizable-expr?))
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
@@ -144,7 +146,7 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (lib.util.match/replace-lite field
+  (match/replace field
     [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 

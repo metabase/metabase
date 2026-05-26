@@ -1,9 +1,9 @@
-import { connect } from "metabase/lib/redux";
 import {
   getOriginalQuestion,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import type { State } from "metabase-types/store";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 
 import QuestionLineage from "../../components/QuestionLineage";
 

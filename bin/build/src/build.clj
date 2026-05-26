@@ -1,6 +1,5 @@
 (ns build
   (:require
-   [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.python :as build.python]
    [build.uberjar :as uberjar]
@@ -89,8 +88,8 @@
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
                    (build-licenses! edition))
-   :drivers      (fn [{:keys [edition]}]
-                   (build-drivers/build-drivers! edition))
+   #_#_:drivers      (fn [{:keys [edition]}]
+                       (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
    :uberjar      (fn [{:keys [edition]}]

@@ -10,17 +10,24 @@
       (is (some? template))
       (is (string? template))
       (is (> (count template) 1000))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "loads embedding-next.selmer template"
     (let [template (prompts/load-system-prompt-template "embedding-next.selmer")]
       (is (some? template))
       (is (string? template))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "returns nil for non-existent template"
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
       (is (nil? template)))))
+
+(deftest construct-notebook-query-prompt-database-name-examples-test
+  (let [prompt (prompts/load-tool-prompt-template "construct_notebook_query.md")]
+    (is (some? prompt))
+    (testing "examples use the exact sample database name, not the old abbreviated portable FK"
+      (is (str/includes? prompt "Sample Database"))
+      (is (not (re-find #"\[Sample\s*," prompt))))))
 
 (deftest load-dialect-instructions-test
   (testing "loads postgresql dialect"

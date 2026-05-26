@@ -79,6 +79,12 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   enableJwtAuth();
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
+
+    // Needed so CORS headers (e.g. Access-Control-Expose-Headers) are sent in responses,
+    // and we can assert them in tests.
+    // Component tests don't send an Origin header (same-origin), so
+    // the middleware skips CORS headers entirely.
+    "embedding-app-origins-sdk": "http://localhost:*",
   });
 }
 

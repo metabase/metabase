@@ -15,18 +15,36 @@ import {
 import S from "./FormSecretKey.module.css";
 import { SetupKeyModal } from "./SetupKeyModal";
 
-export interface FormSecretKeyProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormSecretKeyProps extends Omit<
+  TextInputProps,
+  "value" | "error"
+> {
   name: string;
   nullable?: boolean;
 }
 
 export const FormSecretKey = forwardRef(function FormSecretKey(
-  { name, nullable, onChange, onBlur, ...props }: FormSecretKeyProps,
+  { name, nullable, onChange, onBlur, readOnly, ...props }: FormSecretKeyProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const [showModal, { open: openModal, close: closeModal }] = useDisclosure();
   const [{ value }, { error }, { setValue }] = useField(name);
+
+  const generateSecretButtonProps = readOnly
+    ? null
+    : {
+        rightSection: (
+          <Button
+            className={S.generateButton}
+            miw={value ? undefined : "10rem"}
+            onClick={openModal}
+            variant="filled"
+          >
+            {value ? t`Regenerate key` : t`Set up key`}
+          </Button>
+        ),
+        rightSectionProps: { className: S.rightSection },
+      };
 
   return (
     <>
@@ -43,17 +61,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
               [S.unset]: !value, // Just show the 'Set up key' button when no key is set yet
             }),
           }}
-          rightSection={
-            <Button
-              className={S.generateButton}
-              miw={value ? undefined : "10rem"}
-              onClick={openModal}
-              variant="filled"
-            >
-              {value ? t`Regenerate key` : t`Set up key`}
-            </Button>
-          }
-          rightSectionProps={{ className: S.rightSection }}
+          {...generateSecretButtonProps}
         />
         {!!error && <Text c="error">{error}</Text>}
       </Stack>

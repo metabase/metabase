@@ -1,5 +1,14 @@
+import fetch from "node-fetch";
+
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getVersionInfoUrl, updateVersionInfoChannelJson, updateVersionInfoLatestJson } from "./version-info";
+import { generateVersionInfoJson, getVersionInfoUrl, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+
+jest.mock("node-fetch", () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+const mockFetch = jest.mocked(fetch);
 
 describe("version-info", () => {
   describe("generateVersionInfoJson", () => {
@@ -235,111 +244,83 @@ describe("version-info", () => {
     });
   });
 
-  describe("updateVersionInfoChannelJson", () => {
-    const oldJson = {
+  describe("updateVersionInfoLatest", () => {
+    const existingFile = {
       latest: {
         version: "v0.2.4",
         released: "2022-01-01",
         patch: true,
-        highlights: ["Old Issue 1", "Old Issue 2"],
-      },
-      nightly: {
-        version: "v0.2.4.1",
-        released: "2022-01-03",
-        patch: true,
-        highlights: [],
-      },
-      beta: {
-        version: "v0.2.6",
-        released: "2022-01-02",
-        patch: true,
-        highlights: [],
+        highlights: ["Old Issue 1"],
       },
       older: [
         {
           version: "v0.2.5",
           released: "2023-01-01",
           patch: true,
-          highlights: ["New Issue 31", "New Issue 41"],
-        },
-        {
-          version: "v0.2.3",
-          released: "2021-01-01",
-          patch: true,
-          highlights: ["Old Issue 3", "Old Issue 4"],
-        },
-        {
-          version: "v0.2.2",
-          released: "2020-01-01",
-          patch: true,
-          highlights: ["Old Issue 5", "Old Issue 6"],
+          highlights: ["New Issue"],
         },
       ],
     } as VersionInfoFile;
 
-    it("should update nightly version", () => {
-      const updatedJson = updateVersionInfoChannelJson({
-        version: "v0.2.4.2",
-        existingVersionInfo: oldJson,
-        channel: "nightly",
-        rollout: 51,
-      });
-
-      expect(updatedJson.nightly).toEqual({
-        version: "v0.2.4.2",
-        released: expect.any(String),
-        rollout: 51,
-        highlights: [],
-      });
-
-      expect(updatedJson.beta).toEqual(oldJson.beta);
-      expect(updatedJson.latest).toEqual(oldJson.latest);
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        json: async () => existingFile,
+      } as Awaited<ReturnType<typeof fetch>>);
     });
 
-    it("should update beta version", () => {
-      const updatedJson = updateVersionInfoChannelJson({
-        version: "v0.2.7",
-        existingVersionInfo: oldJson,
-        channel: "beta",
-        rollout: 51,
-      });
+    it("fetches the OSS version-info.json for a v0.* version", async () => {
+      await updateVersionInfoLatest({ newVersion: "v0.2.5" });
 
-      expect(updatedJson.beta).toEqual({
-        version: "v0.2.7",
-        released: expect.any(String),
-        rollout: 51,
-        highlights: [],
-      });
-
-      expect(updatedJson.latest).toEqual(oldJson.latest);
-      expect(updatedJson.nightly).toEqual(oldJson.nightly);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
     });
 
-    it("should update latest version", () => {
-      const updatedJson = updateVersionInfoChannelJson({
-        version: "v0.2.5", // must be in the older array
-        existingVersionInfo: oldJson,
-        channel: "latest",
-        rollout: 51,
+    it("fetches the EE version-info-ee.json for a v1.* version", async () => {
+      const eeFile = {
+        latest: { ...existingFile.latest, version: "v1.2.4" },
+        older: [{ ...existingFile.older[0], version: "v1.2.5" }],
+      } as VersionInfoFile;
+      mockFetch.mockResolvedValue({
+        json: async () => eeFile,
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      await updateVersionInfoLatest({ newVersion: "v1.2.5" });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info-ee.json",
+      );
+    });
+
+    it("promotes the new version to latest via updateVersionInfoLatestJson", async () => {
+      const result = await updateVersionInfoLatest({
+        newVersion: "v0.2.5",
+        rollout: 42,
       });
 
-      expect(updatedJson.latest).toEqual({
+      expect(result.latest).toEqual({
         version: "v0.2.5",
-        released: expect.any(String),
-        rollout: 51,
+        released: "2023-01-01",
         patch: true,
-        highlights: ["New Issue 31", "New Issue 41"],
+        highlights: ["New Issue"],
+        rollout: 42,
       });
-
-      expect(updatedJson.older).toContainEqual({
+      expect(result.older).toContainEqual({
         version: "v0.2.4",
         released: "2022-01-01",
         patch: true,
-        highlights: ["Old Issue 1", "Old Issue 2"],
+        highlights: ["Old Issue 1"],
       });
+    });
 
-      expect(updatedJson.beta).toEqual(oldJson.beta);
-      expect(updatedJson.nightly).toEqual(oldJson.nightly);
+    it("defaults rollout to 100 when omitted", async () => {
+      const result = await updateVersionInfoLatest({ newVersion: "v0.2.5" });
+
+      expect(result.latest.rollout).toEqual(100);
     });
   });
 

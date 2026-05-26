@@ -1,12 +1,12 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
+import { memo, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
+import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -18,12 +18,12 @@ type FieldItemProps = {
   active?: boolean;
   parent?: Field;
   readOnly?: boolean;
-  onSelect?: () => void;
-  onNameChange: (newName: string) => void;
-  onDescriptionChange: (newDescription: string | null) => void;
+  onSelect?: (field: Field) => void;
+  onNameChange: (field: Field, newName: string) => void;
+  onDescriptionChange: (field: Field, newDescription: string | null) => void;
 };
 
-export function FieldItem({
+const FieldItemBase = ({
   active,
   field,
   href,
@@ -32,13 +32,15 @@ export function FieldItem({
   onSelect,
   onNameChange,
   onDescriptionChange,
-}: FieldItemProps) {
-  const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
+}: FieldItemProps) => {
+  const icon = useMemo(() => {
+    return getColumnIcon(Lib.legacyColumnTypeInfo(field));
+  }, [field]);
 
   const handleNameChange = async (newValue: string) => {
     const newName = newValue.trim();
     if (field.display_name !== newName) {
-      onNameChange(newName);
+      onNameChange(field, newName);
     }
   };
 
@@ -47,7 +49,7 @@ export function FieldItem({
     const newDescription = trimmedValue.length === 0 ? null : trimmedValue;
 
     if (field.description !== newDescription) {
-      onDescriptionChange(newDescription);
+      onDescriptionChange(field, newDescription);
     }
   };
 
@@ -70,7 +72,7 @@ export function FieldItem({
     ) {
       event.preventDefault();
     } else {
-      onSelect?.();
+      onSelect?.(field);
     }
   };
 
@@ -172,4 +174,41 @@ export function FieldItem({
       </Flex>
     </Card>
   );
+};
+
+export function areFieldItemPropsEqual(
+  prevProps: FieldItemProps,
+  nextProps: FieldItemProps,
+) {
+  return (
+    prevProps.active === nextProps.active &&
+    prevProps.href === nextProps.href &&
+    prevProps.readOnly === nextProps.readOnly &&
+    prevProps.onSelect === nextProps.onSelect &&
+    prevProps.onNameChange === nextProps.onNameChange &&
+    prevProps.onDescriptionChange === nextProps.onDescriptionChange &&
+    areFieldsEqual(prevProps.field, nextProps.field) &&
+    areParentFieldsEqual(prevProps.parent, nextProps.parent)
+  );
 }
+
+function areFieldsEqual(prevField: Field, nextField: Field) {
+  return (
+    prevField.id === nextField.id &&
+    prevField.display_name === nextField.display_name &&
+    prevField.description === nextField.description &&
+    prevField.base_type === nextField.base_type &&
+    prevField.effective_type === nextField.effective_type &&
+    prevField.semantic_type === nextField.semantic_type &&
+    prevField.fk_target_field_id === nextField.fk_target_field_id
+  );
+}
+
+function areParentFieldsEqual(prevField?: Field, nextField?: Field) {
+  return (
+    prevField?.id === nextField?.id &&
+    prevField?.display_name === nextField?.display_name
+  );
+}
+
+export const FieldItem = memo(FieldItemBase, areFieldItemPropsEqual);

@@ -1,8 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { FixedSizeIcon, Group, Tooltip } from "metabase/ui";
+import { Ellipsified, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 
 type JoinNameCellProps = {
   joinAlias: string;

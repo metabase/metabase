@@ -2,12 +2,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
-import * as domModule from "metabase/lib/dom";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import * as domModule from "metabase/utils/dom";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 
@@ -37,6 +38,31 @@ describe("metabot > ui", () => {
     setup();
     expect(
       await screen.findByText("Metabot isn't perfect. Double-check results."),
+    ).toBeInTheDocument();
+  });
+
+  it("should show a setup prompt and disable chat input when metabot is not configured", async () => {
+    setup({
+      currentUser: createMockUser({ is_superuser: true }),
+      isConfigured: false,
+    });
+
+    expect(
+      await screen.findByText("To use Metabot, please", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "connect to a model" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("should ask non-admins to contact an admin when metabot is not configured", async () => {
+    setup({ isConfigured: false });
+
+    expect(
+      await screen.findByText(
+        "Ask your admin to connect to a model to use Metabot.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -89,7 +115,9 @@ describe("metabot > ui", () => {
       fetchMock.delete(`path:/api/session`, 200);
 
       await assertVisible();
-      store.dispatch(logout(undefined) as any);
+      act(() => {
+        store.dispatch(logout(undefined) as any);
+      });
       await assertNotVisible();
     } finally {
       (domModule.reload as any).mockRestore();
@@ -236,7 +264,7 @@ describe("metabot > ui", () => {
     expect(afterMessages).toHaveTextContent(/The answer is always you./);
   });
 
-  it("should not show retry option for error messages", async () => {
+  it("should show retry option for error messages", async () => {
     setup();
 
     mockAgentEndpoint({
@@ -249,12 +277,10 @@ describe("metabot > ui", () => {
     await enterChatMessage("Who is your favorite?");
 
     const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(
-      /Anthropic API key expired or invalid/,
-    );
+    expect(lastMessage).toHaveTextContent(/Something went wrong/);
     expect(
-      within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
-    ).not.toBeInTheDocument();
+      within(lastMessage!).getByTestId("metabot-chat-message-retry"),
+    ).toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

@@ -75,17 +75,19 @@ describe("scenarios > question > view", () => {
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
 
-      // Filter by category and vendor
+      // The nodata user has view-data permission (via All Users group) but no create-queries permission.
+      // With param_fields hydration, field filter widgets now show as dropdowns with values.
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
-      H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("Balistreri-Muller");
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
-      H.dashboardParametersPopover().within(() => {
-        H.fieldValuesCombobox().type("Widget");
+      H.popover().within(() => {
+        cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });
 
@@ -104,7 +106,9 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
-      // Filter by category and vendor
+      // The nodata user has view-data permission (via All Users group) but no create-queries
+      // permission. The dashboard load populates field metadata into the entity cache via
+      // addFields, so field filter widgets show as dropdowns when navigating to the question.
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
@@ -115,7 +119,6 @@ describe("scenarios > question > view", () => {
       });
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Search the list").type("Widget");
         cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });

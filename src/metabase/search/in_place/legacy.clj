@@ -101,6 +101,7 @@
    :table_id            :integer
    :table_schema        :text
    :table_name          :text
+   :table_display_name  :text
    :table_description   :text
    ;; returned for Metric, Segment, and Action
    :database_id         :integer
@@ -178,11 +179,7 @@
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
                   (case model
-                    "table" [:and
-                             clause
-                             [:or
-                              [:not :is_published]
-                              (search.permissions/permitted-collections-clause search-ctx :collection_id)]]
+                    "table" clause
                     "search-index" [:or
                                     [:= :search_index.model nil]
                                     [:!= :search_index.model [:inline "table"]]
@@ -200,15 +197,17 @@
                                  "collection"    :collection.id
                                  "search-index"  :search_index.collection_id
                                  :collection_id)
-        permitted-clause       [:or
-                                (when (= model "table")
-                                  [:not :is_published])
-                                (search.permissions/permitted-collections-clause search-ctx collection-id-col)]
+        permitted-clause       (if (= model "table")
+                                 ;; Tables have their own permission filter (add-table-where-clauses).
+                                 ;; Skip collection filtering to avoid blocking tables where the user
+                                 ;; has data permissions but no collection access.
+                                 [:= [:inline 1] [:inline 1]]
+                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
         (cond->
-      ;; add a JOIN against Collection *unless* the source table is already Collection
+         ;; add a JOIN against Collection *unless* the source table is already Collection
          (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
          personal-clause           (sql.helpers/where personal-clause)))))
 
@@ -454,6 +453,7 @@
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]
+   [:table.display_name :table_display_name]
    [:table.description :table_description]])
 
 (defmethod columns-for-model "metric"
@@ -705,7 +705,7 @@
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
-    (t2/reducible-query search-query)))
+    (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results
   :search.engine/in-place

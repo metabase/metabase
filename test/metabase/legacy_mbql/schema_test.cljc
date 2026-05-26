@@ -658,3 +658,9 @@
             [:expression "Last_Date_Active" {:base-type :type/DateTimeWithLocalTZ}]]
            normalized))
     (is (mr/validate ::mbql.s/- normalized))))
+
+(deftest ^:parallel fix-incorrectly-nested-field-refs-test
+  (are [clause expected] (= expected
+                            (#'mbql.s/normalize-field clause))
+    [:field [:field 1 nil] nil]                   [:field 1 nil]
+    [:field [:field 1 {:x 2, :y 2, :z 2}] {:x 1}] [:field 1 {:x 1, :y 2, :z 2}]))

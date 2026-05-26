@@ -1,3 +1,8 @@
+# Catch-all filter — emits the full changed-files list as `all_changed_files`
+# so create-test-plan in run-tests.yml can reuse dorny's diff.
+all_changed:
+  - "**"
+
 default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
@@ -77,6 +82,19 @@ frontend_loki_ci: &frontend_loki_ci
   - ".loki/**"
   - ".storybook/**"
 
+frontend_unit_infra: &frontend_unit_infra
+  - *frontend_configs
+  - *frontend_ci
+  - "jest.config.js"
+  - "jest.tz.unit.conf.json"
+  - "frontend/test/**"
+  - "frontend/**/__mocks__/**"
+
+frontend_loki_infra: &frontend_loki_infra
+  - *frontend_configs
+  - *shared_ci
+  - *frontend_loki_ci
+
 backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"
@@ -119,6 +137,12 @@ sources: &sources
   - *frontend_sources
   - *backend_sources
 
+custom_viz_all:
+  - ".github/workflows/run-tests.yml"
+  - ".github/workflows/frontend.yml"
+  - ".github/actions/prepare-node-bun/**"
+  - "enterprise/frontend/src/custom-viz/**"
+
 e2e_ci: &e2e_ci
   - *shared_ci
   - ".github/actions/prepare-uberjar-artifact/**"
@@ -156,6 +180,8 @@ embedding_sdk_host_sample_apps:
 snowplow: &snowplow
   - ".github/workflows/snowplow.yml"
   - "snowplow/**"
+  - "bin/lint-snowplow-schemas.bb"
+  - "bin/lint-snowplow-schemas-test.bb"
 
 e2e_all:
   - *default
@@ -199,6 +225,10 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+serialization_baseline:
+  - ".github/workflows/serialization.yml"
+  - "test_resources/serialization_baseline/**"
 
 openapi:
   - ".github/workflows/openapi.yml"

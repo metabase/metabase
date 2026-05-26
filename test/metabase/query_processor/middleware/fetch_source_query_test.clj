@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.fetch-source-query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -19,10 +20,10 @@
    [metabase.test :as mt]))
 
 (defn resolve-source-cards* [query]
-  ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
+  ;; Handle old tests written with legacy queries. Convert legacy query to MBQL 5 and then convert results
   ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-  (letfn [(thunk [] (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
-                          resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
+  (letfn [(thunk [] (let [mbql5-query (lib.query/query (qp.store/metadata-provider) query)
+                          resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
                       (cond-> resolved
                         (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)
@@ -129,7 +130,7 @@
       (is (false? (lib-be/enable-nested-queries))))
     (qp.store/with-metadata-provider (mock-metadata-provider)
 
-;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
+      ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
                             #"Nested queries are disabled"
                             (resolve-source-cards

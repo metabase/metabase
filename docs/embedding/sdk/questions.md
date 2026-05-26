@@ -5,7 +5,7 @@ description: How to embed charts in your app with the Modular embedding SDK.
 
 # Modular embedding SDK - questions
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true%}
 
 There are different ways you can embed questions:
 
@@ -14,7 +14,7 @@ There are different ways you can embed questions:
 
 ## Embedding a question
 
-You can embed a question using the one of the question components:
+You can embed a question using one of the question components:
 
 ### `StaticQuestion`
 
@@ -60,15 +60,9 @@ Use this component when you want to allow people to explore their data and custo
 
 {% include_file "{{ dirname }}/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
 
-## Pass SQL parameters to SQL questions with `initialSqlParameters`
+## Pass parameters to SQL questions
 
-You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
-
-```typescript
-{% include_file "{{ dirname }}/snippets/questions/initial-sql-parameters.tsx" snippet="example" %}
-```
-
-`initialSqlParameters` can't be used with questions built using the query builder.
+See [Modular embedding parameters](../parameters.md#pass-parameters-to-sql-questions).
 
 ## Enable alerts on embedded questions
 

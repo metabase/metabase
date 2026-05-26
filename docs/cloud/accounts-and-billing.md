@@ -98,7 +98,7 @@ See Metabase's updated [W9 form](https://www.metabase.com/files/2024_W9_signed.p
 ## Update your Tax ID
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
-2. Go to on **Billing**.
+2. Go to **Billing**.
 3. Click on **Invoice Tax IDs**.
 4. Enter your country and Tax ID.
 5. Click **Save**.

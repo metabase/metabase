@@ -129,30 +129,30 @@
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; expired linked-filter fieldvalues
+                                      ;; expired linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; valid sandbox fieldvalues
+                                      ;; valid sandbox fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; valid linked-filter fieldvalues
+                                      ;; valid linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; old full fieldvalues
+                                      ;; old full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; new full fieldvalues
+                                      ;; new full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at now
@@ -299,7 +299,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception
-      (with-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
+      (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}

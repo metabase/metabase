@@ -2,12 +2,12 @@ import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { addUndo } from "metabase/redux/undo";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 
 import { getQuestion } from "../selectors";
 
@@ -47,7 +47,8 @@ export const turnQuestionIntoModel =
     dispatch(
       addUndo({
         message: t`This is a model now.`,
-        actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+        action: () =>
+          dispatch(apiUpdateQuestion(question, { rerunQuery: true })),
       }),
     );
   };
@@ -70,7 +71,7 @@ export const turnModelIntoQuestion =
     dispatch(
       addUndo({
         message: t`This is a question now.`,
-        actions: [apiUpdateQuestion(model)],
+        action: () => dispatch(apiUpdateQuestion(model)),
       }),
     );
   };

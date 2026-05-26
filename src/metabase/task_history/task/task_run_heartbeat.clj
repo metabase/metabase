@@ -99,6 +99,6 @@
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; run every 10 minutes
+                  ;; run every 10 minutes
                   (cron/cron-schedule "0 */10 * * * ? *")))]
     (task/schedule-task! job trigger)))

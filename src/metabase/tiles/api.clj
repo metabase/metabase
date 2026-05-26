@@ -151,7 +151,7 @@
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
   [query      :- ::lib.schema/query
    legacy-ref :- ::legacy-ref]
-  (lib/metadata query (lib/->pMBQL legacy-ref)))
+  (lib/metadata query (lib/->mbql5 legacy-ref)))
 
 (mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.
@@ -208,7 +208,7 @@
      :headers {"Content-Type" "image/png"}
      :body    (tile->byte-array (create-tile zoom points))}
     (throw (ex-info (tru "Query failed")
-                      ;; `result` might be a `core.async` channel or something we're not expecting
+                    ;; `result` might be a `core.async` channel or something we're not expecting
                     (assoc (when (map? result) result) :status-code 400)))))
 
 (mr/def ::query

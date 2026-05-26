@@ -1,8 +1,24 @@
+interface MetabaseLocalization {
+  headers: {
+    language: string;
+    "plural-forms"?: string;
+  };
+  translations: Record<
+    string,
+    Record<string, { msgid?: string; msgstr: string[] }>
+  >;
+}
+
 interface Window {
   MetabaseBootstrap: any;
   MetabaseRoot?: string;
+  /**
+   * @deprecated - use getCspNonce() from metabase/utils/csp instead
+   */
   MetabaseNonce?: string;
   MetabaseUserColorScheme?: string;
+  MetabaseSiteLocalization?: MetabaseLocalization;
+  MetabaseUserLocalization?: MetabaseLocalization;
 
   overrideIsWithinIframe?: boolean; // Mock that we're embedding, so we could test embed components
   METABASE?: boolean; // Add a global so we can check if the parent iframe is Metabase
@@ -13,6 +29,23 @@ interface Window {
     autoResize?: boolean;
     heightCalculationMethod?: string;
     onReady?: () => void;
+  };
+
+  MetabaseSiteLocalization?: {
+    headers: {
+      language: string;
+      "plural-forms"?: string;
+      "content-type"?: string;
+    };
+    translations: Record<string, unknown>;
+  };
+  MetabaseUserLocalization?: {
+    headers: {
+      language: string;
+      "plural-forms"?: string;
+      "content-type"?: string;
+    };
+    translations: Record<string, unknown>;
   };
 }
 
@@ -31,5 +64,13 @@ declare module "*.css" {
 }
 
 declare module "iframe-resizer/js/iframeResizer.contentWindow.js";
+
+declare module "simple-statistics" {
+  const ss: {
+    ckmeans: (data: number[], nClusters: number) => number[][];
+  };
+  // eslint-disable-next-line import/no-default-export -- third-party module declaration
+  export default ss;
+}
 
 type Nullable<T> = T | null;

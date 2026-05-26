@@ -2,7 +2,6 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import type { NormalizedMetric } from "metabase-types/api";
 import { createMockMeasure } from "metabase-types/api/mocks/measure";
 import {
@@ -33,6 +32,7 @@ export const REVENUE_METRIC = createMockNormalizedMetric({
       display_name: "Created At",
       effective_type: "type/DateTime",
       semantic_type: "type/CreationTimestamp",
+      sources: [{ type: "field", "field-id": 1 }],
     }),
     createMockMetricDimension({
       id: "dim-category",
@@ -95,17 +95,25 @@ export const GEO_METRIC = createMockNormalizedMetric({
       display_name: "Created At",
       effective_type: "type/DateTime",
       semantic_type: "type/CreationTimestamp",
+      sources: [{ type: "field", "field-id": 1 }],
     }),
   ],
 });
 
+export const GEO_DIM_IDX = {
+  STATE: 0,
+  COUNTRY: 1,
+  CITY: 2,
+  LATITUDE: 3,
+  LONGITUDE: 4,
+  DATE_TIME: 5,
+};
+
 export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
   const metadata = new Metadata();
-  metadata.metrics = {};
   for (const metric of metrics) {
-    const instance = new Metric(metric);
-    instance.metadata = metadata;
-    metadata.metrics[metric.id] = instance;
+    const { collection: _normalizedCollectionId, ...rest } = metric;
+    metadata.metrics[metric.id] = { ...rest, collection: null };
   }
   return metadata;
 }

@@ -24,6 +24,12 @@
    [:schema_ids {:optional true} [:sequential :string]]
    [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
 
+(mr/def ::publish-table-selectors
+  [:merge
+   ::table-selectors
+   [:map
+    [:collection_id ms/PositiveInt]]])
+
 (mu/defn ^:private table-selectors->filter
   [{:keys [database_ids table_ids schema_ids]}]
   (let [schema-expr (fn [s]
@@ -131,20 +137,16 @@
   "Set collection for each of selected tables and all upstream dependencies recursively."
   [_route-params
    _query-params
-   body :- ::table-selectors]
+   body :- ::publish-table-selectors]
   (api/check-data-analyst)
-  (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
-                                                              :type collection/library-data-collection-type
-                                                              {:limit 2}))]
-                            (if (next colls)
-                              (throw (ex-info (tru "Multiple library-data collections found.")
-                                              {:status-code 409}))
-                              (first colls)))
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        upstream-ids      (all-upstream-table-ids where)
-        update-where      (if (seq upstream-ids)
-                            [:or where [:in :id upstream-ids]]
-                            where)
+  (let [target-collection  (api/check-404 (t2/select-one :model/Collection (:collection_id body)))
+        _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
+                                          (tru "Tables can only be published to Library/Data collections."))
+        where              (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        upstream-ids       (all-upstream-table-ids where)
+        update-where       (if (seq upstream-ids)
+                             [:or where [:in :id upstream-ids]]
+                             where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))

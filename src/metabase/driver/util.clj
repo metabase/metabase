@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty?])
+  (:refer-clojure :exclude [mapv empty? some])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -23,7 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf :refer [mapv empty?]])
+   [metabase.util.performance :refer [mapv empty? some]])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -224,8 +224,8 @@
 ;;; this can get called in post-select which doesn't always have ID
 (mu/defn ensure-lib-database :- [:map
                                  [:lib/type [:= :metadata/database]]]
-  "Ensures the database is in MLv2 metadata format (SnakeHatingMap with kebab-case keys).
-   If passed a Toucan2 instance, converts it. If already MLv2 metadata, returns as-is."
+  "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
+   If passed a Toucan2 instance, converts it. If already Lib metadata, returns as-is."
   [database :- [:or
                 [:map
                  [:lib/type [:= :metadata/database]]]
@@ -480,9 +480,9 @@
                                                 %1 (:visible-if %2))
                                     {} props*)
                   visible-keys     (keys all-visible-ifs)
-                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  transitive-props (mapv (comp (partial get props-by-name) ->str) visible-keys)
                   next-acc         (into acc all-visible-ifs)]
-              (if-not (perf/some #(contains? acc %) visible-keys)
+              (if-not (some #(contains? acc %) visible-keys)
                 (recur transitive-props next-acc)
                 (let [cyclic-props (set/intersection (set visible-keys)
                                                      (set (keys acc)))]
@@ -730,20 +730,33 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
-(defn fields-hidden-for-write-data-connection
-  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
-   when the write-data-connection form marker is true."
-  [driver]
+(defn- fields-hidden-by-form-marker
+  "Returns the set of field names (strings) whose resolved `visible-if` includes `marker false`,
+   meaning they are hidden when the named form marker is set on the connection-edit form."
+  [driver marker]
   (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-props     (conn-prop-fn driver)
           resolved      (connection-props-server->client driver all-props)
           props-by-name (collect-all-props-by-name resolved)]
       (into #{}
             (keep (fn [[field-name {:keys [visible-if]}]]
-                    (when (false? (get visible-if "write-data-connection"))
+                    (when (false? (get visible-if marker))
                       field-name)))
             props-by-name))))
+
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "write-data-connection"))
+
+(defn fields-hidden-for-admin-connection
+  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
+   when the admin-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
@@ -772,10 +785,27 @@
        (map first)
        (apply str)))
 
-;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
-;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
-;; will have namespaces created with the current prefix.
-(def ^:private workspace-isolated-prefix "mb__isolation")
+;; WARNING: Do NOT change this prefix. It is baked into existing workspace schemas in production databases.
+;; Changing it would require extreme care for backwards compatibility. If you need to match against this
+;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
+(def ^:private workspace-isolated-prefix "mb__isolation_")
+;; Escaped for SQL LIKE: underscores are wildcards, so we escape them with backslash.
+;; The default escape character works across all supported app-database engines (H2, Postgres, MySQL, MariaDB),
+;; so an explicit ESCAPE clause is not necessary.
+(def ^:private workspace-isolated-like-pattern
+  (str (str/replace workspace-isolated-prefix "_" "\\_") "%"))
+
+(defn workspace-isolated-schema?
+  "Returns true if the given schema name belongs to a workspace isolation namespace."
+  [schema-name]
+  (and (some? schema-name)
+       (str/starts-with? schema-name workspace-isolated-prefix)))
+
+(defn workspace-isolated-schema-clause
+  "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
+   `column` is typically `:schema`."
+  [column]
+  [:like column workspace-isolated-like-pattern])
 
 (defn workspace-isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
@@ -784,13 +814,13 @@
   (assert (some? (:id workspace)) "Workspace must have an :id")
   (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
         clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
-    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+    (format "%s%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
 
 (defn workspace-isolation-user-name
   "Generate username for workspace isolation."
   [workspace]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+    (format "%s%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
 
 (def ^:private workspace-password-char-sets
   "Character sets for password generation. Cycles through these to ensure representation from each."

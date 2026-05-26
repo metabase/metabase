@@ -190,35 +190,33 @@
   [_measure]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/dependencies "Measure" [{:keys [definition table_id]}]
-  (cond-> (serdes/mbql-deps definition)
-    table_id (conj (serdes/table->path table_id))))
+(defmethod serdes/dependencies "Measure" [{:keys [definition]}]
+  (serdes/mbql-deps definition))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [{:keys [id label]} (-> measure serdes/path last)]
-    (-> measure
-        :table_id
-        serdes/table->path
-        serdes/storage-path-prefixes
-        (concat ["measures" (serdes/storage-leaf-file-name id label)]))))
+  (let [table-path (-> measure :definition serdes/serialized-query-source-table)]
+    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
+          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
 
 (defn- import-measure-definition
   "Import a measure definition from serialization format.
   Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
   [exported]
   (let [with-ids (serdes/import-mbql exported)]
-    (when (seq with-ids)
-      (lib-be/normalize-query with-ids))))
+    (if (seq with-ids)
+      (lib-be/normalize-query with-ids)
+      with-ids)))
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
-   :skip [:dependency_analysis_version
-          ;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings]
+   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
+          :dimensions :dimension_mappings
+          ;; always re-derived from definition by before-insert via lib/primary-source-table-id
+          :table_id]
    :transform {:created_at (serdes/date)
-               :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}})
+               :definition {:export serdes/export-mbql :import import-measure-definition}}
+   :defaults {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -234,6 +232,7 @@
    :render-terms {:table-id :table_id
                   :table_description :table.description
                   :table_name :table.name
+                  :table_display_name :table.display_name
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
 

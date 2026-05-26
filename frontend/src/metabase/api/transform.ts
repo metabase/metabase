@@ -1,4 +1,4 @@
-import { isResourceNotFoundError } from "metabase/lib/errors";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CreateTransformRequest,
   Dataset,
@@ -66,6 +66,7 @@ export const transformApi = Api.injectEndpoints({
         invalidateTags(error, [
           idTag("transform", id),
           tag("table"),
+          listTag("table-remapping"),
           listTag("transform-run"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {

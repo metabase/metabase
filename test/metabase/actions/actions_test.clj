@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.actions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions.actions-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -843,11 +845,11 @@
     (mt/with-actions-test-data-and-actions-enabled
       (let [db-id           (mt/id)
             write-cache-key [db-id :write-data]]
-        (with-redefs [driver.conn/effective-connection-type
-                      (fn [_database]
-                        (if (= driver.conn/*connection-type* :write-data)
-                          :write-data
-                          :default))]
+        (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+                                    (fn [_database]
+                                      (if (= driver.conn/*connection-type* :write-data)
+                                        :write-data
+                                        :default))]
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
             (testing "write pool does not exist before action execution"

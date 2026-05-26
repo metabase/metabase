@@ -6,11 +6,25 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(defmulti calculate-deps*
+  "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
+  Prefer calling [[calculate-deps]] which validates the return value."
+  {:arglists '([entity-type entity])}
+  (fn [entity-type _entity] entity-type))
+
+(mu/defn calculate-deps :- ::deps.schema/upstream-deps
+  "Calculate upstream dependencies for a single entity.
+  Returns a map of dependency-type -> set of entity IDs."
+  [entity-type :- keyword?
+   entity]
+  (calculate-deps* entity-type entity))
+
+;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
@@ -34,9 +48,32 @@
     (upstream-deps:native-query query)
     (upstream-deps:mbql-query query)))
 
-(mu/defn upstream-deps:card :- ::deps.schema/upstream-deps
-  "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [{query :dataset_query :as card} :- ::queries.schema/card]
+(mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
+  [{{tables :source-tables} :source :as _py-transform}
+   :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
+  {:table (into #{} (keep :table_id) tables)})
+
+;; Modified implementation of documents.models.document/document-deps
+(defn- document-deps
+  [{:keys [content_type] :as document}]
+  (when (= content_type prose-mirror/prose-mirror-content-type)
+    (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
+                                         (cond
+                                           (and (= prose-mirror/smart-link-type type)
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
+                                           [(keyword (:model attrs)) (:entityId attrs)]
+
+                                           (= prose-mirror/card-embed-type type)
+                                           [:card (:id attrs)]
+
+                                           :else
+                                           nil)))))
+
+;;; ------------------------------------------------ defmethods ------------------------------------------------
+
+(defmethod calculate-deps* :card
+  [_ {query :dataset_query :as card}]
+  {:pre [(some? query)]}
   (let [query-deps (upstream-deps:query query)
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
@@ -44,21 +81,8 @@
             query-deps
             param-card-ids)))
 
-(mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
-  {:table (into #{} (keep :table_id) tables)})
-
-(mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
-  "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query]} :source :as transform} :-
-   [:map
-    [:source [:multi {:dispatch (comp keyword :type)}
-              [:query
-               [:map [:query ::lib.schema/query]]]
-              [:python
-               [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]]]]]
+(defmethod calculate-deps* :transform
+  [_ {{:keys [query]} :source :as transform}]
   (let [source-type (transforms-base.u/transform-type transform)]
     (case source-type
       :query (upstream-deps:query query)
@@ -66,9 +90,8 @@
       (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
           {}))))
 
-(mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
-  "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
-  [{:keys [template_tags] :as _snippet}]
+(defmethod calculate-deps* :snippet
+  [_ {:keys [template_tags] :as _snippet}]
   (let [type->id-key {:card :card-id, :snippet :snippet-id}
         dependencies (keep (fn [tag]
                              (let [entity-type (:type tag)]
@@ -78,10 +101,10 @@
                            (vals template_tags))]
     (u/group-by first second conj #{} dependencies)))
 
-(mu/defn upstream-deps:dashboard :- ::deps.schema/upstream-deps
-  "Given a dashboard, return its upstream dependencies"
-  [{:keys [dashcards series-card-ids] :as dashboard}]
+(defmethod calculate-deps* :dashboard
+  [_ {:keys [dashcards] :as dashboard}]
   (let [card-ids (into #{} (keep :card_id dashcards))
+        series-card-ids (into #{} (comp (mapcat :series) (map :id)) dashcards)
         param-card-ids (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
         vis-setting-target-ids (fn [link-type]
                                  (into #{} (keep (fn [dashcard]
@@ -111,47 +134,27 @@
     {:card all-card-ids
      :dashboard all-dashboard-ids}))
 
-;; Modified implementation of documents.models.document/document-deps
-(defn- document-deps
-  [{:keys [content_type] :as document}]
-  (when (= content_type prose-mirror/prose-mirror-content-type)
-    (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
-                                         (cond
-                                           (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
-                                           [(keyword (:model attrs)) (:entityId attrs)]
-
-                                           (= prose-mirror/card-embed-type type)
-                                           [:card (:id attrs)]
-
-                                           :else
-                                           nil)))))
-
-(mu/defn upstream-deps:document :- ::deps.schema/upstream-deps
-  "Given a document, return its upstream dependencies"
-  [document]
+(defmethod calculate-deps* :document
+  [_ document]
   (reduce (fn [deps [dep-type dep-id]]
             (update deps dep-type (fnil conj #{}) dep-id))
           {}
           (document-deps document)))
 
-(mu/defn upstream-deps:sandbox :- ::deps.schema/upstream-deps
-  "Given a sandbox, return its upstream dependencies"
-  [sandbox]
+(defmethod calculate-deps* :sandbox
+  [_ sandbox]
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
     {}))
 
-(mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
-  "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
-  [{:keys [table_id definition] :as _segment}]
+(defmethod calculate-deps* :segment
+  [_ {:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})
 
-(mu/defn upstream-deps:measure :- ::deps.schema/upstream-deps
-  "Given a measure, return its upstream dependencies (the table it aggregates, any measures it references, and any segments it references)"
-  [{:keys [table_id definition] :as _measure}]
+(defmethod calculate-deps* :measure
+  [_ {:keys [table_id definition] :as _measure}]
   {:measure (or (lib/all-measure-ids definition) #{})
    :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))

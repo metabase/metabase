@@ -6,7 +6,7 @@ import styled from "@emotion/styled";
 import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { Card } from "metabase/common/components/Card";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { Box, type BoxProps, Icon } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
 
@@ -21,12 +21,6 @@ export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
             cursor: default;
           }
         `}
-`;
-
-export const ItemIcon = styled(Icon)`
-  color: var(--mb-color-brand);
-  height: 1.5rem;
-  width: 1.5rem;
 `;
 
 export const ActionsContainer = styled(Box)<BoxProps>`

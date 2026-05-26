@@ -8,8 +8,10 @@ import { TabContext } from "../Tab";
 
 import { TabListContent, TabListRoot } from "./TabList.styled";
 
-export interface TabListProps<T>
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface TabListProps<T> extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value?: T;
   onChange?: (value: T) => void;
   onScroll?: UIEventHandler<HTMLDivElement>;

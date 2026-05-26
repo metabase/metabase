@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard } from "metabase-types/api";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
   State,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { Dashboard } from "metabase-types/api";
 
 // Types
 export type IllustrationValue = {
@@ -108,14 +108,12 @@ export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
 
 const getDefaultSnippetSidebarPlusMenuOptions = () => [];
 const getDefaultSnippetSidebarRowRenderers = () => ({});
-const getDefaultSnippetSidebarModals = () => [];
 const getDefaultSnippetSidebarHeaderButtons = () => [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS =
   getDefaultSnippetSidebarPlusMenuOptions();
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS =
   getDefaultSnippetSidebarRowRenderers();
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = getDefaultSnippetSidebarModals();
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS =
   getDefaultSnippetSidebarHeaderButtons();
 
@@ -182,9 +180,6 @@ export function reinitialize() {
     PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
     getDefaultSnippetSidebarRowRenderers(),
   );
-
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.length = 0;
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(...getDefaultSnippetSidebarModals());
 
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.length = 0;
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push(

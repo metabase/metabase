@@ -28,10 +28,6 @@
   padding: 0;
 }
 
-.pt0 {
-  padding-top: 0;
-}
-
 /* 1 */
 .p1 {
   padding: var(--padding-1);
@@ -155,10 +151,6 @@
   padding-left: var(--padding-4);
 }
 
-.pr4 {
-  padding-right: var(--padding-4);
-}
-
 /* margin */
 
 /* 0 */
@@ -168,10 +160,6 @@
 
 .mt0 {
   margin-top: 0;
-}
-
-.mb0 {
-  margin-bottom: 0;
 }
 
 /* 1 */
@@ -299,20 +287,4 @@
 
 .mr4 {
   margin-right: var(--margin-4);
-}
-
-/* responsive spacing */
-
-@media screen and (--breakpoint-min-lg) {
-  .lgPy2 {
-    padding-top: var(--padding-2);
-    padding-bottom: var(--padding-2);
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  .xlPy3 {
-    padding-top: var(--padding-3);
-    padding-bottom: var(--padding-3);
-  }
 }

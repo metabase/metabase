@@ -4,8 +4,8 @@ import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { Card } from "metabase-types/api";
 
@@ -50,7 +50,7 @@ export function MetricActivityTimeline({ card }: MetricActivityTimelineProps) {
           entity: "card",
           id: card.id,
           revision_id: revision.id,
-        })
+        }).unwrap()
       }
       canWrite={card.can_write}
       entity="card"

@@ -5,11 +5,11 @@ import * as Yup from "yup";
 
 import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
+import { useValidatePassword } from "metabase/common/hooks";
 import { Form, FormProvider, useFormSubmitButton } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { validatePassword } from "metabase/setup/utils";
+import type { UserInfo } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
-import type { UserInfo } from "metabase-types/store";
+import * as Errors from "metabase/utils/errors";
 
 import { UserFieldGroup } from "./UserForm.styled";
 
@@ -38,11 +38,12 @@ interface UserFormProps {
   onSubmit: (user: UserInfo) => Promise<void>;
 }
 
-const validationContext = {
-  onValidatePassword: _.memoize(validatePassword),
-};
-
 export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
+  const validatePassword = useValidatePassword();
+  const validationContext = useMemo(
+    () => ({ onValidatePassword: _.memoize(validatePassword) }),
+    [validatePassword],
+  );
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);

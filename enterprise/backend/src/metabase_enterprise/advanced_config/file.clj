@@ -61,7 +61,7 @@
   ### Templates
 
   After spec validation, the config map is walked and `{{template}}` forms are expanded. This uses the same code used
-  to parse template tags in SQL queries, i.e. [[metabase.driver.common.parameters.parse]], which means that
+  to parse template tags in SQL queries, i.e. [[metabase.lib.parameters.parse]], which means that
   `[[optional {{templates}}]]` work as well, if there is some reason you might need them.
 
   A template form like `{{env MY_ENV_VAR}}` is wrapped in parens and parsed as EDN, and then the result is passed
@@ -101,19 +101,17 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
-   ;; TODO (Cam 10/3/25) -- update this to use the Lib versions of these namespaces
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.yaml :as yaml]))
 
 (comment
-  ;; for parameter parsing
-  metabase.driver.common.parameters/keep-me
   ;; for `settings:` section code
   metabase-enterprise.advanced-config.file.settings/keep-me
   ;; for `databases:` section code
@@ -121,7 +119,9 @@
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
   ;; for `api-keys:` section code
-  metabase-enterprise.advanced-config.file.api-keys/keep-me)
+  metabase-enterprise.advanced-config.file.api-keys/keep-me
+  ;; for `workspace:` section code
+  advanced-config.file.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -190,7 +190,7 @@
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}
-  type)
+  (some-fn :lib/type type))
 
 (defmethod expand-template-str-part String
   [s]
@@ -204,8 +204,8 @@
   (s/or :env (s/cat :template-type (s/and symbol? valid-template-type?)
                     :env-var-name  symbol?)))
 
-(defmethod expand-template-str-part metabase.driver.common.parameters.Param
-  [{s :k}]
+(mu/defmethod expand-template-str-part :metabase.lib.parameters.parse.types/param
+  [{s :k} :- :metabase.lib.parameters.parse.types/param]
   {:pre [(string? s)]}
   (when (seq s)
     (when-let [obj (try
@@ -216,16 +216,16 @@
       (s/assert* ::template-form obj)
       (expand-parsed-template-form obj))))
 
-(defmethod expand-template-str-part metabase.driver.common.parameters.Optional
-  [{:keys [args]}]
+(mu/defmethod expand-template-str-part :metabase.lib.parameters.parse.types/optional
+  [{:keys [args]} :- :metabase.lib.parameters.parse.types/optional]
   (let [parts (map expand-template-str-part args)]
     (when (every? seq parts)
       (str/join parts))))
 
 (defn- expand-templates-in-str [s]
-  (if-let [[_, raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
+  (if-let [[_ raw-string] (re-matches #"\{\{\{(.+)\}\}\}" s)]
     (str/trim raw-string)
-    (str/join (map expand-template-str-part (params.parse/parse s)))))
+    (str/join (map expand-template-str-part (lib/parse-parameters s)))))
 
 (defn- expand-templates [m]
   (walk/postwalk
@@ -251,21 +251,49 @@
                                                                  config-sections)]
     (concat settings-sections other-sections)))
 
+(defn- workspace-bring-up?
+  "True iff the config file declares a *structurally-valid* `:workspace` section.
+  Workspace bring-up is a fundamentally different mode of operation from normal
+  `config-text-file` usage: the instance is being bootstrapped as a child of a parent
+  Metabase, and workspace mode (table remapping, transform redirection, sync rewiring)
+  is destructive enough to a normal Metabase that an instance carrying a `:workspace`
+  config is committing to that mode regardless of token state. A non-workspace OSS
+  instance reading this same config would not function correctly anyway, so the file's
+  presence is itself the operator's declaration of intent.
+
+  The validity check (delegated to `advanced-config.file.workspace/valid-workspace-section?`)
+  is deliberate: we don't want a typo'd or empty `workspace:` key — `workspace: {}`,
+  `workspace: foo` — to silently bypass the premium gate. Only a section that would
+  actually drive workspace bring-up (has `:name` plus a non-empty `:databases` map of
+  the correct shape) opens the gate."
+  [m]
+  (when-let [section (get-in m [:config :workspace])]
+    (advanced-config.file.workspace/valid-workspace-section? section)))
+
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in the config file, if it exists."
   []
   ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
   ;; enabling that check tho)
   (when-let [m (config)]
-    (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Since you
-      ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
-      ;; other sections.
-      (when-not (= section-name :settings)
-        (when-not (premium-features/enable-config-text-file?)
-          (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
-                          {}))))
-      (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
-      (advanced-config.file.i/initialize-section! section-name section-config))
+    (let [bring-up? (workspace-bring-up? m)]
+      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
+        ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Two
+        ;; carve-outs:
+        ;;
+        ;;   1. The `:settings` section is always allowed — you may need it to *install* the token.
+        ;;
+        ;;   2. If the file contains a `:workspace` section, the entire file is treated as a workspace bring-up
+        ;;      manifest and runs without the premium token. Workspace child instances bootstrap from a `config.yml`
+        ;;      *before* their token is installed; the file is the delivery mechanism for the token (and the
+        ;;      workspace itself). The `defenterprise` gates on workspace mode (`workspace-mode?`,
+        ;;      `db-workspace-namespace`) still keep non-EE builds from acting on the rows.
+        (when-not (or (= section-name :settings)
+                      bring-up?)
+          (when-not (premium-features/enable-config-text-file?)
+            (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
+                            {}))))
+        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
+        (advanced-config.file.i/initialize-section! section-name section-config)))
     (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
   :ok)

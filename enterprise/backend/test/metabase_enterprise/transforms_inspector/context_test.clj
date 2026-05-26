@@ -120,7 +120,7 @@
                       (lib/with-join-fields :all))))))
 
 (defn- native-orders-query
-  "Build a native-only pMBQL query selecting from the orders table."
+  "Build a native-only MBQL 5 query selecting from the orders table."
   []
   {:lib/type     :mbql/query
    :lib/metadata (mt/metadata-provider)

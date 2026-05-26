@@ -1,7 +1,7 @@
 (ns metabase.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require
-   [bigml.histogram.core :as hist]
+   [clojure.string :as str]
    [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
@@ -14,11 +14,13 @@
    [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
-   (com.bigml.histogram Histogram)
-   (com.clearspring.analytics.stream.cardinality HyperLogLogPlus)
-   (java.time ZoneOffset)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
-   (java.time.temporal Temporal)))
+   (java.time.temporal Temporal)
+   (org.apache.commons.codec.digest MurmurHash2)
+   (org.apache.commons.math3.stat.descriptive SummaryStatistics)
+   (org.apache.datasketches.hll HllSketch)
+   (org.apache.datasketches.kll KllDoublesSketch)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,13 +52,17 @@
     ([_ _] (reduced init))))
 
 (defn- cardinality
-  "Transducer that sketches cardinality using HyperLogLog++.
-   https://research.google.com/pubs/pub40671.html"
-  ([] (HyperLogLogPlus. 14 25))
-  ([^HyperLogLogPlus acc] (.cardinality acc))
-  ([^HyperLogLogPlus acc x]
-   (.offer acc x)
-   acc))
+  "Transducer that sketches cardinality using DataSketches' HyperLogLog implementation."
+  ([] (HllSketch. 16))
+  ([^HllSketch acc] (Math/round (.getEstimate acc)))
+  ([^HllSketch acc x]
+   ;; Hashing is implemented in this way to ensure better overlap with results that the previously used
+   ;; HyperLogLogPlus implementation produced.
+   (let [h (cond (string? x) (MurmurHash2/hash64 ^String x)
+                 (bytes? x) (MurmurHash2/hash64 ^bytes x (alength ^bytes x))
+                 :else (hash x))]
+     (.update acc ^long h)
+     acc)))
 
 (defmacro robust-map
   "Wrap each map value in try-catch block."
@@ -124,8 +130,8 @@
      (u.date/extract-units unit)
      :type/Integer
 
-       ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
-       ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
+     ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
+     ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
      (isa? (or effective-type base-type) :type/Temporal)
      :type/DateTime
 
@@ -232,16 +238,82 @@
   Temporal (->temporal [this] this)
   java.util.Date (->temporal [this] (t/instant this)))
 
+(def ^:private mode-stats-max-distinct
+  "Maximum number of distinct values to track for mode-fraction / top-3-fraction computation.
+  Values beyond this cap are counted toward total but not tracked individually. For typical
+  10k-row samples, the true top values will almost always appear in the first 100 distinct
+  values seen."
+  100)
+
+(defn- top-n-fraction
+  "Given a map of value->count and a total row count, return the sum of the top-n counts
+  divided by total. Returns nil if total is not positive."
+  [counts total n]
+  (when (pos? total)
+    (/ (double (reduce + 0.0 (take n (sort > (vals counts)))))
+       (double total))))
+
+(deftype ^:private ModeStatsTracker [^:volatile-mutable counts, ^:volatile-mutable ^long total]
+  ;; Save the trouble of introducing a dedicated protocol/interface to interact with mutable fields by implementing
+  ;; two arities of IFn interface.
+  clojure.lang.IFn
+  (invoke [_]
+    {:mode-fraction  (top-n-fraction counts total 1)
+     :top-3-fraction (top-n-fraction counts total 3)})
+  (invoke [this x]
+    (set! total (inc total))
+    (when-not (nil? x)
+      (cond (contains? counts x)                        (set! counts (update counts x inc))
+            (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts x 1))))
+    this))
+
+(defn- mode-stats
+  "Reducer that tracks value frequencies (bounded at `mode-stats-max-distinct` entries)
+  and, on completion, returns {:mode-fraction, :top-3-fraction}. High mode-fraction
+  signals single-value dominance; high top-3-fraction with moderate mode-fraction signals
+  bimodal / few-real-categories distributions."
+  ([] (->ModeStatsTracker {} 0))
+  ([tracker] (tracker))
+  ([tracker x] (tracker x)))
+
+(defn- ->millis-from-epoch
+  "Coerce a `java.time.temporal.Temporal` (as produced by `->temporal`) to long epoch millis.
+  Returns nil for unsupported types; callers typically wrap with `(keep ->millis-from-epoch)`
+   to strip non-coerceable values."
+  [t]
+  (cond (instance? Instant t)        (.toEpochMilli ^Instant t)
+        (instance? OffsetDateTime t) (.toEpochMilli (.toInstant ^OffsetDateTime t))
+        (instance? ZonedDateTime t)  (.toEpochMilli (.toInstant ^ZonedDateTime t))
+        (instance? LocalDate t)      (recur (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
+        (instance? LocalDateTime t)  (recur (t/offset-date-time t (t/zone-offset 0)))
+        (instance? LocalTime t)      (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
+        (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
+        :else                        nil))
+
 (deffingerprinter :type/DateTime
   ((map ->temporal)
-   (robust-fuse {:earliest earliest
-                 :latest   latest})))
+   (redux/post-complete
+    (robust-fuse {:earliest   earliest
+                  :latest     latest
+                  :skewness   ((keep ->millis-from-epoch) stats/skewness)
+                  :mode-stats ((keep ->millis-from-epoch) mode-stats)})
+    (fn [{:keys [mode-stats] :as fused}]
+      (-> fused
+          (dissoc :mode-stats)
+          (assoc :mode-fraction  (:mode-fraction mode-stats)
+                 :top-3-fraction (:top-3-fraction mode-stats)))))))
 
-(defn- histogram
-  "Transducer that summarizes numerical data with a histogram."
-  ([] (hist/create))
-  ([^Histogram histogram] histogram)
-  ([^Histogram histogram x] (hist/insert-simple! histogram x)))
+(deftype ^:private DistributionHolder [^SummaryStatistics summary, ^KllDoublesSketch kll])
+
+(defn- distribution
+  "Transducer that summarizes numerical data with SummaryStatistics and KllDoublesSketch."
+  ([] (DistributionHolder. (SummaryStatistics.) (KllDoublesSketch/newHeapInstance)))
+  ([^DistributionHolder holder] holder)
+  ([^DistributionHolder holder x]
+   (let [d (double x)]
+     (.addValue ^SummaryStatistics (.summary holder) d)
+     (.update ^KllDoublesSketch (.kll holder) d)
+     holder)))
 
 (defprotocol ^:private INumberCoerceable
   "Protocol for converting objects to a java.lang.Number."
@@ -259,16 +331,25 @@
 
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((comp (map ->number) (filter u/real-number?)) histogram)
-   (fn [h]
-     (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
+   ((comp (map ->number) (filter u/real-number?))
+    (redux/juxt distribution stats/skewness stats/kurtosis mode-stats (stats/share zero?)))
+   (fn [[^DistributionHolder h, sk ku ms zf]]
+     (let [^SummaryStatistics summary (.summary h)
+           ^KllDoublesSketch kll      (.kll h)
+           n                          (.getN summary)]
        (robust-map
-        :min (hist/minimum h)
-        :max (hist/maximum h)
-        :avg (hist/mean h)
-        :sd  (some-> h hist/variance math/sqrt)
-        :q1  q1
-        :q3  q3)))))
+        :min             (.getMinItem kll)
+        :max             (.getMaxItem kll)
+        ;; Ensure we don't get ##NaN in avg/sd
+        :avg             (when (pos? n) (.getMean summary))
+        :sd              (when (pos? n) (math/sqrt (.getVariance summary)))
+        :q1              (.getQuantile kll 0.25)
+        :q3              (.getQuantile kll 0.75)
+        :skewness        sk
+        :excess-kurtosis ku
+        :mode-fraction   (:mode-fraction ms)
+        :top-3-fraction  (:top-3-fraction ms)
+        :zero-fraction   zf)))))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:
@@ -290,11 +371,19 @@
   ((map str) ; we cast to str to support `field-literal` type overwriting:
              ; `[:field-literal "A_NUMBER" :type/Text]` (which still
              ; returns numbers in the result set)
-   (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
-                 :percent-url    (stats/share u/url?)
-                 :percent-email  (stats/share u/email?)
-                 :percent-state  (stats/share u/state?)
-                 :average-length ((map count) stats/mean)})))
+   (redux/post-complete
+    (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
+                  :percent-url    (stats/share u/url?)
+                  :percent-email  (stats/share u/email?)
+                  :percent-state  (stats/share u/state?)
+                  :percent-blank  (stats/share str/blank?)
+                  :average-length ((map count) stats/mean)
+                  :mode-stats     mode-stats})
+    (fn [{:keys [mode-stats] :as fused}]
+      (-> fused
+          (dissoc :mode-stats)
+          (assoc :mode-fraction  (:mode-fraction mode-stats)
+                 :top-3-fraction (:top-3-fraction mode-stats)))))))
 
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."

@@ -33,7 +33,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -583,6 +583,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           cy.viewport(1280, viewportHeight);
           visit({ databaseId: SAMPLE_DB_ID });
           TablePicker.getTable("Reviews").scrollIntoView().click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.clickField("ID");
           FieldSection.getSemanticTypeInput().click();
 
@@ -617,6 +620,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
             visit({ databaseId: WRITABLE_DB_ID });
             TablePicker.getTable("Many Data Types").click();
+            if (area === "data studio") {
+              TableSection.clickFieldsTab();
+            }
             TableSection.clickField("Json → D");
             FieldSection.getSemanticTypeInput().click();
             H.popover().findByText("Entity Name").click();
@@ -834,6 +840,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
               tableId: ORDERS_ID,
             });
 
+            if (area === "data studio") {
+              TableSection.clickFieldsTab();
+            }
             TableSection.clickField("Tax");
             FieldSection.getVisibilityInput().click();
             H.popover().findByText("Do not include").click();

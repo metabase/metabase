@@ -69,7 +69,7 @@
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
-  generally correct pMBQL; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
+  generally correct MBQL 5; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
 
   Normalization logic is defined in various schemas; grep for `:decode/normalize` in the `metabase.lib.schema*`
   namespaces.
@@ -97,7 +97,12 @@
                               (throw (ex-info (i18n/tru "Normalization error")
                                               {:schema schema, :x x, :error error})))]
          (thunk))
-       (thunk)))))
+       (try
+         (thunk)
+         (catch #?(:clj Throwable :cljs :default) e
+           (throw (ex-info (str "Uncaught normalization error: " (ex-message e))
+                           {:schema schema}
+                           e))))))))
 
 (mu/defn ->normalized-stage-metadata :- ::lib.schema.metadata/stage
   "Take a sequence of legacy or Lib metadata maps, convert to Lib-style if needed, then normalize them.

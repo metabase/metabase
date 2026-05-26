@@ -92,7 +92,7 @@ jobs:
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20
@@ -151,14 +151,16 @@ jobs:
           GREP: ${{ github.event.inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           FAIL_FAST: ${{ inputs.fail_fast }}
+          SPEC: ${{ github.event.inputs.spec }}
+          BURN_IN: ${{ github.event.inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
-          --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
+          --spec "${SPEC}" \
+          --expose burn="${BURN_IN}" \
           --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-failed-tests-recording

@@ -2,6 +2,7 @@ import cx from "classnames";
 import { forwardRef } from "react";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   MetabotPromptInput,
   type MetabotPromptInputProps,
@@ -28,7 +29,7 @@ export const MetabotChatEditor = forwardRef<
   return (
     <Box className={S.editorContainer}>
       <Box className={S.iconContainer}>
-        <Icon name="metabot" c="brand" />
+        <MetabotIcon c="brand" />
       </Box>
       <Box className={S.contentWrapper}>
         <MetabotPromptInput

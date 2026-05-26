@@ -2,7 +2,7 @@ import { color } from "./palette";
 
 export function assignUserColors(
   userIds: string[],
-  currentUserId: string,
+  currentUserId: string | null,
   colors = [
     color("brand"),
     color("accent2"),

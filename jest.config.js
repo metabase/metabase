@@ -2,7 +2,42 @@
 /** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
+const swcJestTransform = [
+  "@swc/jest",
+  {
+    jsc: {
+      // Jest runs on Node so we can target a modern engine and skip a bunch
+      // of polyfills/transforms that `env.targets: ["defaults"]` would emit.
+      target: "es2022",
+      loose: true,
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      transform: {
+        react: {
+          runtime: "automatic",
+        },
+      },
+      experimental: {
+        plugins: [
+          ["@swc-contrib/mut-cjs-exports", {}],
+          ["@swc/plugin-emotion", { sourceMap: false }],
+        ],
+      },
+    },
+    module: {
+      type: "commonjs",
+    },
+    sourceMaps: "inline",
+    minify: false,
+  },
+];
+
 const baseConfig = {
+  transform: {
+    "^.+\\.[jt]sx?$": swcJestTransform,
+  },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
@@ -29,13 +64,13 @@ const baseConfig = {
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
      */
     "sdk-iframe-embedding-ee-plugins":
-      "<rootDir>/frontend/src/metabase/lib/noop.ts",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.ts",
+      "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.ts",
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
      * In Jest, mock them as plain strings.
@@ -49,6 +84,8 @@ const baseConfig = {
     // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
     // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
     `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
+    // CLJS files are already compiled CJS — skip transform entirely
+    "<rootDir>/target/cljs_dev/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
@@ -65,8 +102,10 @@ const baseConfig = {
   ],
   modulePathIgnorePatterns: [
     "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/target/classes/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
+    "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
@@ -118,13 +157,13 @@ const config = {
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.ts",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.ts",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.ts",
       ],
     },
     {
@@ -136,6 +175,7 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
       ],
     },
@@ -143,6 +183,7 @@ const config = {
       displayName: "lint-rules",
       testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
       testEnvironment: "node",
+      transform: baseConfig.transform,
       transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],

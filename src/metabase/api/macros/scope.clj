@@ -14,27 +14,21 @@
   (session auth or unscoped JWT). Unlike `\"*\"` which is a valid wildcard scope that could appear in a
   JWT claim, this keyword can never be confused with an externally-supplied scope string."
   (:require
-   [clojure.string :as str]))
+   [metabase.api-scope.core :as api-scope]
+   [metabase.config.core :as config]
+   [metabase.util.log :as log]))
 
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
    Returns nil if `scope-string` is nil, blank, or not a string."
   [scope-string]
-  (when (string? scope-string)
-    (when-not (str/blank? scope-string)
-      (into #{} (str/split (str/trim scope-string) #"\s+")))))
+  (api-scope/parse-scopes scope-string))
 
 (defn scope-satisfied?
   "Check if `token-scopes` (a set) satisfies `required-scope` (a string).
    Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:workspaces\"`."
   [token-scopes required-scope]
-  (boolean
-   (or (contains? token-scopes required-scope)
-       (contains? token-scopes "*")
-       (some (fn [token-scope]
-               (and (str/ends-with? token-scope ":*")
-                    (str/starts-with? required-scope (subs token-scope 0 (dec (count token-scope))))))
-             token-scopes))))
+  (api-scope/scope-matches? token-scopes required-scope))
 
 (defn enforce-scope
   "Returns a Ring middleware that checks `:token-scopes` on the request against `required-scope` (a string).
@@ -45,6 +39,10 @@
    middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
    namespace level while individual endpoints use `ensure-scopes-checked` as a safety net."
   [required-scope]
+  ;; Dev-time warning only — fires at middleware construction (load time), not per-request.
+  ;; The middleware is returned regardless; this just surfaces unregistered scopes early.
+  (when (and config/is-dev? (not (api-scope/registered-scope? required-scope)))
+    (log/warnf "Unregistered scope in endpoint: %s" required-scope))
   (fn [handler]
     (fn [request respond raise]
       (let [token-scopes (:token-scopes request)]
@@ -54,10 +52,11 @@
           (handler (cond-> request
                      token-scopes (assoc :token-scopes-checked true))
                    respond raise)
-          (respond {:status  403
-                    :headers {"Content-Type" "application/json"}
-                    :body    {:error   "unsupported_scope"
-                              :message (str "Token does not have required scope: " required-scope)}}))))))
+          (do (log/warnf "Scope check failed — required: %s, granted: %s" required-scope token-scopes)
+              (respond {:status  403
+                        :headers {"Content-Type" "application/json"}
+                        :body    {:error   "unsupported_scope"
+                                  :message "Insufficient scope for this operation."}})))))))
 
 (defn ensure-scopes-checked
   "Security middleware that prevents scoped authorization tokens from accessing endpoints that have not

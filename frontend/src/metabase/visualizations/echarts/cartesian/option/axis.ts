@@ -1,7 +1,7 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
-import { parseNumberValue } from "metabase/lib/number";
+import { parseNumberValue } from "metabase/utils/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
@@ -190,7 +190,6 @@ const getCommonDimensionAxisOptions = (
 
 export const buildDimensionAxis = (
   chartModel: BaseCartesianChartModel,
-  width: number,
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,
   hasTimelineEvents: boolean,
@@ -210,7 +209,6 @@ export const buildDimensionAxis = (
   if (isTimeSeriesAxis(xAxisModel)) {
     return buildTimeSeriesDimensionAxis(
       xAxisModel,
-      width,
       hasTimelineEvents,
       settings,
       chartLayout,
@@ -275,14 +273,13 @@ export const buildNumericDimensionAxis = (
 
 export const buildTimeSeriesDimensionAxis = (
   xAxisModel: TimeSeriesXAxisModel,
-  width: number,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
   const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
-    getTicksOptions(xAxisModel, width);
+    getTicksOptions(xAxisModel, chartLayout);
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -456,7 +453,6 @@ const buildMetricsAxes = (
 
 export const buildAxes = (
   chartModel: BaseCartesianChartModel,
-  width: number,
   chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
@@ -465,7 +461,6 @@ export const buildAxes = (
   return {
     xAxis: buildDimensionAxis(
       chartModel,
-      width,
       settings,
       chartLayout,
       hasTimelineEvents,

@@ -136,7 +136,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should allow you to show/hide and reorder columns", () => {
       H.getDraggableElements().eq(0).as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -176,7 +179,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       H.getDraggableElements().first().as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
@@ -422,8 +428,8 @@ describe("scenarios > visualizations > bar chart", () => {
           "base-type": "type/DateTime",
         },
       ],
-      "2023-09-01",
-      "2023-09-30",
+      "2026-09-01",
+      "2026-09-30",
     ];
 
     const avgTotalByMonth = {
@@ -606,7 +612,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.chartPathWithFillColor("#88BF4D").first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#88BF4D",
@@ -871,8 +877,8 @@ describe("scenarios > visualizations > bar chart", () => {
               [
                 "between",
                 ORDER_CREATED_AT_FIELD_REF,
-                "2022-09-01T00:00Z",
-                "2023-02-01T00:00Z",
+                "2025-09-01T00:00Z",
+                "2026-02-01T00:00Z",
               ],
               [
                 "=",
@@ -933,7 +939,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
       H.otherSeriesChartPaths().first().realHover();
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2025",
         rows: [
           { name: "IA", value: "3" },
           { name: "KY", value: "2" },
@@ -999,7 +1005,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
       H.otherSeriesChartPaths().first().realHover();
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2025",
         rows: [
           { name: "IA", value: "3" },
           { name: "KY", value: "2" },

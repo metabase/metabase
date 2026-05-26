@@ -2,6 +2,7 @@
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:refer-clojure :exclude [some])
   (:require
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -227,13 +228,16 @@
 
 (mr/def ::arithmetic-operator
   "Arithmetic operators for metric math."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}]
+        (operators/arithmetic-operator-keywords)))
 
 (defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
-   Handles string keys, string operators, and nested expressions."
+   Handles string keys, string operators, nested expressions, and bare numeric constants."
   [x]
-  (when (sequential? x)
+  (cond
+    (number? x) x
+    (sequential? x)
     (let [[first-el] x]
       (if (and (>= (count x) 3)
                (let [tag (lib.schema.common/normalize-keyword first-el)]
@@ -245,7 +249,8 @@
           (let [[op opts & exprs] x]
             (into [(lib.schema.common/normalize-keyword op)
                    (lib.schema.common/normalize-options-map (or opts {}))]
-                  (map normalize-math-expression exprs))))))))
+                  (map normalize-math-expression exprs))))))
+    :else nil))
 
 (mr/def ::metric-math-expression
   "A recursive metric math expression tree.
@@ -256,12 +261,13 @@
    {:decode/normalize normalize-math-expression}
    [:or
     ::expression-leaf
+    number?
     [:and
      vector?
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
       (fn [x]
         (and (>= (count x) 4)
-             (#{:+ :- :* :/} (first x))
+             (operators/arithmetic? (first x))
              (map? (second x))))]]]])
 
 ;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------
@@ -279,14 +285,17 @@
   [:sequential ::instance-filter])
 
 ;;; ------------------------------------------------- Typed Projections -------------------------------------------------
-;;; Projections keyed by source type and ID.
+;;; Projections keyed by :lib/uuid from the expression leaf, with type and ID for metadata resolution.
 
 (mr/def ::typed-projection
-  "A projection associated with a specific source type and ID."
+  "A projection associated with a specific expression leaf instance via :lib/uuid.
+   The :type and :id identify the source metric/measure for metadata resolution.
+   The :lib/uuid disambiguates multiple references to the same metric/measure in an expression."
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
    [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
    [:id         pos-int?]
+   [:lib/uuid   ::lib.schema.common/non-blank-string]
    [:projection [:sequential ::dimension-reference]]])
 
 (mr/def ::typed-projections

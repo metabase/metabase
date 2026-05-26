@@ -4,6 +4,7 @@ export * from "./aggregation";
 export * from "./binning";
 export * from "./breakout";
 export * from "./buckets";
+export * from "./clauses";
 export * from "./column_types";
 export * from "./comparison";
 export * from "./database";

@@ -54,7 +54,7 @@
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids])]
+     (let [snippets (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids]))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -67,7 +67,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids]))]
+                                (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids])))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)

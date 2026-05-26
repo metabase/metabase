@@ -247,6 +247,17 @@
              #"Cannot initialize setting before the db is set up"
              (setting/get :test-setting-custom-init)))))))
 
+(deftest discard-setting-changes-with-init-test
+  (testing "discard-setting-changes correctly handles settings with :init"
+    (clear-setting-if-leak!)
+    (let [value-inside (atom nil)]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (reset! value-inside (test-setting-custom-init))
+        (testing "the setting returns its initialized value inside the macro, not nil"
+          (is (some? @value-inside))))
+      (testing "after the macro, the setting's initialized value is preserved (not re-initialized)"
+        (is (= @value-inside (test-setting-custom-init)))))))
+
 (def ^:private base-options
   {:setter   :none
    :default  "totally-basic"})
@@ -318,15 +329,15 @@
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
-      (let [orig  setting/set!
+      (let [orig  (mt/original-fn #'setting/set!)
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
+        (mt/with-dynamic-fn-redefs [setting/set! (fn [& args]
+                                                   (if (zero? @calls)
+                                                     (do
+                                                       (swap! calls inc)
+                                                       (apply orig args))
+                                                     (throw (ex-info "Oops!" {}))))]
           (is (thrown-with-msg?
                Throwable
                #"Oops"
@@ -564,10 +575,16 @@
   (is (= {:a 100, :b 200}
          (test-json-setting))))
 
+(deftest db-stored-value-test
+  (testing "should expose the raw DB/cache value through the public API"
+    (is (= "raw-value"
+           (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly "raw-value")]
+             (setting/db-stored-value :test-setting-1))))))
+
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value! [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
+  (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
@@ -809,7 +826,7 @@
         (testing setting
           (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
-    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+    (mt/with-dynamic-fn-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[setting expected] {:test-public-setting           true
                                     :test-authenticated-setting    true
@@ -1422,7 +1439,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/ns-in-test? (constantly false)]
+  (mt/with-dynamic-fn-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all
@@ -1606,7 +1623,7 @@
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
        :json ex
-        ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+       ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
        #_(str "Unexpected end-of-input within/between Array entries\n"
               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
@@ -1647,7 +1664,7 @@
     (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
        :csv ex
-        ;; we don't expose the raw exception here, as it would give away the first character of the secret
+       ;; we don't expose the raw exception here, as it would give away the first character of the secret
        #_"CSV error (unexpected character: $)"
        "Error of type class java.lang.Exception thrown while parsing a setting"))))
 
@@ -1910,3 +1927,21 @@
     (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
       (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
         (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))
+
+(deftest get-raw-value-source-test
+  (testing "Returns :default when only the default is set"
+    (mt/with-temporary-setting-values [test-setting-2 nil]
+      (is (= :default (setting/get-raw-value-source :test-setting-2)))))
+  (testing "Returns nil when no value is available from any source"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (is (nil? (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :database when set via the database"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (is (= :database (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :env when provided via env var"
+    (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+      (is (= :env (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Env var takes precedence over database value"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+        (is (= :env (setting/get-raw-value-source :test-setting-1)))))))

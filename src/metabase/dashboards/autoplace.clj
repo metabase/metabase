@@ -1,7 +1,7 @@
 (ns metabase.dashboards.autoplace
   "NOTE: It's not SUPER high impact if it falls out of sync - hopefully both will place things in a reasonable spot - but
   ideally this namespace should be kept in sync with
-  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js)."
+  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dashboard_grid.js)."
   (:require
    [metabase.dashboards.constants :as dashboard.constants]))
 
@@ -23,7 +23,7 @@
   "Where should a new card be placed on a tab, given the existing dashcards?
 
   NOTE: almost identical in behavior to `getPositionForNewDashCard` in
-  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js
+  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dashboard_grid.js
 
   If you make changes here, we should keep the frontend version in sync.
 
@@ -36,11 +36,9 @@
   easier for the caller.
   "
   ([cards display-type]
-   (let [{:keys [width height]} (:default (get dashboard.constants/card-size-defaults display-type))]
-     (get-position-for-new-dashcard cards
-                                    width
-                                    height
-                                    default-grid-width)))
+   (let [{:keys [width height]} (merge dashboard.constants/default-card-size
+                                       (:default (get dashboard.constants/card-size-defaults display-type)))]
+     (get-position-for-new-dashcard cards width height default-grid-width)))
   ([cards size-x size-y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first

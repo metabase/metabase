@@ -35,8 +35,9 @@ export const useSaveStrategy = (
       const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
+      const apiModel = model === "metric" ? "question" : model;
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
-        model: isRoot ? "root" : model,
+        model: isRoot ? "root" : apiModel,
         model_id: targetId,
       };
       const shouldDeleteStrategy =

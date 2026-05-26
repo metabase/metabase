@@ -23,7 +23,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Data structure")).toBeInTheDocument();
+      expect(screen.getByText("Tables")).toBeInTheDocument();
     });
 
     it("should render content area", async () => {

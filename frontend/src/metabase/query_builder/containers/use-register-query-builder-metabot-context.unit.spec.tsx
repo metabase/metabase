@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -276,6 +277,7 @@ it("should return populated context when metabot is enabled", async () => {
 });
 
 it("should register without throwing", () => {
+  setupUserMetabotPermissionsEndpoint();
   mockSettings(createMockSettings({ "metabot-enabled?": true }));
 
   expect(() => {

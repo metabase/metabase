@@ -3,29 +3,13 @@ import * as LibMetric from "metabase-lib/metric";
 
 export type DimensionType = "time" | "geo" | "category" | "boolean" | "numeric";
 
-export type GeoSubtype = "country" | "state" | "city";
+export type GeoSubtype = "country" | "state";
 
 export function isGeoDimension(dimension: DimensionMetadata): boolean {
-  if (
-    LibMetric.isCoordinate(dimension) ||
-    LibMetric.isLatitude(dimension) ||
-    LibMetric.isLongitude(dimension)
-  ) {
-    return false;
-  }
-
-  return (
-    LibMetric.isState(dimension) ||
-    LibMetric.isCountry(dimension) ||
-    LibMetric.isCity(dimension)
-  );
+  return LibMetric.isState(dimension) || LibMetric.isCountry(dimension);
 }
 
-export const GEO_SUBTYPE_PRIORITY: readonly GeoSubtype[] = [
-  "country",
-  "state",
-  "city",
-];
+export const GEO_SUBTYPE_PRIORITY: readonly GeoSubtype[] = ["country", "state"];
 
 const GEO_SUBTYPE_PREDICATES: Array<{
   subtype: GeoSubtype;
@@ -33,7 +17,6 @@ const GEO_SUBTYPE_PREDICATES: Array<{
 }> = [
   { subtype: "country", predicate: LibMetric.isCountry },
   { subtype: "state", predicate: LibMetric.isState },
-  { subtype: "city", predicate: LibMetric.isCity },
 ];
 
 export function getGeoSubtype(dimension: DimensionMetadata): GeoSubtype | null {
@@ -51,14 +34,25 @@ export const DIMENSION_PREDICATES: Record<DimensionType, DimensionPredicate> = {
   time: LibMetric.isDateOrDateTime,
   geo: isGeoDimension,
   category: (dimension) =>
-    LibMetric.isCategory(dimension) &&
+    (LibMetric.isCategory(dimension) ||
+      LibMetric.isStringOrStringLike(dimension)) &&
     !isGeoDimension(dimension) &&
-    !LibMetric.isBoolean(dimension),
+    !LibMetric.isBoolean(dimension) &&
+    !LibMetric.isID(dimension),
   boolean: LibMetric.isBoolean,
   numeric: (dimension) =>
     LibMetric.isNumeric(dimension) &&
     !LibMetric.isID(dimension) &&
     !LibMetric.isCoordinate(dimension),
+};
+
+export const PREFERRED_DIMENSION_PREDICATES: Partial<
+  Record<DimensionType, DimensionPredicate>
+> = {
+  category: (dimension) =>
+    LibMetric.isCategory(dimension) &&
+    !isGeoDimension(dimension) &&
+    !LibMetric.isBoolean(dimension),
 };
 
 export interface DimensionTypeEntry {

@@ -1,4 +1,5 @@
 (ns metabase.xrays.automagic-dashboards.core-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.automagic-dashboards.core-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -177,7 +178,7 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -190,7 +191,7 @@
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                             :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
@@ -623,8 +624,8 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match-many breakouts
-                                       [:field {:binning _} (id :guard pos-int?)]
+                            id       (match/match-many breakouts
+                                       [:field {:binning &truthy} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
 
@@ -657,8 +658,8 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match-many breakouts
-                                                      [:field {:temporal-unit _} (id :guard pos-int?)]
+                                           id       (match/match-many breakouts
+                                                      [:field {:temporal-unit &truthy} (id :guard pos-int?)]
                                                       id)]
                                        id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
@@ -854,7 +855,7 @@
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
                                      :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                                            :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)
@@ -1318,7 +1319,7 @@
                                      {"Lat" {:field_type [:type/Latitude], :score 90}}
                                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
                                      {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                            ;; These will be matched in our tests since this is a generic table entity.
+                ;; These will be matched in our tests since this is a generic table entity.
                 bindable-dimensions (remove
                                      #(-> % vals first :field_type first #{:entity/UserTable})
                                      dimensions)

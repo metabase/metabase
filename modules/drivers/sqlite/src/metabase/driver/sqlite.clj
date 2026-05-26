@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.math :as math]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -46,6 +47,7 @@
                               :case-sensitivity-string-filter-options false
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
+                              :table-privileges                       true
                               :database-routing                       true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -129,6 +131,20 @@
   (sql.qp/format-honeysql driver {:select [:*]
                                   :from   [[(h2x/identifier :table table-name)]]
                                   :limit  1}))
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
+  [_driver conn-spec & _options]
+  ;; SQLite has no per-user privileges; allow SELECT on all tables and views
+  (let [rows (jdbc/query conn-spec ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"])]
+    (map (fn [{:keys [table]}]
+           {:role   nil
+            :schema nil
+            :table  table
+            :select true
+            :insert true
+            :update true
+            :delete true})
+         rows)))
 
 (defn- ->date [& args]
   (-> (into [:date] args)
@@ -438,9 +454,9 @@
         month-of-year-diff (h2x/- (extract :month-of-year y) (extract :month-of-year x))
         total-month-diff   (h2x/+ month-of-year-diff (h2x/* year-diff 12))]
     (h2x/+ total-month-diff
-          ;; total-month-diff counts month boundaries not whole months, so we need to adjust
-          ;; if x<y but x>y in the month calendar then subtract one month
-          ;; if x>y but x<y in the month calendar then add one month
+           ;; total-month-diff counts month boundaries not whole months, so we need to adjust
+           ;; if x<y but x>y in the month calendar then subtract one month
+           ;; if x>y but x<y in the month calendar then add one month
            [:case
             [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
             -1

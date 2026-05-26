@@ -4,7 +4,7 @@ import { push, replace } from "react-router-redux";
 import { useEffectOnce, useLatest } from "react-use";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 
 type BaseState = Record<string, unknown>;
 

@@ -3,9 +3,9 @@ import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";
-import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
   FormErrorMessage,

@@ -1,4 +1,5 @@
-import { isNotNull } from "metabase/lib/types";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
   Dataset,
@@ -7,12 +8,12 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
+  rewriteRemappedReferences,
 } from "./column";
 import { createDataSource } from "./data-source";
 import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
@@ -66,6 +67,8 @@ function processColumnsForDataSource(
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
+  const firstNewIndex = state.columns.length;
+
   columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
@@ -88,6 +91,19 @@ function processColumnsForDataSource(
       column: processedColumn,
     });
   });
+
+  const columnRenames = new Map(
+    columnInfos.map(({ columnRef }) => [
+      columnRef.originalName,
+      columnRef.name,
+    ]),
+  );
+  for (let i = firstNewIndex; i < state.columns.length; i++) {
+    state.columns[i] = rewriteRemappedReferences(
+      state.columns[i],
+      columnRenames,
+    );
+  }
 
   return columnInfos;
 }

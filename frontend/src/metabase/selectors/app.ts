@@ -12,12 +12,13 @@ import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/urls";
 
 import { getSetting } from "./settings";
 
@@ -45,6 +46,10 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/dashboard\//,
   /\/document\//,
 ];
+
+// Paths where collection identity comes from the URL itself, so breadcrumbs
+// can render without needing a question/dashboard/document in redux state.
+const STANDALONE_COLLECTION_BREADCRUMB_PATHS = [/\/collection\//];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
@@ -63,6 +68,10 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
+export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/explore");
+});
+
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
@@ -79,6 +88,14 @@ export const getIsCollectionPathVisible = createSelector(
 
     const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
     if (isModelDetail) {
+      return true;
+    }
+
+    if (
+      STANDALONE_COLLECTION_BREADCRUMB_PATHS.some((pattern) =>
+        pattern.test(path),
+      )
+    ) {
       return true;
     }
 
@@ -225,8 +242,9 @@ export const getCollectionId = createSelector(
     getDashboardId,
     getCurrentDocument,
     getDetailViewState,
+    getRouterPath,
   ],
-  (question, dashboard, dashboardId, document, detailView) => {
+  (question, dashboard, dashboardId, document, detailView, path) => {
     if (detailView) {
       return detailView.collectionId;
     }
@@ -239,7 +257,13 @@ export const getCollectionId = createSelector(
       return dashboard?.collection_id;
     }
 
-    return question?.collectionId();
+    const questionCollectionId = question?.collectionId();
+    if (questionCollectionId != null) {
+      return questionCollectionId;
+    }
+
+    // On a collection page the URL itself identifies the current collection.
+    return Urls.extractCollectionIdFromPath(path);
   },
 );
 

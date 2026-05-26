@@ -56,3 +56,36 @@ export const Default = {
     asyncCallback();
   },
 };
+
+export const ShortPlaceholder = {
+  render: Template,
+
+  args: {
+    value: null,
+    parameter: createMockParameter({ id: "test-field", type: "string" }),
+    placeholder: "String",
+  },
+};
+
+export const LongPlaceholder = {
+  render: Template,
+
+  args: {
+    value: null,
+    parameter: createMockParameter({ id: "test-field", type: "string" }),
+    placeholder: "Longggg String Longggg String Longggg String",
+  },
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const asyncCallback = createAsyncCallback();
+    const canvas = within(canvasElement);
+
+    // To force the tooltip to show up
+    await userEvent.hover(
+      (await canvas.findByText("Longggg String Longggg String Longggg String"))
+        .parentElement!,
+    );
+
+    asyncCallback();
+  },
+};

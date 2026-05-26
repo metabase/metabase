@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -64,10 +64,11 @@
 (defn- add-mail-args
   "Adds any additionally needed mail properties needed for sending mail to the given map of args."
   [args]
-  (let [trust (System/getProperty "mail.smtps.ssl.trust")]
-    (if trust
-      (assoc args :ssl.trust trust)
-      args)))
+  (let [trust (System/getProperty "mail.smtps.ssl.trust")
+        debug-enabled? (= "true" (System/getProperty "mail.debug"))]
+    (cond-> args
+      trust (assoc :ssl.trust trust)
+      debug-enabled? (assoc :debug true))))
 
 ;; ## PUBLIC INTERFACE
 

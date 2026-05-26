@@ -1,4 +1,4 @@
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 import { DEPENDENCY_TYPES, type DependencyEntry } from "metabase-types/api";
 
 export function parseDependencyEntry(

@@ -9,6 +9,8 @@
   - Template caching for performance"
   (:require
    [clojure.java.io :as io]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -57,13 +59,13 @@
           (log/debug "Tool prompt template not found:" path)
           nil))))
 
-(defn load-llm-representations-template
-  "Load the LLM representations template from resources/metabot/prompts/."
+(defn load-llm-shape-template
+  "Load the LLM-shape (output-side XML) template from resources/metabot/prompts/."
   [template-name]
   (let [path (str "metabot/prompts/" template-name)]
     (or (load-resource path)
         (do
-          (log/warn "LLM representations template not found:" path)
+          (log/warn "LLM-shape template not found:" path)
           nil))))
 
 ;;; Template Rendering
@@ -148,19 +150,19 @@
   [template-path]
   (:template (cached-load-template "tool" template-path load-tool-prompt-template)))
 
-(defn get-cached-llm-representations-template
-  "Get the LLM representations template from cache or load it."
+(defn get-cached-llm-shape-template
+  "Get the LLM-shape (output-side XML) template from cache or load it."
   []
-  (:template (cached-load-template "llm-representations"
-                                   "llm_representations.selmer"
-                                   load-llm-representations-template)))
+  (:template (cached-load-template "llm-shape"
+                                   "llm_shape.selmer"
+                                   load-llm-shape-template)))
 
 (defn get-cached-message-injection-template
   "Get the message injection template from cache or load it."
   []
   (:template (cached-load-template "message-injection"
                                    "message_injection.selmer"
-                                   load-llm-representations-template)))
+                                   load-llm-shape-template)))
 
 (defn clear-cache!
   "Clear the template cache. Useful for development/testing."
@@ -221,19 +223,36 @@
                                      (get context :viewing-context))
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
-            template-context     {:current_time             current-time
+            perms                (or scope/*current-user-metabot-permissions*
+                                     scope/perm-type-defaults)
+            has-sql?             (= :yes (:permission/metabot-sql-generation perms))
+            has-nlq?             (= :yes (:permission/metabot-nlq perms))
+            template-context     {:metabot_name              (metabot.settings/metabot-name)
+                                  :current_time             current-time
                                   :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_instructions dialect-instructions
                                   :tool_instructions        tool-instructions
                                   :viewing_context          viewing-context
-                                  :recent_views             recent-views}]
+                                  :recent_views             recent-views
+                                  :has_sql_generation       has-sql?
+                                  :has_nlq                  has-nlq?
+                                  :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  :custom_instructions      (not-empty
+                                                             (case template-name
+                                                               "natural-language-querying-only.selmer"
+                                                               (metabot.settings/metabot-nlq-system-prompt)
+                                                               "sql-querying-only.selmer"
+                                                               (metabot.settings/metabot-sql-system-prompt)
+                                                               ;; default: internal.selmer and any other templates
+                                                               (metabot.settings/metabot-chat-system-prompt)))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do
         (log/error "System prompt template not found:" template-name)
-        "You are Metabot, a data analysis assistant for Metabase."))))
+        (str "You are " (metabot.settings/metabot-name) ", a data analysis assistant for Metabase.")))))
 
 (defn inject-context
   "Prepends a formatted context to a string, message."

@@ -1,4 +1,5 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -8,13 +9,14 @@ import {
   ActionIcon,
   Badge,
   Box,
-  Button,
   Flex,
   Icon,
   Modal,
   Stack,
   Text,
 } from "metabase/ui";
+
+import Styles from "./MetabotChat.module.css";
 
 const ToolCallDetailsModal = ({
   message,
@@ -37,6 +39,17 @@ const ToolCallDetailsModal = ({
       return message.args ?? "{}";
     }
   }, [message.args]);
+
+  const parsedResult = useMemo(() => {
+    if (!message.result) {
+      return "";
+    }
+    try {
+      return JSON.stringify(JSON.parse(message.result), null, 2);
+    } catch {
+      return message.result;
+    }
+  }, [message.result]);
 
   return (
     <Modal
@@ -79,12 +92,12 @@ const ToolCallDetailsModal = ({
                   </Badge>
                 )}
               </Flex>
-              <ActionIcon h="sm" onClick={() => copy(message.result)}>
+              <ActionIcon h="sm" onClick={() => copy(parsedResult)}>
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Flex>
             <Box mx="-1.5rem">
-              <CodeEditor value={message.result} readOnly />
+              <CodeEditor value={parsedResult} language="json" readOnly />
             </Box>
           </Stack>
         )}
@@ -107,24 +120,35 @@ export const AgentToolCallMessage = ({
       <Flex
         p="sm"
         pl="md"
-        bg="background-secondary"
         bd="1px solid var(--mb-color-border)"
         bdrs="sm"
         direction="row"
         align="center"
         justify="space-between"
+        className={cx(Styles.agentPartCard, Styles.agentPartClickable)}
+        role="button"
+        tabIndex={0}
+        onClick={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            open();
+          }
+        }}
       >
-        <Flex>
-          <Text mr="sm">🔧</Text>
+        <Flex align="center">
+          <Icon name="gear" c="text-secondary" mr="sm" />
           <Text fw="bold">{message.name}</Text>
         </Flex>
-        <Flex align="center" gap="xs">
-          <Button
-            variant="light"
-            size="compact-xs"
-            onClick={open}
-          >{t`View`}</Button>
-          <ActionIcon h="sm" onClick={handleCopy}>
+        <Flex align="center" gap="xs" className={Styles.agentPartActions}>
+          <ActionIcon
+            h="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopy();
+            }}
+            className={Styles.agentPartActionIcon}
+          >
             <Icon name="copy" size="1rem" />
           </ActionIcon>
         </Flex>

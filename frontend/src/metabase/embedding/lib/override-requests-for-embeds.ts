@@ -4,7 +4,7 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import type { OnBeforeRequestHandlerData } from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { getEmbedBase, internalBase, publicBase } from "metabase/services";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
@@ -20,6 +20,9 @@ const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
 const getIgnoreOverridePatterns = () => [
   sessionPropertiesPath,
   PLUGIN_CONTENT_TRANSLATION.getDictionaryBasePath,
+  // `/api/frontend-errors` only exists at the canonical path (see
+  // metabase.frontend-errors.api) — rewriting it would 404.
+  "/api/frontend-errors",
 ];
 
 /**
@@ -182,12 +185,13 @@ function replaceWithEmbedBase({
   return url;
 }
 
-const overrideRequests = async ({
+export const overrideRequests = async ({
   embedType,
   method,
   url,
   options,
-}: OnBeforeRequestHandlerData & {
+  data,
+}: OnBeforeRequestHandlerConfig & {
   embedType: EmbedType;
 }) => {
   const transformation = getRequestTransformation({
@@ -198,22 +202,18 @@ const overrideRequests = async ({
   });
 
   if (!transformation) {
-    return { method, url, options };
+    return { method, url, options, data };
   }
 
   if (!options.headers) {
     options.headers = {};
   }
 
-  /**
-   * Set header to indicate that this request is for guest embed.
-   */
-  options.headers["x-metabase-guest-embed"] = "true";
-
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
     options: transformation.options,
+    data,
   };
 };
 

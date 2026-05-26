@@ -1,0 +1,195 @@
+name: Slowest questions
+entity_id: OCkxXZM5KPJ9zOjYVEnqY
+created_at: '2023-11-01T11:31:50.756543Z'
+creator_id: internal@metabase.com
+display: line
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_query_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - max
+      - {lib/uuid: 45a69541-773e-4463-b3dc-7f016e85ad2c}
+      - - field
+        - {base-type: type/Float, effective-type: type/Float}
+        - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+    breakout:
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: week}
+      - [Internal Metabase Database, public, v_query_log, started_at]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
+      - [Internal Metabase Database, public, v_content, name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Dashboard Qualified}
+      - [Internal Metabase Database, public, v_content, entity_id]
+    filters:
+    - - time-interval
+      - {include-current: false}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ}
+        - [Internal Metabase Database, public, v_query_log, started_at]
+      - -12
+      - week
+    - - not-empty
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
+    joins:
+    - alias: Content - Dashboard Qualified
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_query_log, card_qualified_id]
+        - - field
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
+          - [Internal Metabase Database, public, v_content, entity_qualified_id]
+      fields: all
+      stages:
+      - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: da51afa1-d3b1-41c9-ad01-c7a7b324ff85}
+      lib/type: mbql/join
+    - alias: Group Members - Entity
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_query_log, user_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - Entity}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+      fields: all
+      stages:
+      - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 9b5794d4-f1c6-4b41-821b-df75b66066e6}
+      lib/type: mbql/join
+    limit: 200
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {}
+        - 45a69541-773e-4463-b3dc-7f016e85ad2c
+    source-card: QOtZaiTLf2FDD4AT6Oinb
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Started At: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_query_log, started_at]
+  inherited_temporal_unit: week
+  name: started_at
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: started_at
+  lib/desired-column-alias: started_at
+  lib/from-model?: true
+  lib/original-display-name: Started At
+  lib/original-name: started_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: started_at
+  lib/temporal-unit: week
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Content - Dashboard Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {join-alias: Content - Dashboard Qualified}
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 118
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Content - Dashboard Qualified__name
+  lib/from-model?: true
+  lib/join-alias: Content - Dashboard Qualified
+  lib/original-display-name: Name
+  lib/original-join-alias: Content - Dashboard Qualified
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Content - Dashboard Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {join-alias: Content - Dashboard Qualified}
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 118
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: Content - Dashboard Qualified__entity_id
+  lib/from-model?: true
+  lib/join-alias: Content - Dashboard Qualified
+  lib/original-display-name: Entity ID
+  lib/original-join-alias: Content - Dashboard Qualified
+  lib/original-name: entity_id
+  lib/source: source/joins
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Max of Running Time Seconds
+  effective_type: type/Float
+  field_ref: [aggregation, 0]
+  name: max
+  source: aggregation
+  lib/deduplicated-name: max
+  lib/desired-column-alias: max
+  lib/original-name: max
+  lib/source: source/aggregations
+  lib/source-column-alias: max
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [started_at, name]
+  graph.metrics: [max]
+  graph.series_order: null
+  graph.series_order_dimension: null
+card_schema: 23
+serdes/meta:
+- {id: OCkxXZM5KPJ9zOjYVEnqY, label: slowest_questions, model: Card}
+dashboard_id: Glqmoytsnu0n6rfLUjock
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
+type: question

@@ -10,7 +10,7 @@ type DataSectionLayoutProps = {
 };
 
 export function DataSectionLayout({ children }: DataSectionLayoutProps) {
-  usePageTitle(t`Data structure`);
+  usePageTitle(t`Tables`);
 
   return <SectionLayout>{children}</SectionLayout>;
 }

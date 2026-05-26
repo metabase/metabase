@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.druid.client-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.druid.client-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
@@ -59,10 +60,10 @@
                           :dbname         "test"
                           :host           "http://localhost"
                           :tunnel-enabled true
-                         ;; we want to use a bogus port here on purpose -
-                         ;; so that locally, it gets a ConnectionRefused,
-                         ;; and in CI it does too. Apache's SSHD library
-                         ;; doesn't wrap every exception in an SshdException
+                          ;; we want to use a bogus port here on purpose -
+                          ;; so that locally, it gets a ConnectionRefused,
+                          ;; and in CI it does too. Apache's SSHD library
+                          ;; doesn't wrap every exception in an SshdException
                           :tunnel-port    21212
                           :tunnel-user    "bogus"}]
              (driver.u/can-connect-with-details? engine details :throw-exceptions))

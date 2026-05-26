@@ -191,7 +191,7 @@
           ;; Login succeeded
           (:success? login-result)
           (if token-value
-            (saml-utils/create-token-response (:session login-result) origin clean-continue-url)
+            (saml-utils/create-token-response (:session login-result) origin clean-continue-url (:nonce request))
             (request/set-session-cookies request
                                          (response/redirect (:redirect-url login-result))
                                          (:session login-result)

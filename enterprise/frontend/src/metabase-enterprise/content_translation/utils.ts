@@ -18,28 +18,33 @@ import type {
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
-export type TranslateContentStringFunction = <
-  MsgidType = string | boolean | null | undefined,
->(
-  dictionary: DictionaryArray | undefined,
-  locale: string | undefined,
-  /** This argument will be translated only if it is a string. If it is not a
-   * string, it will be returned untranslated. */
-  msgid: MsgidType,
-) => string | MsgidType;
+export type TranslateContentStringFunction = typeof translateContentString;
 
-/** Translate a user-generated string
+/**
+ * Translate a user-generated string
  *
  * Terminology: A "msgid" is a 'raw', untranslated string. A "msgstr" is a
  * translation of a msgid.
- * */
-export const translateContentString: TranslateContentStringFunction = (
-  dictionary,
-  locale,
-  rawMsgid,
-) => {
+ *
+ * @param dictionary - The dictionary to use for translations
+ * @param locale - The locale to translate string to
+ * @param rawMsgid -
+ *   The value to translate
+ *   This argument will be translated only if it is a string or boolean.
+ */
+export function translateContentString<T>(
+  dictionary: DictionaryArray | undefined,
+  locale: string | undefined,
+  rawMsgid: T,
+): string | T {
   if (!locale) {
     return rawMsgid;
+  }
+
+  if (Array.isArray(rawMsgid)) {
+    return rawMsgid.map((msgid) =>
+      translateContentString(dictionary, locale, msgid),
+    ) as T;
   }
 
   if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
@@ -65,7 +70,7 @@ export const translateContentString: TranslateContentStringFunction = (
   }
 
   return msgstr;
-};
+}
 
 /**
  * Translates a column display name by parsing it into translatable and static

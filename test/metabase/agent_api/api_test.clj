@@ -6,10 +6,11 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.api :as agent-api.api]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -70,6 +71,19 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 when disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (is (= "Agent API is not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "External Agent API routes return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :agent-api-enabled?   "true"]
+      (is (= "AI features are not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
 (deftest get-table-details-test
@@ -106,6 +120,36 @@
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
 
+(deftest get-table-details-field-types-test
+  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
+                   :model/Field    _              {:table_id table-id, :name "id"
+                                                   :base_type :type/BigInteger
+                                                   :semantic_type :type/PK}
+                   :model/Field    _              {:table_id table-id, :name "name"
+                                                   :base_type :type/Text}
+                   :model/Field    _              {:table_id table-id, :name "created_at"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/DateTime
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
+      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+                        :fields)
+            by-name (m/index-by :name fields)]
+        (testing "base_type is always set"
+          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
+        (testing "semantic_type is returned when set"
+          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
+          (is (nil? (get-in by-name ["name" :semantic_type]))))
+        (testing "effective_type and coercion_strategy are returned when coerced"
+          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
+          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
+        (testing "effective_type is omitted when it equals base_type"
+          (is (not (contains? (get by-name "id") :effective_type)))
+          (is (not (contains? (get by-name "name") :effective_type))))))))
+
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
@@ -136,17 +180,15 @@
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
 
 (defn- visible-field-id
-  "Find the field-id string for a field by display name within a table's visible columns."
+  "Find the real field ID for a field by display name within a table's visible columns."
   [table-id field-display-name]
-  (let [mp            (mt/metadata-provider)
-        query         (lib/query mp (lib.metadata/table mp table-id))
-        field-prefix  (metabot.tools.u/table-field-id-prefix table-id)
-        visible-cols  (lib/visible-columns query)]
-    (->> (keep-indexed (fn [i col]
-                         (when (= (lib/display-name query col) field-display-name)
-                           (str field-prefix i)))
-                       visible-cols)
-         first)))
+  (let [mp           (mt/metadata-provider)
+        query        (lib/query mp (lib.metadata/table mp table-id))
+        visible-cols (lib/visible-columns query)]
+    (->> visible-cols
+         (filter #(= (lib/display-name query %) field-display-name))
+         first
+         :id)))
 
 (deftest get-table-field-values-test
   ;; Ensure field values exist for the field we'll test
@@ -172,12 +214,12 @@
 
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
-           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
+           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
 
-  (testing "Returns 400 for invalid field-id format"
+  (testing "Returns 404 for non-existent field"
     (let [table-id (mt/id :people)]
-      (is (= "Invalid field_id format: not-a-valid-id"
-             (mt/user-http-request :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id)))))))
+      (is (= "Field 999999 not found"
+             (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
@@ -189,48 +231,198 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
 
+(deftest coerce-query-list-test
+  (let [coerce #'agent-api.api/coerce-query-list]
+    (testing "arrays pass through unchanged"
+      (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
+    (testing "nil stays nil"
+      (is (nil? (coerce nil))))
+    (testing "a bare string becomes a single-element list"
+      (is (= ["orders"] (coerce "orders"))))
+    (testing "a JSON-stringified array of strings is unwrapped"
+      (is (= ["orders" "revenue"] (coerce "[\"orders\", \"revenue\"]"))))
+    (testing "JSON arrays with non-string elements are not unwrapped — they fall back to a literal single query so that downstream :sequential NonBlankString validation is never bypassed"
+      (is (= ["[1, 2]"] (coerce "[1, 2]")))
+      (is (= ["[\"\"]"] (coerce "[\"\"]"))))
+    (testing "non-JSON strings become a single-element list"
+      (is (= ["not json ["] (coerce "not json ["))))))
+
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
   [response]
   (-> response :query u/decode-base64 json/decode+kw lib.normalize/normalize))
 
+;;; ---------------------------------------- Repr JSON helpers ----------------------------------------
+
+(defn- db-name
+  "Canonical name of the application database \u2014 the literal string the LLM is expected
+  to put as the first element of every portable FK in a representations query."
+  []
+  (t2/select-one-fn :name :model/Database (mt/id)))
+
+(defn- orders-query
+  "Build a portable MBQL 5 representations external-query map against the `ORDERS` table in
+  the application database. Clause arguments (`aggregation`, `breakout`, `filters`, `order-by`,
+  `fields`) are Clojure data fed straight through to the HTTP body, e.g.
+
+      (orders-query :limit 10)
+      (orders-query :aggregation [[\"count\" {}]])
+      (orders-query :filters     [[\"not-null\" {} (orders-field-ref \"ID\")]])
+
+  Structural validation against `::lib.schema/external-query` lives on the server side; here
+  we just need a believable payload to drive the HTTP endpoint."
+  [& {:keys [limit aggregation breakout filters order-by fields]}]
+  {:lib/type "mbql/query"
+   :stages   [(cond-> {:lib/type     "mbql.stage/mbql"
+                       :source-table [(db-name) "PUBLIC" "ORDERS"]}
+                aggregation (assoc :aggregation (vec aggregation))
+                breakout    (assoc :breakout    (vec breakout))
+                filters     (assoc :filters     (vec filters))
+                order-by    (assoc :order-by    (vec order-by))
+                fields      (assoc :fields      (vec fields))
+                limit       (assoc :limit       limit))]})
+
+(defn- orders-field-ref
+  "Field-ref clause against an ORDERS column as Clojure data, e.g.
+  `[\"field\" {} [\"test-data (h2)\" \"PUBLIC\" \"ORDERS\" \"ID\"]]`. Suitable as an inner
+  argument inside `aggregation` / `filters` / `order-by` clauses passed to [[orders-query]]."
+  [col-name]
+  ["field" {} [(db-name) "PUBLIC" "ORDERS" col-name]])
+
+(defn- source-card-query
+  "Build a minimal portable representations external-query map whose first stage uses
+  `source-card:`."
+  [entity-id]
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type    "mbql.stage/mbql"
+               :source-card entity-id
+               :limit       5}]})
+
+;;; ---------------------------------------- /v2/construct-query ----------------------------------------
+
 (deftest construct-query-test
   (testing "Constructs a simple query from a table"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id})]
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-query)})]
       (is (string? (:query response)) "Response should contain a query string")
       (let [decoded (decode-query response)]
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
-  (testing "Applies default limit of 200 when no limit is specified"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id})
-          decoded  (decode-query response)]
-      (is (= 200 (lib/current-limit decoded)))))
-
-  (testing "Respects explicit limit"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id
-                                          :limit    10})
+  (testing "Respects explicit limit on the stage"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-query :limit 10)})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
 
-  (testing "Returns 404 for non-existent table"
-    (is (= "No table found with table_id 999999"
-           (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
-                                 {:table_id 999999})))))
+  (testing "Returns 400 with `:unknown-table` ex-data for an unknown table FK"
+    ;; Note: the new repr contract surfaces unknown-input errors as 400 (`:agent-error?`)
+    ;; rather than the old 404 — the LLM is expected to read the message and self-correct.
+    ;; ex-data values are stringified by the JSON roundtrip, so we match the keyword's name.
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query {:lib/type "mbql/query"
+                                                  :stages   [{:lib/type     "mbql.stage/mbql"
+                                                              :source-table [(db-name) "PUBLIC" "NOT_A_TABLE"]}]}})]
+      (is (=? {:error "unknown-table"} response))))
+
+  (testing "Rejects a non-aggregation in the aggregation slot with a 400"
+    ;; The endpoint's wire schema is intentionally permissive (`:query :map`); deep
+    ;; validation happens inside the representations pipeline. A `field` clause where an
+    ;; aggregation clause is expected is caught by the E1 friendly-error pass and surfaced
+    ;; as `:aggregation-entry-not-aggregation` with `:agent-error? true`, so the LLM gets
+    ;; a clean diagnostic instead of a generic schema error.
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (orders-query
+                                                  :aggregation [(orders-field-ref "ID")])})]
+      (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
+
+(deftest construct-query-permission-checks-test
+  (testing "Rejects a first-stage source-table the current user cannot query"
+    (mt/with-no-data-perms-for-all-users!
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                   {:query (orders-query :aggregation [["count" {}]])})))))
+
+  (testing "Rejects a first-stage source-card the current user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Collection _collection {}
+                       :model/Card       card        {:name          "Protected Question"
+                                                      :collection_id (:id _collection)
+                                                      :database_id   (mt/id)
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                       {:query (source-card-query (:entity_id card))})))))))
+
+  (testing "Rejects a metric aggregation the current user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection _collection {}
+                     :model/Card       metric      {:name          "Protected Metric"
+                                                    :type          :metric
+                                                    :collection_id (:id _collection)
+                                                    :database_id   (mt/id)
+                                                    :dataset_query (orders-count-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                     {:query (orders-query
+                                              :aggregation [["metric" {} (:entity_id metric)]])})))))))
+
+(deftest construct-query-rejects-empty-query-test
+  (testing "Empty / blank :query is rejected by the request schema"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query ""}))
+  (testing "Missing :query in body is rejected by the request schema"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {})))
+
+(deftest construct-query-rejects-typod-stage-keys-test
+  (testing (str "The agent boundary asserts every stage's top-level keys are in a known set. "
+                "`lib.schema.mbql-stage/mbql` is not a closed map, so typo'd stage keys "
+                "(e.g. `aggreagation` for `aggregation`) would otherwise be silently dropped "
+                "at resolve time and the LLM would never learn that its intent was discarded.")
+    (testing "typo'd `aggreagation` is rejected with :unknown-stage-key"
+      (let [response (mt/user-http-request
+                      :rasta :post 400 "agent/v2/construct-query"
+                      {:query {:lib/type "mbql/query"
+                               :stages   [{:lib/type      "mbql.stage/mbql"
+                                           :source-table  [(db-name) "PUBLIC" "ORDERS"]
+                                           :aggreagation  [["count" {}]]}]}})]
+        (is (=? {:error "unknown-stage-key"} response))
+        (is (=? {:unknown-keys ["aggreagation"]} response))))
+    (testing "diagnostic lists the valid stage keys so the LLM can self-correct"
+      (let [response (mt/user-http-request
+                      :rasta :post 400 "agent/v2/construct-query"
+                      {:query {:lib/type "mbql/query"
+                               :stages   [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [(db-name) "PUBLIC" "ORDERS"]
+                                           :groupby      ["foo"]}]}})]
+        (is (=? {:error "unknown-stage-key"} response))
+        (is (re-find #"aggregation" (:message response)))))))
+
+(deftest construct-query-rejects-legacy-envelope-test
+  (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
+                "is rejected by the now-closed request schema, instead of being silently ignored. "
+                "This guards against a regression where the LLM's stale memory keeps sending the old "
+                "shape and we silently drop the extra keys.")
+    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                  {:query          (orders-query)
+                                   :source_entity  {:type "table" :id (mt/id :orders)}}))))
+  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
+    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                  {:query               (orders-query :limit 5)
+                                   :referenced_entities []}))))
+  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
+    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
+            (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                  {:continuation_token "not-a-real-token"
+                                   :query               (orders-query :limit 5)})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
-    (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                               {:table_id table-id
-                                                :limit    5})
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 5)})
           ;; Streaming response returns 202 (accepted) since it starts streaming before completion
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
@@ -244,10 +436,8 @@
               execute-resp))))
 
   (testing "Enforces agent query row limit even when query specifies a higher limit"
-    (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                               {:table_id table-id
-                                                :limit    300})
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 300)})
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
@@ -271,65 +461,52 @@
 
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
+             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
 
-    (testing "Returns 400 for field-id from wrong entity type"
-      ;; Using a table field-id (t-prefix) when querying a metric should fail
-      (is (re-find #"does not match expected prefix"
-                   (mt/user-http-request :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric))))))))
+    (testing "Returns 404 for non-existent field on metric"
+      (is (= "Field 999999 not found"
+             (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
                                      :database_id   (mt/id)
                                      :dataset_query (orders-count-query)}]
-    (testing "Constructs a query from a metric"
-      (let [response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                           {:metric_id (:id metric)})]
+    (testing "Constructs a query that references a metric by entity_id in an aggregation"
+      (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                           {:query (orders-query
+                                                    :aggregation [["metric" {} (:entity_id metric)]])})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
-          (is (= (mt/id) (lib/database-id decoded))))))
+          (is (= (mt/id) (lib/database-id decoded)))
+          (is (= 1 (count (lib/aggregations decoded)))))))
 
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
-                                   {:metric_id 999999}))))))
+    (testing "Returns 400 with `:unknown-card` ex-data for an unknown metric entity_id"
+      ;; The entity_id must be a syntactically-valid 21-char NanoID for the resolver to
+      ;; even attempt the lookup; otherwise the metric clause's literal string survives to
+      ;; lib.schema validation and we get a different (less useful) error class. Pick a
+      ;; well-formed but absent eid to drive the `:unknown-card` path specifically.
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                           {:query (orders-query
+                                                    :aggregation [["metric" {} "AAAAAAAAAAAAAAAAAAAAA"]])})]
+        (is (=? {:error "unknown-card"} response))))))
 
 (deftest construct-query-with-count-aggregation-test
-  (testing "Count aggregation without field_id produces a valid query"
-    (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id     table-id
-                                          :aggregations [{:function "count"}]
-                                          :limit        10})]
-      (is (string? (:query response)))
-      (let [decoded (decode-query response)]
-        (is (= 1 (count (lib/aggregations decoded)))))))
-
-  (testing "Count aggregation with field_id still works"
-    (let [table-id (mt/id :orders)
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
-          field-id (-> table :fields first :field_id)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id     table-id
-                                          :aggregations [{:function "count" :field_id field-id}]
-                                          :limit        10})]
+  (testing "Count aggregation produces a valid query"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-query :aggregation [["count" {}]]
+                                                               :limit 10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded))))))))
 
 (deftest construct-query-with-filters-test
   (testing "Constructs a query with filters"
-    (let [table-id (mt/id :orders)
-          ;; Get table details to find a valid field_id
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
-          field-id (-> table :fields first :field_id)
-          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id
-                                          :filters  [{:field_id  field-id
-                                                      :operation "is-not-null"}]
-                                          :limit    10})]
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:query (orders-query
+                                                  :filters [["not-null" {} (orders-field-ref "ID")]]
+                                                  :limit   10)})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
@@ -354,36 +531,32 @@
                   (:measures table))))))))
 
 (deftest combined-query-test
-  (testing "Returns results for a table query"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          response (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                         {:table_id table-id
-                                          :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                          :limit    5})]
+  (testing "Returns results for a table query that fits in a single page"
+    (let [response (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                         {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                               :limit    5)})]
       (is (=? {:status             "completed"
                :row_count          5
-               :continuation_token string?
+               :continuation_token nil?
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
 
-  (testing "Continuation token returns next page of results"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          page1    (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                         {:table_id table-id
-                                          :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                          :limit    5})
-          page2    (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                         {:continuation_token (:continuation_token page1)})]
-      (is (=? {:row_count          5
+  (testing "Continuation token returns next page of results when the total limit exceeds the page size"
+    (let [page-size  200
+          total-rows 250
+          page1      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                                 :limit    total-rows)})
+          page2      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count          page-size
                :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+               :data               {:rows (fn [rows] (= page-size (count rows)))}}
               page1))
-      (is (=? {:row_count          5
-               :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+      (is (=? {:row_count          (- total-rows page-size)
+               :continuation_token nil?
+               :data               {:rows (fn [rows] (= (- total-rows page-size) (count rows)))}}
               page2))
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
@@ -392,27 +565,46 @@
   (testing "No continuation_token when all rows are returned"
     (is (=? {:status             "completed"
              :continuation_token nil?}
-            (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                  {:table_id     (mt/id :orders)
-                                   :aggregations [{:function "count"}]}))))
+            (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                  {:query (orders-query :aggregation [["count" {}]])}))))
 
-  (testing "Constraint cap limits results to 200 rows"
+  (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
-            (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                  {:table_id (mt/id :orders)
-                                   :limit    1000})))))
+            (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                  {:query (orders-query :limit 1000)})))))
+
+(defn- make-continuation-token [pagination]
+  (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+       :pagination pagination}
+      json/encode
+      u/encode-base64))
+
+(deftest continuation-token-validation-test
+  (testing "Malformed pagination ints in a continuation token produce a 400, not a 500.
+            This is robustness — the token isn't a trust boundary, since a caller can
+            always issue a fresh program."
+    (doseq [[label pagination] [["zero limit"         {:limit 0      :page 1}]
+                                ["negative limit"     {:limit -10    :page 1}]
+                                ["non-integer limit"  {:limit "lots" :page 1}]
+                                ["zero page"          {:limit 200    :page 0}]
+                                ["negative page"      {:limit 200    :page -1}]
+                                ["non-integer page"   {:limit 200    :page "next"}]]]
+      (testing label
+        (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                              {:continuation_token (make-continuation-token pagination)})))))
 
 (deftest combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
                                      :database_id   (mt/id)
                                      :dataset_query (orders-count-query)}]
-    (testing "Returns results for a metric query"
+    (testing "Returns results for a query that aggregates via a metric reference"
       (is (=? {:status    "completed"
                :row_count pos?}
-              (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                    {:metric_id (:id metric)}))))))
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:query (orders-query
+                                             :aggregation [["metric" {} (:entity_id metric)]])}))))))
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
@@ -426,3 +618,90 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
+
+;;; ------------------------------------------------ Create Question Tests -------------------------------------------
+
+(deftest create-question-test
+  (testing "Creates a saved question from a constructed query"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name  "Agent Test Question"
+                                                :query (:query construct-resp)})]
+      (is (=? {:id            pos?
+               :name          "Agent Test Question"
+               :display       "table"
+               :collection_id nil
+               :description   nil}
+              create-resp))
+      (is (t2/exists? :model/Card :id (:id create-resp)))
+      (t2/delete! :model/Card :id (:id create-resp))))
+
+  (testing "Creates a question with optional fields"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
+      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                 {:query (orders-query :limit 10)})
+            create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                 {:name          "Agent Question With Options"
+                                                  :query         (:query construct-resp)
+                                                  :display       "bar"
+                                                  :description   "A test question"
+                                                  :collection_id coll-id})]
+        (is (=? {:id            pos?
+                 :name          "Agent Question With Options"
+                 :display       "bar"
+                 :collection_id coll-id
+                 :description   "A test question"}
+                create-resp))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
+
+(deftest create-dashboard-test
+  (testing "Creates an empty dashboard"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Test Dashboard"})]
+      (is (=? {:id            pos?
+               :name          "Agent Test Dashboard"
+               :collection_id nil
+               :description   nil
+               :dashcard_ids  []}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp))))
+
+  (testing "Creates a dashboard with questions"
+    (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
+                                               :dataset_query (orders-count-query)
+                                               :display       :table}
+                   :model/Card {card2-id :id} {:name          "DashQ2"
+                                               :dataset_query (orders-count-query)
+                                               :display       :bar}]
+      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                       {:name         "Dashboard With Questions"
+                                        :description  "Test dashboard"
+                                        :question_ids [card1-id card2-id]})]
+        (is (=? {:id           pos?
+                 :name         "Dashboard With Questions"
+                 :description  "Test dashboard"
+                 :dashcard_ids #(= 2 (count %))}
+                resp))
+        ;; Verify dashcards reference the correct cards and have valid positions
+        (let [dashcards (t2/select :model/DashboardCard :dashboard_id (:id resp))]
+          (is (= #{card1-id card2-id} (set (map :card_id dashcards))))
+          (is (every? #(and (nat-int? (:col %)) (nat-int? (:row %))
+                            (pos? (:size_x %)) (pos? (:size_y %)))
+                      dashcards)))
+        (t2/delete! :model/Dashboard :id (:id resp)))))
+
+  (testing "Creates a dashboard in a specific collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
+      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                       {:name          "Collection Dashboard"
+                                        :collection_id coll-id})]
+        (is (= coll-id (:collection_id resp)))
+        (t2/delete! :model/Dashboard :id (:id resp)))))
+
+  (testing "Returns 404 when a question_id does not exist"
+    (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
+                          {:name         "Bad Dashboard"
+                           :question_ids [999999]})))

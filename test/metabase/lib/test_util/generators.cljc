@@ -106,7 +106,7 @@
 
 (def ^:private ^:dynamic *safe-for-old-refs*
   "Controls whether the generators will construct queries with things like multiple joins to the same table, which
-  create ambiguous refs in classic pMBQL.
+  create ambiguous refs in classic MBQL 5.
 
   Default to true, ie. safe for the current library.
 
@@ -134,7 +134,7 @@
 ;; TODO: Add a schema for the step `[vectors ...]`?
 (add-step {:kind :aggregate})
 
-;; TODO: columns should be specified with :ident, but that isn't available yet. For now, pMBQL refs will do.
+;; TODO: columns should be specified with :ident, but that isn't available yet. For now, MBQL 5 refs will do.
 (defmethod run-step* :aggregate [query [_aggregate stage-number agg-clause]]
   (lib/aggregate query stage-number agg-clause))
 

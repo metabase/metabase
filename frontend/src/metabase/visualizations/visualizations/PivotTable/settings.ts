@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { displayNameForColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/utils/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
@@ -52,9 +52,9 @@ export const getTitleForColumn = (
 };
 
 export const settings = {
-  ...columnSettings({ hidden: true }),
+  ...columnSettings({ getHidden: () => true }),
   [COLLAPSED_ROWS_SETTING]: {
-    hidden: true,
+    getHidden: () => true,
     readDependencies: [COLUMN_SPLIT_SETTING],
     getValue: (
       [{ data }]: Series,
@@ -78,9 +78,7 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
@@ -127,7 +125,8 @@ export const settings = {
 
         if (dimensions.length < 2) {
           columns = [];
-          rows = [first];
+          // use `dimensions` so `rows` is `[]` when there are zero dimensions, not `[undefined]` (metabase#56235)
+          rows = dimensions;
         } else if (dimensions.length <= 3) {
           columns = [first];
           rows = [second, ...rest];
@@ -149,9 +148,7 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show row totals`;
     },
@@ -160,9 +157,7 @@ export const settings = {
     inline: true,
   },
   "pivot.show_column_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Show column totals`;
     },
@@ -171,9 +166,7 @@ export const settings = {
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
-    get section() {
-      return t`Columns`;
-    },
+    getSection: () => t`Columns`,
     get title() {
       return t`Condense duplicate totals`;
     },
@@ -196,9 +189,7 @@ export const settings = {
   },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    get section() {
-      return t`Conditional Formatting`;
-    },
+    getSection: () => t`Conditional Formatting`,
     widget: ChartSettingsTableFormatting,
     getDefault: (
       [{ data }]: [{ data: DatasetData }],

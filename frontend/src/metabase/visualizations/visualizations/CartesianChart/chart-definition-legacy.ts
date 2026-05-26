@@ -1,8 +1,6 @@
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
+import { getBreakoutSeriesName } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type {
@@ -107,17 +105,12 @@ function transformSingleSeries(
       card: {
         ...card,
         // if multiseries include the card title as well as the breakout value
-        name: [
-          // show series title if it's multiseries
-          series.length > 1 && card.name,
-          // always show grouping value
-          formatValue(
-            isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue,
-            { column: cols[seriesColumnIndex] },
-          ),
-        ]
-          .filter((n) => n)
-          .join(": "),
+        name: getBreakoutSeriesName(
+          breakoutValue,
+          cols[seriesColumnIndex],
+          series.length > 1,
+          card.name,
+        ),
         originalCardName: card.name,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],

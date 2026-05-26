@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.params :as channel.params]))
 
-(deftest substitute-params-test
+(deftest ^:parallel substitute-params-test
   (are [expected text context]
        (= expected (channel.params/substitute-params text context))
 

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
   Flex,
   Icon,

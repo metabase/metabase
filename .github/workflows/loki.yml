@@ -14,9 +14,9 @@ jobs:
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
@@ -61,7 +61,7 @@ jobs:
       - name: Upload Artifact
         id: artifact-upload-step
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loki-report
           include-hidden-files: true

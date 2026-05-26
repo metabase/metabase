@@ -42,6 +42,12 @@ describe("scenarios > metrics > metric page", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
@@ -204,15 +210,22 @@ describe("scenarios > metrics > metric page", () => {
       cy.findByText("By Created At").should("exist");
       cy.findByText("By State").should("exist");
       cy.findByText("By Category").should("exist");
-      cy.findByText("By Name").should("exist");
+      cy.findByText("By City").should("exist");
       cy.findAllByText(/^By /).should("have.length", 4);
 
       cy.findByText("Show more").scrollIntoView().click();
+    });
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_page_show_more_clicked",
+    });
+
+    H.MetricPage.overviewPage().within(() => {
+      cy.findByText("By Name").should("exist");
       cy.findByText("By Source").should("exist");
       cy.findByText("By Title").should("exist");
       cy.findByText("By Vendor").should("exist");
-      cy.findAllByText(/^By /).should("have.length", 7);
+      cy.findAllByText(/^By /).should("have.length", 8);
     });
   });
 
@@ -246,6 +259,23 @@ describe("scenarios > metrics > metric page", () => {
     H.getNotebookStep("summarize")
       .findByText("Sum of Total")
       .should("be.visible");
+    H.undoToast().should("contain.text", "Metric query updated");
+    H.undoToast().findByRole("img", { name: /close/ }).click();
+
+    cy.log("surface backend error when a revert fails (UXW-310)");
+    cy.intercept("POST", "/api/revision/revert", {
+      statusCode: 500,
+      body: { message: "Cannot revert: missing metric" },
+    }).as("failedRevert");
+
+    H.MetricPage.historyTab().click();
+    cy.findByTestId("saved-question-history-list")
+      .findAllByTestId("question-revert-button")
+      .first()
+      .click();
+    cy.wait("@failedRevert");
+
+    H.undoToast().should("contain.text", "Cannot revert: missing metric");
   });
 
   it("should add metric to dashboard and move to trash via more menu", () => {
@@ -313,7 +343,7 @@ describe("scenarios > metrics > metric page", () => {
 
   describe("ee features", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show and hide 'Open in Data Studio' based on context", () => {
@@ -363,6 +393,7 @@ describe("scenarios > metrics > metric page", () => {
 
     it("should show the Dependencies tab with dependency graph in EE", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForBackfillComplete();
         H.visitMetric(metric.id);
       });
 
