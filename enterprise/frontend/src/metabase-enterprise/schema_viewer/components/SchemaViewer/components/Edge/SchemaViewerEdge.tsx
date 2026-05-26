@@ -223,6 +223,7 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
       />
       <path
         data-testid="schema-viewer-edge-path"
+        data-selected={selected ? "true" : undefined}
         d={edgePath}
         fill="none"
         style={style}

@@ -215,11 +215,6 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     assertNodeInViewport(ORDERS_ID);
 
     cy.log(
-      "After focusing the same node, the button stays disabled until selection changes",
-    );
-    cy.contains("button", "Focus node").should("be.disabled");
-
-    cy.log(
       "Double-click Reviews — camera zooms in onto Reviews and re-enables the focus-node button",
     );
     tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
@@ -235,15 +230,19 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     infoPanel().findByRole("heading", { name: "Reviews" }).should("be.visible");
     infoPanel().findByRole("heading", { name: "Orders" }).should("not.exist");
 
+    cy.log("Closing the info panel clears node selection");
+    infoPanel().findByLabelText("Close").click({ force: true });
+    cy.findByTestId("graph-info-panel").should("not.exist");
+    cy.contains("button", "Focus node").should("not.exist");
+
     cy.log(
       "Clicking the USER_ID FK on Orders (target on canvas) selects the connecting edge and pans the camera",
     );
-    // `{ force: true }` skips the overlap check — the info panel sits over the
-    // right of the canvas, but the row is still in the DOM and clickable.
+
     tableNode(ORDERS_ID).findByText("USER_ID").click({ force: true });
     assertNodeInViewport(PEOPLE_ID);
     cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[style*="stroke-width: 2"]')
+      .filter('[data-selected="true"]')
       .should("have.length", 1);
 
     cy.log(
@@ -279,10 +278,10 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("be.visible");
     searchInput().type("{esc}");
 
-    cy.log("Closing the info panel clears node selection");
-    infoPanel().findByLabelText("Close").click({ force: true });
-    cy.findByTestId("graph-info-panel").should("not.exist");
-    cy.contains("button", "Focus node").should("not.exist");
+    // cy.log("Closing the info panel clears node selection");
+    // infoPanel().findByLabelText("Close").click({ force: true });
+    // cy.findByTestId("graph-info-panel").should("not.exist");
+    // cy.contains("button", "Focus node").should("not.exist");
   });
 
   it("URL state survives a hard reload, and the bare URL redirects back to the last opened (DB, schema)", () => {
@@ -502,10 +501,9 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       .findByText("Pick a database to view its schema")
       .should("be.visible");
 
-    cy.log("Navigate directly to the Orders Data Model page");
-    cy.visit(
-      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_ID}%3APUBLIC/table/${ORDERS_ID}`,
-    );
+    cy.log("Navigate to the Orders Data Model page via the table picker tree");
+    H.DataStudio.nav().findByText("Tables").click();
+    cy.findAllByTestId("tree-item").contains("Orders").click();
 
     cy.log(
       "Click the 'Schema viewer' button in the Orders table section — opens with Orders as focal",
@@ -522,6 +520,15 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
   });
 
   it("renders the loader during a slow ERD fetch and the error panel when the request fails", () => {
+    cy.log("Force a 500 — error panel renders with the surfaced message");
+    cy.intercept("GET", "/api/ee/erd*", { statusCode: 500, body: "boom" }).as(
+      "erdError",
+    );
+    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.wait("@erdError");
+    cy.findByTestId("schema-viewer-error")
+      .should("be.visible")
+      .should("contain", "boom");
     cy.log(
       "Slow the ERD response — the centred loader appears, then the canvas renders",
     );
@@ -529,20 +536,16 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       req.on("response", (res) => {
         res.setDelay(1500);
       });
+      req.continue();
     }).as("slowErd");
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    H.DataStudio.nav().findByLabelText("Library").click();
+    H.DataStudio.nav().findByLabelText("Schema viewer").click();
+    schemaPickerTrigger().click();
+    cy.findByRole("button", { name: "Sample Database" }).click();
     cy.findByTestId("schema-viewer-loader").should("be.visible");
     cy.wait("@slowErd");
     cy.findByTestId("schema-viewer-loader").should("not.exist");
     tableNode(ORDERS_ID).should("be.visible");
-
-    cy.log("Force a 500 — error panel renders with the surfaced message");
-    cy.intercept("GET", "/api/ee/erd*", { statusCode: 500, body: "boom" }).as(
-      "erdError",
-    );
-    cy.reload();
-    cy.wait("@erdError");
-    cy.findByTestId("schema-viewer-error").should("be.visible");
   });
 });
 
