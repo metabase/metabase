@@ -671,13 +671,11 @@ type LayoutEdge = { source: string; target: string };
  *
  *  - `fresh`: lay everything out from scratch via Dagre (manual auto-layout
  *    button, or fallback when an incremental merge isn't possible).
- *  - `focus`: rearrange around `focalId` — incoming neighbors stack on the
- *    left, outgoing on the right, the rest place relative to neighbors.
+ *  - `focus`: rearrange around "focal table" — incoming relationships stack on the
+ *    left, outgoing on the right, the rest are placed further on the side using default algorithm.
  *  - `merge`: try to preserve existing positions when the underlying graph
- *    changes incrementally (e.g. FK click adds a new table). Falls back to
- *    `fresh` automatically if the merge isn't viable; the result reports
- *    via `preservedExistingPositions` which path was taken.
- */
+ *    changes incrementally (e.g. FK click adds a new table).
+ * */
 export type LayoutRequest =
   | {
       mode: "fresh";
@@ -699,19 +697,12 @@ export type LayoutRequest =
 
 export type LayoutResult = {
   nodes: SchemaViewerFlowNode[];
-  /**
-   * `true` only when `mode: "merge"` succeeded and existing nodes kept their
-   * positions. `false` for `fresh`, `focus`, and any merge that fell back
-   * to a fresh Dagre layout. Callers use this to decide between zooming to
-   * a specific incremental target vs fitting the whole canvas.
-   */
+  // Indicate whether node positions were preserved during incremental merge.
   preservedExistingPositions: boolean;
 };
 
 /**
- * Single entry point for every canvas-layout action. Dispatches to the
- * appropriate internal primitive based on `mode` and reports back whether
- * any existing positions were preserved.
+ * Organize canvas layout based on the requested mode.
  */
 export function applyLayout(req: LayoutRequest): LayoutResult {
   switch (req.mode) {
@@ -734,10 +725,11 @@ export function applyLayout(req: LayoutRequest): LayoutResult {
       if (merged != null) {
         return { nodes: merged, preservedExistingPositions: true };
       }
-      return {
-        nodes: getNodesWithPositions(req.incoming, req.edges),
-        preservedExistingPositions: false,
-      };
+      return applyLayout({
+        nodes: req.incoming,
+        edges: req.edges,
+        mode: "fresh",
+      });
     }
   }
 }

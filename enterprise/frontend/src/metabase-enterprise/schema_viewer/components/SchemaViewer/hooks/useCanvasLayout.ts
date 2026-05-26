@@ -13,17 +13,7 @@ type UseCanvasLayoutArgs = {
 };
 
 type UseCanvasLayoutResult = {
-  /**
-   * Re-run default nodes placement over the entire canvas. No-op when the canvas
-   * is empty.
-   */
   resetLayout: () => void;
-  /**
-   * Apply a focal layout centered on `nodeId`: incoming neighbors stack to
-   * the left of the focal node, outgoing to the right, the rest place
-   * relative to neighbors. Clears node and edge selection so the fresh
-   * layout starts clean, then zooms onto the focal node.
-   */
   focusOnNode: (nodeId: string) => void;
 };
 
@@ -56,15 +46,11 @@ export function useCanvasLayout({
           nodes: currentNodes,
           edges,
         });
-        // Clear any previous node selection so the fresh layout starts from
-        // a clean slate.
         return laidOut.map((n) => (n.selected ? { ...n, selected: false } : n));
       });
-      // Drop any edge highlighting from before the rearrangement.
       setEdges((currentEdges) =>
         currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
       );
-      // Zoom in on the focal node itself.
       zoomToNode(nodeId);
     },
     [edges, setNodes, setEdges, zoomToNode],

@@ -29,6 +29,8 @@ function node(overrides: Partial<ErdNode> = {}): ErdNode {
     table_id: 1,
     name: "t1",
     display_name: "T1",
+    description: null,
+    owner: null,
     schema: "public",
     db_id: 1,
     fields: [],

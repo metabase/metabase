@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { useLatest } from "react-use";
 
 import type { ConcreteTableId } from "metabase-types/api";
 
@@ -38,20 +39,113 @@ type PendingExpansion = {
   candidateEdgeIds: readonly string[];
 };
 
+const clearExpandingTableIds = (prev: Set<ConcreteTableId>) =>
+  prev.size === 0 ? prev : new Set<ConcreteTableId>();
+
+function markPendingEdgeSelected(
+  edges: SchemaViewerFlowEdge[],
+  pending: PendingExpansion | null,
+) {
+  if (pending == null || pending.candidateEdgeIds.length === 0) {
+    return edges;
+  }
+
+  const matchedId = pending.candidateEdgeIds.find((candidate) =>
+    edges.some((edge) => edge.id === candidate),
+  );
+
+  if (matchedId == null) {
+    return edges;
+  }
+
+  return edges.map((edge) =>
+    edge.id === matchedId ? { ...edge, selected: true } : edge,
+  );
+}
+
+function getExpandingTableIds(
+  currentExpandingTableIds: Set<ConcreteTableId>,
+  visibleNodes: SchemaViewerFlowNode[],
+) {
+  if (currentExpandingTableIds.size === 0) {
+    return currentExpandingTableIds;
+  }
+
+  const visibleIds = new Set(visibleNodes.map((node) => node.data.table_id));
+  let hasChanges = false;
+  const newExpandingTableIds = new Set<ConcreteTableId>();
+
+  for (const id of currentExpandingTableIds) {
+    if (visibleIds.has(id)) {
+      hasChanges = true;
+    } else {
+      newExpandingTableIds.add(id);
+    }
+  }
+
+  return hasChanges ? newExpandingTableIds : currentExpandingTableIds;
+}
+
+function getMergedGraphLayout({
+  graph,
+  currentNodes,
+}: {
+  graph: NonNullable<UseGraphSyncArgs["graph"]>;
+  currentNodes: SchemaViewerFlowNode[];
+}) {
+  return applyLayout({
+    mode: "merge",
+    incoming: graph.nodes,
+    current: currentNodes,
+    edges: graph.edges,
+  });
+}
+
+function focusSyncedGraph({
+  layout,
+  pendingExpansionRef,
+  zoomToNode,
+  zoomToCanvas,
+}: {
+  layout: ReturnType<typeof applyLayout>;
+  pendingExpansionRef: { current: PendingExpansion | null };
+  zoomToNode: (nodeId: string) => void;
+  zoomToCanvas: () => void;
+}) {
+  const pending = pendingExpansionRef.current;
+
+  if (layout.preservedExistingPositions) {
+    // Incremental add: zoom onto the user-clicked target if it's now in
+    // the graph. We skip the zoom for any other added tables (e.g. ones
+    // the backend brings in alongside) — only the clicked one is the
+    // user's focal intent.
+    if (
+      pending != null &&
+      layout.nodes.some((node) => node.id === pending.targetNodeId)
+    ) {
+      zoomToNode(pending.targetNodeId);
+      pendingExpansionRef.current = null;
+    }
+  } else {
+    // Fresh layout: fit the whole canvas (uses ReactFlow's default fitView
+    // bounds, so wide schemas can zoom out below the per-node-fit floor).
+    zoomToCanvas();
+    pendingExpansionRef.current = null;
+  }
+}
+
 /**
  * Owns the data → React Flow state sync for the schema viewer:
  *
  *  - Clears the canvas immediately on context change (database/schema swap)
  *    so the previous schema's nodes don't linger until the new fetch
  *    resolves.
- *  - When a fresh ERD response arrives: merges incoming nodes with the
+ *  - When a fresh ERD response arrives: merges incoming nodes (`graph`) with the
  *    current canvas to preserve positions of tables that were already
  *    placed, falling back to a fresh Dagre layout for first loads, schema
  *    switches, removals, or disconnected new nodes.
  *  - On FK expansion: once the new graph arrives, auto-selects the FK edge
- *    that triggered the expansion (caller registers via
- *    `registerPendingExpansion`) AND zooms onto the new target table.
- *  - Clears in-flight expansion markers for tables that have arrived.
+ *    that triggered the expansion AND zooms onto the new target table.
  */
 export function useGraphSync({
   hasDbSelected,
@@ -66,11 +160,6 @@ export function useGraphSync({
   zoomToNode,
   zoomToCanvas,
 }: UseGraphSyncArgs) {
-  // Latest registered expansion (from FK click). Fresh registrations overwrite the previous
-  // one — if the user expands several FKs in quick succession, we follow
-  // the most recent click.
-  const pendingExpansionRef = useRef<PendingExpansion | null>(null);
-
   /**
    * Register the FK-expansion target. Once the next ERD response includes
    * a node for `targetTableId`, graph sync auto-selects the connecting
@@ -79,6 +168,7 @@ export function useGraphSync({
    * `candidateEdgeIds` should include both source-first and target-first
    * orderings since the backend's source/target convention isn't fixed.
    */
+  const pendingExpansionRef = useRef<PendingExpansion | null>(null);
   const registerPendingExpansion = useCallback(
     (targetTableId: ConcreteTableId, candidateEdgeIds?: readonly string[]) => {
       pendingExpansionRef.current = {
@@ -89,13 +179,9 @@ export function useGraphSync({
     [],
   );
 
-  // Latest nodes held in a ref so the sync effect below can read current
-  // state without adding `nodes` to its dependency array (which would cause
-  // the effect to re-run on every internal React Flow node change — like
-  // drags or position tweaks — and incorrectly re-merge against the result
-  // of its own previous run).
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
+  const nodesRef = useLatest(nodes);
+  const shouldClearCanvas = !hasDbSelected || error != null;
+  const renderedGraph = shouldClearCanvas || isFetching ? null : graph;
 
   // Clear the canvas whenever the database/schema context changes, regardless
   // of how it was changed (picker click, direct URL navigation, history
@@ -109,97 +195,62 @@ export function useGraphSync({
     prevContextForClearRef.current = contextKey;
     setNodes([]);
     setEdges([]);
-    setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
+    setExpandingTableIds(clearExpandingTableIds);
     pendingExpansionRef.current = null;
   }
 
   useEffect(() => {
-    if (!hasDbSelected || error != null) {
+    if (shouldClearCanvas) {
       setNodes([]);
       setEdges([]);
-      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
-      return;
+      setExpandingTableIds(clearExpandingTableIds);
+      pendingExpansionRef.current = null;
     }
-    if (isFetching || graph == null) {
+  }, [shouldClearCanvas, setEdges, setExpandingTableIds, setNodes]);
+
+  useEffect(() => {
+    if (renderedGraph == null) {
       return;
     }
 
     // If we expanded via FK click and a matching edge has now arrived in
     // the new graph, mark it as selected.
-    let nextEdges: SchemaViewerFlowEdge[] = graph.edges;
-    const pending = pendingExpansionRef.current;
-    if (pending != null && pending.candidateEdgeIds.length > 0) {
-      const matchedId = pending.candidateEdgeIds.find((candidate) =>
-        graph.edges.some((e) => e.id === candidate),
-      );
-      if (matchedId != null) {
-        nextEdges = graph.edges.map((e) =>
-          e.id === matchedId ? { ...e, selected: true } : e,
-        );
-      }
-    }
-    setEdges(nextEdges);
+    setEdges(
+      markPendingEdgeSelected(renderedGraph.edges, pendingExpansionRef.current),
+    );
+  }, [renderedGraph, setEdges]);
 
-    // Merge incoming nodes with current already-positioned nodes..
-    const currentNodes = nodesRef.current;
-    const layout = applyLayout({
-      mode: "merge",
-      incoming: graph.nodes,
-      current: currentNodes,
-      edges: graph.edges,
+  useEffect(() => {
+    if (renderedGraph == null) {
+      return;
+    }
+
+    const layout = getMergedGraphLayout({
+      graph: renderedGraph,
+      currentNodes: nodesRef.current,
     });
-    const nextNodes = layout.nodes;
-    setNodes(nextNodes);
+
+    setNodes(layout.nodes);
+    focusSyncedGraph({
+      layout,
+      pendingExpansionRef,
+      zoomToNode,
+      zoomToCanvas,
+    });
+  }, [nodesRef, renderedGraph, setNodes, zoomToCanvas, zoomToNode]);
+
+  useEffect(() => {
+    if (renderedGraph == null) {
+      return;
+    }
 
     // Clear any expand-in-flight markers for tables that just arrived in the
     // new graph (or that are no longer in the selection). FK field loaders
     // disappear automatically once their target table is visible.
-    setExpandingTableIds((prev) => {
-      if (prev.size === 0) {
-        return prev;
-      }
-      const visibleIds = new Set(nextNodes.map((n) => n.data.table_id));
-      let changed = false;
-      const next = new Set<ConcreteTableId>();
-      for (const id of prev) {
-        if (visibleIds.has(id)) {
-          changed = true;
-        } else {
-          next.add(id);
-        }
-      }
-      return changed ? next : prev;
-    });
-
-    if (layout.preservedExistingPositions) {
-      // Incremental add: zoom onto the user-clicked target if it's now in
-      // the graph. We skip the zoom for any other added tables (e.g. ones
-      // the backend brings in alongside) — only the clicked one is the
-      // user's focal intent.
-      if (
-        pending != null &&
-        nextNodes.some((n) => n.id === pending.targetNodeId)
-      ) {
-        zoomToNode(pending.targetNodeId);
-        pendingExpansionRef.current = null;
-      }
-    } else {
-      // Fresh layout: fit the whole canvas (uses ReactFlow's default fitView
-      // bounds, so wide schemas can zoom out below the per-node-fit floor).
-      zoomToCanvas();
-      pendingExpansionRef.current = null;
-    }
-  }, [
-    hasDbSelected,
-    graph,
-    error,
-    isFetching,
-    setNodes,
-    setEdges,
-    setExpandingTableIds,
-    zoomToNode,
-    zoomToCanvas,
-  ]);
+    setExpandingTableIds((prev) =>
+      getExpandingTableIds(prev, renderedGraph.nodes),
+    );
+  }, [renderedGraph, setExpandingTableIds]);
 
   return { registerPendingExpansion };
 }

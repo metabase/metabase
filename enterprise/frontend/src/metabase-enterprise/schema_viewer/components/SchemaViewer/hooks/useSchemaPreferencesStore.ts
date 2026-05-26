@@ -16,27 +16,14 @@ type UseSchemaPreferencesStoreArgs = {
 
 type UseSchemaPreferencesStoreResult = {
   /**
-   * External/extra focal table IDs for the current context — specifically
-   * tables from OTHER schemas that the user has expanded into via FK click.
+   * External focal table IDs for the current context — specifically
+   * tables from OTHER schemas that the user expanded into via FK click.
    * When a `schema` is set the backend returns all tables in that schema
    * automatically, so we never put schema-native tables in this set.
    */
   extraTableIds: readonly ConcreteTableId[];
-  /** Add a table ID to the current context's extra set (no-op if present). */
   addExtraTableId: (tableId: ConcreteTableId) => void;
-  /**
-   * Stable key identifying the current (databaseId, schema) tuple. Used by
-   * downstream consumers that need to reset state when the context changes
-   * (e.g. clearing the canvas).
-   */
-  contextKey: string | null;
-  /**
-   * True while we're still resolving the per-context saved prefs for the
-   * current `contextKey`. Callers should defer issuing the ERD query until
-   * this flips false — otherwise they'll fire two requests per context
-   * (one with the placeholder empty `extraTableIds`, one with the
-   * restored set).
-   */
+  contextKey: `${DatabaseId}__${SchemaName}` | null;
   isRestoring: boolean;
 };
 
@@ -54,11 +41,6 @@ const EMPTY_IDS: readonly ConcreteTableId[] = [];
  *  1. If the URL provided initialTableIds (non-empty), seed from URL and
  *     consider this context initialized — saved prefs are ignored.
  *  2. Otherwise wait for saved prefs to arrive and seed from them.
- *
- * Per-context entries are cached in a map for the lifetime of the hook, so
- * revisiting a context within the same session skips the restore round-trip
- * and reuses the in-memory value (which addExtraTableId keeps in sync with
- * UKV).
  */
 export function useSchemaPreferencesStore({
   databaseId,
@@ -114,10 +96,6 @@ export function useSchemaPreferencesStore({
 
   const isRestoring = contextKey != null && !tableIdsByContext.has(contextKey);
 
-  // Once savedPrefs have loaded for an unrestored context, commit them
-  // synchronously. The setState-during-render here is the "adjusting state
-  // when an input changes" pattern — React will re-run with the updated
-  // map before flushing to the DOM.
   if (
     isRestoring &&
     contextKey != null &&
