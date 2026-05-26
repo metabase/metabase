@@ -100,7 +100,7 @@ export const explorationApi = Api.injectEndpoints({
       {
         threadId: ExplorationThreadId;
         documentId: DocumentId;
-        exploration_query_id: ExplorationQueryId;
+        exploration_query_ids: ExplorationQueryId[];
         display?: VisualizationDisplay | null;
         visualization_settings?: VisualizationSettings | null;
       }

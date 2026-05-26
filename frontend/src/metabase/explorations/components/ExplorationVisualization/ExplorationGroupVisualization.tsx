@@ -13,7 +13,6 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
-  ExplorationQueryId,
   ExplorationThread,
   ExplorationThreadMetric,
   SingleSeries,
@@ -26,7 +25,11 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { buildSeriesGroups, getHeatMapSeries } from "./utils";
+import {
+  buildSeriesGroups,
+  composeChartsForDocumentEmbed,
+  getHeatMapSeries,
+} from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   group: ExplorationQueryGroup;
@@ -193,19 +196,11 @@ function ExplorationGroupVisualizationChart({
     return seriesGroups?.some((group) => group.isTimeseries);
   }, [seriesGroups]);
 
-  const seriesByQueryId: Map<ExplorationQueryId, SingleSeries> | undefined =
-    useMemo(() => {
-      if (!seriesGroups) {
-        return undefined;
-      }
-      const map = new Map<ExplorationQueryId, SingleSeries>();
-      for (const group of seriesGroups) {
-        for (const single of group.series) {
-          map.set(single.card.id, single);
-        }
-      }
-      return map;
-    }, [seriesGroups]);
+  const chartsForEmbed = useMemo(
+    () =>
+      seriesGroups ? composeChartsForDocumentEmbed(seriesGroups) : undefined,
+    [seriesGroups],
+  );
 
   if (!seriesGroups) {
     return (
@@ -226,8 +221,7 @@ function ExplorationGroupVisualizationChart({
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
-        groupQueries={queries}
-        seriesByQueryId={seriesByQueryId}
+        chartsForEmbed={chartsForEmbed}
         interestingTimelineIds={interestingTimelineIds}
       />
       <Box className={S.chartGrid} data-chart-layout={layoutStrategy}>

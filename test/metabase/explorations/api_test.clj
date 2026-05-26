@@ -978,14 +978,14 @@
               before (t2/select :model/StoredResultUse :stored_result_id sr-id)
               doc    (mt/user-http-request u :post 200
                                            (format "exploration/thread/%d/documents/%d/append" tid doc-id)
-                                           {:exploration_query_id qid})
+                                           {:exploration_query_ids [qid]})
               card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                           :content last :content first :attrs :id)
               use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)]
           (is (empty? before)
               "no card-use row exists before the append")
           (is (some? use-row)
-              "appending records a stored_result_use row for the materialized Card")
+              "appending records a stored_result_use row for the source snapshot — the GC chain reaches the source even through the new composite snapshot in-between")
           (is (nil? (:exploration_id use-row))
               "the card-use row has no exploration_id"))))))
 

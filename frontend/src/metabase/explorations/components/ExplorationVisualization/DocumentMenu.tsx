@@ -9,40 +9,29 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  DocumentId,
-  ExplorationQuery,
-  ExplorationQueryId,
-  ExplorationThread,
-  SingleSeries,
-} from "metabase-types/api";
+import type { DocumentId, ExplorationThread } from "metabase-types/api";
 
-interface DocumentMenuProps {
-  explorationQuery: ExplorationQuery;
-  explorationThread: ExplorationThread;
-  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
-}
-
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 import { getDocumentsForDocumentMenu } from "./utils";
 
-export function DocumentMenu({
-  explorationQuery,
-  explorationThread,
-  seriesByQueryId,
-}: DocumentMenuProps) {
+interface DocumentMenuProps {
+  chart: ExplorationChartForDocumentEmbed;
+  explorationThread: ExplorationThread;
+}
+
+export function DocumentMenu({ chart, explorationThread }: DocumentMenuProps) {
   const [appendChartToDocument] = useAppendChartToDocumentMutation();
   const [createExplorationDocument] = useCreateExplorationDocumentMutation();
   const [sendToast] = useToast();
 
   const handleAppendChartToDocument = useCallback(
     async (documentId: DocumentId) => {
-      const series = seriesByQueryId?.get(explorationQuery.id);
       const { data: document, error } = await appendChartToDocument({
         threadId: explorationThread.id,
         documentId,
-        exploration_query_id: explorationQuery.id,
-        display: series?.card.display ?? null,
-        visualization_settings: series?.card.visualization_settings ?? null,
+        exploration_query_ids: chart.queryIds,
+        display: chart.display,
+        visualization_settings: chart.visualization_settings,
       });
       if (error) {
         sendToast({
@@ -70,13 +59,7 @@ export function DocumentMenu({
         });
       }
     },
-    [
-      appendChartToDocument,
-      sendToast,
-      explorationThread,
-      explorationQuery.id,
-      seriesByQueryId,
-    ],
+    [appendChartToDocument, sendToast, explorationThread, chart],
   );
 
   const handleCreateDocument = useCallback(async () => {

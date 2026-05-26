@@ -13,6 +13,7 @@ import type {
   DatasetColumn,
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationQueryParams,
   ExplorationQueryType,
   ExplorationThread,
@@ -21,6 +22,7 @@ import type {
   RowValues,
   SingleSeries,
   TimelineId,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -347,6 +349,57 @@ function getSegmentName(seriesName: string, baseName: string): string {
   return seriesName;
 }
 
+export interface ExplorationChartForDocumentEmbed {
+  queryIds: ExplorationQueryId[];
+  label: string;
+  display: VisualizationDisplay;
+  visualization_settings: VisualizationSettings;
+}
+
+const CARTESIAN_SERIES_COL_NAME = "Series";
+
+function composeChartForDocumentEmbed(
+  group: SeriesGroup,
+): ExplorationChartForDocumentEmbed {
+  const firstSeries = group.series[0];
+  const queryIds = group.series.map((s) => s.card.id);
+  const label = group.chartLabel ?? firstSeries.card.name ?? "Chart";
+  const display = firstSeries.card.display;
+  let visualization_settings: VisualizationSettings =
+    firstSeries.card.visualization_settings ?? {};
+
+  if (group.series.length > 1) {
+    if (display === "table") {
+      // Heat-map: the BE will append a "Segment" column to the rows. We
+      // reuse `getHeatMapSeries` to compute the full pivot settings
+      // (including `table.column_formatting` min/max) — discarding its
+      // combined data, since the BE computes that side server-side.
+      visualization_settings =
+        getHeatMapSeries({ series: group.series }).card
+          .visualization_settings ?? visualization_settings;
+    } else if (isCartesianChart(display)) {
+      // The BE will append a "Series" column. Pin `graph.dimensions` so
+      // the rendered chart reads the new column as the series breakout.
+      const cols = firstSeries.data.cols;
+      const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
+      if (xCol) {
+        visualization_settings = {
+          ...visualization_settings,
+          "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
+        };
+      }
+    }
+  }
+
+  return { queryIds, label, display, visualization_settings };
+}
+
+export function composeChartsForDocumentEmbed(
+  seriesGroups: SeriesGroup[],
+): ExplorationChartForDocumentEmbed[] {
+  return seriesGroups.map(composeChartForDocumentEmbed);
+}
+
 // the Table viz only supports one series, so we have to combine them
 export function getHeatMapSeries({
   series,
@@ -511,7 +564,7 @@ export type ChartLayout =
   | "chart-and-table-vertically"
   | "two-same-size-charts-vertically";
 
-const SPECIAL_QUERY_TYPES: Exclude<ExplorationQueryType, "default"> = [
+const SPECIAL_QUERY_TYPES: Exclude<ExplorationQueryType, "default">[] = [
   "top-n-other",
   "temporal-pattern-day",
   "temporal-pattern-hour",
@@ -542,7 +595,9 @@ export const getChartsGroupLayoutStrategy = (
   const isTwoChartsWithOneSpecial =
     seriesGroups.length === 2 &&
     seriesGroups[0].queryType === "default" &&
-    SPECIAL_QUERY_TYPES.includes(seriesGroups[1].queryType);
+    SPECIAL_QUERY_TYPES.includes(
+      seriesGroups[1].queryType as Exclude<ExplorationQueryType, "default">,
+    );
 
   if (isTwoChartsWithOneSpecial) {
     if (

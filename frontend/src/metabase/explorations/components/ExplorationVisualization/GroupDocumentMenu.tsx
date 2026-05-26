@@ -9,37 +9,23 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  DocumentId,
-  ExplorationQuery,
-  ExplorationQueryId,
-  ExplorationThread,
-  SingleSeries,
-} from "metabase-types/api";
+import type { DocumentId, ExplorationThread } from "metabase-types/api";
 
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 import { getDocumentsForDocumentMenu } from "./utils";
 
 interface GroupDocumentMenuProps {
-  queries: ExplorationQuery[];
+  charts: ExplorationChartForDocumentEmbed[]; // One entry per visible chart on the page (≡ one `SeriesGroup`)
   explorationThread: ExplorationThread;
-  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
 }
 
-/**
- * Mirrors `DocumentMenu`'s entry point and toast UX, but interposes the
- * chart-picker step. The menu is fully controlled (`opened` + `onChange`)
- * so we can keep it open across stage transitions and reset state when
- * the user dismisses it.
- */
 export function GroupDocumentMenu({
-  queries,
+  charts,
   explorationThread,
-  seriesByQueryId,
 }: GroupDocumentMenuProps) {
   const [opened, setOpened] = useState(false);
-  const [selectedQuery, setSelectedQuery] = useState<ExplorationQuery | null>(
-    null,
-  );
+  const [selectedChart, setSelectedChart] =
+    useState<ExplorationChartForDocumentEmbed | null>(null);
 
   const [appendChartToDocument] = useAppendChartToDocumentMutation();
   const [createExplorationDocument] = useCreateExplorationDocumentMutation();
@@ -47,7 +33,7 @@ export function GroupDocumentMenu({
 
   const handleClose = useCallback(() => {
     setOpened(false);
-    setSelectedQuery(null);
+    setSelectedChart(null);
   }, []);
 
   const handleOpenChange = useCallback(
@@ -62,15 +48,14 @@ export function GroupDocumentMenu({
   );
 
   const handleAppend = useCallback(
-    async (query: ExplorationQuery, documentId: DocumentId) => {
+    async (chart: ExplorationChartForDocumentEmbed, documentId: DocumentId) => {
       handleClose();
-      const series = seriesByQueryId?.get(query.id);
       const { data: document, error } = await appendChartToDocument({
         threadId: explorationThread.id,
         documentId,
-        exploration_query_id: query.id,
-        display: series?.card.display ?? null,
-        visualization_settings: series?.card.visualization_settings ?? null,
+        exploration_query_ids: chart.queryIds,
+        display: chart.display,
+        visualization_settings: chart.visualization_settings,
       });
       if (error) {
         sendToast({
@@ -98,17 +83,11 @@ export function GroupDocumentMenu({
         icon: "document",
       });
     },
-    [
-      appendChartToDocument,
-      sendToast,
-      explorationThread,
-      handleClose,
-      seriesByQueryId,
-    ],
+    [appendChartToDocument, sendToast, explorationThread, handleClose],
   );
 
   const handleCreateAndAppend = useCallback(
-    async (query: ExplorationQuery) => {
+    async (chart: ExplorationChartForDocumentEmbed) => {
       handleClose();
       const { data: document, error } = await createExplorationDocument({
         threadId: explorationThread.id,
@@ -122,8 +101,8 @@ export function GroupDocumentMenu({
         });
         return;
       }
-      // The freshly created doc has no chart yet; append the picked query.
-      await handleAppend(query, document.id);
+      // The freshly created doc has no chart yet; append the picked one.
+      await handleAppend(chart, document.id);
     },
     [
       createExplorationDocument,
@@ -154,16 +133,19 @@ export function GroupDocumentMenu({
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
-        {selectedQuery == null ? (
+        {selectedChart == null ? (
           <>
             <Menu.Label>{t`Pick a chart`}</Menu.Label>
-            {queries.map((query) => (
+            {charts.map((chart, index) => (
               <Menu.Item
-                key={query.id}
+                // Multiple charts on the page may share a label fallback
+                // (e.g. all default to "Chart"); use the joined queryIds
+                // as the stable key.
+                key={chart.queryIds.join(",") || index}
                 leftSection={<Icon name="line" c="icon-primary" />}
-                onClick={() => setSelectedQuery(query)}
+                onClick={() => setSelectedChart(chart)}
               >
-                {query.name ?? t`Chart`}
+                {chart.label}
               </Menu.Item>
             ))}
           </>
@@ -171,7 +153,7 @@ export function GroupDocumentMenu({
           <>
             <Menu.Item
               leftSection={<Icon name="chevronleft" c="icon-primary" />}
-              onClick={() => setSelectedQuery(null)}
+              onClick={() => setSelectedChart(null)}
             >
               {t`Back`}
             </Menu.Item>
@@ -181,14 +163,14 @@ export function GroupDocumentMenu({
               <Menu.Item
                 key={document.id}
                 leftSection={<Icon name="document" c="icon-primary" />}
-                onClick={() => handleAppend(selectedQuery, document.id)}
+                onClick={() => handleAppend(selectedChart, document.id)}
               >
                 {document.name}
               </Menu.Item>
             ))}
             <Menu.Item
               leftSection={<Icon name="add" c="icon-primary" />}
-              onClick={() => handleCreateAndAppend(selectedQuery)}
+              onClick={() => handleCreateAndAppend(selectedChart)}
             >
               {t`New document`}
             </Menu.Item>
