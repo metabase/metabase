@@ -28,10 +28,12 @@ export function BrowseTimelinesPanel({ selection }: BrowseTimelinesPanelProps) {
     error,
   } = useListTimelinesQuery({ include: "events" });
 
-  const filteredTimelines = useMemo(
-    () => filterTimelinesBySearch(allTimelines, search),
-    [allTimelines, search],
-  );
+  const filteredTimelines = useMemo(() => {
+    const timelinesWithEvents = allTimelines.filter(
+      (t) => (t.events?.length ?? 0) > 0,
+    );
+    return filterTimelinesBySearch(timelinesWithEvents, search);
+  }, [allTimelines, search]);
 
   const selectedIds = useMemo(
     () => new Set(selectedTimelines.map((t) => t.id)),

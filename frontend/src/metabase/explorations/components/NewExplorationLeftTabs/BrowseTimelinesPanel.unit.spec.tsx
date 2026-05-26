@@ -109,6 +109,13 @@ describe("BrowseTimelinesPanel", () => {
     expect(screen.getByText("Incidents")).toBeInTheDocument();
   });
 
+  it("hides timelines with no events", async () => {
+    setup();
+
+    expect(await screen.findByText("Releases")).toBeInTheDocument();
+    expect(screen.queryByText("Empty")).not.toBeInTheDocument();
+  });
+
   it("checking a timeline commits it to the selection immediately", async () => {
     const { getSelection } = setup();
 
@@ -160,7 +167,6 @@ describe("BrowseTimelinesPanel", () => {
     expect(
       within(findRow("Incidents")).getByText("1 event"),
     ).toBeInTheDocument();
-    expect(within(findRow("Empty")).getByText("0 events")).toBeInTheDocument();
   });
 
   it("renders timeline description alongside the name", async () => {
