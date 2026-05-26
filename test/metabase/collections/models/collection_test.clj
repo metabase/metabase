@@ -1440,8 +1440,9 @@
           (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location c)})
           (is (= #{"/collection/B/"
                    "/collection/C/"}
-                 (group->perms [a b c] group)))))))
+                 (group->perms [a b c] group))))))))
 
+(deftest move-from-personal-to-impersonal-test-2
   (testing "Perms should apply recursively as well..."
     ;; Personal Collection > A > B         Personal Collection
     ;;                              ===>

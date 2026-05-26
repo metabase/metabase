@@ -597,8 +597,9 @@
             (is (some? (get result "products"))
                 "non-colliding entity is retained")
             (is (empty? @unseen)
-                "every expected fetch-batch pair-set must be requested"))))))
+                "every expected fetch-batch pair-set must be requested")))))))
 
+(deftest ^:sequential search-index-embedder-cross-batch-dedup-test-2
   (testing "cross-batch, cross-model duplicates: model_id primary, model secondary"
     ;; Same normalized name from three different batches and three different model types.
     ;; model_id "5" appears twice (card + dataset); model_id "12" is in a third batch.

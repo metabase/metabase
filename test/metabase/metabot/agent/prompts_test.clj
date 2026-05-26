@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.prompts :as prompts]))
 
-(deftest load-system-prompt-template-test
+(deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
     (let [template (prompts/load-system-prompt-template "internal.selmer")]
       (is (some? template))
@@ -22,14 +22,14 @@
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
       (is (nil? template)))))
 
-(deftest construct-notebook-query-prompt-database-name-examples-test
+(deftest ^:parallel construct-notebook-query-prompt-database-name-examples-test
   (let [prompt (prompts/load-tool-prompt-template "construct_notebook_query.md")]
     (is (some? prompt))
     (testing "examples use the exact sample database name, not the old abbreviated portable FK"
       (is (str/includes? prompt "Sample Database"))
       (is (not (re-find #"\[Sample\s*," prompt))))))
 
-(deftest load-dialect-instructions-test
+(deftest ^:parallel load-dialect-instructions-test
   (testing "loads postgresql dialect"
     (let [instructions (prompts/load-dialect-instructions "postgresql")]
       (is (some? instructions))
@@ -50,7 +50,7 @@
     (let [instructions (prompts/load-dialect-instructions nil)]
       (is (nil? instructions)))))
 
-(deftest render-system-prompt-test
+(deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
     (let [template "Hello {{name}}, today is {{day}}"
           context {:name "Metabot" :day "Monday"}
@@ -116,13 +116,13 @@
     (let [template (prompts/get-cached-system-prompt "internal.selmer")]
       (is (some? template)))))
 
-(deftest extract-tool-instructions-test
+(deftest ^:parallel extract-tool-instructions-test
   (testing "finds correct instructions"
     (is (=? [{:tool_name "read_resource"
               :instructions #(str/includes? % "you have access to a unified interface")}]
             (prompts/extract-tool-instructions {"read_resource" identity})))))
 
-(deftest build-system-message-content-test
+(deftest ^:parallel build-system-message-content-test
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
@@ -134,8 +134,9 @@
       (is (string? content))
       (is (> (count content) 100))
       (is (re-find #"Metabot" content))
-      (is (re-find #"2024-01-15 14:30:00" content))))
+      (is (re-find #"2024-01-15 14:30:00" content)))))
 
+(deftest ^:parallel build-system-message-content-test-2
   (testing "includes dialect instructions when dialect specified"
     (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
@@ -145,16 +146,18 @@
       (is (some? content))
       ;; Note: The embedding template might not reference dialect instructions,
       ;; but they should be available in the template context
-      (is (string? content))))
+      (is (string? content)))))
 
+(deftest ^:parallel build-system-message-content-test-3
   (testing "falls back to default message if template not found"
     (let [profile {:prompt-template "non-existent.selmer"}
           context {}
           tools {}
           content (prompts/build-system-message-content profile context tools)]
       (is (some? content))
-      (is (= "You are Metabot, a data analysis assistant for Metabase." content))))
+      (is (= "You are Metabot, a data analysis assistant for Metabase." content)))))
 
+(deftest ^:parallel build-system-message-content-test-4
   (testing "uses default template name if not specified"
     (let [profile {}
           context {:current_time "2024-01-15 14:30:00"}
@@ -162,8 +165,9 @@
           content (prompts/build-system-message-content profile context tools)]
       (is (some? content))
       (is (string? content))
-      (is (> (count content) 1000))))
+      (is (> (count content) 1000)))))
 
+(deftest ^:parallel build-system-message-content-test-5
   (testing "renders transform codegen template with literal model syntax"
     (let [profile {:prompt-template "transform-codegen.selmer"}
           context {:current_time "2024-01-15 14:30:00"
@@ -177,8 +181,9 @@
       (is (str/includes? content "{{snippet: Snippet Name}}"))
       (is (str/includes? content "{{snippet: recent orders}}"))
       (is (not (str/includes? content "{%raw%}")))
-      (is (not (str/includes? content "{% safe %}")))))
+      (is (not (str/includes? content "{% safe %}"))))))
 
+(deftest ^:parallel build-system-message-content-test-6
   (testing "current user info is not in system message (moved to message injection)"
     (let [profile {:prompt-template "internal.selmer"}
           context {:current_time "2024-01-15 14:30:00"

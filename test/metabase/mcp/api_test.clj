@@ -747,8 +747,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query "ZW5jb2RlZA=="}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
 
+(deftest tools-call-visualize-query-test-2
   (testing "visualize_query resolves a stored handle"
     (let [user-id        (mt/user->id :crowberto)
           [session-id _] (initialize!)
@@ -759,8 +760,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
 
+(deftest tools-call-visualize-query-test-3
   (testing "visualize_query includes the prompt stored with a construct_query handle"
     ;; Mirrors master's assertion that the user's original prompt round-trips through the
     ;; construct→store→visualize flow so the iframe can include it when submitting
@@ -783,8 +785,9 @@
       (is (=? {:status 200
                :body   {:result {:structuredContent {:query  string?
                                                      :prompt "show 5 orders"}}}}
-              response))))
+              response)))))
 
+(deftest tools-call-visualize-query-test-4
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -793,8 +796,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
 
+(deftest tools-call-visualize-query-test-5
   (testing "visualize_query returns 'handle not found' when query_handle is unknown"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200

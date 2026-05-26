@@ -424,7 +424,7 @@
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
 
-(deftest add-cors-headers-for-auth-sso-test
+(deftest ^:parallel add-cors-headers-for-auth-sso-test
   (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -439,8 +439,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 402 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-2
   (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -455,8 +456,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-3
   (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -473,8 +475,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for OPTIONS /auth/sso")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
+          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-4
   (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
     (doseq [status [200 201 500 503]]
       (let [wrapped-handler (mw.security/add-security-headers
