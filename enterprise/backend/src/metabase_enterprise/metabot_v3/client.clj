@@ -148,7 +148,7 @@
         (not (instance? InputStream body))   body
         ;; Only the streaming-request path supplies a :http-client; the AI service's
         ;; non-streaming endpoints already give us a string or parsed-JSON body.
-        (some? (:http-client response))      (with-open [in (quick-closing-body response)]
+        (some? (:http-client response))      (with-open [^Closeable in (quick-closing-body response)]
                                                (slurp-bounded in max-body-slurp-chars))
         :else                                (slurp-bounded body max-body-slurp-chars)))
     (catch Exception _ nil)))
