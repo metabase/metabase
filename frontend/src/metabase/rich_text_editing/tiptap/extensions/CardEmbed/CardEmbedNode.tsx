@@ -126,6 +126,7 @@ export interface CardEmbedAttributes {
   stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
   dataset_query?: DatasetQuery | null;
+  chart_href?: string | null; // Override URL for the embed's title click
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -175,6 +176,10 @@ export const CardEmbed: Node<{
           return safeJsonParse(raw);
         },
       },
+      chart_href: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-chart-href"),
+      },
       ...createIdAttribute(),
     };
   },
@@ -205,6 +210,7 @@ export const CardEmbed: Node<{
             node.attrs.dataset_query != null
               ? JSON.stringify(node.attrs.dataset_query)
               : null,
+          "data-chart-href": node.attrs.chart_href ?? null,
         },
         this.options.HTMLAttributes,
       ),
@@ -445,6 +451,11 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
+      const chartHref = node.attrs.chart_href as string | null | undefined;
+      if (chartHref) {
+        dispatch(navigateToCardFromDocument(chartHref, document));
+        return;
+      }
       if (card && metadata) {
         try {
           const isDraftCard = card.id < 0;
@@ -826,6 +837,7 @@ export const CardEmbedComponent = memo(
       prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
       prevProps.node.attrs.dataset_query ===
         nextProps.node.attrs.dataset_query &&
+      prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
       prevProps.selected === nextProps.selected
     );
   },

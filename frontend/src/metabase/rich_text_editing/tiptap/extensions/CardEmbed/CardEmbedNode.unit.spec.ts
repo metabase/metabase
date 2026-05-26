@@ -115,6 +115,45 @@ describe("CardEmbed node — dataset_query attr", () => {
     editor.destroy();
   });
 
+  it("round-trips a `chart_href` through parseHTML ↔ renderHTML", () => {
+    const editor = makeEditor();
+    const href = "/question/research/7/group/auto%3A42%3Ad1";
+
+    editor.commands.insertContent({
+      type: "cardEmbed",
+      attrs: {
+        id: 77,
+        name: null,
+        stored_result_id: 99,
+        chart_href: href,
+      },
+    });
+
+    const html = editor.getHTML();
+    expect(html).toContain(`data-chart-href="${href}"`);
+
+    const editor2 = makeEditor();
+    editor2.commands.setContent(html);
+
+    const node = editor2.state.doc.firstChild;
+    expect(node?.attrs.chart_href).toBe(href);
+
+    editor.destroy();
+    editor2.destroy();
+  });
+
+  it("renders no `data-chart-href` attribute when null", () => {
+    const editor = makeEditor();
+
+    editor.commands.insertContent({
+      type: "cardEmbed",
+      attrs: { id: 42, name: null, stored_result_id: null, chart_href: null },
+    });
+
+    expect(editor.getHTML()).not.toContain("data-chart-href");
+    editor.destroy();
+  });
+
   it("ignores malformed `data-dataset-query` JSON instead of throwing", () => {
     const editor = makeEditor();
 

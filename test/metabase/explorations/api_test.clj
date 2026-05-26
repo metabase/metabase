@@ -1135,48 +1135,40 @@
              "auto:42:orders.created_at")))))
 
 (deftest ^:parallel append-chart-nodes-test
-  (testing "append-chart-nodes adds a plain-link paragraph followed by a cardEmbed to the doc body"
+  (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"
     (let [result (#'explorations.api/append-chart-nodes
                   {:type "doc" :content []}
                   77
                   99
                   "/question/research/7/group/auto%3A42%3Ad1"
-                  "Revenue by Plan"
                   nil)
-          [link embed] (:content result)]
+          embed  (first (:content result))]
       (is (= "doc" (:type result)))
-      (is (= 2 (count (:content result))))
-      (testing "first node is a paragraph with a plain hyperlink to the chart page"
-        (is (= {:type    "paragraph"
-                :content [{:type  "text"
-                           :text  "Revenue by Plan"
-                           :marks [{:type  "link"
-                                    :attrs {:href "/question/research/7/group/auto%3A42%3Ad1"}}]}]}
-               link)))
-      (testing "second node is a resizeNode-wrapped cardEmbed referencing the card + stored result"
-        (is (= {:type    "resizeNode"
-                :content [{:type  "cardEmbed"
-                           :attrs {:id 77 :name nil :stored_result_id 99}}]}
-               embed)))))
+      (is (= 1 (count (:content result))))
+      (is (= {:type    "resizeNode"
+              :content [{:type  "cardEmbed"
+                         :attrs {:id 77
+                                 :name nil
+                                 :stored_result_id 99
+                                 :chart_href "/question/research/7/group/auto%3A42%3Ad1"}}]}
+             embed))))
   (testing "tolerates a missing/non-doc root by starting from an empty doc"
-    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x" "Chart" nil)]
+    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x" nil)]
       (is (= "doc" (:type result)))
-      (is (= 2 (count (:content result))))))
+      (is (= 1 (count (:content result))))))
   (testing "appends after existing content, preserving order"
     (let [existing {:type "doc" :content [{:type "paragraph" :content []}]}
-          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x" "Chart" nil)]
-      (is (= 3 (count (:content result))))
+          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x" nil)]
+      (is (= 2 (count (:content result))))
       (is (= {:type "paragraph" :content []} (first (:content result))))))
   (testing "when a non-nil `dataset-query` is passed, it lands on the cardEmbed node's :attrs"
-    (let [dq      {:type "query" :database 1 :query {:source-table 2 :breakout [["field" 3 nil]]}}
-          result  (#'explorations.api/append-chart-nodes
-                   {:type "doc" :content []}
-                   77 99
-                   "/question/research/7/group/auto%3A42%3Ad1"
-                   "Revenue by Plan"
-                   dq)
-          embed   (second (:content result))
-          attrs   (-> embed :content first :attrs)]
+    (let [dq     {:type "query" :database 1 :query {:source-table 2 :breakout [["field" 3 nil]]}}
+          result (#'explorations.api/append-chart-nodes
+                  {:type "doc" :content []}
+                  77 99
+                  "/question/research/7/group/auto%3A42%3Ad1"
+                  dq)
+          attrs  (-> result :content first :content first :attrs)]
       (is (= 77 (:id attrs)))
       (is (= 99 (:stored_result_id attrs)))
       (is (= dq (:dataset_query attrs))
@@ -1184,9 +1176,15 @@
   (testing "when `dataset-query` is nil, the :dataset_query key is omitted from :attrs (no `nil` clutter on non-exploration embeds)"
     (let [result (#'explorations.api/append-chart-nodes
                   {:type "doc" :content []}
-                  77 99 "/x" "Chart" nil)
-          attrs  (-> result :content second :content first :attrs)]
-      (is (false? (contains? attrs :dataset_query))))))
+                  77 99 "/x" nil)
+          attrs  (-> result :content first :content first :attrs)]
+      (is (false? (contains? attrs :dataset_query)))))
+  (testing "when `chart-href` is nil, the :chart_href key is omitted from :attrs"
+    (let [result (#'explorations.api/append-chart-nodes
+                  {:type "doc" :content []}
+                  77 99 nil nil)
+          attrs  (-> result :content first :content first :attrs)]
+      (is (false? (contains? attrs :chart_href))))))
 
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"
