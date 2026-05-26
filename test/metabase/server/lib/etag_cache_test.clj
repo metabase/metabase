@@ -22,7 +22,6 @@
       (is (= etag (get-in resp [:headers "ETag"])))
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
-
   (testing "Weak ETag (W/) is treated as match"
     (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
           resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}})]
@@ -30,7 +29,6 @@
       (is (= "" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
              (get-in resp [:headers "ETag"])))))
-
   (testing "Multiple ETags in If-None-Match; any match triggers 304"
     (let [header (format "\"other\", W/\"%s\", \"another\"" config/mb-version-hash)
           resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}})]
@@ -50,7 +48,6 @@
       (is (= "bar" (get-in resp [:headers "X-Foo"])))
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
-
   (testing "Missing If-None-Match → 200; adds ETag only"
     (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}})]
       (is (= 200 (:status resp)))

@@ -288,7 +288,6 @@
                  [:field opts id]
                  (let [col (lib.metadata/field query id)]
                    [:field (merge (select-keys col [:base-type]) opts) (:name col)])
-
                  _ nil)))))))
 
 (deftest ^:parallel walk-clauses-identity-test

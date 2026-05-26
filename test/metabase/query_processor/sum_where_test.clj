@@ -17,7 +17,6 @@
                 mt/rows
                 ffirst
                 double)))
-
     (testing "Should get normalized correctly and work as expected"
       (is (= 179.0
              (->> {:aggregation [["sum-where"

@@ -57,13 +57,11 @@
                   (create-pulse 200)
                   (update-pulse 200)
                   (get-form 200)))
-
               (testing "should fail if `advanced-permissions` is enabled"
                 (mt/with-premium-features #{:advanced-permissions}
                   (create-pulse 403)
                   (update-pulse 403)
                   (get-form 403))))
-
             (testing "User's group with subscription permission"
               (perms/grant-application-permissions! group :subscription)
               (mt/with-premium-features #{:advanced-permissions}

@@ -75,24 +75,20 @@
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
                             {:request-options {:headers (auth-headers)}}))))
-
     (testing "Email case insensitivity - uppercase email in token"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
                             {:request-options {:headers (auth-headers "RASTA@METABASE.COM")}}))))
-
     (testing "Email case insensitivity - mixed case email in token"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
                             {:request-options {:headers (auth-headers "RaStA@MeTaBaSe.CoM")}}))))
-
     (testing "Bearer scheme is case-insensitive (uppercase BEARER)"
       (let [token    (sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" (str "BEARER " token)}}})]
         (is (= {:message "pong"}
                response))))
-
     (testing "Bearer scheme is case-insensitive (mixed case)"
       (let [token    (sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
@@ -107,14 +103,12 @@
         (is (= {:error   "missing_authorization"
                 :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                response))))
-
     (testing "Invalid authorization header format (not Bearer)"
       (let [response (client/client :get 401 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" "Basic xyz"}}})]
         (is (= {:error   "invalid_authorization_format"
                 :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
                response))))
-
     (testing "Token with non-existent user returns same error as invalid token (no information disclosure)"
       (is (= {:error   "invalid_jwt"
               :message "Invalid or expired JWT token."}
@@ -132,7 +126,6 @@
             response    (client/client :get 200 "agent/v1/ping"
                                        {:request-options {:headers {"x-metabase-session" session-key}}})]
         (is (= {:message "pong"} response))))
-
     (testing "Invalid session token returns 401"
       (let [fake-session-key (str (random-uuid))
             response         (client/client :get 401 "agent/v1/ping"
@@ -184,7 +177,6 @@
                      :id   (:id metric)
                      :name "Private Metric"}
                     (agent-client :crowberto :get 200 (str "agent/v1/metric/" (:id metric))))))
-
           (testing "Non-admin user cannot access the metric"
             (is (= "You don't have permissions to do that."
                    (agent-client :rasta :get 403 (str "agent/v1/metric/" (:id metric)))))))))))
@@ -201,11 +193,9 @@
                  :fields         sequential?
                  :related_tables sequential?}
                 (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))))))
-
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
              (agent-client :rasta :get 404 "agent/v1/table/999999"))))
-
     (testing "Respects query parameters"
       (let [table-id (mt/id :orders)]
         (is (=? {:type   "table"
@@ -213,12 +203,10 @@
                  :fields empty?}
                 (agent-client :rasta :get 200
                               (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
-
     (testing "Field values are excluded by default"
       (let [table-id (mt/id :orders)
             table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))]
         (is (every? #(nil? (:field_values %)) (:fields table)))))
-
     (testing "Field values are included when explicitly requested"
       (let [table-id (mt/id :orders)
             table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
@@ -236,14 +224,12 @@
                  :name                 "Test Metric"
                  :queryable_dimensions sequential?}
                 (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
-
       (testing "Respects query parameters"
         (is (=? {:type "metric"
                  :id   (:id metric)}
                 (agent-client :rasta :get 200
                               (str "agent/v1/metric/" (:id metric)
                                    "?with-queryable-dimensions=false&with-field-values=false")))))
-
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
                (agent-client :rasta :get 404 "agent/v1/metric/999999")))))))
@@ -271,7 +257,6 @@
   (with-agent-api-setup!
     ;; Ensure field values exist for the field we'll test
     (ensure-fresh-field-values! (mt/id :people :state))
-
     (testing "Returns field statistics and values with default limit of 30"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
@@ -282,18 +267,15 @@
                    :values     sequential?}
                   result))
           (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
-
     (testing "Respects explicit limit parameter"
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")
             result   (agent-client :crowberto :get 200
                                    (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))]
         (is (= 5 (count (:values result))) "Should respect limit parameter")))
-
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
              (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
-
     (testing "Returns 400 for invalid field-id format"
       (let [table-id (mt/id :people)]
         (is (= "Invalid field_id format: not-a-valid-id"
@@ -326,14 +308,12 @@
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded)))
           (is (= (mt/id :orders) (lib/source-table-id decoded))))))
-
     (testing "Applies default limit of 100 when no limit is specified"
       (let [table-id (mt/id :orders)
             response (agent-client :rasta :post 200 "agent/v1/construct-query"
                                    {:table_id table-id})
             decoded  (decode-query response)]
         (is (= 100 (lib/current-limit decoded)))))
-
     (testing "Respects explicit limit"
       (let [table-id (mt/id :orders)
             response (agent-client :rasta :post 200 "agent/v1/construct-query"
@@ -341,7 +321,6 @@
                                     :limit    10})
             decoded  (decode-query response)]
         (is (= 10 (lib/current-limit decoded)))))
-
     (testing "Returns 404 for non-existent table"
       (is (= "No table found with table_id 999999"
              (agent-client :rasta :post 404 "agent/v1/construct-query"
@@ -403,11 +382,9 @@
                      :values     sequential?}
                     (agent-client :rasta :get 200
                                   (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
                (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
-
       (testing "Returns 400 for field-id from wrong entity type"
         ;; Using a table field-id (t-prefix) when querying a metric should fail
         (is (re-find #"does not match expected prefix"
@@ -426,7 +403,6 @@
           (let [decoded (decode-query response)]
             (is (= :mbql/query (lib/normalized-query-type decoded)))
             (is (= (mt/id) (lib/database-id decoded))))))
-
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
                (agent-client :rasta :post 404 "agent/v1/construct-query"
@@ -443,7 +419,6 @@
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (= 1 (count (lib/aggregations decoded)))))))
-
     (testing "Count aggregation with field_id still works"
       (let [table-id (mt/id :orders)
             table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
@@ -483,7 +458,6 @@
         (testing "with-measures=false (default) does not include measures"
           (let [table (agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
             (is (nil? (:measures table)))))
-
         (testing "with-measures=true includes measures for the table"
           (let [table (agent-client :rasta :get 200
                                     (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]

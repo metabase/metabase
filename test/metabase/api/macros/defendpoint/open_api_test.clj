@@ -59,7 +59,6 @@
             result (#'defendpoint.open-api/path-item "/api/test" form)]
         (is (true? (:deprecated result)))
         (is (= "GET /api/test" (:summary result))))))
-
   (testing "Non-deprecated endpoints do not have deprecated field"
     (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
       (let [form {:method :get
@@ -70,7 +69,6 @@
             result (#'defendpoint.open-api/path-item "/api/test" form)]
         (is (nil? (:deprecated result)))
         (is (= "A normal endpoint." (:description result))))))
-
   (testing "Deprecated with multipart metadata"
     (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
       (let [form {:method :post

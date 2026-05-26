@@ -46,7 +46,6 @@
                                         (qp/process-query query))
                                       (mt/rows)
                                       ffirst)]
-
               (is (or (integer? coerced-number)
                       (instance? BigDecimal coerced-number)))
               (is (= res
@@ -71,7 +70,6 @@
                                         (qp/process-query query))
                                       (mt/rows)
                                       ffirst)]
-
               (is (or (integer? coerced-number)
                       (instance? BigDecimal coerced-number)))
               (is (= res

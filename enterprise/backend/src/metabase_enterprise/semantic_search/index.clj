@@ -686,15 +686,12 @@
                 (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
                 permitted-entities)
         time-ms (u/since-ms timer)]
-
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
                                        :indexed-entities-count (count indexed-entities)
                                        :regular-docs-count (count regular-docs)
                                        :time-ms time-ms})
-
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
-
     result))
 
 (defn- get-personal-collection-ids
@@ -873,7 +870,6 @@
                                (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
-
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
                     :raw-results-count (count raw-results)
@@ -883,7 +879,6 @@
                     :filter-time-ms filter-time-ms
                     :appdb-scores-time-ms appdb-scores-time-ms
                     :total-time-ms total-time-ms})
-
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
                         embedding-time-ms)
@@ -895,10 +890,8 @@
         (analytics/inc! :metabase-search/semantic-search-ms
                         {:embedding-model (:name embedding-model)}
                         total-time-ms)
-
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
-
         {:results final-results
          :raw-count (count raw-results)}))))
 

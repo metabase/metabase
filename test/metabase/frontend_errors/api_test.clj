@@ -9,13 +9,11 @@
       (let [initial (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
         (is (nil? (mt/user-http-request :rasta :post 204 "frontend-errors" {:type "component-crash"})))
         (is (< initial (mt/metric-value system :metabase-frontend/errors {:type "component-crash"}))))))
-
   (testing "POST /api/frontend-errors with type=chart-render-error tracks separately"
     (mt/with-prometheus-system! [_ system]
       (let [initial (mt/metric-value system :metabase-frontend/errors {:type "chart-render-error"})]
         (mt/user-http-request :rasta :post 204 "frontend-errors" {:type "chart-render-error"})
         (is (< initial (mt/metric-value system :metabase-frontend/errors {:type "chart-render-error"}))))))
-
   (testing "POST /api/frontend-errors rejects unknown type values"
     (is (= {:errors {:type "enum of component-crash, chart-render-error"}}
            (select-keys (mt/user-http-request :rasta :post 400 "frontend-errors" {:type "bogus"})

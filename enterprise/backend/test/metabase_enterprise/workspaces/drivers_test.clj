@@ -15,6 +15,5 @@
       (testing "db is swapped if being executed inside a macros"
         (driver.w/with-swapped-connection-details (mt/id) {:user "unicorn"}
           (is (db-swapped?))))
-
       (testing "sanity check that it's not swapped outside of the macros"
         (is (not (db-swapped?)))))))

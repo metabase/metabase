@@ -55,12 +55,10 @@
             :headers {"Content-Type" "text/plain"}}
            (binding [api/*current-user* (atom "Cam Saul")]
              (my-mock-api-fn)))))
-
   (testing "check that 404 is returned otherwise"
     (is (= (four-oh-four)
            (-> (my-mock-api-fn)
                (update-in [:headers "Last-Modified"] string?)))))
-
   (testing "let-404 should return nil if test fails"
     (is (= (four-oh-four)
            (-> (mock-api-fn
@@ -68,7 +66,6 @@
                   (api/let-404 [user nil]
                     {:user user})))
                (update-in [:headers "Last-Modified"] string?)))))
-
   (testing "otherwise let-404 should bind as expected"
     (is (= {:user {:name "Cam"}}
            ((mw.exceptions/catch-api-exceptions
@@ -87,7 +84,6 @@
 (deftest parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
     (is (= [1] (api/parse-multi-values-param "1" parse-long))))
-
   (testing "multi values a vector as well"
     (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))
 
@@ -104,7 +100,6 @@
   (derive :event/write-permission-failure ::permission-failure-event)
   (derive :event/update-permission-failure ::permission-failure-event)
   (derive :event/create-permission-failure ::permission-failure-event)
-
   (try
     (binding [api/*current-user-id* 1]
       (with-redefs [mi/can-read? (constantly false)

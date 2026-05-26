@@ -206,7 +206,6 @@
     (mt/with-temporary-setting-values [attachment-row-limit 10]
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
-
         (notification.tu/test-send-notification!
          notification
          {:channel/email
@@ -225,7 +224,6 @@
                                                :user_id (mt/user->id :rasta)}
                                               {:type    :notification-recipient/raw-value
                                                :details {:value "ngoc@metabase.com"}}]}]}]
-
     (notification.tu/test-send-notification!
      notification
      {:channel/email
@@ -325,7 +323,6 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))})))
-
   (testing "send if goal is met"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query          (mt/mbql-query
@@ -376,7 +373,6 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))})))
-
   (testing "send if goal is met"
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query          (mt/mbql-query
@@ -415,7 +411,6 @@
         (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
           (u/ignore-exceptions (notification/send-notification! notification))
           (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
-
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
         (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
@@ -448,7 +443,6 @@
         (fn [emails]
           (is (zero? (count emails)))
           (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
-
     (testing "if the goal is met, notification is sent then archived"
       ;; flip the condition so the goal is met now
       (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
@@ -513,7 +507,6 @@
       (notification.tu/with-card-notification
         [notification {:handlers [@notification.tu/default-email-handler
                                   notification.tu/default-slack-handler]}]
-
         (let [original-render-noti (var-get #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
@@ -574,7 +567,6 @@
          {:channel/email
           (fn [emails]
             (is (= 18761 (email->attachment-line-count (first emails)))))})))
-
     (testing "respect attachment limit env if set"
       (mt/with-temporary-setting-values [attachment-row-limit 10]
         (notification.tu/with-card-notification
@@ -585,7 +577,6 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))
-
     (testing "respect query limit if set"
       (notification.tu/with-card-notification
         [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 10})}
@@ -595,7 +586,6 @@
          {:channel/email
           (fn [emails]
             (is (= 11 (email->attachment-line-count (first emails)))))})))
-
     (testing "attachment limit env > query limit"
       (mt/with-temporary-setting-values [attachment-row-limit 10]
         (notification.tu/with-card-notification

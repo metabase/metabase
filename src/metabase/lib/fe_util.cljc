@@ -317,19 +317,15 @@
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?) & (args :len 0 :guard (every? string? args))]
       (result op col-ref [] {})
-
       ;; multiple arguments, `:=`
       [(op :guard #{:= :in}) _ (col-ref :guard string-col?) & (args :guard (every? string? args))]
       (result := col-ref args {})
-
       ;; multiple arguments, `:!=`
       [(op :guard #{:!= :not-in}) _ (col-ref :guard string-col?) & (args :guard (every? string? args))]
       (result :!= col-ref args {})
-
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard (every? string? args))]
       (result op col-ref args {:case-sensitive (:case-sensitive opts true)})
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -347,10 +343,8 @@
   (lib.util.match/match-lite arg
     (value :guard number?)
     value
-
     [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
     (u.number/parse-bigint value)
-
     _ nil))
 
 (def ^:private NumberFilterParts
@@ -380,22 +374,17 @@
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:=`
        [(op :guard #{:= :in})             _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:!=`
        [(op :guard #{:!= :not-in})        _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; exactly 1 argument
        [(op :guard #{:> :>= :< :<=})      _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
       {:operator ({:in :=, :not-in :!=} op op)
        :column   (ref->col col-ref)
        :values   (mapv expression-arg->number args)}
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -444,7 +433,6 @@
        ;; exactly 2 arguments
        [(op :guard #{:between})      _ (col-ref :guard coordinate-col?) & (args :len 2 :guard (every? number-arg? args))])
       (result op col-ref nil args)
-
       ;; exactly 4 arguments
       [(op :guard #{:inside})
        _
@@ -452,7 +440,6 @@
        (lon-col-ref :guard coordinate-col?)
        & (args :len 4 :guard (every? number-arg? args))]
       (result op lat-col-ref lon-col-ref args)
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -485,7 +472,6 @@
        ;; exactly 1 argument
        [(op :guard #{:=})                 _ (col-ref :guard boolean-col?) & (args :len 1 :guard (every? boolean? args))])
       {:operator op, :column (ref->col col-ref), :values (vec args)}
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -525,11 +511,9 @@
       (:or
        ;; exactly 1 argument
        [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))])
       (result op col-ref args)
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -574,7 +558,6 @@
        :value        (if (= value :current) 0 value)
        :unit         unit
        :options      (select-keys opts [:include-current])}
-
       [:relative-time-interval
        _
        (col-ref :guard date-col?)
@@ -588,7 +571,6 @@
        :offset-value offset-value
        :offset-unit  offset-unit
        :options      {}}
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -638,15 +620,12 @@
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
       {:operator op, :column (ref->col col-ref), :values []}
-
       ;; without `mode`
       [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
-
       ;; with `:mode`
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -684,7 +663,6 @@
       (let [values (mapv u.time/coerce-to-time args)]
         (when (every? u.time/valid? values)
           {:operator op, :column (ref->col col-ref), :values values}))
-
       ;; do not match inner clauses
       _ nil)))
 
@@ -714,7 +692,6 @@
     (lib.util.match/match-lite filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
       {:operator op, :column (ref->col col-ref)}
-
       _ nil)))
 
 ;; ::lib.schema.expression/expression
@@ -737,7 +714,6 @@
   (lib.util.match/match-lite join-condition
     [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
-
     ;; do not match inner clauses
     _ nil))
 
@@ -775,49 +751,34 @@
     (lib.util.match/match-lite filter-clause
       [#{:= :in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
-
       [#{:!= :not-in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (i18n/tru "Excludes {0}" (inflections/plural (u.time/format-unit b :day-of-week-iso)))
-
       [#{:= :in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (u.time/format-unit b (->unit f))
-
       [#{:!= :not-in} _ [(f :guard #{:get-hour :get-month :get-quarter}) _ (_ :guard temporal?)] (b :guard int?)]
       (i18n/tru "Excludes {0}" (u.time/format-unit b (->unit f)))
-
       [#{:= :in} _ (x :guard (unit= x lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
-
       [:during _ (x :guard temporal?) (y :guard string?) unit]
       (u.time/format-relative-date-range y 1 unit -1 unit {})
-
       [#{:= :in} _ (x :guard temporal?) (y :guard (or (int? y) (string? y)))]
       (lib.temporal-bucket/describe-temporal-pair x y)
-
       [#{:!= :not-in} _ (x :guard temporal?) (y :guard (or (int? y) (string? y)))]
       (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
-
       [:< _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "Before {0}" (->temporal-name y))
-
       [:> _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "After {0}" (->temporal-name y))
-
       [:between _ (_ :guard temporal?) (y :guard string?) (z :guard string?)]
       (u.time/format-diff y z)
-
       [:is-null & _]
       (i18n/tru "Is Empty")
-
       [:not-null & _]
       (i18n/tru "Is Not Empty")
-
       [:time-interval opts (_ :guard temporal?) n unit]
       (lib.temporal-bucket/describe-temporal-interval n unit opts)
-
       [:relative-time-interval _ (_ :guard temporal?) n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
-
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 

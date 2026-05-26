@@ -154,14 +154,12 @@
                 (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
                   (is (= {:url expected-url :body feedback}
                          @captured)))))))
-
         (testing "Returns 500 when http post fails"
           (mt/with-temporary-setting-values [premium-embedding-token premium-token]
             (mt/with-dynamic-fn-redefs
               [http/post (fn [_url _opts]
                            (throw (ex-info "boom" {:status 404})))]
               (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:any "payload"}))))
-
         ;; We're not testing the branch where the store-api-url is missing because that defsetting
         ;; has the default value. It doesn't work well with `with-temporary-setting-values` helper.
         (testing "Throws when premium token is missing"
@@ -186,14 +184,12 @@
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 403 "ee/metabot-v3/agent-streaming"
                                     base-request))))
-
         (testing "Regular metabot works when metabot-enabled is true"
           (mt/with-temporary-setting-values [metabot-enabled? true]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
                                     (assoc base-request :conversation_id (str (random-uuid)))))))
-
         (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
           (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -202,7 +198,6 @@
                                     (assoc base-request
                                            :metabot_id metabot-v3.config/embedded-metabot-id
                                            :conversation_id (str (random-uuid)))))))
-
         (testing "Embedded metabot works when embedded-metabot-enabled? is true"
           (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -211,7 +206,6 @@
                                     (assoc base-request
                                            :metabot_id metabot-v3.config/embedded-metabot-id
                                            :conversation_id (str (random-uuid)))))))
-
         (testing "Regular metabot still works when only embedded is disabled"
           (mt/with-temporary-setting-values [metabot-enabled?          true
                                              embedded-metabot-enabled? false]
@@ -219,7 +213,6 @@
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
                                     (assoc base-request :conversation_id (str (random-uuid)))))))
-
         (testing "Embedded metabot still works when only regular is disabled"
           (mt/with-temporary-setting-values [metabot-enabled?          false
                                              embedded-metabot-enabled? true]

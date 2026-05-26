@@ -632,7 +632,6 @@
       (testing "different columns"
         (is (int? (:id created-at)))
         (is (nil? (:id ca-expr))))
-
       (testing "both refs should match correctly"
         (is (= created-at
                (lib.equality/find-matching-column (lib/ref created-at) columns)))

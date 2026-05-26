@@ -43,7 +43,6 @@
                     (ws.impl/run-transform! workspace graph ws-transform))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
-
           (testing "The isolated_table_id gets populated"
             (ws.impl/get-or-calculate-graph! workspace)
             (is (=? [{:workspace_id      (:id workspace)
@@ -54,7 +53,6 @@
                       :isolated_table    string?
                       :isolated_table_id number?}]
                     (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
-
         (testing "app DB records are rolled back"
           ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
           (is (= (update before :xfrun inc)
@@ -76,17 +74,14 @@
           graph        (ws.impl/get-or-calculate-graph! workspace)
           before       {:xf    (t2/count :model/Transform)
                         :xfrun (t2/count :model/TransformRun)}]
-
       (testing "dry-run returns data nested under :data like /api/dataset"
         (is (=? {:status :succeeded
                  :data   {:rows [[1 "hello"] [2 "world"]]
                           :cols [{:name #"(ID)|(id)"} {:name #"(NAME)|(name)"}]}}
                 (mt/with-current-user (mt/user->id :crowberto)
                   (ws.impl/dry-run-transform workspace graph ws-transform)))))
-
       (testing "last_run_at is NOT updated in dry-run mode"
         (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
-
       (testing "app DB records are NOT created in dry-run mode"
         (is (= before
                {:xf    (t2/count :model/Transform)
@@ -112,17 +107,14 @@
             graph        (ws.impl/get-or-calculate-graph! workspace)
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
-
         (testing "dry-run returns data with rows from Python output"
           (is (=? {:status :succeeded
                    :data   {:rows [[1 "hello"] [2 "world"]]
                             :cols [{:name "id"} {:name "name"}]}}
                   (mt/with-current-user (mt/user->id :crowberto)
                     (ws.impl/dry-run-transform workspace graph ws-transform)))))
-
         (testing "last_run_at is NOT updated in dry-run mode"
           (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
-
         (testing "app DB records are NOT created in dry-run mode"
           (is (= before
                  {:xf    (t2/count :model/Transform)
@@ -145,7 +137,6 @@
                 :body          "import pandas as pd"
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))
-
     (testing "remaps to map format when mapping has nil :id"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
@@ -163,7 +154,6 @@
                                           :schema      "ws_isolated_123"
                                           :table       "orders_isolated"}}}
                (remap-python-source table-mapping source)))))
-
     (testing "leaves source-tables unchanged when no mapping exists"
       (let [table-mapping {}
             source        {:type          "python"
@@ -173,7 +163,6 @@
                                                      :table       "orders"
                                                      :table_id    123}}}]
         (is (= source (remap-python-source table-mapping source)))))
-
     (testing "remaps legacy integer to table ID when mapping has :id"
       (let [table-mapping {123 {:db-id  1
                                 :schema "ws_isolated_123"
@@ -186,7 +175,6 @@
                 :body          "import pandas as pd"
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))
-
     (testing "remaps legacy integer to map format when mapping has nil :id"
       (let [table-mapping {123 {:db-id  1
                                 :schema "ws_isolated_123"
@@ -201,14 +189,12 @@
                                           :schema      "ws_isolated_123"
                                           :table       "orders_isolated"}}}
                (remap-python-source table-mapping source)))))
-
     (testing "leaves legacy integer table-id unchanged when no mapping exists"
       (let [table-mapping {}
             source        {:type          "python"
                            :body          "import pandas as pd"
                            :source-tables {"orders" 123}}]
         (is (= source (remap-python-source table-mapping source)))))
-
     (testing "handles mixed formats with mappings for both"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
@@ -230,7 +216,6 @@
                 :source-tables {"orders"    456
                                 "customers" 999}}
                (remap-python-source table-mapping source)))))
-
     (testing "prefers table_id lookup over triple lookup for map format"
       (let [table-mapping {123                    {:db-id  1
                                                    :schema "ws_isolated_123"
@@ -250,7 +235,6 @@
                 :body          "import pandas as pd"
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))
-
     (testing "falls back to triple lookup when table_id not in mapping"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
@@ -276,23 +260,19 @@
               {[1 "public" "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
               "SELECT * FROM public.orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
-
              ["remaps unqualified table reference using nil-schema mapping"
               {[1 nil "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
               "SELECT * FROM orders"
               "SELECT * FROM ws_isolated_123.public__orders"]
-
              ;; This is what build-remapping creates for unqualified input tables
              ["qualifies unqualified input table reference (no isolation, just adds schema)"
               {[1 nil "orders"] {:db-id 1, :schema "public", :table "orders", :id 123}}
               "SELECT * FROM orders"
               "SELECT * FROM public.orders"]
-
              ["leaves unmapped tables unchanged"
               {[1 nil "other_table"] {:db-id 1, :schema "public", :table "other_table", :id 999}}
               "SELECT * FROM orders"
               "SELECT * FROM orders"]
-
              ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
              ;; The output SQL is semantically valid since `orders` resolves to `public.orders` in scope.
              ["handles multiple tables in same query"
@@ -313,9 +293,7 @@
         (testing "initially stale"
           (is (= {t1-ref {:definition_changed true :input_data_changed false}}
                  (ws.tu/staleness-flags workspace-id))))
-
         (ws.tu/mock-run-transform! workspace-id t1-ref)
-
         (testing "after run: definition_changed cleared"
           (is (= {t1-ref {:definition_changed false :input_data_changed false}}
                  (ws.tu/staleness-flags workspace-id))))))))
@@ -329,12 +307,10 @@
         (testing "sanity check that it's stale to start with"
           (is (= {t1-ref {:definition_changed true :input_data_changed false}}
                  (ws.tu/staleness-flags workspace-id))))
-
         (testing "Run (mocked): should mark definition_changed as false"
           (ws.tu/mock-run-transform! workspace-id t1-ref)
           (is (= {t1-ref {:definition_changed false :input_data_changed false}}
                  (ws.tu/staleness-flags workspace-id))))
-
         (testing "Update source: should mark definition_changed as true"
           (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
                       {:source {:type "query" :query (mt/native-query {:query "SELECT 2 as id, 'world' as name"})}})

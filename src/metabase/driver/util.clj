@@ -680,12 +680,10 @@
                                      (.init ^KeyStore (cast KeyStore nil)))]
     (doseq [cert certs]
       (.setCertificateEntry keystore (dn-for-cert cert) cert))
-
     (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
       (when (instance? X509TrustManager trust-mgr)
         (doseq [issuer (.getAcceptedIssuers trust-mgr)]
           (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
-
     keystore))
 
 (defn- key-managers [private-key password own-cert]

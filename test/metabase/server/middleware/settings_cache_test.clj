@@ -43,7 +43,6 @@
           (is (= (setting/cache-last-updated-at)
                  (-> setting-cookie :value codec/form-decode))
               "Cookie value is not most recent cache updated at timestamp")))
-
       (testing "And when that timestamp is outdated it restores the setting cache"
         (let [calls (atom 0)]
           ;; value in 2042 to simulate client has more recent settings

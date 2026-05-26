@@ -39,7 +39,6 @@
             (is (contains? (file-set (io/file dump-dir))
                            ["settings.yaml"])
                 "A few top-level files are expected"))
-
           (testing "the Collections properly exported"
             (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
                        (dissoc :id :location)
@@ -48,7 +47,6 @@
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
                        (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))
-
             (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
                        (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent))
@@ -141,7 +139,6 @@
             (is (contains? (file-set (io/file dump-dir "databases" "My Company Data" "tables"))
                            ["Orders__SLASH__Invoices" "Orders__SLASH__Invoices.yaml"])
                 "Slashes in directory names get escaped"))
-
           (testing "the Field was properly exported"
             (is (= (ts/extract-one "Field" (:id website))
                    (-> (yaml/from-file (io/file dump-dir

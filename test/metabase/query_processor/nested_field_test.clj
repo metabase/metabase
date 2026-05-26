@@ -78,7 +78,6 @@
                  (mt/first-row
                   (mt/run-mbql-query tips
                     {:aggregation [[:distinct $tips.venue.name]]})))))
-
         (testing ":count aggregation"
           ;; Now let's just get the regular count
           (is (= [500]

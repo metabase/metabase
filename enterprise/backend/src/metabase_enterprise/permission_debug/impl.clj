@@ -124,7 +124,6 @@
                       ;; Only include fields from responses that have the winning decision precedence
                       acc-contributes? (= acc-precedence (decision-precedence winning-decision))
                       response-contributes? (= response-precedence (decision-precedence winning-decision))]
-
                   {:decision    winning-decision
                    :model-type  (:model-type response)
                    :model-id    (:model-id response)

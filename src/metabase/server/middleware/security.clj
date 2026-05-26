@@ -10,7 +10,6 @@
    [metabase.embedding.settings :as embedding.settings]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
-
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]

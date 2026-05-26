@@ -505,7 +505,6 @@
                                                        :source-table table-id}]}}}
                 (metabot-v3.tools.filters/query-datasource
                  {:table-id table-id}))))
-
       (testing "Table query with fields selection"
         (is (=? {:structured-output {:type :query
                                      :query-id string?
@@ -519,7 +518,6 @@
                  {:table-id table-id
                   :fields [{:field-id (->field-id "Created At")}
                            {:field-id (->field-id "Total")}]}))))
-
       (testing "Table query with filters"
         (is (=? {:structured-output {:type :query
                                      :query-id string?
@@ -537,7 +535,6 @@
                             {:field-id (->field-id "User ID")
                              :operation :equals
                              :value 10}]}))))
-
       (testing "Table query with aggregations and grouping"
         (is (=? {:structured-output {:type :query
                                      :query-id string?
@@ -555,7 +552,6 @@
                                  {:field-id (->field-id "Discount")
                                   :function :avg}]
                   :group-by [{:field-id (->field-id "Product ID")}]}))))
-
       (testing "Table query with order by and limit"
         (is (=? {:structured-output {:type :query
                                      :query-id string?
@@ -573,7 +569,6 @@
                              {:field {:field-id (->field-id "Total")}
                               :direction :desc}]
                   :limit 100}))))
-
       (testing "Table query with temporal bucketing"
         (is (=? {:structured-output {:type :query
                                      :query-id string?
@@ -611,7 +606,6 @@
                                                          :source-card model-id}]}}}
                   (metabot-v3.tools.filters/query-datasource
                    {:model-id model-id}))))
-
         (testing "Model query with fields selection"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
@@ -625,7 +619,6 @@
                    {:model-id model-id
                     :fields [{:field-id (->field-id "Created At")}
                              {:field-id (->field-id "Total")}]}))))
-
         (testing "Model query with filters"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
@@ -643,7 +636,6 @@
                               {:field-id (->field-id "Subtotal")
                                :operation :number-less-than
                                :value 100}]}))))
-
         (testing "Model query with aggregations and grouping"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
@@ -661,7 +653,6 @@
                                    {:field-id (->field-id "Total")
                                     :function :max}]
                     :group-by [{:field-id (->field-id "User ID")}]}))))
-
         (testing "Model query with order by and limit"
           (is (=? {:structured-output {:type :query
                                        :query-id string?
@@ -683,32 +674,27 @@
       (is (= {:output "Either table_id or model_id must be provided"
               :status-code 400}
              (metabot-v3.tools.filters/query-datasource {}))))
-
     (testing "Error when both table-id and model-id provided"
       (is (= {:output "Cannot provide both table_id and model_id"
               :status-code 400}
              (metabot-v3.tools.filters/query-datasource
               {:table-id (mt/id :orders)
                :model-id 123}))))
-
     (testing "Error with invalid table-id"
       (is (= {:output "Invalid table_id not-a-number"
               :status-code 400}
              (metabot-v3.tools.filters/query-datasource
               {:table-id "not-a-number"}))))
-
     (testing "Error with invalid model-id"
       (is (= {:output "Invalid model_id not-a-number"
               :status-code 400}
              (metabot-v3.tools.filters/query-datasource
               {:model-id "not-a-number"}))))
-
     (testing "Error with non-existent table"
       (is (= {:output (str "No table found with table_id " Integer/MAX_VALUE)
               :status-code 404}
              (metabot-v3.tools.filters/query-datasource
               {:table-id Integer/MAX_VALUE}))))
-
     (testing "Error with non-existent model"
       (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)
               :status-code 404}
@@ -724,7 +710,6 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.filters/query-datasource
                              {:table-id (mt/id :orders)}))))
-
     (testing "User without permissions gets error for model"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.filters/query-datasource
@@ -816,7 +801,6 @@
             (is (= :query (get-in result [:structured-output :type])))
             ;; Check that a measure aggregation is present
             (is (some #(and (vector? %) (= :measure (first %))) aggregations))))
-
         (testing "query-datasource with measure aggregation and sort order"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:table-id (mt/id :orders)

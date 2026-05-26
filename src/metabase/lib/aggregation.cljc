@@ -95,7 +95,6 @@
          (lib.metadata.calculation/metadata query stage-number aggregation)
          {:lib/source :source/aggregations
           :lib/source-uuid (:lib/uuid (second aggregation))}
-
          (when base-type
            {:base-type base-type})
          (when effective-type

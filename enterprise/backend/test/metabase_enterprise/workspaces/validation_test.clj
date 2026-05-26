@@ -108,7 +108,6 @@
               (t2/update! :model/WorkspaceOutput
                           {:workspace_id ws-id :ref_id ref-id}
                           {:global_table_id (:id output-table)})
-
               (is (= [{:category    :external-downstream
                        :problem     :not-run
                        :severity    :warning
@@ -167,12 +166,10 @@
                                                                    :name   "output_table"}})]
               ;; First trigger graph calculation to create the WorkspaceOutput row
               (build-graph! ws-id)
-
               ;; Now the row exists, so we can update it with our test table IDs
               (t2/update! :model/WorkspaceOutput
                           {:workspace_id ws-id :ref_id ref-id}
                           {:global_table_id   (:id global-table)
                            :isolated_table_id (:id isolated-table)})
-
               ;; Should have no problems since isolated table has all required fields
               (is (empty? (ws.validation/find-downstream-problems ws-id (build-graph! ws-id)))))))))))

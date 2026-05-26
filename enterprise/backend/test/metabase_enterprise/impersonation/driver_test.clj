@@ -582,7 +582,6 @@
                     (testing "both see router DB, but crowberto sees all rows"
                       (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (u/the-id router-database) :attribute "impersonation_attr"}]
                                                                      :attributes     {"impersonation_attr" "impersonation.role"}}
-
                         (is (= [[1 "hello to user 1 in the router DB"]
                                 [2 "hello to user 2 in the router DB"]
                                 [1 "hello to user 1 in the router DB"]]
@@ -698,10 +697,8 @@
                #"Connection impersonation is enabled for this database, but no default role is found"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]}))))
-
         ;; Update the test database with a default role that has full permissions
         (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
-
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
@@ -711,7 +708,6 @@
                #"(?s)SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
-
           ;; Non-impersonated user should still be able to query the table
           (request/as-admin
             (is (= [100]
@@ -753,7 +749,6 @@
                       (is (not (str/includes? (-> impersonated-result :data :native_form :query)
                                               (:table_name persisted-info)))
                           "Erroneously used the persisted model cache"))
-
                     (testing "Query from admin hits the model cache"
                       (is (str/includes? (-> admin-result :data :native_form :query)
                                          (:table_name persisted-info))
@@ -770,24 +765,17 @@
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a (u/lower-case-en (mt/random-name))]
-
           (tx/with-temp-roles! driver/*driver*
-
             (impersonation-granting-details driver/*driver* (mt/db))
             {role-a {venues-table {}}}
-
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
-
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                      :details (impersonation-details driver/*driver* (mt/db))}]
               (mt/with-db database
-
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-
                 (sync/sync-database! database {:scan :schema})
-
                 (let [tables-set #(->> (driver/describe-database
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))

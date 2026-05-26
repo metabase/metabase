@@ -71,7 +71,6 @@
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
     ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
-
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})
   (route/not-found {:status 404 :body "Not found."}))
@@ -102,11 +101,9 @@
    (GET "/readyz" [] health-handler)
    ;; ^/livez -> Liveness probe (no DB access)
    (GET "/livez" [] livez-handler)
-
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
-
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app

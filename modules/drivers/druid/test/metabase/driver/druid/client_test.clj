@@ -23,7 +23,6 @@
                                                 (a/>!! running-chan ::running)
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
-
             (let [futur (future (qp/process-query query))]
               ;; wait for query to start running, then kill the thread running the query
               (a/go
@@ -95,7 +94,6 @@
            (get-auth-header get-request)
            (get-auth-header post-request)
            (get-auth-header delete-request)) "basic auth header included with successfully"))
-
   (let [no-auth-basic false
         get-request    (test-request druid.client/GET no-auth-basic)
         post-request   (test-request druid.client/POST no-auth-basic)

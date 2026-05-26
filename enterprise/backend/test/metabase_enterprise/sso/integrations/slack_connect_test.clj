@@ -82,7 +82,6 @@
              (mt/client :get 400 "/auth/sso"
                         {:request-options {:redirect-strategy :none}}
                         :preferred_method "slack-connect"))))
-
          (testing "SSO requests fail if they don't have a valid premium-features token"
            (sso.test-setup/call-with-default-slack-config!
             (fn []
@@ -96,7 +95,6 @@
                   (mt/client :get 400 "/auth/sso"
                              {:request-options {:redirect-strategy :none}}
                              :preferred_method "slack-connect"))))))))
-
        (testing "SSO requests fail if Slack Connect is enabled but hasn't been configured"
          (mt/with-temporary-setting-values
            [slack-connect-enabled true
@@ -110,7 +108,6 @@
              (mt/client :get 400 "/auth/sso"
                         {:request-options {:redirect-strategy :none}}
                         :preferred_method "slack-connect")))))
-
        (testing "SSO requests fail if Slack Connect is configured but hasn't been enabled"
          (mt/with-temporary-setting-values
            [slack-connect-enabled false
@@ -125,7 +122,6 @@
              (mt/client :get 400 "/auth/sso"
                         {:request-options {:redirect-strategy :none}}
                         :preferred_method "slack-connect")))))
-
        (testing "The client secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
            [slack-connect-enabled true
@@ -395,7 +391,6 @@
           (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
           (sso-settings/slack-connect-authentication-mode! "link-only")
           (is (= "link-only" (sso-settings/slack-connect-authentication-mode))))
-
         (testing "invalid values are rejected"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
