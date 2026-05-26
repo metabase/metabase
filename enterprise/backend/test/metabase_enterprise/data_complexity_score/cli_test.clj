@@ -77,11 +77,15 @@
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
-               (:meta result))))))
+               (:meta result)))))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-2
   (testing "the schema-less widgets table (under databases/<db>/tables/, no schema dir) loads into :universe"
     (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)]
       (is (some #(= "widgets" (:name %)) universe)
-          "schema-less Table directory should be picked up by the loader")))
+          "schema-less Table directory should be picked up by the loader"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-3
   (testing "audit-DB content (is_audit: true) is excluded from :universe — both Tables and Cards"
     ;; Mirrors the live appdb scorer's `[:not= audit/audit-db-id]` filter. The fixture has
     ;; `databases/audit_database/...` (`is_audit: true`) with a `query_log` Table and a
@@ -92,7 +96,9 @@
       (is (not (contains? names "query_log"))
           "Table in is_audit DB must not appear in :universe")
       (is (not (contains? names "Audit Metric"))
-          "Card whose database_id is the audit DB must not appear in :universe")))
+          "Card whose database_id is the audit DB must not appear in :universe"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-4
   (testing "FieldValues side-car YAMLs (`*___fieldvalues.yaml`) under fields/ do not inflate :field-count"
     ;; The fixture's `events/fields/event_id___fieldvalues.yaml` is a real-shape serdes side-car
     ;; sitting next to a Field YAML. `load-yamls-of-model` must skip it; otherwise the events Table

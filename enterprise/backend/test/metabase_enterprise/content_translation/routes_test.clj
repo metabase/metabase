@@ -77,7 +77,9 @@
                 matches (filter #(and (= (nth % 0) "de")
                                       (= (nth % 1) "Sample translation"))
                                 data)]
-            (is (seq matches)))))))
+            (is (seq matches))))))))
+
+(deftest content-translation-api-test-2
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
       (ct-utils/with-clean-translations!

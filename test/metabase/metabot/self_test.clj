@@ -190,7 +190,9 @@
                    {:type :text :id "text-1" :text "Hello world"}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= chunks result)
-          "Non-tool chunks should pass through unchanged")))
+          "Non-tool chunks should pass through unchanged"))))
+
+(deftest ^:parallel tool-executor-xf-test-2
   (testing "tool-executor-xf executes tool calls and appends results"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-123"}
@@ -206,7 +208,9 @@
                  :toolCallId "call-1"
                  :toolName   "get-time"
                  :result     string?}
-                tool-result)))))
+                tool-result))))))
+
+(deftest ^:parallel tool-executor-xf-test-3
   (testing "tool-executor-xf handles multiple concurrent tool calls"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-456"}
@@ -219,7 +223,9 @@
         (is (every? #(= :tool-output-available (:type %)) tool-results)
             "Last two chunks should be tool outputs")
         (is (= #{"call-1" "call-2"}
-               (set (map :toolCallId tool-results)))))))
+               (set (map :toolCallId tool-results))))))))
+
+(deftest ^:parallel tool-executor-xf-test-4
   (testing "tool-executor-xf handles tools returning reducibles"
     (let [llm-id "wut-1"
           input  "Little bits and pieces"
@@ -235,7 +241,9 @@
       (is (= {:type :text
               :id   llm-id
               :text input}
-             (last (into [] (self.core/aisdk-xf) result))))))
+             (last (into [] (self.core/aisdk-xf) result)))))))
+
+(deftest ^:parallel tool-executor-xf-test-5
   (testing "tool-executor-xf handles tool execution errors gracefully"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
@@ -247,7 +255,9 @@
                :toolName   "get-time"
                :error      {:message string?
                             :type    string?}}
-              (last result)))))
+              (last result))))))
+
+(deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-nil"}
@@ -257,7 +267,9 @@
                :toolCallId "call-nil"
                :toolName   "no-arg"
                :result     {:output "ok"}}
-              (last result)))))
+              (last result))))))
+
+(deftest ^:parallel tool-executor-xf-test-7
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}

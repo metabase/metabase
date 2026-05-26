@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
 
-(deftest escape-xml-test
+(deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
     (is (= "&amp;" (#'llm-shape/escape-xml "&")))
     (is (= "&lt;" (#'llm-shape/escape-xml "<")))
@@ -15,7 +15,7 @@
   (testing "escape-xml handles nil"
     (is (nil? (#'llm-shape/escape-xml nil)))))
 
-(deftest field->xml-test
+(deftest ^:parallel field->xml-test
   (testing "formats field with all attributes matching Python format"
     ;; for field data format see `metabase.metabot.tools.util/->result-column`
     (let [field {:field_id "f1"
@@ -57,7 +57,7 @@
           xml (llm-shape/field->xml field)]
       (is (not (str/includes? xml "fk_target_fully_qualified_name"))))))
 
-(deftest collection->xml-test
+(deftest ^:parallel collection->xml-test
   (testing "formats collection with name"
     (let [collection {:name "Finance" :description "Finance reports" :authority_level "official"}
           xml (llm-shape/collection->xml collection)]
@@ -70,7 +70,7 @@
           xml (llm-shape/collection->xml collection)]
       (is (str/includes? xml "name=\"Our analytics\"")))))
 
-(deftest metric->xml-test
+(deftest ^:parallel metric->xml-test
   (testing "formats metric with all attributes matching Python"
     (let [metric {:id 42
                   :name "Total Revenue"
@@ -98,7 +98,7 @@
       (is (str/includes? xml "is_verified=\"false\""))
       (is (not (str/includes? xml "### Dimensions"))))))
 
-(deftest measure->xml-test
+(deftest ^:parallel measure->xml-test
   (testing "formats measure with all attributes"
     (let [;; The new contract: `:definition` is a portable aggregation clause vector,
           ;; produced by `convert-measure-or-segment` via `repr.resolve/export-query`.
@@ -146,7 +146,7 @@
           xml (llm-shape/measure->xml measure)]
       (is (str/includes? xml "display_name=\"avg_price\"")))))
 
-(deftest segment->xml-test
+(deftest ^:parallel segment->xml-test
   (testing "formats segment with all attributes"
     (let [;; The new contract: `:definition` is a portable filter clause vector;
           ;; `:portable-entity-id` is the NanoID the agent pastes into `["segment", {}, "<pid>"]`.
@@ -193,7 +193,7 @@
           xml (llm-shape/segment->xml segment)]
       (is (str/includes? xml "display_name=\"q4_orders\"")))))
 
-(deftest table->xml-test
+(deftest ^:parallel table->xml-test
   (testing "formats table with all attributes matching Python"
     (let [table {:id 10
                  :name "users"
@@ -245,7 +245,7 @@
       (is (not (str/includes? xml "### Measures")))
       (is (not (str/includes? xml "### Segments"))))))
 
-(deftest model->xml-test
+(deftest ^:parallel model->xml-test
   (testing "formats model with all attributes matching Python"
     (let [model {:id 5
                  :name "Sales Model"
@@ -268,7 +268,9 @@
       (is (str/includes? xml "The following fields are available in this model"))
       (is (str/includes? xml "metabase://model/5/fields/{field_id}"))
       ;; Python closes with </model>
-      (is (str/ends-with? (str/trim xml) "</model>"))))
+      (is (str/ends-with? (str/trim xml) "</model>")))))
+
+(deftest ^:parallel model->xml-test-2
   (testing "includes measures and segments when present"
     (let [model {:id 5
                  :name "Sales Model"
@@ -286,21 +288,29 @@
       (is (str/includes? xml "Total Net Revenue"))
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
       (is (str/includes? xml "<segment id=\"1\""))
-      (is (str/includes? xml "New Customers"))))
+      (is (str/includes? xml "New Customers")))))
+
+(deftest ^:parallel model->xml-test-3
   (testing "omits measures and segments sections when empty"
     (let [model {:id 5 :name "Empty Model" :database_id 1 :database_engine "postgres"}
           xml (llm-shape/model->xml model)]
       (is (not (str/includes? xml "### Measures")))
-      (is (not (str/includes? xml "### Segments")))))
+      (is (not (str/includes? xml "### Segments"))))))
+
+(deftest ^:parallel model->xml-test-4
   (testing "includes portable_entity_id when present (for `source-card:` lookups)"
     (let [model {:id 6 :name "Portable Model" :database_id 1 :database_engine "postgres"
                  :portable_entity_id "bw41Vx2d-9d7sOScnaKlf"}
           xml (llm-shape/model->xml model)]
-      (is (str/includes? xml "portable_entity_id=\"bw41Vx2d-9d7sOScnaKlf\""))))
+      (is (str/includes? xml "portable_entity_id=\"bw41Vx2d-9d7sOScnaKlf\"")))))
+
+(deftest ^:parallel model->xml-test-5
   (testing "omits portable_entity_id when absent"
     (let [model {:id 7 :name "No EID Model" :database_id 1 :database_engine "postgres"}
           xml (llm-shape/model->xml model)]
-      (is (not (str/includes? xml "portable_entity_id")))))
+      (is (not (str/includes? xml "portable_entity_id"))))))
+
+(deftest ^:parallel model->xml-test-6
   (testing "renders the saved query body as a <query> block when :query_json is provided"
     (let [query-json {"lib/type" "mbql/query"
                       "database" "Sample"
@@ -312,7 +322,9 @@
       (is (str/includes? xml "<query>"))
       (is (str/includes? xml "```json"))
       (is (str/includes? xml "\"lib/type\""))
-      (is (str/includes? xml "</query>"))))
+      (is (str/includes? xml "</query>")))))
+
+(deftest ^:parallel model->xml-test-7
   (testing "omits the <query> block when :query_json is missing or blank"
     (let [xml-missing (llm-shape/model->xml {:id 9 :name "M" :database_id 1 :database_engine "postgres"})
           xml-empty   (llm-shape/model->xml {:id 10 :name "M" :database_id 1 :database_engine "postgres"
@@ -320,7 +332,7 @@
       (is (not (str/includes? xml-missing "<query>")))
       (is (not (str/includes? xml-empty "<query>"))))))
 
-(deftest query->xml-test
+(deftest ^:parallel query->xml-test
   (testing "formats query result matching Python"
     (let [query {:query-type :sql
                  :query-id "q123"
@@ -344,7 +356,7 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
-(deftest chart->xml-test
+(deftest ^:parallel chart->xml-test
   (testing "formats chart (simplified version)"
     (let [chart {:chart-id "ch-abc-123"
                  :query-id "q1"
@@ -361,7 +373,7 @@
           xml (llm-shape/chart->xml chart)]
       (is (str/includes? xml "type=\"table\"")))))
 
-(deftest visualization->xml-test
+(deftest ^:parallel visualization->xml-test
   (testing "formats visualization with queries"
     (let [viz {:chart-id "v1"
                :queries [{:query-type :sql :query-id "q1" :database_id 1 :query-content "SELECT 1"}]
@@ -373,7 +385,7 @@
       (is (str/includes? xml "<query"))
       (is (str/includes? xml "<visualization>")))))
 
-(deftest question->xml-test
+(deftest ^:parallel question->xml-test
   (testing "formats question matching Python"
     (let [question {:id 100
                     :name "Revenue Report"
@@ -426,7 +438,7 @@
       (is (not (str/includes? xml-missing "<query>")))
       (is (not (str/includes? xml-empty "<query>"))))))
 
-(deftest dashboard->xml-test
+(deftest ^:parallel dashboard->xml-test
   (testing "formats dashboard matching Python"
     (let [dashboard {:id 50
                      :name "Sales Dashboard"
@@ -447,7 +459,7 @@
       (is (str/includes? xml "<text_card"))
       (is (str/ends-with? (str/trim xml) "</dashboard>")))))
 
-(deftest user->xml-test
+(deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
     (let [user {:id 1
                 :name "John Doe"
@@ -463,7 +475,7 @@
       (is (str/includes? xml "| ARR | Annual Recurring Revenue |"))
       (is (str/ends-with? (str/trim xml) "</user>")))))
 
-(deftest search-result->xml-test
+(deftest ^:parallel search-result->xml-test
   (testing "formats search result with correct tag names"
     (let [result {:id 100
                   :type :metric
@@ -478,7 +490,9 @@
       (is (str/includes? xml "is_verified=\"true\""))
       (is (str/includes? xml "Total revenue calculation"))
       (is (str/includes? xml "Collection: Finance"))
-      (is (str/ends-with? (str/trim xml) "</metric>"))))
+      (is (str/ends-with? (str/trim xml) "</metric>")))))
+
+(deftest ^:parallel search-result->xml-test-2
   (testing "table search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 133
                   :type "table"
@@ -492,7 +506,9 @@
       (is (str/includes? xml "name=\"order\""))
       (is (str/includes? xml "database_id=\"2\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
-      (is (str/includes? xml "fully_qualified_name=\"shopify_data.order\""))))
+      (is (str/includes? xml "fully_qualified_name=\"shopify_data.order\"")))))
+
+(deftest ^:parallel search-result->xml-test-3
   (testing "table search result without schema omits schema prefix in fqn"
     (let [result {:id 10
                   :type "table"
@@ -501,7 +517,9 @@
                   :database_engine :h2}
           xml (llm-shape/search-result->xml result)]
       (is (str/includes? xml "fully_qualified_name=\"users\""))
-      (is (str/includes? xml "database_engine=\"h2\""))))
+      (is (str/includes? xml "database_engine=\"h2\"")))))
+
+(deftest ^:parallel search-result->xml-test-4
   (testing "model search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 5
                   :type "model"
@@ -513,7 +531,9 @@
       (is (str/starts-with? xml "<model"))
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
-      (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\""))))
+      (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\"")))))
+
+(deftest ^:parallel search-result->xml-test-5
   (testing "question search result includes portable_entity_id attribute when present"
     (let [result {:id 175
                   :type "question"
@@ -525,7 +545,9 @@
           xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<question"))
       (is (str/includes? xml "id=\"175\""))
-      (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\""))))
+      (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\"")))))
+
+(deftest ^:parallel search-result->xml-test-6
   (testing "model search result includes portable_entity_id attribute when present"
     (let [result {:id 42
                   :type "model"
@@ -535,18 +557,24 @@
                   :database_engine "postgres"
                   :portable_entity_id "AbCdEfGhIjKlMnOpQrStU"}
           xml (llm-shape/search-result->xml result)]
-      (is (str/includes? xml "portable_entity_id=\"AbCdEfGhIjKlMnOpQrStU\""))))
+      (is (str/includes? xml "portable_entity_id=\"AbCdEfGhIjKlMnOpQrStU\"")))))
+
+(deftest ^:parallel search-result->xml-test-7
   (testing "search result without portable_entity_id simply omits the attribute"
     (let [result {:id 99 :type "question" :name "Legacy"
                   :verified false :database_id 1 :database_engine "h2"}
           xml (llm-shape/search-result->xml result)]
-      (is (not (str/includes? xml "portable_entity_id")))))
+      (is (not (str/includes? xml "portable_entity_id"))))))
+
+(deftest ^:parallel search-result->xml-test-8
   (testing "table search result never carries portable_entity_id"
     (let [result {:id 10 :type "table" :name "ORDERS"
                   :verified false :database_id 1 :database_engine "h2"
                   :database_schema "PUBLIC"}
           xml (llm-shape/search-result->xml result)]
-      (is (not (str/includes? xml "portable_entity_id")))))
+      (is (not (str/includes? xml "portable_entity_id"))))))
+
+(deftest ^:parallel search-result->xml-test-9
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
                   :type :dashboard
@@ -555,7 +583,9 @@
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "fully_qualified_name")))
       (is (not (str/includes? xml "database_id")))
-      (is (not (str/includes? xml "database_engine")))))
+      (is (not (str/includes? xml "database_engine"))))))
+
+(deftest ^:parallel search-result->xml-test-10
   (testing "uses correct tag names for different types"
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :table :name "t"}) "<table"))
     ;; Model uses <metabase-model> tag
@@ -565,7 +595,7 @@
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
 
-(deftest search-results->xml-test
+(deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
     (let [results [{:id 1 :type :metric :name "Metric 1"}
                    {:id 2 :type :table :name "Table 1"}]
@@ -580,7 +610,7 @@
       (is (str/includes? xml "<search-results>"))
       (is (str/includes? xml "</search-results>")))))
 
-(deftest field-values-metadata->xml-test
+(deftest ^:parallel field-values-metadata->xml-test
   (testing "formats field values with samples"
     (let [metadata {:field_values ["US" "DE" "FR"]
                     :statistics {:sample_distinct_count 3
@@ -596,7 +626,7 @@
           xml (llm-shape/field-values-metadata->xml metadata)]
       (is (str/includes? xml "This field hasn't been sampled yet")))))
 
-(deftest field-metadata->xml-test
+(deftest ^:parallel field-metadata->xml-test
   (testing "formats field metadata"
     (let [metadata {:field_id "f1"
                     :value_metadata {:field_values ["A" "B"]}}
@@ -608,7 +638,7 @@
           xml (llm-shape/field-metadata->xml metadata)]
       (is (str/includes? xml "No metadata available to display")))))
 
-(deftest get-metadata-result->xml-test
+(deftest ^:parallel get-metadata-result->xml-test
   (testing "formats metadata with metrics, tables, and models"
     (let [result {:metrics [{:id 1 :name "M1" :description "Metric 1"}]
                   :tables [{:id 2 :name "T1" :database_id 1 :description "Table 1"}]
@@ -631,7 +661,7 @@
       (is (str/includes? xml "<errors>"))
       (is (str/includes? xml "Error 1")))))
 
-(deftest entity->xml-test
+(deftest ^:parallel entity->xml-test
   (testing "dispatches to correct formatter based on type"
     (is (str/starts-with? (llm-shape/entity->xml {:type :metric :id 1 :name "m"}) "<metric"))
     (is (str/starts-with? (llm-shape/entity->xml {:type :table :id 1 :name "t" :database_id 1}) "<table"))

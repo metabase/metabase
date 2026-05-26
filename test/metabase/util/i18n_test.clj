@@ -163,7 +163,9 @@
         (is (thrown-with-msg?
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
-             (#'i18n/validate-number-of-args "{1}" [0 1]))))))
+             (#'i18n/validate-number-of-args "{1}" [0 1])))))))
+
+(deftest ^:parallel validate-number-of-args-test-2
   (testing "The number of args is still validated if the first argument is a `str` form"
     (is (thrown?
          clojure.lang.Compiler$CompilerException
@@ -171,7 +173,9 @@
     (is (thrown-with-msg?
          AssertionError
          #"expects 2 args, got 1"
-         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
+         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0])))))
+
+(deftest ^:parallel validate-number-of-args-test-3
   (testing "`trsn` and `trun` should validate that they are being called with at most one arg\n"
     (is (thrown?
          clojure.lang.Compiler$CompilerException

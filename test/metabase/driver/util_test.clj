@@ -230,20 +230,26 @@
                (#'driver.u/resolve-transitive-visible-if
                 c
                 props-by-name
-                :test-driver))))))
+                :test-driver)))))))
+
+(deftest ^:parallel resolve-transitive-visible-if-test-2
   (testing "empty visible-if is removed"
     (is (= {:name "prop-x"}
            (#'driver.u/resolve-transitive-visible-if
             {:name "prop-x" :visible-if {}}
             {}
-            :test-driver))))
+            :test-driver)))))
+
+(deftest ^:parallel resolve-transitive-visible-if-test-3
   (testing "dependencies on non-existent properties are kept (not filtered)"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
       (is (= {:name "prop-b" :visible-if {:non-existent-prop true}}
              (#'driver.u/resolve-transitive-visible-if
               {:name "prop-b" :visible-if {:non-existent-prop true}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
+
+(deftest ^:parallel resolve-transitive-visible-if-test-4
   (testing "false dependencies (from removed :checked-section) are filtered out"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
       (is (= {:name "prop-b" :visible-if {:prop-a true}}
@@ -251,7 +257,9 @@
               {:name "prop-b" :visible-if {:prop-a true
                                            :removed-section false}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
+
+(deftest ^:parallel resolve-transitive-visible-if-test-5
   (testing "multi-level transitive dependencies are fully resolved"
     (let [props-by-name {"prop-a" {:name "prop-a"}
                          "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
@@ -263,7 +271,9 @@
              (#'driver.u/resolve-transitive-visible-if
               {:name "prop-d" :visible-if {:prop-c true}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
+
+(deftest ^:parallel resolve-transitive-visible-if-test-6
   (testing "cycle detection throws exception with appropriate error data"
     (let [props-by-name {"prop-a" {:name "prop-a" :visible-if {:prop-c true}}
                          "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
