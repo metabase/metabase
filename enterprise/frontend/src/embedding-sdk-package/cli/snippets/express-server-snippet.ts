@@ -4,12 +4,12 @@ import { HARDCODED_JWT_SHARED_SECRET } from "../constants/config";
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 import type { CliState } from "../types/cli";
 
-type Options = Pick<CliState, "instanceUrl" | "tenantIdsMap">;
+type Options = Pick<CliState, "tenantIdsMap">;
 
 const DEFAULT_EXPRESS_SERVER_PORT = 4477;
 
 export const getExpressServerSnippet = (options: Options) => {
-  const { tenantIdsMap, instanceUrl } = options;
+  const { tenantIdsMap } = options;
 
   const users = HARDCODED_USERS.map((user, i) => {
     const tenancyAttributes: Record<string, string | number> = {};
@@ -39,14 +39,11 @@ export const getExpressServerSnippet = (options: Options) => {
 
   return `
 const express = require("express");
-const fetch = require("node-fetch");
 const jwt = require("jsonwebtoken");
 const session = require('express-session')
 const cors = require('cors')
 
 const PORT = process.env.PORT || ${DEFAULT_EXPRESS_SERVER_PORT}
-
-const METABASE_INSTANCE_URL = '${instanceUrl}'
 
 const METABASE_JWT_SHARED_SECRET =
   '${HARDCODED_JWT_SHARED_SECRET}'
@@ -78,22 +75,8 @@ ${tenancyAttributeMaps}
     METABASE_JWT_SHARED_SECRET,
   );
 
-  const ssoUrl = \`\${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=\${token}\`;
-
-  try {
-    const response = await fetch(ssoUrl, { method: "GET" });
-    const token = await response.json();
-
-    return res.status(200).json(token);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-        status: "error",
-        message: "authentication failed",
-        error: error.message,
-      });
-    }
-  }
+  // The user backend should return a JSON object with the JWT.
+  return res.status(200).json({ jwt: token });
 }
 
 async function switchUserHandler(req, res) {

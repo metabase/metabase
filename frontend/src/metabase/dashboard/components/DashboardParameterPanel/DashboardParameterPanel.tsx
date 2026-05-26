@@ -7,13 +7,13 @@ import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-param
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { isSmallScreen } from "metabase/utils/dom";
-import { useSelector } from "metabase/utils/redux";
 
-import { Dashboard } from "../Dashboard";
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
+import { ParametersList } from "../Dashboard/components";
 
 import S from "./DashboardParameterPanel.module.css";
 
@@ -56,7 +56,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <Dashboard.ParametersList />
+            <ParametersList />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -79,7 +79,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <Dashboard.ParametersList />
+          <ParametersList />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>

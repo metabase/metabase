@@ -1,4 +1,5 @@
 (ns metabase.parameters.dashboard-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -220,10 +221,10 @@
                 (binding [api/*current-user-id* (mt/user->id :rasta)]
                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                         parameter (first (:parameters dashboard))]
-                  ;; Mimicks the API endpoint (required):
+                    ;; Mimicks the API endpoint (required):
                     (binding [qp.perms/*param-values-query* true]
-                    ;; Important to check all the mappings here because sometimes they match up by coincidence
-                    ;; and pass even when the bug is still present.
+                      ;; Important to check all the mappings here because sometimes they match up by coincidence
+                      ;; and pass even when the bug is still present.
                       (let [expected (into {} (mt/rows (mt/process-query (mt/mbql-query users))))
                             actual   (into {} (map (fn [id]
                                                      (parameters.dashboard/dashboard-param-remapped-value
@@ -284,7 +285,7 @@
                            "Should return common FK remapping when FKs agree")))))
 
                (testing "Scenario 3: FK1→∅, FK2→A should return raw value (no consensus among FKs)"
-                  ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
+                 ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
                  (mt/with-column-remappings [reviews.product_id products.title
                                              products.id products.category]
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
@@ -295,7 +296,7 @@
                            "Should return raw value when only some FKs have remapping")))))
 
                (testing "Scenario 4: No remappings at all should return raw value"
-                  ;; No remappings set up
+                 ;; No remappings set up
                  (binding [api/*current-user-id* (mt/user->id :rasta)]
                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                          parameter       (first (:parameters dashboard))

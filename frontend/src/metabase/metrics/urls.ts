@@ -1,4 +1,4 @@
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import type { MetricUrls } from "./types";
 

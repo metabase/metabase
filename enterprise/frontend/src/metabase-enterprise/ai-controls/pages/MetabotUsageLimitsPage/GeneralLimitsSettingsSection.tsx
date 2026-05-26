@@ -17,7 +17,7 @@ import {
 } from "./hooks";
 import {
   getInstanceLimitInputLabel,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
   getQuotaMessageInputDescription,
   limitTypeOptions,
   resetPeriodOptions,
@@ -49,26 +49,20 @@ export function GeneralLimitsSettingsSection() {
   return (
     <SettingsSection title={t`Settings and general limits`}>
       <Stack gap="xl" align="flex-start">
-        <Stack gap="sm">
+        <Stack gap="sm" align="flex-start">
           <Text fw="bold">{t`How do you want to limit AI usage?`}</Text>
           <SegmentedControl
             data={limitTypeOptions}
-            classNames={{
-              root: S.SegmentedControlRoot,
-              label: S.Label,
-            }}
+            classNames={{ label: S.Label }}
             value={limitType}
             onChange={handleLimitTypeChange}
           />
         </Stack>
-        <Stack gap="sm">
+        <Stack gap="sm" align="flex-start">
           <Text fw="bold">{t`When should usage limits reset?`}</Text>
           <SegmentedControl
             data={resetPeriodOptions}
-            classNames={{
-              root: S.SegmentedControlRoot,
-              label: S.Label,
-            }}
+            classNames={{ label: S.Label }}
             value={limitPeriod}
             onChange={handleLimitPeriodChange}
           />
@@ -81,10 +75,13 @@ export function GeneralLimitsSettingsSection() {
           description={t`This is the maximum amount all users should be able to use in total.`}
           placeholder={t`Unlimited`}
           classNames={{
-            input: S.InstanceTokenLimitInput,
+            wrapper: S.InstanceLimitInputWrapper,
             description: S.InputDescription,
+            section: S.InputUnitSection,
           }}
-          suffix={getMaxUsageInputSuffix(limitType, instanceLimit)}
+          rightSection={getMaxUsageInputUnit(limitType, instanceLimit)}
+          rightSectionWidth="auto"
+          rightSectionPointerEvents="none"
           min={0}
           decimalScale={0}
           value={instanceLimit != null ? instanceLimit : ""}
@@ -98,10 +95,8 @@ export function GeneralLimitsSettingsSection() {
           label={t`Quota-reached message`}
           description={getQuotaMessageInputDescription(limitPeriod)}
           placeholder={t`You have reached your AI usage limit for the current period. Please contact your administrator.`}
-          classNames={{
-            description: S.InputDescription,
-            root: S.QuotaMessageInputWrapper,
-          }}
+          w="100%"
+          classNames={{ description: S.InputDescription }}
           value={quotaMessage || ""}
           onChange={(e) => handleQuotaMessageChange(e.target.value)}
         />

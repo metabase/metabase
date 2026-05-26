@@ -6,8 +6,7 @@ import type { EChartsRendererProps } from "metabase/visualizations/components/EC
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 
-export interface ResponsiveEChartsRendererProps
-  extends React.PropsWithChildren<EChartsRendererProps> {
+export interface ResponsiveEChartsRendererProps extends React.PropsWithChildren<EChartsRendererProps> {
   onResize?: (width: number, height: number) => void;
 }
 

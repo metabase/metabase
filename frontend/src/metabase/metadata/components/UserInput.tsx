@@ -1,4 +1,4 @@
-import { type FocusEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -19,7 +19,6 @@ export const UserInput = ({
   email,
   userId,
   onEmailChange,
-  onFocus,
   onUserIdChange,
   unknownUserLabel = t`Unspecified`,
   ...props
@@ -39,11 +38,6 @@ export const UserInput = ({
 
     return users.find((user) => user.id === userId)?.common_name;
   }, [users, userId]);
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
-  };
 
   const handleChange = (value: string | null) => {
     if (value == null) {
@@ -111,7 +105,6 @@ export const UserInput = ({
       }}
       value={email ? email : userId ? String(userId) : null}
       onChange={handleChange}
-      onFocus={handleFocus}
       onSearchChange={setSearch}
       {...props}
     />

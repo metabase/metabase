@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema-rest.api.table-test
   "Tests for /api/table endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -53,7 +54,6 @@
     :settings                    {}
     :cache_ttl                   nil
     :provider_name               nil
-    :workspace_permissions_status nil
     :is_audit                    false}))
 
 (defn- table-defaults
@@ -91,7 +91,7 @@
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
      :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
-     :entity_id])))
+     :entity_id :dimension_interestingness])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"
@@ -266,7 +266,7 @@
                                        :visibility_type            "normal"
                                        :has_field_values           "none"
                                        :database_required          false
-                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                       ;; Index sync is turned off across the application as it is not used ATM.
                                        #_#_:database_indexed           true
                                        :database_is_auto_increment true
                                        :name_field                 {:base_type "type/Text",
@@ -347,7 +347,7 @@
                                        :base_type        "type/BigInteger"
                                        :effective_type   "type/BigInteger"
                                        :has_field_values "none"
-                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                       ;; Index sync is turned off across the application as it is not used ATM.
                                        #_#_:database_indexed  true
                                        :database_required false
                                        :database_is_auto_increment true
@@ -425,7 +425,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -530,17 +530,17 @@
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
-              original (var-get #'api.table/sync-unhidden-tables)]
-          (with-redefs [api.table/sync-unhidden-tables
-                        (fn [unhidden]
-                          (when (seq unhidden)
-                            (is (= (:id table)
-                                   (:id (first unhidden)))
-                                "Unhidden callback did not get correct tables.")
-                            (swap! called inc)
-                            (let [fut (original unhidden)]
-                              (when (future? fut)
-                                (deref fut)))))]
+              original (mt/original-fn #'api.table/sync-unhidden-tables)]
+          (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables
+                                      (fn [unhidden]
+                                        (when (seq unhidden)
+                                          (is (= (:id table)
+                                                 (:id (first unhidden)))
+                                              "Unhidden callback did not get correct tables.")
+                                          (swap! called inc)
+                                          (let [fut (original unhidden)]
+                                            (when (future? fut)
+                                              (deref fut)))))]
             (letfn [(set-visibility! [state]
                       (testing (format "Set state => %s" (pr-str state))
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
@@ -575,7 +575,7 @@
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [:model/Table {id-1 :id} {}
                      :model/Table {id-2 :id} {:visibility_type "hidden"}]
-        (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
+        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
                     (testing (format "Set visibility type => %s" (pr-str state))
@@ -669,7 +669,7 @@
                                 :effective_type    "type/BigInteger"
                                 :has_field_values  "none"
                                 :database_required false
-                              ;; Index sync is turned off across the application as it is not used ATM.
+                                ;; Index sync is turned off across the application as it is not used ATM.
                                 #_#_:database_indexed  true
                                 :database_is_auto_increment true
                                 :name_field        {:base_type "type/Text",
@@ -743,7 +743,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+                                                       :native   {:query "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES"}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -859,7 +859,7 @@
                                        :database_id   (mt/id)
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+                                                       :native   {:query "SELECT NAME, LAST_LOGIN FROM USERS"}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))

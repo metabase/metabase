@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
@@ -30,17 +29,20 @@ export function PythonTransformEditor({
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
+  onDryRunErrorChange,
   onRunTransform,
   onRun,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
 
-  useRegisterMetabotTransformContext(
-    transform,
-    source,
-    executionResult?.error?.message,
-  );
+  useEffect(() => {
+    const errMsg = [executionResult?.error?.message, executionResult?.logs]
+      .filter((x) => !!x)
+      .join("\n\n");
+    onDryRunErrorChange?.(errMsg);
+    return () => onDryRunErrorChange?.(undefined);
+  }, [executionResult, onDryRunErrorChange]);
 
   const wasRunning = usePrevious(isRunning);
 
@@ -83,7 +85,6 @@ export function PythonTransformEditor({
   };
 
   const handleRun = () => {
-    // Use custom onRun handler if provided (workspace dry-run), otherwise use internal test-run
     if (onRun) {
       onRun();
     } else {
@@ -91,7 +92,6 @@ export function PythonTransformEditor({
     }
   };
 
-  // Notify workspace when test-run completes in workspace context
   useEffect(() => {
     const runJustCompleted = wasRunning && !isRunning;
     if (
@@ -114,10 +114,6 @@ export function PythonTransformEditor({
     if (!isEditMode) {
       return;
     }
-    // In workspaces, disable run shortcut when transform has unsaved changes (hideRunButton)
-    // if (uiOptions?.hideRunButton) {
-    //   return;
-    // }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {

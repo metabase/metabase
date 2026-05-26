@@ -1,7 +1,8 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards-rest.api-test]]."
   {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                                   toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                                   toucan2.tools.with-temp/with-temp {:level :off}}
+                                 :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]

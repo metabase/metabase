@@ -6,6 +6,10 @@
   border: 1px solid var(--mb-color-upsell-secondary);
   background-color: var(--mb-color-background-primary);
 
+  .MainStack {
+    padding-bottom: 1.5rem;
+  }
+
   &.Large {
     .MainStack {
       padding-top: 2rem;

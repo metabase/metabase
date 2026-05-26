@@ -9,7 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -131,15 +131,15 @@
             (if pivot-group
               ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
               (when (= qp.pivot.postprocess/non-pivot-row-group (int pivot-group))
-                (let [formatted-row (->> (perf/mapv (fn [formatter r]
-                                                      (formatter (streaming.common/format-value r)))
-                                                    @ordered-formatters ordered-row)
+                (let [formatted-row (->> (mapv (fn [formatter r]
+                                                 (formatter (streaming.common/format-value r)))
+                                               @ordered-formatters ordered-row)
                                          (m/remove-nth pivot-grouping-index))]
                   (write-csv writer [formatted-row])))
               ;; All other results: write directly to the CSV
-              (let [formatted-row (perf/mapv (fn [formatter r]
-                                               (formatter (streaming.common/format-value r)))
-                                             @ordered-formatters ordered-row)]
+              (let [formatted-row (mapv (fn [formatter r]
+                                          (formatter (streaming.common/format-value r)))
+                                        @ordered-formatters ordered-row)]
                 (write-csv writer [formatted-row]))))))
 
       (finish! [_ _]

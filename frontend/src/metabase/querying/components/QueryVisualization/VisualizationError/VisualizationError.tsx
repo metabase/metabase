@@ -2,6 +2,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import { NetworkError } from "metabase/api/legacy-client";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -10,10 +11,10 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
+import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Center, Flex, Icon } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetError, DatasetErrorType } from "metabase-types/api";
@@ -31,7 +32,6 @@ interface VisualizationErrorProps {
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
-  isResultDirty?: boolean;
 }
 
 export function VisualizationError({
@@ -41,13 +41,18 @@ export function VisualizationError({
   duration,
   error,
   errorType,
-  isResultDirty,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
 
-  if (typeof error === "object" && error.status != null) {
+  // Treat transport-level failures (server dropped connection, offline, etc.)
+  // the same as an HTTP error with a status — the user just needs to know the
+  // server isn't reachable, not see a stack trace.
+  if (
+    error instanceof NetworkError ||
+    (typeof error === "object" && error.status != null)
+  ) {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
     if (duration > VISUALIZATION_SLOW_TIMEOUT) {
@@ -143,7 +148,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && <FixSqlQueryButton />}
+            <FixSqlQueryButton />
           </Flex>
         </Flex>
       </Box>

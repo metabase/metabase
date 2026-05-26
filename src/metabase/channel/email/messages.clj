@@ -417,7 +417,7 @@
                                                     (cond-> param
                                                       (coll? value)
                                                       (update :value #(i18n/join-strings-with-conjunction
-                                                                       (i18n/tru "or")
+                                                                       (tru "or")
                                                                        %))))
                                                   bad-parameters)
                        :affectedUsers            (map

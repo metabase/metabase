@@ -12,13 +12,13 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { useStore } from "metabase/utils/redux";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,

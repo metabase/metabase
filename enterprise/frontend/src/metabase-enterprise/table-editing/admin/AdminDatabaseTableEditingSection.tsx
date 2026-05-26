@@ -7,8 +7,8 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { Toggle } from "metabase/common/components/Toggle";
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { Alert, Box, Flex, Icon } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";

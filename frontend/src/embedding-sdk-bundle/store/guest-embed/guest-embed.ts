@@ -5,8 +5,8 @@ import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { isJWT } from "metabase/utils/jwt";
-import { createAsyncThunk } from "metabase/utils/redux";
 
 import { getOrRefreshGuestSession } from "./auth";
 

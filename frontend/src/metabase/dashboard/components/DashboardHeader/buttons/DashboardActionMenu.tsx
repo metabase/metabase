@@ -11,8 +11,8 @@ import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;

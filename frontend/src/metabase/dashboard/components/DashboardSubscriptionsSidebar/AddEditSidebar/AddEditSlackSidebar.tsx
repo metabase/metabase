@@ -12,9 +12,9 @@ import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import { dashboardPulseIsValid } from "metabase/pulse";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Icon, Title } from "metabase/ui";
-import { dashboardPulseIsValid } from "metabase/utils/pulse";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

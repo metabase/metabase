@@ -8,9 +8,9 @@ import {
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
 } from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,

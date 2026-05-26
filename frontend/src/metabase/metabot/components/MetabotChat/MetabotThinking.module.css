@@ -20,8 +20,8 @@
   background-size:
     250% 100%,
     auto;
-  background-image: var(--bg),
-    linear-gradient(var(--base-color), var(--base-color));
+  background-image:
+    var(--bg), linear-gradient(var(--base-color), var(--base-color));
   background-position: 50%;
   animation: rotate-background 1500ms ease infinite;
 }

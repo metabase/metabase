@@ -6,7 +6,6 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CardType,
@@ -14,6 +13,7 @@ import type {
   DashboardId,
   DependencyId,
   DependencyType,
+  IconName,
   MeasureId,
   NativeQuerySnippetId,
   SegmentId,
@@ -67,7 +67,8 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
     H.resetSnowplow();

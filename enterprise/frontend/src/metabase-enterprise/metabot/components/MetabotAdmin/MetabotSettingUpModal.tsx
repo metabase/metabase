@@ -19,19 +19,16 @@ import { METABASE_MANAGED_AI_FEATURE } from "../../constants";
 
 export function MetabotSettingUpModal({
   isSavingConfiguration = false,
-  onActivated,
   onClose,
   opened,
 }: Pick<ModalProps, "opened" | "onClose"> & {
   isSavingConfiguration?: boolean;
-  onActivated?: () => void | Promise<void>;
 }) {
   const isSettingUp =
     isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
 
   useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
     intervalMs: 1000,
-    onSatisfied: onActivated,
     skip: !opened || !isSettingUp,
   });
 

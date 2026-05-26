@@ -1,8 +1,14 @@
 import type { ComponentProps } from "react";
 import { times } from "underscore";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockBookmark } from "metabase-types/api/mocks";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockBookmark,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import BookmarkList from "./BookmarkList";
 
@@ -13,6 +19,17 @@ const mockProps: ComponentProps<typeof BookmarkList> = {
   onToggle: jest.fn(),
   initialState: "expanded",
 };
+
+const enterpriseState = createMockState({
+  settings: mockSettings({
+    "token-features": createMockTokenFeatures({
+      remote_sync: true,
+      official_collections: true,
+      audit_app: true,
+    }),
+  }),
+});
+setupEnterprisePlugins();
 
 const createBookmarks = (howMany: number) => {
   return times(howMany, (i) => {
@@ -49,5 +66,39 @@ describe("BookmarkList", () => {
     });
 
     expect(screen.queryByLabelText("grabber icon")).not.toBeInTheDocument();
+  });
+
+  describe("collection bookmark icons (enterprise)", () => {
+    it.each([
+      {
+        name: "Synced",
+        icon: "synced_collection",
+        overrides: { is_remote_synced: true },
+      },
+      {
+        name: "Official",
+        icon: "official_collection",
+        overrides: { authority_level: "official" },
+      },
+      { name: "Regular", icon: "folder", overrides: {} },
+    ])(
+      "renders the $icon icon for $name collection bookmarks",
+      ({ name, icon, overrides }) => {
+        renderWithProviders(
+          <BookmarkList
+            {...mockProps}
+            bookmarks={[
+              createMockBookmark({ type: "collection", name, ...overrides }),
+            ]}
+          />,
+          { storeInitialState: enterpriseState },
+        );
+
+        const row = screen.getByText(name).closest("a");
+        expect(
+          within(row as HTMLElement).getByLabelText(`${icon} icon`),
+        ).toBeInTheDocument();
+      },
+    );
   });
 });

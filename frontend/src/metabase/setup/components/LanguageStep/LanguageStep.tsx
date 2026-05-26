@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import { Button } from "metabase/common/components/Button";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
 import { Stack } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";

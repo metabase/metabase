@@ -11,7 +11,8 @@
   "Resolve a potentially relative path to an absolute URL using site-url."
   [path]
   (if (or (str/starts-with? path "http://")
-          (str/starts-with? path "https://"))
+          (str/starts-with? path "https://")
+          (str/starts-with? path "data:"))
     path
     (str (str/replace (system/site-url) #"/$" "")
          "/"
@@ -98,6 +99,7 @@
                               box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
                               padding: 2.5rem; max-width: 440px; width: 100%; margin: 1rem; }
                    .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+                   .logo img { max-height: 32px; max-width: 100%; min-height: 100%; height: auto; }
                    h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.25rem; }
                    .client-id { text-align: center; font-size: 0.75rem; color: #949aab; margin-bottom: 1rem;
                                 font-family: monospace; word-break: break-all; }

@@ -155,6 +155,8 @@
   Pass it explicitly to `t2/reducible-select` via `:conn` or to `t2/reducible-query` so the
   query runs on the transaction connection — otherwise PostgreSQL ignores fetch-size.
 
+  WARNING: Because this opens a transaction, do not wrap any long-running logic in this which will hold the transaction open too long.
+
   Example:
     (streaming-reducible
      (fn [conn]

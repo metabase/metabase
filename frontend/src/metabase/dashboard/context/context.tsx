@@ -14,7 +14,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
 import type {
   Dashboard,
   DashboardCard,

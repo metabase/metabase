@@ -31,7 +31,7 @@ module.exports = (env) => {
 
     entry: {
       "lib-static-viz": {
-        import: "./static-viz/index.js",
+        import: "./static-viz/index.tsx",
         library: {
           name: "StaticViz",
           type: "var",

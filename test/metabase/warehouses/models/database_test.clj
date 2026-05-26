@@ -34,6 +34,30 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
+(deftest should-auto-sync?-respects-disable-auto-sync-test
+  (testing "should-auto-sync? gates automatically-triggered syncs on the disable-auto-sync setting,"
+    (testing "so that newly inserted or edited databases skip Quartz trigger registration."
+      (mt/with-temp [:model/Database db {}]
+        (testing "default (disable-auto-sync=false): a regular database is auto-sync-eligible"
+          (is (true? (database/should-auto-sync? db))))
+        (testing "with disable-auto-sync=true: a regular database is not auto-sync-eligible"
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (is (false? (database/should-auto-sync? db)))))))
+    (testing "but should-sync? (the gate for explicit, user-requested syncs) ignores the setting"
+      (mt/with-temp [:model/Database db {}]
+        (is (true? (database/should-sync? db)))
+        (mt/with-temporary-setting-values [disable-auto-sync true]
+          (is (true? (database/should-sync? db))
+              "an explicit Sync-now must remain available even when auto-sync is disabled")))))
+  (testing "destination databases (router children) are excluded from both, regardless of the flag"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database dest   {:router_database_id (:id router)}]
+      (is (false? (database/should-sync? dest)))
+      (is (false? (database/should-auto-sync? dest)))
+      (mt/with-temporary-setting-values [disable-auto-sync true]
+        (is (false? (database/should-sync? dest)))
+        (is (false? (database/should-auto-sync? dest)))))))
+
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]
           (when (str/ends-with? trigger-key (str \. db-id))
@@ -68,23 +92,24 @@
 
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))
-                  t2/select (fn [model & args]
-                              (if (and (= model :model/Database) (nil? args))
-                                [(mt/db)]
-                                (apply t2/select model args)))]
-      (binding [driver.settings/*allow-testing-h2-connections* true]
-        (testing "status gauge resets"
-          (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
-              (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))
-              (database/check-health!)
-              (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))))))))))
+    (let [original-select (mt/original-fn #'t2/select)]
+      (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                  t2/select (fn [model & args]
+                                              (if (and (= model :model/Database) (empty? args))
+                                                [(mt/db)]
+                                                (apply original-select model args)))]
+        (binding [driver.settings/*allow-testing-h2-connections* true]
+          (testing "status gauge resets"
+            (mt/with-prometheus-system! [_ system]
+              (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+                (database/check-health!)
+                (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))
+                (database/check-health!)
+                (is (== 1.0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})))))))))))
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
@@ -136,7 +161,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (binding [driver.settings/*allow-testing-h2-connections* true]
             (testing "database with write_data_details checks both connections"
               (mt/with-prometheus-system! [_ system]
@@ -356,7 +381,7 @@
                    (database/maybe-test-and-migrate-details! db)))
             (is (= (:details db)
                    (t2/select-one-fn :details :model/Database (:id db)))
-                [(:id db) "query"])))))))
+                (str [(:id db) "query"]))))))))
 
 (deftest maybe-test-and-migrate-details!-password-test
   (mt/with-driver

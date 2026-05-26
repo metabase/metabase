@@ -343,7 +343,7 @@ describe("scenarios > question > new", () => {
 
   it(
     "should be able to save a question to a collection created on the go",
-    { tags: "@smoke" },
+    { tags: "@prerelease" },
     () => {
       H.visitCollection(THIRD_COLLECTION_ID);
 
@@ -426,6 +426,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.intercept("POST", "/api/dashboard").as("createDashboard");
       H.createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
@@ -562,7 +563,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
 
       it("when selecting a collection with no child dashboards (metabase#47000)", () => {
@@ -593,7 +599,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
 
       it("when a dashboard is currently selected", () => {
@@ -618,7 +629,12 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal()
           .button(/Select/)
           .click();
-        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+        cy.wait("@createDashboard").then(({ response }) => {
+          cy.location("pathname").should(
+            "eq",
+            `/dashboard/${response.body.id}-new-dashboard`,
+          );
+        });
       });
     });
   });
@@ -629,7 +645,7 @@ describe("scenarios > question > new", () => {
 // model-less behavior
 describe(
   "scenarios > question > new > data picker > without models",
-  { tags: ["@OSS", "@smoke"] },
+  { tags: ["@OSS", "@prerelease"] },
   () => {
     beforeEach(() => {
       H.restore("without-models");

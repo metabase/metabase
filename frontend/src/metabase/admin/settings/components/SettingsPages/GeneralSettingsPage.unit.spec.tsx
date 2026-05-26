@@ -29,6 +29,7 @@ const generalSettings = {
   "site-url": "https://mysite.biz",
   "admin-email": "help@mysite.biz",
   "anon-tracking-enabled": false,
+  "analytics-pii-retention-enabled": false,
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
@@ -36,13 +37,15 @@ const generalSettings = {
   "search-engine": "appdb",
 } as const;
 
-const setup = async (
-  { isCloudPlan }: { isCloudPlan: boolean } = { isCloudPlan: false },
-) => {
+const setup = async ({
+  isCloudPlan,
+  hasAuditApp,
+}: { isCloudPlan?: boolean; hasAuditApp?: boolean } = {}) => {
   const settings = createMockSettings({
     ...generalSettings,
     "token-features": createMockTokenFeatures({
-      hosting: isCloudPlan,
+      hosting: isCloudPlan ?? false,
+      audit_app: hasAuditApp ?? true,
     }),
   });
 
@@ -90,7 +93,8 @@ describe("GeneralSettingsPage", () => {
       "Redirect to HTTPS",
       "Custom homepage",
       "Email address for help requests",
-      "Anonymous tracking",
+      "Send anonymous tracking data to Metabase",
+      "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
@@ -167,12 +171,58 @@ describe("GeneralSettingsPage", () => {
   it("should show Anonymous Tracking input for non-cloud plans", async () => {
     await setup({ isCloudPlan: false });
 
-    expect(screen.getByText("Anonymous tracking")).toBeInTheDocument();
+    expect(
+      screen.getByText("Send anonymous tracking data to Metabase"),
+    ).toBeInTheDocument();
   });
 
   it("should not show Anonymous Tracking input if the plan is cloud", async () => {
     await setup({ isCloudPlan: true });
 
-    expect(screen.queryByText("Anonymous tracking")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Send anonymous tracking data to Metabase"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show Collect User Data input when the audit_app token feature is enabled", async () => {
+    await setup({ hasAuditApp: true });
+
+    expect(
+      screen.getByText("Collect user data to display in usage analytics"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show Collect User Data input when the audit_app token feature is disabled", async () => {
+    await setup({ hasAuditApp: false });
+
+    expect(
+      screen.queryByText("Collect user data to display in usage analytics"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("Usage tracking section visibility", () => {
+    it("should hide the Usage tracking section on Starter Cloud (hosting without audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: false });
+
+      expect(screen.queryByText("Usage tracking")).not.toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on Pro Cloud (hosting with audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted OSS (no hosting, no audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: false });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted EE (no hosting, audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
   });
 });

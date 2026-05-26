@@ -1,60 +1,67 @@
-import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useCreateCollectionMutation } from "metabase/api";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { Collections } from "metabase/entities/collections";
-import type { State } from "metabase/redux/store";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
+import { getCollectionPathAsArray } from "../utils";
 
-interface CreateCollectionModalOwnProps
-  extends Omit<CreateCollectionFormOwnProps, "onCancel" | "onSubmit"> {
+export interface CreateCollectionModalOwnProps extends Omit<
+  CreateCollectionFormOwnProps,
+  "onCancel" | "onSubmit"
+> {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
+  shouldNavigateOnCreate?: boolean;
 }
-
-interface CreateCollectionModalDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
-  handleCreateCollection: (
-    collection: CreateCollectionProperties,
-  ) => Promise<Collection>;
-}
-
-type Props = CreateCollectionModalOwnProps & CreateCollectionModalDispatchProps;
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-  handleCreateCollection: Collections.actions.create,
-};
 
 function CreateCollectionModal({
   onCreate,
-  onChangeLocation,
   onClose,
-  handleCreateCollection,
+  shouldNavigateOnCreate = true,
   ...props
-}: Props) {
+}: CreateCollectionModalOwnProps) {
+  const dispatch = useDispatch();
+  const [createCollection] = useCreateCollectionMutation();
+
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
-      const action = await handleCreateCollection(values);
-      const collection = Collections.HACK_getObjectFromAction(action);
+      const collection = await createCollection(values).unwrap();
 
       if (typeof onCreate === "function") {
         onCreate(collection);
+        onClose();
       } else {
         onClose();
-        onChangeLocation(Urls.collection(collection));
+
+        if (!shouldNavigateOnCreate) {
+          return;
+        }
+
+        let visitUrl = Urls.collection(collection);
+
+        if (
+          PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
+          collection.namespace === "snippets"
+        ) {
+          visitUrl = Urls.dataStudioLibrary({
+            expandedIds: getCollectionPathAsArray(collection),
+          });
+        }
+
+        dispatch(push(visitUrl));
       }
     },
-    [onCreate, onChangeLocation, onClose, handleCreateCollection],
+    [createCollection, dispatch, onCreate, onClose, shouldNavigateOnCreate],
   );
 
   useEscapeToCloseModal(onClose);
@@ -79,12 +86,4 @@ function CreateCollectionModal({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
-  unknown,
-  CreateCollectionModalDispatchProps,
-  CreateCollectionModalOwnProps,
-  State
->(
-  null,
-  mapDispatchToProps,
-)(CreateCollectionModal);
+export default CreateCollectionModal;

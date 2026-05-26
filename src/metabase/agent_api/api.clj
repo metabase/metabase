@@ -4,19 +4,24 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.validation :as agent-api.validation]
-   [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.dashboards.autoplace :as autoplace]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -35,13 +40,18 @@
   30)
 
 (def ^:private ^:const default-query-row-limit
-  "Default row limit for table queries when no limit is specified."
+  "Default row cap when :limit is omitted from a table query request."
   200)
 
-(def ^:private ^:const max-query-row-limit
-  "Hard cap on rows returned by the combined query endpoint, keeping result sets lean for LLM context windows.
-   Agents can paginate via continuation tokens for more."
+(def ^:private ^:const page-size
+  "Rows returned per page when paginating the combined query endpoint via continuation tokens.
+   Also used as the query processor's per-call row constraint."
   200)
+
+(def ^:private ^:const max-total-row-limit
+  "Ceiling on the user-requested :limit for the combined query endpoint. Agents can paginate
+   through up to this many rows across pages."
+  2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
@@ -53,6 +63,18 @@
   [{:keys [structured-output output status-code]}]
   (or structured-output
       (api/check false [(or status-code 404) (or output "Not found.")])))
+
+(defn submit-mcp-visualization-feedback!
+  "Submit MCP Apps visualization feedback to Harbormaster.
+
+  MCP Apps do not create `metabot_message` rows, so this intentionally skips
+  local feedback persistence and forwards the MCP visualization context."
+  [body]
+  (let [metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
+        body       (assoc body :metabot_id metabot-id)]
+    (metabot.config/check-metabot-enabled!)
+    (metabot.feedback/submit-to-harbormaster!
+     (metabot.feedback/mcp-harbormaster-payload body))))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 
@@ -293,6 +315,25 @@
      :field-id    field-id
      :limit       (or (request/limit) default-field-values-limit)})))
 
+(defn- coerce-query-list
+  "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
+   Codex) serialize array args through a string layer, so a caller that intended to
+   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
+   an array is returned as-is; a string that parses as a JSON array of non-blank
+   strings is unwrapped; any other string is treated as a single-element query."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) v
+    (string? v)     (or (try
+                          (let [parsed (json/decode+kw v)]
+                            (when (and (sequential? parsed)
+                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
+                              parsed))
+                          (catch Exception _ nil))
+                        [v])
+    :else           v))
+
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
 
@@ -300,18 +341,25 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
+           :title "Search Tables and Metrics"
+           :description (str "Search for tables and metrics in Metabase. "
+                             "Use term_queries for keyword search or semantic_queries for natural language search. "
+                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
-       [:term_queries     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-       [:semantic_queries {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+       [:term_queries {:optional true
+                       :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+       [:semantic_queries {:optional true
+                           :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or term-queries [])
-                  :semantic-queries (or semantic-queries [])
+                 {:term-queries     (or (coerce-query-list term-queries) [])
+                  :semantic-queries (or (coerce-query-list semantic-queries) [])
                   :entity-types     ["table" "metric"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
@@ -319,88 +367,183 @@
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
-(mr/def ::program-request
-  "Request body for /v2/construct-query and /v2/query.
-  An agent-lib structured program with `:source` and `:operations`. The top-level
-  `:source` must reference a database entity (`table`, `card`, `dataset`, or
-  `metric`); `context` and nested `program` sources are rejected at the HTTP
-  boundary by [[evaluate-program-for-execution]] because they require an
-  in-process evaluation context."
-  agent-lib/program-schema)
+(mr/def ::construct-query-request
+  "Request body for /v2/construct-query and the fresh-query branch of /v2/query.
+  A single `:query` key whose value is a JSON object matching
+  [[metabase.lib.schema/external-query]] — the canonical portable MBQL 5 wire format. The
+  query is fully self-describing: the database is derived from the first stage's
+  `source-table:` or `source-card:`, all field references are portable FKs
+  (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary
+  `source_entity` / `referenced_entities` envelope. See
+  `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference
+  (including operators, joins, expressions, multi-stage queries, and FK conventions).
+
+  Closed map: any extra top-level keys (notably the legacy `source_entity` /
+  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so
+  callers don't silently send fields the server ignores.
+
+  The inner `:query` value is intentionally typed as a plain `:map` at this boundary rather
+  than `::lib.schema/external-query`. Reasons:
+
+  1. Deep MBQL-shape validation runs inside the representations pipeline
+     (`metabot.tools.construct/execute-representations-query` calls `repr/validate-query`
+     after the repair pass), so the boundary check would be redundant.
+
+  2. The strict-tool manifest lint (`assert-optional-fields-nullable!`) walks every map
+     reachable from the tool input schema. `::external-query` references `::query`, which
+     carries several `:optional` keys (`:lib/metadata`, `:database`, `:settings`, …) that
+     are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
+     them would force a wide schema change just to satisfy the lint at the agent boundary."
+  [:map {:closed true}
+   [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
+                                   "`construct_notebook_query` tool for the format reference.")}
+    :map]
+   ;; The user's original message, when available, captured so `visualize_query` can later
+   ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
+   ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
+   ;; Bounded at 10000 chars to match the constraint master enforced on the legacy program path.
+   [:prompt {:optional true} [:maybe [:string {:min 1 :max 10000}]]]])
 
 (mr/def ::construct-query-response
-  "Response containing a base64-encoded MBQL query for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional
+  `:prompt` echoes the request's prompt back so the MCP layer can store it with the
+  handle (see `metabase.mcp.tools/make-store-construct-query-result`)."
   [:map
-   [:query ms/NonBlankString]])
+   [:query  ms/NonBlankString]
+   [:prompt {:optional true} [:maybe ms/NonBlankString]]])
 
-(def ^:private allowed-program-source-types
-  "Top-level program source types that the HTTP boundary accepts. `context` and
-  nested `program` sources require an in-process evaluation context and are
-  rejected here."
-  #{"table" "card" "dataset" "metric"})
+(defn- evaluate-external-query-to-live-query
+  "Run the representations pipeline (validate → convert → repair → resolve) on a request body
+  and return the resolved MBQL 5 lib query (with `:lib/metadata` attached).
 
-(defn- evaluate-program-for-execution
-  "Resolve a program's source entity, evaluate the program via agent-lib, and return a
-  plain MBQL 5 query map. The JSON round-trip strips lib metadata so the query can be
-  serialized into a continuation token."
-  [program]
-  (let [source-type (get-in program [:source :type])]
-    (api/check (contains? allowed-program-source-types source-type)
-               [400 (str "top-level program source must be one of: "
-                         (str/join ", " (sort allowed-program-source-types)))]))
-  (let [source-entity (metabot-construct/program-source->source-entity (:source program))
-        result        (metabot-construct/execute-program source-entity nil program)
-        pmbql         (get-in result [:structured-output :query])]
-    (json/decode+kw (json/encode pmbql))))
+  The pipeline raises `:agent-error?` ex-data on any LLM-input failure (unknown DB, unknown
+  table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
+  them with the appropriate 4xx status code instead of a 500."
+  [body]
+  (-> (metabot-construct/execute-representations-query (:query body))
+      (get-in [:structured-output :query])))
+
+(defn- evaluate-external-query-for-execution
+  "Evaluate a request body and return a plain MBQL 5 query map suitable for serialization into
+  a continuation token and execution by the QP."
+  [body]
+  (lib/prepare-for-serialization (evaluate-external-query-to-live-query body)))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
-  "Construct an MBQL query from a structured agent-lib program.
+  "Construct an MBQL query from a portable MBQL 5 representations JSON payload.
 
-  The body is the program itself: a JSON object with `source` (identifying the
-  table/card/dataset/metric to query) and `operations` (an array of operator
-  tuples). Returns a base64-encoded MBQL query that can be executed via
-  /v1/execute. See the agent_api reference for the full program syntax."
+  The body is `{\"query\": <external-query>}` where `<external-query>` is a JSON object
+  matching `::lib.schema/external-query` \u2014 see the `construct_notebook_query` tool
+  documentation for the format reference. Returns a base64-encoded MBQL query that can be
+  executed via /v1/execute or paginated via /v2/query."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a Metabase query from a structured program. "
-                             "The body is a JSON object with `source` and `operations` keys "
-                             "where source identifies the table/card/dataset/metric to query "
-                             "(e.g. {\"type\": \"table\", \"id\": 42}) and operations is an "
-                             "array of operator tuples (filter, aggregate, breakout, expression, "
-                             "with-fields, order-by, limit, join, append-stage, etc.). Returns "
-                             "an opaque query string that can be executed with execute_query.")
+           ;; Condensed inline summary so LLMs see the shape directly in `tools/list`. Full
+           ;; grammar lives in the `construct_notebook_query` tool prompt.
+           :description
+           (str "Construct a Metabase MBQL 5 query as JSON. Pass the body "
+                "`{\"query\": <object>}`; returns `{\"query_handle\": \"<uuid>\"}` to feed "
+                "`execute_query` or `visualize_query`.\n"
+                "\n"
+                "Workflow: use search / entity_details first to discover the exact database, "
+                "schema, table, and column NAMES (not numeric IDs). Never invent identifiers.\n"
+                "\n"
+                "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
+                "map at position 1. Every field reference is "
+                "`[\"field\", {}, [<db-name>, <schema-or-null>, <table-name>, <column-name>]]` "
+                "(4-segment portable FK string array, NOT a numeric id). Cross-stage refs use "
+                "a bare column-name string in the third slot: `[\"field\", {}, \"count\"]`.\n"
+                "\n"
+                "Top level: `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage has "
+                "`\"lib/type\": \"mbql.stage/mbql\"` plus either `source-table` (portable FK) "
+                "or `source-card` (entity_id string) on the FIRST stage only; later stages "
+                "implicitly read the previous stage's output. Per-stage clause keys: "
+                "`filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, "
+                "`order-by`, `limit`.\n"
+                "\n"
+                "Minimal example (count of orders by month):\n"
+                "```\n"
+                "{\"query\": {\"lib/type\": \"mbql/query\",\n"
+                "             \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
+                "                          \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "                          \"aggregation\": [[\"count\", {}]],\n"
+                "                          \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
+                "                                        [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
+                "```\n"
+                "\n"
+                "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
+                "ids where a portable FK is required; (3) putting a post-aggregation filter "
+                "(`[\">\", {}, [\"aggregation\", {}, 0], 10]`) alongside `order-by` / `limit` "
+                "in the same stage \u2014 split into two stages explicitly. See the "
+                "`construct_notebook_query` tool prompt for the full grammar, operator "
+                "catalog, joins, expressions, and multi-stage examples.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   program :- ::program-request]
-  (let [query (evaluate-program-for-execution program)]
-    {:query (-> query json/encode u/encode-base64)}))
+   {:keys [prompt] :as body} :- ::construct-query-request]
+  (let [query (evaluate-external-query-for-execution body)]
+    (cond-> {:query (-> query json/encode u/encode-base64)}
+      prompt (assoc :prompt prompt))))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
 (defn- generate-continuation-token
-  "Build a base64-encoded continuation token containing the query and next-page pagination info."
-  [query-map limit page]
+  "Build a base64-encoded continuation token carrying the query and next-page pagination info.
+   :limit is the user's total row cap across all pages, not the per-page size."
+  [query-map total-limit page]
   (-> {:query      query-map
-       :pagination {:limit limit :page (inc page)}}
+       :pagination {:limit total-limit :page (inc page)}}
       json/encode
       u/encode-base64))
 
 (defn- decode-continuation-token
-  "Decode a base64-encoded continuation token into {:query ... :pagination ...}."
+  "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
+   The token is client-supplied, so sanity-check the pagination ints to turn
+   garbage into a 400 rather than a downstream 500. Permission re-validation on
+   the embedded query happens in [[check-token-query-permissions!]] — a token
+   doesn't grant access the bearer wouldn't otherwise have."
   [token]
-  (-> token u/decode-base64 json/decode+kw))
+  (let [decoded (-> token u/decode-base64 json/decode+kw)
+        {:keys [limit page]} (:pagination decoded)]
+    (api/check (and (int? limit) (pos? limit))
+               [400 "Invalid continuation token: limit must be a positive integer"])
+    (api/check (and (int? page) (pos? page))
+               [400 "Invalid continuation token: page must be a positive integer"])
+    decoded))
 
-(defn- query-page-size
-  "Determine the per-page row limit for an evaluated MBQL 5 query, taking the
-  user-supplied limit (from the last stage) when present and capping at the
-  combined query endpoint's hard maximum."
-  [query-map]
-  (let [user-limit (-> query-map :stages last :limit)]
-    (min (or user-limit default-query-row-limit) max-query-row-limit)))
+(defn- total-row-limit
+  "The user's requested :limit, defaulted when absent and capped at the combined
+   endpoint's hard maximum. This is the app-level total-row budget enforced across
+   paginated responses; each page's QP-level cap comes from `:page.items`, which
+   `remaining-page-rows` clamps to respect this total."
+  [live-query]
+  (min (or (lib/current-limit live-query) default-query-row-limit)
+       max-total-row-limit))
+
+(defn- rows-before-page
+  "Total rows consumed by the pages preceding `page`. Single source of truth for
+   the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
+  [page]
+  (* (dec page) page-size))
+
+(defn- remaining-page-rows
+  "Rows to request for this page, respecting the user's total cap.
+   Returns at most page-size, and never more than remaining rows under the cap."
+  [total-limit page]
+  (max 0 (min page-size (- total-limit (rows-before-page page)))))
+
+(defn- more-pages-available?
+  "True when this page was filled to its requested size *and* the total cap still
+   has room for more rows — i.e. we should emit a continuation token."
+  [page total-limit rows-returned items]
+  (and (= rows-returned items)
+       (< (rows-before-page (inc page)) total-limit)))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a MBQL 5 query map."
+  "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
+  plain-map form because the continuation-token path only has that shape available —
+  rehydrating to a live lib query here would require a metadata provider we don't
+  currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -416,44 +559,79 @@
                            :context     :agent})))
 
 (defn- prepare-combined-query
-  "Apply the tighter row cap used by the combined query endpoint."
+  "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
+   by page-size; the user's total-limit is enforced separately via pagination."
   [query]
   (assoc (prepare-agent-query query)
-         :constraints {:max-results           max-query-row-limit
-                       :max-results-bare-rows max-query-row-limit}))
+         :constraints {:max-results           page-size
+                       :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
-  "Request body for /v2/query. Accepts either a structured program or a continuation_token."
+  "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,
+  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.
+
+  Both branches are closed maps: extra top-level keys (e.g. the legacy
+  `source_entity` / `referenced_entities` envelope, or sending `:query` and
+  `:continuation_token` simultaneously) are rejected with a 400."
   [:multi {:dispatch (fn [m]
-                       (if (:continuation_token m) :continuation :program))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:program      ::program-request]])
+                       (if (:continuation_token m) :continuation :fresh))}
+   [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
+   [:fresh        ::construct-query-request]])
+
+(defn- check-token-query-permissions!
+  "Re-validate query permissions on the continuation-token path.
+
+  The token body is client-supplied and could in principle name a different source table than
+  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
+  change between pages). The QP middleware would catch this at execution time, but running
+  the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
+  streaming response just to abort."
+  [query-map]
+  (when-let [table-id (get-in query-map [:stages 0 :source-table])]
+    (when (int? table-id)
+      (api/query-check :model/Table table-id))))
+
+(defn- initial-page-state
+  "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
+   shape. A fresh request body is evaluated through the representations pipeline and the
+   total-row budget is derived from the resolved query's `:limit`; a continuation token
+   carries that state from a prior response (and re-validates query permissions, since the
+   token is client-supplied and per-user permissions can change between pages)."
+  [body]
+  (if-let [token (:continuation_token body)]
+    (let [{:keys [query pagination]} (decode-continuation-token token)]
+      (check-token-query-permissions! query)
+      {:query query :total-limit (:limit pagination) :page (:page pagination)})
+    (let [live-query (evaluate-external-query-to-live-query body)]
+      {:query       (lib/prepare-for-serialization live-query)
+       :total-limit (total-row-limit live-query)
+       :page        1})))
 
 (api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
-  "Execute a structured program and stream the results, with continuation-token pagination.
+  "Execute a portable MBQL 5 representations JSON query and stream the results, with
+  continuation-token pagination.
 
-  Accepts either a program (same shape as /v2/construct-query) or a
-  `continuation_token` from a previous response. Returns results with column
-  metadata and an optional `continuation_token` for fetching the next page."
+  Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
+  from a previous response. Returns results with column metadata and an optional
+  `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
-           :description (str "Execute a Metabase query from a structured program and return "
-                             "results with column metadata. If more rows are available, the "
-                             "response includes a continuation_token — pass it back to get the "
-                             "next page.\n\n"
-                             "The body is either a structured program (see construct_query) or "
-                             "{\"continuation_token\": \"...\"} from a previous response.")}}
+           :title "Query Tables and Metrics"
+           :description (str "Execute a Metabase query and return results with column "
+                             "metadata. If more rows are available, the response includes a "
+                             "continuation_token — pass it back to get the next page.\n\n"
+                             "The body is either `{\"query\": <object>}` (same shape as "
+                             "construct_query; see the `construct_notebook_query` tool for "
+                             "the format reference) or `{\"continuation_token\": \"...\"}` "
+                             "from a previous response.")
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    body :- ::query-request]
-  (let [{:keys [query limit page]}
-        (if-let [token (:continuation_token body)]
-          (let [{:keys [query pagination]} (decode-continuation-token token)]
-            {:query query :limit (:limit pagination) :page (:page pagination)})
-          (let [query (evaluate-program-for-execution body)]
-            {:query query :limit (query-page-size query) :page 1}))
-        mbql5-with-page (apply-page-to-query query page limit)]
+  (let [{:keys [query total-limit page]} (initial-page-state body)
+        items           (remaining-page-rows total-limit page)
+        mbql5-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
@@ -462,8 +640,8 @@
         rff
         (fn [result]
           (assoc result :continuation_token
-                 (when (= (:row_count result) limit)
-                   (generate-continuation-token query limit page)))))))))
+                 (when (more-pages-available? page total-limit (:row_count result) items)
+                   (generate-continuation-token query total-limit page)))))))))
 
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 
@@ -513,7 +691,12 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
+           :description (str "Execute a previously constructed query and return raw results with column metadata, "
+                             "row count, and execution time. Use this when the user explicitly asks for raw data, "
+                             "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
+                             "show, display, visualize, plot, chart, or present the result, use visualize_query "
+                             "instead.")
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
@@ -522,6 +705,118 @@
                   json/decode+kw)]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
+
+;;; ------------------------------------------------- Create Question ------------------------------------------------
+
+(mr/def ::create-question-request
+  [:map
+   [:name                   ms/NonBlankString]
+   [:query                  ms/NonBlankString]
+   [:display                {:optional true} [:maybe :string]]
+   [:description            {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:visualization_settings {:optional true} [:maybe :map]]])
+
+(mr/def ::create-question-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:display       :string]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]])
+
+(api.macros/defendpoint :post "/v1/question" :- ::create-question-response
+  "Save a previously constructed query as a named question (card).
+
+  The `query` parameter should be a base64-encoded string returned by construct_query.
+  Optionally specify display type, description, collection, and visualization settings."
+  {:scope metabot/agent-question-create
+   :tool  {:name "create_question"
+           :description (str "Save a query as a named question in Metabase. "
+                             "Pass the base64 query string from construct_query. "
+                             "Optionally set display type (table, bar, line, pie, etc.), "
+                             "description, and target collection.")}}
+  [_route-params
+   _query-params
+   {:keys [query display description collection_id visualization_settings]
+    question-name :name}
+   :- ::create-question-request]
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
+        card          (queries/create-card!
+                       {:name                   question-name
+                        :dataset_query          dataset-query
+                        :display                (keyword (or display "table"))
+                        :description            description
+                        :collection_id          collection_id
+                        :visualization_settings (or visualization_settings {})}
+                       {:id api/*current-user-id*})]
+    {:id            (:id card)
+     :name          (:name card)
+     :display       (name (:display card))
+     :collection_id (:collection_id card)
+     :description   (:description card)}))
+
+;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
+
+(mr/def ::create-dashboard-request
+  [:map
+   [:name          ms/NonBlankString]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:question_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
+(mr/def ::create-dashboard-response
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:description   [:maybe :string]]
+   [:dashcard_ids  [:sequential ms/PositiveInt]]])
+
+(api.macros/defendpoint :post "/v1/dashboard" :- ::create-dashboard-response
+  "Create a new dashboard, optionally populated with saved questions.
+
+  Pass `question_ids` to add existing saved questions as cards on the dashboard.
+  Cards are automatically positioned on the grid based on their display type."
+  {:scope metabot/agent-dashboard-create
+   :tool  {:name "create_dashboard"
+           :description (str "Create a dashboard in Metabase. "
+                             "Optionally pass question_ids to add saved questions as cards. "
+                             "Cards are auto-positioned on the dashboard grid.")}}
+  [_route-params
+   _query-params
+   {:keys [description collection_id question_ids]
+    dashboard-name :name}
+   :- ::create-dashboard-request]
+  (api/create-check :model/Dashboard {:collection_id collection_id})
+  (let [cards (when (seq question_ids)
+                (mapv #(api/read-check :model/Card %) question_ids))
+        dash  (t2/with-transaction [_conn]
+                (let [dash (first (t2/insert-returning-instances!
+                                   :model/Dashboard
+                                   {:name          dashboard-name
+                                    :description   description
+                                    :parameters    []
+                                    :creator_id    api/*current-user-id*
+                                    :collection_id collection_id}))]
+                  (when (seq cards)
+                    (reduce (fn [placed card]
+                              (let [display  (or (:display card) :table)
+                                    position (autoplace/get-position-for-new-dashcard placed display)]
+                                (t2/insert-returning-instance!
+                                 :model/DashboardCard
+                                 (merge position {:dashboard_id (:id dash)
+                                                  :card_id      (:id card)}))
+                                (conj placed position)))
+                            []
+                            cards))
+                  dash))]
+    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+    {:id           (:id dash)
+     :name         (:name dash)
+     :collection_id (:collection_id dash)
+     :description  (:description dash)
+     :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
@@ -649,5 +944,5 @@
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/agent/` routes. Workspace routes are mounted separately via the EE routes file."
+  "`/api/agent/` routes."
   (api.macros/ns-handler *ns* +auth))

@@ -499,7 +499,7 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Created At").click();
       cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
-      cy.findByText(/^Include/).click();
+      cy.findByLabelText(/^Include/).click();
       cy.button("Add filter").click();
     });
 

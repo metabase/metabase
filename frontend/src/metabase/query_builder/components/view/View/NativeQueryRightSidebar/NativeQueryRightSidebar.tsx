@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
 
 import { AIQuestionAnalysisSidebar } from "metabase/metabot/components/AIQuestionAnalysisSidebar";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
@@ -13,6 +12,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseId,
+  EmbeddingParameterVisibility,
   NativeDatasetQuery,
   RowValue,
   TemplateTag,

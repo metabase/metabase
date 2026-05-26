@@ -6,8 +6,8 @@ import {
   getIsVisualized,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Box, Group } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
 import { ViewSection } from "../ViewSection";

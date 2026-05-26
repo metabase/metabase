@@ -25,8 +25,8 @@
   (canned/canned-test
    :drill-thru/pk
    (fn [_test-case _context {:keys [click]}]
-      ;; Tricky logic, so other tests check the cell clicks.
-      ;; Non-cell clicks are not available.
+     ;; Tricky logic, so other tests check the cell clicks.
+     ;; Non-cell clicks are not available.
      (if (= click :cell)
        ::canned/skip
        false))))

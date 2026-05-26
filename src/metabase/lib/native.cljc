@@ -2,7 +2,6 @@
   "Functions for working with native queries."
   (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -24,6 +23,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
@@ -49,20 +49,23 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (match [current]
-        [nil]              found
-        [_ :guard string?] (recur found more)
+      (let [[found more] (match/match-one current
+                           (_ :guard string?) [found more]
 
-        [{:type ::lib.parse/param, :name tag-name}]
-        (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
-          (recur (cond-> found
-                   (and normalized-name (not (found normalized-name)))
-                   (assoc normalized-name (fresh-tag normalized-name)))
-                 more))
+                           {:type ::lib.parse/param, :name tag-name}
+                           (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
+                             [(cond-> found
+                                (and normalized-name (not (found normalized-name)))
+                                (assoc normalized-name (fresh-tag normalized-name)))
+                              more])
 
-        [{:type     ::lib.parse/optional
-          :contents contents}]
-        (recur found (into more contents))))))
+                           {:type ::lib.parse/optional, :contents contents}
+                           [found (into more contents)]
+
+                           _ [found nil])]
+        (if more
+          (recur found more)
+          found)))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]

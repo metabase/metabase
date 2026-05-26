@@ -229,7 +229,7 @@
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (queries/model? card) (t2/hydrate :persisted
-                                              ;; can_manage_db determines whether we should enable model persistence settings
+                                           ;; can_manage_db determines whether we should enable model persistence settings
                                            :can_manage_db)))))
 
 (defn- get-card
@@ -408,9 +408,9 @@
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
-                                         ;; columns name on native query are not match with the column name in viz-settings. why??
-                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
-                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                        ;; columns name on native query are not match with the column name in viz-settings. why??
+                                        ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                        ;; => we assume all native queries are compatible and FE will figure it out later
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
@@ -530,7 +530,7 @@
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
+   ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
@@ -542,7 +542,10 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:size                   {:optional true} [:maybe [:map
+                                                      [:size_x ms/PositiveInt]
+                                                      [:size_y ms/PositiveInt]]]]])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -568,9 +571,15 @@
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-    (-> (queries/create-card! card @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+    (let [created-card (queries/create-card! card @api/*current-user*)]
+      (when (and (some? (:result_metadata card))
+                 (= (name (:type created-card)) "question"))
+        (events/publish-event! :event/card-create-with-result-metadata
+                               {:card-id (:id created-card)
+                                :user-id api/*current-user-id*}))
+      (-> created-card
+          hydrate-card-details
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

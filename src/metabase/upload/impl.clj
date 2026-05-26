@@ -8,7 +8,8 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -31,6 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -528,7 +530,7 @@
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
           {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
                                                           :display_name display-name})
@@ -538,8 +540,8 @@
                                                                         :is_writable    true})
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
-        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
                                       (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
@@ -559,6 +561,9 @@
                         {:status-code    415 ; Unsupported Media Type
                          :file-extension extension
                          :mime-type      mime-type}))))))
+
+(defn- check-workspace-mode! []
+  (workspaces/check-not-in-workspace-mode! "CSV upload"))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
@@ -590,6 +595,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
+  (check-workspace-mode!)
   (let [database (or (t2/select-one :model/Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
@@ -638,15 +644,15 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (analytics/track-event! :snowplow/csvupload
-                                (assoc stats
-                                       :event    :csv-upload-successful
-                                       :model-id (:id card)))
+        (analytics.core/track-event! :snowplow/csvupload
+                                     (assoc stats
+                                            :event    :csv-upload-successful
+                                            :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-upload-failed))
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-upload-failed))
 
         (throw e)))))
 
@@ -858,13 +864,13 @@
                                                :table-name  (:name table)
                                                :stats       stats}})
 
-            (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
+            (analytics.core/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
             {:row-count row-count})))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-append-failed))
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-append-failed))
         (throw e)))))
 
 (defn- can-update-error
@@ -966,6 +972,7 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
+  (check-workspace-mode!)
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]

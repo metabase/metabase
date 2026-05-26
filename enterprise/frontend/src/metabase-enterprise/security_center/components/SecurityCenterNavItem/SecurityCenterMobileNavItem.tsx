@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useListSecurityAdvisoriesQuery } from "metabase/api";
-import { AdminNavLink } from "metabase/nav/components/AdminNavbar/AdminNavItem.styled";
+import { AdminNavLink } from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Box, Flex } from "metabase/ui";
 
 import { isAffected } from "../../utils";

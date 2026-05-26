@@ -14,6 +14,7 @@ export type Document = {
   name: string;
   version: number;
   collection_id: CollectionId | null;
+  collection_position?: number | null;
   collection?: Collection | null;
   created_at: string;
   updated_at: string;

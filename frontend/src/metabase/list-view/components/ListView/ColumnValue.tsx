@@ -10,12 +10,9 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import {
-  formatNumber,
-  formatValue,
-  getCurrencySymbol,
-} from "metabase/utils/formatting";
+import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { TYPE } from "metabase-lib/v1/types/constants";

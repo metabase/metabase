@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.time-field-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.time-field-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.time-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

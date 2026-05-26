@@ -20,7 +20,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -94,7 +94,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-lite target-field-clause
+  (when-let [field-id (match/match-one target-field-clause
                         [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
@@ -292,6 +292,39 @@
                            :qp/native-sandbox-column.propagate-coercion?     true)))))
         original-table-cols))
 
+(defn- sandbox-exposed-field-ids
+  "Set of original-table field-ids the sandbox actually returns. MBQL GTAPs' returned columns carry `:id` from the
+  original table, so we take those ids directly. Native GTAPs' columns have only `:name` (no id), so bridge through
+  the original table's `:name → :id` mapping. The `:name` fallback is degenerate for tables with same-name columns —
+  those are unreachable through normal sync but we accept any matching id."
+  [sandbox-query original-table-id]
+  (let [sandbox-cols      (lib/returned-columns sandbox-query)
+        direct-ids        (into #{} (keep :id) sandbox-cols)
+        unresolved-names  (into #{}
+                                (comp (remove :id) (keep :name))
+                                sandbox-cols)
+        name-resolved-ids (when (seq unresolved-names)
+                            (into #{}
+                                  (keep (fn [{col-name :name id :id}]
+                                          (when (and id (contains? unresolved-names col-name))
+                                            id)))
+                                  (lib.metadata/fields sandbox-query original-table-id)))]
+    (into direct-ids name-resolved-ids)))
+
+(defn- filter-stage-fields-to-sandbox
+  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
+  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
+  refer to the previous stage's output and are preserved. See #73339."
+  [stage sandbox-field-ids]
+  (m/update-existing stage :fields
+                     (fn [fields]
+                       (filterv (fn [field-ref]
+                                  (let [[tag _opts id-or-name] field-ref]
+                                    (or (not= tag :field)
+                                        (not (integer? id-or-name))
+                                        (contains? sandbox-field-ids id-or-name))))
+                                fields))))
+
 (mu/defn- apply-sandbox-to-stage :- [:and
                                      [:sequential {:min 1} ::lib.schema/stage]
                                      ::lib.schema.util/unique-uuids]
@@ -328,8 +361,16 @@
                                 (empty? (->> (keys stage)
                                              (remove #{:source-table :fields})
                                              (remove qualified-keyword?))))
+        ;; #73339: an implicit-join sub-stage gets `:fields` populated by the post-implicit-joins
+        ;; `add-implicit-clauses` pass *from the original table's column set*, then we land here and swap
+        ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
+        ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
+        wrapper-stage      (when-not skip-final-stage?
+                             (filter-stage-fields-to-sandbox
+                              (dissoc stage :source-table)
+                              (sandbox-exposed-field-ids sandbox-query source-table)))
         replacement-stages (cond-> new-source-stages
-                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
+                             wrapper-stage (conj wrapper-stage))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))
@@ -409,8 +450,8 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
-                                                            {:query-permissions/sandboxed-table sandboxed?} sandboxed?)))
+    (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
+                                                            {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

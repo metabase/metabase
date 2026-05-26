@@ -1,6 +1,7 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.pulse.dashboard-subscription-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.send-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -635,7 +636,7 @@
          :model/PulseChannel _              {:pulse_id     pulse-id
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
@@ -702,7 +703,7 @@
 (deftest send-skip-alert-test
   (testing "alerts are skipped (#63189)"
     (let [pulse-sent-called? (atom false)]
-      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse!* (fn [& _args])]
         (mt/with-temp [:model/Pulse {pulse-id :id
                                      :as pulse}   {:creator_id      (mt/user->id :rasta)
                                                    :name            (mt/random-name)

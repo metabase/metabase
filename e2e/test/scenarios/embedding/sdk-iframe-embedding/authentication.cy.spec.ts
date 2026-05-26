@@ -20,7 +20,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       cy.intercept("GET", "http://auth-provider/sso?response=json").as(
         "ssoProvider",
       );
-      cy.intercept("GET", "http://localhost:4000/auth/sso?*").as(
+      cy.intercept("POST", "http://localhost:4000/auth/sso").as(
         "tokenInSessionOut",
       );
     });
@@ -41,7 +41,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
                 "instanceUrl": "http://localhost:4000",
               });
             </script>
-            <metabase-dashboard dashboard-id='9' />
+            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
           </body>
           </html>
             `);
@@ -75,7 +75,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
                 "jwtProviderUri": "http://auth-provider/sso?response=json",
               });
             </script>
-            <metabase-dashboard dashboard-id='9' />
+            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
           </body>
           </html>
             `);
@@ -160,7 +160,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         .should("have.attr", "href")
         .and(
           "include",
-          "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds",
+          "https://www.metabase.com/docs/latest/embedding/authentication#configure-session-cookies-when-testing-locally",
         );
 
       cy.findByTestId("sdk-error-container").should("be.visible");

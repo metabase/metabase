@@ -9,7 +9,7 @@ import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
-} from "metabase/query_builder/components/DataSelector";
+} from "metabase/querying/common/components/DataSelector";
 import { Flex } from "metabase/ui";
 
 const DataSourceSelectorsPropTypes = {

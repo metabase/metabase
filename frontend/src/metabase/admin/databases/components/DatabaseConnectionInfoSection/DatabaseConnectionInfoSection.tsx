@@ -3,18 +3,19 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
+  tableApi,
   useDismissDatabaseSyncSpinnerMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { Tables } from "metabase/entities/tables";
+import { isDbModifiable } from "metabase/common/utils/database";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, Tooltip } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
-import { isDbModifiable } from "../../utils";
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
 import {
   DatabaseInfoSection,
@@ -37,8 +38,8 @@ export const DatabaseConnectionInfoSection = ({
 
   const handleSyncDatabaseSchema = async () => {
     await syncDatabaseSchema(database.id).unwrap();
-    // FIXME remove when MetadataEditor uses RTK query directly to load tables
-    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+    // refresh any table lists now that the schema may have changed
+    dispatch(tableApi.util.invalidateTags([listTag("table")]));
   };
 
   const handleDismissSyncSpinner = useCallback(

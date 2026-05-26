@@ -1,10 +1,10 @@
 import { createAction } from "redux-actions";
 
 import { Questions } from "metabase/entities/questions";
+import { createThunkAction } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { createThunkAction } from "metabase/utils/redux";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,

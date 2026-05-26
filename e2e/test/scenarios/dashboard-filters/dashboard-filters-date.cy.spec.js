@@ -156,7 +156,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en_ZZ" });
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -168,28 +168,19 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sélectionner...").click(); // "Select…"
-    H.popover().contains("Created At").first().click();
+    H.getDashboardCard().findByText("[zz] Select…").click();
+    H.popover().contains("Created At").first().click(); // 'Created At' is a column name, so it's not translated
+    H.saveDashboard();
 
-    H.saveDashboard({
-      buttonLabel: "Sauvegarder",
-      editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
-    });
+    cy.findByTestId("dashboard-parameters-and-cards")
+      .findByText("[zz] Date")
+      .click();
+    H.popover().findByText("[zz] Exclude…").click();
+    H.popover().findByText("[zz] Months of the year…").click();
+    H.popover().findByText("January").click(); // Dayjs doesn't have en-ZZ locale, falls back to en
+    H.popover().findByText("[zz] Add filter").click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude…"
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("janvier").click(); // "January"
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ajouter un filtre").click(); // "Add filter"
-
-    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
+    cy.url().should("match", /\/dashboard\/\d+\?.*date=exclude-months-Jan/);
   });
 });
 

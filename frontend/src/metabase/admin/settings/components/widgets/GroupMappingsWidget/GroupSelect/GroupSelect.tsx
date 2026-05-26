@@ -3,16 +3,16 @@ import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
-import { Select } from "metabase/common/components/Select";
-import CS from "metabase/css/core/index.css";
-import { Box, Icon, Popover } from "metabase/ui";
-import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/utils/groups";
+} from "metabase/admin/utils/groups";
+import { Select } from "metabase/common/components/Select";
+import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
 

@@ -3,14 +3,15 @@ import { t } from "ttag";
 
 import { useCreateUserMutation } from "metabase/api";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { generatePassword } from "metabase/utils/password";
-import { useDispatch } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
-import * as Urls from "metabase/utils/urls";
 import type { User as UserType } from "metabase-types/api";
 
 import { UserForm } from "../forms/UserForm";
+import { storeTemporaryPassword } from "../people";
 
 interface NewUserModalProps {
   onClose: () => void;
@@ -26,17 +27,21 @@ export const NewUserModal = ({
   const [createUser] = useCreateUserMutation();
 
   const handleSubmit = async (vals: Partial<UserType>) => {
+    const password = MetabaseSettings.isEmailConfigured()
+      ? undefined
+      : generatePassword();
     const user = await createUser({
       ...vals,
       email: vals.email ?? "",
       first_name: vals.first_name ?? undefined,
       last_name: vals.last_name ?? undefined,
       login_attributes: vals.login_attributes || undefined,
-      ...(MetabaseSettings.isEmailConfigured()
-        ? {}
-        : { password: generatePassword() }),
+      ...(password ? { password } : {}),
     }).unwrap();
 
+    if (password) {
+      dispatch(storeTemporaryPassword({ id: user.id, password }));
+    }
     dispatch(push(Urls.newUserSuccess(user)));
   };
 

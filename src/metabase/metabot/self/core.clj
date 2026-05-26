@@ -240,9 +240,18 @@
                             :value   value}))))
 
 (defn format-error-line
-  "Format error part as AI SDK line: 3:\"error message\""
+  "Format error part as AI SDK line.
+  Emits a JSON object when the error carries an :error-code, so clients can
+  distinguish typed errors from generic ones:
+    3:{\"message\":\"...\",\"error-code\":\"...\"}
+  Otherwise emits a plain string for backwards compatibility:
+    3:\"error message\""
   [{:keys [error]}]
-  (str "3:" (json/encode (or (:message error) (str error)))))
+  (let [msg        (or (:message error) (str error))
+        error-code (some-> (:error-code error) name)]
+    (str "3:" (json/encode (if error-code
+                             {"message" msg "error-code" error-code}
+                             msg)))))
 
 (defn format-tool-call-line
   "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
@@ -286,6 +295,9 @@
   Options:
     :emit-usage? - When true, emit `:usage` parts as data lines (2:) in the SSE
                    stream. Useful for dev/benchmarking. Default false.
+    :external-id - When set, force this id into the emitted `f:` (start) line
+                   so the client sees the same id we persist as
+                   `metabot_message.external_id`.
 
   Input types and their output:
     :text       -> 0:\"content\"
@@ -297,7 +309,7 @@
     :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
     :usage      -> 2:{\"type\":\"usage\",...} (when :emit-usage? true, else skipped)"
   ([] (aisdk-line-xf nil))
-  ([{:keys [emit-usage?]}]
+  ([{:keys [emit-usage? external-id]}]
    (fn [rf]
      (let [error? (volatile! false)
            usage  (volatile! nil)]
@@ -317,7 +329,9 @@
                            (rf result (format-error-line part)))
             :tool-input  (rf result (format-tool-call-line part))
             :tool-output (rf result (format-tool-result-line part))
-            :start       (rf result (format-start-line part))
+            :start       (rf result (format-start-line
+                                     (cond-> part
+                                       external-id (assoc :messageId external-id))))
             :finish      result ;; Don't emit here, we emit in completion arity
             :usage       (do
                            (vreset! usage (:usage part))

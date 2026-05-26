@@ -3,12 +3,11 @@ import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { getClauseDefinition } from "./clause";
-import type { ClauseArgDefinition, MBQLClauseCategory } from "./types";
 
 export type HelpText = {
   name: string;
-  category: MBQLClauseCategory;
-  args: ClauseArgDefinition[];
+  category: Lib.MBQLClauseCategory;
+  args: Lib.ClauseArgDefinition[];
   description: string;
   example: Lib.ExpressionParts;
   displayName: string;
@@ -50,7 +49,7 @@ export function getHelpText(
  */
 function getExample(
   name: string,
-  args: ClauseArgDefinition[],
+  args: Lib.ClauseArgDefinition[],
 ): Lib.ExpressionParts {
   return {
     operator: name as Lib.ExpressionOperator,

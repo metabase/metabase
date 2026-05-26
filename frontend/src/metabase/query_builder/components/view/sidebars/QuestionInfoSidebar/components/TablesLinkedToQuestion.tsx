@@ -3,20 +3,20 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { ToggleFullList } from "./ToggleFullList";
-import { useExpandableList } from "./hooks";
+import { useExpandableList, useGetJoinedTablesWithIcons } from "./hooks";
 import type { QuestionSource } from "./types";
-import { getJoinedTablesWithIcons } from "./utils";
 
 /** Displays tables linked to the question via a foreign-key relationship */
 export const TablesLinkedToQuestion = () => {
   const question = useSelector(getQuestionWithoutComposing);
+  const getJoinedTables = useGetJoinedTablesWithIcons();
   const joinedTablesWithIcons: QuestionSource[] = useMemo(
-    () => (question ? getJoinedTablesWithIcons(question) : []),
-    [question],
+    () => (question ? getJoinedTables(question) : []),
+    [question, getJoinedTables],
   );
 
   const { filtered, isExpanded, toggle } = useExpandableList(

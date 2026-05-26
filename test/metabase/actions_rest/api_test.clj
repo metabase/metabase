@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions-rest.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions-rest.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions-rest.api-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -204,7 +206,7 @@
                               (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)
-                                                   ;; Twitter is the current value so effectively a no-op
+                                                    ;; Twitter is the current value so effectively a no-op
                                                     {:parameters {:id 1 :source "Twitter"}})))))))
         (testing "When actions are enabled on the other database"
           (mt/dataset test-data

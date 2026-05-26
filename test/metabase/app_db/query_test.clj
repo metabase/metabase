@@ -1,4 +1,5 @@
 (ns metabase.app-db.query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.app-db.query-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

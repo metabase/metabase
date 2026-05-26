@@ -97,7 +97,7 @@ const ORDERS_DIMENSIONS = [
 
 describe("getAvailableDimensionsForPicker", () => {
   it("returns empty result for empty source order", () => {
-    const result = getAvailableDimensionsForPicker({}, [], new Set());
+    const result = getAvailableDimensionsForPicker({}, [], [], new Set());
 
     expect(result).toEqual({ shared: [], bySource: {} });
   });
@@ -105,6 +105,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a single metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
+      [REVENUE_SOURCE_ID],
       [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(),
     );
@@ -120,6 +121,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a second metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [ORDERS_SOURCE_ID]: ordersDefinition },
+      [ORDERS_SOURCE_ID],
       [{ slotIndex: 0, entityIndex: 0, sourceId: ORDERS_SOURCE_ID }],
       new Set(),
     );
@@ -138,6 +140,7 @@ describe("getAvailableDimensionsForPicker", () => {
         [REVENUE_SOURCE_ID]: revenueDefinition,
         [ORDERS_SOURCE_ID]: ordersDefinition,
       },
+      [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
       [
         { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
         { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
@@ -173,6 +176,32 @@ describe("getAvailableDimensionsForPicker", () => {
     });
   });
 
+  it("does not duplicate dimensions when a metric appears in multiple slots", () => {
+    const result = getAvailableDimensionsForPicker(
+      { [REVENUE_SOURCE_ID]: revenueDefinition },
+      [REVENUE_SOURCE_ID],
+      [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: REVENUE_SOURCE_ID },
+      ],
+      new Set(),
+    );
+
+    const allDimensions = result.bySource[REVENUE_SOURCE_ID] ?? [];
+    expect(allDimensions).toHaveLength(REVENUE_DIMENSIONS.length);
+
+    const labels = allDimensions.map((d) => d.tabInfo.label);
+    expect(labels).toEqual([...new Set(labels)]);
+
+    for (const dim of allDimensions) {
+      const dimId = Object.values(dim.tabInfo.dimensionMapping)[0];
+      expect(dim.tabInfo.dimensionMapping).toEqual({
+        0: dimId,
+        1: dimId,
+      });
+    }
+  });
+
   it("filters out dimensions whose id matches existingTabDimensionIds", () => {
     const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
       Object.values(dimension.tabInfo.dimensionMapping),
@@ -180,6 +209,7 @@ describe("getAvailableDimensionsForPicker", () => {
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
+      [REVENUE_SOURCE_ID],
       [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(allIds),
     );

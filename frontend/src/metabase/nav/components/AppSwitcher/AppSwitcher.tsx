@@ -14,6 +14,7 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import { getUser } from "metabase/selectors/user";
@@ -25,14 +26,13 @@ import {
   Divider,
   Group,
   Icon,
-  type IconName,
   Menu,
   Stack,
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
+import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

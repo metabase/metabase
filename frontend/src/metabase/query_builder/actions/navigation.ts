@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import _ from "underscore";
 
+import { createThunkAction } from "metabase/redux";
 import { resetUIControls } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
-import { createThunkAction } from "metabase/utils/redux";
 
 import {
   getCard,
@@ -83,7 +83,7 @@ export const popState = createThunkAction(
       );
     }
 
-    if (location.state.objectId) {
+    if (location.state?.objectId) {
       await dispatch(zoomInRow({ objectId: location.state.objectId }));
     }
   },
@@ -102,19 +102,30 @@ export const locationChanged =
   (location: Location, nextLocation: Location, nextParams: QueryParams) =>
   (dispatch: Dispatch) => {
     if (location !== nextLocation) {
+      // Treat both undefined and null as "no state" — the browser leaves
+      // `history.state` as null for navigations the app didn't initiate (typed
+      // URLs, browser hash changes, cy.visit), while `updateUrl` always sets a
+      // `state.card` object.
+      const isExternalUrlChange = nextLocation.state == null;
+      const urlChanged =
+        getURL(nextLocation, { includeMode: true }) !==
+        getURL(location, { includeMode: true });
       if (nextLocation.action === "POP") {
-        if (
-          getURL(nextLocation, { includeMode: true }) !==
-          getURL(location, { includeMode: true })
-        ) {
+        if (urlChanged) {
           // the browser forward/back button was pressed
-
           dispatch(popState(nextLocation));
+          // POP without state means navigation to an externally-set URL (eg.
+          // typing into the address bar, or a hash-only navigation that the
+          // browser handled without a full page reload). Re-run init so the
+          // QB picks up the new query.
+          if (isExternalUrlChange) {
+            dispatch(initializeQB(nextLocation, nextParams));
+          }
         }
       } else if (
         (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
         // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
-        nextLocation.state === undefined
+        isExternalUrlChange
       ) {
         // a link to a different qb url was clicked
         dispatch(initializeQB(nextLocation, nextParams));

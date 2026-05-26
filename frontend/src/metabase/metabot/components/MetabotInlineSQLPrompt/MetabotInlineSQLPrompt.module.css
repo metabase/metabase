@@ -20,7 +20,7 @@
 }
 
 .inputContainer :global(.ProseMirror) {
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
   font-size: 0.75rem;
   min-height: 1.25rem;
   padding: 0.25rem 0.125rem;

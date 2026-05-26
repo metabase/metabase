@@ -36,10 +36,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      H.echartsContainer().findByText("January 2026").should("exist");
+      H.echartsContainer()
+        .should("contain.text", "July 2025")
+        .and("contain.text", "January 2026");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+    cy.log("Zoom-in on the left side, which corresponds to July 2025");
     cy.findByTestId("query-visualization-root") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
@@ -53,7 +56,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("June 5, 2025"); // more granular axis labels
+      H.echartsContainer().contains(/June \d{1,2}, 2025/); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -578,7 +581,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "table",
     });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
+    cy.findByText(/^10 –/)
+      .parent()
+      .parent()
+      .next()
+      .contains("85")
+      .click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

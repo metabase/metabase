@@ -1,10 +1,10 @@
 import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Accordion,
@@ -17,13 +17,17 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
     (state) => getSetting(state, "token-features").advanced_permissions,
+  );
+
+  const isWorkspacesFeatureEnabled = useSelector(
+    (state) => getSetting(state, "token-features").workspaces,
   );
 
   const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
@@ -205,6 +209,13 @@ export const DataPermissionsHelp = () => {
                   {jt`${(
                     <strong key="permission">{t`Transforms (Pro):`}</strong>
                   )} The group can create, edit, and run Transforms for a given database.`}
+                </Text>
+              )}
+              {isWorkspacesFeatureEnabled && (
+                <Text>
+                  {jt`${(
+                    <strong key="permission">{t`Workspaces:`}</strong>
+                  )} The group can add, edit, and remove the database from Workspaces.`}
                 </Text>
               )}
             </Stack>

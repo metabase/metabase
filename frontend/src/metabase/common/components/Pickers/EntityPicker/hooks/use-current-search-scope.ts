@@ -31,10 +31,14 @@ export const useGetLastCollection = ():
 /**
  * gets the narrowed search scope for the currently selected collection, if it is selectable */
 export const useCurrentSearchScope = (): SearchScope => {
-  const { searchScope } = useOmniPickerContext();
+  const { searchScope, options } = useOmniPickerContext();
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useGetLastCollection();
+
+  if (options.disableSearchScope) {
+    return "all";
+  }
 
   if (searchScope || !lastCollection) {
     return searchScope;

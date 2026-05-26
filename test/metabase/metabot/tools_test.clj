@@ -6,7 +6,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.construct :as construct]))
+   [metabase.metabot.tools.construct :as construct]
+   [metabase.test :as mt]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -114,35 +115,34 @@
       (is (some? (:schema m))))))
 
 (deftest construct-notebook-query-tool-test
-  (testing "construct_notebook_query evaluates a program and creates a chart"
-    (let [program-captured (atom nil)
-          chart-called     (atom nil)]
-      (with-redefs [construct/execute-program (fn [_source-entity _referenced-entities program]
-                                                (reset! program-captured program)
-                                                {:structured-output {:query-id "q-1"
-                                                                     :query {:database 1}
-                                                                     :result-columns []}
-                                                 :instructions "Query created."})
-                    create-chart-tools/create-chart (fn [args]
-                                                      (reset! chart-called args)
-                                                      {:chart-id "c-1"
-                                                       :chart-type :table
-                                                       :chart-link "metabase://chart/c-1"
-                                                       :chart-content "<chart/>"
-                                                       :query-id (:query-id args)
-                                                       :reactions [{:type :metabot.reaction/redirect
-                                                                    :url "/question#hash"}]})]
-        (let [result (agent-tools/construct-notebook-query-tool
-                      {:reasoning "check seats"
-                       :source_entity {:type "table" :id 6}
-                       :program {:source     {:type "context" :ref "source"}
-                                 :operations [["filter" ["=" ["field" 301] "a"]]
-                                              ["with-fields" [["field" 301]]]
-                                              ["order-by" ["field" 301] "desc"]
-                                              ["limit" 10]]}
+  (testing "construct_notebook_query evaluates a representations query and creates a chart"
+    (let [query-captured (atom nil)
+          chart-called  (atom nil)]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [external-query]
+                                    (reset! query-captured external-query)
+                                    {:structured-output {:query-id "q-1"
+                                                         :query {:database 1}
+                                                         :result-columns []}
+                                     :instructions "Query created."})
+                                  create-chart-tools/create-chart (fn [args]
+                                                                    (reset! chart-called args)
+                                                                    {:chart-id "c-1"
+                                                                     :chart-type :table
+                                                                     :chart-link "metabase://chart/c-1"
+                                                                     :chart-content "<chart/>"
+                                                                     :query-id (:query-id args)
+                                                                     :reactions [{:type :metabot.reaction/redirect
+                                                                                  :url "/question#hash"}]})]
+        (let [query-input {:lib/type "mbql/query"
+                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                       :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                       :aggregation  [["count" {}]]}]}
+              result (agent-tools/construct-notebook-query-tool
+                      {:reasoning     "check seats"
+                       :query         query-input
                        :visualization {:chart_type "table"}})]
-          (is (= "context" (get-in @program-captured [:source :type])))
-          (is (= 4 (count (:operations @program-captured))))
+          (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))

@@ -4,8 +4,10 @@ import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
 
-interface ColumnBucketPickerPopoverProps
-  extends Omit<CommonBucketPickerProps, "buckets"> {
+interface ColumnBucketPickerPopoverProps extends Omit<
+  CommonBucketPickerProps,
+  "buckets"
+> {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   className?: string;

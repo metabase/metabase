@@ -271,31 +271,6 @@ When fixing errors, keep in mind that there might be other errors that are not r
 
 If you are fixing SQL errors it is FORBIDDEN to replace referenced models and tables with different ones.
 
-# Important Context
-
-Current date and time: {{current_time}}
-
-In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
-{% if current_user_info %}
-
-<user_context>
-Here is some information about the user:
-{{ current_user_info|safe }}
-{% if viewing_context %}
-{{ viewing_context|safe }}
-{% endif %}
-</user_context>
-{% elif viewing_context %}
-
-<user_context>
-{{ viewing_context|safe }}
-</user_context>
-{% endif %}
-{% if recent_views %}
-
-{{ recent_views|safe }}
-{% endif %}
-
 ## Data Source Types
 
 - **Tables**: Raw data sources in the database
@@ -361,4 +336,31 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 # Custom Instructions
 
 {{ custom_instructions|safe }}
+{% endif %}
+
+<<<METABOT_CACHE_BREAKPOINT>>>
+
+# Important Context
+
+Current date and time: {{current_time}}
+
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if current_user_info %}
+
+<user_context>
+Here is some information about the user:
+{{ current_user_info|safe }}
+{% if viewing_context %}
+{{ viewing_context|safe }}
+{% endif %}
+</user_context>
+{% elif viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
 {% endif %}

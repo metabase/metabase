@@ -15,7 +15,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { serializeCardForUrl } from "metabase/utils/card";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCardQueryMetadata,
@@ -23,7 +23,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  TEST_COLLECTION,
   TEST_DB,
   TEST_MODEL_CARD,
   TEST_MODEL_CARD_SLUG,
@@ -554,7 +553,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           within(saveQuestionModal).getByLabelText(
             /Where do you want to save this/,
           ),
-        ).toHaveTextContent(TEST_COLLECTION.name);
+        ).toHaveTextContent("Our analytics");
       });
       await userEvent.click(within(saveQuestionModal).getByText("Save"));
 

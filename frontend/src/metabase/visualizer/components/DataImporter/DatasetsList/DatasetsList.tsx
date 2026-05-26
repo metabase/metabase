@@ -3,9 +3,8 @@ import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getDashboard } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Skeleton } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
@@ -56,6 +55,12 @@ interface DatasetsListProps {
    * so next time it is rendered, it will show the data immediately.
    */
   muted?: boolean;
+  /**
+   * The id of the dashboard the visualizer was opened from, or `undefined` when
+   * it wasn't opened from a dashboard. Used to filter out dashboard questions
+   * that belong to other dashboards.
+   */
+  dashboardId: DashboardId | undefined;
 }
 
 export function DatasetsList({
@@ -63,8 +68,8 @@ export function DatasetsList({
   setDataSourceCollapsed,
   style,
   muted,
+  dashboardId,
 }: DatasetsListProps) {
-  const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const dataSourceIds = useMemo(

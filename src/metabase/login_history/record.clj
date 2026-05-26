@@ -1,6 +1,6 @@
 (ns metabase.login-history.record
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.email.messages :as messages]
    [metabase.login-history.models.login-history :as login-history]
    [metabase.login-history.settings :as login-history.settings]
@@ -16,7 +16,8 @@
   [history-record]
   (when (and (login-history.settings/send-email-on-first-login-from-new-device)
              (login-history/first-login-on-this-device? history-record)
-             (not (login-history/first-login-ever? history-record)))
+             (not (login-history/first-login-ever? history-record))
+             (not (login-history/too-many-new-device-emails-recently? (:user_id history-record))))
     ;; if there's an existing open connection (and there seems to be one, but I'm not 100% sure why) we can't try to use
     ;; it across threads since it can close at any moment! So unbind it so the future can get its own thread.
     (binding [t2.conn/*current-connectable* nil]
@@ -40,4 +41,4 @@
     (when-not (or (:embedded device-info) (:token_exchange device-info))
       (maybe-send-login-from-new-device-email history-entry))
     (when-not (:last_login user)
-      (snowplow/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))
+      (analytics/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))

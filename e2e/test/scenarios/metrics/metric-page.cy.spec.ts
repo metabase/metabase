@@ -259,6 +259,23 @@ describe("scenarios > metrics > metric page", () => {
     H.getNotebookStep("summarize")
       .findByText("Sum of Total")
       .should("be.visible");
+    H.undoToast().should("contain.text", "Metric query updated");
+    H.undoToast().findByRole("img", { name: /close/ }).click();
+
+    cy.log("surface backend error when a revert fails (UXW-310)");
+    cy.intercept("POST", "/api/revision/revert", {
+      statusCode: 500,
+      body: { message: "Cannot revert: missing metric" },
+    }).as("failedRevert");
+
+    H.MetricPage.historyTab().click();
+    cy.findByTestId("saved-question-history-list")
+      .findAllByTestId("question-revert-button")
+      .first()
+      .click();
+    cy.wait("@failedRevert");
+
+    H.undoToast().should("contain.text", "Cannot revert: missing metric");
   });
 
   it("should add metric to dashboard and move to trash via more menu", () => {
@@ -326,7 +343,7 @@ describe("scenarios > metrics > metric page", () => {
 
   describe("ee features", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show and hide 'Open in Data Studio' based on context", () => {

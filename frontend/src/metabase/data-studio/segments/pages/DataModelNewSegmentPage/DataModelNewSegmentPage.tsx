@@ -4,7 +4,7 @@ import type { Route } from "react-router";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";

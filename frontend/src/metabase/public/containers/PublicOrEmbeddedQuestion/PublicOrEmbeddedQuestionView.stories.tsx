@@ -16,12 +16,12 @@ import {
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
@@ -282,6 +282,26 @@ export const SmartScalarDarkTheme = {
   args: {
     ...SmartScalarLightTheme.args,
     theme: "night",
+  },
+};
+
+// Regression guard for metabase#72443: `₂` subscript descender used to clip at the value's line-box edge.
+export const SmartScalarUnicodeSubscript = {
+  render: Template,
+
+  args: {
+    ...SmartScalarLightTheme.args,
+    card: createMockCard({
+      id: getNextId(),
+      display: "smartscalar",
+      visualization_settings: {
+        "graph.dimensions": ["timestamp"],
+        "graph.metrics": ["count"],
+        column_settings: {
+          '["name","Count"]': { suffix: "tCO₂e" },
+        },
+      },
+    }),
   },
 };
 

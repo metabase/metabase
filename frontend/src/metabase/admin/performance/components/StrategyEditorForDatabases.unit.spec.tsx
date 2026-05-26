@@ -8,9 +8,20 @@ import {
   setupStrategyEditorForDatabases as setup,
 } from "./test-utils";
 
-describe("StrategyEditorForDatabases", () => {
+describe("StrategyEditorForDatabases (OSS)", () => {
   beforeEach(() => {
     setup();
+  });
+
+  it("shows two policy options for the default policy: Adaptive and Don't cache", async () => {
+    const radios = await screen.findAllByRole("radio");
+    expect(radios).toHaveLength(2);
+    expect(
+      screen.getByRole("radio", { name: /Adaptive/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: /Don.t cache/i }),
+    ).toBeInTheDocument();
   });
 
   it("lets user change the default policy to 'Adaptive', then 'No caching'", async () => {

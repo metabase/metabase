@@ -161,11 +161,13 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                 <MetricsViewerNoTabsEmptyState />
               ) : null}
             </Flex>
-            <BreakoutLegend
-              formulaEntities={formulaEntities}
-              definitions={definitions}
-              activeBreakoutColors={activeBreakoutColors}
-            />
+            {activeTab?.type !== "scalar" && (
+              <BreakoutLegend
+                formulaEntities={formulaEntities}
+                definitions={definitions}
+                activeBreakoutColors={activeBreakoutColors}
+              />
+            )}
           </Flex>
         </Stack>
       </Flex>

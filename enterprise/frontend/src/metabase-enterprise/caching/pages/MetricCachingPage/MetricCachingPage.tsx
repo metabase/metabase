@@ -14,7 +14,7 @@ import { MetricPageShell } from "metabase/metrics/components/MetricPageShell";
 import { metricUrls as defaultUrls } from "metabase/metrics/urls";
 import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Card, Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getItemName } from "metabase-enterprise/caching/components/utils";
 import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";

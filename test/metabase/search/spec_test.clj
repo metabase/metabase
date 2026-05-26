@@ -96,12 +96,13 @@
 (deftest ^:parallel search-model-hooks-test-2
   ;; TODO replace real specs with frozen test ones once things have stabilized
   (is (= #:model{:Table      #{{:search-model "segment",
-                                :fields       #{:description :schema :name :db_id}
+                                :fields       #{:description :schema :name :db_id :display_name}
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published}
+                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published
+                                  :data_layer}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table"
                                 :fields #{:name :router_database_id}

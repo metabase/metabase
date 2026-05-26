@@ -4,7 +4,7 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type { DashboardId, ParameterValuesMap } from "metabase-types/api";
 
 interface UseRefreshDashboardProps {

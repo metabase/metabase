@@ -2,8 +2,8 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 
 export const SlackConnectSuccess = () => {
   const dispatch = useDispatch();

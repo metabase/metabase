@@ -19,11 +19,69 @@ export const FIXED_METABOT_ENTITY_IDS = {
   SLACKBOT: "slackbotmetabotmetabo" as const,
 };
 
+export const METABOT_PROFILES = {
+  internal: {
+    get label() {
+      return t`Internal`;
+    },
+  },
+  embedding_next: {
+    get label() {
+      return t`Embedding`;
+    },
+  },
+  nlq: {
+    get label() {
+      return t`NLQ`;
+    },
+  },
+  sql: {
+    get label() {
+      return t`SQL`;
+    },
+  },
+  // deprecated
+  slack: {
+    get label() {
+      return t`Slackbot`;
+    },
+  },
+  slackbot: {
+    get label() {
+      return t`Slackbot`;
+    },
+  },
+  transforms_codegen: {
+    get label() {
+      return t`Transforms codegen`;
+    },
+  },
+  "document-generate-content": {
+    get label() {
+      return t`Documents`;
+    },
+  },
+} as const;
+
+export type MetabotProfileId = keyof typeof METABOT_PROFILES;
+
+export function isMetabotProfileId(id: string): id is MetabotProfileId {
+  return id in METABOT_PROFILES;
+}
+
+export function getMetabotProfileLabel(id: MetabotProfileId): string {
+  return METABOT_PROFILES[id].label;
+}
+
+export function renderMetabotProfileLabel(id: string): string {
+  return isMetabotProfileId(id) ? getMetabotProfileLabel(id) : id;
+}
+
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
-};
+} as const satisfies Record<string, MetabotProfileId | undefined>;
 
 export const METABOT_ERR_MSG = {
   get default() {
@@ -31,6 +89,9 @@ export const METABOT_ERR_MSG = {
   },
   unauthenticated(metabotName: string) {
     return t`${metabotName} could not authenticate your request. Please contact your administrator.`;
+  },
+  get locked() {
+    return t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`;
   },
   format(msg: string) {
     return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;

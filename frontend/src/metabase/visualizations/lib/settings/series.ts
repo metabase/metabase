@@ -241,9 +241,9 @@ export function seriesSetting({
 
         return Boolean(
           series.length <= 1 || // no need to show series-level control if there's only one series
-            !settings["graph.show_values"] || // don't show it unless this chart has a global setting
-            (settings["stackable.stack_type"] &&
-              settings["graph.show_stack_values"] === "total"),
+          !settings["graph.show_values"] || // don't show it unless this chart has a global setting
+          (settings["stackable.stack_type"] &&
+            settings["graph.show_stack_values"] === "total"),
         );
       },
       getDefault: (_single, _seriesSettings, extra) =>

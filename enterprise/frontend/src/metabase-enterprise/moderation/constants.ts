@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 export const MODERATION_STATUS = {
   verified: "verified",

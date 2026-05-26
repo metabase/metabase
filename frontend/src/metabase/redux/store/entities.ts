@@ -3,24 +3,18 @@ import type {
   NormalizedCollection,
   NormalizedDashboard,
   NormalizedDatabase,
-  NormalizedDocument,
   NormalizedField,
-  NormalizedGroup,
-  NormalizedIndexedEntity,
   NormalizedMeasure,
   NormalizedMetric,
   NormalizedNativeQuerySnippet,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  NormalizedWritebackAction,
 } from "metabase-types/api";
 
 export interface EntitiesState {
-  actions: Record<string, NormalizedWritebackAction>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
-  documents: Record<string, NormalizedDocument>;
   databases: Record<string, NormalizedDatabase>;
   schemas: Record<string, NormalizedSchema>;
   tables: Record<string, NormalizedTable>;
@@ -28,8 +22,8 @@ export interface EntitiesState {
   segments: Record<string, NormalizedSegment>;
   measures: Record<string, NormalizedMeasure>;
   metrics: Record<string, NormalizedMetric>;
-  indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
-  groups: Record<string, NormalizedGroup>;
+
+  [key: `${string}_list`]: unknown;
 }

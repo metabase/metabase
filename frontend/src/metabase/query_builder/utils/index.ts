@@ -3,12 +3,12 @@ import querystring from "querystring";
 import type { Location } from "history";
 import _ from "underscore";
 
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { serializeCardForUrl } from "metabase/utils/card";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, Series } from "metabase-types/api";
+import type { Card, Field, NormalizedField, Series } from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -44,12 +44,7 @@ export function getURLForCardState(
   query: QueryParams = {},
   objectId: string,
 ) {
-  interface Options {
-    hash: string;
-    query: QueryParams;
-    objectId?: string;
-  }
-  const options: Options = {
+  const options: Urls.CardUrlBuilderParams = {
     hash:
       card && dirty
         ? serializeCardForUrl(card, {
@@ -63,12 +58,12 @@ export function getURLForCardState(
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
-      options.query.objectId = objectId;
+      (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;
     }
   }
-  return Urls.question(card, options);
+  return Urls.card(card, options);
 }
 
 export const isNavigationAllowed = ({
@@ -188,7 +183,10 @@ const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
   ...WRITABLE_MBQL_COLUMN_PROPERTIES,
 ];
 
-export function getWritableColumnProperties(column: Field, isNative: boolean) {
+export function getWritableColumnProperties(
+  column: NormalizedField | Field,
+  isNative: boolean,
+) {
   return _.pick(
     column,
     isNative

@@ -33,6 +33,42 @@ dataset_query:
     - - field
       - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, embedding_client]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, auth_method]
+    - - field
+      - {base-type: type/Boolean, effective-type: type/Boolean}
+      - [Internal Metabase Database, public, v_view_log, is_preview]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, metabase_version]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, embedding_sdk_version]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer}
+      - [Internal Metabase Database, public, v_view_log, tenant_id]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, embedding_hostname]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, embedding_path]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, user_agent]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, ip_address]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, context]
     order-by:
     - - desc
       - {}
@@ -132,6 +168,186 @@ result_metadata:
   id: [Internal Metabase Database, public, v_view_log, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Client
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_client]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, embedding_client]
+  name: embedding_client
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Auth Method
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, auth_method]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, auth_method]
+  name: auth_method
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Preview
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, is_preview]
+  - {base-type: type/Boolean}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, is_preview]
+  name: is_preview
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Metabase Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, metabase_version]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, metabase_version]
+  name: metabase_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding SDK Package Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_sdk_version]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, embedding_sdk_version]
+  name: embedding_sdk_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Tenant ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, tenant_id]
+  - {base-type: type/Integer}
+  fk_target_field_id: [Internal Metabase Database, public, v_tenants, tenant_id]
+  id: [Internal Metabase Database, public, v_view_log, tenant_id]
+  name: tenant_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Hostname
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_hostname]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, embedding_hostname]
+  name: embedding_hostname
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Path
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_path]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, embedding_path]
+  name: embedding_path
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, user_agent]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, user_agent]
+  name: user_agent
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Sanitized User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+  name: sanitized_user_agent
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: IP Address
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, ip_address]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, ip_address]
+  name: ip_address
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Context the view happened in (dashboard, collection, etc.). Use to filter out dashcards from top-viewed content.
+  display_name: Context
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, context]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, context]
+  name: context
+  semantic_type: type/Category
   settings: null
   visibility_type: normal
 visualization_settings: {column_settings: null, table.cell_column: user_id, table.pivot_column: details}

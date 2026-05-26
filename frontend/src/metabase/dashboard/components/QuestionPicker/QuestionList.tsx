@@ -1,4 +1,4 @@
-import { type ComponentProps, useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,16 +14,20 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
-import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Search } from "metabase/entities/search";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type { CardId, CollectionId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  CollectionItem,
+  SearchResult,
+} from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
@@ -43,6 +47,7 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const getIcon = useGetIcon();
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -51,6 +56,7 @@ export function QuestionList({
   const isVisualizerModalOpen = !!visualizerModalCardId;
 
   const selectedTabId = useSelector(getSelectedTabId);
+  const dashboardId = useSelector(getDashboardId);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -109,9 +115,7 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
-  const list = useMemo(() => {
-    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
-  }, [data, dispatch]);
+  const list: (SearchResult | CollectionItem)[] = data?.data ?? [];
 
   if (collectionId === "personal" && !searchText) {
     return null;
@@ -144,9 +148,9 @@ export function QuestionList({
                 label: S.QuestionListItemLabel,
               }}
               className={S.QuestionListItem}
-              name={item.getName()}
+              name={item.name}
               icon={{
-                name: getIcon(item).name,
+                ...getIcon(item),
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}
@@ -185,6 +189,7 @@ export function QuestionList({
       {isVisualizerModalOpen && (
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
+          dashboardId={dashboardId ?? undefined}
           onSave={(visualization) => {
             dispatch(
               addCardWithVisualization({ visualization, tabId: selectedTabId }),

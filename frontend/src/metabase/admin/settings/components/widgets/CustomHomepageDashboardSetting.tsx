@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
+import { useDispatch } from "metabase/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { Stack } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type { DashboardId } from "metabase-types/api";
 
-import { trackCustomHomepageDashboardEnabled } from "../../analytics";
 import { SettingHeader } from "../SettingHeader";
 
 import { BasicAdminSettingInput } from "./AdminSettingInput";

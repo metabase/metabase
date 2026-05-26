@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
@@ -135,10 +135,10 @@
    ;; Cards in audit collection should not be writable.
    (and
     (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+          ;; We want to make sure there's an existing audit collection before doing the equality check below.
+          ;; If there is no audit collection, this will be nil:
           (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+          ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -184,7 +184,8 @@
                                                               :d.collection_id
                                                               :d.description
                                                               :d.id
-                                                              :d.archived]
+                                                              :d.archived
+                                                              :d.enable_embedding]
                                                    :from     [[:report_dashboardcard :dc]]
                                                    :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
                                                    :where    [:in :dc.card_id [:inline card-ids]]
@@ -196,7 +197,8 @@
                                                               :d.collection_id
                                                               :d.description
                                                               :d.id
-                                                              :d.archived]
+                                                              :d.archived
+                                                              :d.enable_embedding]
                                                    :from     [[:dashboardcard_series :dcs]]
                                                    :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                               [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
@@ -388,8 +390,8 @@
                                  :text    :string/=
                                  :number  :number/=
                                  :boolean :boolean/=
-                                ;; fallback; should be unreachable since :when filters
-                                ;; to raw-value-template-tag-types
+                                 ;; fallback; should be unreachable since :when filters
+                                 ;; to raw-value-template-tag-types
                                  :string/=))
      :target   (if (= tag-type :dimension)
                  [:dimension [:template-tag (:name tag)]]
@@ -736,7 +738,7 @@
     (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue. Legacy MBQL: %s"
                (:id card) (:legacy_query card))
     (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
-      (analytics/set! :metabase-card/unique-cards-failed-conversion (count uniques))))
+      (analytics/set-gauge! :metabase-card/unique-cards-failed-conversion (count uniques))))
   ;; Always returns the original card.
   card)
 
@@ -787,8 +789,8 @@
         (assoc :metabase_version config/mb-version-string
                :card_schema current-schema-version)
         queries.schema/normalize-card
-      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-      ;; since we're removing `:ident`s; we can probably remove this now.
+        ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
+        ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
         card.metadata/populate-result-metadata
         pre-insert
@@ -868,7 +870,7 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
@@ -878,7 +880,11 @@
             cards-on-first-tab (or (when first-tab
                                      (:cards first-tab))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
+            new-spot (if-let [{:keys [size_x size_y]} size]
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab (:display card)))]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
@@ -933,7 +939,7 @@
                (not new-dashboard-id))))
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
 
     (when (and
            ;; we start out as a DQ, and
@@ -1013,7 +1019,7 @@
                                                   (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
-         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -1283,15 +1289,7 @@
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
     (-> (reduce into #{} (for [m metadata]
-                           (conj (serdes/mbql-deps (:field_ref m))
-                                 (when (:table_id m)
-                                   (serdes/table->path (:table_id m)))
-                                 (when (:id m)
-                                   (serdes/field->path (:id m)))
-                                 (when (and (:fk_target_field_id m)
-                                            ;; FIXME: remove that check after v52
-                                            (not (number? (:fk_target_field_id m))))
-                                   (serdes/field->path (:fk_target_field_id m))))))
+                           (serdes/mbql-deps (:field_ref m))))
         (disj nil))))
 
 (defmethod serdes/storage-path "Card" [card ctx]
@@ -1314,7 +1312,7 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :query_type :type :name
+          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :type :name
           :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -1327,12 +1325,24 @@
           ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
-          :legacy_query]
+          :legacy_query
+          ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
+          :query_type
+          ;; always re-derived from dataset_query by populate-query-fields on import
+          :table_id :source_card_id]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database)
-    :table_id               (serdes/fk :model/Table)
-    :source_card_id         (serdes/fk :model/Card)
+    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+    ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
+    :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
+                              {::serdes/fk true
+                               :export-with-context
+                               (fn [{:keys [dataset_query database_id]} _k _v]
+                                 (if (and (seq dataset_query) (get dataset_query :database))
+                                   ::serdes/skip
+                                   (when database_id
+                                     (serdes/*export-database-fk* database_id))))
+                               :import import})
     :collection_id          (serdes/fk :model/Collection)
     :dashboard_id           (serdes/fk :model/Dashboard)
     :document_id            (serdes/fk :model/Document)
@@ -1350,14 +1360,15 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id source_card_id visualization_settings
+           result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     (when database_id [[{:model "Database" :id database_id}]])
-    (when table_id #{(serdes/table->path table_id)})
+    ;; Note: `table_id` is intentionally not a dependency — the Database (above) is, and a missing Table is
+    ;; synthesized as an inactive row on import.
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
@@ -1447,17 +1458,18 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
+                  :collection-type      :collection.type
+                  :collection-location  :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
                   :temporal-info        {:fn       extract-temporal-info
                                          :fields   [:dataset_query :query_type]
                                          :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :display                    true
                   :moderated-status           :mr.status}

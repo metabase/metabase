@@ -8,7 +8,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";
 

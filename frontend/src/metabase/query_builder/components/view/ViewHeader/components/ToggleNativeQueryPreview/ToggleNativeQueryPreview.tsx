@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
 import { getUiControls } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 import { canShowNativePreview } from "../../utils";

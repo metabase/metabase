@@ -11,7 +11,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
@@ -33,6 +33,7 @@ export function getDataStudioRoutes(
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
   _CanAccessTransforms: ComponentType,
+  IsAdmin: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -44,22 +45,20 @@ export function getDataStudioRoutes(
         />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
-            {getDataStudioMetadataRoutes()}
+            {getDataStudioMetadataRoutes(IsAdmin)}
           </Route>
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
           {getDataStudioTransformRoutes()}
         </Route>
+        <Route component={WorkspacesSectionLayout}>
+          {PLUGIN_WORKSPACES.getDataStudioRoutes()}
+        </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
+          PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
           <Route path="library" component={LibraryUpsellPage} />
-        )}
-        {PLUGIN_WORKSPACES.isEnabled && (
-          <Route path="workspaces" component={WorkspacesSectionLayout}>
-            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
-          </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>

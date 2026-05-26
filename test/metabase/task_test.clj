@@ -120,7 +120,7 @@
 (deftest start-scheduler-no-op-with-env-var-test
   (tu/do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
+     (testing "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set"
        (testing "Sanity check"
          (is (not (qs/started? (#'task/scheduler)))))
        (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "TRUE"]
@@ -149,16 +149,16 @@
       (testing "make sure the job is in the database before we start the scheduler"
         (is (t2/exists? (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job")))
 
-     ;; update the job class to a non-existent class
+      ;; update the job class to a non-existent class
       (t2/update! (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job"
                   {(capitalize-if-mysql :job_class_name) "NOT_A_REAL_CLASS"})
-     ;; stop the scheduler then restart so [[task/delete-jobs-with-no-class!]] is triggered
+      ;; stop the scheduler then restart so [[task/delete-jobs-with-no-class!]] is triggered
       (task/stop-scheduler!)
       (task/start-scheduler!)
       (testing "the job should be removed from the database when the scheduler starts"
         (is (not (t2/exists? (capitalize-if-mysql :qrtz_job_details) (capitalize-if-mysql :job_name) "metabase.task-test.job"))))
       (finally
-       ;; restore the state of scheduler before we start the test
+        ;; restore the state of scheduler before we start the test
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))

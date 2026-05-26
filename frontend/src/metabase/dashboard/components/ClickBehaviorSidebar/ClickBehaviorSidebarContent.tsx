@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { isTableDisplay } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,

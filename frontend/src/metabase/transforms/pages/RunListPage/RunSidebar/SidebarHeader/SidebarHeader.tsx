@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { TransformRun } from "metabase-types/api";
 
 import { getTransformRunName } from "../../../../utils";

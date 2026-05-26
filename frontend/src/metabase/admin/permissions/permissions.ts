@@ -12,26 +12,27 @@ import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
+  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
-import { Groups } from "metabase/entities/groups";
-import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
 import {
   combineReducers,
   createAction,
   createThunkAction,
-} from "metabase/utils/redux";
+} from "metabase/redux";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { CollectionsApi, PermissionsApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
@@ -42,6 +43,7 @@ import type {
   PermissionsGraph,
 } from "metabase-types/api";
 
+import { selectGroupList } from "./selectors/data-permissions/groups";
 import {
   DataPermission,
   DataPermissionType,
@@ -124,7 +126,7 @@ export const initializeCollectionPermissions = createThunkAction(
   (namespace) => async (dispatch) => {
     await Promise.all([
       dispatch(loadCollectionPermissions(namespace)),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -215,14 +217,20 @@ export const updateDataPermission = createThunkAction(
   }: UpdateDataPermissionParams) => {
     return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
       if (isDatabaseEntityId(entityId)) {
-        dispatch(
-          Tables.actions.fetchList({
-            dbId: entityId.databaseId,
+        // Fire-and-forget background refresh of the database's table metadata;
+        // the reducer below reads the current snapshot synchronously. Swallow
+        // rejections so a failed fetch doesn't surface as an unhandled
+        // promise rejection.
+        void entityCompatibleQuery(
+          {
+            id: entityId.databaseId,
             include_hidden: true,
             remove_inactive: true,
             skip_fields: true,
-          }),
-        );
+          },
+          dispatch,
+          databaseApi.endpoints.getDatabaseMetadata,
+        ).catch(() => undefined);
       }
 
       const metadata = getMetadataWithHiddenTables(getState());
@@ -256,7 +264,7 @@ export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
     const state = getState();
-    const allGroupIds = Object.keys(state.entities.groups);
+    const allGroupIds = selectGroupList(state).map((group) => String(group.id));
     const {
       originalDataPermissions,
       dataPermissions,
@@ -368,7 +376,7 @@ export const initializeTenantCollectionPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadTenantCollectionPermissions()),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -454,7 +462,7 @@ export const initializeTenantSpecificCollectionPermissions = createThunkAction(
   () => async (dispatch) => {
     await Promise.all([
       dispatch(loadTenantSpecificCollectionPermissions()),
-      dispatch(Groups.actions.fetchList()),
+      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
     ]);
   },
 );
@@ -583,10 +591,8 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -632,6 +638,17 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
         );
       }
 
+      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
+        return updatePermission(
+          state,
+          groupId,
+          entityId.databaseId,
+          DataPermission.WORKSPACES,
+          [],
+          value,
+        );
+      }
+
       if (
         permissionInfo.type === DataPermissionType.NATIVE &&
         PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -656,6 +673,14 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
+        state,
+        groupId,
+        entityId,
+        permissionInfo.permission,
+        value,
+      );
+
+      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,
@@ -714,10 +739,8 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(

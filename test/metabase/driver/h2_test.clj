@@ -1,4 +1,5 @@
 (ns metabase.driver.h2-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.h2-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -21,10 +22,38 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.datasets :as mtd]
+   [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; temporary hack to run all tests against both the old :h2 and new mbql5 :h2
+;; remove this once :h2 does mbql5 by default!
+(defn- test-driver [driver thunk]
+  (when (contains? (tx.env/test-drivers) driver)
+    (testing (str "\n" driver "\n")
+      (driver/with-driver (tx/the-driver-with-test-extensions driver)
+        (thunk))
+      ;; the above is the original definition of test-driver, but we add in
+      ;; this clause to avoid having to rewrite all the tests below twice:
+      (when (= driver :h2)
+        (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
+          (thunk))))))
+
+(use-fixtures :each (fn [f]
+                      ;; NB: because of test parallelism, this *will* affect other non-h2
+                      ;; tests, but the check above in the test-driver function will
+                      ;; prevent it from actually doing anything different in those tests.
+                      ;; The kondo ignore is the exemption: this `with-redefs` is
+                      ;; parallel-safe by construction (the redef target is a no-op
+                      ;; identity for h2, and the inner conditional in `test-driver`
+                      ;; prevents it from affecting non-h2 tests).
+                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+                      (with-redefs [mtd/-test-driver test-driver]
+                        (f))))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -392,8 +421,8 @@
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
             :errors {"RANKING" "This Ranking value already exists."}}
-           (with-redefs [h2.actions/constraint->column-names (fn [& _args]
-                                                               ["RANKING"])]
+           (mt/with-dynamic-fn-redefs [h2.actions/constraint->column-names (fn [& _args]
+                                                                             ["RANKING"])]
              (sql-jdbc.actions/maybe-parse-sql-error
               :h2 actions.error/violate-unique-constraint nil nil
               "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]"))))))

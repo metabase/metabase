@@ -90,6 +90,23 @@
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search")))))
 
+(deftest execute-all-function-attrs-test
+  (testing "function-attr returning a map merges its keys into the document"
+    (let [spec {:attrs {:temporal-info {:fn       (constantly {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"})
+                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
+      (is (= {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"}
+             (#'search.ingestion/execute-all-function-attrs spec {})))))
+
+  (testing "function-attr without :provides falls back to writing snake_case attr-key on non-map results"
+    (let [spec {:attrs {:native-query {:fn (constantly "SELECT 1")}}}]
+      (is (= {:native_query "SELECT 1"}
+             (#'search.ingestion/execute-all-function-attrs spec {})))))
+
+  (testing "function-attr with :provides skips writing when result is not a map"
+    (let [spec {:attrs {:temporal-info {:fn       (fn [_] (throw (ex-info "boom" {})))
+                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
+      (is (= {} (#'search.ingestion/execute-all-function-attrs spec {}))))))
+
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}

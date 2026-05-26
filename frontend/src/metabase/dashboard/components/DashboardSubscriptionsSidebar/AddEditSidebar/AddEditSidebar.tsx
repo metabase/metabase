@@ -1,5 +1,5 @@
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect } from "metabase/utils/redux";
 
 import { getParameters, getTabHiddenParameterSlugs } from "../../../selectors";
 

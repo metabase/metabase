@@ -324,6 +324,29 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
+    it("should localize schedule type in the delete-confirmation modal", () => {
+      createEmailSubscription();
+      H.sidebar().findByText("Emailed hourly").should("be.visible");
+
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
+      });
+      cy.reload();
+
+      H.dashboardHeader()
+        .findByLabelText("[zz] Move, trash, and more…")
+        .click();
+      H.popover().findByText("[zz] Subscriptions").click();
+      H.sidebar()
+        .findByText(/\[zz\] hourly/)
+        .click();
+      H.sidebar().findByText("[zz] Delete this subscription").click();
+
+      cy.findByTestId("delete-confirmation-modal-pulse")
+        .findByText("[zz] hourly")
+        .should("be.visible");
+    });
+
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 

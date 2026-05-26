@@ -3,7 +3,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { TransformHeader } from "../../components/TransformHeader";
 

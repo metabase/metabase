@@ -10,9 +10,9 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
@@ -45,7 +45,7 @@ export function SharedCombinedEmbeddingSettings({
         title={t`Enable guest embeds`}
         description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
-        actionButton={<NewEmbedButton />}
+        actionButton={<NewEmbedButton forceIsGuest />}
         sdk-setting-card
         testId="guest-embeds-setting-card"
       />

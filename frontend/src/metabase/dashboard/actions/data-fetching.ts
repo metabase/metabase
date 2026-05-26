@@ -4,7 +4,8 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
+import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -23,34 +24,34 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { addFields } from "metabase/redux/metadata";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
-  CardApi,
   DashboardApi,
   EmbedApi,
-  MetabaseApi,
   PublicApi,
   maybeUsePivotEndpoint,
+  runAdhocDatasetQuery,
+  shouldUsePivotEndpoint,
 } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardId,
@@ -280,6 +281,20 @@ export const fetchCardDataAction = createAsyncThunk<
           result: lastResult,
         };
       }
+
+      /**
+       * If a request for this card is already in-flight with the same parameters, let it finish rather than cancelling
+       * and restarting. This avoids re-executing slow queries (e.g. pivot tables) when switching dashboard tabs back
+       * and forth (#70534). When parameters differ (e.g. filter change), we fall through to the cancel-and-restart
+       * path below.
+       */
+      const inFlight = cardDataCancelDeferreds[`${dashcard.id},${card.id}`];
+      if (
+        inFlight &&
+        _.isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
+      ) {
+        return;
+      }
     }
 
     cancelFetchCardData(card.id, dashcard.id);
@@ -308,7 +323,12 @@ export const fetchCardDataAction = createAsyncThunk<
     }, DASHBOARD_SLOW_TIMEOUT);
 
     const deferred = defer();
-    setFetchCardDataCancel(card.id, dashcard.id, deferred);
+    setFetchCardDataCancel(
+      card.id,
+      dashcard.id,
+      deferred,
+      getDatasetQueryParams(datasetQuery),
+    );
 
     let cancelled = false;
     deferred.promise.then(() => {
@@ -320,18 +340,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled: deferred.promise,
     };
 
-    // make the actual request
-    if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
-        MetabaseApi.datasetEndpoint(
-          {
-            endpoint: datasetQuery.endpoint,
-            parameters: datasetQuery.parameters,
-          },
-          queryOptions,
-        ),
-      );
-    } else if (dashboardType === "public") {
+    if (dashboardType === "public") {
       result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,
@@ -371,11 +380,13 @@ export const fetchCardDataAction = createAsyncThunk<
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
+        runAdhocDatasetQuery(
+          dispatch,
           card,
           metadata,
-        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          deferred,
+        ),
       )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -394,28 +405,42 @@ export const fetchCardDataAction = createAsyncThunk<
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-      const endpoint = shouldUseCardQueryEndpoint
-        ? CardApi.query
-        : DashboardApi.cardQuery;
-
-      const requestBody = shouldUseCardQueryEndpoint
-        ? { cardId: card.id, ignore_cache: ignoreCache }
-        : {
-            dashboardId: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: datasetQuery.parameters,
-            ignore_cache: ignoreCache,
-            dashboard_id: dashcard.dashboard_id,
-            dashboard_load_id: dashboardLoadId,
-          };
-      result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          endpoint,
-          card,
-          metadata,
-        )(requestBody, queryOptions),
-      )) as Dataset | { error: unknown };
+      if (shouldUseCardQueryEndpoint) {
+        const cardQueryEndpoint = shouldUsePivotEndpoint(card, metadata)
+          ? cardApi.endpoints.getCardQueryPivot
+          : cardApi.endpoints.getCardQuery;
+        const queryAction = dispatch(
+          cardQueryEndpoint.initiate(
+            { cardId: card.id, ignore_cache: ignoreCache },
+            { forceRefetch: true },
+          ),
+        );
+        deferred.promise.then(() => queryAction.abort());
+        try {
+          result = (await fetchDataOrError(queryAction.unwrap())) as
+            | Dataset
+            | { error: unknown };
+        } finally {
+          queryAction.unsubscribe?.();
+        }
+      } else {
+        const requestBody = {
+          dashboardId: dashcard.dashboard_id,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          parameters: datasetQuery.parameters,
+          ignore_cache: ignoreCache,
+          dashboard_id: dashcard.dashboard_id,
+          dashboard_load_id: dashboardLoadId,
+        };
+        result = (await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            DashboardApi.cardQuery,
+            card,
+            metadata,
+          )(requestBody, queryOptions),
+        )) as Dataset | { error: unknown };
+      }
     }
 
     // If the request was not previously cancelled, then clear the defer for the card
@@ -526,10 +551,12 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
-      for (const id of loadingIds) {
-        const dashcard = getDashCardById(getState(), id);
-        dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
-      }
+      /**
+       * We intentionally do NOT cancel in-flight requests here. Each card's fetch (fetchCardDataAction) handles its
+       * own deduplication: it returns early when an identical request is already in-flight and cancels stale requests
+       * when parameters change. Batch-cancelling here would abort nearly-complete requests on tab switch, forcing
+       * slow queries (e.g. pivots) to restart from scratch. (#70534)
+       */
 
       dispatch(
         fetchDashboardCardDataAction({
@@ -611,26 +638,34 @@ export const cancelFetchDashboardCardData = createThunkAction(
   },
 );
 
+type InFlightEntry = {
+  deferred: Deferred;
+  queryParams: ReturnType<typeof getDatasetQueryParams>;
+};
+
 const cardDataCancelDeferreds: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
-  Deferred | null
+  InFlightEntry | null
 > = {};
 
 function setFetchCardDataCancel(
   card_id: DashboardCard["card_id"],
   dashcard_id: DashCardId,
   deferred: Deferred | null,
+  queryParams?: ReturnType<typeof getDatasetQueryParams>,
 ) {
-  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred;
+  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred
+    ? { deferred, queryParams: queryParams! }
+    : null;
 }
 
 // machinery to support query cancellation
 export const cancelFetchCardData = createAction(
   CANCEL_FETCH_CARD_DATA,
   (card_id, dashcard_id) => {
-    const deferred = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
-    if (deferred) {
-      deferred.resolve();
+    const entry = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
+    if (entry) {
+      entry.deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
     }
     return { payload: { dashcard_id, card_id } };
@@ -795,7 +830,11 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(addFields(Object.values(result.param_fields).flat()));
+        await dispatch(
+          updateMetadata(Object.values(result.param_fields).flat(), [
+            FieldSchema,
+          ]),
+        );
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
@@ -807,6 +846,7 @@ export const fetchDashboard = createAsyncThunk(
         result.param_fields,
         metadata,
       );
+
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(

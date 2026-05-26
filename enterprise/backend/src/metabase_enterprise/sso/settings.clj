@@ -7,7 +7,6 @@
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
-   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -431,7 +430,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
-  (SAML/JWT) or `/auth/sso/slack-connect` (Slack Connect) for authorization rather than the normal login form or Google Auth button."
+  (SAML/JWT) for authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured) (sso-settings/slack-connect-enabled))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured))))

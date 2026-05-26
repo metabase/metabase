@@ -77,10 +77,7 @@
 }
 
 .sendButton {
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  min-width: unset;
+  color: var(--mb-color-background-primary);
 
   &:disabled,
   &:disabled:hover {

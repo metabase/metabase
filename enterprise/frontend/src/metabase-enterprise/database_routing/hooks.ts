@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 

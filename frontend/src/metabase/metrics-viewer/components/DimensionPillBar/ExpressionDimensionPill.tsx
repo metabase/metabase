@@ -27,7 +27,8 @@ import type {
 } from "./DimensionPillBar";
 import S from "./ExpressionDimensionPill.module.css";
 
-const LIST_WIDTH = "20rem";
+const SINGLE_METRIC_LIST_WIDTH = "15rem";
+const MULTI_METRIC_LIST_WIDTH = "20rem";
 
 interface ExpressionDimensionPillProps {
   item: ExpressionDimensionItem;
@@ -115,7 +116,7 @@ export function ExpressionDimensionPill({
       <Popover.Dropdown
         px={0}
         py="xs"
-        w={LIST_WIDTH}
+        w={isSingleMetric ? SINGLE_METRIC_LIST_WIDTH : MULTI_METRIC_LIST_WIDTH}
         mah={300}
         className={S.dropdown}
       >
@@ -175,7 +176,7 @@ function SingleMetricContent({
       itemIsSelected={itemIsSelected}
       alwaysExpanded
       maxHeight={Infinity}
-      width={240}
+      width={SINGLE_METRIC_LIST_WIDTH}
     />
   );
 }

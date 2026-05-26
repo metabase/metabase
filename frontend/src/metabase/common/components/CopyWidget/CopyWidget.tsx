@@ -6,8 +6,10 @@ import CS from "metabase/css/core/index.css";
 
 import { CopyWidgetButton } from "./CopyWidget.styled";
 
-interface CopyWidgetProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "style"> {
+interface CopyWidgetProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "onChange" | "style"
+> {
   value: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   style?: CSSProperties;

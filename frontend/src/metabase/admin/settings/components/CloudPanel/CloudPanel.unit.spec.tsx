@@ -133,11 +133,13 @@ describe("CloudPanel", () => {
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
-    await expectInitState();
-    await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
+    expect(
+      screen.queryByRole("heading", { name: "Migrate to Metabase Cloud" }),
+    ).not.toBeInTheDocument();
 
-    await expectStartConfirmationModal();
-    await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Restart the process/ }),
+    );
 
     fetchMockCloudMigrationGetSequence([
       { ...INIT_RESPONSE, id: 2 },

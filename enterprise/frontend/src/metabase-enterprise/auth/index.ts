@@ -81,9 +81,9 @@ export function initializePlugin() {
     const passwordUserFunction = (user: User) =>
       Boolean(
         user.sso_source !== "google" &&
-          user.sso_source !== "ldap" &&
-          user.sso_source !== "oidc" &&
-          MetabaseSettings.isPasswordLoginEnabled(),
+        user.sso_source !== "ldap" &&
+        user.sso_source !== "oidc" &&
+        MetabaseSettings.isPasswordLoginEnabled(),
       );
 
     PLUGIN_IS_PASSWORD_USER.push(passwordUserFunction);

@@ -10,7 +10,7 @@ import {
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";

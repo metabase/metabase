@@ -11,11 +11,10 @@ import {
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserAttributes } from "metabase/selectors/user";
-import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -30,15 +29,6 @@ type EntityObject = {
 };
 
 type LinkedEntityTarget = {
-  entity: {
-    name: string;
-    selectors: {
-      getObject: (
-        state: State,
-        opts: { entityId: number | string | undefined },
-      ) => unknown;
-    };
-  };
   entityType: "question" | "dashboard";
   entityId: number | string | undefined;
 };
@@ -48,11 +38,10 @@ function isEntityObject(value: unknown): value is EntityObject {
 }
 
 function resolveLinkedObject(target: LinkedEntityTarget, state: State) {
-  const object = target.entity.selectors.getObject(state, {
-    entityId: target.entityId,
-  });
-
   if (target.entityType === "question") {
+    const object = Questions.selectors.getObject(state, {
+      entityId: target.entityId,
+    });
     if (object instanceof Question) {
       const card = object.card();
       return isEntityObject(card) ? card : null;
@@ -60,7 +49,9 @@ function resolveLinkedObject(target: LinkedEntityTarget, state: State) {
     return null;
   }
 
-  return isEntityObject(object) ? object : null;
+  const dashboard =
+    target.entityId != null ? state.entities.dashboards[target.entityId] : null;
+  return isEntityObject(dashboard) ? dashboard : null;
 }
 
 function getEntitiesByTypeAndId(
@@ -76,7 +67,8 @@ function getEntitiesByTypeAndId(
         return acc;
       }
 
-      const entityName = target.entity.name;
+      const entityName =
+        target.entityType === "question" ? "questions" : "dashboards";
       const bucket = acc[entityName] ?? {};
       bucket[linkedObject.id] = linkedObject;
       acc[entityName] = bucket;
@@ -163,7 +155,6 @@ function mapLinkedEntityToEntityQuery({
   targetId: EntityCustomDestinationClickBehavior["targetId"];
 }) {
   return {
-    entity: linkType === "question" ? Questions : Dashboards,
     entityType: linkType,
     entityId: targetId,
   };

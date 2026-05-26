@@ -7,7 +7,7 @@ export const MetricsViewer = {
     return cy.findByTestId("metrics-viewer-search-input");
   },
   searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
-  searchResults: () => cy.findByTestId("metrics-search-results"),
+  searchResults: () => cy.findByTestId("mini-picker"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),

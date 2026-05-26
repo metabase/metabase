@@ -15,10 +15,10 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 

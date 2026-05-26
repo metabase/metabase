@@ -41,21 +41,27 @@ describe("MetabotCustomizationPage", () => {
   it("shows default icon state when no custom icon is set", async () => {
     setup({ metabotIcon: "metabot" });
 
-    await screen.findByText("Metabot's icon");
+    await screen.findByText("AI agent's icon");
     expect(
       screen.queryByRole("button", { name: /Remove custom icon/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Metabot illustrations")).not.toBeInTheDocument();
+    expect(
+      screen.queryByAltText("Metabot illustration preview"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the remove button and illustrations toggle when a custom icon is set", async () => {
     setup({ metabotIcon: "data:image/png;base64,abc123" });
 
-    await screen.findByText("Metabot's icon");
+    await screen.findByText("AI agent's icon");
     expect(
       screen.getByRole("button", { name: /Remove custom icon/ }),
     ).toBeInTheDocument();
     expect(screen.getByText("Metabot illustrations")).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Metabot illustration preview"),
+    ).toBeInTheDocument();
   });
 
   it("shows the custom icon preview image when a custom icon is set", async () => {
