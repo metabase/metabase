@@ -425,7 +425,9 @@ describe("issue 74433", () => {
   it("table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)", () => {
     cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
 
-    cy.findByRole("heading", { name: LONG_TABLE_NAME }).realHover();
+    // Browse cards actually have a <Title> as the child of the <Ellipsified> component,
+    // so we need to target the parent for the hover
+    cy.findByRole("heading", { name: LONG_TABLE_NAME }).parent().realHover();
 
     H.tooltip()
       .should("be.visible")
