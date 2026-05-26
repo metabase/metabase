@@ -576,15 +576,26 @@
     s
     (str (subs s 0 limit) "…")))
 
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  String bodies are sliced to `limit` before printing; collections render under
+  `*print-length*`/`*print-level*` bounds. Callers still [[truncate-to]] the printed result."
+  [body limit]
+  (binding [*print-length* 100
+            *print-level*  10]
+    (pr-str (cond-> body
+              (string? body) (truncate-to limit)))))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
   (truncate-to s max-body-preview-chars))
 
-(defn- body-for-log
-  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+(defn body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]].
+  Public so the agent loop's error logging bounds the body the same way."
   [body]
-  (truncate-to (pr-str body) max-body-log-chars))
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
@@ -607,7 +618,7 @@
         ;; the user-facing exception message should.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [capped (truncate-to-preview-limit (pr-str body))]
+                        (let [capped (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))]
                           (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
                           capped)))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
