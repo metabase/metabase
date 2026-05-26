@@ -150,7 +150,8 @@
                       (check-database-feature new)
                       (when (contains? body :target)
                         (validate-target-schema! new))
-                      (validate-incremental-column-type! new)
+                      (when (contains? body :source)
+                        (validate-incremental-column-type! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
