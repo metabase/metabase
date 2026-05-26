@@ -36112,7 +36112,7 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions/regenerate" : {
       "post" : {
-        "description" : "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.",
+        "description" : "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.\n   Returns a discriminated union on `:status`; see [[metabot.suggested-prompts/generate-sample-prompts]].\n   The managed-free-limit case surfaces as a 402, not a union variant.",
         "operationId" : "post-api-metabot-metabot-id-prompt-suggestions-regenerate",
         "parameters" : [ {
           "in" : "path",
