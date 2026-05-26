@@ -136,71 +136,63 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
           });
       };
 
+      const openFromAdminGuestEmbeds = () => {
+        cy.visit("/admin/embedding/guest");
+        cy.findAllByTestId("guest-embeds-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+      };
+
       const openFromSharingMenu = () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.openSharingMenu("Embed");
       };
 
-      describe("when JWT SSO is configured", () => {
-        beforeEach(() => {
-          enableJwtAuth();
+      const assertCheckedAuth = (mode: "sso" | "guest") => {
+        const ssoLabel = "Metabase account (SSO)";
+        const guestLabel = "Guest";
+        getEmbedSidebar().within(() => {
+          cy.findByLabelText(mode === "sso" ? ssoLabel : guestLabel).should(
+            "be.checked",
+          );
+          cy.findByLabelText(mode === "sso" ? guestLabel : ssoLabel).should(
+            "not.be.checked",
+          );
         });
+      };
 
-        it("defaults to SSO from the command palette (EMB-1783)", () => {
-          openFromCommandPalette();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
-            cy.findByLabelText("Guest").should("not.be.checked");
-          });
-        });
+      it("defaults to SSO from non-guest entry points when JWT SSO is configured (EMB-1783)", () => {
+        enableJwtAuth();
 
-        it("defaults to SSO from admin → Embedding → New embed", () => {
-          openFromAdminEmbedding();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
-            cy.findByLabelText("Guest").should("not.be.checked");
-          });
-        });
+        openFromCommandPalette();
+        assertCheckedAuth("sso");
 
-        it("defaults to SSO from a resource's sharing menu", () => {
-          openFromSharingMenu();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Metabase account (SSO)").should("be.checked");
-            cy.findByLabelText("Guest").should("not.be.checked");
-          });
-        });
+        openFromAdminEmbedding();
+        assertCheckedAuth("sso");
+
+        openFromSharingMenu();
+        assertCheckedAuth("sso");
+
+        // The Guest embeds admin section is intentionally guest-only and
+        // forces guest mode regardless of SSO configuration.
+        openFromAdminGuestEmbeds();
+        assertCheckedAuth("guest");
       });
 
-      describe("when SSO is not configured", () => {
-        it("defaults to Guest from the command palette", () => {
-          openFromCommandPalette();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Guest").should("be.checked");
-            cy.findByLabelText("Metabase account (SSO)").should(
-              "not.be.checked",
-            );
-          });
-        });
+      it("defaults to Guest from all entry points when SSO is not configured", () => {
+        openFromCommandPalette();
+        assertCheckedAuth("guest");
 
-        it("defaults to Guest from admin → Embedding → New embed", () => {
-          openFromAdminEmbedding();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Guest").should("be.checked");
-            cy.findByLabelText("Metabase account (SSO)").should(
-              "not.be.checked",
-            );
-          });
-        });
+        openFromAdminEmbedding();
+        assertCheckedAuth("guest");
 
-        it("defaults to Guest from a resource's sharing menu", () => {
-          openFromSharingMenu();
-          getEmbedSidebar().within(() => {
-            cy.findByLabelText("Guest").should("be.checked");
-            cy.findByLabelText("Metabase account (SSO)").should(
-              "not.be.checked",
-            );
-          });
-        });
+        openFromSharingMenu();
+        assertCheckedAuth("guest");
+
+        openFromAdminGuestEmbeds();
+        assertCheckedAuth("guest");
       });
     });
 
