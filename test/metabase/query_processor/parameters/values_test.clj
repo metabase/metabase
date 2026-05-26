@@ -912,7 +912,6 @@
                                       :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                       :display-name "CreatedAt"
                                       :widget-type  :date/all-options}}]
-
       (testing "with no parameters given, no value"
         (is (=? {"createdAt" {:field {:lib/type :metadata/column}
                               :value lib/parsed-param-no-value-placeholder}}
