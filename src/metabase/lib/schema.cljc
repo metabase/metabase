@@ -87,13 +87,7 @@
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
-     [:native {:optional true} [:and
-                                some?
-                                [:fn
-                                 {:error/message ":native should not be a map with :query -- this likely means a legacy inner query was converted incorrectly"}
-                                 (fn [x]
-                                   (or (not (map? x))
-                                       (not (:query x))))]]]
+     [:native {:optional true} some?]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
