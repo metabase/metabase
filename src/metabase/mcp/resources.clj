@@ -36,7 +36,7 @@
 ;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
 ;; it, so tests install a minimal inline template via `with-fallback-template`.
 (def ^:private test-fallback-template
-  (str "<!doctype html><html><body><script>"
+  (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
        "sessionToken: {{{sessionToken}}}"
@@ -130,6 +130,8 @@
                           Claude validates this against its own namespace
                           (`*.claudemcpcontent.com`) and rejects anything else,
                           so we emit it only for ChatGPT (gated by [[chatgpt-client?]]).
+   - `csp.baseUriDomains`  — hosts the iframe may use in its document `<base>` tag
+                              (relative bundle assets resolve against the Metabase instance)
    - `csp.connectDomains`  — hosts the iframe may XHR/fetch/WebSocket to
                               (the embedded SDK calls back to this Metabase instance)
    - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
@@ -139,7 +141,8 @@
    it out narrows the CSP for security review."
   [resource]
   (let [url (site-origin)]
-    {:ui (cond-> {:csp {:connectDomains  [url]
+    {:ui (cond-> {:csp {:baseUriDomains [url]
+                        :connectDomains  [url]
                         :resourceDomains (resource-domains url)}}
            (contains? resource :prefersBorder)
            (assoc :prefersBorder (:prefersBorder resource))

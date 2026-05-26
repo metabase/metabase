@@ -1,5 +1,6 @@
 (ns metabase.mcp.resources-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
@@ -109,13 +110,15 @@
           (with-redefs [config/is-dev? false]
             (let [ui-meta (-> (read-ui) :contents first :_meta :ui)]
               (is (=? {:prefersBorder true
-                       :csp           {:connectDomains  [origin]
+                       :csp           {:baseUriDomains [origin]
+                                       :connectDomains  [origin]
                                        :resourceDomains [origin]}}
                       ui-meta))
               (is (not (contains? ui-meta :domain))))))
         (testing "development metadata allows resources from the frontend dev server"
           (with-redefs [config/is-dev? true]
-            (is (=? {:csp {:resourceDomains [origin "http://localhost:8080"]}}
+            (is (=? {:csp {:baseUriDomains [origin]
+                           :resourceDomains [origin "http://localhost:8080"]}}
                     (-> (read-ui) :contents first :_meta :ui)))))
         (testing "non-ChatGPT User-Agent → :domain suppressed"
           (with-redefs [config/is-dev? false]
@@ -130,6 +133,17 @@
                                    :mimeType "text/html;profile=mcp-app"
                                    :_meta    {:ui {:prefersBorder true
                                                    :domain        origin
-                                                   :csp           {:connectDomains  [origin]
+                                                   :csp           {:baseUriDomains [origin]
+                                                                   :connectDomains  [origin]
                                                                    :resourceDomains [origin]}}}}]}
                       (read-ui))))))))))
+
+(deftest embed-mcp-template-base-url-test
+  (testing "the MCP iframe document resolves relative bundle assets from the Metabase instance"
+    (let [site-url "https://metabase.example.com/sub/path"
+          html     (mcp.resources/render-embed-mcp-template
+                    {:instanceUrl    "\"https://metabase.example.com/sub/path\""
+                     :instanceUrlRaw site-url
+                     :sessionToken   nil
+                     :mcpSessionId   nil})]
+      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\"")))))
