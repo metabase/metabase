@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useCallback, useState } from "react";
 
-import { DEFAULT_DATE_STYLE } from "metabase/lib/formatting/datetime-utils";
 import { DateInput } from "metabase/ui";
+import { DEFAULT_DATE_STYLE } from "metabase/utils/formatting/datetime-utils";
 
 import type { TableActionInputSharedProps } from "./types";
 import {
@@ -9,10 +9,7 @@ import {
   useDateValueWithoutTimezone,
 } from "./use-date-value-without-timezone";
 
-export type TableActionInputDateProps = Omit<
-  TableActionInputSharedProps,
-  "onChange"
-> & {
+export type TableActionInputDateProps = TableActionInputSharedProps & {
   dateStyle?: string;
   classNames?: {
     wrapper?: string;
@@ -26,6 +23,7 @@ export const TableActionInputDate = ({
   inputProps,
   initialValue,
   classNames,
+  onChange,
   onBlur,
   onEscape,
   onEnter,
@@ -42,9 +40,12 @@ export const TableActionInputDate = ({
   const handleChange = useCallback(
     (value: string | null) => {
       setValue(value);
-      onEnter?.(restoreTimezone(value));
+      setFocused(false);
+      const restored = restoreTimezone(value);
+      onChange?.(restored);
+      onBlur?.(restored);
     },
-    [restoreTimezone, onEnter],
+    [restoreTimezone, onChange, onBlur],
   );
 
   const handleFocus = useCallback(() => {
@@ -76,11 +77,11 @@ export const TableActionInputDate = ({
         wrapper: classNames?.wrapper,
         input: classNames?.dateTextInputElement,
       }}
-      // Keeps popover mounted when focused to improve time editing UX
       popoverProps={{ opened: isFocused }}
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
+      onClick={handleFocus}
       onKeyUp={handleKeyUp}
       {...inputProps}
     />

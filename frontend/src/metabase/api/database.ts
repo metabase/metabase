@@ -1,15 +1,20 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/redux/metadata";
+import {
+  DatabaseSchema,
+  FieldSchema,
+  SchemaSchema,
+  TableSchema,
+} from "metabase/schema";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
-  CheckWorkspacePermissionsRequest,
-  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
+  DatabaseUsageInfo,
   Field,
   GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
@@ -39,6 +44,13 @@ import {
   tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+
+const toNormalizedSchemas = (dbId: DatabaseId, schemaNames: SchemaName[]) =>
+  schemaNames.map((schemaName) => ({
+    id: generateSchemaId(dbId, schemaName),
+    name: schemaName,
+    database: { id: dbId },
+  }));
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -95,6 +107,13 @@ export const databaseApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, DatabaseSchema)),
         ),
     }),
+    getDatabaseUsageInfo: builder.query<DatabaseUsageInfo, DatabaseId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/usage_info`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
+    }),
     getDatabaseSettingsAvailable: builder.query<
       GetDatabaseSettingsAvailableResponse,
       DatabaseId
@@ -118,6 +137,14 @@ export const databaseApi = Api.injectEndpoints({
         listTag("schema"),
         ...schemas.map((schema) => idTag("schema", schema)),
       ],
+      onQueryStarted: ({ id }, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (schemaNames) =>
+          dispatch(
+            updateMetadata(toNormalizedSchemas(id, schemaNames), [
+              SchemaSchema,
+            ]),
+          ),
+        ),
     }),
     listSyncableDatabaseSchemas: builder.query<SchemaName[], DatabaseId>({
       query: (id) => ({
@@ -128,6 +155,14 @@ export const databaseApi = Api.injectEndpoints({
         listTag("schema"),
         ...schemas.map((schema) => idTag("schema", schema)),
       ],
+      onQueryStarted: (id, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (schemaNames) =>
+          dispatch(
+            updateMetadata(toNormalizedSchemas(id, schemaNames), [
+              SchemaSchema,
+            ]),
+          ),
+        ),
     }),
     listDatabaseSchemaTables: builder.query<
       Table[],
@@ -277,18 +312,6 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    checkWorkspacePermissions: builder.mutation<
-      CheckWorkspacePermissionsResponse,
-      CheckWorkspacePermissionsRequest
-    >({
-      query: ({ id, cached = true }) => ({
-        method: "POST",
-        url: `/api/database/${id}/permission/workspace/check`,
-        body: { cached },
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("database", id)]),
-    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -328,6 +351,7 @@ export const {
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
+  useGetDatabaseUsageInfoQuery,
   useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,
@@ -346,7 +370,6 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
-  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,

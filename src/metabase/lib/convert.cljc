@@ -445,7 +445,7 @@
 
 (defmethod ->mbql5 ::string-comparison
   [[tag opts & args :as clause]]
-  (if (> (count args) 2)
+  (if (or (> (count args) 2) (map? opts))
     ;; Multi-arg, MBQL 5 style: [tag {opts...} x y z ...]
     (lib.options/ensure-uuid (into [tag opts] (map ->mbql5 args)))
     ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
@@ -766,7 +766,7 @@
                (seq inner-query) (assoc query-type inner-query)
                (seq parameters)  (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
+      (throw (ex-info (lib.util/format "Error converting MBQL 5 query to legacy MBQL query: %s" (ex-message e))
                       {:query query}
                       e)))))
 

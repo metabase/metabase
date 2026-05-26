@@ -8,7 +8,7 @@ on:
       - unlabeled
       - synchronize
     paths:
-      - src/metabase/lib/js.cljs
+      - src/metabase/utils/js.cljs
 jobs:
   mbql-library-changelog-check:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -19,7 +19,7 @@ jobs:
       #     github-token: '${{ secrets.GITHUB_TOKEN }}'
       #     valid-labels: '.metabase-lib/no-change'
       #     disable-reviews: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check for updated MBQL library changelog
         run: |
           if [[ $(git show HEAD -- docs/developers-guide/mbql-library-changelog.md) ]]; then

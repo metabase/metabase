@@ -1,5 +1,6 @@
 import * as entitiesMap from "metabase/entities";
-import { combineEntities } from "metabase/lib/entities";
+import { tablesReducer } from "metabase/entities/tables-reducer";
+import { combineEntities } from "metabase/entities/utils";
 import { PLUGIN_ENTITIES } from "metabase/plugins";
 
 const entitiesArray = Object.values({
@@ -7,8 +8,10 @@ const entitiesArray = Object.values({
   ...PLUGIN_ENTITIES.entities,
 });
 
-export const { entities, reducer, requestsReducer } =
-  combineEntities(entitiesArray);
+export const { entities, reducer, requestsReducer } = combineEntities(
+  entitiesArray,
+  { tables: tablesReducer },
+);
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default reducer;
 

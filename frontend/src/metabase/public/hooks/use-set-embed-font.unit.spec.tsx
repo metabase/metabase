@@ -2,11 +2,11 @@ import { renderHook } from "@testing-library/react";
 import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { EmbedState } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
-import type { EmbedState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useSetEmbedFont } from "./use-set-embed-font";
 

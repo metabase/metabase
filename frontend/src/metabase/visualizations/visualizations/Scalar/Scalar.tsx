@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Tooltip } from "metabase/ui";
+import { Stack, Text, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -70,9 +70,7 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      get section() {
-        return t`Formatting`;
-      },
+      getSection: () => t`Formatting`,
       get title() {
         return t`Field to show`;
       },
@@ -88,9 +86,7 @@ export class Scalar extends Component<
       ]) => cols.length < 2,
     }),
     "scalar.segments": {
-      get section() {
-        return t`Conditional colors`;
-      },
+      getSection: () => t`Conditional colors`,
       getDefault() {
         return [];
       },
@@ -117,6 +113,16 @@ export class Scalar extends Component<
       ],
       readDependencies: ["scalar.field"],
     }),
+    // used by metrics viewer
+    "scalar.label": {
+      getHidden: () => true,
+      getDefault: () => undefined,
+    },
+    // used by metrics viewer
+    "scalar.sublabel": {
+      getHidden: () => true,
+      getDefault: () => undefined,
+    },
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
@@ -214,7 +220,11 @@ export class Scalar extends Component<
       formatOptions,
     );
 
-    const isClickable = onVisualizationClick != null;
+    const label = settings["scalar.label"];
+    const sublabel = settings["scalar.sublabel"];
+    const isMetricsViewer = label !== undefined;
+
+    const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
     const handleClick = () => {
       if (this._scalar == null) {
@@ -253,12 +263,15 @@ export class Scalar extends Component<
             py="xs"
             disabled={!tooltipContent}
           >
-            <Box
+            <Stack
               onClick={handleClick}
               ref={(scalar) => (this._scalar = scalar)}
+              align="center"
+              gap={0}
             >
               <ScalarValue
                 color={color}
+                disableHover={isMetricsViewer}
                 fontFamily={fontFamily}
                 gridSize={gridSize}
                 height={Math.max(height - PADDING * 2, 0)}
@@ -266,7 +279,23 @@ export class Scalar extends Component<
                 value={displayValue as string}
                 width={Math.max(width - PADDING, 0)}
               />
-            </Box>
+              {label && (
+                <Text fz="14px" lh="16px" c="text-primary" mt="md" ta="center">
+                  {label}
+                </Text>
+              )}
+              {sublabel && (
+                <Text
+                  fz="12px"
+                  lh="16px"
+                  c="text-secondary"
+                  mt="xs"
+                  ta="center"
+                >
+                  {sublabel}
+                </Text>
+              )}
+            </Stack>
           </Tooltip>
         </ScalarValueContainer>
       </ScalarWrapper>

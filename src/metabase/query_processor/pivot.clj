@@ -379,7 +379,7 @@
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
                                           (lib-be/application-database-metadata-provider (:database query)))
-        mlv2-query                    (lib/query metadata-provider query)
+        mbql5-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
                                                            (cond-> col
@@ -389,12 +389,12 @@
                                                              ;; match a column that has a join-alias but whose source is a
                                                              ;; model
                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
-                                            (concat (lib/breakouts-metadata mlv2-query)
-                                                    (lib/aggregations-metadata mlv2-query)))
+                                            (concat (lib/breakouts-metadata mbql5-query)
+                                                    (lib/aggregations-metadata mbql5-query)))
         index-in-breakouts            (fn index-in-breakouts [legacy-ref]
                                         (try
                                           (::idx (lib.equality/find-column-for-legacy-ref
-                                                  mlv2-query
+                                                  mbql5-query
                                                   -1
                                                   legacy-ref
                                                   breakouts))
@@ -515,6 +515,8 @@
            query       (-> query
                            (assoc-in [:middleware :pivot-options] pivot-opts)
                            (assoc-in [:constraints :max-results] pivot-limit)
+                           (cond-> (get-in query [:constraints :max-results-bare-rows])
+                             (update-in [:constraints :max-results-bare-rows] min pivot-limit))
                            add-canonical-col-info)
            all-queries (generate-queries query pivot-opts)]
        (process-multiple-queries all-queries rff pivot-limit)))))

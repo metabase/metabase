@@ -12,15 +12,15 @@ import {
   getEntityTypeFromCardType,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
-import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
 import MoveCardToast from "./MoveCardToast";
@@ -82,7 +82,6 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         dispatch(
           addUndo({
             message: <MoveCardToast card={card} destination={destination} />,
-            undo: false,
           }),
         );
 
@@ -169,7 +168,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={card.dashboard_id} />
+                <DashboardName key="name" id={card.dashboard_id} />
               </>
             )}?`}
           </Title>
@@ -220,7 +219,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={card.dashboard_id} />
+                <DashboardName key="name" id={card.dashboard_id} />
               </>
             )}`}
           </Title>

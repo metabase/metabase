@@ -23,8 +23,8 @@
   (.-dataset_query (current-card)))
 
 (defn current-query
-  "Gets the MLv2 query for the currently loaded question.
+  "Gets the MBQL 5 query for the currently loaded question.
 
-  Hack: This relies on a dev-mode-only global property that's set whenever a Question object is converted to MLv2."
+  Hack: This relies on a dev-mode-only global property that's set whenever a Question object is converted to Lib/MBQL 5."
   []
-  (.-__MLv2_query js/window))
+  (.-__lib_query js/window))

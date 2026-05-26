@@ -35,7 +35,6 @@ const HeadingViz: VisualizationDefinition = {
       dashboard: false,
     },
     text: {
-      value: "",
       getDefault: () => "",
     },
     "dashcard.background": {

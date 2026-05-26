@@ -1,0 +1,1 @@
+export { MetabotUpsellPage } from "./MetabotUpsellPage";

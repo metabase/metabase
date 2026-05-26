@@ -1,11 +1,11 @@
-import type { WrappedResult } from "metabase/search/types";
 import { Group } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import { InfoTextAssetLink } from "./InfoTextAssetLink";
 import { InfoTextEditedInfo } from "./InfoTextEditedInfo";
 
 type InfoTextProps = {
-  result: WrappedResult;
+  result: SearchResult;
   isCompact?: boolean;
   showLinks?: boolean;
 };

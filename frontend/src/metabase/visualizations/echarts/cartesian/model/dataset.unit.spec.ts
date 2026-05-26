@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import { createMockSeriesModel } from "__support__/echarts";
-import { checkNumber } from "metabase/lib/types";
+import { checkNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,

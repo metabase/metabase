@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
@@ -47,12 +47,14 @@ const useDashboardRedirect = () => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [
-              updateUserSetting({
-                key: "dismissed-custom-dashboard-toast",
-                value: true,
-              }),
-            ],
+            action: () => {
+              dispatch(
+                updateUserSetting({
+                  key: "dismissed-custom-dashboard-toast",
+                  value: true,
+                }),
+              );
+            },
             actionLabel: t`Got it`,
             canDismiss: false,
           }),

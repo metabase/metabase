@@ -34,8 +34,8 @@ export type PythonTransformEditorProps = {
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
   onRun?: () => void;
 };
 
@@ -50,6 +50,7 @@ export type PythonTransformSourceValidationResult = {
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  shouldShowInspectTab: boolean;
   getPythonTransformsRoutes: () => ReactNode;
   getInspectorRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
@@ -72,6 +73,7 @@ export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
+  shouldShowInspectTab: false,
   getPythonTransformsRoutes: () => null,
   getInspectorRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),

@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 

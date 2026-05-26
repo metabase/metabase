@@ -7,8 +7,8 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal } from "metabase/ui";

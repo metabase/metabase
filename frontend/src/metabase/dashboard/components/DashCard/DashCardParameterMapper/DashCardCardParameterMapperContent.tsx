@@ -9,9 +9,8 @@ import {
   getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
-import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Ellipsified,
@@ -22,6 +21,10 @@ import {
   Tooltip,
   Transition,
 } from "metabase/ui";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import type Question from "metabase-lib/v1/Question";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {

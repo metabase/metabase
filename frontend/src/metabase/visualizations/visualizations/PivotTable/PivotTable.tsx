@@ -19,11 +19,13 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { sumArray } from "metabase/lib/arrays";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
+import { sumArray } from "metabase/utils/arrays";
+import { getCspNonce } from "metabase/utils/csp";
+import { getScrollBarSize } from "metabase/utils/dom";
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
@@ -37,7 +39,6 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { State } from "metabase-types/store";
 
 import {
   PivotTableRoot,
@@ -505,7 +506,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                 <div className={cx(CS.flex, CS.flexFull)}>
                   {/* left header */}
                   <div style={{ width: leftHeaderWidth }}>
-                    <AutoSizer disableWidth nonce={window.MetabaseNonce}>
+                    <AutoSizer disableWidth nonce={getCspNonce()}>
                       {() => (
                         <Collection
                           ref={leftHeaderRef}
@@ -543,7 +544,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                   </div>
                   {/* pivot table body */}
                   <div>
-                    <AutoSizer disableWidth nonce={window.MetabaseNonce}>
+                    <AutoSizer disableWidth nonce={getCspNonce()}>
                       {() => (
                         <Grid
                           aria-label={PIVOT_TABLE_BODY_LABEL}

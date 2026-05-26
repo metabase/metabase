@@ -17,7 +17,7 @@ dataset_query:
       - {}
     breakout:
     - - field
-      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, effective-type: type/DateTimeWithLocalTZ}
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: week}
       - [Internal Metabase Database, public, v_content, created_at]
     filters:
     - - =
@@ -42,7 +42,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_content, creator_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - Creator}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}

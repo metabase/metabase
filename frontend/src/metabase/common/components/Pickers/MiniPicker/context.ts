@@ -5,12 +5,18 @@ import {
   useContext,
 } from "react";
 
+import type { SearchRequest } from "metabase-types/api";
+
 import type {
   MiniPickerCollectionItem,
   MiniPickerFolderItem,
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "./types";
+
+export type MiniPickerSearchParams =
+  | Partial<SearchRequest>
+  | ((params: SearchRequest) => Partial<SearchRequest>);
 
 export interface MiniPickerContextValue {
   path: MiniPickerFolderItem[];
@@ -25,6 +31,11 @@ export interface MiniPickerContextValue {
   onBrowseAll?: () => void;
   libraryCollection?: MiniPickerCollectionItem;
   shouldShowLibrary?: boolean;
+  forceSearch?: boolean;
+  showSearchInput?: boolean;
+  searchInputPlaceholder?: string;
+  searchParams?: MiniPickerSearchParams;
+  onSearchResults?: (results: MiniPickerPickableItem[]) => void;
 }
 
 export const MiniPickerContext = createContext<

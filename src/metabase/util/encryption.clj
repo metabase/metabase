@@ -208,7 +208,7 @@
   (if (nil? b)
     false
     (u/ignore-exceptions
-      (when-let [byte-length (alength b)]
+      (let [byte-length (alength b)]
         (zero? (mod (- byte-length aes256-tag-length)
                     aes256-block-size))))))
 

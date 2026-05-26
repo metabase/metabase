@@ -1,11 +1,11 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { setLocalization } from "metabase/lib/i18n";
-import { createMockParameter } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { setLocalization } from "metabase/utils/i18n";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import FormattedParameterValue, {
   type FormattedParameterValueProps,
@@ -34,7 +34,7 @@ function setup({
 }
 
 describe("FormattedParameterValue", () => {
-  it("should render the custom label for a parameter value if it exists", () => {
+  it("renders the raw value for a list source without connected fields (remapping is delegated to the field widget)", () => {
     setup({
       value: "A",
       parameter: createMockParameter({
@@ -45,21 +45,10 @@ describe("FormattedParameterValue", () => {
       }),
     });
 
-    expect(screen.getByText("Custom Label")).toBeInTheDocument();
-  });
-
-  it("should render the custom label for a parameter value if does not exist", () => {
-    setup({
-      value: "B",
-      parameter: createMockParameter({
-        values_source_type: "static-list",
-        values_source_config: {
-          values: [["A", "Custom Label"], ["B"]],
-        },
-      }),
-    });
-
-    expect(screen.getByText("B")).toBeInTheDocument();
+    // Without connected fields the raw value is shown; the [value, label] pair
+    // is resolved by ParameterFieldWidgetValue through the remapping endpoint.
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.queryByText("Custom Label")).not.toBeInTheDocument();
   });
 
   it("should render the placeholder with truncation when there is no value", () => {

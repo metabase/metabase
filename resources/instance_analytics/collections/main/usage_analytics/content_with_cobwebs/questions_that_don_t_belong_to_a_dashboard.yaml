@@ -16,7 +16,7 @@ dataset_query:
     - - datetime-diff
       - {lib/expression-name: Days since last view}
       - - field
-        - {join-alias: Last content viewed at - Entity Qualified, base-type: type/DateTimeWithLocalTZ, lib/uuid: 44314192-a113-4b6b-b5ac-6ec1b774ce68}
+        - {base-type: type/DateTimeWithLocalTZ, join-alias: Last content viewed at - Entity Qualified, lib/uuid: 44314192-a113-4b6b-b5ac-6ec1b774ce68}
         - max
       - - now
         - {}
@@ -55,7 +55,7 @@ dataset_query:
     - - is-null
       - {}
       - - field
-        - {base-type: type/Integer, join-alias: Dashboard cards - Entity Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Dashboard cards - Entity Qualified}
         - [Internal Metabase Database, public, v_dashboardcard, entity_id]
     joins:
     - alias: Last content viewed at - Entity Qualified
@@ -66,7 +66,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Last content viewed at - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Last content viewed at - Entity Qualified}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
       fields: none
       stages:
@@ -82,7 +82,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Dashboard cards - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Dashboard cards - Entity Qualified}
           - [Internal Metabase Database, public, v_dashboardcard, card_qualified_id]
       fields: none
       stages:

@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.embed-test
   "Tests for /api/embed endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.embedding-rest.api.embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
@@ -178,8 +179,8 @@
   (with-embedding-enabled-and-new-secret-key!
     (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
                                              :params   {}}))]
-      (is #(re-matches #"Invalid input:.+value must be an integer greater than zero.+got.+8"
-                       (client/client :get 400 card-url))))))
+      (is (re-find #"Invalid input:.+value must be an integer greater than zero.+got.+8"
+                   (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
@@ -232,10 +233,10 @@
 
 (deftest parameters-should-include-legacy-template-tags
   (testing "parameters should get from both template-tags and card.parameters"
-     ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
-     ;; because doing such migration is costly.
-     ;; so there are cards where some parameters in template-tags does not exist in card.parameters
-     ;; that why we need to keep concat both of them then dedupe by id
+    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+    ;; because doing such migration is costly.
+    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+    ;; that why we need to keep concat both of them then dedupe by id
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-card [card (public-test/card-with-embedded-params)]
         (is (= [;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
@@ -246,13 +247,13 @@
                  :target ["variable" ["template-tag" "c"]],
                  :name "c",
                  :slug "c",
-                                    ;; order importance: the default from template-tag is in the final result
+                 ;; order importance: the default from template-tag is in the final result
                  :default "C TAG"
                  :required false
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
-                                    ;; the parameter id = "d" is in template-tags, but not card.parameters,
-                                    ;; when fetching card we should get it returned
+                ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                ;; when fetching card we should get it returned
                 {:id "d",
                  :type "date/single",
                  :target ["variable" ["template-tag" "d"]],
@@ -389,7 +390,7 @@
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
                 "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
                 "saved from one that had it -- see #9831 and #10399)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-card [card {:enable_embedding true
                                :dataset_query    (assoc (mt/mbql-query venues)
@@ -778,7 +779,7 @@
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "
                 "query constraints (#10399)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (assoc (mt/mbql-query venues)
@@ -828,7 +829,7 @@
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
   (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
                                        :card     {:dataset_query (assoc (mt/mbql-query venues)
@@ -1728,6 +1729,29 @@
                   value (first expected)
                   url   (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" value)]
               (is (= expected (client/client :get 200 url))))))))))
+
+(deftest dashboard-param-value-remapping-static-list-test
+  (testing "remapping endpoint returns [value label] for a numeric param backed by a static list"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard {dashboard-id :id}
+                     {:enable_embedding true
+                      :parameters       [{:name                 "Seats"
+                                          :slug                 "seats"
+                                          :id                   "seats-param"
+                                          :type                 :number/=
+                                          :values_source_type   "static-list"
+                                          :values_source_config {:values [["10" "Ten"]
+                                                                          ["20" "Twenty"]
+                                                                          "30"]}}]
+                      :embedding_params {:seats "enabled"}}]
+        (let [token (dash-token dashboard-id)
+              url   #(format "embed/dashboard/%s/params/%s/remapping?value=%s" token "seats-param" %)]
+          (testing "labeled value is returned"
+            (is (= ["20" "Twenty"] (client/client :get 200 (url "20")))))
+          (testing "unlabeled value is returned as a singleton"
+            (is (= ["30"] (client/client :get 200 (url "30")))))
+          (testing "value not in the list falls back to [value]"
+            (is (= ["999"] (client/client :get 200 (url "999"))))))))))
 
 (deftest card-param-value-remapping-test
   (let [param-static-list          "_STATIC_CATEGORY_"

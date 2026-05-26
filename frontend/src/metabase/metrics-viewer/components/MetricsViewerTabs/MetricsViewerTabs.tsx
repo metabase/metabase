@@ -71,6 +71,8 @@ export function MetricsViewerTabs({
     return null;
   }
 
+  const canAddScalarTab = !tabs.some((tab) => tab.type === "scalar");
+
   return (
     <Tabs
       value={activeTabId}
@@ -112,6 +114,7 @@ export function MetricsViewerTabs({
             sourceDataById={sourceDataById}
             hasMultipleSources={hasMultipleSources}
             onAddTab={onAddTab}
+            canAddScalarTab={canAddScalarTab}
           />
         )}
       </Tabs.List>

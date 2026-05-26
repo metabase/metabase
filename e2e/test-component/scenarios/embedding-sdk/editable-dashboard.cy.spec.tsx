@@ -12,7 +12,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 import type {
   ConcreteFieldReference,
   DashboardCard,
@@ -203,7 +203,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         name: "Date filter",
         slug: "filter-date",
         type: "date/all-options",
-        default: "2024-01-01~2024-12-31",
+        default: "2027-01-01~2027-12-31",
       };
       const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
         "field",

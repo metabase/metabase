@@ -1,0 +1,1190 @@
+## Drop all workspace tables and the workspace_permissions_status column on metabase_database.
+## The workspaces feature was removed; these tables and the column are no longer used.
+## Tables are dropped children-first to respect foreign-key dependencies.
+## Each drop has a rollback that recreates the table (or column) in its pre-drop state so
+## the schema is reversible.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:00
+      author: ranquild
+      comment: Drop workspace_merge_transform table
+      changes:
+        - dropTable:
+            tableName: workspace_merge_transform
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_merge_transform
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_merge_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: commit_message
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: merging_user_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_workspace_merge_id
+            columns:
+              - column:
+                  name: workspace_merge_id
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_transform_id
+            columns:
+              - column:
+                  name: transform_id
+        - createIndex:
+            tableName: workspace_merge_transform
+            indexName: idx_workspace_merge_transform_merging_user_id
+            columns:
+              - column:
+                  name: merging_user_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: workspace_merge_id
+            constraintName: fk_workspace_merge_transform_workspace_merge_id
+            referencedTableName: workspace_merge
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: transform_id
+            constraintName: fk_workspace_merge_transform_transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge_transform
+            baseColumnNames: merging_user_id
+            constraintName: fk_workspace_merge_transform_merging_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:10
+      author: ranquild
+      comment: Drop workspace_merge table
+      changes:
+        - dropTable:
+            tableName: workspace_merge
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_merge
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: commit_message
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_merge
+            indexName: idx_workspace_merge_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_merge
+            indexName: idx_workspace_merge_creator_id
+            columns:
+              - column:
+                  name: creator_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_merge_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_merge
+            baseColumnNames: creator_id
+            constraintName: fk_workspace_merge_creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:20
+      author: ranquild
+      comment: Drop workspace_input_transform table
+      changes:
+        - dropTable:
+            tableName: workspace_input_transform
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_input_transform
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_input_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_input_transform
+            indexName: idx_workspace_input_transform_input_id
+            columns:
+              - column:
+                  name: workspace_input_id
+        - createIndex:
+            tableName: workspace_input_transform
+            indexName: idx_workspace_input_transform_ws_ref
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: ref_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_transform
+            baseColumnNames: workspace_input_id
+            constraintName: fk_wit_workspace_input_id
+            referencedTableName: workspace_input
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_wit_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: workspace_input_transform
+            columnNames: workspace_input_id, workspace_id, ref_id, transform_version
+            constraintName: uq_workspace_input_transform_versioned
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:30
+      author: ranquild
+      comment: Drop workspace_output_external table
+      changes:
+        - dropTable:
+            tableName: workspace_output_external
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_output_external
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: global_table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: isolated_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_transform_id
+            columns:
+              - column:
+                  name: transform_id
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_global_table_id
+            columns:
+              - column:
+                  name: global_table_id
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_isolated_table_id
+            columns:
+              - column:
+                  name: isolated_table_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_output_external_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: transform_id
+            constraintName: fk_workspace_output_external_transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: global_table_id
+            constraintName: fk_workspace_output_external_global_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: isolated_table_id
+            constraintName: fk_workspace_output_external_isolated_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addUniqueConstraint:
+            tableName: workspace_output_external
+            columnNames: workspace_id, transform_id, graph_version
+            constraintName: uq_workspace_output_external_versioned
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:40
+      author: ranquild
+      comment: Drop workspace_input_external table
+      changes:
+        - dropTable:
+            tableName: workspace_input_external
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_input_external
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_input_external
+            indexName: idx_workspace_input_external_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_input_external
+            indexName: idx_workspace_input_external_table_id
+            columns:
+              - column:
+                  name: table_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_external_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_external_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addUniqueConstraint:
+            tableName: workspace_input_external
+            columnNames: workspace_id, db_id, schema, table, graph_version
+            constraintName: uq_workspace_input_external_versioned
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:50
+      author: ranquild
+      comment: Drop workspace_output table
+      changes:
+        - dropTable:
+            tableName: workspace_output
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: global_table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_table
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: isolated_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_ref_id
+            columns:
+              - column:
+                  name: ref_id
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_global_table_id
+            columns:
+              - column:
+                  name: global_table_id
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_isolated_table_id
+            columns:
+              - column:
+                  name: isolated_table_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_output_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: workspace_id, ref_id
+            constraintName: fk_workspace_output_ref_id
+            referencedTableName: workspace_transform
+            referencedColumnNames: workspace_id, ref_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: global_table_id
+            constraintName: fk_workspace_output_global_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: isolated_table_id
+            constraintName: fk_workspace_output_isolated_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addUniqueConstraint:
+            tableName: workspace_output
+            columnNames: workspace_id, ref_id, transform_version
+            constraintName: uq_workspace_output_versioned
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:00
+      author: ranquild
+      comment: Drop workspace_input table
+      changes:
+        - dropTable:
+            tableName: workspace_input
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_table_id
+            columns:
+              - column:
+                  name: table_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_input_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_table
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:10
+      author: ranquild
+      comment: Drop workspace_transform table
+      changes:
+        - dropTable:
+            tableName: workspace_transform
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: checked_out_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_run_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_run_message
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_run_status
+                  type: varchar(20)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: definition_changed
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  type: bigint
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_data_changed
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: workspace_transform
+            columnNames: workspace_id, ref_id
+            constraintName: pk_workspace_transform
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_global_id
+            columns:
+              - column:
+                  name: global_id
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_creator_id
+            columns:
+              - column:
+                  name: creator_id
+        - sql:
+            dbms: postgresql
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
+        - sql:
+            dbms: h2,mysql,mariadb
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id)
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: global_id
+            constraintName: fk_workspace_transform_global_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: collection_id
+            constraintName: fk_workspace_transform_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: creator_id
+            constraintName: fk_workspace_transform_creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:20
+      author: ranquild
+      comment: Drop workspace_log table
+      changes:
+        - dropTable:
+            tableName: workspace_log
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_log
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+              - column:
+                  name: status
+                  type: varchar(20)
+              - column:
+                  name: message
+                  type: ${text.type}
+        - createIndex:
+            tableName: workspace_log
+            indexName: idx_workspace_log_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+        - addForeignKeyConstraint:
+            baseTableName: workspace_log
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_log_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:30
+      author: ranquild
+      comment: Drop workspace_graph table
+      changes:
+        - dropTable:
+            tableName: workspace_graph
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace_graph
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: graph
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_version
+            unique: true
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: graph_version
+        - addForeignKeyConstraint:
+            baseTableName: workspace_graph
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_graph_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:35
+      author: ranquild
+      comment: Drop FK fk_collection_workspace_id before dropping the workspace table (MySQL requires explicit FK drop)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: workspace_id
+            constraintName: fk_collection_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:36
+      author: ranquild
+      comment: Drop workspace_id column from collection
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: workspace_id
+      rollback:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:40
+      author: ranquild
+      comment: Drop workspace table
+      changes:
+        - dropTable:
+            tableName: workspace
+            cascadeConstraints: true
+      rollback:
+        - createTable:
+            tableName: workspace
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+              - column:
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+              - column:
+                  name: execution_user
+                  type: int
+              - column:
+                  name: database_id
+                  type: int
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: db_status
+                  type: varchar(20)
+                  defaultValue: uninitialized
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_status
+                  type: varchar(20)
+                  defaultValue: empty
+                  constraints:
+                    nullable: false
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_collection_id
+            columns:
+              - column:
+                  name: collection_id
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_execution_user_id
+            columns:
+              - column:
+                  name: execution_user
+        - addUniqueConstraint:
+            tableName: workspace
+            columnNames: name
+            constraintName: idx_workspace_name_unique
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:50
+      author: ranquild
+      comment: Drop workspace_permissions_status column from metabase_database
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspace_permissions_status
+                  type: ${text.type}
+                  constraints:
+                    nullable: true

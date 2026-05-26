@@ -1,4 +1,3 @@
-import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -6,6 +5,7 @@ import {
   PLUGIN_SELECTORS,
   PLUGIN_WHITELABEL,
 } from "metabase/plugins";
+import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,

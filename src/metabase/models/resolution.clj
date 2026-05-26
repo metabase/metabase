@@ -33,6 +33,7 @@
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
+    :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -42,9 +43,11 @@
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
+    :model/DependencyStatus                  metabase-enterprise.dependencies.models.dependency-status
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
+    :model/EmbeddingTheme                    metabase.embedding.models.theme
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -53,11 +56,15 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
+    :model/DataComplexityScore               metabase-enterprise.data-complexity-score.models.data-complexity-score
     :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
     :model/MetabotInstanceLimit              metabase-enterprise.metabot.models.metabot-instance-limit
     :model/MetabotPermissions                metabase-enterprise.metabot.models.metabot-permissions
@@ -100,12 +107,14 @@
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
+    :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -125,16 +134,7 @@
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
-    :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
-    :model/WorkspaceInputTransform           metabase-enterprise.workspaces.models.workspace-input-transform
-    :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
-    :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
-    :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform
-    :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
-    :model/WorkspaceOutputExternal           metabase-enterprise.workspaces.models.workspace-output-external
-    :model/WorkspaceGraph                    metabase-enterprise.workspaces.models.workspace-graph
-    :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

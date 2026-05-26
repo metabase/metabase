@@ -1,13 +1,14 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { permissionApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import {
   combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
+} from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
 import { ApplicationPermissionsApi } from "./api";
@@ -18,6 +19,7 @@ export const initializeApplicationPermissions = createThunkAction(
   INITIALIZE_APPLICATION_PERMISSIONS,
   () => async (dispatch) => {
     dispatch(loadApplicationPermissions());
+    dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({}));
   },
 );
 

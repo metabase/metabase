@@ -3,195 +3,199 @@
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
-  This is done by finding entities whose dependency_analysis_version is less than
-  [[metabase-enterprise.dependencies.models.dependency/current-dependency-analysis-version]] and
-  updates this field. In most cases this triggers an event handler that calculates the dependencies
-  and populates the dependency table. For cards, the event is emitted by the job handler itself,
-  because the update of the record doesn't trigger the event handler. "
+  This is done by querying the dependency_status table for entities that are stale or have an
+  outdated dependency_analysis_version. The backfill task computes dependencies and updates
+  the dependency_status table."
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util :as u]
+   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
-  (:import
-   (java.util Map Set)
-   (java.util.concurrent ConcurrentHashMap)))
+  (:import (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
-(defn- current-millis
-  "Returns the current epoch millis. Uses java-time so that clock settings can be used in tests."
-  []
-  (t/to-millis-from-epoch (t/instant)))
+(def ^:private entity-types
+  "The list of entity types to backfill.
 
-(def ^:private entities
-  "The list of models to backfill.
-
-  This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
+  This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  [:model/Card
-   :model/Transform
-   :model/NativeQuerySnippet
-   :model/Dashboard
-   :model/Document
-   :model/Sandbox
-   :model/Segment
-   :model/Measure])
-
-;; In-memory state for tracking failed entities
-;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}
-(def ^:private retry-state
-  (zipmap entities (repeatedly #(ConcurrentHashMap.))))
-
-;; Stores {:model/Type #{id1 id2 ...}} for entities that have exceeded MAX_RETRIES
-(def ^:private terminally-broken
-  (zipmap entities (repeatedly #(ConcurrentHashMap/newKeySet))))
+  [:card :transform :snippet :dashboard :document :sandbox :segment :measure])
 
 (def ^:private max-retries 5)
 
-(defn- processable-ids [model-kw batch-size]
-  (let [target-version models.dependency/current-dependency-analysis-version
-        terminally-broken-ids ^Set (terminally-broken model-kw)
-        retry-state-map ^Map (retry-state model-kw)
-        current-time (current-millis)]
-    (into []
-          (comp
-           (map :id)
-           (filter (fn [id]
-                     (and (not (.contains terminally-broken-ids id))
-                          (let [entity-retry-info (.get retry-state-map id)]
-                            (or (nil? entity-retry-info)
-                                (>= current-time (:next-retry-timestamp entity-retry-info)))))))
-           (take batch-size))
-          (t2/reducible-select [model-kw :id] :dependency_analysis_version [:< target-version]))))
+;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
 
-(def ^:private custom-backfill-events
-  {:model/Card :event/card-dependency-backfill
-   :model/Dashboard :event/dashboard-dependency-backfill})
+(defmulti post-deps-cleanup!
+  "Perform entity-specific cleanup after dependencies have been replaced.
+  For example, transforms need to clean up outdated downstream table->transform dependencies.
+  Default is no-op."
+  {:arglists '([entity-type entity])}
+  (fn [entity-type _entity] entity-type))
 
-(defn- custom-backfill-entity!
-  [model-kw event id target-version]
-  ;; We don't want to change the entity at all, we just want to update the dependency data and
-  ;; mark the entity as processed for this dependency analysis version.
-  (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                                 {:dependency_analysis_version target-version})]
-    (when-let [entity (and (pos? update-count)
-                           (t2/select-one model-kw id))]
-      (events/publish-event! event {:object entity}))
-    update-count))
+(defmethod post-deps-cleanup! :default [_ _entity] nil)
 
-(defn- backfill-entity!
-  [model-kw id target-version]
-  (log/debug "Backfilling " (name model-kw) id)
-  (u/prog1
-    (t2/with-transaction [_]
-      (if-let [event (custom-backfill-events model-kw)]
-        (custom-backfill-entity! model-kw event id target-version)
-        (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                    {:dependency_analysis_version target-version})))
-    (log/debug "Backfilled " (name model-kw) id)))
+(defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
+  (let [db-id                (transforms/transform-source-database transform)
+        downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
+                                               :from_entity_type :table
+                                               :to_entity_type   :transform
+                                               :to_entity_id     id)
+        downstream-tables    (when (seq downstream-table-ids)
+                               (t2/select :model/Table :id [:in downstream-table-ids]))
+        outdated-tables      (remove (fn [table]
+                                       (and (= (:schema table) (:schema target))
+                                            (= (:name   table) (:name   target))
+                                            (or (not db-id)
+                                                (= db-id (:db_id table)))))
+                                     downstream-tables)
+        not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
+                                     downstream-table-ids)]
+    (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
+                                                        (map :id) outdated-tables))]
+      (t2/delete! :model/Dependency
+                  :from_entity_type :table
+                  :from_entity_id   [:in outdated-downstream-table-ids]
+                  :to_entity_type   :transform
+                  :to_entity_id     id))))
+
+;;; ------------------------------ Backfill orchestration ------------------------------
+
+(defn- processable-instances [entity-type batch-size]
+  (deps.dependency-status/hydrate-for-deps
+   entity-type
+   (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
+
+(defn- compute-deps-for-entity!
+  "Compute and store dependencies for an entity, then update its dependency_status.
+  Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  [entity-type entity]
+  (log/debug "Computing dependencies for" (name entity-type) (:id entity))
+  (t2/with-transaction [_]
+    (let [deps (deps.calculation/calculate-deps entity-type entity)]
+      (models.dependency/replace-dependencies! entity-type (:id entity) deps)
+      (post-deps-cleanup! entity-type entity)
+      (deps.dependency-status/upsert-status! entity-type (:id entity)))))
 
 (defn- backfill-entity-batch!
-  [model-kw batch-size]
-  (let [model-name (name model-kw)
-        target-version models.dependency/current-dependency-analysis-version
-        retry-state-map ^Map (retry-state model-kw)
-        terminally-broken-set ^Set (terminally-broken model-kw)
-        ids (processable-ids model-kw batch-size)] ; Use the new get-processable-ids
-    (when (seq ids)
-      (log/infof "Processing a batch of %s %s(s)..." (count ids) model-name))
-    (reduce (fn [total id]
+  [entity-type batch-size]
+  (let [type-name (name entity-type)
+        instances (processable-instances entity-type batch-size)]
+    (when (seq instances)
+      (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
+    (reduce (fn [total entity]
               (+ total
                  (try
-                   ;; this should update the dependency table via a toucan2 update hook
-                   (let [update-count (backfill-entity! model-kw id target-version)]
-                     (.remove retry-state-map id)
-                     update-count)
+                   (compute-deps-for-entity! entity-type entity)
+                   1
                    (catch Exception e
-                     (let [current-time (current-millis)
-                           entity-retry-info (.get retry-state-map id)
-                           failure-count (inc (:fail-count entity-retry-info 0))
-                           retry-minutes (* failure-count (deps.settings/dependency-backfill-delay-minutes))
-                           new-next-retry-timestamp (+ current-time (* retry-minutes 60 1000))]
-                       (if (> failure-count max-retries)
-                         (do (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                         model-name id failure-count)
-                             (.add terminally-broken-set id)
-                             (.remove retry-state-map id)) ; Remove from retry map
-                         (do (log/warnf e "Entity %s %s failed, failure count: %d, next retry no sooner than %d minutes."
-                                        model-name id failure-count retry-minutes)
-                             (.put retry-state-map id {:fail-count failure-count
-                                                       :next-retry-timestamp new-next-retry-timestamp}))))
+                     (let [id (:id entity)]
+                       (try
+                         (deps.dependency-status/record-failure!
+                          entity-type id max-retries
+                          (deps.settings/dependency-backfill-delay-minutes))
+                         (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
+                                                                            :entity_type entity-type
+                                                                            :entity_id id)]
+                           (if terminal
+                             (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
+                                         type-name id fail_count)
+                             (log/warnf e "Entity %s %s failed, failure count: %d."
+                                        type-name id fail_count)))
+                         (catch Exception record-ex
+                           (log/errorf e "Entity %s %s failed during dependency calculation."
+                                       type-name id)
+                           (log/errorf record-ex "Additionally, failed to record the failure for %s %s."
+                                       type-name id))))
                      0))))
             0
-            ids)))
+            instances)))
 
 (defn- backfill-dependencies!
   "Job to backfill dependencies for all entities.
   Returns true if a full batch has been selected, nil or false otherwise."
   []
   (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size model-kw]
+    (-> (reduce (fn [batch-size entity-type]
                   (if (< batch-size 1)
                     (reduced 0)
-                    (let [processed (backfill-entity-batch! model-kw batch-size)]
+                    (let [processed (backfill-entity-batch! entity-type batch-size)]
                       (when (pos? processed)
                         (log/info "Updated" processed "entities."))
                       (- batch-size processed))))
                 (deps.settings/dependency-backfill-batch-size)
-                entities)
+                entity-types)
         (< 1))))
 
 (defn- has-pending-retries? []
-  (some (fn [^Map model-retry-state]
-          (not (.isEmpty model-retry-state)))
-        (vals retry-state)))
+  (deps.dependency-status/has-pending-retries?))
 
-(declare schedule-next-run!)
+(declare schedule-run!)
+
+(defn- log-job-start
+  [^JobExecutionContext ctx]
+  (let [scheduler (.getScheduler ctx)
+        job-key (.getKey (.getJobDetail ctx))
+        job-class (.getSimpleName (.getJobClass (.getJobDetail ctx)))
+        active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
+    (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
 (task/defjob
   ^{:doc "Backfill the dependency table."
     org.quartz.DisallowConcurrentExecution true}
   BackfillDependencies [ctx]
-  (log/info "Executing BackfillDependencies job...")
-  (let [full-batch-selected? (backfill-dependencies!)
-        retries? (has-pending-retries?)]
-    (if (or full-batch-selected?
-            retries?)
-      (let [delay-in-seconds (deps.task-util/job-delay
-                              (deps.settings/dependency-backfill-delay-minutes)
-                              (deps.settings/dependency-backfill-variance-minutes))]
-        (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
-      (log/info "No more entities to backfill for, stopping."))))
+  (let [ctx ^JobExecutionContext ctx]
+    (log-job-start ctx)
+    (let [full-batch-selected? (backfill-dependencies!)
+          retries? (has-pending-retries?)]
+      (if (or full-batch-selected?
+              retries?)
+        (let [delay-in-seconds (deps.task-util/job-delay
+                                (deps.settings/dependency-backfill-delay-minutes)
+                                (deps.settings/dependency-backfill-variance-minutes))]
+          (schedule-run! (.getScheduler ctx) delay-in-seconds))
+        (log/info "No more entities to backfill for, stopping.")))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
-(defn- schedule-next-run!
-  ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
-  ([delay-in-seconds scheduler]
-   (deps.task-util/schedule-next-run!
-    {:job-type         BackfillDependencies
-     :job-name         "Dependency Backfill"
-     :job-key          job-key
-     :trigger-key      trigger-key
-     :delay-in-seconds delay-in-seconds
-     :scheduler        scheduler})))
+(defn- schedule-run! [scheduler delay-in-seconds]
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job Dependency Backfill at" start-at)
+    (task/schedule-task! scheduler job trigger)))
+
+(defn trigger-backfill-job!
+  "Trigger the BackfillDependencies job to run after a brief delay.
+  The 1-second delay ensures the calling transaction has committed before
+  the job checks for stale entities."
+  []
+  (schedule-run! (task/scheduler) 1))
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (if config/is-test?
-                          0
-                          (deps.task-util/job-initial-delay
-                           (deps.settings/dependency-backfill-variance-minutes))))
+    (schedule-run!
+     (task/scheduler)
+     (deps.task-util/job-initial-delay
+      (deps.settings/dependency-backfill-variance-minutes)))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
 
 (derive ::backfill :metabase/event)
@@ -201,4 +205,4 @@
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]
   (when (premium-features/has-feature? :dependencies)
-    (backfill-dependencies!)))
+    (trigger-backfill-job!)))

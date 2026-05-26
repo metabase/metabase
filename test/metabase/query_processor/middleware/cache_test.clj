@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.cache-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
@@ -107,16 +108,16 @@
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
-        (let [orig @#'cache/serialized-bytes]
-          (with-redefs [cache/serialized-bytes (fn []
-                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                 ;; gets a result and tests can finish
-                                                 (try
-                                                   (orig)
-                                                   (catch Throwable e
-                                                     (a/>!! save-chan e)
-                                                     (throw e))))]
+        (let [orig (mt/original-fn #'cache/serialized-bytes)]
+          (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
+                                                               ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                               ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                               ;; gets a result and tests can finish
+                                                               (try
+                                                                 (orig)
+                                                                 (catch Throwable e
+                                                                   (a/>!! save-chan e)
+                                                                   (throw e))))]
             (f {:save-chan save-chan, :purge-chan purge-chan})))))))
 
 (defmacro with-mock-cache! [[& bindings] & body]
@@ -322,7 +323,7 @@
           (let [query           (mt/native-query {:query (tx/native-array-query driver/*driver*)})
                 query           (assoc query :cache-strategy (ttl-strategy))
                 original-result (qp/process-query query)
-                              ;; clear any existing values in the `save-chan`
+                ;; clear any existing values in the `save-chan`
                 _               (while (a/poll! save-chan))
                 _               (mt/wait-for-result save-chan)
                 cached-result   (qp/process-query query)]
@@ -359,7 +360,7 @@
               (let [query           (mt/native-query {:query (format "SELECT 'foo'::%s;" dom-name)})
                     query           (assoc query :cache-strategy (ttl-strategy))
                     original-result (qp/process-query query)
-                                    ;; clear any existing values in the `save-chan`
+                    ;; clear any existing values in the `save-chan`
                     _               (while (a/poll! save-chan))
                     _               (mt/wait-for-result save-chan)
                     cached-result   (qp/process-query query)]
@@ -419,8 +420,11 @@
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
-          save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
+          save-execution-metadata-original    (mt/original-fn #'process-userland-query/save-execution-metadata!*)
+          save-query-update-avg-time-original (mt/original-fn #'query/save-query-and-update-average-execution-time!)]
+      ;; save-execution-metadata!* and save-query-and-update-average-execution-time! are invoked from
+      ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
                                                                            (swap! save-execution-metadata-count inc)
                                                                            (apply save-execution-metadata-original args)
@@ -661,8 +665,8 @@
                                   (fn [rff]
                                     (qp/process-query (dissoc query :cache-strategy) rff)))
                                  (vec (csv/read-csv reader)))]
-          (with-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
-                                                                   (throw (Exception. "Should be cached!")))]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/execute-reducible-query (fn [& _]
+                                                                                 (throw (Exception. "Should be cached!")))]
             (with-open [ostream (java.io.PipedOutputStream.)
                         istream (java.io.PipedInputStream. ostream)
                         reader  (java.io.InputStreamReader. istream)]
@@ -746,3 +750,28 @@
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
+
+(deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
+  (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
+            like update-viz-settings) must not be clobbered by the replayed cached final-metadata
+            map. Before the fix, `([acc row] (vreset! final-metadata row))` returned the row,
+            replacing `acc`. Regression for #72922."
+    (let [cached-results-rff @#'cache/cached-results-rff
+          ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
+          ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
+          fresh-injecting-rff (fn [metadata]
+                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+          rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
+              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+          ;; Simulate a cached replay: two actual row vectors, then the final cached
+          ;; result map (which used to stomp acc).
+          acc (reduce rf (rf)
+                      [[1] [2]
+                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+          result (rf acc)]
+      (is (= "fresh-value" (get-in result [:data :fresh]))
+          "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
+      (is (= "stale-value" (get-in result [:data :stale]))
+          "Stale-only keys from @final-metadata are still deep-merged in")
+      (is (= [[1] [2]] (get-in result [:data :rows]))
+          "Replayed cached rows are preserved"))))

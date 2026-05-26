@@ -137,37 +137,37 @@ are known to be the same."
   "Returns a keyword representing the reason why two columns fail an [[=]] check (for debugging purposes)."
   [col-1 col-2]
   (or
-    ;; two column metadatas with different IDs are NEVER equal.
+   ;; two column metadatas with different IDs are NEVER equal.
    (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
-    ;; from the same source.
+   ;; from the same source.
    (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
-    ;; same join alias
+   ;; same join alias
    (columns-not-equal-by-fn :lib/join-alias col-1 col-2)
-    ;; same FK Field (for implicitly joined columns)
+   ;; same FK Field (for implicitly joined columns)
    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
    (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
-    ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
-    ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
-    ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
-    ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
+   ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
+   ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
+   ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
+   ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
-    ;;
-    ;; columns that don't have the same binning or temporal bucketing are never the same.
-    ;;
-    ;; same binning
+   ;;
+   ;; columns that don't have the same binning or temporal bucketing are never the same.
+   ;;
+   ;; same binning
    (columns-not-equal-by-fn :lib/binning col-1 col-2)
-    ;; same bucketing
+   ;; same bucketing
    (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
      'temporal-bucket)
-    ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
-    ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
-    ;; just historical metadata and shouldn't affect identity. See #70231.
+   ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
+   ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
+   ;; just historical metadata and shouldn't affect identity. See #70231.
    (when (and (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-1)))
               (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-2)))
               (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2))
      :inherited-temporal-unit)
-    ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
-    ;; some reason they do not)
+   ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
+   ;; some reason they do not)
    (let [k (m/find-first (fn [k]
                            (and (k col-1)
                                 (k col-2)))
@@ -178,9 +178,12 @@ are known to be the same."
 (defmethod = :metadata/column
   [col-1 col-2]
   (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
-    (if not-equal-reason
-      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
-      (log/debug "Columns are equal."))
+    ;; This block is commented out for performance reasons. Even when DEBUG level is not enabled, computing level
+    ;; eligibility on each comparison operation is significantly expensive. If you need to debug this, consider
+    ;; restricting the log to particular columns.
+    #_(if not-equal-reason
+        (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+        (log/debug "Columns are equal."))
     (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
@@ -554,7 +557,7 @@ are known to be the same."
   to `needles` with the corresponding index into the `haystack`, or -1 if not found.
 
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
-  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  Other Lib code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
   [query        :- ::lib.schema/query
    stage-number :- :int

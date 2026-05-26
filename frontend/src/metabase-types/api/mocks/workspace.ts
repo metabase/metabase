@@ -1,24 +1,23 @@
-import type { WorkspaceProblem } from "../workspace";
+import type { Workspace, WorkspaceDatabase } from "../workspace";
 
-export const createMockWorkspaceProblem = (
-  opts?: Partial<WorkspaceProblem>,
-): WorkspaceProblem => ({
-  category: "internal",
-  problem: "not-run",
-  severity: "error",
-  block_merge: false,
-  description: "Test problem",
-  data: {
-    output: {
-      db_id: 1,
-      schema: "public",
-      table: "test_table",
-    },
-    transform: {
-      type: "workspace-transform",
-      id: "1",
-      name: "Test Transform",
-    },
-  },
-  ...opts,
-});
+export function createMockWorkspaceDatabase(
+  opts?: Partial<WorkspaceDatabase>,
+): WorkspaceDatabase {
+  return {
+    database_id: 1,
+    input_schemas: [],
+    status: "provisioned",
+    ...opts,
+  };
+}
+
+export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
+  return {
+    id: 1,
+    name: "Test workspace",
+    databases: [],
+    created_at: "2026-01-01T00:00:00Z",
+    creator_id: 1,
+    ...opts,
+  };
+}

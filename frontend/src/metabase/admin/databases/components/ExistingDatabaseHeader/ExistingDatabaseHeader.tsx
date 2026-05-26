@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
 import { getEngines } from "metabase/databases/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";

@@ -16,7 +16,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { LoggerPreset } from "metabase-types/api";
 import { createMockLoggerPreset } from "metabase-types/api/mocks/logger";
 

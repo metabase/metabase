@@ -25,29 +25,24 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as load]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
    (java.nio.file.attribute FileAttribute)))
-
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -108,7 +103,7 @@
   ;; Use a separate cache to make sure there is no cross-contamination.
   (serdes/with-cache
     (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! output-dir))))
+        (storage/store! (storage.files/file-writer output-dir)))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -139,7 +134,7 @@
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
-  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) source-dir))
+  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) (storage.files/file-writer source-dir)))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
 (deftest baseline-completeness-test
@@ -175,7 +170,7 @@
                             out-file (io/file output-dir file)]
                       :when (.exists out-file)
                       :let [delta (compare-files ref-file out-file)]]
-                (is (nil? delta)
+                (is (= nil delta)
                     (str "Content mismatch for file: " (strip-base-path source-dir file)))
                 ;; Leave behind files for developers to inspect
                 (when (and (.exists dev-inspect-dir) delta)

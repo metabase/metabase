@@ -12,7 +12,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -66,6 +66,8 @@
      [:official_collection :boolean]
      [:pinned :boolean]
      [:verified :boolean]
+     [:collection_type :text]
+     [:data_layer :text]
      [:dashboardcard_count :int]
      [:view_count :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
@@ -150,7 +152,7 @@
   "Convert a document to a database record with a provided embedding."
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                     pinned dashboardcard_count view_count last_viewed_at] :as doc}]
+                     pinned dashboardcard_count view_count last_viewed_at collection_type data_layer] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -165,6 +167,8 @@
    :official_collection (some-> official_collection to-boolean)
    :pinned              (some-> pinned to-boolean)
    :verified            (some-> verified to-boolean)
+   :collection_type     collection_type
+   :data_layer          data_layer
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -205,7 +209,7 @@
   [connectable table-name]
   (try
     (->> (index-size connectable table-name)
-         (analytics/set! :metabase-search/semantic-index-size))
+         (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
 
@@ -280,7 +284,7 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 2}))
+     :version 3}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -397,8 +401,8 @@
             results (transduce
                      (comp (partition-all *batch-size*)
                            (map (if serial?
-                                  #(upsert-index-batch! connectable index % {:type :index})
-                                  #(upsert-index-pooled! pool connectable index % {:type :index}))))
+                                  #(upsert-index-batch! connectable index % {:type :index :record-tokens? true})
+                                  #(upsert-index-pooled! pool connectable index % {:type :index :record-tokens? true}))))
                      conj
                      documents-reducible)]
         (reduce (fn [update-counts result]
@@ -580,12 +584,14 @@
    [:official_collection :official_collection]
    [:pinned :pinned]
    [:verified :verified]
+   [:collection_type :collection_type]
+   [:data_layer :data_layer]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
    [:model_created_at :model_created_at]
    [:model_updated_at :model_updated_at]
    [:last_viewed_at :last_viewed_at]
-   [:metadata :metadata]])
+   [:legacy_input :legacy_input]])
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
@@ -609,12 +615,13 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
+(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
         hnsw-query {:select (into common-search-columns
@@ -691,70 +698,80 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
-  "Fetches the legacy_input field from a result's metadata and attaches a score based on the
-  embedding distance."
+  "Extracts the (already-decoded) `:legacy_input` map from `row` and attaches the total score
+  plus per-scorer breakdown."
   [weights scorers row]
-  (let [raw (get-in row [:metadata :legacy_input])
-        ;; legacy_input may be a pre-encoded JSON string (from ->document) stored as a string
-        ;; value inside the metadata JSONB blob; decode it back to a map if so.
-        legacy-input (cond-> raw (string? raw) (json/decode true))]
-    (assoc legacy-input
-           :score (:total_score row 1.0)
-           :all-scores (scoring/all-scores weights scorers row))))
+  (assoc (:legacy_input row)
+         :score (:total_score row 1.0)
+         :all-scores (scoring/all-scores weights scorers row)))
 
-(defn- decode-metadata
-  "Decode `row`s `:metadata`."
+(defn- decode-legacy-input
+  "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :metadata decode-pgobject))
+  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; object, so one decode yields a string; decode once more in that case.
+  (update row :legacy_input
+          (fn [pgo]
+            (let [decoded (decode-pgobject pgo)]
+              (cond-> decoded (string? decoded) json/decode+kw)))))
 
-(defn- filter-can-read-indexed-entity
-  "Check permissions for indexed entities by resolving to their parent model / card"
-  [indexed-entity-docs]
-  (let [->model-index-id #(-> % :id search/indexed-entity-id->model-index-id)
-        model-index-ids (into #{} (map ->model-index-id indexed-entity-docs))
-        model-indexes (when (seq model-index-ids)
-                        (t2/select :model/ModelIndex :id [:in model-index-ids]))
-        index-id->card (when (seq model-indexes)
-                         (let [card-ids    (map :model_id model-indexes)
-                               cards       (t2/select :model/Card :id [:in card-ids])
-                               cards-by-id (u/index-by :id cards)]
-                           (into {}
-                                 (map (fn [model-index]
-                                        [(:id model-index) (get cards-by-id (:model_id model-index))])
-                                      model-indexes))))]
-    (filterv (fn [doc]
-               (when-let [model-index-id (-> doc ->model-index-id)]
-                 (when-let [parent-card (get index-id->card model-index-id)]
-                   (mi/can-read? parent-card))))
-             indexed-entity-docs)))
+;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
+;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
+;; defmethod is invoked on a stub instance carrying only `:collection_id`.
+;;
+;;  - "card" / "metric" / "dataset" → :model/Card
+;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
+;;                                    :model/Card for additional albeit modest perf gains
+;;                                    but choosing to not silently ride Card's semantics)
+;;  - "indexed-entity"              → :model/Card by design: the index row's
+;;                                    `collection_id` is the parent Card's (denormalized
+;;                                    via the spec's Collection join), so routing through
+;;                                    Card short-circuits the original ModelIndex → Card
+;;                                    resolution in `filter-can-read-indexed-entity`.
+(def ^:private collection-id-only-search-models
+  {"card"           :model/Card
+   "metric"         :model/Card
+   "dataset"        :model/Card
+   "dashboard"      :model/Dashboard
+   "indexed-entity" :model/Card})
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
-        other-docs (for [[t2-model docs] (group-by doc->t2-model regular-docs)
-                         t2-instance (t2/select t2-model :id [:in (map :id docs)])]
-                     t2-instance)
-        permitted-entities (filter-can-read-indexed-entity indexed-entities)
-        doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
+        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
+        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
+        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
+        ;; (model, collection) pair instead of once per document.
+        readable? (memoize
+                   (fn [stub-model coll-id]
+                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
+        fast-filtered (filterv (fn [doc]
+                                 (readable? (get collection-id-only-search-models (:model doc))
+                                            (:collection_id doc)))
+                               fast-docs)
+        slow-t2-instances (vec
+                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
+                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                             t2-instance))
+        doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
-        result (into
-                (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
-                permitted-entities)
+        slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
+        result (into fast-filtered slow-filtered)
         time-ms (u/since-ms timer)]
 
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
-                                       :indexed-entities-count (count indexed-entities)
-                                       :regular-docs-count (count regular-docs)
+                                       :fast-count (count fast-docs)
+                                       :slow-count (count slow-docs)
+                                       :slow-fetched-count (count slow-t2-instances)
                                        :time-ms time-ms})
 
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
@@ -812,14 +829,15 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string {:type :query}))
+                        (embedding/get-embedding embedding-model search-string
+                                                 {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
             weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
-            xform (comp (map decode-metadata)
+            xform (comp (map decode-legacy-input)
                         (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (reducible-search-query db query)
             raw-results (tracing/with-span :search "search.semantic.db-query"
@@ -875,7 +893,7 @@
   (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
   (def search-ctx {:search-string "pasta"})
-  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
+  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx) {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-ctx))
 
   (keyword-search-query index search-ctx)
@@ -959,7 +977,7 @@
                        :verified nil})
   (def search-context {:search-string search-string})
 
-  (def embedding (embedding/get-embedding (:embedding-model index) search-string))
+  (def embedding (embedding/get-embedding (:embedding-model index) search-string {:record-tokens? true}))
   (def scorers (scoring/semantic-scorers (:table-name index) search-context))
 
   ;; Format queries for execution

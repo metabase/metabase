@@ -59,11 +59,11 @@ dataset_query:
           - {base-type: type/Integer, lib/uuid: 48e22c1b-8800-4cd5-8909-416e6853db76}
           - creator_id
         - - field
-          - {base-type: type/Integer, join-alias: People - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - Creator}
           - [Internal Metabase Database, public, v_users, user_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: People - Creator, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: People - Creator}
         - [Internal Metabase Database, public, v_users, full_name]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -77,14 +77,14 @@ dataset_query:
           - {base-type: type/Text, lib/uuid: 928768cd-99e6-4bdd-9011-d4fd212870a1}
           - dashboard_qualified_id
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Integer, join-alias: Content - Entity Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, entity_id]
       - - field
-        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, name]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}

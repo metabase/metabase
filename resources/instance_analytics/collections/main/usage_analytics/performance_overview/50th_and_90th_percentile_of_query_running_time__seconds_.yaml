@@ -15,20 +15,20 @@ dataset_query:
   stages:
   - aggregation:
     - - percentile
-      - {name: Percentile 90, display-name: Percentile 90}
+      - {display-name: Percentile 90, name: Percentile 90}
       - - field
         - {base-type: type/Float, lib/uuid: 917e663f-1609-4211-b70b-4ae9cf50b59e}
         - running_time_seconds
       - 0.9
     - - percentile
-      - {name: Percentile 50, display-name: Percentile 50}
+      - {display-name: Percentile 50, name: Percentile 50}
       - - field
         - {base-type: type/Float, lib/uuid: cf177e96-fffe-4f27-82b8-7e27bbe09a61}
         - running_time_seconds
       - 0.5
     breakout:
     - - field
-      - {temporal-unit: week, base-type: type/DateTimeWithLocalTZ, lib/uuid: 5838598f-1099-4086-a3ba-ef79a7e6dac5}
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, lib/uuid: 5838598f-1099-4086-a3ba-ef79a7e6dac5}
       - started_at
     filters:
     - - time-interval

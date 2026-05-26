@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.starburst-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.starburst-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.starburst-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -354,8 +356,8 @@
 (deftest prepared-statements
   (mt/test-driver :starburst
     (testing "Make sure prepared statements work"
-        ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
-        ;; The role is ignored as Metabase users may not have the role defined in the database connection
+      ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
+      ;; The role is ignored as Metabase users may not have the role defined in the database connection
       (prepared-statements-helper true)
       (prepared-statements-helper false))))
 
@@ -366,7 +368,7 @@
        driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [stmt (.prepareStatement conn "select 1" ResultSet/TYPE_FORWARD_ONLY ResultSet/CONCUR_READ_ONLY)
-               prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
+               ^PreparedStatement prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
            (is (false? (.isClosed prepared-stmt)))
            (.close stmt)
            (is (true? (.isClosed prepared-stmt)))))))))

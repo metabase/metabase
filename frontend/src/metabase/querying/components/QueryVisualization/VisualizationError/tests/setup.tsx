@@ -4,14 +4,14 @@ import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Database, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { VisualizationError } from "../VisualizationError";
 

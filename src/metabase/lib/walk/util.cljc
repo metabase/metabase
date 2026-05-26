@@ -8,10 +8,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [not-empty]]))
 
 (defn- transduce-stages
@@ -72,7 +72,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:metric _opts (id :guard pos-int?)]
          (vswap! metric-ids conj! id)
 
@@ -87,7 +87,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:segment _opts (id :guard pos-int?)]
          (vswap! segment-ids conj! id)
 
@@ -102,7 +102,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:measure _opts (id :guard pos-int?)]
          (vswap! measure-ids conj! id)
 
@@ -166,7 +166,7 @@
                        ::lib.schema.mbql-clause/clause]]
   (let [field-ids (volatile! (transient #{}))
         walk-clause (fn [clause]
-                      (lib.util.match/match-lite clause
+                      (match/match-one clause
                         [:field _opts (id :guard pos-int?)]
                         (vswap! field-ids conj! id)
 
@@ -184,7 +184,7 @@
   (let [joined-field-ids (volatile! (transient #{}))
         implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
         walk-clause (fn [clause]
-                      (lib.util.match/match-lite clause
+                      (match/match-one clause
                         [:field (opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
                         (vswap! joined-field-ids conj! id)
 

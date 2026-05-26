@@ -75,14 +75,14 @@
 (deftest discover-oidc-configuration-success-test
   (testing "Successfully discovers OIDC configuration"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [url _opts]
-                             (is (= "https://example.com/.well-known/openid-configuration" url))
-                             {:status 200
-                              :body {:issuer "https://example.com"
-                                     :authorization_endpoint "https://example.com/authorize"
-                                     :token_endpoint "https://example.com/token"
-                                     :jwks_uri "https://example.com/jwks"
-                                     :userinfo_endpoint "https://example.com/userinfo"}})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [url _opts]
+                                           (is (= "https://example.com/.well-known/openid-configuration" url))
+                                           {:status 200
+                                            :body {:issuer "https://example.com"
+                                                   :authorization_endpoint "https://example.com/authorize"
+                                                   :token_endpoint "https://example.com/token"
+                                                   :jwks_uri "https://example.com/jwks"
+                                                   :userinfo_endpoint "https://example.com/userinfo"}})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.com")]
         (is (some? config))
         (is (= "https://example.com" (:issuer config)))
@@ -93,28 +93,28 @@
 (deftest discover-oidc-configuration-http-error-test
   (testing "Handles HTTP errors gracefully"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [_url _opts]
-                             {:status 404
-                              :body "Not Found"})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                           {:status 404
+                                            :body "Not Found"})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.org")]
         (is (nil? config))))))
 
 (deftest discover-oidc-configuration-exception-test
   (testing "Handles exceptions gracefully"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [_url _opts]
-                             (throw (ex-info "Connection timeout" {})))]
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                           (throw (ex-info "Connection timeout" {})))]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.net")]
         (is (nil? config))))))
 
 (deftest discover-oidc-configuration-trailing-slash-test
   (testing "Strips trailing slash from issuer URI"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [url _opts]
-                             (is (= "https://example.edu/.well-known/openid-configuration" url))
-                             {:status 200
-                              :body {:issuer "https://example.edu"
-                                     :authorization_endpoint "https://example.edu/authorize"}})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [url _opts]
+                                           (is (= "https://example.edu/.well-known/openid-configuration" url))
+                                           {:status 200
+                                            :body {:issuer "https://example.edu"
+                                                   :authorization_endpoint "https://example.edu/authorize"}})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.edu/")]
         (is (some? config))))))
 
@@ -130,10 +130,10 @@
   (testing "Uses cached discovery document when cache is fresh (not expired)"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; First call should fetch
         (let [result1 (oidc.discovery/discover-oidc-configuration "https://google.com")]
           (is (some? result1))
@@ -147,10 +147,10 @@
   (testing "Re-fetches discovery document when cache entry is expired"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; First call should fetch
         (oidc.discovery/discover-oidc-configuration "https://github.com")
         (is (= 1 @fetch-count))
@@ -169,10 +169,10 @@
   (testing "invalidate-cache! removes cache entry for specific issuer"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; Populate cache
         (oidc.discovery/discover-oidc-configuration "https://microsoft.com")
         (is (= 1 @fetch-count))
@@ -188,10 +188,10 @@
   (testing "invalidate-cache! normalizes issuer URL"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; Populate cache without trailing slash
         (oidc.discovery/discover-oidc-configuration "https://apple.com")
         (is (= 1 @fetch-count))
@@ -206,35 +206,57 @@
 ;;; ================================================== SSRF Protection Tests ==================================================
 
 (deftest discover-oidc-configuration-ssrf-protection-test
-  (testing "Respects oidc-allowed-networks if set"
+  (testing "Respects oidc-allowed-networks if set — blocked requests return nil (no HTTP request made)"
     (oidc.discovery/clear-cache!)
     (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
       (testing "Rejects internal addresses (localhost)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://localhost/oidc"))))
 
       (testing "Rejects internal addresses (127.0.0.1)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://127.0.0.1/oidc"))))
 
       (testing "Rejects cloud metadata endpoint"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://169.254.169.254/metadata"))))
 
       (testing "Rejects private network addresses (192.168.x.x)"
         (oidc.discovery/clear-cache!)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://192.168.1.1/oidc"))))
 
       (testing "Rejects private network addresses (10.x.x.x)"
         (oidc.discovery/clear-cache!)
+        (is (nil? (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))))
+
+;;; ================================================== Endpoint Extraction Validation Tests ==================================================
+
+(deftest get-token-endpoint-blocks-internal-hosts-test
+  (testing "get-token-endpoint rejects internal hosts when oidc-allowed-networks is :external-only"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:token_endpoint "http://169.254.169.254/latest/meta-data/"}}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Invalid issuer URL: address not allowed by network restrictions"
-                              (oidc.discovery/discover-oidc-configuration "http://10.0.0.1/oidc")))))))
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-token-endpoint config))))))
+
+  (testing "get-token-endpoint allows all hosts when oidc-allowed-networks is :allow-all"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
+      (let [config {:discovery-document {:token_endpoint "https://provider.example.com/token"}}]
+        (is (= "https://provider.example.com/token"
+               (oidc.discovery/get-token-endpoint config)))))))
+
+(deftest get-authorization-endpoint-blocks-internal-hosts-test
+  (testing "get-authorization-endpoint rejects internal hosts"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:authorization_endpoint "http://192.168.1.1/authorize"}}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-authorization-endpoint config)))))))
+
+(deftest get-jwks-uri-blocks-internal-hosts-test
+  (testing "get-jwks-uri rejects internal hosts"
+    (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
+      (let [config {:discovery-document {:jwks_uri "http://10.0.0.1/jwks"}}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"address not allowed by network restrictions"
+                              (oidc.discovery/get-jwks-uri config)))))))

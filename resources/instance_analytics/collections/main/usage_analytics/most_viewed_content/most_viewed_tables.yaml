@@ -17,16 +17,16 @@ dataset_query:
       - {lib/uuid: 179b1a23-7cb8-4508-a72f-cbd802dd3037}
     breakout:
     - - field
-      - {base-type: type/Text, join-alias: Tables - Entity Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
       - [Internal Metabase Database, public, v_tables, name]
     - - field
-      - {base-type: type/Text, join-alias: Databases, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Databases}
       - [Internal Metabase Database, public, v_databases, name]
     - - field
-      - {base-type: type/Integer, join-alias: Databases, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Databases}
       - [Internal Metabase Database, public, v_databases, entity_id]
     - - field
-      - {base-type: type/Integer, join-alias: Tables - Entity Qualified, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tables - Entity Qualified}
       - [Internal Metabase Database, public, v_tables, entity_id]
     filters:
     - - =
@@ -38,7 +38,7 @@ dataset_query:
     - - not-null
       - {}
       - - field
-        - {base-type: type/Text, join-alias: Tables - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
         - [Internal Metabase Database, public, v_tables, name]
     joins:
     - alias: Group Members - User
@@ -49,7 +49,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
@@ -64,7 +64,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Tables - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
           - [Internal Metabase Database, public, v_tables, entity_qualified_id]
       fields: all
       stages:
@@ -77,10 +77,10 @@ dataset_query:
       - - =
         - {}
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
           - [Internal Metabase Database, public, v_users, user_id]
       fields: all
       stages:
@@ -93,10 +93,10 @@ dataset_query:
       - - =
         - {}
         - - field
-          - {base-type: type/Integer, join-alias: Tables - Entity Qualified, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tables - Entity Qualified}
           - [Internal Metabase Database, public, v_tables, database_id]
         - - field
-          - {base-type: type/Integer, join-alias: Databases, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Databases}
           - [Internal Metabase Database, public, v_databases, entity_id]
       fields: all
       stages:

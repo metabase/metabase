@@ -12,13 +12,13 @@ import {
 import { mockSettings } from "__support__/settings";
 import { waitFor } from "__support__/ui";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 export interface SetupOpts {
   renderCallback: (data: { state: Partial<State> }) => void;

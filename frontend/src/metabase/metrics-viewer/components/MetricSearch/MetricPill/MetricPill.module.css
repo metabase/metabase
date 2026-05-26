@@ -1,13 +1,13 @@
 .metricPill {
   background-color: var(--mb-color-background-primary);
-  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
   cursor: pointer;
   transition: background-color 150ms ease;
-  box-shadow: var(--mantine-shadow-xs);
 }
 
 .metricPill:hover {
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .menuTarget {

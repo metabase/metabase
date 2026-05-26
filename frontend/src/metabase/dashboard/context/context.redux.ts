@@ -50,19 +50,19 @@ import {
   renameTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import {
   initialize,
   reset,
   selectTab,
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
+import type { State } from "metabase/redux/store";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
 
 import {
   getClickBehaviorSidebarDashcard,

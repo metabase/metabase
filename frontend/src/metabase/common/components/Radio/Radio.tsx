@@ -34,8 +34,10 @@ const VARIANTS = {
   },
 };
 
-export interface RadioProps<TValue, TOption = RadioOption<TValue>>
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface RadioProps<TValue, TOption = RadioOption<TValue>> extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   name?: string;
   value?: TValue;
   options: TOption[];

@@ -4,8 +4,8 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 
 export type EntityDetailTabUrls = {

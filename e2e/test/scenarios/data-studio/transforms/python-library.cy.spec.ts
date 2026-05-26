@@ -6,7 +6,8 @@ describe("scenarios > data studio > transforms > python library", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     // Python library row only appears when we have at least one transform
     H.createSqlTransform({
       sourceQuery: "SELECT 1",

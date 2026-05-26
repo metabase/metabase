@@ -78,6 +78,76 @@
         (is (false? (:success result)))
         (is (some #{:incompatible-implicit-joins} (:errors result)))))))
 
+(deftest gtap-policy-blocks-replacement-test
+  (testing "table with a sandbox (GTAP) policy produces :affects-gtap-policies"
+    (mt/with-temp [:model/Database       {db-id :id}    {}
+                   :model/Table          {t1-id :id}    {:db_id db-id}
+                   :model/Table          {t2-id :id}    {:db_id db-id}
+                   :model/Field          _               {:table_id t1-id :name "id" :base_type :type/Integer
+                                                          :effective_type :type/Integer}
+                   :model/Field          _               {:table_id t2-id :name "id" :base_type :type/Integer
+                                                          :effective_type :type/Integer}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/Sandbox        _               {:table_id t1-id :group_id group-id}]
+      (let [result (replacement.source-check/check-replace-source
+                    [:table t1-id] [:table t2-id])]
+        (is (false? (:success result)))
+        (is (some #{:affects-gtap-policies} (:errors result)))))))
+
+(deftest gtap-scoping-card-blocks-replacement-test
+  (testing "table referenced by a sandbox scoping card produces :affects-gtap-policies"
+    (mt/with-temp [:model/Database         {db-id :id}    {}
+                   :model/Table            {t1-id :id}    {:db_id db-id}
+                   :model/Table            {t2-id :id}    {:db_id db-id}
+                   :model/Table            {t3-id :id}    {:db_id db-id}
+                   :model/Field            _               {:table_id t1-id :name "id" :base_type :type/Integer
+                                                            :effective_type :type/Integer}
+                   :model/Field            _               {:table_id t2-id :name "id" :base_type :type/Integer
+                                                            :effective_type :type/Integer}
+                   :model/PermissionsGroup {group-id :id}  {}
+                   ;; Scoping card queries t1 (source table) but sandboxes t3
+                   :model/Card             {card-id :id}   {:database_id db-id :table_id t1-id}
+                   :model/Sandbox          _                {:table_id t3-id :group_id group-id :card_id card-id}]
+      (let [result (replacement.source-check/check-replace-source
+                    [:table t1-id] [:table t2-id])]
+        (is (false? (:success result)))
+        (is (some #{:affects-gtap-policies} (:errors result)))))))
+
+(deftest no-gtap-policy-no-error-test
+  (testing "table without sandbox policies does not produce :affects-gtap-policies"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {t1-id :id} {:db_id db-id}
+                   :model/Table {t2-id :id} {:db_id db-id}
+                   :model/Field _ {:table_id t1-id :name "id" :base_type :type/Integer
+                                   :effective_type :type/Integer}
+                   :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer
+                                   :effective_type :type/Integer}]
+      (let [result (replacement.source-check/check-replace-source
+                    [:table t1-id] [:table t2-id])]
+        (is (nil? (some #{:affects-gtap-policies} (:errors result))))))))
+
+(deftest gtap-check-not-applied-to-card-source-test
+  (testing "GTAP check only applies to :table sources, not :card sources"
+    (mt/with-temp [:model/Database         {db-id :id}    {}
+                   :model/Table            {t1-id :id}    {:db_id db-id}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/Sandbox          _               {:table_id t1-id :group_id group-id}
+                   :model/Card {c1-id :id} {:database_id db-id
+                                            :result_metadata [{:name "id"
+                                                               :base_type :type/Integer
+                                                               :effective_type :type/Integer
+                                                               :display_name "ID"
+                                                               :field_ref [:field "id" {:base-type :type/Integer}]}]}
+                   :model/Card {c2-id :id} {:database_id db-id
+                                            :result_metadata [{:name "id"
+                                                               :base_type :type/Integer
+                                                               :effective_type :type/Integer
+                                                               :display_name "ID"
+                                                               :field_ref [:field "id" {:base-type :type/Integer}]}]}]
+      (let [result (replacement.source-check/check-replace-source
+                    [:card c1-id] [:card c2-id])]
+        (is (nil? (some #{:affects-gtap-policies} (:errors result))))))))
+
 (deftest no-implicit-joins-without-incoming-fks-test
   (testing "table source without incoming FKs does not produce :incompatible-implicit-joins"
     (mt/with-temp [:model/Database {db-id :id} {}

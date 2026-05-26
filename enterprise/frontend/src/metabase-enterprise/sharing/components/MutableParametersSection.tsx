@@ -5,9 +5,10 @@ import _ from "underscore";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
-import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { getPulseParameters } from "metabase/pulse";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
@@ -15,7 +16,6 @@ import {
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { getSortedParameters } from "./utils";
 

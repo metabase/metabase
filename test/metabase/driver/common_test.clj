@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.common-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.common-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.common-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -60,7 +62,7 @@
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
     (mt/with-temp-env-var-value! [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
-      (with-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
         ;; make sure Postgres driver is initialized before trying to get its connection properties.
         (driver/the-initialized-driver :postgres)
         (let [connection-props (-> (driver.u/available-drivers-info)

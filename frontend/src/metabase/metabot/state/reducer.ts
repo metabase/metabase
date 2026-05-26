@@ -3,7 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
@@ -11,11 +11,13 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { TOOL_CALL_MESSAGES } from "../constants";
+import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
   type ConvoPayloadAction,
+  appendAgentTurnAborted,
+  appendAgentTurnErrored,
   convoReducer,
   createConversation,
   getMetabotInitialState,
@@ -25,7 +27,6 @@ import {
 import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
-  MetabotErrorMessage,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
@@ -72,7 +73,6 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
       ) => {
         const { id, message, agentId, ...rest } = action.payload;
-        convo.errorMessages = [];
         convo.messages.push({ id, role: "user", ...rest, message } as any);
         convo.history.push({ id, role: "user", content: message });
       },
@@ -81,23 +81,20 @@ export const metabot = createSlice({
       (
         convo,
         action: ConvoPayloadAction<
-          Omit<MetabotAgentChatMessage, "id" | "role">
+          Omit<MetabotAgentChatMessage, "id" | "role" | "externalId">
         >,
       ) => {
         convo.activeToolCalls = [];
+        const externalId = convo.pendingMessageExternalId;
         convo.messages.push({
           id: createMessageId(),
           role: "agent",
           ...action.payload,
+          ...(externalId ? { externalId } : {}),
           // transforms in message is making this flakily produce possibly infinite
           // typescript errors. since unused ts-expect-error directives produces
           // errors, casting this as any to avoid having to add / remove constantly.
         } as any);
-      },
-    ),
-    addAgentErrorMessage: convoReducer(
-      (convo, action: ConvoPayloadAction<MetabotErrorMessage>) => {
-        convo.errorMessages.push(action.payload);
       },
     ),
     addAgentTextDelta: convoReducer(
@@ -112,15 +109,22 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
+          const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
             id: createMessageId(),
             role: "agent",
             type: "text",
             message: action.payload.text,
+            ...(externalId ? { externalId } : {}),
           });
         }
 
         convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
+      },
+    ),
+    setPendingMessageExternalId: convoReducer(
+      (convo, action: ConvoPayloadAction<{ externalId: string }>) => {
+        convo.pendingMessageExternalId = action.payload.externalId;
       },
     ),
     toolCallStart: convoReducer(
@@ -206,7 +210,10 @@ export const metabot = createSlice({
       },
     ),
     setProfileOverride: convoReducer(
-      (state, action: ConvoPayloadAction<{ profile: string | undefined }>) => {
+      (
+        state,
+        action: ConvoPayloadAction<{ profile: MetabotProfileId | undefined }>,
+      ) => {
         state.profileOverride = action.payload.profile;
       },
     ),
@@ -288,7 +295,6 @@ export const metabot = createSlice({
         state: any;
         suggestedTransforms: MetabotSuggestedTransform[];
         activeToolCalls: MetabotToolCall[];
-        errorMessages: MetabotErrorMessage[];
         conversationId: string;
       }>,
     ) => {
@@ -303,7 +309,6 @@ export const metabot = createSlice({
         state: snapshotState,
         suggestedTransforms,
         activeToolCalls,
-        errorMessages,
         conversationId,
       } = action.payload;
 
@@ -311,7 +316,6 @@ export const metabot = createSlice({
       convo.history = history ?? [];
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
-      convo.errorMessages = errorMessages ?? [];
       convo.conversationId = conversationId ?? uuid();
       convo.isProcessing = false;
 
@@ -326,7 +330,6 @@ export const metabot = createSlice({
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
-          convo.errorMessages = [];
         }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
@@ -337,6 +340,7 @@ export const metabot = createSlice({
           convo.activeToolCalls = [];
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
+          convo.pendingMessageExternalId = undefined;
         }
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
@@ -346,6 +350,7 @@ export const metabot = createSlice({
           if (action.payload?.type === "abort") {
             convo.state = { ...(action.payload?.state ?? {}) };
             convo.history = action.payload?.history?.slice() ?? [];
+            appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
               // update history w/ synthetic tool_result entries for each unresolved tool call
               // as having a tool_call without a matching tool_result is invalid
@@ -366,8 +371,15 @@ export const metabot = createSlice({
                 }
               });
             }
+          } else if (action.payload?.type === "error") {
+            appendAgentTurnErrored(
+              convo,
+              action.payload.error,
+              action.payload.display,
+            );
           }
 
+          convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
           convo.isProcessing = false;
         }

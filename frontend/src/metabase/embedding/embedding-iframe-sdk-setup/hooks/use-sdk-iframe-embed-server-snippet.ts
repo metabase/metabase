@@ -9,11 +9,11 @@ import {
   node,
   python,
   ruby,
-} from "metabase/public/lib/code-templates";
+} from "metabase/embedding/lib/code-templates";
 import type {
   CodeSampleParameters,
   ServerCodeSampleConfig,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 
 const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: Omit<CodeSampleParameters, "displayOptions">,

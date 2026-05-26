@@ -44,7 +44,7 @@
    [:semantic_type  [:maybe :string]]])
 
 (mr/def ::error-type
-  [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins])
+  [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins :affects-gtap-policies])
 
 (mr/def ::column-mapping
   [:map

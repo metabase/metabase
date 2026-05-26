@@ -78,8 +78,9 @@
     (defn middleware-fn [handler]
       (fn handler' [request respond raise]
         (handler request respond raise)))"
-  ;; ▼▼▼ Middleware is APPLIED from TOP-TO-BOTTOM, but the returned `handlers` will see the requests in order from BOTTOM-TO-TOP. ▼▼▼
-  (->> [#'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
+  ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
+  (->> [        ;; Inside of the middleware onion
+        #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
@@ -111,6 +112,7 @@
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
+        ;; Outside of middleware onion
         ]
        (remove nil?)))
 

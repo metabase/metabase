@@ -36,7 +36,7 @@ Currently, Metabase can create transforms on the following databases:
 
 You can't create transforms on databases that have [Database routing](../../permissions/database-routing.md) enabled, or on Metabase's Sample Database.
 
-Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md). We suggest using a [Writable connection](../../databases/writable-connection.md) option for your database.
+Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md). We suggest using a [Writable connection](../../databases/writable-connection.md) for your database.
 
 ## Types of transforms
 
@@ -47,22 +47,39 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 ## Permissions for transforms
 
-If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
+Permission configuration for transform depends on your plan.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms:
+- **Metabase Open Source/Starter**: Admins (and only Admins) can see and run transforms.
 
-- To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-- To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
+- **Metabase Pro/Enterprise** comes with additional permission controls for transforms: a special [Data Analysts](../../people-and-groups/managing.md) group for non-Admins with potential transform access, and granular transform permissions for each database:
+
+  - To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+  - To **execute** transforms on a database, people need to be either Admins on belong to the special [Data Analyst group](../../people-and-groups/managing.md). Additionally people need to have the [Transform permissions](../../permissions/data.md) for that database.
+
+## Enable transforms
+
+Before you can start writing transforms, you'll need to enable transforms in your Metabase instance.
+
+If you are on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
+
+To enable transforms:
+
+1. Navigate to [**Data Studio**](../overview.md) by click the **grid icon** in top right corner of your Metabase and selecing **Data Studio**.
+2. In Data Studio, click **Transforms** in the right sidebar.
+3. If the transforms have not been enabled on your instance yet, you'll see a prompt to enable them. You can do just that.
+
+Once you've enabled transforms, you can [configure permissions](#permissions-for-transforms) and start [creating transforms](#create-a-transform).
 
 ## See all transforms
 
 _Data Studio > Transforms_
 
+See [permissions needed to see transforms](#permissions-for-transforms).
+
 You can see all your Metabase's transforms:
 
-1. Make sure you have [appropriate permissions to see transforms](#permissions-for-transforms).
-2. Click the **grid** icon on top right and go to **Data Studio**.
-3. In the left sidebar, select **Transforms**.
+1. Click the **grid** icon on top right and go to **Data Studio**.
+2. In the left sidebar, select **Transforms**.
 
 ![Transforms](../images/transforms.png)
 
@@ -70,11 +87,13 @@ You can see all your Metabase's transforms:
 
 _Data Studio > Transforms_
 
-If you're using remote sync, you won't be able to create transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+> If you're using remote sync, you won't be able to create transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+
+See [permissions needed to create transforms](#permissions-for-transforms).
 
 To create a transform:
 
-1. Make sure you have [appropriate permissions for creating transforms](#permissions-for-transforms).
+1. [Enable transforms](#enable-transforms).
 2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
@@ -95,7 +114,7 @@ To create a transform:
 
    If you're writing a SQL transform, variables _must_ be wrapped in optional blocks (`[[ ]]`), or given a default value. See [variables in SQL transforms](query-transforms.md#variables-in-sql-transforms) for more details.
 
-   If you have the Metabot AI add-on, you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
+   If [Metabot is enabled](../../ai/settings.md#enable-ai-features), you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
 
 6. Click **Save** in the top right corner and fill out the transform information:
 
@@ -111,7 +130,7 @@ To create a transform:
 
 ## Use Metabot to generate code for transforms
 
-> Code generation for transforms requires the **Metabot AI** and **Transforms** add-ons.
+> Code generation for transforms requires [AI features](../../ai/settings.md#enable-ai-features).
 
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
@@ -145,12 +164,13 @@ If you're using remote sync, you won't be able to edit transforms if your instan
 
 _Data Studio > Transforms > Definition_
 
+See [permissions to edit transforms](#permissions-for-transforms).
+
 To edit the transform's query or script:
 
-1. Make sure you have [permissions to edit transforms](../../permissions/data.md).
-2. Go to **Data Studio > Transforms**.
-3. Find the transform you'd like to edit and click on **Edit definition** above the transform definition.
-4. Edit the query or script.
+1. Go to **Data Studio > Transforms**.
+2. Find the transform you'd like to edit and click on **Edit definition** above the transform definition.
+3. Edit the query or script.
 
    See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can [use Metabot](#use-metabot-to-generate-code-for-transforms) to help edit your transform.
 
@@ -168,11 +188,11 @@ To edit transform's target table, i.e., the table where the query results are wr
 
 You can run a transform manually or schedule the transform using tags and jobs.
 
+- To run a transform manually, visit the transform in **Data Studio > Transforms > Runs** and click **Run**.
+
+- To schedule a transform, you'll need to assign one or more tags to it, then create a [scheduled job](./jobs-and-runs.md) that picks up those tags.
+
 Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](../../data-modeling/metadata-editing.md) and [permissions](../../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
-
-To run a transform manually, visit the transform in **Data Studio > Transforms > Runs** and click **Run**.
-
-To schedule a transform, you'll need to assign one or more tags to it, then create a [scheduled job](./jobs-and-runs.md) that picks up those tags.
 
 You can see the time and status of the latest transform run on the transform's page, or in the [Runs view](./jobs-and-runs.md). The time of the run is given in the system's timezone.
 
@@ -181,6 +201,8 @@ For Python transforms, you'll also see the transform's execution logs.
 ## Inspect a transform
 
 _Data Studio > Transforms > [transform name] > Inspect_
+
+> Transform inspector requires the [Advanced transforms add-on](addons.md)
 
 The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
 
@@ -200,7 +222,7 @@ On Metabase Pro or Enterprise plans, you can see the transform dependencies grap
 
 If a job includes a transform that depends on a table created by another transform, then the job will run all the tagged transforms and their dependencies, even if they lack tags, see [Jobs and runs](jobs-and-runs.md) for more information.
 
-### Incremental transforms
+## Incremental transforms
 
 _Data Studio > Transforms > Settings_
 
@@ -219,6 +241,8 @@ Incremental transforms work differently for query-based transforms and Python tr
 ## Versioning transforms
 
 _Admin > General > Remote sync_
+
+{% include plans-blockquote.html feature="Versioning transforms" %}
 
 You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
 
@@ -240,3 +264,5 @@ Transforms are similar to models with model persistence turned on, but there are
 - You can use Python to create transforms.
 
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
+
+On Metabase Pro/Enterprise plans, you can convert Metabase models to transforms in bulk, see [Convert models to transforms](query-transforms.md#convert-models-to-transforms)

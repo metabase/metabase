@@ -10,7 +10,7 @@ import {
   getIsAutoApplyFilters,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setParameterValues } from "metabase/redux/dashboard";
 
 import { getFilterChangeDescription } from "./utils";

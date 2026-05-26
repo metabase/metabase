@@ -7,11 +7,14 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -25,11 +28,17 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
+
+import { JobListMoreMenu } from "../../components/JobListMoreMenu";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
 
 export const JobListPage = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
+
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: jobs = [], error, isLoading } = useListTransformJobsQuery({});
 
@@ -40,6 +49,7 @@ export const JobListPage = () => {
     [dispatch],
   );
 
+  const isMeterLocked = useSetting("transforms-meter-locked");
   const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
     () => [
       {
@@ -64,8 +74,28 @@ export const JobListPage = () => {
             </Ellipsified>
           ) : null,
       },
+      {
+        id: "status",
+        maxWidth: 200,
+        cell: ({ row }) =>
+          isMeterLocked || !row.original.active ? (
+            <TransformBadge bg="background-secondary">
+              {t`Disabled`}
+            </TransformBadge>
+          ) : null,
+      },
+      ...(isAdmin
+        ? ([
+            {
+              id: "actions",
+              header: "",
+              width: 48,
+              cell: ({ row }) => <JobMoreMenu job={row.original} />,
+            },
+          ] satisfies TreeTableColumnDef<TransformJob>[])
+        : []),
     ],
-    [],
+    [isMeterLocked, isAdmin],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -96,6 +126,7 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack style={{ overflow: "hidden" }}>
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
@@ -110,12 +141,13 @@ export const JobListPage = () => {
             component={ForwardRefLink}
             to={Urls.newTransformJob()}
           >{t`New`}</Button>
+          {isAdmin && jobs.length > 0 && <JobListMoreMenu jobs={jobs} />}
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>
           <Card withBorder p={0}>
             {isLoading ? (
-              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+              <TreeTableSkeleton columnWidths={[0.55, 0.3, 0.1, 0.05]} />
             ) : (
               <TreeTable
                 instance={treeTableInstance}

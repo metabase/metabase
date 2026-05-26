@@ -12,6 +12,13 @@ import {
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
+import type { State } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
 import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockCard,
@@ -23,13 +30,6 @@ import {
   createMockParameter,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase-types/store/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
 

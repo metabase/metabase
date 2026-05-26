@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameterVisibility,
   EmbeddingParameters,
-} from "metabase/public/lib/types";
+} from "metabase-types/api";
 
 export const countEmbeddingParameterOptions = (
   embeddingParams: EmbeddingParameters,

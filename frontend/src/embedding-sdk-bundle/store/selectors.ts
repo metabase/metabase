@@ -1,8 +1,8 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
 
 export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
   state.sdk?.isGuestEmbed;

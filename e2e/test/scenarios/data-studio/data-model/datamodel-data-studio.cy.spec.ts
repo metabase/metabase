@@ -17,7 +17,7 @@ describe("scenarios > data studio > datamodel", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
@@ -66,7 +66,7 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
-          H.activateToken("bleeding-edge");
+          H.activateToken("pro-self-hosted");
           cy.signInAsAdmin();
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -135,7 +135,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
       });
@@ -358,7 +358,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should filter unused tables only", () => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         const usedTableName = "Animals";
@@ -394,7 +394,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     it("select/deselect functionality", { tags: ["@external"] }, () => {
       H.restore("postgres-writable");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -1270,7 +1270,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Empty states", { tags: "@external" }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         H.queryWritableDB('delete from "Domestic"."Animals"');
@@ -1497,8 +1497,15 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
-    table_ids: tableIds,
+  return cy.request("GET", "/api/ee/library").then(({ body }) => {
+    const dataCollection = body.effective_children?.find(
+      (collection: { type?: string }) => collection.type === "library-data",
+    );
+
+    return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
+      table_ids: tableIds,
+      collection_id: dataCollection.id,
+    });
   });
 }
 

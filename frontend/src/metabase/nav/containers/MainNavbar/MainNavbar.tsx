@@ -9,12 +9,13 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
+import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
@@ -139,6 +140,7 @@ function MainNavbar({
           onChangeLocation={onChangeLocation}
           {...props}
         />
+        <NavbarPromoSlot />
       </NavRoot>
     </Sidebar>
   );

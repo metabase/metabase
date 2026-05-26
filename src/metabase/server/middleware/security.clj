@@ -60,20 +60,26 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
+(defn try-parse-url
+  "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
+   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+   fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
     ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
     (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+          [_ protocol domain port] (re-matches pattern url)]
+      (when domain
+        {:protocol protocol :domain domain :port port}))))
+
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url. Logs an error when the input
+   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+   For client-controlled input prefer [[try-parse-url]]."
+  [url]
+  (or (try-parse-url url)
+      (do (log/errorf "Invalid URL: %s" url) nil)))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
@@ -123,6 +129,7 @@
 
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
+(def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -132,6 +139,11 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
+                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
+                                  ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
+                                  (when (and nonce (not config/is-dev?))
+                                    (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (analytics/anon-tracking-enabled)
@@ -146,7 +158,7 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
-                                    "http://localhost:9630"])
+                                    (str "http://localhost:" cljs-dev-port)])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -160,7 +172,7 @@
                                    frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "http://localhost:9630")
+                                   (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
@@ -175,12 +187,14 @@
                                  ;; Snowplow analytics
                                  (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
+                                 (when (analytics/anon-tracking-enabled)
+                                   (setting/get-value-of-type :string :metaplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   "ws://*:9630")]
+                                   (str "ws://*:" cljs-dev-port))]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})

@@ -4,12 +4,12 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { onReplaceAllVisualizationSettings } from "metabase/query_builder/actions";
 import {
   getUiControls,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   onCloseChartSettings,
   onOpenChartType,

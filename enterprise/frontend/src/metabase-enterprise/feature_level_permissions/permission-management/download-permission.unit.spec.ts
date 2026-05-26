@@ -1,5 +1,8 @@
-import { DataPermissionValue } from "metabase/admin/permissions/types";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import {
   DOWNLOAD_PERMISSION_OPTIONS,

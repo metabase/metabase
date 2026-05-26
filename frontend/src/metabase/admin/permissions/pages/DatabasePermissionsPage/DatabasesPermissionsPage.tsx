@@ -5,11 +5,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { connect, useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
-import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,

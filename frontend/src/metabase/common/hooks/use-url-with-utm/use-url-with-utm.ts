@@ -1,4 +1,4 @@
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { type UtmProps, getUrlWithUtm } from "metabase/selectors/settings";
 
 export function useUrlWithUtm(url: string, utm: UtmProps): string;

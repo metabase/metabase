@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, msgid, t } from "ttag";
 
 import type { SegmentedControlItem } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
@@ -10,8 +10,8 @@ export const MAX_LIMIT_INPUT = 999999999;
  * Sanitizes the input value for a usage limit.
  * Return an integer value or null if the input is empty.
  */
-export const sanitizeUsageLimitValue = (inputValue: string) => {
-  let sanitizedStrValue = inputValue.trim();
+export const sanitizeUsageLimitValue = (inputValue: string | number) => {
+  let sanitizedStrValue = String(inputValue).trim();
 
   if (sanitizedStrValue !== "") {
     sanitizedStrValue = Math.min(
@@ -68,16 +68,16 @@ const instanceLimitLabelMap: Record<
 > = {
   get tokens() {
     return {
-      daily: t`Total daily instance limit (millions of tokens)`,
-      weekly: t`Total weekly instance limit (millions of tokens)`,
-      monthly: t`Total monthly instance limit (millions of tokens)`,
+      daily: t`Total daily instance token limit`,
+      weekly: t`Total weekly instance token limit`,
+      monthly: t`Total monthly instance token limit`,
     };
   },
   get messages() {
     return {
-      daily: t`Total daily instance limit (message count)`,
-      weekly: t`Total weekly instance limit (message count)`,
-      monthly: t`Total monthly instance limit (message count)`,
+      daily: t`Total daily instance message limit`,
+      weekly: t`Total weekly instance message limit`,
+      monthly: t`Total monthly instance message limit`,
     };
   },
 };
@@ -105,4 +105,22 @@ export function getQuotaMessageInputDescription(
   limitPeriod: MetabotLimitPeriod = "monthly",
 ) {
   return messageDescriptionMap[limitPeriod];
+}
+
+export function getMaxUsageInputUnit(
+  limitType: MetabotLimitType,
+  value?: number | null,
+) {
+  // Default to 2 so the unit reads as plural ("messages") for the placeholder.
+  const count = value ?? 2;
+
+  if (limitType === "tokens") {
+    return c(
+      "unit shown beside a token-count input, e.g. '10 million'",
+    ).ngettext(msgid`million`, `million`, count);
+  }
+
+  return c(
+    "unit shown beside a message-count input, e.g. '10 messages'",
+  ).ngettext(msgid`message`, `messages`, count);
 }

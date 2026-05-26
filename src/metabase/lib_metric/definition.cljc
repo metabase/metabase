@@ -2,10 +2,11 @@
   "Functions for creating and manipulating MetricDefinitions."
   (:require
    [metabase.lib-metric.ast.build :as ast.build]
-   [metabase.lib-metric.ast.compile :as ast.compile]
+   [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (comment ast.schema/keep-me)
 
@@ -14,6 +15,10 @@
 (def expression-leaf?
   "Returns true if the expression is a single leaf node ([:metric opts id] or [:measure opts id])."
   ast.build/expression-leaf?)
+
+(def arithmetic-expression?
+  "Returns true if the expression is an arithmetic node [op opts expr expr ...]."
+  ast.build/arithmetic-expression?)
 
 (def expression-leaf-type
   "Returns the type keyword (:metric or :measure) from an expression leaf."
@@ -42,10 +47,9 @@
   [expression]
   (cond
     (nil? expression) []
+    (number? expression) []
     (expression-leaf? expression) [expression]
-    (and (sequential? expression)
-         (#{:+ :- :* :/} (first expression))
-         (>= (count expression) 4))
+    (arithmetic-expression? expression)
     (into [] (mapcat expression-leaves) (drop 2 expression))
     :else (throw (ex-info "Invalid expression: not a leaf or arithmetic node"
                           {:expression expression}))))
@@ -97,6 +101,36 @@
     (when (= :measure (expression-leaf-type expr))
       (expression-leaf-id expr))))
 
+(defn projection-valid?
+  "Returns true when every distinct source leaf in the expression has a non-empty projection defined."
+  [definition]
+  (let [leaves      (expression-leaves (:expression definition))
+        projections (or (:projections definition) [])]
+    (perf/every? (fn [leaf]
+                   (let [leaf-type (expression-leaf-type leaf)
+                         leaf-id   (expression-leaf-id leaf)]
+                     (perf/some (fn [tp]
+                                  (and (= leaf-type (:type tp))
+                                       (= leaf-id (:id tp))
+                                       (seq (:projection tp))))
+                                projections)))
+                 leaves)))
+
+(defn unprojected-sources
+  "Returns a vector of expression leaves that are missing projections."
+  [definition]
+  (let [leaves      (expression-leaves (:expression definition))
+        projections (or (:projections definition) [])
+        projected?  (fn [leaf]
+                      (let [leaf-type (expression-leaf-type leaf)
+                            leaf-id   (expression-leaf-id leaf)]
+                        (perf/some (fn [tp]
+                                     (and (= leaf-type (:type tp))
+                                          (= leaf-id (:id tp))
+                                          (seq (:projection tp))))
+                                   projections)))]
+    (into [] (remove projected?) leaves)))
+
 (defn filters
   "Get the filter clauses from a metric definition.
    Returns the instance-filters vector."
@@ -116,27 +150,13 @@
   [definition :- ::lib-metric.schema/metric-definition]
   (ast.build/from-definition definition))
 
-(mu/defn ->mbql-query
-  "Convert MetricDefinition to MBQL query via AST."
+(mu/defn ->query-plan
+  "Convert MetricDefinition to a QueryPlan via AST.
+   For single-leaf definitions, returns a :leaf plan with compiled MBQL.
+   For arithmetic expressions, returns an :arithmetic plan with multiple compiled queries."
   ([definition :- ::lib-metric.schema/metric-definition]
-   (->mbql-query definition {}))
+   (->query-plan definition {}))
   ([definition :- ::lib-metric.schema/metric-definition
-    opts :- [:map
-             [:limit {:optional true} [:maybe pos-int?]]]]
+    opts]
    (let [ast (->ast definition)]
-     (if (some? (:limit opts))
-       (ast.compile/compile-to-mbql ast :limit (:limit opts))
-       (ast.compile/compile-to-mbql ast)))))
-
-(mu/defn ->values-query
-  "Convert MetricDefinition to a values-only MBQL query via AST.
-   Like [[->mbql-query]] but omits aggregation, returning distinct breakout values."
-  ([definition :- ::lib-metric.schema/metric-definition]
-   (->values-query definition {}))
-  ([definition :- ::lib-metric.schema/metric-definition
-    opts :- [:map
-             [:limit {:optional true} [:maybe pos-int?]]]]
-   (let [ast (->ast definition)]
-     (if (some? (:limit opts))
-       (ast.compile/compile-to-values-query ast :limit (:limit opts))
-       (ast.compile/compile-to-values-query ast)))))
+     (ast.plan/plan-from-ast ast opts))))

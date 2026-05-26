@@ -1,9 +1,12 @@
 (ns metabase.metabot.query-analyzer.parameter-substitution-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]))
+   [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest replace-tags-without-template-tags-test
   (testing "Query without template tags returns raw SQL"

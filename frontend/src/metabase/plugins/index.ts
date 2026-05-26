@@ -28,6 +28,7 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
+export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -46,7 +47,6 @@ export {
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
   PLUGIN_REDUCERS,
@@ -57,7 +57,6 @@ export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
-  PLUGIN_WORKSPACES,
 } from "./oss/database";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
@@ -70,11 +69,15 @@ export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
+  type CollectionPermissionsModalProps,
   type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
-export { PLUGIN_METABOT } from "./oss/metabot";
+export {
+  PLUGIN_METABOT,
+  type MetabaseAIProviderSetupProps,
+} from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -118,8 +121,6 @@ export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
-  type SnippetFormModalProps,
-  type SnippetCollectionMenuProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
 } from "./oss/snippets";
@@ -146,6 +147,11 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
+export {
+  PLUGIN_WORKSPACES,
+  type AdminConnectionInfoSectionProps,
+} from "./oss/workspaces";
+export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
@@ -170,6 +176,7 @@ import { reinitialize as reinitializeCollections } from "./oss/collections";
 import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
+import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
@@ -185,6 +192,7 @@ import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
 import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
@@ -194,6 +202,7 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
+import { reinitialize as reinitializeWorkspaces } from "./oss/workspaces";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -212,6 +221,7 @@ export function reinitialize() {
   reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();
+  reinitializeCustomViz();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
@@ -226,6 +236,7 @@ export function reinitialize() {
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();
+  reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();
   reinitializeSmtpOverride();
@@ -236,5 +247,6 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
+  reinitializeWorkspaces();
   reinitializeWritableConnection();
 }

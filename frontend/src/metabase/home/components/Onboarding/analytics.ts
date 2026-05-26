@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 import type { ChecklistItemCTA, ChecklistItemValue } from "./types";
 

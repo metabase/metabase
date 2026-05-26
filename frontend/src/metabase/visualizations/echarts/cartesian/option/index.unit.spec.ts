@@ -90,7 +90,6 @@ describe("ensureRoomForLabels", () => {
 
     const axes = buildAxes(
       chartModel,
-      chartWidth,
       chartLayout,
       mockSettings,
       hasTimelineEvents,

@@ -1,6 +1,6 @@
-import { formatValue } from "metabase/lib/formatting/value";
-import { isNumber } from "metabase/lib/types";
 import { color, colors } from "metabase/ui/colors";
+import { isNumber } from "metabase/utils/types";
+import { formatValue } from "metabase/visualizations/lib/formatting/value";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,

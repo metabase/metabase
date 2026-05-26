@@ -12,8 +12,13 @@ import {
 } from "__support__/storybook";
 import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { registerVisualization } from "metabase/visualizations";
@@ -21,11 +26,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import * as data from "./stories-data";
 

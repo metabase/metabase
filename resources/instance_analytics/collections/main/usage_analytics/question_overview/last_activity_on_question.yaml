@@ -37,11 +37,11 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_audit_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
           - [Internal Metabase Database, public, v_users, user_id]
       fields:
       - - field
-        - {base-type: type/Text, join-alias: People - User, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: People - User}
         - [Internal Metabase Database, public, v_users, full_name]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -56,7 +56,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields: none
       stages:

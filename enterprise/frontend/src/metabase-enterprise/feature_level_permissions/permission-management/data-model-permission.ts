@@ -7,9 +7,7 @@ import {
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
   type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
@@ -24,7 +22,12 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {

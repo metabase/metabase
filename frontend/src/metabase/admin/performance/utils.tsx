@@ -4,8 +4,8 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
-import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type {
   AdaptiveStrategy,
   CacheConfig,

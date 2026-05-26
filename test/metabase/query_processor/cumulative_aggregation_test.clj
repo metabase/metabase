@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.cumulative-aggregation-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.cumulative-aggregation-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.cumulative-aggregation-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

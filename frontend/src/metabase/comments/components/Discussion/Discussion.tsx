@@ -10,7 +10,7 @@ import {
 import { getCommentsUrl } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {

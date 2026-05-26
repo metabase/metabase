@@ -1,23 +1,23 @@
 import type { ReactNode } from "react";
 
-import {
-  type DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type EntityId,
-  type PermissionSubject,
-  type SpecialGroupType,
+import type {
+  DatabaseEntityId,
+  EntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase/admin/permissions/types";
+import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  DataPermission,
   Dataset,
   Group,
   GroupPermissions,
   GroupsPermissions,
   User,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { DataPermissionValue } from "metabase-types/api";
 
 import type { PluginGroupManagersType } from "../types";
 
@@ -142,6 +142,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     permissionSubject: _permissionSubject,
     permissionView: _permissionView,
     showTransformPermissions: _showTransformPermissions,
+    showWorkspacesPermissions: _showWorkspacesPermissions,
   }: {
     entityId: DatabaseEntityId;
     groupId: number;
@@ -152,6 +153,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     permissionSubject: PermissionSubject;
     permissionView?: "group" | "database";
     showTransformPermissions?: boolean;
+    showWorkspacesPermissions?: boolean;
   }) => {
     return [] as any;
   },
@@ -160,11 +162,13 @@ const getDefaultFeatureLevelPermissions = () => ({
     groupType: _groupType,
     isExternal: _isExternal,
     showTransformPermissions: _showTransformPermissions,
+    showWorkspacesPermissions: _showWorkspacesPermissions,
   }: {
     subject: PermissionSubject;
     groupType?: SpecialGroupType;
     isExternal?: boolean;
     showTransformPermissions?: boolean;
+    showWorkspacesPermissions?: boolean;
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,

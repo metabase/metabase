@@ -50,10 +50,10 @@
   ([instance]
    ;; Dashboards in audit collection should be read only
    (and (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+              ;; We want to make sure there's an existing audit collection before doing the equality check below.
+              ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+              ;; Is a direct descendant of audit collection
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -120,9 +120,9 @@
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) :none))
-     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
-     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
-     ;; (metabase#34657)
+    ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+    ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+    ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list
@@ -304,7 +304,7 @@
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                            ;; Xrays populate this in their transient cards
+                           ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
@@ -402,22 +402,21 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl
-               :dependency_analysis_version]
+               :cache_ttl]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
-   :defaults {:archived                false
-              :archived_directly       false
-              :auto_apply_filters      true
-              :enable_embedding        false
-              :show_in_getting_started false}})
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :dashboard_tab_id :row :col)} opts))}
+   :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
+   :defaults  {:archived                false
+               :archived_directly       false
+               :auto_apply_filters      true
+               :enable_embedding        false
+               :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
@@ -483,14 +482,16 @@
                   :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :collection-type :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   :moderated-status           :mr.status}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and

@@ -8,6 +8,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
@@ -15,8 +17,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { NavbarLibrarySection } from "../NavbarLibrarySection";
 
@@ -26,12 +26,13 @@ export const createChildCollection = (
   createMockCollection({
     id: 10,
     name: "Metrics",
-    type: null,
+    type: "library-metrics",
+    is_library_root: true,
     location: "/1/",
     here: ["card"],
     below: ["card"],
     ...overrides,
-  } as Partial<Collection>);
+  });
 export const createLibraryCollection = (
   overrides: Partial<Collection> = {},
 ): Collection =>
@@ -43,7 +44,7 @@ export const createLibraryCollection = (
     here: ["card"],
     below: ["card"],
     ...overrides,
-  } as Partial<Collection>);
+  });
 export const setup = ({
   collections = [createLibraryCollection()],
   isEnterprise = false,
@@ -68,16 +69,20 @@ export const setup = ({
       settings: mockSettings(settings),
       currentUser: createMockUser({ is_superuser: true }),
     });
-
-    const pluginNames: ENTERPRISE_PLUGIN_NAME[] = ["library", "remote_sync"];
+    setupEnterpriseOnlyPlugin("library");
+    const pluginNames: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
     pluginNames.forEach(setupEnterpriseOnlyPlugin);
   } else {
+    const settings = {
+      "expand-library-in-nav": true,
+      "token-features": createMockTokenFeatures({ library: true }),
+    };
+
     state = createMockState({
-      settings: mockSettings({
-        "expand-library-in-nav": true,
-      }),
+      settings: mockSettings(settings),
       currentUser: createMockUser({ is_superuser: true }),
     });
+    setupEnterpriseOnlyPlugin("library");
   }
 
   setupSettingsEndpoints([]);

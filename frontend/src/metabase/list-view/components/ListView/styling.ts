@@ -1,6 +1,6 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color, maybeColor } from "metabase/ui/utils/colors";
+import type { IconName } from "metabase-types/api";
 
 export const ENTITY_ICONS = {
   "entity/UserTable": "person",

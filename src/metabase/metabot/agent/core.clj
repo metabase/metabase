@@ -3,11 +3,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -16,7 +15,6 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -168,8 +166,7 @@
   [:map
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
-   [:tag                 {:optional true} [:maybe :string]]
-   [:track-user-intent?  {:optional true} [:maybe :boolean]]])
+   [:tag                 {:optional true} [:maybe :string]]])
 
 ;;; Iteration control
 
@@ -273,8 +270,12 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id] :as chart}]
-      (memory/store-chart mem chart-id chart)))
+    (fn [mem {:keys [chart-id chart-type query]}]
+      (memory/store-chart mem
+                          chart-id
+                          {:chart_id chart-id
+                           :queries [query]
+                           :visualization_settings {:chart_type chart-type}})))
    memory
    parts))
 
@@ -590,8 +591,6 @@
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
-        track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))
         perms              (or scope/*current-user-metabot-permissions*
                                (if api/*is-superuser?*
                                  scope/all-yes-permissions
@@ -605,36 +604,36 @@
         (with-span :info {:name       :metabot.agent/run-agent-loop
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
-          (prometheus/inc! :metabase-metabot/agent-requests labels)
+          (analytics/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms]
               (try
                 (let [agent              (init-agent opts)
-                      _                  (when track-user-intent?
-                                           (agent-analytics/classify-and-track-user-intent-async!
-                                            (:messages opts)
-                                            (:tracking-opts agent)))
                       {result    :result
                        iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
                                                   (iterate loop-step)
                                                   (drop-while #(= :continue (:status %)))
                                                   first)]
-                  (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
+                  (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
                   ;; Emit debug log as a data part if debug mode was active
                   (if (and debug? (seq @*debug-log*))
                     (rf result (debug-log-part @*debug-log*))
                     result))
                 (catch Exception e
-                  (prometheus/inc! :metabase-metabot/agent-errors labels)
-                  (when (:api-error (ex-data e))
-                    (log/debugf "API error details: status=%s body=%s"
-                                (:status (ex-data e))
-                                (pr-str (:body (ex-data e)))))
+                  (analytics/inc! :metabase-metabot/agent-errors labels)
                   (if (:api-error (ex-data e))
-                    (log/errorf "Agent loop API error: %s" (ex-message e))
+                    (if (:status (ex-data e))
+                      (log/errorf "Agent loop API error: %s status=%s provider=%s body=%s"
+                                  (ex-message e)
+                                  (:status (ex-data e))
+                                  (:provider (ex-data e))
+                                  (pr-str (:body (ex-data e))))
+                      (log/errorf e "Agent loop API error: %s provider=%s"
+                                  (ex-message e)
+                                  (:provider (ex-data e))))
                     (log/error e "Agent loop error"))
                   (rf init (error-part e)))
                 (finally
-                  (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
+                  (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { type ItemWithName, getName } from "metabase/utils/name";
 
 import type { EntityDefinition, EntityId, EntityType } from "./rtk-query";
 
@@ -12,7 +13,7 @@ interface Props {
 /**
  * @deprecated use "metabase/api" instead
  */
-export const EntityName = <Entity, EntityWrapper>({
+export const EntityName = <Entity extends ItemWithName, EntityWrapper>({
   entityType,
   entityId,
 }: Props) => {
@@ -41,5 +42,5 @@ export const EntityName = <Entity, EntityWrapper>({
     return null;
   }
 
-  return <span>{tc(entityDefinition.objectSelectors.getName(entity))}</span>;
+  return <span>{tc(getName(entity))}</span>;
 };

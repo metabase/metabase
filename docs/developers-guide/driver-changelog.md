@@ -4,6 +4,85 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.62.0
+
+- `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and
+  `date-string->filter`, introduced in 0.61.0, have been removed; they are no longer necessary. They have been
+  replaced by a single method, `sql.params.substitution/->honeysql`, which compiles an MBQL 5 clause to HoneySQL with
+  the given options.
+
+- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
+  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
+  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
+  `metabase.lib.core/parsed-parameter?`.
+
+- The `metabase.driver.common.parameters.dates` and `metabase.driver.common.parameters.operators` namespaces,
+  deprecated in 0.57.0, have been removed. Use the equivalent QP namespaces instead:
+  `metabase.query-processor.parameters.dates` and `metabase.query-processor.parameters.operators`, respectively. These
+  namespaces return MBQL 5 clauses rather than MBQL 4; use `metabase.lib.core/->legacy-MBQL` if needed until your
+  driver has been fully updated to MBQL 5.
+
+- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
+  removed.
+
+- `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
+  `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
+  `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
+- Added `metabase.driver.sql/table-qualification-style` multimethod. Returns one of
+  `:table-qualification-style/{table,schema-table,db-table,db-schema-table}` describing the per-driver
+  SQL identifier shape. Used by workspace table remapping
+  (`metabase-enterprise.workspaces.core/engine-namespace-positions`) to decide tuple shape when
+  storing `:model/TableRemapping` rows and matching AST positions during query rewriting. Defaults
+  to `:table-qualification-style/schema-table` -- the common case, so Postgres/Redshift/H2/ClickHouse
+  need no override. Drivers that emit `db.table` (MySQL) override to
+  `:table-qualification-style/db-table`; drivers that emit `db.schema.table` (SQL Server, BigQuery)
+  override to `:table-qualification-style/db-schema-table`. Drivers that emit a bare `table` use
+  `:table-qualification-style/table`.
+
+- Added `metabase.driver.sql/db-slot-value` multimethod. Returns the `:db` AST slot string (catalog,
+  project id, etc.) for a `Database` row. Required for `:table-qualification-style/db-table` and
+  `:table-qualification-style/db-schema-table` drivers; the default returns `nil`. Overridden by
+  MySQL and SQL Server (`(:db (:details db))`) and BigQuery (`(:project-id (:details db))`).
+
+- Added `metabase.driver/qualified-name-components` multimethod. Returns the ordered subset of
+  `#{:db :schema}` identifier positions a driver populates when referencing a table in compiled
+  SQL. Defaults to `[:schema]`. Drivers that emit bare table names (Mongo) override to `[]`;
+  MySQL overrides to `[:db]` (its "database" rides on the connection but participates as the
+  `:db` AST slot for cross-DB consumers); drivers that emit a 3-part `catalog.schema.table`
+  identifier (SQL Server, BigQuery) override to `[:db :schema]`.
+
+## Metabase 0.61.0
+
+- Added the following driver multimethods to support MBQL5 compilation migration:
+  - `sql.qp/compile-mbql` - Compiles an MBQL inner query to HoneySQL.
+  - `sql.qp/mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
+  - `sql.qp/expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `sql.qp/aggregation-name` - Returns the name of an aggregation clause.
+  - `sql.qp/over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
+  - `sql.qp/clause-value-idx` - Returns the index of the value in a value clause.
+  - `sql.qp/breakout-options-index` - Returns the index of options in a breakout clause.
+  - `sql.params.substitution/field->clause` - Returns an MBQL field clause with the given options.
+  - `sql.params.substitution/to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
+  - `sql.params.substitution/desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
+  - `sql.params.substitution/wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
+  - `sql.params.substitution/date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
+
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should *not* need to
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql`
+  methods to handle the clause options argument as the second parameter. See the `:h2` driver in https://github.com/metabase/metabase/pull/71439 for
+  an example. Drivers will need to be migrated to work with MBQL5 compilation over the next three releases by v64. After v64 these methods will be deprecated
+  in favour of the `:sql-mbql5` implementations once all drivers have been migrated.
+
+- Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
+  update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
+
+- `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
+
+- `metabase.driver.sql/set-role-statement` has been deprecated in favor of
+  `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
+  the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
@@ -57,6 +136,9 @@ title: Driver interface changelog
   `:bigquery-cloud-sdk` driver for example.
 
 ## Metabase 0.57.0
+
+- Added `metabase.driver/validate-db-details!` multimethod for rejecting connection details that are unsafe to
+  persist (independent of whether the database is currently reachable). The default implementation is a no-op.
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 

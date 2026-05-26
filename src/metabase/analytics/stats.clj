@@ -9,8 +9,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
@@ -650,7 +650,7 @@
   [executions]
   (mapv (fn [qe-group]
           {:group (str qe-group) :value (get executions qe-group)})
-        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
+        [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -795,7 +795,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search :workspaces]]
     (map
      (fn [feature]
        {:name      feature
@@ -849,6 +849,11 @@
    {:name      :whitelabel
     :available (premium-features/enable-whitelabeling?)
     :enabled   (whitelabeling-in-use?)}
+   {:name      :custom-viz
+    :available (premium-features/enable-custom-viz?)
+    :enabled   (and config/ee-available?
+                    (premium-features/enable-custom-viz?)
+                    (t2/exists? :model/CustomVizPlugin))}
    {:name      :csv-upload
     :available (csv-upload-available?)
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}
@@ -934,9 +939,6 @@
    {:name      :support-users
     :available (premium-features/enable-support-users?)
     :enabled   (premium-features/enable-support-users?)}
-   {:name      :workspaces
-    :available (premium-features/enable-workspaces?)
-    :enabled   (premium-features/enable-workspaces?)}
    {:name      :writable-connection
     :available (premium-features/enable-writable-connection?)
     :enabled   (premium-features/enable-writable-connection?)}
@@ -1046,5 +1048,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! :snowplow/instance_stats snowplow-data)
+      (analytics.event/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))

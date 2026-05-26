@@ -28,7 +28,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_group_members, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
           - [Internal Metabase Database, public, v_users, user_id]
       fields: none
       stages:

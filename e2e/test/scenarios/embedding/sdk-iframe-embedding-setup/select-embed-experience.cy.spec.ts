@@ -21,7 +21,7 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
 
     H.updateSetting("enable-embedding-simple", true);
@@ -48,6 +48,11 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
 
       getEmbedSidebar().within(() => {
         cy.findByText("Next").click();
@@ -78,6 +83,11 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("card", questionName);
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
 
       getEmbedSidebar().within(() => {
         cy.findByText("Chart").click();
@@ -190,6 +200,11 @@ describe(suiteTitle, () => {
       () => {
         visitNewEmbedPage();
         cy.wait("@emptyRecentItems");
+
+        getEmbedSidebar().within(() => {
+          cy.findByLabelText("Guest").click();
+        });
+        embedModalEnableEmbedding();
 
         getEmbedSidebar().within(() => {
           cy.findByText("Chart").click();

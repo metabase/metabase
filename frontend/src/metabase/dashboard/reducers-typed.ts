@@ -5,13 +5,12 @@ import { omit } from "underscore";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { handleActions } from "metabase/lib/redux";
-import { REVERT_TO_REVISION } from "metabase/query_builder/actions";
+import { handleActions } from "metabase/redux";
 import {
   INITIALIZE,
   RESET,
@@ -20,7 +19,14 @@ import {
   initialize,
   reset,
 } from "metabase/redux/dashboard";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
+import {
+  NAVIGATE_BACK_TO_DASHBOARD,
+  REVERT_CARD_TO_REVISION,
+} from "metabase/redux/query-builder";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -31,10 +37,6 @@ import type {
   ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,
@@ -316,11 +318,11 @@ export const dashboards = createReducer(
         const dashcardIds = dashcards.map(({ id }) => id);
         state[dashboard_id].dashcards.push(...dashcardIds);
       })
-      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-        const draftDashboard = state[payload.dashboard?.id];
+      .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+        const draftDashboard = state[payload.id];
         if (draftDashboard) {
-          draftDashboard.collection_id = payload.dashboard.collection_id;
-          draftDashboard.collection = payload.dashboard.collection;
+          draftDashboard.collection_id = payload.collection_id;
+          draftDashboard.collection = payload.collection;
         }
       })
       .addMatcher(
@@ -421,7 +423,7 @@ export const dashcardData = createReducer(
       })
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
-        if (dashcard_id && card_id) {
+        if (dashcard_id && card_id && result != null) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
       })
@@ -441,7 +443,7 @@ export const dashcardData = createReducer(
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        REVERT_TO_REVISION,
+        REVERT_CARD_TO_REVISION,
         (state, action) => {
           const { id } = action.payload;
           if (id != null) {

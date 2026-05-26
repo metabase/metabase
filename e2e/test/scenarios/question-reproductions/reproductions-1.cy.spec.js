@@ -33,7 +33,7 @@ describe("issue 4482", () => {
     H.visualize();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2022, 12:00 AM");
+    cy.findByText("April 1, 2025, 12:00 AM");
   });
 
   it("should be possible to summarize max of a temporal column (metabase#4482-2)", () => {
@@ -45,7 +45,7 @@ describe("issue 4482", () => {
     H.visualize();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2025, 12:00 AM");
+    cy.findByText("April 1, 2028, 12:00 AM");
   });
 
   it("should be not possible to average a temporal column (metabase#4482-3)", () => {
@@ -544,16 +544,20 @@ describe("issue 17514", () => {
       cy.wait("@dataset");
       cy.findByTextEnsureVisible("Subtotal");
 
-      cy.findByTestId("view-footer")
-        .findByText("Showing first 2,000 rows")
+      cy.findByTestId("question-row-count")
+        .contains(/^Showing .+ rows$/)
         .should("be.visible");
 
       cy.findByTestId("query-builder-main")
-        .findAllByText("76.83")
+        .findAllByText("79.37")
         .eq(0)
+        .should("be.visible")
         .click();
 
-      cy.findByTestId("click-actions-view").findByText("Filter by this value");
+      cy.findByTestId("click-actions-view").should(
+        "contain",
+        "Filter by this value",
+      );
     });
   });
 
@@ -569,43 +573,38 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      H.visualize();
 
       cy.findByTextEnsureVisible("Subtotal");
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-
-      cy.findByTestId("save-question-modal").within((modal) => {
-        cy.findByText("Save").click();
-      });
-
+      cy.log("Update the question");
+      cy.findByTestId("qb-header").button("Save").click();
+      cy.findByTestId("save-question-modal").button("Save").click();
       cy.findByTestId("save-question-modal").should("not.exist");
     });
 
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Join data").click();
+      H.join();
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
-      cy.button("Visualize").click();
+      H.visualize();
 
-      // wait until view results are done rendering
-      cy.wait("@dataset");
+      cy.log("Wait until view results are done rendering");
       cy.findByTestId("query-builder-main").within(() => {
         cy.findByText("Doing science...").should("not.exist");
       });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       H.tableHeaderClick("Subtotal");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column");
+      cy.findByTestId("click-actions-view").should(
+        "contain",
+        "Filter by this column",
+      );
     });
   });
 });
@@ -646,10 +645,11 @@ function moveColumnToTop(column) {
     cy.findByText(column)
       .should("be.visible")
       .closest("[data-testid^=draggable-item]")
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", 5, 5, { force: true })
-      .trigger("mousemove", 0, -600, { force: true })
-      .trigger("mouseup", 0, -600, { force: true });
+      .as("dragColumn");
+  });
+  H.moveDnDKitElementByAlias("@dragColumn", {
+    vertical: -130,
+    useMouseEvents: true,
   });
 }
 

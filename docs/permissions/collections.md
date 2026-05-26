@@ -36,7 +36,7 @@ The group can view, edit, move, delete, and pin items saved in this collection, 
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md). Note: Curate access includes View access.
 
 ### No access
 
@@ -70,7 +70,15 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 ## Permissions and sub-collections
 
-A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
+- Changing access to a collection doesn't automatically change access to _existing_ subcollections, but all _new_ subcollections will inherit the access level.
+
+   For example, let's say you have a `Campaigns` collection with a `2025 reports` subcollection, and you change the "Data team" group's access to `Campaigns` from "View" to "Curate". Then by default, Data team will get Curate access to `Campaigns` but will retain only "View" access to `2025 reports`. However, if after these permissions are configured, someone adds a new subcollection `2026 reports`, then Data team will get Curate access to "2026 reports" because new subcollections inherit permissions from the parent collection.
+
+- To change access for existing subcollections as well, toggle **Also change sub-collections** when changing collection access.
+
+- A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. 
+
+    For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
 ## Deleting collections
 

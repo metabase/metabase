@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { getObjectKeys } from "metabase/utils/objects";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
@@ -335,8 +335,8 @@ const hasInterpolatedAreaSeries = (
     );
     return Boolean(
       seriesSettings &&
-        seriesSettings["line.missing"] !== "none" &&
-        seriesSettings.display === "area",
+      seriesSettings["line.missing"] !== "none" &&
+      seriesSettings.display === "area",
     );
   });
 };

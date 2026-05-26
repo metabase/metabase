@@ -10,8 +10,9 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -22,7 +23,6 @@ import {
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionSettingsSidebar } from "../QuestionSettingsSidebar";
 

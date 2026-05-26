@@ -24,7 +24,6 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { ActionsApi } from "metabase/services";
 import {
   Box,
@@ -36,6 +35,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";

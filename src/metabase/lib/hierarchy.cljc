@@ -1,7 +1,7 @@
 (ns metabase.lib.hierarchy
   (:refer-clojure :exclude [derive isa?]))
 
-(defonce ^{:doc "Keyword hierarchy for MLv2 stuff."} hierarchy
+(defonce ^{:doc "Keyword hierarchy for Lib stuff."} hierarchy
   (atom (make-hierarchy)))
 
 (defn derive

@@ -11,16 +11,10 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
-import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDashboard,
-} from "metabase-types/api/mocks";
 import type {
   DashboardState,
   InteractiveEmbeddingOptions,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -28,7 +22,13 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
   createMockStoreDashboard,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
 import AppBar from "./AppBar";
 
@@ -255,6 +255,17 @@ describe("AppBar", () => {
                 }),
               },
             }),
+          },
+        });
+
+        expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
+      });
+
+      it("should work for collection pages (UXW-249)", async () => {
+        setup({
+          initialRoute: `/collection/${FOO_COLLECTION.id}-foo-collection`,
+          embedOptions: {
+            breadcrumbs: true,
           },
         });
 

@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockDashboardState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
 
 import { AddFilterParameterButton } from "./AddFilterParameterButton";
 

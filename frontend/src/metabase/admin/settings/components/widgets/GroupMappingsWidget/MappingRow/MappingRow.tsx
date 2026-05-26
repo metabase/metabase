@@ -7,10 +7,10 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
+import { isAdminGroup } from "metabase/admin/utils/groups";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { isAdminGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 

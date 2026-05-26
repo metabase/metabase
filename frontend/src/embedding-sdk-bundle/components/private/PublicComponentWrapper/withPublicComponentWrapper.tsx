@@ -1,5 +1,7 @@
 import type React from "react";
 
+import type { FlexibleSizeProps } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+
 import { GuestEmbedGuard } from "./GuestEmbedGuard";
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
@@ -11,12 +13,13 @@ export function withPublicComponentWrapper<P extends object>(
     WrappedComponent.displayName || WrappedComponent.name || "Component";
 
   const WithPublicComponentWrapper: React.FC<P> = (props) => {
+    const { height, width } = props as Partial<FlexibleSizeProps>;
     return (
       <GuestEmbedGuard
         componentName={componentName}
         supportsGuestEmbed={supportsGuestEmbed}
       >
-        <PublicComponentWrapper>
+        <PublicComponentWrapper height={height} width={width}>
           <WrappedComponent {...props} />
         </PublicComponentWrapper>
       </GuestEmbedGuard>

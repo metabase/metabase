@@ -1,15 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 

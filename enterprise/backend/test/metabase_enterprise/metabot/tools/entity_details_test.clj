@@ -18,7 +18,7 @@
   (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
     (let [field-id (mt/id :categories :name)]
       (try
-        (let [result     (entity-details/get-table-details {:table-id (mt/id :categories)})
+        (let [result     (entity-details/get-table-details {:entity-type :table :entity-id (mt/id :categories)})
               name-field (some #(when (= "NAME" (:name %)) %) (get-in result [:structured-output :fields]))]
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (:field_values name-field)))))

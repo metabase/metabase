@@ -6,26 +6,78 @@
    [metabase.util.malli.registry :as mr])
   (:import (clojure.lang ExceptionInfo)))
 
+(deftest ^:parallel assert-optional-fields-nullable!-test
+  (testing "no throw when every :optional field is also nullable via [:maybe ...]"
+    (is (some? (tools-manifest/assert-optional-fields-nullable!
+                [:map [:foo {:optional true} [:maybe :string]]] "ok-tool"))))
+  (testing "no throw when there are no :optional fields"
+    (is (some? (tools-manifest/assert-optional-fields-nullable!
+                [:map [:foo :string] [:bar :int]] "no-optional-tool")))
+    (is (nil? (tools-manifest/assert-optional-fields-nullable! nil "nil-schema-tool"))))
+  (testing "throws when an :optional field rejects nil"
+    (let [ex (try (tools-manifest/assert-optional-fields-nullable!
+                   [:map [:foo {:optional true} :string]] "bad-tool")
+                  (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= "bad-tool" (-> ex ex-data :tool)))
+      (is (= :foo (-> ex ex-data :field)))))
+  (testing "walks composites — `:or` of maps catches the offender inside a branch"
+    (let [schema [:or
+                  [:map [:foo :string]]
+                  [:map [:bar {:optional true} :int]]]
+          ex    (try (tools-manifest/assert-optional-fields-nullable! schema "or-tool")
+                     (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= :bar (-> ex ex-data :field)))))
+  (testing "walks into nested map properties"
+    (let [schema [:map
+                  [:outer [:map
+                           [:inner {:optional true} :int]]]]
+          ex    (try (tools-manifest/assert-optional-fields-nullable! schema "nested-tool")
+                     (catch ExceptionInfo e e))]
+      (is (instance? ExceptionInfo ex))
+      (is (= :inner (-> ex ex-data :field))))))
+
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
+            :redundant   {}}
            (tools-manifest/infer-annotations :get nil))))
   (testing "DELETE defaults"
-    (is (= {:destructiveHint true
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint true :idempotentHint true :readOnlyHint false :openWorldHint false}
+            :redundant   {}}
            (tools-manifest/infer-annotations :delete nil))))
   (testing "PUT defaults"
-    (is (= {:destructiveHint false
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint false :idempotentHint true :readOnlyHint false :openWorldHint false}
+            :redundant   {}}
            (tools-manifest/infer-annotations :put nil))))
-  (testing "POST defaults (empty — MCP defaults apply)"
-    (is (= {}
-           (tools-manifest/infer-annotations :post nil))))
-  (testing "Explicit annotations override defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
-           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true})))))
+  (testing "POST defaults to non-destructive (opt in with :destructive? true)"
+    (is (= {:annotations {:destructiveHint false :readOnlyHint false :openWorldHint false}
+            :redundant   {}}
+           (tools-manifest/infer-annotations :post nil)))
+    (is (= {:destructive? false}
+           (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
+  (testing "POST's method defaults carry destructiveHint false / openWorldHint false; explicit :read-only? true is merged on top"
+    (is (= {:readOnlyHint true :destructiveHint false :openWorldHint false}
+           (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
+  (testing "Flags :contradictory? when readOnlyHint and destructiveHint would both be true before the cleanup"
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :get {:destructive? true}))))
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :delete {:read-only? true})))))
+  (testing "Explicit annotations are merged on top of method defaults"
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
+            :redundant   {}}
+           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true}))))
+  (testing "Reports redundant pairs that match what we'd already infer (using developer-facing keys)"
+    (is (= {:read-only? true}
+           (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
+    (is (= {:destructive? false}
+           (:redundant (tools-manifest/infer-annotations :put {:destructive? false})))))
+  (testing "readOnlyHint, destructiveHint, openWorldHint are always present (some MCP clients reject tools without them)"
+    (doseq [method [:get :post :put :delete :head]]
+      (let [ann (:annotations (tools-manifest/infer-annotations method nil))]
+        (is (contains? ann :readOnlyHint)    (str method " missing :readOnlyHint"))
+        (is (contains? ann :destructiveHint) (str method " missing :destructiveHint"))
+        (is (contains? ann :openWorldHint)   (str method " missing :openWorldHint"))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
@@ -213,16 +265,20 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= {:name           "get_table"
+              :title          "Get Table"
               :description    "Get a table."
               :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
               :inputSchema    {:type       "object"
                                :properties {:id {:type "integer"}}
-                               :required   [:id]}
-              :responseSchema {:type       "object"
-                               :properties {:name {:type "string"}}
-                               :required   [:name]}
-              :annotations    {:readOnlyHint   true
-                               :idempotentHint true}}
+                               :required   [:id]
+                               :additionalProperties false}
+              :outputSchema {:type       "object"
+                             :properties {:name {:type "string"}}
+                             :required   [:name]}
+              :annotations    {:readOnlyHint    true
+                               :idempotentHint  true
+                               :destructiveHint false
+                               :openWorldHint   false}}
              result))))
 
   (testing "Scope is included when metadata has :scope"
@@ -245,6 +301,36 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/test" {:form form})]
       (is (nil? (:scope result))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-title-test
+  (testing "Throws when an explicit :title matches the title we'd infer from :name"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name  "get_table"
+                                  :title "Get Table"}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :title"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-annotations-test
+  (testing "Throws when explicit :annotations restate an HTTP-method default (e.g. :read-only? on GET)"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name        "get_table"
+                                  :annotations {:read-only? true}}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :annotations"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.
@@ -287,8 +373,8 @@
    {:keys [q limit]} :- [:map
                          [:q :string]
                          [:limit {:optional true}
-                          [:int {:description      "Max results"
-                                 :tool/description "Maximum number of results to return"}]]]]
+                          [:maybe [:int {:description      "Max results"
+                                         :tool/description "Maximum number of results to return"}]]]]]
   {:results []})
 
 ;; 5. POST with route + body params, task-support, and registered schema in response
@@ -296,6 +382,7 @@
   :- [:map [:id :int] [:status ::test-status]]
   "Perform an action on a resource."
   {:tool {:name "test_resource_action"
+          :annotations {:read-only? true}
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
@@ -364,73 +451,87 @@
 
 (deftest ^:parallel generate-tools-manifest-get-with-route-params-test
   (is (= {:name           "test_get_thing"
+          :title          "Test Get Thing"
           :description    "A test endpoint for tools manifest generation."
-          :annotations    {:readOnlyHint true :idempotentHint true}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
-                           :required   [:id]}}
+                           :required   [:id]
+                           :additionalProperties false}}
          (test-tool "test_get_thing"))))
 
 (deftest ^:parallel generate-tools-manifest-post-with-annotation-override-test
   (is (= {:name           "test_action"
+          :title          "Test Action"
           :description    "A test POST action."
-          :annotations    {:readOnlyHint true}
+          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
           :inputSchema    {:type       "object"
                            :properties {:name {:type "string"}}
-                           :required   [:name]}}
+                           :required   [:name]
+                           :additionalProperties false}}
          (test-tool "test_action"))))
 
 (deftest ^:parallel generate-tools-manifest-delete-test
   (is (= {:name           "delete_test"
+          :title          "Delete Test"
           :description    "Delete a test resource."
-          :annotations    {:destructiveHint true :idempotentHint true}
+          :annotations    {:destructiveHint true :idempotentHint true :readOnlyHint false :openWorldHint false}
           :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id {:type "integer"}}
-                           :required   [:id]}}
+                           :required   [:id]
+                           :additionalProperties false}}
          (test-tool "delete_test"))))
 
 (deftest ^:parallel generate-tools-manifest-get-with-query-params-test
   (is (= {:name           "test_search"
+          :title          "Test Search"
           :description    "Search for things."
-          :annotations    {:readOnlyHint true :idempotentHint true}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:type        "integer"
-                                                :description "Maximum number of results to return"}}
-                           :required   [:q]}
-          :responseSchema {:type       "object"
-                           :properties {:results {:type "array" :items {:type "string"}}}
-                           :required   [:results]}}
+                                        :limit {:oneOf [{:type        "integer"
+                                                         :description "Maximum number of results to return"}
+                                                        {:type "null"}]}}
+                           :required   [:q :limit]
+                           :additionalProperties false}
+          :outputSchema {:type       "object"
+                         :properties {:results {:type "array" :items {:type "string"}}}
+                         :required   [:results]}}
          (test-tool "test_search"))))
 
 (deftest ^:parallel generate-tools-manifest-post-with-task-support-test
   (is (= {:name           "test_resource_action"
+          :title          "Test Resource Action"
           :description    "Perform an action on a resource."
+          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}
                                         :action {:type "string"}}
-                           :required   [:id :action]}
-          :responseSchema {:type       "object"
-                           :properties {:id     {:type "integer"}
-                                        :status {:type "string"
-                                                 :enum ["active" "inactive" "pending"]}}
-                           :required   [:id :status]}
+                           :required   [:id :action]
+                           :additionalProperties false}
+          :outputSchema {:type       "object"
+                         :properties {:id     {:type "integer"}
+                                      :status {:type "string"
+                                               :enum ["active" "inactive" "pending"]}}
+                         :required   [:id :status]}
           :execution      {:taskSupport "parallel"}}
          (test-tool "test_resource_action"))))
 
 (deftest ^:parallel generate-tools-manifest-put-with-three-way-merge-test
   (is (= {:name           "test_resource"
+          :title          "Test Resource"
           :description    "Update a test resource."
-          :annotations    {:destructiveHint false :idempotentHint true}
+          :annotations    {:destructiveHint false :idempotentHint true :readOnlyHint false :openWorldHint false}
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id      {:type "integer"}
                                         :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
                                         :name    {:type "string"}}
-                           :required   [:id :name]}}
+                           :required   [:id :dry-run :name]
+                           :additionalProperties false}}
          (test-tool "test_resource"))))

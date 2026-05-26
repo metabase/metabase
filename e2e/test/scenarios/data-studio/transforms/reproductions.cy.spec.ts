@@ -12,7 +12,8 @@ describe("issue #68378", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
   });
 
   it("should show empty schemas when picking a target schema (metabase#68378)", () => {
@@ -40,7 +41,8 @@ describe("issue GDGT-1776", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
 
     const ITEMS_COUNT = 1000;
 
@@ -88,7 +90,8 @@ describe("issue GDGT-1774", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
@@ -129,6 +132,45 @@ describe("issue GDGT-1774", () => {
       .click();
 
     H.popover().findAllByRole("option").should("have.length.greaterThan", 0);
+  });
+});
+
+describe("issue UXW-3160", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
+  });
+
+  it("should let the read-only definition view scroll to the last line of a long SQL transform (UXW-3160)", () => {
+    const lastLineMarker = "-- UXW_3160_LAST_LINE";
+    const longSql =
+      "SELECT\n  " +
+      Array.from({ length: 80 }, (_, i) => `'col_${i}' AS col_${i}`).join(
+        ",\n  ",
+      ) +
+      `\n${lastLineMarker}`;
+
+    H.createSqlTransform({
+      name: "Long SQL transform",
+      sourceQuery: longSql,
+      targetTable: "uxw_3160_target",
+      targetSchema: "public",
+      visitTransform: true,
+    });
+
+    cy.get(".cm-scroller").then(($el) => {
+      const scroller = $el[0];
+      scroller.scrollTop = scroller.scrollHeight;
+    });
+
+    cy.get(".cm-scroller").should(($el) => {
+      const rect = $el[0].getBoundingClientRect();
+      expect(rect.bottom).to.be.at.most(Cypress.config("viewportHeight"));
+    });
+
+    cy.get(".cm-scroller").findByText(lastLineMarker).should("be.visible");
   });
 });
 

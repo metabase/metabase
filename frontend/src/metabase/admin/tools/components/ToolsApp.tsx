@@ -2,13 +2,13 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
   location: Location;

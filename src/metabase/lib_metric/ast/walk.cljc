@@ -60,7 +60,22 @@
     (:lat-dimension ast) (update :lat-dimension inner)
     (:lon-dimension ast) (update :lon-dimension inner)))
 
-(defmethod walk-node :ast/root
+;; Expression leaf — walk into the nested AST
+(defmethod walk-node :expression/leaf
+  [inner ast]
+  (update ast :ast inner))
+
+;; Expression constant — no children to walk
+(defmethod walk-node :expression/constant
+  [_inner ast]
+  ast)
+
+;; Expression arithmetic — walk into children
+(defmethod walk-node :expression/arithmetic
+  [inner ast]
+  (update ast :children #(perf/mapv inner %)))
+
+(defmethod walk-node :ast/source-query
   [inner ast]
   (cond-> ast
     (:filter ast)     (update :filter inner)
@@ -68,6 +83,10 @@
     (:group-by ast)   (update :group-by #(perf/mapv inner %))
     (:dimensions ast) (update :dimensions #(perf/mapv inner %))
     (:mappings ast)   (update :mappings #(perf/mapv inner %))))
+
+(defmethod walk-node :ast/root
+  [inner ast]
+  (update ast :expression inner))
 
 (defmethod walk-node :source/any
   [inner ast]

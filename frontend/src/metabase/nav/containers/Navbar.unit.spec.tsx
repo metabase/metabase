@@ -11,30 +11,31 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as dom from "metabase/lib/dom";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import {
   CLOSE_NAVBAR,
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import {
+  createMockAppState,
+  createMockEmbedOptions,
+  createMockEmbedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import {
-  createMockAppState,
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import Navbar from "./Navbar";
 
@@ -131,6 +132,16 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
   });
 
+  it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
+    const store = await setup({ pathname: "/reference/databases/1" });
+    await expectNavbarOpen();
+    dispatchLocationChange({
+      store,
+      pathname: "/reference/databases/1/tables/2/questions",
+    });
+    await expectNavbarOpen();
+  });
+
   it("should hide when visiting a question and stay hidden when returning to collection", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
@@ -143,12 +154,15 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should not close navbar when preserveNavbarState is set", async () => {
     const store = await setup({ isOpen: true });
     await expectNavbarOpen();
-    store.dispatch({
-      type: "@@router/LOCATION_CHANGE",
-      payload: {
-        pathname: "/question/1",
-        state: { preserveNavbarState: true },
-      },
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    act(() => {
+      store.dispatch({
+        type: "@@router/LOCATION_CHANGE",
+        payload: {
+          pathname: "/question/1",
+          state: { preserveNavbarState: true },
+        },
+      });
     });
     await expectNavbarOpen();
   });
@@ -164,11 +178,16 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
     dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarClosed();
-    store.dispatch({ type: OPEN_NAVBAR });
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    act(() => {
+      store.dispatch({ type: OPEN_NAVBAR });
+    });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/collection/5" });
     await expectNavbarOpen();
-    store.dispatch({ type: CLOSE_NAVBAR });
+    act(() => {
+      store.dispatch({ type: CLOSE_NAVBAR });
+    });
     dispatchLocationChange({ store, pathname: "/collection/6" });
     await expectNavbarClosed();
   });
@@ -177,7 +196,7 @@ describe("nav > containers > Navbar > Core App", () => {
     let isWithinIframeSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      isWithinIframeSpy = jest.spyOn(dom, "isWithinIframe");
+      isWithinIframeSpy = jest.spyOn(iframeUtils, "isWithinIframe");
       isWithinIframeSpy.mockReturnValue(true);
     });
 
@@ -271,11 +290,16 @@ function dispatchLocationChange({
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
-  store.dispatch({
-    type: "@@router/LOCATION_CHANGE",
-    payload: {
-      pathname,
-      action: initialRoute ? "POP" : "PUSH",
-    },
+  // The dispatch synchronously re-renders the connected Navbar; wrap it in
+  // act(...) so React's state updates are flushed within the test instead
+  // of leaking past it.
+  act(() => {
+    store.dispatch({
+      type: "@@router/LOCATION_CHANGE",
+      payload: {
+        pathname,
+        action: initialRoute ? "POP" : "PUSH",
+      },
+    });
   });
 }

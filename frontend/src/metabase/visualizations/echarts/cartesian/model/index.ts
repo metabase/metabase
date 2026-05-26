@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -19,7 +19,10 @@ import {
   getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  getCartesianChartColumns,
+  getReferencedColumns,
+} from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
@@ -78,6 +81,23 @@ export const getCardsColumns = (
 
     const cardSettings = getSettingsWithDefaultMetricsAndDimensions(series);
     return getCartesianChartColumns(data.cols, cardSettings);
+  });
+};
+
+// Like `getCardsColumns`, but returns the columns referenced by each card's
+// `graph.dimensions` / `graph.metrics` settings without requiring a full
+// chart-shape to be buildable. Use this when you need to know which columns
+// are spoken for, regardless of whether a chart can render.
+export const getCardsReferencedColumns = (
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) => {
+  return rawSeries.map((series) => {
+    const shouldUseIndividualCardSettings = rawSeries.length > 1;
+    const cardSettings = shouldUseIndividualCardSettings
+      ? getSettingsWithDefaultMetricsAndDimensions(series)
+      : settings;
+    return getReferencedColumns(series.data.cols, cardSettings);
   });
 };
 

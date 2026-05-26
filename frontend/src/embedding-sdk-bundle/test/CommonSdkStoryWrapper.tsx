@@ -7,6 +7,7 @@ import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { USERS } from "../../../../e2e/support/cypress_data";
 
@@ -48,7 +49,27 @@ export const storybookSdkAuthDefaultConfig =
 
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
-  const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
+  const globalTheme: MetabaseTheme | undefined = sdkTheme
+    ? storybookThemes[sdkTheme]
+    : undefined;
+
+  // Per-story theme overrides passed via `parameters.sdkThemeOverride`.
+  // Useful for stories that render their chat UI inside a fixed overlay and
+  // need SDK popovers to stack above the host app's modal backdrop.
+  const themeOverride: MetabaseTheme | undefined =
+    context.parameters?.sdkThemeOverride;
+
+  const theme: MetabaseTheme | undefined = themeOverride
+    ? {
+        ...globalTheme,
+        ...themeOverride,
+        components: {
+          ...globalTheme?.components,
+          ...themeOverride?.components,
+        },
+      }
+    : globalTheme;
+
   const locale = context.globals.locale;
   const user = context.globals.user;
 

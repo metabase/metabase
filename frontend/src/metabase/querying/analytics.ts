@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 

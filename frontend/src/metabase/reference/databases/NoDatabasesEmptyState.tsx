@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 export const NoDatabasesEmptyState = () => {
