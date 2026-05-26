@@ -95,8 +95,8 @@
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                    (search.scoring/prefix [:lower :name] (u/lower-case-en search-string))
                    [:inline 0])
-     :library    (search.scoring/library-score-expr :root_collection_type)
-     :data-layer (search.scoring/data-layer-score-expr :data_layer search-ctx)}))
+     :library    (search.scoring/library-score-expr)
+     :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy :official_collection)
