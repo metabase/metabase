@@ -6,8 +6,9 @@
    Rather than going through the seeded event→notification pipeline, this
    namespace constructs notifications directly so it can resolve recipients
    dynamically from the `security-center-email-recipients` setting and the
-   `security-center-slack-channel` setting. The site admin email is always
-   included as a recipient when set."
+   `security-center-slack-channel` setting. The site admin email is included
+   as a recipient when set, but only if `security-center-email-recipients`
+   targets the admin group (i.e. \"Send to all instance admins\" is on)."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics.snowplow :as snowplow]
@@ -15,6 +16,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
@@ -37,14 +39,30 @@
                   :path           "metabase/channel/email/security_advisory.hbs"
                   :recipient-type "bcc"}})
 
+(defn- sends-to-all-admins?
+  "True if the recipient list targets the admin group — i.e. \"Send to all
+   instance admins\" is on. Checked against the un-hydrated recipients so we
+   don't depend on hydration ordering."
+  [recipients]
+  (let [admin-group-id (:id (perms/admin-group))]
+    (boolean
+     (some (fn [{:keys [type permissions_group_id]}]
+             (and (= type :notification-recipient/group)
+                  (= permissions_group_id admin-group-id)))
+           recipients))))
+
 (defn- email-recipients
-  "Resolve email recipients: configured recipients from the setting,
-   plus the site admin email (if set) as a raw-value recipient."
+  "Resolve email recipients from the `security-center-email-recipients` setting.
+   When that list targets the admin group (\"Send to all instance admins\" is on)
+   and the site admin email is set, the admin email is appended as a raw-value
+   recipient. When the toggle is off, only the explicitly configured recipients
+   are used."
   []
-  (let [configured (or (some-> (settings/security-center-email-recipients)
-                               (t2/hydrate :recipients-detail))
-                       [])]
-    (if-let [admin-email (system/admin-email)]
+  (let [raw        (or (settings/security-center-email-recipients) [])
+        configured (or (some-> (not-empty raw) (t2/hydrate :recipients-detail))
+                       [])
+        admin-email (system/admin-email)]
+    (if (and admin-email (sends-to-all-admins? raw))
       (conj configured {:type    :notification-recipient/raw-value
                         :details {:value admin-email}})
       configured)))
