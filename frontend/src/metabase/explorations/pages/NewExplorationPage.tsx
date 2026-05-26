@@ -6,7 +6,10 @@ import { timelineApi } from "metabase/api/timeline";
 import { EditableText } from "metabase/common/components/EditableText";
 import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import { Box, Center, Group, Paper, Stack } from "metabase/ui";
 
 import { EXPLORATIONS_AGENT_ID } from "../components/NewExplorationChat/NewExplorationChat";
@@ -27,6 +30,8 @@ function NewExplorationPageInner() {
   const navigation = useExplorationNavigation();
   const { metrics, dimensions, timelines, name, setName } = selection;
 
+  const { hasNlqAccess } = useUserMetabotPermissions();
+
   // Wipe the agent's conversation for this profile every time the page mounts
   const { resetConversation, messages } = useMetabotAgent(
     EXPLORATIONS_AGENT_ID,
@@ -45,8 +50,10 @@ function NewExplorationPageInner() {
     prefetchTimelines({ include: "events" });
   }, [prefetchExplorationData, prefetchTimelines]);
 
-  // hide the mode switcher once the user has started chatting or selecting data
   const shouldShowModeSwitcher =
+    // this page is usable without NLQ access, but the explore tab is not
+    hasNlqAccess &&
+    // hide the mode switcher once the user has started chatting or selecting data
     metrics.length === 0 &&
     dimensions.length === 0 &&
     timelines.length === 0 &&
