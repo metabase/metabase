@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -267,15 +268,19 @@
 ;;;; Embedding-service provider
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set
-  the ai service proxying is assumed. In that case premium-embedding-token is used for authentication."
+  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
+  `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
+  is used for authentication. Throws if base url of both vars is not set is not configured."
   []
-  (let [base-url (semantic-settings/ee-embedding-service-base-url)
-        api-key  (semantic-settings/ee-embedding-service-api-key)]
-    (when-not base-url
-      (throw (ex-info "Embedding service base URL not configured"
-                      {:setting "ee-embedding-service-base-url"})))
-    [(str base-url "/v1/embeddings") api-key]))
+  (if (empty? (semantic-settings/ee-embedding-service-base-url))
+    (if (empty? (llm.settings/ai-service-base-url))
+      (throw (ex-info "Embedding service and ai service base URLs and not configured"
+                      {:setting ["ee-embedding-service-base-url"
+                                 "ai-service-base-url"]}))
+      [(llm.settings/ai-service-base-url) nil])
+    (let [base-url (semantic-settings/ee-embedding-service-base-url)
+          api-key  (semantic-settings/ee-embedding-service-api-key)]
+      [(str base-url "/v1/embeddings") api-key])))
 
 (defmethod get-embedding "ai-service"
   [{:keys [model-name]} text & {:keys [record-tokens? type]}]
