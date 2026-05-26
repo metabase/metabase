@@ -79,9 +79,8 @@ describe("NewDatabaseModal", () => {
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "public" }),
+      await screen.findByRole("checkbox", { name: "public" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
