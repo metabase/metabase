@@ -66,7 +66,13 @@ export function initializePlugin() {
                 component={ForwardRefLink}
                 to={`${Urls.collection(collection)}/cleanup`}
                 rightSection={
-                  hasStaleItems ? <Badge>{t`Recommended`}</Badge> : null
+                  hasStaleItems ? (
+                    <Badge
+                      bg="brand"
+                      size="xs"
+                      variant="filled"
+                    >{t`Recommended`}</Badge>
+                  ) : null
                 }
               >
                 {t`Clear out unused items`}
