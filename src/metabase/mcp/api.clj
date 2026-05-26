@@ -71,14 +71,11 @@
     :serverInfo      server-info}))
 
 (defn- mcp-app-ui-capability?
-  "Return true if initialize params advertise support for MCP Apps HTML resources.
-
-   Some clients expose this under capabilities.extensions, but we walk the nested capability value rather than
-   depending on one exact extension shape while the client-side capability envelope is still settling."
+  "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
-  (boolean
-   (some #(= "text/html;profile=mcp-app" %)
-         (tree-seq coll? seq (get-in params [:capabilities])))))
+  (contains?
+   (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
+   "text/html;profile=mcp-app"))
 
 (defn- handle-tools-list [id _params token-scopes session-id]
   (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]

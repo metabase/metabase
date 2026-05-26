@@ -94,7 +94,7 @@
    {:jsonrpc "2.0" :method method :params params}))
 
 (def ^:private mcp-app-ui-capabilities
-  {:extensions [{:mimeTypes ["text/html;profile=mcp-app"]}]})
+  {:extensions {:io.modelcontextprotocol/ui {:mimeTypes ["text/html;profile=mcp-app"]}}})
 
 (defn- initialize-with-params!
   "Perform the full MCP initialize handshake with custom initialize params.
@@ -282,6 +282,15 @@
           tool-names     (set (map :name (get-in response [:body :result :tools])))]
       (is (contains? tool-names "visualize_query"))
       (is (contains? tool-names "render_drill_through")))))
+
+(deftest ui-capability-detection-requires-mcp-ui-extension-test
+  (testing "an unrelated nested MCP Apps mimeType does not enable UI-only tools"
+    (let [[session-id _] (initialize-with-params!
+                          {:capabilities {:experimental {:mimeTypes ["text/html;profile=mcp-app"]}}})
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (not (contains? tool-names "visualize_query")))
+      (is (not (contains? tool-names "render_drill_through"))))))
 
 (deftest text-content-includes-structured-content-for-maps-test
   (testing "text-content emits structuredContent for map values — MCP spec requires it for tools with outputSchema"
