@@ -169,7 +169,12 @@ function DatabaseItemList({
 }: {
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
-  const { setPath, onChange, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isHidden, models } = useMiniPickerContext();
+  // Callers opt schemas in as a terminal pick by including "schema" in
+  // `models`. Affects three things: schemas fire `onChange` instead of
+  // `setPath`, single-schema DBs no longer auto-drill to tables, and the
+  // schema row drops its folder chevron.
+  const schemasArePickable = models.includes("schema");
   const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database"
@@ -191,7 +196,7 @@ function DatabaseItemList({
   const schemaName: SchemaName | null =
     parent.model === "schema"
       ? String(parent.id)
-      : schemas?.length === 1
+      : !schemasArePickable && schemas?.length === 1
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
 
@@ -210,28 +215,36 @@ function DatabaseItemList({
     return <MiniPickerListLoader />;
   }
 
-  if (schemas?.length && schemas.length > 1 && parent.model === "database") {
+  if (
+    schemas?.length &&
+    parent.model === "database" &&
+    (schemas.length > 1 || schemasArePickable)
+  ) {
     return (
       <ItemList>
-        {schemas.map((schema) => (
-          <MiniPickerItem
-            key={schema}
-            name={schema}
-            isFolder
-            model="schema"
-            onClick={() => {
-              setPath((prevPath) => [
-                ...prevPath,
-                {
-                  model: "schema",
-                  id: schema,
-                  dbId,
-                  name: schema,
-                },
-              ]);
-            }}
-          />
-        ))}
+        {schemas.map((schema) => {
+          const schemaItem: MiniPickerSchemaItem = {
+            model: "schema",
+            id: schema,
+            dbId,
+            name: schema,
+          };
+          return (
+            <MiniPickerItem
+              key={schema}
+              name={schema}
+              isFolder={!schemasArePickable}
+              model="schema"
+              onClick={() => {
+                if (schemasArePickable) {
+                  onChange(schemaItem);
+                } else {
+                  setPath((prevPath) => [...prevPath, schemaItem]);
+                }
+              }}
+            />
+          );
+        })}
       </ItemList>
     );
   }
@@ -471,6 +484,12 @@ const isMeasure = (
   return item.model === "measure";
 };
 
+const isSchema = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerSchemaItem => {
+  return item.model === "schema";
+};
+
 const getLocationDetails = (item: MiniPickerPickableItem) => {
   if (isTableInDb(item)) {
     return {
@@ -482,6 +501,14 @@ const getLocationDetails = (item: MiniPickerPickableItem) => {
     return {
       itemText: item.table_display_name ?? item.table_name,
       iconProps: { name: "table" as const },
+    };
+  }
+  if (isSchema(item)) {
+    // Schemas don't appear in search results (see SearchableMiniPickerItem)
+    // so this branch is defensive; surface the parent database id at most.
+    return {
+      itemText: String(item.dbId),
+      iconProps: { name: "database" as const },
     };
   }
   return {

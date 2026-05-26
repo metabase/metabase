@@ -206,11 +206,15 @@ export function getFolderAndHiddenFunctions(
       return false;
     }
 
-    if (
-      item.model === MiniPickerFolderModel.Database ||
-      item.model === MiniPickerFolderModel.Schema
-    ) {
+    if (item.model === MiniPickerFolderModel.Database) {
       return true;
+    }
+
+    if (item.model === MiniPickerFolderModel.Schema) {
+      // When the caller opts schemas into the pickable model set, schemas
+      // become terminal (fire `onChange`) instead of intermediate folders
+      // that only drill into tables.
+      return !modelSet.has("schema");
     }
 
     if (item.model !== MiniPickerFolderModel.Collection) {
