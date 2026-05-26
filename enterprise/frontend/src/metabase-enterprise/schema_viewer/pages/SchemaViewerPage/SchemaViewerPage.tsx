@@ -64,11 +64,17 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
       : skipToken,
   );
 
+  // Deep-link focal table: if the URL pins exactly one table-id, SchemaViewer
+  // zooms to it after the first layout instead of fitting the whole canvas.
+  const focalTableId =
+    tableIds != null && tableIds.length === 1 ? tableIds[0] : null;
+
   return (
     <Stack h="100%">
       <SchemaViewer
         databaseId={databaseId}
         schema={schema}
+        focalTableId={focalTableId}
         onExtraTableIdAdd={addExtraTableId}
         contextKey={contextKey}
         data={data}

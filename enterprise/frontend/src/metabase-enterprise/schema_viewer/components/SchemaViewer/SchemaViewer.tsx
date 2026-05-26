@@ -6,7 +6,7 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -63,6 +63,12 @@ type SchemaViewerProps = {
   error: unknown;
   /** db__schema key for canvas cleanup */
   contextKey: string | null;
+  /**
+   * URL-supplied focal table for deep links: when the URL pins exactly one
+   * `table-ids` value and that table belongs to the current `schema`, the
+   * canvas zooms to it once it shows up instead of fitting the whole graph.
+   */
+  focalTableId: ConcreteTableId | null;
   /** Add a table to current selected schema (FK click expansion). */
   onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
 };
@@ -70,6 +76,7 @@ type SchemaViewerProps = {
 export function SchemaViewer({
   databaseId,
   schema,
+  focalTableId,
   onExtraTableIdAdd,
   contextKey,
   data,
@@ -160,6 +167,39 @@ export function SchemaViewer({
     zoomToNode,
     zoomToCanvas,
   });
+
+  // When the URL pins exactly one table-id from current schema, which happens
+  // when user opens Schema Viewer from a table metadata sidebar in Table Details,
+  // zoom onto that table once ReactFlow has actually drawn it.
+  const focalZoomRef = useRef<{
+    contextKey: string;
+    focalTableId: ConcreteTableId;
+  } | null>(null);
+
+  useEffect(() => {
+    if (
+      focalTableId == null ||
+      schema == null ||
+      contextKey == null ||
+      nodes.length === 0
+    ) {
+      return;
+    }
+    const targetNode = nodes.find((n) => n.data.table_id === focalTableId);
+    if (
+      targetNode == null ||
+      targetNode.data.schema !== schema ||
+      targetNode.measured?.width == null
+    ) {
+      return;
+    }
+    const done = focalZoomRef.current;
+    if (done?.contextKey === contextKey && done.focalTableId === focalTableId) {
+      return;
+    }
+    zoomToNode(targetNode.id);
+    focalZoomRef.current = { contextKey, focalTableId };
+  }, [focalTableId, schema, contextKey, nodes, zoomToNode]);
 
   const { resetLayout, focusOnNode } = useCanvasLayout({
     nodes,

@@ -331,6 +331,7 @@ const TableSectionBase = ({
                     component={ForwardRefLink}
                     to={Urls.dataStudioSchemaViewer({
                       databaseId: table.db_id,
+                      schema: table.schema,
                       tableIds: [table.id],
                     })}
                     p="sm"
