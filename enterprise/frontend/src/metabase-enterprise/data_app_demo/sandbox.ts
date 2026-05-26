@@ -1,7 +1,10 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
 
+import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 
 import { getHostBackedSdkStore } from "./host-sdk-init";
@@ -11,10 +14,14 @@ import { getHostBackedSdkStore } from "./host-sdk-init";
  *
  * Endowments:
  *   - React: the host's React instance so plugins don't bundle their own.
- *   - InteractiveQuestion: the SDK's drillable question, pre-wrapped on the
- *     host side with the SDK Redux store so the plugin doesn't need to think
- *     about `ComponentProvider` or supply an `authConfig`. The session cookie
- *     on the host origin authenticates the underlying requests.
+ *   - MetabaseProvider: wraps a subtree with the SDK Redux store and an
+ *     `SdkThemeProvider`. The plugin uses this exactly as it would the
+ *     public SDK's `MetabaseProvider`: wrap your tree once, pass `theme`,
+ *     and use `StaticQuestion` / `InteractiveQuestion` inside.
+ *   - StaticQuestion / InteractiveQuestion: the raw SDK components. They
+ *     assume they're rendered inside a `MetabaseProvider`. No internal
+ *     wrapping — the provider is the bundle's responsibility, matching
+ *     the published SDK API.
  *
  * Plugin contract: write a factory function to globalThis.__customVizPlugin__.
  * The host calls factory(hostApi) and renders the returned `component` inside
@@ -32,24 +39,31 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
+interface MetabaseProviderProps {
+  theme?: MetabaseEmbeddingTheme;
+  children?: React.ReactNode;
+}
+
 /**
- * Build a session-backed `InteractiveQuestion` for in-app use.
- *
- * Equivalent to wrapping the SDK component in `ComponentProvider`, but with
- * the SDK store pre-initialized (see `getHostBackedSdkStore`) so no auth
- * handshake fires. The plugin sees this as a plain `InteractiveQuestion`.
+ * In-host equivalent of the SDK's `MetabaseProvider` / `ComponentProvider`:
+ * provides the SDK Redux store (pre-initialized, no auth handshake) and the
+ * SDK theme provider in one go. Plugins wrap their tree with this once.
  */
-function makeSessionInteractiveQuestion(): React.ComponentType<
-  React.ComponentProps<typeof InteractiveQuestion>
-> {
+function MetabaseProvider(props: MetabaseProviderProps) {
   const sdkStore = getHostBackedSdkStore();
-  return function SessionInteractiveQuestion(props) {
-    return React.createElement(
-      MetabaseReduxProvider,
-      { store: sdkStore },
-      React.createElement(InteractiveQuestion, props),
-    );
-  };
+  // Children come from the third arg of createElement, but SdkThemeProvider's
+  // TS props mark children as required — cast props to satisfy the type
+  // without duplicating the value.
+  type ThemeProps = React.ComponentProps<typeof SdkThemeProvider>;
+  return React.createElement(
+    MetabaseReduxProvider,
+    { store: sdkStore },
+    React.createElement(
+      SdkThemeProvider,
+      { theme: props.theme } as ThemeProps,
+      props.children,
+    ),
+  );
 }
 
 export function createDataAppSandbox() {
@@ -59,7 +73,9 @@ export function createDataAppSandbox() {
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
       React,
-      InteractiveQuestion: makeSessionInteractiveQuestion(),
+      MetabaseProvider,
+      InteractiveQuestion,
+      StaticQuestion,
       get __customVizPlugin__() {
         return captured;
       },
