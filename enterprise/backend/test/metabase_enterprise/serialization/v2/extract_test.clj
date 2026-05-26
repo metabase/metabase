@@ -2018,8 +2018,9 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
 
-          (testing "metabot depends on its model entities"
-            (is (= #{[{:model "Card" :id model-eid}]}
+          (testing "metabot depends on its model entities and collection"
+            (is (= #{[{:model "Card" :id model-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser)))))
 
           (testing "metabot storage-path uses top-level metabots directory"
@@ -2069,8 +2070,9 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
 
-          (testing "metabot depends on its prompts' cards"
-            (is (= #{[{:model "Card" :id card-eid}]}
+          (testing "metabot depends on its prompts' cards and its collection"
+            (is (= #{[{:model "Card" :id card-eid}]
+                     [{:model "Collection" :id coll-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest document-test
