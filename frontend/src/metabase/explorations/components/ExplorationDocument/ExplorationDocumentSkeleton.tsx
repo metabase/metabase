@@ -32,7 +32,7 @@ export function ExplorationDocumentSkeleton() {
         p="lg"
         gap={0}
       >
-        <Box h="2.5rem">
+        <Box h="2.5rem" w="100%" maw="42.5rem" mx="auto">
           <Skeleton h="1.5rem" w="45%" radius="sm" />
         </Box>
         <Stack w="100%" maw="42.5rem" mx="auto" mt="lg" gap="md">

@@ -145,7 +145,7 @@ export function ExplorationDocument({
           p="lg"
           gap={0}
         >
-          <Group h="2.5rem">
+          <Group h="2.5rem" w="100%" maw="42.5rem" mx="auto">
             <EditableText
               initialValue={documentTitle}
               onContentChange={setDocumentTitle}
