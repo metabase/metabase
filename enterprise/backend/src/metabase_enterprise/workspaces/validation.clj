@@ -44,7 +44,7 @@
       (database [_this]
         (lib.metadata.protocols/database base-provider))
       (metadatas [_this metadata-spec]
-       ;; Yes, for some reason :id is actually a set of ids
+        ;; Yes, for some reason :id is actually a set of ids
         (let [{spec-type :lib/type spec-field-ids :id} metadata-spec]
           (if (and (= :metadata/column spec-type) (some table-field-id? spec-field-ids))
             ;; Return replacement fields with :active based on whether they exist

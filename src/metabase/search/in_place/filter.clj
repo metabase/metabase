@@ -314,8 +314,8 @@
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
   (-> (merge
-        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
-        ;; argument is true
+       ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+       ;; argument is true
        {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
                                   (filter (fn [[model f]]
                                             (seq (set/difference (set (f model true)) (set (f model false))))))

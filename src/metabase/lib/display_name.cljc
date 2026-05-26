@@ -174,7 +174,7 @@
    (parse-column-display-name-parts display-name aggregation-patterns filter-patterns nil))
   ([display-name aggregation-patterns filter-patterns conjunctions]
    (letfn [(parse-inner [string]
-                        ;; Recursively parse the inner part which may have more patterns
+             ;; Recursively parse the inner part which may have more patterns
              (parse-column-display-name-parts string aggregation-patterns filter-patterns conjunctions))
 
            (parse-join-alias [join-alias]

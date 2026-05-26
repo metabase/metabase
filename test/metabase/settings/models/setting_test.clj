@@ -1606,7 +1606,7 @@
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
        :json ex
-        ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+       ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
        #_(str "Unexpected end-of-input within/between Array entries\n"
               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
@@ -1647,7 +1647,7 @@
     (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
        :csv ex
-        ;; we don't expose the raw exception here, as it would give away the first character of the secret
+       ;; we don't expose the raw exception here, as it would give away the first character of the secret
        #_"CSV error (unexpected character: $)"
        "Error of type class java.lang.Exception thrown while parsing a setting"))))
 

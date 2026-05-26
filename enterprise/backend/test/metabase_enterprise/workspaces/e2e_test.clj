@@ -36,7 +36,7 @@
                   graph               (ws.impl/get-or-calculate-graph! workspace)
                   isolated-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
                   executed-transform (mt/with-current-user (mt/user->id :crowberto)
-                                      ;; trigger analysis, so we get the RO grants
+                                       ;; trigger analysis, so we get the RO grants
                                        (ws.impl/analyze-transform-if-stale! workspace isolated-transform)
                                        (ws.impl/run-transform! workspace graph isolated-transform))
                   output-table       (-> executed-transform :table)
@@ -46,8 +46,8 @@
                 (when (u/poll {:thunk      #(t2/select-one :model/Table :name table-name :schema schema)
                                :done?      some?
                                :timeout-ms 1000})
-                   ;; TODO (Ngoc 2026-01-21) -- the table is synced but there are no fields even though the table and fields exist in the db
-                   ;;       ... even force sync-ing it again doesn't seem to help ;_;
+                  ;; TODO (Ngoc 2026-01-21) -- the table is synced but there are no fields even though the table and fields exist in the db
+                  ;;       ... even force sync-ing it again doesn't seem to help ;_;
                   (sync/sync-table! (t2/select-one :model/Table :name table-name :schema schema))
                   #_(transforms.tu/wait-for-table (:name output-table) 1000))
                 (is (str/starts-with? (:schema output-table) "mb__isolation"))

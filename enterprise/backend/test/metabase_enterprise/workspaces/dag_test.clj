@@ -235,7 +235,7 @@
   (let [tx-nodes (filter ws.tu/transform? init-nodes)
         tables   (map tx->table tx-nodes)]
     (#'ws.dag/path-induced-subgraph*
-      ;; Include all changeset targets in the init-nodes
+     ;; Include all changeset targets in the init-nodes
      (distinct (into init-nodes tables))
      {:node-parents (dag-abstract/expand-shorthand graph)
       :table?       ws.tu/mock-table?

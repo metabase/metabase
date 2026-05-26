@@ -805,14 +805,14 @@
                                                                              (let [rsmeta           (.getMetaData rs)
                                                                                    results-metadata {:cols (column-metadata driver rsmeta)}]
                                                                                (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statement on the dbms side.
-                ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
-                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
-                ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
+                                                                                    ;; Following cancels the statement on the dbms side.
+                                                                                    ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+                                                                                    ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
+                                                                                    ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
+                                                                                    ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                                                                                     (finally
-                  ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
-                  ;;       It should be removed afterwards!
+                                                                                      ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                                                                                      ;;       It should be removed afterwards!
                                                                                       (when-not (= :vertica driver)
                                                                                         (try (when-not (.isClosed stmt)
                                                                                                (.cancel stmt))

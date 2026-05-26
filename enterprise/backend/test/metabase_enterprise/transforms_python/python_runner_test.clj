@@ -361,7 +361,7 @@
                   "count"         :type/BigInteger
                   "price"         :type/Float
                   "is_active"     :type/Boolean
-                 ;; Our hack works
+                  ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
@@ -493,7 +493,7 @@
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
                    [name (python-runner/restricted-insert-type base_type)]))))
 
-       ;; cleanup
+        ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
 
 (deftest python-runner-timeout-test

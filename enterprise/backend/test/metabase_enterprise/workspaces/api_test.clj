@@ -1643,12 +1643,12 @@
                                       :database (mt/id)
                                       :schema   target-schema
                                       :name     target-table}}
-            ;; Add transform to workspace
+              ;; Add transform to workspace
               ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
                                                            (ws-url (:id ws) "/transform")
                                                            transform-def))
               ws            (ws.tu/ws-done! (:id ws))]
-        ;; Run the transform to populate the isolated table
+          ;; Run the transform to populate the isolated table
           (let [run-result (mt/user-http-request :crowberto :post 200
                                                  (ws-url (:id ws) "/transform/" ref-id "/run"))]
             (is (= "succeeded" (:status run-result)) "Transform should run successfully"))

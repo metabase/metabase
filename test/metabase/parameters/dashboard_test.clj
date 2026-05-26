@@ -212,10 +212,10 @@
                 (binding [api/*current-user-id* (mt/user->id :rasta)]
                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                         parameter (first (:parameters dashboard))]
-                  ;; Mimicks the API endpoint (required):
+                    ;; Mimicks the API endpoint (required):
                     (binding [qp.perms/*param-values-query* true]
-                    ;; Important to check all the mappings here because sometimes they match up by coincidence
-                    ;; and pass even when the bug is still present.
+                      ;; Important to check all the mappings here because sometimes they match up by coincidence
+                      ;; and pass even when the bug is still present.
                       (let [expected (into {} (mt/rows (mt/process-query (mt/mbql-query users))))
                             actual   (into {} (map (fn [id]
                                                      (parameters.dashboard/dashboard-param-remapped-value
