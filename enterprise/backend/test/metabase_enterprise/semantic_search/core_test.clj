@@ -152,11 +152,9 @@
                 (let [results (semantic.core/results search-ctx)]
                   (testing "semantic result comes first"
                     (is (= semantic-result (first results))))
-
                   (testing "fallback results are appended, and duplicate model/id pairs are removed"
                     (is (= (rest fallback-results)
                            (rest results))))
-
                   (testing "Results metrics are collected"
                     (is (= 4 (:metabase-search/semantic-fallback-results-usage @metrics)))
                     (is (= 1 (:metabase-search/semantic-fallback-triggered @metrics)))

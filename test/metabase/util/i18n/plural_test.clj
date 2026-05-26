@@ -76,7 +76,6 @@
       "1 > 2 ? 1 : 1 && 0"        0
       "1 > 2 ? 0 : 1 < 1 ? 1 : 2" 2
       "1 < 2 ? 1 < 3 ? 1 : 2 : 3" 1))
-
   (testing "Error cases"
     (are [formula] (insta/failure? (compute formula))
       ;; Empty formulas
@@ -108,13 +107,11 @@
       0 1
       1 0
       2 1))
-
   (testing "French"
     (are [n expected] (= expected (compute "n > 1" n))
       0 0
       1 0
       2 1))
-
   (testing "Latvian"
     (are [n expected] (= expected (compute "n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2" n))
       0   2
@@ -122,13 +119,11 @@
       11  1
       21  0
       111 1))
-
   (testing "Irish"
     (are [n expected] (= expected (compute "n==1 ? 0 : n==2 ? 1 : 2" n))
       1 0
       2 1
       3 2))
-
   (testing "Romanian"
     (are [n expected] (= expected (compute "n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < 20)) ? 1 : 2" n))
       0   1
@@ -138,7 +133,6 @@
       20  2
       100 2
       101 1))
-
   (testing "Russian, Ukrainian, Serbian"
     (are [n expected] (= expected (compute (str "n%10==1 && n%100!=11 ? 0 :"
                                                 "n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2")
@@ -151,7 +145,6 @@
       102 1
       109 2
       110 2))
-
   (testing "Czech, Slovak"
     (are [n expected] (= expected (compute "(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2" n))
       0 2
@@ -160,7 +153,6 @@
       3 1
       4 1
       5 2))
-
   (testing "Polish"
     (are [n expected] (= expected (compute (str "n==1 ? 0 :"
                                                 "n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2")

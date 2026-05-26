@@ -36,7 +36,6 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
     (let [dialect (metabot.tools.sql.validation/query->dialect query)
 
           {:keys [valid? transpiled-sql] :as validation-result}

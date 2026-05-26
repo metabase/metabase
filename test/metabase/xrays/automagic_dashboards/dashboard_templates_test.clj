@@ -16,7 +16,6 @@
                "fields"]]
       (testing s
         (is (every? some? (dashboard-templates/get-dashboard-templates [s]))))))
-
   (is (some? (dashboard-templates/get-dashboard-templates ["table" "GenericTable" "ByCountry"]))))
 
 (deftest ^:parallel dimension-form?-test

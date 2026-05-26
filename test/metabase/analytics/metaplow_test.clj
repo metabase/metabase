@@ -23,13 +23,11 @@
                                 "num_tabs"     1}}}
               payload))
       (is (not (contains? (get-in payload [:payload :data]) "event")))))
-
   (testing "Schemas without an `:event` key produce `<schema>` and keep the full payload"
     (is (=? {:payload {:name "instance_stats"
                        :data {"metric_one" 1
                               "metric_two" 2}}}
             (#'metaplow/build-payload :snowplow/instance_stats {:metric_one 1 :metric_two 2}))))
-
   (testing "Top-level payload has the expected keys: website / id / hostname / tag / name / data"
     (let [{:keys [payload]} (#'metaplow/build-payload :snowplow/dashboard {:event :dashboard-created})]
       (is (= #{:website :id :hostname :tag :name :data} (set (keys payload))))
@@ -38,12 +36,10 @@
                :hostname "anonymous.metabase.com"
                :tag      "metabase-instance"}
               payload))))
-
   (testing "`data` is enriched with version_tag and plan on every event"
     (is (=? {:payload {:data {"version_tag" (:tag (version/version))
                               "plan"        string?}}}
             (#'metaplow/build-payload :snowplow/dashboard {:event :dashboard-created}))))
-
   (testing "Keyword keys and values become snake_case strings"
     (is (=? {:payload {:name "database.database_connection_successful"
                        :data {"database"    "postgres"
@@ -54,7 +50,6 @@
                                        :database    :postgres
                                        :database-id 1
                                        :source      :admin}))))
-
   (testing "hostname matches the FE's anonymized constant regardless of site-url"
     (mt/with-temporary-setting-values [site-url "https://stats.metabase.com/"]
       (is (=? {:payload {:hostname "anonymous.metabase.com"}}
@@ -87,7 +82,6 @@
                        :payload {:name "dashboard.dashboard_created"
                                  :data {"dashboard_id" 7}}}
                       payload)))))))
-
     (testing "Sending 200 events: all of them traverse the pipeline"
       (let [received (atom [])
             latch    (CountDownLatch. 200)]

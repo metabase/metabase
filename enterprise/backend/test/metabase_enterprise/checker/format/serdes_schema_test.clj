@@ -69,7 +69,6 @@
                      {:name "My Fancy DB" :engine "h2"})
         (let [{:keys [db-name->dir]} (serdes-schema/build-database-dir-index (str dir "/databases"))]
           (is (= "my_fancy_db" (get db-name->dir "My Fancy DB")))))))
-
   (testing "db-name->dir includes ALL databases, not just some"
     (with-temp-dir
       (fn [dir]

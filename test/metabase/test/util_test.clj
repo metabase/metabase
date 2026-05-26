@@ -22,7 +22,6 @@
                (position))))
       (is (= 5
              (position)))))
-
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
       (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
@@ -42,7 +41,6 @@
     (mt/with-temporary-setting-values [test-util-test-setting ["D" "E" "F"]]
       (is (= ["D" "E" "F"]
              (test-util-test-setting)))))
-
   (testing "`with-temporary-setting-values` shouldn't stomp over default values"
     (mt/with-temporary-setting-values [test-util-test-setting ["D" "E" "F"]]
       (test-util-test-setting))
@@ -68,17 +66,14 @@
                                                          {:active-count (.getActiveCount executor)
                                                           :pool-size    (.getPoolSize executor)
                                                           :task-count   (.getTaskCount executor)})}))))]
-
       (testing "The original definition"
         (is (= "original" (clump "o" "riginal"))))
-
       (future
         (testing "A thread that minds its own business"
           (log/debug "Starting no-op thread, thread-id:" (thread-id))
           (is (= "123" (clump 12 3)))
           (take-latch)
           (is (= "321" (clump 3 21)))))
-
       (future
         (testing "A thread that redefines it in reverse"
           (log/debug "Starting reverse thread, thread-id:" (thread-id))
@@ -86,7 +81,6 @@
             (is (= "ok" (clump "k" "o")))
             (take-latch)
             (is (= "ko" (clump "o" "k"))))))
-
       (future
         (testing "A thread that redefines it twice"
           (log/debug "Starting double-redefining thread, thread-id:" (thread-id))
@@ -97,7 +91,6 @@
               (take-latch)
               (is (= "mm" (clump "m" "l"))))
             (is (= "bb" (clump "a" "b"))))))
-
       (log/debug "Taking latch on main thread, thread-id:" (thread-id))
       (take-latch)
       (testing "The original definition survives"
