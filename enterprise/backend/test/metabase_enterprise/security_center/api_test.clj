@@ -200,10 +200,14 @@
           (with-redefs [notification/send-test-notification! #(reset! captured %)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/raw-value"
-                                                       :details {:value "form@example.com"}}]
+                                                       :details {:value "form@example.com"}}
+                                                      {:type "notification-recipient/user"
+                                                       :user_id (str (mt/user->id :crowberto))}]
                                    :slack_channel    "#form-channel"})
             (is (= [{:type    :notification-recipient/raw-value
-                     :details {:value "form@example.com"}}]
+                     :details {:value "form@example.com"}}
+                    {:type :notification-recipient/user
+                     :user_id (mt/user->id :crowberto)}]
                    (:email-recipients @captured)))
             (is (= "#form-channel" (:slack-channel @captured))))))
       (testing "body distinguishes explicit nil slack_channel (disable) from missing key (fall back to setting)"
