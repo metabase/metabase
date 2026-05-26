@@ -79,6 +79,26 @@
   [(:name db) {:input_schemas (vec (:input_schemas wsd))
                :output        (expand-output db (:output_namespace wsd))}])
 
+(defn- stub-database-entry [db]
+  {:name    (:name db)
+   :engine  (:engine db)
+   :details {}
+   :is_stub true})
+
+(defn- stub-databases
+  "Databases that exist in the instance but are not provisioned for this workspace.
+   Excludes the sample DB (handled by GHY-3687), the audit DB, and routing-target
+   databases (destinations with `:router_database_id` set)."
+  [workspace-db-ids]
+  (t2/select :model/Database
+             {:where [:and
+                      [:= :is_sample false]
+                      [:= :is_audit  false]
+                      [:= :router_database_id nil]
+                      (if (seq workspace-db-ids)
+                        [:not-in :id workspace-db-ids]
+                        true)]}))
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -102,15 +122,18 @@
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
                          :workspace_id workspace-id})))
-      (let [dbs-by-id (if-let [ids (seq (map :database_id wsds))]
-                        (into {} (map (juxt :id identity))
-                              (t2/select :model/Database :id [:in ids]))
-                        {})
-            pairs     (for [wsd wsds
-                            :let [db (get dbs-by-id (:database_id wsd))]]
-                        [wsd db])]
+      (let [workspace-db-ids (mapv :database_id wsds)
+            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                               (into {} (map (juxt :id identity))
+                                     (t2/select :model/Database :id [:in ids]))
+                               {})
+            pairs            (for [wsd wsds
+                                   :let [db (get dbs-by-id (:database_id wsd))]]
+                               [wsd db])
+            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))]
         {:version 1
-         :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+         :config  {:databases (into ws-entries stub-entries)
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
