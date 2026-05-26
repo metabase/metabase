@@ -914,8 +914,8 @@
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
                                          :id dashcard_id :dashboard_id dashboard-id))
-              ;; Strip the moved card from the placed list while we recompute its position,
-              ;; otherwise autoplace will treat it as still occupying its old slot.
+                ;; Strip the moved card from the placed list while we recompute its position,
+                ;; otherwise autoplace will treat it as still occupying its old slot.
                 other-placed (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
                 new-pos  (case position
                            "top"    {:row 0 :col 0
