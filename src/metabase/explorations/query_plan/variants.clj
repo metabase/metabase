@@ -38,6 +38,27 @@
   same regardless of which categorical dim is being grouped."
   "(Other)")
 
+(def ^:private default-max-rows
+  "Safety cap on the row count returned by the `default` and `time-facet`
+  variants. Defense-in-depth against stale/missing fingerprints that route a
+  high-cardinality dim into a nominally bounded variant — without this, the
+  serialized result can exceed `query-caching-max-kb` and the chart fails to
+  persist. Sized well above the routing thresholds in `mechanical/items-for-pair`
+  (≤100 for default, ≤20 for time-facet) so it only fires when the fingerprint
+  was lying about cardinality."
+  2000)
+
+(defn- order-by-aggregation-and-limit
+  "Apply `order-by aggregation 0 desc → limit n` to `q` when `q` has at least one
+  aggregation. When the cap fires, the top-N rows by the metric survive — the
+  rows the chart most needs to show. The QP composes this with its own
+  user-defined max-results constraint and takes the tighter of the two."
+  [q n]
+  (cond-> q
+    (seq (lib/aggregations q))
+    (-> (lib/order-by (lib/aggregation-ref q 0) :desc)
+        (lib/limit n))))
+
 (defn- maybe-segment-filtered
   [query segment]
   (cond-> query
@@ -219,7 +240,8 @@
 (defmethod dataset-query "default"
   [_ {:keys [mp card target dim segment]}]
   (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-      (maybe-segment-filtered segment)))
+      (maybe-segment-filtered segment)
+      (order-by-aggregation-and-limit default-max-rows)))
 
 (defn- temporal-pattern-mbql
   [{:keys [mp card target segment]} unit]
@@ -244,9 +266,12 @@
         dim-breakout (qp.mbql/apply-default-bucket base-query ref-clause dim)]
     (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
                                         mp (:dataset_query card))]
+      ;; Row cap is defense-in-depth: the planner's `:max-cardinality 20` gate
+      ;; is fingerprint-based and can be stale (claims low, reality high).
       (-> base-query
           (lib/breakout dim-breakout)
-          (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))))))
+          (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))
+          (order-by-aggregation-and-limit default-max-rows)))))
 
 (defmethod dataset-query "top-n-other"
   [_ {:keys [mp card target dim segment] :as ctx}]

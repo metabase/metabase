@@ -522,8 +522,8 @@
                         :threads first :queries)]
         (is (= #{"default"} (query-types queries)))))))
 
-(deftest exploration-create-time-facet-skipped-high-cardinality-test
-  (testing "POST / categorical dim with distinct-count > threshold → no time-facet"
+(deftest exploration-create-high-cardinality-routes-to-top-n-other-test
+  (testing "POST / categorical dim with very high distinct-count → no default, no time-facet, just top-n-other"
     (mt/with-temp [:model/User u {:email "high-card@example.com"}
                    :model/Card metric (products-monthly-metric-card (:id u))]
       (let [mapping [{:dimension_id "email"
@@ -534,8 +534,8 @@
                      :dimensions [{:dimension_id "email" :display_name "Email"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default"} (query-types queries))
-            "people.email has ~2500 distinct values → exceeds the cardinality gate")))))
+        (is (= #{"top-n-other"} (query-types queries))
+            "people.email has ~2500 distinct values → exceeds both default and time-facet gates; top-n-other is the only safe shape")))))
 
 (deftest exploration-create-time-facet-skips-segments-test
   (testing "POST / time-facet variant does NOT fan out across segments (category + time + segment filter is too noisy to surface)"
