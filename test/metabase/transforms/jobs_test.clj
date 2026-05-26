@@ -366,6 +366,30 @@
             (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
             (is (mt/received-email-body? :crowberto #"Timed out by metabase"))))))))
 
+(deftest timeout-old-runs-notifies-every-admin-test
+  (testing "a job failure notifies all admins (via the admin group), not just one recipient"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-model-cleanup [:model/Notification]
+        (mt/with-temp [:model/User _admin1    {:is_superuser true  :email "extra-admin-1@metabase.test"}
+                       :model/User _admin2    {:is_superuser true  :email "extra-admin-2@metabase.test"}
+                       :model/User _non-admin {:is_superuser false :email "regular-joe@metabase.test"}]
+          (mt/with-fake-inbox
+            (notification.seed/seed-notification!)
+            (mt/with-temp [:model/TransformJob    job  {:name     "stalled-cron-job"
+                                                        :schedule "0 0 * * * ? *"}
+                           :model/TransformJobRun _run {:job_id     (:id job)
+                                                        :run_method :cron
+                                                        :status     :started
+                                                        :is_active  true
+                                                        ;; backdate past the 4h timeout so the watchdog fires
+                                                        :updated_at #t "2000-01-01T00:00:00Z"}]
+              (#'jobs/timeout-and-notify-old-runs!)
+              (testing "every admin receives the failure email"
+                (is (contains? @mt/inbox "extra-admin-1@metabase.test"))
+                (is (contains? @mt/inbox "extra-admin-2@metabase.test")))
+              (testing "non-admins do not"
+                (is (not (contains? @mt/inbox "regular-joe@metabase.test")))))))))))
+
 (deftest timeout-old-runs-does-not-notify-for-manual-runs-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-model-cleanup [:model/Notification
