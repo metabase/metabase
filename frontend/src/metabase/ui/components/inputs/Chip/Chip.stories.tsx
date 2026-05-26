@@ -37,29 +37,29 @@ const VARIANTS = ["light", "filled"] as const;
 // Sizes are shown in their own section; the default is `md`.
 const SIZES = ["sm", "md"] as const;
 
-// The interactive states from the Figma spec. `hover` and `pressed` are
-// simulated with storybook-addon-pseudo-states, which forces the `:hover` /
-// `:active` rules of any descendant under the `*-all` class.
+// The interactive states from the Figma spec. `hover` and `pressed` are shown
+// via the Chip's `data-force-*` attributes (set through Mantine's `mod` prop),
+// so the matrix renders them without real pointer interaction.
 type ChipState = {
   label: string;
   checked?: boolean;
   disabled?: boolean;
-  pseudo?: "hover" | "active";
+  force?: "hover" | "active";
 };
 
 const STATES: ChipState[] = [
   { label: "Default" },
-  { label: "Hover", pseudo: "hover" },
-  { label: "Pressed", pseudo: "active" },
+  { label: "Hover", force: "hover" },
+  { label: "Pressed", force: "active" },
   { label: "Selected", checked: true },
-  { label: "Hover selected", checked: true, pseudo: "hover" },
+  { label: "Hover selected", checked: true, force: "hover" },
   { label: "Disabled", disabled: true },
   { label: "Disabled selected", checked: true, disabled: true },
 ];
 
-const PSEUDO_CLASS: Record<"hover" | "active", string> = {
-  hover: "pseudo-hover-all",
-  active: "pseudo-active-all",
+const FORCE_MOD: Record<"hover" | "active", Record<string, boolean>> = {
+  hover: { "force-hover": true },
+  active: { "force-active": true },
 };
 
 // The showcase: a title, the sizes section, then a column per variant. Light and
@@ -91,21 +91,16 @@ const OverviewTemplate: StoryFn<ChipProps> = () => (
           <Stack gap="md">
             {STATES.map((state) => (
               <StoryRow key={state.label} label={state.label}>
-                <div
-                  className={
-                    state.pseudo ? PSEUDO_CLASS[state.pseudo] : undefined
-                  }
+                <Chip
+                  variant={variant}
+                  size="md"
+                  checked={state.checked ?? false}
+                  disabled={state.disabled ?? false}
+                  mod={state.force ? FORCE_MOD[state.force] : undefined}
+                  onChange={() => {}}
                 >
-                  <Chip
-                    variant={variant}
-                    size="md"
-                    checked={state.checked ?? false}
-                    disabled={state.disabled ?? false}
-                    onChange={() => {}}
-                  >
-                    {LABEL}
-                  </Chip>
-                </div>
+                  {LABEL}
+                </Chip>
               </StoryRow>
             ))}
           </Stack>

@@ -1,22 +1,104 @@
 .ChipLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: var(--chip-size);
+  padding-inline: var(--chip-padding);
+  border-radius: 9999px;
+  font-size: var(--chip-fz);
+  font-weight: 600;
+  line-height: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* `data-variant` lives on the root (Mantine renders it on the wrapping Box), so
+   these are scoped through `.ChipRoot`. The descendant combinator also gives the
+   rules enough specificity to win over Mantine's built-in variant styles, which
+   paint the label background at `.m_*:not([data-disabled])` specificity.
+
+   `[data-force-hover]` / `[data-force-active]` on the root render the hover /
+   pressed appearance without real interaction — set them via the `mod` prop to
+   showcase those states (e.g. in Storybook) or in visual-regression tests. */
+
+/* Unchecked — shared by the light and filled variants. */
+.ChipRoot .ChipLabel:not([data-disabled]) {
+  border: none;
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.ChipRoot .ChipLabel:not([data-disabled]):hover,
+.ChipRoot[data-force-hover] .ChipLabel:not([data-disabled]) {
+  background-color: var(--mb-color-background-hover);
+}
+
+.ChipRoot .ChipLabel:not([data-disabled]):active,
+.ChipRoot[data-force-active] .ChipLabel:not([data-disabled]) {
+  background-color: var(--mb-color-background-selected);
+}
+
+/* Selected — light variant: a light brand fill with brand text. */
+.ChipRoot[data-variant="light"] .ChipLabel[data-checked]:not([data-disabled]) {
   background-color: var(--mb-color-background-brand);
-  color: var(--mb-color-core-brand);
-  padding: 0.5rem 1rem;
-  display: block;
-  height: auto;
-  line-height: 100%;
-
-  &[data-checked="true"] {
-    padding-inline: 1rem;
-    background-color: var(--mb-color-core-brand);
-    color: var(--mb-color-text-primary-inverse);
-  }
+  color: var(--mb-color-brand);
 }
 
+.ChipRoot[data-variant="light"]
+  .ChipLabel[data-checked]:not([data-disabled]):hover,
+.ChipRoot[data-variant="light"]
+  .ChipLabel[data-checked]:not([data-disabled]):active,
+.ChipRoot[data-variant="light"][data-force-hover]
+  .ChipLabel[data-checked]:not([data-disabled]),
+.ChipRoot[data-variant="light"][data-force-active]
+  .ChipLabel[data-checked]:not([data-disabled]) {
+  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-text-hover);
+}
+
+/* Selected — filled variant: a solid brand fill with inverse text. */
+.ChipRoot[data-variant="filled"] .ChipLabel[data-checked]:not([data-disabled]) {
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.ChipRoot[data-variant="filled"]
+  .ChipLabel[data-checked]:not([data-disabled]):hover,
+.ChipRoot[data-variant="filled"]
+  .ChipLabel[data-checked]:not([data-disabled]):active,
+.ChipRoot[data-variant="filled"][data-force-hover]
+  .ChipLabel[data-checked]:not([data-disabled]),
+.ChipRoot[data-variant="filled"][data-force-active]
+  .ChipLabel[data-checked]:not([data-disabled]) {
+  background-color: var(--mb-color-brand-hover);
+}
+
+/* Disabled — both variants, checked or not. */
+.ChipRoot .ChipLabel[data-disabled] {
+  border: none;
+  background-color: var(--mb-color-background-disabled);
+  color: var(--mb-color-text-tertiary);
+  cursor: default;
+}
+
+/* The icon occupies a 12px box (Figma), but the checkmark glyph inside is only
+   ~8.8px wide and centered — so size the wrapper to the box and the SVG to the
+   glyph rather than letting the glyph fill the whole 12px. */
 .ChipIconWrapper {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0;
 }
 
-.ChipInput {
-  display: block;
+.ChipCheckIcon {
+  width: 0.55rem;
+  height: auto;
+  color: currentColor;
 }
