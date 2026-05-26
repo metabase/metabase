@@ -1101,3 +1101,29 @@
               entry))
       (is (re-find #"provider=openrouter status=502 body=\"upstream gateway timeout\""
                    (:message entry))))))
+
+(deftest rethrow-api-error!-auth-status-body-not-leaked-test
+  (testing "401/403 bodies are not appended to the user-facing message (may carry sensitive auth/account detail)"
+    (doseq [status [401 403]]
+      (let [secret   "sk-leaked-key-abc123 for org=acme-corp tenant=42"
+            upstream (ex-info "clj-http error"
+                              {:status        status
+                               :reason-phrase "Unauthorized"
+                               :headers       {"content-type" "application/json"}
+                               :body          (json/encode {:error {:message secret}})})
+            [entry & more]
+            (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.core :warn]]
+              (let [ex (caught #(self.core/rethrow-api-error!
+                                 "anthropic"
+                                 (fn [res] (str "Anthropic API error (HTTP " (:status res) ")"))
+                                 upstream))]
+                (is (= (str "Anthropic API error (HTTP " status ")") (ex-message ex))
+                    "no body preview spliced onto the user-facing message for auth statuses")
+                (is (not (str/includes? (ex-message ex) secret))
+                    "secret-bearing body must not leak into the rethrown message")
+                (is (= {:error {:message secret}} (:body (ex-data ex)))
+                    "the full decoded body is still preserved on ex-data for debugging"))
+              (msgs))]
+        (is (nil? more) "exactly one warn line at the failure boundary")
+        (is (str/includes? (:message entry) secret)
+            "the full body is still emitted at warn level for server-side debugging")))))
