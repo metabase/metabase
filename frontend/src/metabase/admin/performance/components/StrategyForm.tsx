@@ -1,7 +1,13 @@
 import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useId as useReactId,
+  useState,
+} from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -540,6 +546,53 @@ export const StrategySelectorHeading = ({
   </Stack>
 );
 
+const StrategyOption = ({
+  value,
+  title,
+  description,
+  autoFocus,
+}: {
+  value: string;
+  title?: string;
+  description?: string;
+  autoFocus?: boolean;
+}) => {
+  const reactId = useReactId();
+  const inputId = `strategy-radio-${reactId}-${value}`;
+  const titleId = `${inputId}-title`;
+  // Render description as a second `<label htmlFor>` (valid HTML, an input
+  // can have multiple labels) so clicks on it fire the radio.
+  // `aria-labelledby` pins the accessible name to the title alone.
+  return (
+    <Stack gap="xs">
+      <Radio
+        id={inputId}
+        value={value}
+        className={StrategyFormStyles.strategyOption}
+        label={
+          <Text component="strong" id={titleId} fw="bold">
+            {title}
+          </Text>
+        }
+        autoFocus={autoFocus}
+        role="radio"
+        aria-labelledby={titleId}
+      />
+      {description && (
+        <Text
+          component="label"
+          htmlFor={inputId}
+          size="sm"
+          c="text-secondary"
+          className={StrategyFormStyles.descriptionLabel}
+        >
+          {description}
+        </Text>
+      )}
+    </Stack>
+  );
+};
+
 const StrategySelector = ({
   targetId,
   model,
@@ -570,34 +623,19 @@ const StrategySelector = ({
         name="type"
       >
         <Stack mt={showHeading ? "xl" : 0} gap="md">
-          {Object.entries(availableStrategies).map(([name, option]) => {
-            const description = option.description
-              ? getLabelString(option.description, model)
-              : undefined;
-            return (
-              <Box
-                key={name}
-                onClick={(e) => {
-                  // Mantine renders Radio.description outside the `<label htmlFor>`,
-                  // so a click on the description text doesn't toggle the radio.
-                  // Forward those clicks to the input.
-                  const target = e.target as HTMLElement;
-                  if (target.tagName === "P") {
-                    e.currentTarget.querySelector("input")?.click();
-                  }
-                }}
-              >
-                <Radio
-                  value={name}
-                  className={StrategyFormStyles.strategyOption}
-                  label={<strong>{getLabelString(option.label, model)}</strong>}
-                  description={description}
-                  autoFocus={values.type === name}
-                  role="radio"
-                />
-              </Box>
-            );
-          })}
+          {Object.entries(availableStrategies).map(([name, option]) => (
+            <StrategyOption
+              key={name}
+              value={name}
+              title={getLabelString(option.label, model)}
+              description={
+                option.description
+                  ? getLabelString(option.description, model)
+                  : undefined
+              }
+              autoFocus={values.type === name}
+            />
+          ))}
         </Stack>
       </FormRadioGroup>
     </section>
