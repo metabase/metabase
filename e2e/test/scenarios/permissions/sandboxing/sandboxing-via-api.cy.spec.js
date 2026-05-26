@@ -1290,6 +1290,76 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
     });
   });
+
+  describe("Column-restricting sandbox: hide hidden columns from metadata endpoints", () => {
+    // All tests here use a sandbox source card that exposes only a subset of columns from
+    // the sandboxed table. Future column-leak repros for other endpoints should be added
+    // as it() cases inside this describe.
+
+    const PEOPLE_VISIBLE_COLS = ["ID", "NAME", "EMAIL"];
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      preparePermissions();
+
+      // Sandbox PEOPLE with a native query exposing only ID, NAME, EMAIL — hides
+      // ADDRESS, BIRTH_DATE, CITY, LATITUDE, LONGITUDE, PASSWORD, SOURCE, STATE, ZIP,
+      // CREATED_AT.
+      H.createNativeQuestion({
+        name: "Sandbox source — people subset",
+        native: { query: "SELECT id, name, email FROM people" },
+      }).then(({ body: card }) => {
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
+          card_id: card.id,
+          group_id: COLLECTION_GROUP,
+        });
+      });
+
+      cy.signOut();
+      cy.signInAsSandboxedUser();
+    });
+
+    it("Data Reference field list excludes sandbox-hidden columns", () => {
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields`,
+      );
+      H.main().within(() => {
+        PEOPLE_VISIBLE_COLS.forEach((name) =>
+          cy.findByText(name).should("exist"),
+        );
+        ["ADDRESS", "BIRTH_DATE", "LATITUDE", "PASSWORD"].forEach((name) =>
+          cy.findByText(name).should("not.exist"),
+        );
+      });
+    });
+
+    it("GET /api/database/:id/metadata excludes sandbox-hidden columns", () => {
+      cy.request(`/api/database/${SAMPLE_DB_ID}/metadata`).then(({ body }) => {
+        const people = body.tables.find(
+          (t) => t.name.toUpperCase() === "PEOPLE",
+        );
+        const fieldNames = people.fields.map((f) => f.name.toUpperCase());
+        expect(fieldNames).to.have.members(PEOPLE_VISIBLE_COLS);
+        expect(fieldNames).not.to.include("PASSWORD");
+        expect(fieldNames).not.to.include("ADDRESS");
+      });
+    });
+
+    it("GET /api/database/:id?include=tables.fields excludes sandbox-hidden columns", () => {
+      cy.request(`/api/database/${SAMPLE_DB_ID}?include=tables.fields`).then(
+        ({ body }) => {
+          const people = body.tables.find(
+            (t) => t.name.toUpperCase() === "PEOPLE",
+          );
+          const fieldNames = people.fields.map((f) => f.name.toUpperCase());
+          expect(fieldNames).to.have.members(PEOPLE_VISIBLE_COLS);
+        },
+      );
+    });
+  });
 });
 
 function createJoinedQuestion(name, { visitQuestion = false } = {}) {
