@@ -12,7 +12,9 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationThread,
+  SingleSeries,
 } from "metabase-types/api";
 
 import { getDocumentsForDocumentMenu } from "./utils";
@@ -20,6 +22,7 @@ import { getDocumentsForDocumentMenu } from "./utils";
 interface GroupDocumentMenuProps {
   queries: ExplorationQuery[];
   explorationThread: ExplorationThread;
+  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
 }
 
 /**
@@ -31,6 +34,7 @@ interface GroupDocumentMenuProps {
 export function GroupDocumentMenu({
   queries,
   explorationThread,
+  seriesByQueryId,
 }: GroupDocumentMenuProps) {
   const [opened, setOpened] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState<ExplorationQuery | null>(
@@ -60,10 +64,13 @@ export function GroupDocumentMenu({
   const handleAppend = useCallback(
     async (query: ExplorationQuery, documentId: DocumentId) => {
       handleClose();
+      const series = seriesByQueryId?.get(query.id);
       const { data: document, error } = await appendChartToDocument({
         threadId: explorationThread.id,
         documentId,
         exploration_query_id: query.id,
+        display: series?.card.display ?? null,
+        visualization_settings: series?.card.visualization_settings ?? null,
       });
       if (error) {
         sendToast({
@@ -91,7 +98,13 @@ export function GroupDocumentMenu({
         icon: "document",
       });
     },
-    [appendChartToDocument, sendToast, explorationThread, handleClose],
+    [
+      appendChartToDocument,
+      sendToast,
+      explorationThread,
+      handleClose,
+      seriesByQueryId,
+    ],
   );
 
   const handleCreateAndAppend = useCallback(

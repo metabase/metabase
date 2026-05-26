@@ -53,7 +53,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { safeJsonParse } from "metabase/utils/json-parse";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -69,7 +68,6 @@ import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
   Dataset,
-  DatasetQuery,
   StoredResultSort,
 } from "metabase-types/api";
 
@@ -125,7 +123,6 @@ export interface CardEmbedAttributes {
   class?: string;
   stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
-  dataset_query?: DatasetQuery | null;
   chart_href?: string | null; // Override URL for the embed's title click
 }
 export const CardEmbed: Node<{
@@ -169,13 +166,6 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-sort"),
       },
-      dataset_query: {
-        default: null,
-        parseHTML: (element) => {
-          const raw = element.getAttribute("data-dataset-query");
-          return safeJsonParse(raw);
-        },
-      },
       chart_href: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-chart-href"),
@@ -206,10 +196,6 @@ export const CardEmbed: Node<{
               ? String(node.attrs.stored_result_id)
               : null,
           "data-sort": node.attrs.sort ?? null,
-          "data-dataset-query":
-            node.attrs.dataset_query != null
-              ? JSON.stringify(node.attrs.dataset_query)
-              : null,
           "data-chart-href": node.attrs.chart_href ?? null,
         },
         this.options.HTMLAttributes,
@@ -271,16 +257,11 @@ export const CardEmbedComponent = memo(
     const embedIndex = getEmbedIndex(editor, getPos);
 
     const isExternalDocument = externalCardData != null;
-    const datasetQueryOverride = node.attrs.dataset_query as
-      | DatasetQuery
-      | null
-      | undefined;
     const regularCardData = useCardData({
       id,
       ...(isStatic && storedResultId != null
         ? { storedResultId, storedResultSort: staticSort }
         : {}),
-      ...(datasetQueryOverride ? { datasetQueryOverride } : {}),
     });
     const externalCardDataResult = useExternalCardDataLoader(id);
 
@@ -835,8 +816,6 @@ export const CardEmbedComponent = memo(
       prevProps.node.attrs.stored_result_id ===
         nextProps.node.attrs.stored_result_id &&
       prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
-      prevProps.node.attrs.dataset_query ===
-        nextProps.node.attrs.dataset_query &&
       prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
       prevProps.selected === nextProps.selected
     );

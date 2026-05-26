@@ -45,11 +45,7 @@ export function NewExplorationLeftTabs({
         <Tabs.Tab value="browse">{t`Browse`}</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="chat" className={S.tabPanel}>
-        <NewExplorationChat
-          setMetrics={selection.setMetrics}
-          setDimensions={selection.setDimensions}
-          setName={selection.setName}
-        />
+        <NewExplorationChat selection={selection} />
       </Tabs.Panel>
       <Tabs.Panel value="browse" className={S.tabPanel}>
         <NewExplorationBrowse selection={selection} navigation={navigation} />

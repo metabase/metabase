@@ -12,12 +12,15 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationThread,
+  SingleSeries,
 } from "metabase-types/api";
 
 interface DocumentMenuProps {
   explorationQuery: ExplorationQuery;
   explorationThread: ExplorationThread;
+  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
 }
 
 import { getDocumentsForDocumentMenu } from "./utils";
@@ -25,6 +28,7 @@ import { getDocumentsForDocumentMenu } from "./utils";
 export function DocumentMenu({
   explorationQuery,
   explorationThread,
+  seriesByQueryId,
 }: DocumentMenuProps) {
   const [appendChartToDocument] = useAppendChartToDocumentMutation();
   const [createExplorationDocument] = useCreateExplorationDocumentMutation();
@@ -32,10 +36,13 @@ export function DocumentMenu({
 
   const handleAppendChartToDocument = useCallback(
     async (documentId: DocumentId) => {
+      const series = seriesByQueryId?.get(explorationQuery.id);
       const { data: document, error } = await appendChartToDocument({
         threadId: explorationThread.id,
         documentId,
         exploration_query_id: explorationQuery.id,
+        display: series?.card.display ?? null,
+        visualization_settings: series?.card.visualization_settings ?? null,
       });
       if (error) {
         sendToast({
@@ -63,7 +70,13 @@ export function DocumentMenu({
         });
       }
     },
-    [appendChartToDocument, sendToast, explorationThread, explorationQuery.id],
+    [
+      appendChartToDocument,
+      sendToast,
+      explorationThread,
+      explorationQuery.id,
+      seriesByQueryId,
+    ],
   );
 
   const handleCreateDocument = useCallback(async () => {

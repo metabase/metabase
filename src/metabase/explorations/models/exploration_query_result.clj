@@ -120,36 +120,47 @@
   Caller supplies the target `document-id` (cards belong to the document, not the collection
   browser) and the document's `collection-id` (cards inherit it so perms stay aligned, matching
   the regular doc-card flow in `metabase.documents.api.document/create-cards-for-document!`).
-  Display / visualization_settings are recomputed here from the cached qp-result cols + the
-  source card's viz settings, so we don't need to persist them anywhere — the snapshot is
-  the source of truth. `dataset_query` comes from the originating `exploration_query` snapshot.
+  `dataset_query` comes from the originating `exploration_query` snapshot.
+
+  Optional `:display-override` / `:visualization-settings-override` in the fifth-arg map win
+  over the values `pick-display+viz-settings` would recompute. The FE-driven append flow
+  uses them to pass through the rich settings it produced in `buildSeries` / `getDisplay`
+  (column-ordered `graph.dimensions`, `graph.split_panels`, `table.pivot`, axis-title
+  clearing on labeled layouts, …) which the BE-side recompute doesn't reproduce. When both
+  overrides are nil the behavior is unchanged — useful for any non-FE caller (static
+  rendering, future automation).
 
   Returns the new `card_id`."
-  [stored-result-id document-id collection-id creator]
-  (let [sr           (t2/select-one :model/StoredResult :id stored-result-id)
-        eqr          (t2/select-one :model/ExplorationQueryResult :stored_result_id stored-result-id)
-        eq           (t2/select-one :model/ExplorationQuery :id (:exploration_query_id eqr))
-        src-card     (when-let [card-id (:card_id eq)]
-                       (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                      :id card-id))
-        qp-result    (deserialize-stored-result (:result_data sr))
-        chart-config (when qp-result
-                       (try (explorations.interestingness/qp-result->chart-config eq qp-result)
-                            (catch Throwable _ nil)))
-        viz          (pick-display+viz-settings eq src-card chart-config qp-result)
-        dataset-query (:dataset_query eq)]
-    (query-perms/check-run-permissions-for-query dataset-query)
-    (let [card-id (:id (queries/create-card!
-                        {:name                   (promotion-card-name eq src-card)
-                         :description            (:description src-card)
-                         :type                   :question
-                         :dashboard_id           nil
-                         :dataset_query          dataset-query
-                         :display                (:display viz)
-                         :visualization_settings (:visualization_settings viz)
-                         :document_id            document-id
-                         :collection_id          collection-id}
-                        creator))]
-      ;; Record the (card -> stored_result) reference for lifecycle/GC tracking.
-      (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
-      card-id)))
+  ([stored-result-id document-id collection-id creator]
+   (create-card-for-stored-result! stored-result-id document-id collection-id creator nil))
+  ([stored-result-id document-id collection-id creator
+    {:keys [display-override visualization-settings-override]}]
+   (let [sr           (t2/select-one :model/StoredResult :id stored-result-id)
+         eqr          (t2/select-one :model/ExplorationQueryResult :stored_result_id stored-result-id)
+         eq           (t2/select-one :model/ExplorationQuery :id (:exploration_query_id eqr))
+         src-card     (when-let [card-id (:card_id eq)]
+                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
+                                       :id card-id))
+         qp-result    (deserialize-stored-result (:result_data sr))
+         chart-config (when qp-result
+                        (try (explorations.interestingness/qp-result->chart-config eq qp-result)
+                             (catch Throwable _ nil)))
+         viz           (pick-display+viz-settings eq src-card chart-config qp-result)
+         display       (or display-override (:display viz))
+         viz-settings  (or visualization-settings-override (:visualization_settings viz))
+         dataset-query (:dataset_query eq)]
+     (query-perms/check-run-permissions-for-query dataset-query)
+     (let [card-id (:id (queries/create-card!
+                         {:name                   (promotion-card-name eq src-card)
+                          :description            (:description src-card)
+                          :type                   :question
+                          :dashboard_id           nil
+                          :dataset_query          dataset-query
+                          :display                display
+                          :visualization_settings viz-settings
+                          :document_id            document-id
+                          :collection_id          collection-id}
+                         creator))]
+       ;; Record the (card -> stored_result) reference for lifecycle/GC tracking.
+       (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+       card-id))))

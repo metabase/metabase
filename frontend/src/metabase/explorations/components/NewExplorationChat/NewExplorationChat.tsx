@@ -1,16 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import {
-  type Dispatch,
-  type SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { isInterestingDimension } from "metabase/explorations/constants";
-import type { ExplorationMetric } from "metabase/explorations/types";
+import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
@@ -25,12 +18,8 @@ import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
-import { useDispatch } from "metabase/redux";
 import { Center, Flex, Stack } from "metabase/ui";
-import type {
-  GetExplorationDataResponse,
-  MetricDimension,
-} from "metabase-types/api";
+import type { GetExplorationDataResponse } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 import { ResearchModeIntro } from "./ResearchModeIntro";
@@ -39,23 +28,18 @@ export const EXPLORATIONS_AGENT_ID = "explorations";
 
 const SELECT_RESEARCH_METRICS_TOOL = "select_research_metrics";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
+const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
 type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
   result: string;
 };
 
 export interface NewExplorationChatProps {
-  setMetrics: Dispatch<SetStateAction<ExplorationMetric[]>>;
-  setDimensions: Dispatch<SetStateAction<MetricDimension[]>>;
-  setName: Dispatch<SetStateAction<string>>;
+  selection: ExplorationSelection;
 }
 
-export function NewExplorationChat({
-  setMetrics,
-  setDimensions,
-  setName,
-}: NewExplorationChatProps) {
-  const dispatch = useDispatch();
+export function NewExplorationChat({ selection }: NewExplorationChatProps) {
+  const { addMetric, setName, addTimelinesById } = selection;
   const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
@@ -92,43 +76,19 @@ export function NewExplorationChat({
       }
 
       try {
-        const newMetrics: ExplorationMetric[] = [];
-        const newDimensions: MetricDimension[] = [];
-
         for (const message of messages) {
           const { metrics, dimension_groups } = JSON.parse(
             message.result,
           ) as GetExplorationDataResponse;
-          newMetrics.push(...metrics);
-          newDimensions.push(
-            ...dimension_groups.flatMap((group) => {
-              const interestingDimensions = group.dimensions.filter(
-                isInterestingDimension,
-              );
-              if (interestingDimensions.length > 0) {
-                return interestingDimensions;
-              }
-              // if there are no interesting dimensions, return all dimensions
-              // this guards against possible issues with the interestingness scoring
-              return group.dimensions;
-            }),
+          const dimensionsById = new Map(
+            dimension_groups
+              .flatMap((g) => g.dimensions)
+              .map((d) => [d.id, d] as const),
           );
+          for (const metric of metrics) {
+            addMetric(metric, { dimensionsById });
+          }
         }
-
-        setMetrics((prev) => {
-          const prevIds = new Set(prev.map((m) => m.id));
-          const additions = Array.from(new Set(newMetrics)).filter(
-            (m) => !prevIds.has(m.id),
-          );
-          return additions.length === 0 ? prev : [...prev, ...additions];
-        });
-        setDimensions((prev) => {
-          const prevIds = new Set(prev.map((d) => d.id));
-          const additions = Array.from(new Set(newDimensions)).filter(
-            (d) => !prevIds.has(d.id),
-          );
-          return additions.length === 0 ? prev : [...prev, ...additions];
-        });
       } catch (error) {
         console.error(error);
         sendToast({
@@ -138,7 +98,7 @@ export function NewExplorationChat({
         });
       }
     },
-    [setMetrics, setDimensions, sendToast],
+    [addMetric, sendToast],
   );
 
   const handleSetExplorationNameToolCallMessages = useCallback(
@@ -155,6 +115,31 @@ export function NewExplorationChat({
       }
     },
     [setName],
+  );
+
+  const handleSelectExplorationTimelinesToolCallMessages = useCallback(
+    (messages: MetabotToolCallMessageWithResult[]) => {
+      if (messages.length === 0) {
+        return;
+      }
+      try {
+        const timelineIds = messages.flatMap((message) => {
+          const parsed = JSON.parse(message.result) as {
+            timeline_ids: number[];
+          };
+          return parsed.timeline_ids;
+        });
+        addTimelinesById(timelineIds);
+      } catch (error) {
+        console.error(error);
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to add timelines`,
+        });
+      }
+    },
+    [addTimelinesById, sendToast],
   );
 
   useEffect(() => {
@@ -177,14 +162,14 @@ export function NewExplorationChat({
     handleSetExplorationNameToolCallMessages(
       unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
     );
+    handleSelectExplorationTimelinesToolCallMessages(
+      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+    );
   }, [
     isDoingScience,
-    sendToast,
-    dispatch,
-    setMetrics,
-    setDimensions,
     handleSelectExplorationMetricsToolCallMessages,
     handleSetExplorationNameToolCallMessages,
+    handleSelectExplorationTimelinesToolCallMessages,
     messages,
   ]);
 
@@ -293,6 +278,18 @@ function isSetExplorationNameToolCallMessage(
     message.role === "agent" &&
     message.type === "tool_call" &&
     message.name === SET_RESEARCH_NAME_TOOL &&
+    !message.is_error &&
+    !!message.result
+  );
+}
+
+function isSelectExplorationTimelinesToolCallMessage(
+  message: MetabotChatMessage,
+): message is MetabotToolCallMessageWithResult {
+  return (
+    message.role === "agent" &&
+    message.type === "tool_call" &&
+    message.name === SELECT_RESEARCH_TIMELINES_TOOL &&
     !message.is_error &&
     !!message.result
   );

@@ -178,7 +178,10 @@
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
                     #'tools/select-exploration-metrics-tool
-                    #'tools/set-exploration-name-tool]})
+                    #'tools/set-exploration-name-tool
+                    #'tools/list-timelines-tool
+                    #'tools/get-timeline-details-tool
+                    #'tools/select-exploration-timelines-tool]})
 
 (def ^:private api-string->capability-keyword
   "Map from API capability strings (as sent by the frontend) to the keywords

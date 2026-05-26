@@ -13,6 +13,7 @@ import type {
   Exploration,
   ExplorationQuery,
   ExplorationQueryGroup,
+  ExplorationQueryId,
   ExplorationThread,
   ExplorationThreadMetric,
   SingleSeries,
@@ -192,6 +193,20 @@ function ExplorationGroupVisualizationChart({
     return seriesGroups?.some((group) => group.isTimeseries);
   }, [seriesGroups]);
 
+  const seriesByQueryId: Map<ExplorationQueryId, SingleSeries> | undefined =
+    useMemo(() => {
+      if (!seriesGroups) {
+        return undefined;
+      }
+      const map = new Map<ExplorationQueryId, SingleSeries>();
+      for (const group of seriesGroups) {
+        for (const single of group.series) {
+          map.set(single.card.id, single);
+        }
+      }
+      return map;
+    }, [seriesGroups]);
+
   if (!seriesGroups) {
     return (
       <ExplorationChartSkeleton
@@ -212,6 +227,7 @@ function ExplorationGroupVisualizationChart({
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
         groupQueries={queries}
+        seriesByQueryId={seriesByQueryId}
         interestingTimelineIds={interestingTimelineIds}
       />
       <Box className={S.chartGrid} data-chart-layout={layoutStrategy}>

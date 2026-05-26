@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 
+import { useListTimelinesQuery } from "metabase/api";
 import {
   getDefaultExplorationName,
   isInterestingDimension,
@@ -18,6 +19,48 @@ import type {
 } from "metabase-types/api";
 
 import { removeMetricFromSelection } from "../components/NewExplorationData/utils";
+
+/**
+ * Shared add-metric logic used by both `addMetric` and the add branch of
+ * `toggleMetric`. Meant to be called inside a `setMetrics` updater so it
+ * has a consistent view of `prevMetrics`. Returns the next metrics array.
+ *
+ * Side-effects: enqueues a `setDimensions` update for the metric's
+ * "interesting" dimensions (falling back to all referenced dimensions
+ * when none are interesting so the user always gets a non-empty default).
+ */
+function applyAddMetric(
+  metric: ExplorationMetric,
+  dimensionsById: Map<DimensionId, MetricDimension>,
+  prevMetrics: ExplorationMetric[],
+  setDimensions: Dispatch<SetStateAction<MetricDimension[]>>,
+): ExplorationMetric[] {
+  if (prevMetrics.some((m) => m.id === metric.id)) {
+    return prevMetrics;
+  }
+
+  const referencedDims = metric.dimension_ids
+    .map((id) => dimensionsById.get(id))
+    .filter((d): d is MetricDimension => d != null);
+  const hasInteresting = referencedDims.some(isInterestingDimension);
+  const additions = hasInteresting
+    ? referencedDims.filter(isInterestingDimension)
+    : referencedDims;
+
+  setDimensions((prevDimensions) => {
+    const have = new Set(prevDimensions.map((d) => d.id));
+    const merged = [...prevDimensions];
+    for (const d of additions) {
+      if (!have.has(d.id)) {
+        merged.push(d);
+        have.add(d.id);
+      }
+    }
+    return merged.length === prevDimensions.length ? prevDimensions : merged;
+  });
+
+  return [...prevMetrics, metric];
+}
 
 /**
  * Context the `toggleMetric` helper needs to apply the auto-toggle rule
@@ -51,18 +94,25 @@ export interface ExplorationSelection {
   metrics: ExplorationMetric[];
   dimensions: MetricDimension[];
   timelines: Timeline[];
+  /** All timelines from the API (includes events). */
+  allTimelines: Timeline[];
+  timelinesLoading: boolean;
+  timelinesError: unknown;
   name: string;
 
   setName: Dispatch<SetStateAction<string>>;
 
-  /**
-   * Direct setters — kept for the agent tool-call effect inside
-   * `NewExplorationChat`, which merges in items from a parsed
-   * tool-result blob and needs full control over the array.
-   */
+  /** Direct state setters for cases that need full control over the array. */
   setMetrics: Dispatch<SetStateAction<ExplorationMetric[]>>;
   setDimensions: Dispatch<SetStateAction<MetricDimension[]>>;
   setTimelines: Dispatch<SetStateAction<Timeline[]>>;
+
+  /**
+   * Add a metric if not already selected. Auto-adds its "interesting"
+   * dimensions (falling back to all referenced dimensions when none are
+   * interesting). No-op when the metric is already in the selection.
+   */
+  addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
 
   /**
    * Toggle a metric. Adds the metric + its interesting dimensions if it
@@ -83,6 +133,8 @@ export interface ExplorationSelection {
     context: ToggleDimensionContext,
   ) => void;
   toggleTimeline: (timeline: Timeline) => void;
+  /** Resolve ids against `allTimelines` and merge into the selection. Idempotent. */
+  addTimelinesById: (timelineIds: number[]) => void;
 }
 
 /**
@@ -98,11 +150,25 @@ export function useExplorationSelection(): ExplorationSelection {
   const [timelines, setTimelines] = useState<Timeline[]>([]);
   const [name, setName] = useState<string>(getDefaultExplorationName());
 
+  const {
+    data: allTimelines = [],
+    isLoading: timelinesLoading,
+    error: timelinesError,
+  } = useListTimelinesQuery({ include: "events" });
+
+  const addMetric = useCallback(
+    (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
+      setMetrics((prevMetrics) =>
+        applyAddMetric(metric, dimensionsById, prevMetrics, setDimensions),
+      );
+    },
+    [],
+  );
+
   const toggleMetric = useCallback(
     (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
       setMetrics((prevMetrics) => {
-        const isSelected = prevMetrics.some((m) => m.id === metric.id);
-        if (isSelected) {
+        if (prevMetrics.some((m) => m.id === metric.id)) {
           setDimensions((prevDimensions) => {
             const { dimensions: nextDimensions } = removeMetricFromSelection(
               prevMetrics,
@@ -113,32 +179,12 @@ export function useExplorationSelection(): ExplorationSelection {
           });
           return prevMetrics.filter((m) => m.id !== metric.id);
         }
-
-        // Adding: pick up the metric's "interesting" dimensions when at
-        // least one exists; otherwise fall back to all referenced
-        // dimensions so the user still gets a non-empty default.
-        const referencedDims = metric.dimension_ids
-          .map((id) => dimensionsById.get(id))
-          .filter((d): d is MetricDimension => d != null);
-        const hasInteresting = referencedDims.some(isInterestingDimension);
-        const additions = hasInteresting
-          ? referencedDims.filter(isInterestingDimension)
-          : referencedDims;
-
-        setDimensions((prevDimensions) => {
-          const have = new Set(prevDimensions.map((d) => d.id));
-          const merged = [...prevDimensions];
-          for (const d of additions) {
-            if (!have.has(d.id)) {
-              merged.push(d);
-              have.add(d.id);
-            }
-          }
-          return merged.length === prevDimensions.length
-            ? prevDimensions
-            : merged;
-        });
-        return [...prevMetrics, metric];
+        return applyAddMetric(
+          metric,
+          dimensionsById,
+          prevMetrics,
+          setDimensions,
+        );
       });
     },
     [],
@@ -226,17 +272,41 @@ export function useExplorationSelection(): ExplorationSelection {
     });
   }, []);
 
+  const addTimelinesById = useCallback(
+    (timelineIds: number[]) => {
+      const timelinesById = new Map(allTimelines.map((t) => [t.id, t]));
+      setTimelines((prev) => {
+        const have = new Set(prev.map((t) => t.id));
+        const merged = [...prev];
+        for (const id of timelineIds) {
+          const timeline = timelinesById.get(id);
+          if (timeline && !have.has(id)) {
+            merged.push(timeline);
+            have.add(id);
+          }
+        }
+        return merged.length === prev.length ? prev : merged;
+      });
+    },
+    [allTimelines],
+  );
+
   return {
     metrics,
     dimensions,
     timelines,
+    allTimelines,
+    timelinesLoading,
+    timelinesError,
     name,
     setName,
     setMetrics,
     setDimensions,
     setTimelines,
+    addMetric,
     toggleMetric,
     toggleDimension,
     toggleTimeline,
+    addTimelinesById,
   };
 }

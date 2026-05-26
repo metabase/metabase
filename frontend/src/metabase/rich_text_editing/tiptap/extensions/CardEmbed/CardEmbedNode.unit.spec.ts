@@ -3,8 +3,6 @@ import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 
-import type { DatasetQuery } from "metabase-types/api";
-
 // The full Tiptap node imports a Redux-backed React component and a CSS
 // module — neither matter for the schema-level round-trip. Stub
 // `ReactNodeViewRenderer` to return a no-op node-view factory so the
@@ -54,67 +52,7 @@ function makeEditor() {
   });
 }
 
-const OVERRIDE: DatasetQuery = {
-  type: "query",
-  database: 1,
-  query: {
-    "source-table": 10,
-    breakout: [["field", 200, { "temporal-unit": "day-of-week" }]],
-  },
-} as DatasetQuery;
-
-describe("CardEmbed node — dataset_query attr", () => {
-  it("round-trips a non-null `dataset_query` through parseHTML ↔ renderHTML", () => {
-    const editor = makeEditor();
-
-    // Insert a cardEmbed node carrying the override.
-    editor.commands.insertContent({
-      type: "cardEmbed",
-      attrs: {
-        id: 77,
-        name: null,
-        stored_result_id: 99,
-        dataset_query: OVERRIDE,
-      },
-    });
-
-    // Serialize → HTML, then reparse the HTML back into a doc, then read
-    // the round-tripped attrs.
-    const html = editor.getHTML();
-    expect(html).toContain('data-dataset-query="');
-
-    const editor2 = makeEditor();
-    editor2.commands.setContent(html);
-
-    const node = editor2.state.doc.firstChild;
-    expect(node?.type.name).toBe("cardEmbed");
-    expect(node?.attrs.id).toBe(77);
-    expect(node?.attrs.stored_result_id).toBe(99);
-    expect(node?.attrs.dataset_query).toEqual(OVERRIDE);
-
-    editor.destroy();
-    editor2.destroy();
-  });
-
-  it("renders no `data-dataset-query` attribute when the override is null (non-exploration embeds stay clean)", () => {
-    const editor = makeEditor();
-
-    editor.commands.insertContent({
-      type: "cardEmbed",
-      attrs: {
-        id: 42,
-        name: null,
-        stored_result_id: null,
-        dataset_query: null,
-      },
-    });
-
-    const html = editor.getHTML();
-    expect(html).not.toContain("data-dataset-query");
-
-    editor.destroy();
-  });
-
+describe("CardEmbed node — chart_href attr", () => {
   it("round-trips a `chart_href` through parseHTML ↔ renderHTML", () => {
     const editor = makeEditor();
     const href = "/question/research/7/group/auto%3A42%3Ad1";
@@ -136,13 +74,16 @@ describe("CardEmbed node — dataset_query attr", () => {
     editor2.commands.setContent(html);
 
     const node = editor2.state.doc.firstChild;
+    expect(node?.type.name).toBe("cardEmbed");
+    expect(node?.attrs.id).toBe(77);
+    expect(node?.attrs.stored_result_id).toBe(99);
     expect(node?.attrs.chart_href).toBe(href);
 
     editor.destroy();
     editor2.destroy();
   });
 
-  it("renders no `data-chart-href` attribute when null", () => {
+  it("renders no `data-chart-href` attribute when null (non-exploration embeds stay clean)", () => {
     const editor = makeEditor();
 
     editor.commands.insertContent({
@@ -151,20 +92,6 @@ describe("CardEmbed node — dataset_query attr", () => {
     });
 
     expect(editor.getHTML()).not.toContain("data-chart-href");
-    editor.destroy();
-  });
-
-  it("ignores malformed `data-dataset-query` JSON instead of throwing", () => {
-    const editor = makeEditor();
-
-    editor.commands.setContent(
-      `<div data-type="cardEmbed" data-id="7" data-dataset-query="not-json">x</div>`,
-    );
-
-    const node = editor.state.doc.firstChild;
-    expect(node?.type.name).toBe("cardEmbed");
-    expect(node?.attrs.dataset_query).toBeNull();
-
     editor.destroy();
   });
 });

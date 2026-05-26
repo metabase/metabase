@@ -2,7 +2,6 @@ import type { Location } from "history";
 import { useEffect } from "react";
 
 import { explorationApi } from "metabase/api/exploration";
-import { timelineApi } from "metabase/api/timeline";
 import { EditableText } from "metabase/common/components/EditableText";
 import CS from "metabase/css/core/index.css";
 import { QuestionModeSwitcher } from "metabase/metabot/components/QuestionModeSwitcher";
@@ -40,15 +39,13 @@ function NewExplorationPageInner() {
     resetConversation();
   }, [resetConversation]);
 
-  // Warm the RTK Query cache for the Browse tab's three lists
+  // Warm the RTK Query cache for the Browse tab's metrics/dimensions lists
   const prefetchExplorationData =
     explorationApi.usePrefetch("getExplorationData");
-  const prefetchTimelines = timelineApi.usePrefetch("listTimelines");
 
   useEffect(() => {
     prefetchExplorationData({});
-    prefetchTimelines({ include: "events" });
-  }, [prefetchExplorationData, prefetchTimelines]);
+  }, [prefetchExplorationData]);
 
   const shouldShowModeSwitcher =
     // this page is usable without NLQ access, but the explore tab is not

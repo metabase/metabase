@@ -4,8 +4,11 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationThread,
+  SingleSeries,
 } from "metabase-types/api";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { GroupDocumentMenu } from "./GroupDocumentMenu";
 
@@ -85,13 +88,18 @@ function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
   };
 }
 
-function setup(
-  documents: ExplorationDocument[] = [makeDocument({ id: 11, name: "Notes" })],
-) {
+function setup({
+  documents = [makeDocument({ id: 11, name: "Notes" })],
+  seriesByQueryId,
+}: {
+  documents?: ExplorationDocument[];
+  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
+} = {}) {
   renderWithProviders(
     <GroupDocumentMenu
       queries={queries}
       explorationThread={makeThread(documents)}
+      seriesByQueryId={seriesByQueryId}
     />,
   );
 }
@@ -166,6 +174,10 @@ describe("GroupDocumentMenu", () => {
       threadId: 7,
       documentId: 11,
       exploration_query_id: 102,
+      // No FE-computed series supplied for this test — the menu sends
+      // explicit `null` for both override fields.
+      display: null,
+      visualization_settings: null,
     });
   });
 
@@ -189,6 +201,44 @@ describe("GroupDocumentMenu", () => {
         threadId: 7,
         documentId: 22, // the freshly-created document
         exploration_query_id: 101,
+        display: null,
+        visualization_settings: null,
+      });
+    });
+  });
+
+  it("sends the FE-computed `display` + `visualization_settings` from `seriesByQueryId` so the embed renders identically to the exploration view", async () => {
+    const card = createMockCard({
+      id: 102,
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["created_at", "category"],
+        "graph.split_panels": true,
+      },
+    });
+    const series: SingleSeries = { card, data: createMockDataset().data };
+    setup({
+      seriesByQueryId: new Map<ExplorationQueryId, SingleSeries>([
+        [102, series],
+      ]),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to document" }),
+    );
+    await userEvent.click(await screen.findByText("Revenue (EU)"));
+    await userEvent.click(await screen.findByText("Notes"));
+
+    await waitFor(() => {
+      expect(mockAppend).toHaveBeenCalledWith({
+        threadId: 7,
+        documentId: 11,
+        exploration_query_id: 102,
+        display: "line",
+        visualization_settings: {
+          "graph.dimensions": ["created_at", "category"],
+          "graph.split_panels": true,
+        },
       });
     });
   });
