@@ -892,7 +892,7 @@
                    (msgs))]
         (is (empty? msgs))))
     (testing "non-empty maps/arrays without a recognised error field pr-str into the preview, no warn"
-      ;; rethrow-api-error! already emits a single warn at the failure boundary with the full body,
+      ;; rethrow-api-error! already emits a single warn at the failure boundary with the (bounded) body,
       ;; so body-preview must not emit a second warn for unrecognised shapes — that's a duplicate.
       (let [bodies [{:request-id "abc" :trace ["frame1"]}
                     [42 :kw]
@@ -904,7 +904,7 @@
                            (str "pr-str fallback for " (pr-str b))))
                      (msgs))]
         (is (empty? msgs)
-            "body-preview must not warn — rethrow-api-error! logs the full body once already")))
+            "body-preview must not warn — rethrow-api-error! logs the (bounded) body once already")))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))

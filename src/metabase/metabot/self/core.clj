@@ -596,7 +596,9 @@
 
 (defn body-for-log
   "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]].
-  Public so the agent loop's error logging bounds the body the same way."
+  Public so the agent loop's error logging bounds the body the same way.
+  Assumes a bounded input (a decoded ≤[[max-body-slurp-chars]] body) — the walk bounds rendered
+  output, not traversal, so a large unbounded collection would still be fully walked."
   [body]
   (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
 
@@ -617,7 +619,7 @@
                     :else              nil)
         ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
         ;; beats a bare "HTTP 500" with no clue what the upstream said. rethrow-api-error! logs
-        ;; the full body already, so we don't warn again here.
+        ;; the (bounded) body once already, so we don't warn again here.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
                         (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
