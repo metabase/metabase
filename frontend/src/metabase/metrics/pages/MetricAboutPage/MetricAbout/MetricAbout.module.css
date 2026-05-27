@@ -5,7 +5,7 @@
 .chartContainer {
   display: flex;
   flex-direction: column;
-  border-radius: var(--default-border-radius) 0 0 var(--default-border-radius);
+  position: relative;
 }
 
 .exploreButtonOverlay {
@@ -30,6 +30,7 @@
   border-top-left-radius: var(--default-border-radius);
   border-bottom-left-radius: var(--default-border-radius);
   overflow: hidden;
+  /* keeps the embedded visualization non-interactive (no tooltips/hover) */
   pointer-events: none;
 }
 

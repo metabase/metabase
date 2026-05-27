@@ -34,7 +34,7 @@ export function MetricAbout({ card, urls }: MetricAboutProps) {
 
   return (
     <Flex className={S.root} flex={1}>
-      <Box className={S.chartContainer} flex={1} mah={700} pos="relative">
+      <Box className={S.chartContainer} flex={1} mah={700}>
         {isNumericMetric(card) && (
           <Box className={S.exploreButtonOverlay}>
             <ExploreMetricButton cardId={card.id} />
