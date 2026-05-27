@@ -41,7 +41,7 @@ export function SchemaMultiSelect({
         id={inputId}
         data={schemas.map((schema) => ({ value: schema, label: schema }))}
         value={value}
-        placeholder={isAll ? t`All schemas selected` : t`Pick schemas`}
+        placeholder={isAll ? t`All schemas selected` : t`Select schemas`}
         onChange={onChange}
       />
     </Stack>
