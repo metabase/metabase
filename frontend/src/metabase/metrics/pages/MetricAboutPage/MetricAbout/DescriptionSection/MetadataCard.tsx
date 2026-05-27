@@ -10,7 +10,7 @@ interface MetadataCardProps {
 
 export function MetadataCard({ children }: MetadataCardProps) {
   return (
-    <Paper bg="background-secondary" radius={rem(16)} p="md">
+    <Paper bg="background-tertiary" radius={rem(16)} p="md">
       <Stack gap="sm">{children}</Stack>
     </Paper>
   );
