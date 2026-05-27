@@ -89,22 +89,13 @@
     :mine                1
     :exact               5
     :prefix              0
-    ;; Curation tiers, from strongest to weakest.
+    ;; User-curated tiers, from strongest to weakest.
     ;; :library at 200 exceeds :official-collection + :verified (80 each) combined,
     ;; so a library item always outranks a non-library one.
     ;; Base text/recency scorers (0–5 range) only break ties *within* a tier.
     :library             200
     :official-collection 80
     :verified            80
-    ;; :data-layer is the overall magnitude.
-    ;; Per-tier values are parameters (ratios with final=1), not strict weights.
-    ;; Contribution = :data-layer × :data-layer/<tier>.
-    ;; Final/internal/hidden are mutually exclusive.
-    ;; Trailing comments show effective products.
-    :data-layer          33
-    :data-layer/final    1     ; ≈ 33
-    :data-layer/internal 0.3   ; ≈ 10
-    :data-layer/hidden   0.03  ; ≈ 1
     ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
     :rrf                 500}
    :command-palette
@@ -121,7 +112,29 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}})
+    :model/question 0}
+   ;; TODO: lift :data-layer up to :default. It's a structural signal (every visible warehouse
+   ;; table gets `data_layer "final"`), so the +33 boost flips orderings across every search
+   ;; surface and breaks e2e specs that pin specific top results. To make progress:
+   ;;
+   ;; - Update the e2e snapshot in `e2e/snapshot-creators/default.cy.snap.js` so the sample-DB
+   ;;   tables aren't all at `final` (mark non-essential ones `internal`/`hidden`), or
+   ;; - Rewrite the brittle assertions to not depend on a specific top result.
+   ;;
+   ;; Affected specs (broken by an earlier lift attempt):
+   ;;
+   ;; - `search.cy.spec.js`
+   ;; - `models.cy.spec.js`
+   ;; - `documents.cy.spec.ts`
+   ;; - `document-links.cy.spec.ts`
+   ;; - `custom-viz.cy.spec.ts`
+   ;; - `search-snowplow.cy.spec.js`
+   :metabot
+   {:data-layer          33
+    :data-layer/final    1     ; ≈ 33
+    :data-layer/internal 0.3   ; ≈ 10
+    :data-layer/hidden   0.03  ; ≈ 1
+    }})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."

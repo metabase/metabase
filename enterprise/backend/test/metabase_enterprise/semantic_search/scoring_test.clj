@@ -273,7 +273,7 @@
           (is (= 4 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/hidden 1}
                          (search-results* "table"))
                        first second))))))
-    (testing "tier ordering: final > internal > hidden under :default magnitudes"
+    (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
       (with-index-contents!
         [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
          {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
