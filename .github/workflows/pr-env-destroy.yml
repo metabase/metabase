@@ -46,7 +46,7 @@ jobs:
         env:
           PR_ENV_K8S_AUDIENCE: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
       - name: Setup Kube Context
-        uses: azure/k8s-set-context@0b53301dcc7ddd3f6d35f97fb67228ac4e5ab2fd # v2
+        uses: azure/k8s-set-context@89b837d75b40a7bd2ddafde837473c212db8b313 # v5.0.0
         with:
           method: kubeconfig
           kubeconfig: |
@@ -75,7 +75,7 @@ jobs:
           kubectl delete ns hosting-pr${{ env.PR_NUMBER }}
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: 'latest'
       - name: Destroy PR Review ENV (self-hosting)
