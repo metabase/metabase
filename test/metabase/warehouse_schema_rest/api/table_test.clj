@@ -559,7 +559,9 @@
               (testing "Update table's properties shouldn't trigger sync"
                 (set-name!)
                 (is (= 2
-                       @called)))))))))
+                       @called))))))))))
+
+(deftest update-table-sync-test-2
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [:model/Table {id-1 :id} {}

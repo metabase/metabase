@@ -97,7 +97,7 @@
           (testing "returns parseable PNG"
             (is (some? image))))))))
 
-(deftest render-dimensions-test
+(deftest ^:parallel render-dimensions-test
   (testing "render-dimensions calculates width from display type aspect ratios"
     (testing "bar chart uses 2:1 ratio (12:6 default)"
       (is (= {:width 1280 :height 640}
@@ -111,7 +111,7 @@
 
 ;;; ------------------------------------------------ Table Blocks ----------------------------------------------------
 
-(deftest format-results-as-table-blocks-test
+(deftest ^:parallel format-results-as-table-blocks-test
   (testing "format-results-as-table-blocks creates valid Slack table block structure"
     (let [results {:data {:rows   [[1 "Alice" 100.50]
                                    [2 "Bob" 200.75]]
@@ -141,8 +141,9 @@
               settings    (:column_settings table-block)]
           (is (= "right" (:align (nth settings 0)))) ; ID is integer
           (is (= "left" (:align (nth settings 1))))  ; Name is text
-          (is (= "right" (:align (nth settings 2)))))))) ; Amount is float
+          (is (= "right" (:align (nth settings 2))))))))) ; Amount is float
 
+(deftest ^:parallel format-results-as-table-blocks-test-2
   (testing "format-results-as-table-blocks truncates large results"
     (let [many-rows (vec (repeat 150 [1 "test"]))
           results   {:data {:rows many-rows
@@ -157,7 +158,9 @@
         (let [context-block (second blocks)]
           (is (= "context" (:type context-block)))
           (is (= "Showing 99 of 150 rows"
-                 (get-in context-block [:elements 0 :text])))))))
+                 (get-in context-block [:elements 0 :text]))))))))
+
+(deftest ^:parallel format-results-as-table-blocks-test-3
   (testing "format-results-as-table-blocks handles scalar (single-cell) results"
     (let [results {:data {:rows [[42]]
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
@@ -167,13 +170,17 @@
               rows        (:rows table-block)]
           (is (= 2 (count rows))) ; 1 header + 1 data row
           (is (= "Count" (get-in rows [0 0 :text])))
-          (is (= "42" (get-in rows [1 0 :text])))))))
+          (is (= "42" (get-in rows [1 0 :text]))))))))
+
+(deftest ^:parallel format-results-as-table-blocks-test-4
   (testing "format-results-as-table-blocks handles empty results"
     (let [results {:data {:rows []
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
           blocks  (slackbot.query/format-results-as-table-blocks results)]
       (testing "returns no-data block"
-        (is (= "No data" (get-in blocks [0 :rows 0 0 :text]))))))
+        (is (= "No data" (get-in blocks [0 :rows 0 0 :text])))))))
+
+(deftest ^:parallel format-results-as-table-blocks-test-5
   (testing "format-results-as-table-blocks truncates long cell values"
     (binding [slackbot.query/*slack-table-max-cell-length* 20]
       (let [long-text (apply str (repeat 50 "x"))
@@ -183,7 +190,9 @@
             blocks    (slackbot.query/format-results-as-table-blocks results)
             cell-text (get-in (first blocks) [:rows 1 1 :text])]
         (is (<= (count cell-text) 20))
-        (is (str/ends-with? cell-text "…")))))
+        (is (str/ends-with? cell-text "…"))))))
+
+(deftest ^:parallel format-results-as-table-blocks-test-6
   (testing "format-results-as-table-blocks truncates rows to fit character budget"
     (binding [slackbot.query/*slack-table-max-chars* 100]
       (let [results {:data {:rows (vec (repeat 20 ["abcdefghij"]))
@@ -198,7 +207,9 @@
         (testing "total cell text fits within character budget"
           (let [total-chars (transduce (comp cat (map (comp count :text)))
                                        + (:rows (first blocks)))]
-            (is (<= total-chars 100)))))))
+            (is (<= total-chars 100))))))))
+
+(deftest ^:parallel format-results-as-table-blocks-test-7
   (testing "format-results-as-table-blocks handles FK remapped columns"
     (let [;; Simulate FK remapping: USER_ID is remapped to show USER.NAME
           ;; The data has both USER_ID (raw FK) and NAME (human-readable value from FK target)

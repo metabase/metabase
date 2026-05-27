@@ -95,8 +95,13 @@ export const NewWorkspaceDatabaseModal = {
     NewWorkspaceDatabaseModal.get().findByRole("textbox", { name: "Database" }),
   schemasGroup: () =>
     NewWorkspaceDatabaseModal.get().findByText("Schemas to include"),
-  schemaCheckbox: (name: string) =>
-    NewWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
+  schemaSelect: () =>
+    NewWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemaOption: (name: string) => cy.findByRole("option", { name }),
+  selectAllSchemasButton: () =>
+    NewWorkspaceDatabaseModal.get().findByRole("button", {
+      name: "Select all",
+    }),
   submitButton: () =>
     NewWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Add database",
@@ -109,8 +114,13 @@ export const UpdateWorkspaceDatabaseModal = {
   get: () => modal(),
   schemasGroup: () =>
     UpdateWorkspaceDatabaseModal.get().findByText("Schemas to include"),
-  schemaCheckbox: (name: string) =>
-    UpdateWorkspaceDatabaseModal.get().findByRole("checkbox", { name }),
+  schemaSelect: () =>
+    UpdateWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
+  schemaOption: (name: string) => cy.findByRole("option", { name }),
+  selectAllSchemasButton: () =>
+    UpdateWorkspaceDatabaseModal.get().findByRole("button", {
+      name: "Select all",
+    }),
   saveButton: () =>
     UpdateWorkspaceDatabaseModal.get().findByRole("button", {
       name: "Save changes",

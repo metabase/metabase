@@ -8,7 +8,6 @@ import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import MetabaseSettings from "metabase/utils/settings";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
@@ -492,14 +491,13 @@ export class Table extends Component<TableProps, TableState> {
         data.cols,
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
-      const dateFormattingOptions = MetabaseSettings.formattingOptions();
       this.setState({
         data: DataGrid.pivot(
           data,
           normalIndex,
           pivotIndex,
           cellIndex,
-          dateFormattingOptions,
+          settings,
         ),
         question,
       });

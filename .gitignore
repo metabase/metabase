@@ -184,6 +184,7 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.config/wt.toml
 .claude/worktrees
 .claude/scheduled_tasks.lock
 .playwright-mcp

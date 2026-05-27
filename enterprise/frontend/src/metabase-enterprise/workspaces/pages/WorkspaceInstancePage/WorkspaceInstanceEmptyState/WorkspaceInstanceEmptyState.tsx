@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/redux";
 import { Box, Button } from "metabase/ui";
 
+import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
 import { WorkspaceEmptyState } from "../../../components/WorkspaceEmptyState";
 import { getIsDevelopmentMode } from "../../../selectors";
 import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
@@ -19,7 +20,13 @@ export function WorkspaceInstanceEmptyState() {
       >
         {isDevelopmentMode && (
           <Box pb="xl">
-            <Button variant="filled" onClick={open}>
+            <Button
+              variant="filled"
+              onClick={() => {
+                trackWorkspaceSetupButtonClicked();
+                open();
+              }}
+            >
               {t`Set up a workspace`}
             </Button>
           </Box>

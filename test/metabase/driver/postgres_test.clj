@@ -149,7 +149,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-2
   (testing "ssl - check that expected params get added"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -165,7 +167,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-3
   (testing "make sure connection details w/ extra params work as expected"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -177,7 +181,9 @@
                                                    {:host               "localhost"
                                                     :port               "5432"
                                                     :dbname             "cool"
-                                                    :additional-options "prepareThreshold=0"}))))
+                                                    :additional-options "prepareThreshold=0"})))))
+
+(deftest ^:parallel connection-details->spec-test-4
   (testing "user-specified SSL options should always take precendence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"

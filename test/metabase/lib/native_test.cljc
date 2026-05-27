@@ -55,7 +55,9 @@
                                :snippet-name "foo"
                                :snippet-id   1
                                :id           string?}}
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}")))))
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))))
+
+(deftest ^:parallel template-tags-test-2
   (testing "renaming a variable"
     (let [old-tag {:type         :text
                    :name         "foo"
@@ -87,7 +89,9 @@
                             :id           (:id old-tag)}}
                   (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
-                                                     "other" other})))))))
+                                                     "other" other}))))))))
+
+(deftest ^:parallel template-tags-test-3
   (testing "general case, add and remove"
     (let [mktag (fn [base]
                   (merge {:type         :text
