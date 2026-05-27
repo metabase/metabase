@@ -7,6 +7,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -63,7 +64,13 @@
 
 (mu/defn- maybe-parse-response-body-as-json :- :map
   [response :- :map]
-  (let [json? (some-> (get-in response [:headers "Content-Type"]) (str/starts-with? "application/json"))]
+  ;; Only decode string bodies. Streaming requests (`:as :stream`) hand us an `InputStream`;
+  ;; decoding it here would consume the whole body unbounded and replace it with a parsed map,
+  ;; so a non-2xx streaming error would then skip `coerce-body`'s bounded slurp and its
+  ;; `quick-closing-body` connection close. Leave stream bodies untouched for `check-response!`.
+  ;; Non-streaming endpoints already hand us a string, so their JSON decoding is unaffected.
+  (let [json? (and (string? (:body response))
+                   (some-> (get-in response [:headers "Content-Type"]) (str/starts-with? "application/json")))]
     (cond-> response
       json? (update :body #(json/decode % true)))))
 
@@ -81,15 +88,202 @@
 (defn- ai-url [path]
   (str (metabot-v3.settings/ai-service-base-url) path))
 
+(def ^:private max-body-preview-chars
+  "Cap on the body snippet spliced into the exception message."
+  500)
+
+(def ^:private max-body-log-chars
+  "Cap on the body `pr-str` spliced into warn/error log lines. Larger than the user-facing
+  preview cap since operators want more context, but still bounded so a multi-MB body — a
+  parsed-JSON map from a non-streaming endpoint, or a near-cap slurped stream — can't flood
+  the logs. The full body always survives in `ex-data`."
+  2000)
+
+(def ^:private max-body-slurp-chars
+  "Cap on how many chars we read off an upstream InputStream body when coerce-body slurps it."
+  ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
+  ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
+  1000000)
+
+(def ^:private body-slurp-chunk-chars
+  "Read-chunk size for [[slurp-bounded]]. Keeps the transient buffer small so a tiny error
+  envelope costs a tiny allocation; only a body that actually reaches the cap pays for it."
+  8192)
+
+(defn- slurp-bounded
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input.
+  Grows a `StringBuilder` in [[body-slurp-chunk-chars]] chunks so memory scales with the real
+  body rather than pre-allocating the worst-case `limit`-sized buffer up front."
+  [r limit]
+  (try
+    (with-open [rdr (io/reader r :encoding "UTF-8")]
+      (let [buf (char-array body-slurp-chunk-chars)
+            sb  (StringBuilder.)]
+        (loop []
+          (let [remaining (- limit (.length sb))]
+            (if (<= remaining 0)
+              (str sb)
+              (let [n (.read ^java.io.Reader rdr buf 0 (min remaining body-slurp-chunk-chars))]
+                (if (neg? n)
+                  (when (pos? (.length sb)) (str sb))
+                  (do (.append sb buf 0 n)
+                      (recur)))))))))
+    (catch Exception _ nil)))
+
+(defn- quick-closing-body
+  "Wrap a streaming response's body so closing the stream also closes the underlying `:http-client`.
+  Without this, ContentLengthInputStream-wrapped bodies never close the underlying connection.
+
+  Pair with a `Connection: close` request header so the HttpClient doesn't try to reuse the
+  hard-closed connection. See https://github.com/dakrone/clj-http/issues/627 and the
+  `closing-connection-test` regression test."
+  [response]
+  (proxy [FilterInputStream] [^InputStream (:body response)]
+    (close []
+      (.close ^Closeable (:http-client response)))))
+
+(defn- coerce-body
+  "Read a response body into a printable value.
+  For `InputStream` bodies (the streaming-response error path) the underlying connection is
+  closed via [[quick-closing-body]] so we don't leak it, and the slurp is bounded at
+  [[max-body-slurp-chars]] so a multi-MB upstream payload can't blow up memory. Returns
+  nil on read error."
+  [response]
+  (try
+    (let [body (:body response)]
+      (cond
+        (not (instance? InputStream body))   body
+        ;; Only the streaming-request path supplies a :http-client; the AI service's
+        ;; non-streaming endpoints already give us a string or parsed-JSON body.
+        ;; `slurp-bounded` reads through a reader it closes, which closes the
+        ;; `quick-closing-body` proxy (and thus `:http-client`) — so no outer `with-open`,
+        ;; which would close the connection a second time.
+        (some? (:http-client response))      (slurp-bounded (quick-closing-body response) max-body-slurp-chars)
+        :else                                (slurp-bounded body max-body-slurp-chars)))
+    (catch Exception _ nil)))
+
+(defn- extract-error-message
+  "First non-blank string under `[:error :message]`, `:error`, `:detail`, or `:message`.
+  Non-strings and whitespace-only strings fall through to the next key."
+  [m]
+  ;; Filter per-lookup so a structured value (e.g. {:error {:code 500}}) never gets
+  ;; str-coerced into the user-facing exception message — bad shapes fall through to
+  ;; the next key instead.
+  (letfn [(s [v] (when (string? v) (not-empty (str/trim v))))]
+    (or (s (get-in m [:error :message]))
+        (s (:error m))
+        (s (:detail m))
+        (s (:message m)))))
+
+(defn- truncate-to
+  "Cap `s` at `limit` chars with a trailing ellipsis when it overflows."
+  [s limit]
+  (if (<= (count s) limit)
+    s
+    (str (subs s 0 limit) "…")))
+
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  Walks the body and slices every string leaf to `limit` before printing — so a parsed
+  JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
+  only for the caller to truncate it back down. `*print-length*`/`*print-level*` bound
+  `pr-str`'s output, not the `postwalk`. The walk only recurses parsed-JSON bodies — the
+  streaming path yields a scalar string it can't descend into — which clj-http has already
+  materialized in memory, with nesting depth bounded by the JSON parser's own limit."
+  [body limit]
+  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
+    (binding [*print-length* 100
+              *print-level*  10]
+      (pr-str (walk/postwalk slice body)))))
+
+(defn- truncate-to-preview-limit
+  "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
+  [s]
+  (truncate-to s max-body-preview-chars))
+
+(defn- body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+  [body]
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
+
+(defn- body-preview
+  "Short snippet of an already-coerced response body for the user-facing exception message.
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`.
+  Nil/empty bodies return nil."
+  [body]
+  (let [extracted (cond
+                    (nil? body)        nil
+                    (string? body)     body
+                    (map? body)        (extract-error-message body)
+                    (sequential? body) (let [head (first body)]
+                                         (cond
+                                           (map? head)    (extract-error-message head)
+                                           (string? head) head
+                                           :else          nil))
+                    :else              nil)
+        ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
+        ;; beats a bare "HTTP 500" with no clue what the upstream said. check-response! logs
+        ;; the full body, so we don't warn again here.
+        s         (or extracted
+                      (when (and (or (map? body) (sequential? body)) (seq body))
+                        ;; bounded-pr-str slices each nested string leaf to max-body-preview-chars;
+                        ;; truncate-to-preview-limit then caps the assembled multi-element result.
+                        (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
+    (some-> s str/trim not-empty truncate-to-preview-limit)))
+
 (defn- check-response!
-  "Returns response body on success (200 or 202), throws on failure."
+  "Return the response body on success (HTTP 200 or 202); throw on failure.
+  On failure the thrown `ex-info` carries `:error-code :ai-service-error`, the upstream `:status`,
+  and the slurped body under `[:response :body]`.
+  The exception message includes a body preview when one can be extracted,
+  truncated to [[max-body-preview-chars]]."
   [response request]
   (if (#{200 202} (:status response))
     (:body response)
-    (throw (ex-info (format "Unexpected status code: %d %s"
-                            (:status response) (:reason-phrase response))
-                    {:request  (dissoc request :headers)
-                     :response (dissoc response :headers)}))))
+    (let [status  (:status response)
+          phrase  (:reason-phrase response)
+          body    (coerce-body response)
+          url     (some-> response :request :url)
+          preview (body-preview body)
+          msg     (cond-> (format "AI service request failed: HTTP %d %s"
+                                  (or status 0) (or phrase ""))
+                    preview (str " — " preview))]
+      ;; `log/warn` would `pr-str` a trailing map into the message, not record it as
+      ;; structured MDC. Use `log/warnf` so we knowingly emit one greppable blob.
+      (log/warnf "AI service request failed: HTTP %s %s url=%s body=%s"
+                 status phrase url (body-for-log body))
+      (throw (ex-info msg
+                      {:error-code :ai-service-error
+                       :status     status
+                       :request    (dissoc request :headers)
+                       ;; Allow-list rather than `dissoc :headers` — the raw clj-http
+                       ;; response carries `:http-client` (a closeable), `:trace-redirects`
+                       ;; and other internals we don't want in ex-data / Sentry payloads.
+                       :response   (-> (select-keys response [:status :reason-phrase])
+                                       (assoc :body body))})))))
+
+(defn- rethrow-with-context!
+  "Log a request-level failure (with the throwable) and rethrow with a `label`-prefixed message.
+  Preserves the original `ex-data` so downstream handlers see the structured fields from `check-response!`
+  on the outer exception, not just via `(ex-cause ...)`."
+  [label ^Throwable e]
+  (let [{:keys [error-code status response]} (ex-data e)
+        body (:body response)
+        msg  (ex-message e)]
+    ;; ex-message can be nil/blank for exceptions thrown without a message
+    ;; (e.g. `(NullPointerException.)`) — skip the colon when there's nothing to say.
+    (cond
+      (= error-code :ai-service-error)
+      (log/errorf e "%s: HTTP %s body=%s" label status (body-for-log body))
+
+      (str/blank? msg)
+      (log/error e label)
+
+      :else
+      (log/errorf e "%s: %s" label msg))
+    (throw (ex-info (if (str/blank? msg) label (str label ": " msg))
+                    (or (ex-data e) {})
+                    e))))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
@@ -117,19 +311,6 @@
 
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
-
-(defn- quick-closing-body
-  "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
-  So we just close the client itself.
-
-  Please use `Connection: close` header when using this function to prevent connection being reused by HttpClient.
-
-  See: https://github.com/dakrone/clj-http/issues/627
-  Also: metabase-enterprise.metabot-v3.api-test/closing-connection-test (for 'chunked')"
-  [response]
-  (proxy [FilterInputStream] [^InputStream (:body response)]
-    (close []
-      (.close ^Closeable (:http-client response)))))
 
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
@@ -192,6 +373,10 @@
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (when-not (#{200 202} (:status response))
+        ;; In dev, the two log calls above can touch the response body (an `InputStream`)
+        ;; — `metabot-v3.context/log` calls `json/encode` on it. `check-response!` calls
+        ;; `coerce-body` defensively (returning `nil` if the stream is already drained), so
+        ;; the production path still surfaces the body in the exception and logs.
         (check-response! response body))
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
         ;; see `quick-closing-body` docs and see `Connection` header supporting this behavior
@@ -221,8 +406,8 @@
                   (recur (.readLine response-reader)))))))
         (when on-complete
           (on-complete @lines))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
+    (catch Exception e
+      (rethrow-with-context! "Error in request to AI Proxy" e))))
 
 (mu/defn select-metric-request
   "Make a request to AI Service to select a metric."
@@ -236,10 +421,8 @@
           response (post! url options)]
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
-                      {}
-                      e)))))
+    (catch Exception e
+      (rethrow-with-context! "Error in request to AI Service" e))))
 
 (mu/defn find-outliers-request
   "Make a request to AI Service to find outliers"
@@ -251,10 +434,8 @@
           response (post! url options)]
       (u/prog1 (check-response! response body)
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
-                      {}
-                      e)))))
+    (catch Exception e
+      (rethrow-with-context! "Error in request to AI service" e))))
 
 (mu/defn fix-sql
   "Ask the AI service to propose fixes a SQL query and a given error."
