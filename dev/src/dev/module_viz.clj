@@ -26,6 +26,36 @@
 (defn- module-id [m] (str "mod:" m))
 (defn- ns-id [m ns-symb] (str "ns:" m "/" ns-symb))
 
+(def ^:private github-base "https://github.com/metabase/metabase/blob/master/")
+
+(defn- ns->github-path
+  "Translate a Clojure namespace symbol into the most likely repo-relative path."
+  [ns-symb]
+  (let [s    (str ns-symb)
+        path (-> s (str/replace "-" "_") (str/replace "." "/"))]
+    (cond
+      (str/starts-with? s "metabase-enterprise.")
+      (str "enterprise/backend/src/" path ".clj")
+
+      ;; driver namespaces live under modules/drivers/<driver>/src/...
+      (re-find #"^metabase\.driver\.([^.]+)" s)
+      (let [drv (second (re-find #"^metabase\.driver\.([^.]+)" s))]
+        (str "modules/drivers/" drv "/src/" path ".clj"))
+
+      :else
+      (str "src/" path ".clj"))))
+
+(defn- module->github-path
+  "Best-effort source directory for a module symbol."
+  [module-symb]
+  (let [s (str module-symb)]
+    (cond
+      (str/starts-with? s "enterprise/")
+      (str "enterprise/backend/src/metabase_enterprise/" (subs s (count "enterprise/")))
+
+      :else
+      (str "src/metabase/" s))))
+
 ;; --- data ---------------------------------------------------------------------------------------
 
 (def ^:private cache
@@ -41,26 +71,28 @@
         ;; Build module node + child api-ns node list once.
         module-nodes (into {}
                            (map (fn [[m {:keys [team api friends]}]]
-                                  [m {:data {:id       (module-id m)
-                                             :label    (str m)
-                                             :type     "module"
-                                             :module   (str m)
-                                             :team     (or team "?")
-                                             :apiCount (cond
-                                                         (= api :any) 0
-                                                         (set? api)   (count api)
-                                                         :else        0)
-                                             :friends  (mapv str (or friends []))}}]))
+                                  [m {:data {:id        (module-id m)
+                                             :label     (str m)
+                                             :type      "module"
+                                             :module    (str m)
+                                             :team      (or team "?")
+                                             :apiCount  (cond
+                                                          (= api :any) 0
+                                                          (set? api)   (count api)
+                                                          :else        0)
+                                             :friends   (mapv str (or friends []))
+                                             :githubUrl (str github-base (module->github-path m))}}]))
                            kondo)
         api-children (into {}
                            (map (fn [[m {:keys [api]}]]
                                   [m (when (set? api)
                                        (mapv (fn [ns-symb]
-                                               {:data {:id     (ns-id m ns-symb)
-                                                       :label  (str ns-symb)
-                                                       :type   "ns"
-                                                       :parent (module-id m)
-                                                       :module (str m)}})
+                                               {:data {:id        (ns-id m ns-symb)
+                                                       :label     (str ns-symb)
+                                                       :type      "ns"
+                                                       :parent    (module-id m)
+                                                       :module    (str m)
+                                                       :githubUrl (str github-base (ns->github-path ns-symb))}})
                                              api))]))
                            kondo)
         ;; Collapse all external usages into distinct (consumer, producer, producer-ns) triples
@@ -114,38 +146,108 @@
                        :apiCount (get-in n [:data :apiCount])}))
          (sort-by :label))))
 
+(defn- bfs-neighbors
+  "Return modules within `degree` hops of `start` over the undirected module-edge graph."
+  [edges-by-mod start degree]
+  (loop [frontier #{start}
+         visited  #{start}
+         hops     0]
+    (if (or (zero? (count frontier)) (>= hops degree))
+      visited
+      (let [next-frontier (into #{}
+                                (comp
+                                 (mapcat (fn [m] (get edges-by-mod m [])))
+                                 (mapcat (fn [e]
+                                           [(symbol (get-in e [:data :sourceModule]))
+                                            (symbol (get-in e [:data :targetModule]))]))
+                                 (remove visited))
+                                frontier)]
+        (recur next-frontier (into visited next-frontier) (inc hops))))))
+
+(defn- aggregate-edges
+  "Collapse per-ns edges between `expanded-set` complement modules into one edge per (consumer,
+  producer) pair. Edges where the *producer* (target side) is expanded keep their api-ns target so
+  the user can see which exact namespace the consumer is pulling in. Otherwise we fall back to the
+  producer module id so the edge never references a node we didn't ship."
+  [edges expanded-set]
+  (let [{disag true aggregable false}
+        (group-by (fn [e]
+                    (let [s (symbol (get-in e [:data :sourceModule]))
+                          t (symbol (get-in e [:data :targetModule]))]
+                      (boolean (or (contains? expanded-set s)
+                                   (contains? expanded-set t)))))
+                  edges)
+        ;; Rewrite disaggregated edges so endpoints only reference nodes the client actually has.
+        keep-as-is (mapv (fn [e]
+                           (let [s-mod (symbol (get-in e [:data :sourceModule]))
+                                 t-mod (symbol (get-in e [:data :targetModule]))
+                                 ;; Always start with the safe module-id target; only point to the
+                                 ;; ns child when the producer module is expanded.
+                                 t-id (if (contains? expanded-set t-mod)
+                                        (get-in e [:data :target])
+                                        (str "mod:" t-mod))
+                                 s-id (if (contains? expanded-set s-mod)
+                                        (get-in e [:data :source])
+                                        (str "mod:" s-mod))]
+                             (-> e
+                                 (assoc-in [:data :source] s-id)
+                                 (assoc-in [:data :target] t-id))))
+                         disag)
+        pair->edges (group-by (fn [e]
+                                [(get-in e [:data :sourceModule])
+                                 (get-in e [:data :targetModule])])
+                              aggregable)
+        agg (for [[[s t] es] pair->edges
+                  :let [target-nss (into (sorted-set) (map #(get-in % [:data :targetNs])) es)]]
+              {:data {:id           (str "agg:" s "->" t)
+                      :source       (str "mod:" s)
+                      :target       (str "mod:" t)
+                      :sourceModule s
+                      :targetModule t
+                      :weight       (count es)
+                      :aggregate    true
+                      :nsList       (vec target-nss)}})]
+    (into (vec agg) keep-as-is)))
+
 (defn focus-subgraph
-  "1-degree neighborhood for module-label."
-  [module-label]
-  (let [{:keys [module-nodes api-children edges-by-mod]} (ensure-cache!)
-        m-sym (symbol module-label)]
-    (if-not (contains? module-nodes m-sym)
-      {:error (str "unknown module: " module-label)
-       :nodes [] :edges []}
-      (let [incident (get edges-by-mod m-sym [])
-            neighbor-labels (into #{m-sym}
-                                  (mapcat (fn [e]
-                                            [(symbol (get-in e [:data :sourceModule]))
-                                             (symbol (get-in e [:data :targetModule]))]))
-                                  incident)
-            nodes (vec
-                   (mapcat (fn [label]
-                             (when-let [mn (get module-nodes label)]
-                               (cons mn (get api-children label []))))
-                           neighbor-labels))
-            ;; Only edges touching focused module (1-degree view).
-            edges (filterv (fn [e]
-                             (let [s (symbol (get-in e [:data :sourceModule]))
-                                   t (symbol (get-in e [:data :targetModule]))]
-                               (and (contains? neighbor-labels s)
-                                    (contains? neighbor-labels t)
-                                    (or (= s m-sym) (= t m-sym)))))
-                           incident)]
-        {:focus module-label
-         :nodes nodes
-         :edges edges
-         :stats {:moduleCount (count neighbor-labels)
-                 :edgeCount   (count edges)}}))))
+  "Subgraph centered on `module-label` out to `degree` hops (default 1).
+
+  When `expanded` is empty we aggregate edges so each (consumer, producer) module pair becomes one
+  weighted edge instead of many per-ns lines. Pass `expanded` as a set of module symbols that should
+  remain disaggregated (so the user can see individual api ns connections for those modules)."
+  ([module-label] (focus-subgraph module-label 1 #{}))
+  ([module-label degree] (focus-subgraph module-label degree #{}))
+  ([module-label degree expanded]
+   (let [{:keys [module-nodes api-children edges-by-mod all-edges]} (ensure-cache!)
+         m-sym  (symbol module-label)
+         degree (max 1 (min 3 (or degree 1)))
+         expanded (set (map symbol (or expanded #{})))]
+     (if-not (contains? module-nodes m-sym)
+       {:error (str "unknown module: " module-label) :nodes [] :edges []}
+       (let [visible (bfs-neighbors edges-by-mod m-sym degree)
+             ;; Only include api-ns children for expanded modules. Collapsed modules render as a
+             ;; single node + aggregated edges -> way less for cola to chew on.
+             nodes (vec
+                    (mapcat (fn [label]
+                              (when-let [mn (get module-nodes label)]
+                                (if (contains? expanded label)
+                                  (cons mn (get api-children label []))
+                                  [mn])))
+                            visible))
+             raw-edges (filterv (fn [e]
+                                  (let [s (symbol (get-in e [:data :sourceModule]))
+                                        t (symbol (get-in e [:data :targetModule]))]
+                                    (and (contains? visible s) (contains? visible t))))
+                                all-edges)
+             edges (aggregate-edges raw-edges expanded)]
+         {:focus    module-label
+          :degree   degree
+          :expanded (mapv str expanded)
+          :nodes    nodes
+          :edges    edges
+          :stats    {:moduleCount (count visible)
+                     :edgeCount   (count edges)
+                     :rawEdges    (count raw-edges)}})))))
 
 (defn full-graph []
   (let [{:keys [module-nodes api-children all-edges]} (ensure-cache!)
@@ -185,21 +287,26 @@
 <script src=\"https://unpkg.com/cytoscape@3.30.1/dist/cytoscape.min.js\"></script>
 <script src=\"https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js\"></script>
 <script src=\"https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js\"></script>
-<script src=\"https://unpkg.com/cytoscape-expand-collapse@4.1.1/cytoscape-expand-collapse.js\"></script>
 </head>
 <body>
 <div id=\"app\">
   <div id=\"wrap\">
     <div id=\"toolbar\">
-      <input id=\"focus\" type=\"text\" list=\"modlist\" placeholder=\"focus module (1-degree neighborhood)…\"/>
+      <input id=\"focus\" type=\"text\" list=\"modlist\" placeholder=\"focus module…\"/>
       <datalist id=\"modlist\"></datalist>
+      <label class=\"muted\">degree
+        <select id=\"degree\">
+          <option value=\"1\" selected>1</option>
+          <option value=\"2\">2</option>
+        </select>
+      </label>
       <button id=\"clear-focus\">clear focus</button>
       <button id=\"collapse-all\">collapse all</button>
       <button id=\"expand-all\">expand all</button>
       <button id=\"relayout\">re-layout (cola)</button>
       <span class=\"muted\" id=\"stats\"></span>
       <span class=\"muted\" id=\"debug\" style=\"color:#c33\"></span>
-      <span class=\"muted\">right-click for menu · double-click to expand api ns</span>
+      <span class=\"muted\">shift-click a module to refocus · right-click for menu · double-click to expand api ns</span>
     </div>
     <div id=\"cy\"></div>
   </div>
@@ -211,9 +318,6 @@
 </div>
 <script>
 try { cytoscape.use(cytoscapeCola); } catch (e) {}
-if (!cytoscape.prototype.__ecReg) {
-  try { cytoscapeExpandCollapse(cytoscape); cytoscape.prototype.__ecReg = true; } catch (e) {}
-}
 
 const teamColors = {};
 const palette = ['#6aa7e8','#e8a06a','#7bcf8a','#cf7bba','#cfc27b','#7bcfc6','#cf7b7b','#a07bcf','#9ccf7b','#cfb37b'];
@@ -230,14 +334,19 @@ const cy = cytoscape({
     { selector: 'node[type=\"module\"]',
       style: {
         'background-color': (ele) => colorFor(ele.data('team')),
-        'background-opacity': 0.18,
+        'background-opacity': 0.22,
         'border-width': 1,
         'border-color': (ele) => colorFor(ele.data('team')),
         'label': 'data(label)',
-        'font-size': 11,
-        'font-weight': 'bold',
+        'font-size': 18,
+        'font-weight': 700,
+        'color': '#111',
+        'text-outline-width': 3,
+        'text-outline-color': '#fff',
+        'text-outline-opacity': 1,
         'text-valign': 'top',
         'text-halign': 'center',
+        'text-margin-y': -6,
         'padding': '12px',
         'shape': 'round-rectangle',
         'min-width': 30,
@@ -253,9 +362,30 @@ const cy = cytoscape({
       } },
     { selector: 'edge',
       style: {
-        'curve-style': 'bezier', 'width': 1, 'line-color': '#aaa',
-        'target-arrow-color': '#aaa', 'target-arrow-shape': 'triangle',
-        'arrow-scale': 0.8, 'opacity': 0.6,
+        'curve-style': 'unbundled-bezier',
+        // single control point offset ~tan(20°)/2 of chord length; use a constant proxy that
+        // looks like ~20° bend at typical edge lengths.
+        'control-point-distances': [50],
+        'control-point-weights':   [0.5],
+        'width': 1,
+        'line-color': '#aaa',
+        'target-arrow-color': '#aaa',
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 1.8,
+        'opacity': 0.7,
+      } },
+    { selector: 'edge[?aggregate]',
+      style: {
+        'width': (ele) => Math.min(10, 1 + Math.log2((ele.data('weight') || 1) + 1) * 1.6),
+        'line-color': '#666',
+        'target-arrow-color': '#666',
+        'opacity': 0.85,
+        'label': (ele) => (ele.data('weight') > 1 ? String(ele.data('weight')) : ''),
+        'font-size': 9,
+        'color': '#444',
+        'text-background-color': '#fff',
+        'text-background-opacity': 0.85,
+        'text-background-padding': 2,
       } },
     { selector: '.focused', style: { 'border-color': '#e25', 'border-width': 3 } },
     { selector: 'edge.focused',
@@ -263,26 +393,8 @@ const cy = cytoscape({
   ],
 });
 
-let api;
-try {
-  api = cy.expandCollapse({
-    // Skip the global re-layout — it was throwing the focused node halfway off-screen each toggle.
-    // expand-collapse keeps the parent in place and just lays children out *inside* the compound.
-    layoutBy: null,
-    fisheye: false, animate: false, undoable: false,
-    cueEnabled: true, expandCollapseCuePosition: 'top-left', expandCollapseCueSize: 10,
-  });
-} catch (e) { console.warn('expandCollapse init failed', e); }
-
-// Local layout helper: rearrange children of one compound w/o disturbing global positions.
-function relayoutCompound(node) {
-  const kids = node.children();
-  if (kids.length === 0) return;
-  kids.layout({
-    name: 'grid', fit: false, avoidOverlap: true, padding: 4,
-    boundingBox: node.boundingBox({includeOverlays: false}),
-  }).run();
-}
+// Expand/collapse is fully server-side now (focusOn refetches based on `expandedModules`).
+// Skipping the expand-collapse plugin removes the +/- cue + the cxttap interceptor it installs.
 
 // DIY right-click context menu. Lighter than cytoscape-context-menus plugin and avoids the
 // double-register noise across hot reloads.
@@ -310,22 +422,49 @@ function hideCtxMenu() { ctxMenu.style.display = 'none'; }
 document.addEventListener('click', hideCtxMenu);
 document.getElementById('cy').addEventListener('contextmenu', (e) => e.preventDefault());
 
-cy.on('cxttap', 'node[type=\"module\"]', (evt) => {
+function focusOnAt(label, deg) {
+  document.getElementById('degree').value = String(deg);
+  focusOn(label);
+}
+
+function toggleExpanded(label) {
+  if (expandedModules.has(label)) expandedModules.delete(label);
+  else expandedModules.add(label);
+  if (currentFocus) focusOn(currentFocus);
+}
+
+function openGithub(url) { if (url) window.open(url, '_blank', 'noopener'); }
+
+function handleModuleCxt(evt) {
   const n = evt.target;
   const label = n.data('label');
   const pos = evt.originalEvent;
+  console.log('cxt module', label);
+  const expanded = expandedModules.has(label);
   showCtxMenu(pos.clientX, pos.clientY, [
-    ['focus 1-degree neighborhood', () => focusOn(label)],
-    [api && api.isExpandable(n) ? 'expand api namespaces' :
-     (api && api.isCollapsible(n) ? 'collapse api namespaces' : 'expand/collapse'),
-     () => {
-       if (!api) return;
-       if (api.isExpandable(n)) { api.expand(n); relayoutCompound(n); }
-       else if (api.isCollapsible(n)) api.collapse(n);
-     }],
+    ['focus  (1°)', () => focusOnAt(label, 1)],
+    ['focus  (2°)', () => focusOnAt(label, 2)],
+    [expanded ? 'collapse api namespaces' : 'expand api namespaces',
+     () => toggleExpanded(label)],
     ['show details', () => renderDetail(n)],
+    ['open on github ↗', () => openGithub(n.data('githubUrl'))],
   ]);
-});
+}
+cy.on('cxttapend', 'node[type=\"module\"]', handleModuleCxt);
+
+function handleNsCxt(evt) {
+  const n = evt.target;
+  const parentLabel = n.data('module');
+  const pos = evt.originalEvent;
+  console.log('cxt ns', n.data('label'));
+  showCtxMenu(pos.clientX, pos.clientY, [
+    ['focus parent module  (1°)', () => focusOnAt(parentLabel, 1)],
+    ['focus parent module  (2°)', () => focusOnAt(parentLabel, 2)],
+    ['show details', () => renderDetail(n)],
+    ['open on github ↗', () => openGithub(n.data('githubUrl'))],
+  ]);
+}
+cy.on('cxttapend', 'node[type=\"ns\"]', handleNsCxt);
 
 function runLayout() {
   const rect = document.getElementById('cy').getBoundingClientRect();
@@ -340,14 +479,25 @@ function runLayout() {
     if (currentLayout) { try { currentLayout.stop(); } catch (_) {} }
     currentLayout = cy.layout({
       name: 'cola',
-      animate: false,
-      maxSimulationTime: 1500,
-      nodeSpacing: 14,
-      edgeLength: 180,
+      animate: true,
+      maxSimulationTime: 4000,
+      refresh: 1,
+      // bigger nodeSpacing = more repulsion / breathing room between nodes
+      nodeSpacing: (node) => (node.data('type') === 'module' ? 80 : 20),
+      // Heavily-used pairs sit closer (shorter spring); rare pairs sit farther apart.
+      edgeLength: (edge) => {
+        const w = edge.data('weight') || 1;
+        return Math.max(220, 500 - Math.log2(w + 1) * 50);
+      },
       randomize: true,
       fit: true,
-      padding: 60,
+      padding: 80,
       avoidOverlap: true,
+      handleDisconnected: true,
+    });
+    currentLayout.one('layoutstop', () => {
+      pendingSurvivors.forEach(n => { try { n.unlock(); } catch (_) {} });
+      pendingSurvivors = [];
     });
     currentLayout.run();
   } catch (e) {
@@ -374,7 +524,10 @@ function mk(tag, attrs, ...kids) {
 }
 
 let currentFocus = null;
+let expandedModules = new Set();   // module labels w/ api-ns children visible
 let modulesIndex = {};   // label -> {label, team, apiCount}
+let pendingSurvivors = [];         // nodes locked for the current layout run
+let inflightFocus = null;          // AbortController for the current /api/focus fetch
 
 async function fetchModules() {
   console.log('fetchModules start');
@@ -406,14 +559,32 @@ function renderModuleList(list) {
   el.appendChild(ul);
 }
 
+function currentDegree() {
+  return parseInt(document.getElementById('degree').value, 10) || 1;
+}
+
 async function focusOn(moduleLabel) {
   if (!modulesIndex[moduleLabel]) { console.warn('unknown module:', moduleLabel); return; }
+  // Snapshot positions of every node currently in cy so survivors stay put across the refetch.
+  const oldPositions = {};
+  cy.nodes().forEach(n => {
+    const p = n.position();
+    oldPositions[n.data('id')] = { x: p.x, y: p.y };
+  });
+
   currentFocus = moduleLabel;
   document.getElementById('focus').value = moduleLabel;
   try {
-    const r = await fetch('/api/focus?m=' + encodeURIComponent(moduleLabel));
+    const deg = currentDegree();
+    const exp = [...expandedModules].join(',');
+    const url = '/api/focus?m=' + encodeURIComponent(moduleLabel) + '&degree=' + deg +
+                (exp ? '&expanded=' + encodeURIComponent(exp) : '');
+    if (inflightFocus) inflightFocus.abort();
+    inflightFocus = new AbortController();
+    const r = await fetch(url, {signal: inflightFocus.signal});
+    inflightFocus = null;
     const sub = await r.json();
-    console.log('focus payload', moduleLabel, 'nodes=', sub.nodes.length, 'edges=', sub.edges.length);
+    console.log('focus', moduleLabel, 'degree', deg, 'expanded=', exp, 'nodes=', sub.nodes.length, 'edges=', sub.edges.length);
     cy.batch(() => {
       cy.elements().remove();
       const modNodes = sub.nodes.filter(n => n.data.type === 'module');
@@ -422,13 +593,24 @@ async function focusOn(moduleLabel) {
       cy.add(nsNodes);
       cy.add(sub.edges);
     });
+    // Restore positions for survivors; new nodes get whatever cola decides.
+    const survivors = [];
+    cy.nodes().forEach(n => {
+      const p = oldPositions[n.data('id')];
+      if (p) {
+        n.position(p);
+        survivors.push(n);
+      }
+    });
+    // Lock survivors so cola only moves new nodes. Unlock when the layout finishes — cola fires
+    // 'layoutstop' on the layout instance. Stash a ref to clear on the next run.
+    survivors.forEach(n => n.lock());
+    pendingSurvivors = survivors;
     document.getElementById('debug').textContent =
       'cy: ' + cy.nodes().length + ' nodes · ' + cy.edges().length + ' edges';
     console.log('cy now has', cy.nodes().length, 'nodes', cy.edges().length, 'edges');
-    // Collapse compounds so each module is a single node again — otherwise the 75 ns children of
-    // query-processor blow up the layout. Wrap in try because expand-collapse can be flaky on add.
-    try { api && api.collapseAll(); console.log('collapsed ok'); }
-    catch (e) { console.warn('collapseAll threw', e); }
+    // Expand/collapse is server-side now — what we got back IS already collapsed except for the
+    // modules the user explicitly expanded.
     const focusedNode = cy.getElementById('mod:' + moduleLabel);
     if (focusedNode.empty()) console.warn('focused node not found in cy after add');
     else focusedNode.addClass('focused');
@@ -440,8 +622,11 @@ async function focusOn(moduleLabel) {
     runLayout();
     if (!focusedNode.empty()) renderDetail(focusedNode);
     document.getElementById('stats').textContent =
-      sub.stats.moduleCount + ' modules · ' + sub.stats.edgeCount + ' edges (1-degree)';
+      sub.stats.moduleCount + ' modules · ' + sub.stats.edgeCount + ' edges' +
+      (sub.stats.rawEdges ? ' (raw ' + sub.stats.rawEdges + ')' : '') +
+      ' · ' + sub.degree + '-deg · expanded: ' + (sub.expanded.length || 0);
   } catch (e) {
+    if (e.name === 'AbortError') return;   // user clicked again before we finished
     console.error('focusOn failed', e);
   }
 }
@@ -527,16 +712,19 @@ function renderDetail(node) {
   }
 }
 
-cy.on('tap', 'node', (evt) => renderDetail(evt.target));
-cy.on('dbltap', 'node[type=\"module\"]', (evt) => {
-  if (!api) return;
+cy.on('tap', 'node', (evt) => {
   const n = evt.target;
-  if (api.isCollapsible(n)) {
-    api.collapse(n);
-  } else if (api.isExpandable(n)) {
-    api.expand(n);
-    relayoutCompound(n);
+  // Shift-tap or tap on a non-focused module re-centers the view on that module.
+  if (n.data('type') === 'module' && currentFocus &&
+      n.data('label') !== currentFocus &&
+      (evt.originalEvent && evt.originalEvent.shiftKey)) {
+    focusOn(n.data('label'));
+    return;
   }
+  renderDetail(n);
+});
+cy.on('dbltap', 'node[type=\"module\"]', (evt) => {
+  toggleExpanded(evt.target.data('label'));
 });
 
 document.getElementById('focus').addEventListener('change', (e) => {
@@ -544,8 +732,18 @@ document.getElementById('focus').addEventListener('change', (e) => {
   if (!v) clearFocus(); else focusOn(v);
 });
 document.getElementById('clear-focus').onclick = clearFocus;
-document.getElementById('collapse-all').onclick = () => { try { api && api.collapseAll(); } catch (_) {} runLayout(); };
-document.getElementById('expand-all').onclick   = () => { try { api && api.expandAll();   } catch (_) {} runLayout(); };
+document.getElementById('degree').addEventListener('change', () => {
+  if (currentFocus) focusOn(currentFocus);
+});
+document.getElementById('collapse-all').onclick = () => {
+  expandedModules.clear();
+  if (currentFocus) focusOn(currentFocus);
+};
+document.getElementById('expand-all').onclick = () => {
+  // Expand every currently visible module.
+  cy.nodes('[type=\"module\"]').forEach(n => expandedModules.add(n.data('label')));
+  if (currentFocus) focusOn(currentFocus);
+};
 document.getElementById('relayout').onclick     = () => runLayout();
 
 fetchModules();
@@ -581,7 +779,12 @@ fetchModules();
     (case uri
       "/"             (html-response html-page)
       "/api/modules"  (json-response (modules-list))
-      "/api/focus"    (json-response (focus-subgraph (get q "m")))
+      "/api/focus"    (json-response
+                       (focus-subgraph (get q "m")
+                                       (try (Integer/parseInt (or (get q "degree") "1"))
+                                            (catch Exception _ 1))
+                                       (when-let [exp (get q "expanded")]
+                                         (set (remove str/blank? (str/split exp #","))))))
       "/api/full"     (json-response (full-graph))
       {:status 404 :body "not found"})))
 
