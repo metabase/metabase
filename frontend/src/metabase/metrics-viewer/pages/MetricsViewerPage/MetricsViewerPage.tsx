@@ -155,9 +155,7 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                 <DimensionPickerSidebar
                   activeDimensionBreakout={activeDimensionBreakout}
                   availableDimensions={sidebarAvailableDimensions}
-                  allFieldsAvailableDimensions={
-                    activeDimensionBreakoutAvailableDimensions
-                  }
+                  allFieldsAvailableDimensions={sidebarAvailableDimensions}
                   metricSlots={metricSlots}
                   sourceColors={sourceColors}
                   metricSourceOrder={sourceOrder}

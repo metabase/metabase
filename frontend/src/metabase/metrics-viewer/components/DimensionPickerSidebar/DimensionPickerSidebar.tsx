@@ -78,15 +78,20 @@ export function DimensionPickerSidebar({
     null,
   );
 
-  const categories = useMemo(
-    () =>
-      buildDimensionPickerSidebarCategories({
-        availableDimensions,
-        sourceOrder: metricSourceOrder,
-        sourceDataById: metricSourceDataById,
-      }),
-    [availableDimensions, metricSourceOrder, metricSourceDataById],
-  );
+  const categories = useMemo(() => {
+    const categories = buildDimensionPickerSidebarCategories({
+      availableDimensions,
+      sourceOrder: metricSourceOrder,
+      sourceDataById: metricSourceDataById,
+    });
+
+    return filterSharedCategories(categories, metricSlots);
+  }, [
+    availableDimensions,
+    metricSourceOrder,
+    metricSourceDataById,
+    metricSlots,
+  ]);
 
   const sections = useMemo(
     () =>
@@ -108,6 +113,11 @@ export function DimensionPickerSidebar({
     activeDimensionBreakout,
   );
   const showAllFields = mode === "all" || searchText.trim() !== "";
+  const hasAllFields = sections.length > 0;
+  const showSeeAll = !showAllFields && hasAllFields;
+  const defaultEmptyStateText = hasMultipleMetricSources(metricSlots)
+    ? t`No shared dimensions found`
+    : t`No fields found`;
 
   const handleSelect = (item: DimensionPickerItem) => {
     if (hasSameDimensions(item, activeDimensionBreakout)) {
@@ -280,24 +290,60 @@ export function DimensionPickerSidebar({
                   />
                 );
               })}
-              <Button
-                mr="auto"
-                mt="sm"
-                onClick={handleSeeAll}
-                size="sm"
-                variant="subtle"
-              >
-                {t`See all`}
-              </Button>
             </Stack>
           </Stack>
         )}
         {!showAllFields && !showFieldsByCategory && (
           <Text c="text-secondary" ta="center" py="lg">
-            {t`No fields found`}
+            {defaultEmptyStateText}
           </Text>
+        )}
+        {showSeeAll && (
+          <Button
+            mr="auto"
+            mt="sm"
+            onClick={handleSeeAll}
+            size="sm"
+            variant="subtle"
+          >
+            {t`See all`}
+          </Button>
         )}
       </ScrollArea>
     </Box>
   );
+}
+
+function filterSharedCategories(
+  categories: DimensionPickerSidebarCategory[],
+  metricSlots: MetricSlot[],
+) {
+  if (!hasMultipleMetricSources(metricSlots)) {
+    return categories;
+  }
+
+  return categories.filter(
+    (category) => getMappedMetricSourceCount(category, metricSlots) >= 2,
+  );
+}
+
+function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
+  return new Set(metricSlots.map((slot) => slot.sourceId)).size > 1;
+}
+
+function getMappedMetricSourceCount(
+  category: DimensionPickerSidebarCategory,
+  metricSlots: MetricSlot[],
+) {
+  const mappedSourceIds = new Set<MetricSourceId>();
+
+  for (const slot of metricSlots) {
+    if (
+      category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex] != null
+    ) {
+      mappedSourceIds.add(slot.sourceId);
+    }
+  }
+
+  return mappedSourceIds.size;
 }

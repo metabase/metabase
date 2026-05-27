@@ -197,6 +197,91 @@ describe("DimensionPickerSidebar", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides categories that are not available for multiple metric sources", () => {
+    setup({
+      dimensions: {
+        shared: [
+          {
+            icon: "location",
+            dimensionBreakoutInfo: {
+              type: "geo",
+              label: "Country",
+              dimensionMapping: {
+                0: "dim-country",
+                1: "second-dim-country",
+              },
+            },
+          },
+        ],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "location",
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "Billing Address Country",
+                dimensionMapping: { 0: "dim-billing-address-country" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    expect(screen.getByRole("button", { name: "Country" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Billing Address Country" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps unshared fields available from See all", async () => {
+    setup({
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "location",
+              dimensionBreakoutInfo: {
+                type: "geo",
+                label: "Billing Address Country",
+                dimensionMapping: { 0: "dim-billing-address-country" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Feedback, Count" },
+      },
+    });
+
+    expect(screen.getByText("No shared dimensions found")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    expect(screen.getByText("All fields")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Billing Address Country" }),
+    ).toBeInTheDocument();
+  });
+
   it("updates the active time dimensionBreakout with the clicked time field from all fields", async () => {
     const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
       setup({ dimensionBreakout: timeDimensionBreakout });
