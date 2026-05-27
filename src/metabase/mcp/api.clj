@@ -73,6 +73,8 @@
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
+  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
+  ;; namespaced keyword `:io.modelcontextprotocol/ui`.
   (contains?
    (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))

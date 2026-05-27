@@ -290,6 +290,12 @@
       (is (contains? tool-names "render_drill_through")))))
 
 (deftest ui-capability-detection-requires-mcp-ui-extension-test
+  (testing "the MCP Apps UI extension path enables UI-only tools"
+    (let [[session-id _] (initialize-with-params! {:capabilities mcp-app-ui-capabilities})
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tool-names     (set (map :name (get-in response [:body :result :tools])))]
+      (is (contains? tool-names "visualize_query"))
+      (is (contains? tool-names "render_drill_through"))))
   (testing "an unrelated nested MCP Apps mimeType does not enable UI-only tools"
     (let [[session-id _] (initialize-with-params!
                           {:capabilities {:experimental {:mimeTypes ["text/html;profile=mcp-app"]}}})
