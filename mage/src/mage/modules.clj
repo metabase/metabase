@@ -88,7 +88,8 @@
 
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{analytics
+  '#{agent-api
+     analytics
      analytics-interface
      api
      api-scope
@@ -133,6 +134,7 @@
      pulse
      remote-sync
      request
+     sample-data
      search
      secrets
      server
@@ -190,6 +192,7 @@
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
+  "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
   (let [deps (dependencies)
         updated (updated-modules git-ref)
@@ -339,10 +342,14 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
+(defn break-quarantine-label
+  "PR label string that forces driver tests for `driver` to run even when otherwise quarantined."
+  [driver]
   (str "break-quarantine-" (name driver)))
 
-(defn run-driver-label [driver]
+(defn run-driver-label
+  "PR label string that opts `driver`'s test job into a given CI run."
+  [driver]
   (str "ci:run-" (name driver)))
 
 (defn- driver-decision

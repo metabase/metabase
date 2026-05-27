@@ -1473,82 +1473,11 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-(defn- parent-or-root
-  "From a create request return either the parent collection or the root collection"
-  [{collection-id :parent_id collection-namespace :namespace}]
-  (if collection-id
-    (t2/select-one :model/Collection :id collection-id)
-    (collection/root-collection-with-ui-details collection-namespace)))
-
-(defn- write-check-collection-or-root-collection
-  "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
-  Root Collection perms."
-  [parent-coll]
-  (api/write-check parent-coll))
-
-(defn- write-check-authority-level
-  "Check that a superuser is creating this collection if they are setting the authority level."
-  [{authority-level :authority_level :as coll}]
-  (when (some? authority-level)
-    ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-    (api/check-superuser))
-  coll)
-
-(defenterprise validate-new-tenant-collection!
-  "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
-  means 'any tenant collection.'"
-  metabase-enterprise.tenants.core
-  [collection]
-  (when (collection/shared-tenant-collection? collection)
-    (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
-  collection)
-
-(def ^:private CreateCollectionArguments
-  "The arguments to the `POST /api/collection` endpoint, i.e. what the API needs to create a collection."
-  [:map
-   [:name            ms/NonBlankString]
-   [:description     {:optional true} [:maybe ms/NonBlankString]]
-   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
-
-(def ^:private NewCollectionArguments
-  "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
-  (-> CreateCollectionArguments
-      (malli.util/dissoc :parent_id)
-      (malli.util/assoc :location [:maybe ms/NonBlankString])
-      (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
-      (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics"])
-      (malli.util/optional-keys [:location :type])
-      (malli.util/closed-schema)))
-
-(mu/defn- apply-defaults-to-collection :- NewCollectionArguments
-  "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
-  toucan needs to create a collection."
-  [coll-data :- CreateCollectionArguments]
-  (let [parent-coll (parent-or-root coll-data)]
-    (write-check-collection-or-root-collection parent-coll)
-    (-> (cond-> coll-data
-          (and (:namespace parent-coll)
-               (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
-          parent-coll (assoc :location (collection/children-location parent-coll))
-          (and (:type parent-coll)
-               (not= (:type parent-coll) "trash")) (assoc :type (:type parent-coll)))
-        (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
-        (select-keys (malli.util/keys NewCollectionArguments)))))
-
-(mu/defn create-collection!
-  "Create a new collection."
-  [coll-data]
-  (u/prog1 (t2/insert-returning-instance!
-            :model/Collection
-            (-> (apply-defaults-to-collection coll-data)
-                write-check-authority-level
-                validate-new-tenant-collection!))
-    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
-    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
+;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
+;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
+;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
+;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
+;; `validate-new-tenant-collection!`, etc.
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1564,7 +1493,7 @@
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (create-collection! body))
+  (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer

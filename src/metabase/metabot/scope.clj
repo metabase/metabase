@@ -37,6 +37,8 @@
 ;; Question (saved cards via Agent API)
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
+(api-scope/defscope agent-question-update "agent:question:update"
+  (deferred-tru "Update saved questions"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -55,8 +57,18 @@
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-update "agent:dashboard:update"
+  (deferred-tru "Update dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
+
+;; Collection
+(api-scope/defscope agent-collection-create "agent:collection:create"
+  (deferred-tru "Create collections"))
+
+;; SQL execution (MCP execute_sql tool, distinct from execute_query)
+(api-scope/defscope agent-sql-execute "agent:sql:execute"
+  (deferred-tru "Execute raw SQL queries"))
 
 ;; Document
 (api-scope/defscope agent-document-read "agent:document:read"
@@ -99,14 +111,6 @@
   (deferred-tru "View todos"))
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
-
-;; Table
-(api-scope/defscope agent-table-read "agent:table:read"
-  (deferred-tru "View table metadata and field values"))
-
-;; Metric
-(api-scope/defscope agent-metric-read "agent:metric:read"
-  (deferred-tru "View metric definitions"))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
@@ -156,7 +160,8 @@
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*" "agent:timelines:*"}})
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
+                                        "agent:timelines:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
