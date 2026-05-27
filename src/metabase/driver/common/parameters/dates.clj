@@ -54,7 +54,6 @@
                  :unit  :day}))
     :filter (fn [_ field-clause]
               [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime :current]])}
-
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
               (let [dt-res (t/local-date dt)]
@@ -63,7 +62,6 @@
                  :unit  :day}))
     :filter (fn [_ field-clause]
               [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime -1 :day]])}
-
    ;; Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true}).
@@ -93,7 +91,6 @@
                  (- int-value)
                  (keyword unit)
                  {:include-current (#'qp.parameters.dates/include-current? relative-suffix)}]))}
-
    {:parser (#'qp.parameters.dates/regex->parser (re-pattern (str #"next([0-9]+)" @#'qp.parameters.dates/temporal-units-regex #"s" @#'qp.parameters.dates/relative-suffix-regex))
                                                  [:int-value :unit :relative-suffix :int-value-1 :unit-1])
     :range  (fn [{:keys [unit int-value unit-range to-period relative-suffix unit-1 int-value-1]} dt]
@@ -115,7 +112,6 @@
                  int-value
                  (keyword unit)
                  {:include-current (#'qp.parameters.dates/include-current? relative-suffix)}]))}
-
    {:parser (#'qp.parameters.dates/regex->parser (re-pattern (str #"last" @#'qp.parameters.dates/temporal-units-regex))
                                                  [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]
@@ -123,7 +119,6 @@
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
               [:time-interval field-clause :last (keyword unit)])}
-
    {:parser (#'qp.parameters.dates/regex->parser (re-pattern (str #"this" @#'qp.parameters.dates/temporal-units-regex))
                                                  [:unit])
     :range  (fn [{:keys [unit unit-range]} dt]

@@ -343,7 +343,8 @@
 
 (define-premium-feature ^{:added "0.59.0"} enable-workspaces?
   "Should we allow users to use workspaces?"
-  :workspaces)
+  :workspaces
+  :getter (constantly false))
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"

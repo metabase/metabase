@@ -246,7 +246,6 @@
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
               ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
-
           (cond
             (and first-import? (not force?) (seq conflicts))
             (u/prog1 {:status :conflict

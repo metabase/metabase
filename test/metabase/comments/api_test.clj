@@ -95,7 +95,6 @@
                                                           doc-id
                                                           (:id created)))}]}]}
                           (first (swap-vals! mt/inbox empty)))))
-
                 (testing "creates a reply to an existing comment"
                   (let [content2  (tiptap [:p "Other comment"])
                         child     (mt/user-http-request :crowberto :post 200 "comment/"
@@ -121,7 +120,6 @@
                                  :body    [{:content (relaxed-re
                                                       (str (:common_name (mt/fetch-user :crowberto)) " replied to a thread"))}]}]}
                               (first (swap-vals! mt/inbox empty)))))))
-
                 (testing "comment in a thread should send emails to all participants of the thread"
                   (let [_another (mt/user-http-request :lucky :post 200 "comment/"
                                                        {:target_type       "document"
@@ -137,7 +135,6 @@
                                :body    [{:content (relaxed-re
                                                     (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
                             (first (swap-vals! mt/inbox empty))))))))
-
             (testing "creates a comment for part of an entity"
               (let [part-id (-> doc :content first :attrs :_id)
                     created (mt/user-http-request :rasta :post 200 "comment/"
@@ -161,7 +158,6 @@
                                                                      part-id
                                                                      (:id created)))}]}]}
                           (first (swap-vals! mt/inbox empty)))))))
-
             (testing "Comments with mentions send notification emails"
               (let [_created (mt/user-http-request :rasta :post 200 "comment/"
                                                    {:target_type "document"
@@ -190,7 +186,6 @@
                 (is (not (str/includes? email-body "<script>")))
                 (is (str/includes? email-body "&lt;script&gt;")))
               (swap! mt/inbox empty))
-
             (testing "javascript: links in content are stripped in email"
               (mt/user-http-request :rasta :post 200 "comment/"
                                     {:target_type "document"
@@ -205,7 +200,6 @@
                 (is (not (str/includes? email-body "javascript:")))
                 (is (str/includes? email-body "click here")))
               (swap! mt/inbox empty))
-
             (testing "unknown node types are dropped in email"
               (mt/user-http-request :rasta :post 200 "comment/"
                                     {:target_type "document"
@@ -229,7 +223,6 @@
         (is (=? {:content {:text "Updated content"}}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
                                       {:content {"text" "Updated content"}}))))
-
       (testing "updates comment resolution status"
         (is (=? {:is_resolved true}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
@@ -252,7 +245,6 @@
           ;; NOTE: maybe it's fine and we should just noop here rather than return an error?
           (is (= "Comment is already deleted"
                  (mt/user-http-request :rasta :delete 400 (str "comment/" c1))))))
-
       (testing "deleting parent comment still leaves it in a response"
         (is (= nil
                (mt/user-http-request :rasta :delete 204 (str "comment/" c2))))
@@ -272,7 +264,6 @@
         (is (=? {:reacted true}
                 (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction")
                                       {:emoji "👍"})))
-
         (is (=? {:comments [{:id        comment-id
                              :reactions [{:emoji "👍"
                                           :count 1
@@ -280,12 +271,10 @@
                 (mt/user-http-request :rasta :get 200 "comment/"
                                       :target_type "document"
                                       :target_id doc-id))))
-
       (testing "removes an existing reaction when toggled again"
         (is (=? {:reacted false}
                 (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction")
                                       {:emoji "👍"})))
-
         (is (=? {:comments [{:id        comment-id
                              :reactions []}]}
                 (mt/user-http-request :rasta :get 200 "comment/"
@@ -299,30 +288,25 @@
                      :model/Document   {restricted-doc-id :id}     {:collection_id restricted-col
                                                                     :name          "Restricted Document"}
                      :model/Comment    {restricted-comment-id :id} {:target_id restricted-doc-id}]
-
         (mt/with-model-cleanup [:model/Comment]
           (testing "GET /api/comment/ - users without document read permissions cannot see comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :get 403 "comment/"
                                          :target_type "document"
                                          :target_id restricted-doc-id))))
-
           (testing "POST /api/comment/ - users without document read permissions cannot create comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :post 403 "comment/"
                                          {:target_type "document"
                                           :target_id   restricted-doc-id
                                           :content     (tiptap "Comment by lucky")}))))
-
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :put 403 (str "comment/" restricted-comment-id)
                                          {:content {:text "Updated by lucky"}}))))
-
           (testing "DELETE /api/comment/:id - users without document access cannot delete comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :delete 403 (str "comment/" restricted-comment-id)))))
-
           (testing "POST /api/comment/:id/reaction - users without document access cannot react to comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :post 403 (str "comment/" restricted-comment-id "/reaction")

@@ -14,7 +14,6 @@
       (testing "Setting returns ips given comma delimited ips."
         (is (= ["1.2.3.4" "5.6.7.8"]
                (warehouses.settings/cloud-gateway-ips)))))
-
     (testing "Setting returns nil in self-hosted environments"
       (with-redefs [premium-features/is-hosted? (constantly false)]
         (is (= nil (warehouses.settings/cloud-gateway-ips)))))))

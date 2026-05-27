@@ -33,7 +33,6 @@
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
             (is (true? (:create-models response))
                 "Should detect the user model with nil collection_id")))
-
         (testing "returns false when all models are in sample collections"
           ;; Temporarily archive the user model so only sample collection models remain active
           (mt/with-temp-vals-in-db :model/Card (:id user-model) {:archived true}

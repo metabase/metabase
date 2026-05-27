@@ -29,7 +29,6 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
-
   (testing "searchable-text with map format and transforms"
     (let [spec-fn              (constantly {:search-terms {:name        search.spec/explode-camel-case
                                                            :description true}})
@@ -39,7 +38,6 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
-
   (testing "searchable-text filters out blank values"
     (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
           record  {:model       "test"
@@ -60,7 +58,6 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text with map format"
     (let [spec-fn (constantly {:search-terms {:name        true
                                               :description true}})
@@ -70,7 +67,6 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text filters out blank values"
     (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
           record  {:model       "card"
@@ -80,7 +76,6 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
@@ -94,7 +89,6 @@
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}
            (set (#'search.ingestion/search-term-columns [:name :description])))))
-
   (testing "search-term-columns with map format"
     (is (= #{:name :description}
            (set (#'search.ingestion/search-term-columns {:name identity

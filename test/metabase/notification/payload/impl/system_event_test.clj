@@ -131,7 +131,6 @@
              [#"Ngoc wants you to join them on Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
              "Ngoc")
-
       (testing "with sso enabled"
         (with-redefs [sso.settings/sso-enabled? (constantly true)
                       session.settings/enable-password-login (constantly false)]
@@ -139,20 +138,17 @@
                  "You're invited to join SuperStar's Metabase"
                  [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]
                  "Ngoc")))
-
       (testing "with invitor's first_name not defined"
         (check false
                "You're invited to join SuperStar's Metabase"
                [#"You are invited to join Metabase"
                 #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
                nil)))
-
     (testing "subject is translated"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"You''re invited to join {0}''s {1}"
                                                     "Estás invitado a unirte al {0} de {1}"}}}
         (mt/with-temporary-setting-values [site-locale "es"]
           (check false "Estás invitado a unirte al SuperStar de Metabase" [] "Ngoc"))))
-
     (testing "sent from setup page"
       (check true
              "You're invited to join SuperStar's Metabase"
@@ -160,7 +156,6 @@
               #"Your Metabase is up and running, but Kratos needs you to connect your data. You'll probably need:"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
              "Kratos")
-
       (testing "with invitor's first_name not defined"
         (check true
                "You're invited to join SuperStar's Metabase"
@@ -168,14 +163,12 @@
                 #"Your Metabase is up and running, but your help is needed to connect data. You'll probably need:"
                 #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
                nil)))
-
     (testing "with custom application logo (external URL)"
       (mt/with-premium-features #{:whitelabel}
         (check false
                "You're invited to join SuperStar's Metabase"
                [#"<img[^>]*src=\"https://metabase\.com/superstar\.png\"[^>]*>"]
                "Ngoc")))
-
     (testing "with custom application logo (data URI - embedded as attachment)"
       (mt/with-premium-features #{:whitelabel}
         (let [email (mt/with-temporary-setting-values
@@ -216,7 +209,6 @@
                               :message        [(zipmap (map str regexes) (repeat true))]
                               :recipient-type :cc}
                              (apply mt/summarize-multipart-single-email email regexes))))))]
-
       (doseq [[send-condition condition-regex]
               [[:has_result
                 #"This alert will be sent\s+whenever this question has any results"]
@@ -225,7 +217,6 @@
                [:goal_below
                 #"This alert will be sent\s+when this question goes below its goal"]]]
         (check send-condition condition-regex))))
-
   (notification.tu/with-notification-testing-setup!
     (notification.tu/with-card-notification
       [notification {:card              {:name "A Card"}
@@ -262,7 +253,6 @@
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
                            #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications\"[^>]*>Go to settings</a>"]))
-
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]
       (check (conj admin-emails "it@metabase.com") []))))

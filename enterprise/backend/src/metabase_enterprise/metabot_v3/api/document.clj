@@ -40,7 +40,6 @@
   "Create a new piece of content to insert into the document."
   [_route-params
    _query-params
-
    body :- [:map
             [:instructions ms/NonBlankString]
             [:references {:optional true} ms/Map]]]

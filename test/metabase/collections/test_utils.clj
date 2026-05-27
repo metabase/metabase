@@ -29,7 +29,6 @@
      (t2/update! (t2/table-name :model/Collection)
                  :type collection/library-metrics-collection-type
                  {:type nil})
-
      (try
        ~@body
        (finally

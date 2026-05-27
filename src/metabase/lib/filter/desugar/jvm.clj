@@ -43,7 +43,6 @@
   11. Optional `:port`, `/path`, `?query` or `#hash`
 
   12. Anchor to the end"
-
   ;;1   2 3  4  5 6        7          8 9                     10         11           12
   #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+\.(?:[^@\.:/?#]{1,3}\.)?[^@\.:/?#]+(?=[:/?#].*$|$)")
 
@@ -145,12 +144,9 @@
     [:host opts expr]
     ;; TODO (Cam 8/18/25) -- seems weird that we don't support Regex literals in the regex clauses and have to call (str ...)
     (&recur [:regex-match-first opts expr (str host-regex)])
-
     [:domain opts expr]
     (&recur [:regex-match-first opts expr (str domain-regex)])
-
     [:subdomain opts expr]
     (&recur [:regex-match-first opts expr (str subdomain-regex)])
-
     [:path opts expr]
     (&recur [:regex-match-first opts expr (str path-regex)])))

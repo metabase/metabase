@@ -47,7 +47,6 @@
                          (not (isa? effective-type :type/Text)))))
      (v :guard string?)]
     [:value opts (parse-value-for-base-type v (:effective-type opts))]
-
     _ nil))
 
 (mu/defn auto-parse-filter-values :- ::lib.schema/query

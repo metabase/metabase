@@ -452,7 +452,6 @@
                                              :definition {:filter [:> [:field price-field-id nil] 50]}}]
         (is (= {:segment #{} :table #{products-id}}
                (calculation/upstream-deps:segment segment)))))
-
     (testing "segment depending on another segment"
       (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
                                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}
@@ -532,7 +531,6 @@
                                                              (lib/aggregate (lib/sum quantity)))}]
         (is (= {:measure #{} :segment #{} :table #{orders-id}}
                (calculation/upstream-deps:measure measure)))))
-
     (testing "measure depending on another measure"
       (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
                                                                       :table_id orders-id

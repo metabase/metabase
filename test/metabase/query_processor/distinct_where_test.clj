@@ -15,7 +15,6 @@
                 mt/rows
                 ffirst
                 int)))
-
     (testing "Should get normalized correctly and work as expected"
       (is (= 3
              (->> {:aggregation [["distinct-where"

@@ -181,7 +181,6 @@
                       (str/index-of remote-sync-url "github.com")))
      (throw (ex-info "Invalid Repository URL format"
                      {:url remote-sync-url})))
-
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))

@@ -217,7 +217,6 @@
   (let [[sql & params] (sql.qp/format-honeysql
                         driver
                         honeysql-form)]
-
     (*process-native*
      (fn [cols results]
        (let [col-names (map (comp keyword :name) (:cols cols))]
@@ -483,7 +482,6 @@
   (let [details     (driver.conn/effective-details database)
         project-id  (get-project-id details)
         dataset-ids (or schema-names (list-datasets details))]
-
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
     ;;
@@ -755,7 +753,6 @@
                                  (throw (ex-info "Null response from query" {}))))
                              (catch Throwable t
                                (deliver result-promise [:error t]))))]
-
     ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
@@ -763,7 +760,6 @@
         (when-let [cancelled (a/<! cancel-chan)]
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
-
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
     (let [[status result] @result-promise]
@@ -1405,26 +1401,20 @@
         project-id    (get-project-id details)
         main-sa-email (.getClientEmail (ws-service-account-credentials details))
         dataset-name  (driver.u/workspace-isolation-namespace-name workspace)]
-
     (try
       ;; Create the workspace service account (or get existing)
       (let [ws-sa-email (ws-create-service-account! iam-client project-id workspace)
             dataset-id  (DatasetId/of project-id dataset-name)]
-
         (log/infof "Initializing BigQuery workspace isolation: dataset=%s, service-account=%s"
                    dataset-name ws-sa-email)
-
         ;; Grant main SA permission to impersonate workspace SA
         (ws-grant-impersonation-permission! iam-client project-id main-sa-email ws-sa-email)
-
         ;; Grant the workspace SA permission to run BigQuery jobs (queries) at project level
         ;; Note: We intentionally do NOT grant project-level dataEditor as that would give
         ;; access to all datasets. The workspace SA only gets dataEditor on its isolated dataset.
         (ws-grant-project-role! details project-id ws-sa-email "roles/bigquery.jobUser")
-
         ;; Wait for IAM permissions to propagate by polling until impersonation works
         (ws-wait-for-impersonation-ready! details ws-sa-email)
-
         ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
         (when-not (.getDataset client dataset-id
                                ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
@@ -1435,11 +1425,9 @@
             (.create client dataset-info
                      ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
                      (into-array BigQuery$DatasetOption []))))
-
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
         (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataEditor")
-
         ;; Return workspace connection details for impersonation
         ;; :user is used by grant-read-access-to-tables! to know which SA to grant access to
         ;; :impersonate-service-account is used by the connection swap to use impersonated credentials
@@ -1456,9 +1444,7 @@
         details     (driver.conn/effective-details database)
         client      (ws-database-details->client details)
         project-id  (get-project-id details)]
-
     (log/debugf "Granting read access to %d tables for %s" (count tables) ws-sa-email)
-
     ;; Grant dataViewer at table level for each table - proper isolation
     (doseq [{:keys [schema name]} tables]
       (let [table-id (TableId/of project-id schema name)]
@@ -1509,7 +1495,6 @@
         dataset-id   (DatasetId/of project-id dataset-name)]
     (try
       (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
-
       ;; Delete the dataset if it exists (deleteContents=true removes all tables)
       (when (.getDataset client dataset-id
                          ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
@@ -1519,10 +1504,8 @@
                  ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
                  (into-array BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)]))
         (log/infof "Deleted dataset %s" dataset-name))
-
       ;; Delete the service account (this also removes its IAM bindings)
       (ws-delete-service-account! iam-client project-id workspace)
-
       {:success true}
       (finally
         (.close iam-client)))))

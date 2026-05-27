@@ -157,7 +157,6 @@
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
-
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
@@ -212,7 +211,6 @@
     (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
-
     (test.tz/with-system-timezone-id! "America/Chicago"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -222,7 +220,6 @@
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
                  "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
                  "the correct date is compared"))))
-
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -1120,7 +1117,6 @@
                                  "    SELECT"
                                  "      DATE_TRUNC("
                                  "        `v4_test_data.checkins`.`date`,"
-
                                  "        month"
                                  "      ) AS `date`,"
                                  "      COUNT(*) AS `count`"

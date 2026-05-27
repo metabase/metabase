@@ -58,7 +58,6 @@
                               (partition 2 1)
                               (filter (fn [[id1 id2]]
                                         (pos? (compare id1 id2)))))]
-
     (when (seq out-of-order-ids)
       (throw (validation-error "Change set IDs are not in order"
                                {:out-of-order-ids out-of-order-ids})))))

@@ -93,9 +93,7 @@
                        :max-size (notification.settings/notification-temp-file-size-max-bytes)
                        :max-size-human-readable (human-readable-size
                                                  (notification.settings/notification-temp-file-size-max-bytes))})))
-
     (log/infof "📂 Loading streamed results from disk: %s" size-human)
-
     (let [start-time (System/nanoTime)
           result (with-open [is (-> (io/input-stream file)
                                     java.io.BufferedInputStream.
@@ -104,7 +102,6 @@
                    (let [{:keys [preamble]} (nippy/thaw-from-in! is)]
                      (when (seq preamble)
                        (log/debugf "File context: %s" (pr-str preamble))))
-
                    ;; Read row count/marker
                    (let [count-or-marker (nippy/thaw-from-in! is)]
                      (if (= count-or-marker ::streaming)
@@ -117,7 +114,6 @@
                            (if (= row-read ::eof)
                              (persistent! rows)
                              (recur (conj! rows row-read)))))
-
                        ;; Counted format - read exact number of rows
                        (loop [rows (transient [])
                               i 0]
@@ -241,7 +237,6 @@
                   (catch Exception e
                     (u/ignore-exceptions (.close output-stream))
                     (throw e))))
-
               ;; Return in-memory rows
               (do
                 (prometheus/inc! :metabase-notification/temp-storage
@@ -271,7 +266,6 @@
                                (when context (format "(%s)" (pr-str context))))
                     (reduced result))
                 result))
-
             (do
               (vswap! rows conj! row)
               (vswap! cell-count #(+ % (count row)))
@@ -285,20 +279,16 @@
                     ;; Write preamble
                     (nippy/freeze-to-out! output-stream {:preamble context})
                     (.flush output-stream)
-
                     ;; Write sentinel indicating streaming format
                     (nippy/freeze-to-out! output-stream ::streaming)
                     (.flush output-stream)
-
                     ;; Write all accumulated rows
                     (doseq [row (persistent! @rows)]
                       (write-row-to-stream! output-stream row))
-
                     ;; Switch to streaming mode
                     (vreset! streaming? true)
                     (vreset! rows (transient [])) ; Clear memory
                     (vreset! streaming-state {:file file :output-stream output-stream})
-
                     (catch Exception e
                       (u/ignore-exceptions (.close output-stream))
                       (u/ignore-exceptions (io/delete-file file))

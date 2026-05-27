@@ -17,7 +17,6 @@
                                                       :graph_version 1
                                                       :graph         {:marker "first"}}))]
           (is (= 1 (:graph_version result)))))
-
       (testing "duplicate insert is silently ignored (returns nil)"
         (let [result (ws.u/ignore-constraint-violation
                       (t2/insert-returning-instance! :model/WorkspaceGraph
@@ -25,10 +24,8 @@
                                                       :graph_version 1
                                                       :graph         {:marker "second"}}))]
           (is (nil? result))))
-
       (testing "only one row exists in the database"
         (is (= #{"first"} (t2/select-fn-set (comp :marker :graph) [:model/WorkspaceGraph :graph] :workspace_id (:id ws)))))
-
       (testing "we can insert a non-conflicting row"
         (let [result (ws.u/ignore-constraint-violation
                       (t2/insert-returning-instance! :model/WorkspaceGraph

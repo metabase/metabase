@@ -74,17 +74,13 @@
     (&recur
      ;; preserve options from the collapsed clauses.
      (lib.options/update-options arg-arg merge arg-opts opts))
-
     ;; use de Morgan's law to push the negation down
     [:not opts [:and arg-opts & arg-args]]
     (simplify-and-or-filter :or (merge arg-opts opts) (map lib.filter/not arg-args))
-
     [:not opts [:or arg-opts & arg-args]]
     (simplify-and-or-filter :and (merge arg-opts opts) (map lib.filter/not arg-args))
-
     [:and opts & args]
     (simplify-and-or-filter :and opts args)
-
     [:or opts & args]
     (simplify-and-or-filter :or opts args)))
 

@@ -47,7 +47,6 @@
   (lib.util.match/match-lite temporal-value
     [:relative-datetime _opts (_n :guard #{0 :current})]
     true
-
     [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
     (let [unit (or (lib/raw-temporal-bucket &match) :default)]
       (or (= unit :default)
@@ -60,7 +59,6 @@
   (lib.util.match/match-lite temporal-value
     [:relative-datetime _opts (_n :guard #{0 :current})]
     true
-
     [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
     (let [field-unit (or (lib/raw-temporal-bucket field) :default)
           value-unit (or (lib/raw-temporal-bucket &match) :default)]
@@ -122,7 +120,6 @@
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
          (field-and-temporal-value-have-compatible-units? field temporal-value-2))
-
     [:between
      _opts
      (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
@@ -148,7 +145,6 @@
   (lib.util.match/replace-lite field
     [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
-
     [:absolute-datetime _opts t _unit]
     [:absolute-datetime _opts t :default]))
 

@@ -125,7 +125,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows with all basic types correctly"
               (let [data-source {:type :rows :data data}
                     _ (driver/insert-from-source! driver db-id
@@ -156,7 +155,6 @@
         (mt/as-admin
           (try
             (driver/create-table! driver db-id qualified-table-name column-definitions {})
-
             (testing "insert-from-source! should insert rows from JSONL file correctly"
               (let [temp-file (java.io.File/createTempFile "test-data" ".jsonl")
                     col-names (map :name columns)
@@ -165,11 +163,9 @@
                                      (into {} (map vector col-names row)))
                                    data)]
                 (try
-
                   (with-open [writer (java.io.FileWriter. temp-file)]
                     (doseq [row json-rows]
                       (.write writer (str (json/encode row) "\n"))))
-
                   (let [data-source {:type :jsonl-file :file temp-file}
                         _ (driver/insert-from-source! driver db-id
                                                       {:name qualified-table-name

@@ -57,7 +57,6 @@
                                                          :authenticated-user api/*current-user*
                                                          :redirect-uri (slack-redirect-uri)
                                                          :final-redirect redirect-url))]
-
       (cond
         (= :redirect (:success? auth-result))
         ;; Use encrypted cookie for state storage
@@ -81,7 +80,6 @@
                                                     :oidc-provider :slack-connect
                                                     :redirect-uri (slack-redirect-uri)
                                                     :device-info (request/device-info request)))]
-
       (cond
         (:success? login-result)
         (let [final-redirect (or (:redirect-url login-result) "/")

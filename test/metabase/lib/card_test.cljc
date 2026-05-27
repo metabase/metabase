@@ -217,7 +217,6 @@
                          (map #(dissoc % :id :table-id))
                          sorted)
                     (->> nested lib.metadata.calculation/returned-columns sorted)))
-
             (is (=? (->> (concat (from :source/card (cols-of :orders))
                                  (from :source/card (cols-of :products)))
                          (map #(dissoc % :id :table-id))

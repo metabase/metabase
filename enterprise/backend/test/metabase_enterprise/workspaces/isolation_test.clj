@@ -113,12 +113,10 @@
         (testing "resources are created during workspace initialization"
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? true? (vals resources)))))
-
         (testing "destroy removes all isolation resources"
           (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? false? (vals resources)))))
-
         (testing "destroy is idempotent"
           (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))))))
 

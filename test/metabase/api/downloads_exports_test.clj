@@ -590,7 +590,6 @@
               (testing "The headers also show the Row Totals header"
                 (is (= "Row totals"
                        (last (first result))))))))
-
         (testing "The Columns Properly indicate the pivot row names."
           (let [col1               (map first result)
                 col2               (map second result)
@@ -808,7 +807,6 @@
                   ["May, 2016" "144.12" "81.58" "75.09" "90.21" "391"]
                   ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
                  (take 3 pivot))))
-
         (testing "but only when `qp.settings/enable-pivoted-exports` is true"
           (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
@@ -1619,7 +1617,6 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))
-
         (testing "for json"
           (let [result-scaled (card-download card-scaled {:export-format :json :format-rows true})
                 result-unscaled (card-download card-unscaled {:export-format :json :format-rows true})
@@ -1737,7 +1734,6 @@
                   ["3"            ""      ""      "35.39" "35.39"]
                   ["Grand totals" ""      "53.98" ""      "55.7464"]]
                  (rest result))))))
-
     (mt/dataset test-data
       (mt/with-temp [:model/Card source-model
                      {:dataset_query
@@ -1795,7 +1791,6 @@
                                                    :breakout    [$product_id->products.category
                                                                  $product_id->products.vendor]
                                                    :limit       3})}]
-
           (testing "download"
             (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
                   headers (second res)]

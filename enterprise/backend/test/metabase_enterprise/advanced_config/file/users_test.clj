@@ -33,7 +33,6 @@
                                      :email "cam+config-file-test@metabase.com")))
         (is (= 1
                (t2/count :model/User :email "cam+config-file-test@metabase.com"))))
-
       (testing "upsert if User already exists, with merged login attributes"
         (let [hashed-password          (fn [] (t2/select-one-fn :password :model/User :email "cam+config-file-test@metabase.com"))
               salt                     (fn [] (t2/select-one-fn :password_salt :model/User :email "cam+config-file-test@metabase.com"))
