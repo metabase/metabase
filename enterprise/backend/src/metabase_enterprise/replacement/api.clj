@@ -11,7 +11,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -121,11 +120,11 @@
                                             {:event     "model_to_transforms_migration_started"
                                              :target_id card_id})
                     (try
-                      (u/prog1 (replacement.runner/run-swap-model-with-transform!
-                                card_id (:id transform) progress :user-id user-id)
-                        (analytics/track-event! :snowplow/simple_event
-                                                {:event     "model_to_transforms_migration_success"
-                                                 :target_id card_id}))
+                      (replacement.runner/run-swap-model-with-transform!
+                       card_id (:id transform) progress :user-id user-id)
+                      (analytics/track-event! :snowplow/simple_event
+                                              {:event     "model_to_transforms_migration_success"
+                                               :target_id card_id})
                       (catch Throwable e
                         (analytics/track-event! :snowplow/simple_event
                                                 {:event     "model_to_transforms_migration_failure"
