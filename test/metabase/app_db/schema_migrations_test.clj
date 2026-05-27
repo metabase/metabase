@@ -2893,8 +2893,8 @@
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+  (testing "v62.2026-05-13T11:59:59 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2919,7 +2919,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +2951,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2976,6 +2976,73 @@
                (collection-entity-id data-id)))
         (is (= "legacy-orphan-data"
                (collection-entity-id orphan-data-id)))))))
+
+(deftest backfill-legacy-library-root-skips-when-canonical-entity-id-exists-test
+  (testing "v62.2026-05-13T11:59:59 + T12:00:00: pre-existing canonical Library root entity_id prevents collision"
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [canonical-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
+                                                             :slug      "canonical-library"
+                                                             :type      nil
+                                                             :entity_id "librarylibrarylibrary"})
+            legacy-id    (insert-legacy-library-collection! {:name      "Legacy Library"
+                                                             :slug      "legacy-library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})]
+        (migrate!)
+        (is (= "library"
+               (t2/select-one-fn :type :collection :id canonical-id)))
+        (is (= "librarylibrarylibrary"
+               (collection-entity-id canonical-id)))
+        (is (= "legacy-library-root"
+               (collection-entity-id legacy-id)))))))
+
+(deftest backfill-legacy-library-data-skips-when-canonical-entity-id-exists-test
+  (testing "v62.2026-05-13T12:00:01: pre-existing canonical Library Data entity_id prevents collision"
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id   (insert-legacy-library-collection! {:name      "Library"
+                                                             :slug      "library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})
+            canonical-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Data"
+                                                             :slug      "canonical-data"
+                                                             :type      nil
+                                                             :entity_id "librarylibrarydatadat"})
+            legacy-id    (insert-legacy-library-collection! {:name      "Legacy Data"
+                                                             :slug      "legacy-data"
+                                                             :type      "library-data"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-data"})]
+        (migrate!)
+        (is (= "library-data"
+               (t2/select-one-fn :type :collection :id canonical-id)))
+        (is (= "librarylibrarydatadat"
+               (collection-entity-id canonical-id)))
+        (is (= "legacy-library-data"
+               (collection-entity-id legacy-id)))))))
+
+(deftest backfill-legacy-library-metrics-skips-when-canonical-entity-id-exists-test
+  (testing "v62.2026-05-13T12:00:02: pre-existing canonical Library Metrics entity_id prevents collision"
+    (impl/test-migrations ["v62.2026-05-13T11:59:59" "v62.2026-05-13T12:00:02"] [migrate!]
+      (let [library-id   (insert-legacy-library-collection! {:name      "Library"
+                                                             :slug      "library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})
+            canonical-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Metrics"
+                                                             :slug      "canonical-metrics"
+                                                             :type      nil
+                                                             :entity_id "librarylibrarymetrics"})
+            legacy-id    (insert-legacy-library-collection! {:name      "Legacy Metrics"
+                                                             :slug      "legacy-metrics"
+                                                             :type      "library-metrics"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-metric"})]
+        (migrate!)
+        (is (= "library-metrics"
+               (t2/select-one-fn :type :collection :id canonical-id)))
+        (is (= "librarylibrarymetrics"
+               (collection-entity-id canonical-id)))
+        (is (= "legacy-library-metric"
+               (collection-entity-id legacy-id)))))))
 
 (deftest heal-effective-type-drift-without-coercion-test
   (testing "GHY-3388: heal metabase_field rows where coercion_strategy is NULL and effective_type
