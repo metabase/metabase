@@ -187,8 +187,9 @@
   Walks the body and slices every string leaf to `limit` before printing — so a parsed
   JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
   only for the caller to truncate it back down. `*print-length*`/`*print-level*` bound
-  `pr-str`'s output, not the `postwalk`: the walk's breadth and depth are bounded upstream
-  by the slurp cap ([[max-body-slurp-chars]]) and the JSON parser's own nesting limit."
+  `pr-str`'s output, not the `postwalk`. The walk only recurses parsed-JSON bodies — the
+  streaming path yields a scalar string it can't descend into — which clj-http has already
+  materialized in memory, with nesting depth bounded by the JSON parser's own limit."
   [body limit]
   (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
     (binding [*print-length* 100
