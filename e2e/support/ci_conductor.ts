@@ -16,6 +16,7 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
 const {
   CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_WEBHOOK_SECRET,
   CI_CONDUCTOR_DRY_RUN,
   REPO_ID,
   GITHUB_RUN_ID,
@@ -140,13 +141,21 @@ export async function reportFailedTestsToConductor(
       return;
     }
 
-    // The secret holds the webhooks *base* (e.g. ".../webhooks"); we append the
-    // specific endpoint so the same secret can serve other webhooks later.
+    // CI_CONDUCTOR_WEBHOOK_URL holds the webhooks *base* (e.g. ".../webhooks");
+    // we append the specific endpoint so the same secret can serve others later.
     const endpoint = `${CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "")}/failed-tests`;
+
+    // ci-conductor authenticates this endpoint via the x-internal-secret header.
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (CI_CONDUCTOR_WEBHOOK_SECRET) {
+      headers["x-internal-secret"] = CI_CONDUCTOR_WEBHOOK_SECRET;
+    }
 
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
 

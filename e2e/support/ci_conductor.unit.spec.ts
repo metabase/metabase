@@ -211,6 +211,32 @@ describe("reportFailedTestsToConductor", () => {
     });
   });
 
+  it("sends the x-internal-secret header when the secret is configured", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_WEBHOOK_SECRET: "s3cr3t",
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    expect(mockFetch.mock.calls[0][1].headers).toMatchObject({
+      "x-internal-secret": "s3cr3t",
+    });
+  });
+
+  it("omits the secret header when no secret is configured", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_WEBHOOK_SECRET: undefined,
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty(
+      "x-internal-secret",
+    );
+  });
+
   it("appends the endpoint regardless of a trailing slash on the base URL", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_WEBHOOK_URL: `${url}/`,
