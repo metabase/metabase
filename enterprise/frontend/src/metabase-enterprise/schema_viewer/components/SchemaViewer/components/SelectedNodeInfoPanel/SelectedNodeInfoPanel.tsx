@@ -174,7 +174,8 @@ function toTableDependencyNode(
 ): TableDependencyNode {
   const data: TableDependencyNodeData = {
     name: node.data.name,
-    display_name: node.data.display_name,
+    // Using name here, because we want to show SQL name in the title
+    display_name: node.data.name,
     description: node.data.description,
     // The owner payload from the ERD endpoint is either the full hydrated
     // `TableOwner` shape, an email-only fallback (when the table only carries
