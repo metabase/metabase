@@ -21,8 +21,6 @@ AI features are available on both Metabase Cloud and self-hosted Metabase. To tu
    - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
 3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
 
-> The Metabase AI add-on only appears in your Metabase Store account after you've connected to the Metabase AI service in **Admin settings > AI**. If you're on a Pro trial and don't see the add-on in **Manage plan**, connect it from Admin first; the Store will reflect it after.
-
 ## Choose AI provider
 
 _Admin > AI_
@@ -42,8 +40,6 @@ Metabase's AI Service is a good option if you don't have a preferred AI provider
 
 If you use Metabase's AI Service, you'll get charge based on token usage (in addition to your regular Metabase Cloud subscription fee). See [Pricing](https://www.metabase.com/pricing).
 
-To enable Metabase's AI Service on Metabase Cloud, you must me logged in to your Metabase instance with the email that matches the email for the admin of your [Metabase Store account](https://store.metabase.com).
-
 To use Metabase AI provider for your Metabot:
 
 1. Go to **Admin > AI > AI settings**.
@@ -55,8 +51,6 @@ To disable Metabase AI provider and stop charges:
 
 1. Go to **Admin > AI > AI settings**.
 2. Under **Connected to Metabase**, click **Disconnect**.
-
-Any Metabase instance admin can disconnect the Metabase AI Service, even if they lack an admin account in the Metabase store.
 
 ### Bring your own API key
 

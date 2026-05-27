@@ -14,6 +14,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
@@ -522,8 +523,8 @@
                         :threads first :queries)]
         (is (= #{"default"} (query-types queries)))))))
 
-(deftest exploration-create-time-facet-skipped-high-cardinality-test
-  (testing "POST / categorical dim with distinct-count > threshold → no time-facet"
+(deftest exploration-create-high-cardinality-routes-to-top-n-other-test
+  (testing "POST / categorical dim with very high distinct-count → no default, no time-facet, just top-n-other"
     (mt/with-temp [:model/User u {:email "high-card@example.com"}
                    :model/Card metric (products-monthly-metric-card (:id u))]
       (let [mapping [{:dimension_id "email"
@@ -534,8 +535,8 @@
                      :dimensions [{:dimension_id "email" :display_name "Email"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default"} (query-types queries))
-            "people.email has ~2500 distinct values → exceeds the cardinality gate")))))
+        (is (= #{"top-n-other"} (query-types queries))
+            "people.email has ~2500 distinct values → exceeds both default and time-facet gates; top-n-other is the only safe shape")))))
 
 (deftest exploration-create-time-facet-skips-segments-test
   (testing "POST / time-facet variant does NOT fan out across segments (category + time + segment filter is too noisy to surface)"
@@ -669,54 +670,60 @@
 
 (deftest exploration-create-disambiguates-same-named-dimensions-test
   (testing "POST / qualifies same-named dimensions with their group's display name"
-    (mt/with-temp
-      [:model/User u {:email "ambig@example.com"}
-       :model/Card revenue (assoc (valid-metric-card (:id u))
-                                  :name "Revenue"
-                                  :dimensions
-                                  [{:id "users-created"  :name "CREATED_AT" :display_name "Created At"
-                                    :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                   {:id "orders-created" :name "CREATED_AT" :display_name "Created At"
-                                    :group {:id "g-orders" :type "connection" :display_name "Orders"}}
-                                   {:id "users-country"  :name "COUNTRY"    :display_name "Country"
-                                    :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
-      (testing "two dims sharing a display_name → both dimension_names get the group prefix"
-        (let [body {:name "ambig"
-                    :metrics    [{:card_id (:id revenue)
-                                  :dimension_mappings
-                                  [{:dimension_id "users-created"  :table_id 1 :target ["field" {} 1]}
-                                   {:dimension_id "orders-created" :table_id 1 :target ["field" {} 2]}]}]
-                    :dimensions [{:dimension_id "users-created"  :display_name "Created At"}
-                                 {:dimension_id "orders-created" :display_name "Created At"}]}
-              ;; :dimension_name is the API-computed dimension label (with disambiguation).
-              ;; The full query :name stored in DB is plain "Revenue by Created At".
-              by-dim (->> (create-exploration! u body)
-                          :threads first :queries
-                          (into {} (map (juxt :dimension_id :dimension_name))))]
-          (is (= "Users → Created At"  (get by-dim "users-created")))
-          (is (= "Orders → Created At" (get by-dim "orders-created")))))
-      (testing "distinct display_names → no qualification"
-        (let [body {:name "no-ambig"
-                    :metrics    [{:card_id (:id revenue)
-                                  :dimension_mappings
-                                  [{:dimension_id "users-created" :table_id 1 :target ["field" {} 1]}
-                                   {:dimension_id "users-country" :table_id 1 :target ["field" {} 3]}]}]
-                    :dimensions [{:dimension_id "users-created" :display_name "Created At"}
-                                 {:dimension_id "users-country" :display_name "Country"}]}
-              by-dim (->> (create-exploration! u body)
-                          :threads first :queries
-                          (into {} (map (juxt :dimension_id :dimension_name))))]
-          (is (= "Created At" (get by-dim "users-created")))
-          (is (= "Country"    (get by-dim "users-country")))))
-      (testing "single dim → no qualification even when it has a group"
-        (let [body {:name "single"
-                    :metrics    [{:card_id (:id revenue)
-                                  :dimension_mappings
-                                  [{:dimension_id "users-created" :table_id 1 :target ["field" {} 1]}]}]
-                    :dimensions [{:dimension_id "users-created" :display_name "Created At"}]}
-              q    (-> (create-exploration! u body)
-                       :threads first :queries first)]
-          (is (= "Created At" (:dimension_name q))))))))
+    ;; Suppress the post-insert dimension auto-sync so our fixture dims survive on the Card —
+    ;; the after-insert sync would otherwise overwrite them with computed venue-table dims.
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
+            orders-created "00000000-0000-0000-0000-00000000bbbb"
+            users-country  "00000000-0000-0000-0000-00000000cccc"]
+        (mt/with-temp
+          [:model/User u {:email "ambig@example.com"}
+           :model/Card revenue (assoc (valid-metric-card (:id u))
+                                      :name "Revenue"
+                                      :dimensions
+                                      [{:id users-created  :name "CREATED_AT" :display_name "Created At"
+                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                       {:id orders-created :name "CREATED_AT" :display_name "Created At"
+                                        :group {:id "g-orders" :type "connection" :display_name "Orders"}}
+                                       {:id users-country  :name "COUNTRY"    :display_name "Country"
+                                        :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
+          (testing "two dims sharing a display_name → both dimension_names get the group prefix"
+            (let [body {:name "ambig"
+                        :metrics    [{:card_id (:id revenue)
+                                      :dimension_mappings
+                                      [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
+                                       {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
+                        :dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                     {:dimension_id orders-created :display_name "Created At"}]}
+                  ;; :dimension_name is the API-computed dimension label (with disambiguation).
+                  ;; The full query :name stored in DB is plain "Revenue by Created At".
+                  by-dim (->> (create-exploration! u body)
+                              :threads first :queries
+                              (into {} (map (juxt :dimension_id :dimension_name))))]
+              (is (= "Users → Created At"  (get by-dim users-created)))
+              (is (= "Orders → Created At" (get by-dim orders-created)))))
+          (testing "distinct display_names → no qualification"
+            (let [body {:name "no-ambig"
+                        :metrics    [{:card_id (:id revenue)
+                                      :dimension_mappings
+                                      [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}
+                                       {:dimension_id users-country :table_id 1 :target ["field" {} 3]}]}]
+                        :dimensions [{:dimension_id users-created :display_name "Created At"}
+                                     {:dimension_id users-country :display_name "Country"}]}
+                  by-dim (->> (create-exploration! u body)
+                              :threads first :queries
+                              (into {} (map (juxt :dimension_id :dimension_name))))]
+              (is (= "Created At" (get by-dim users-created)))
+              (is (= "Country"    (get by-dim users-country)))))
+          (testing "single dim → no qualification even when it has a group"
+            (let [body {:name "single"
+                        :metrics    [{:card_id (:id revenue)
+                                      :dimension_mappings
+                                      [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}]}]
+                        :dimensions [{:dimension_id users-created :display_name "Created At"}]}
+                  q    (-> (create-exploration! u body)
+                           :threads first :queries first)]
+              (is (= "Created At" (:dimension_name q))))))))))
 
 (deftest exploration-create-name-falls-back-without-group-test
   (testing "POST / leaves ambiguous dims unqualified when neither has a known :group (no NPE / no malformed name)"
@@ -757,42 +764,48 @@
 
 (deftest exploration-get-dimension-name-disambiguates-test
   (testing "hydrate-exploration prefixes :dimension_name with the dim's group when two dims share a display_name"
-    (mt/with-temp
-      [:model/User u {:email "dim-name-ambig@example.com"}
-       :model/Card metric (assoc (valid-metric-card (:id u))
-                                 :dimensions
-                                 [{:id "users-created"  :name "CREATED_AT" :display_name "Created At"
-                                   :group {:id "g-users"  :type "main"       :display_name "Users"}}
-                                  {:id "orders-created" :name "CREATED_AT" :display_name "Created At"
-                                   :group {:id "g-orders" :type "connection" :display_name "Orders"}}
-                                  {:id "users-country"  :name "COUNTRY"    :display_name "Country"
-                                   :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
-      (testing "shared display_name → both :dimension_names carry the group prefix"
-        (let [body   {:name "ambig"
-                      :metrics    [{:card_id (:id metric)
-                                    :dimension_mappings
-                                    [{:dimension_id "users-created"  :table_id 1 :target ["field" {} 1]}
-                                     {:dimension_id "orders-created" :table_id 1 :target ["field" {} 2]}]}]
-                      :dimensions [{:dimension_id "users-created"  :display_name "Created At"}
-                                   {:dimension_id "orders-created" :display_name "Created At"}]}
-              by-dim (->> (create-exploration! u body)
-                          :threads first :queries
-                          (into {} (map (juxt :dimension_id :dimension_name))))]
-          (is (= "Users → Created At"  (get by-dim "users-created")))
-          (is (= "Orders → Created At" (get by-dim "orders-created")))))
-      (testing "distinct display_names → no qualification"
-        (let [body   {:name "no-ambig"
-                      :metrics    [{:card_id (:id metric)
-                                    :dimension_mappings
-                                    [{:dimension_id "users-created" :table_id 1 :target ["field" {} 1]}
-                                     {:dimension_id "users-country" :table_id 1 :target ["field" {} 3]}]}]
-                      :dimensions [{:dimension_id "users-created" :display_name "Created At"}
-                                   {:dimension_id "users-country" :display_name "Country"}]}
-              by-dim (->> (create-exploration! u body)
-                          :threads first :queries
-                          (into {} (map (juxt :dimension_id :dimension_name))))]
-          (is (= "Created At" (get by-dim "users-created")))
-          (is (= "Country"    (get by-dim "users-country"))))))))
+    ;; Suppress the post-insert dimension auto-sync so our fixture dims survive on the Card —
+    ;; the after-insert sync would otherwise overwrite them with computed venue-table dims.
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-00000000dddd"
+            orders-created "00000000-0000-0000-0000-00000000eeee"
+            users-country  "00000000-0000-0000-0000-00000000ffff"]
+        (mt/with-temp
+          [:model/User u {:email "dim-name-ambig@example.com"}
+           :model/Card metric (assoc (valid-metric-card (:id u))
+                                     :dimensions
+                                     [{:id users-created  :name "CREATED_AT" :display_name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                      {:id orders-created :name "CREATED_AT" :display_name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}
+                                      {:id users-country  :name "COUNTRY"    :display_name "Country"
+                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
+          (testing "shared display_name → both :dimension_names carry the group prefix"
+            (let [body   {:name "ambig"
+                          :metrics    [{:card_id (:id metric)
+                                        :dimension_mappings
+                                        [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
+                                         {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
+                          :dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                       {:dimension_id orders-created :display_name "Created At"}]}
+                  by-dim (->> (create-exploration! u body)
+                              :threads first :queries
+                              (into {} (map (juxt :dimension_id :dimension_name))))]
+              (is (= "Users → Created At"  (get by-dim users-created)))
+              (is (= "Orders → Created At" (get by-dim orders-created)))))
+          (testing "distinct display_names → no qualification"
+            (let [body   {:name "no-ambig"
+                          :metrics    [{:card_id (:id metric)
+                                        :dimension_mappings
+                                        [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}
+                                         {:dimension_id users-country :table_id 1 :target ["field" {} 3]}]}]
+                          :dimensions [{:dimension_id users-created :display_name "Created At"}
+                                       {:dimension_id users-country :display_name "Country"}]}
+                  by-dim (->> (create-exploration! u body)
+                              :threads first :queries
+                              (into {} (map (juxt :dimension_id :dimension_name))))]
+              (is (= "Created At" (get by-dim users-created)))
+              (is (= "Country"    (get by-dim users-country)))))))))) ; binding+let+with-temp+testing+deftest
 
 (deftest exploration-list-queries-endpoint-test
   (testing "GET /:id/queries returns lightweight summaries without dataset_query"

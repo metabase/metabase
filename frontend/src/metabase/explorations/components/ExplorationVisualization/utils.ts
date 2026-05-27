@@ -5,6 +5,7 @@ import { createSeriesCard } from "metabase/metrics/utils/series";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isCountry, isDate, isState } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
@@ -467,6 +468,15 @@ export function getHeatMapSeries({
         max_value: maxValue,
       },
     ],
+    column_settings: {
+      [getColumnKey(cols[0])]: {
+        date_abbreviate: true,
+        text_align: "middle",
+      },
+      [getColumnKey(cols[1])]: {
+        text_align: "middle",
+      },
+    },
   };
   return {
     card: {
@@ -579,7 +589,7 @@ export type ChartLayout =
   | "chart-and-table-vertically"
   | "two-same-size-charts-vertically";
 
-const SPECIAL_QUERY_TYPES: Exclude<ExplorationQueryType, "default">[] = [
+const SPECIAL_QUERY_TYPES: ExplorationQueryType[] = [
   "top-n-other",
   "temporal-pattern-day",
   "temporal-pattern-hour",
@@ -610,9 +620,7 @@ export const getChartsGroupLayoutStrategy = (
   const isTwoChartsWithOneSpecial =
     seriesGroups.length === 2 &&
     seriesGroups[0].queryType === "default" &&
-    SPECIAL_QUERY_TYPES.includes(
-      seriesGroups[1].queryType as Exclude<ExplorationQueryType, "default">,
-    );
+    SPECIAL_QUERY_TYPES.includes(seriesGroups[1].queryType);
 
   if (isTwoChartsWithOneSpecial) {
     if (

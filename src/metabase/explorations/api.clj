@@ -138,6 +138,40 @@
       (update :threads #(some->> % (mapv attach-thread-groups)))
       (update :threads #(some->> % (mapv attach-query-dimension-labels)))))
 
+(defn- insert-thread-default-documents!
+  "Insert the default Scratchpad doc, plus an AI-summary placeholder when configured."
+  [thread-id coll-id]
+  (t2/insert! :model/Document
+              {:name                  default-document-name
+               :document              {:type "doc" :content []}
+               :content_type          documents/prose-mirror-content-type
+               :creator_id            api/*current-user-id*
+               :collection_id         coll-id
+               :exploration_thread_id thread-id})
+  (when (ai-summary/ai-summary-available?)
+    (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id)))
+
+(defn- positional-rows
+  "Stamp `:exploration_thread_id` and a 0-based `:position` onto each row in `rows`."
+  [thread-id rows]
+  (map-indexed (fn [i row]
+                 (assoc row :exploration_thread_id thread-id :position i))
+               rows))
+
+(defn- insert-thread-metrics! [thread-id metrics]
+  (when (seq metrics)
+    (t2/insert! :model/ExplorationThreadMetric (positional-rows thread-id metrics))))
+
+(defn- insert-thread-dimensions! [thread-id dimensions]
+  (when (seq dimensions)
+    (t2/insert! :model/ExplorationThreadDimension (positional-rows thread-id dimensions))))
+
+(defn- insert-thread-timelines! [thread-id timeline-ids]
+  (when (seq timeline-ids)
+    (t2/insert! :model/ExplorationThreadTimeline
+                (positional-rows thread-id
+                                 (map (fn [tl-id] {:timeline_id tl-id}) timeline-ids)))))
+
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
@@ -336,37 +370,11 @@
                                                              {:exploration_id (:id exploration)
                                                               :prompt         prompt
                                                               :position       0}))
-          tid         (:id thread)
-          _           (t2/insert! :model/Document
-                                  {:name                  default-document-name
-                                   :document              {:type "doc" :content []}
-                                   :content_type          documents/prose-mirror-content-type
-                                   :creator_id            api/*current-user-id*
-                                   :collection_id         coll-id
-                                   :exploration_thread_id tid})
-          _           (when (ai-summary/ai-summary-available?)
-                        (ai-summary/create-placeholder-doc! tid api/*current-user-id* coll-id))]
-      (when (seq metrics)
-        (t2/insert! :model/ExplorationThreadMetric
-                    (map-indexed (fn [i m]
-                                   (assoc m
-                                          :exploration_thread_id tid
-                                          :position i))
-                                 metrics)))
-      (when (seq dimensions)
-        (t2/insert! :model/ExplorationThreadDimension
-                    (map-indexed (fn [i d]
-                                   (assoc d
-                                          :exploration_thread_id tid
-                                          :position i))
-                                 dimensions)))
-      (when (seq timeline_ids)
-        (t2/insert! :model/ExplorationThreadTimeline
-                    (map-indexed (fn [i tl-id]
-                                   {:exploration_thread_id tid
-                                    :timeline_id           tl-id
-                                    :position              i})
-                                 timeline_ids)))
+          tid         (:id thread)]
+      (insert-thread-default-documents! tid coll-id)
+      (insert-thread-metrics! tid metrics)
+      (insert-thread-dimensions! tid dimensions)
+      (insert-thread-timelines! tid timeline_ids)
       ;; Setting `started_at` is the signal to the background planning worker that this
       ;; thread is ready to plan + execute. The worker's claim predicate matches threads
       ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
@@ -496,10 +504,10 @@
                                        :archived false
                                        :name [:like (str base "%")])
                      (keep (fn [n]
-                             (cond
-                               (= n base) 1
-                               :else (when-let [m (re-matches pattern n)]
-                                       (parse-long (second m)))))))]
+                             (if (= n base)
+                               1
+                               (when-let [m (re-matches pattern n)]
+                                 (parse-long (second m)))))))]
     (if (empty? names)
       base
       (str base " " (inc (apply max names))))))

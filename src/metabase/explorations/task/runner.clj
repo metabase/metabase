@@ -64,14 +64,13 @@
   H2 doesn't support SKIP LOCKED, but we cap H2 at one worker (see `worker-count`) so dropping
   the lock clause is safe there."
   []
-  (let [skip-locked? (not= :h2 (mdb/db-type))
-        q            (cond-> {:select   [:*]
-                              :from     [:exploration_query]
-                              :where    [:= :status "pending"]
-                              :order-by [[:id :asc]]
-                              :limit    1}
-                       skip-locked? (assoc :for [:update :skip-locked]))]
-    (t2/select-one :model/ExplorationQuery q)))
+  (t2/select-one :model/ExplorationQuery
+                 (cond-> {:select   [:*]
+                          :from     [:exploration_query]
+                          :where    [:= :status "pending"]
+                          :order-by [[:id :asc]]
+                          :limit    1}
+                   (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))
 
 (defn- serialize-result
   "Run `cache.impl/do-with-serialization` against a single QP result, returning the gzipped+nippy
@@ -283,6 +282,19 @@
     (when (seq parts)
       (str/join "; " parts))))
 
+(defn- build-score-context
+  "Resolve the inputs the contextual scorer needs from `exploration-query`: the thread prompt,
+  the (trimmed, non-blank) source Card description, and the compiled SQL of the dataset_query.
+  Returns nil when the row has no thread."
+  [exploration-query]
+  (when-let [thread-id (:exploration_thread_id exploration-query)]
+    {:prompt           (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))
+     :card-description (when-let [card-id (:card_id exploration-query)]
+                         (some-> (:description (t2/select-one [:model/Card :description] :id card-id))
+                                 str/trim
+                                 not-empty))
+     :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))}))
+
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
   Card's description (when present), the compiled SQL of the dataset_query, and the thread
@@ -309,29 +321,63 @@
   lifecycle."
   [exploration-query chart-config creator-id]
   (try
-    (when-let [thread-id (:exploration_thread_id exploration-query)]
-      (let [prompt           (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))
-            card-description (when-let [card-id (:card_id exploration-query)]
-                               (some-> (:description (t2/select-one [:model/Card :description] :id card-id))
-                                       str/trim
-                                       not-empty))
-            sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))]
-        (when (and chart-config (not (str/blank? prompt)))
-          (if (nil? creator-id)
-            (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
-                       (:id exploration-query))
-            (request/with-current-user creator-id
-              (some-> (contextual-interestingness/score-and-describe-chart
-                       {:chart-config     chart-config
-                        :card-description card-description
-                        :chart-slicing    (slicing-note exploration-query)
-                        :sql              sql
-                        :context-string   prompt})
-                      (update :metric-description #(or card-description %))))))))
+    (let [{:keys [prompt card-description sql]} (build-score-context exploration-query)]
+      (when (and chart-config (not (str/blank? prompt)))
+        (if (nil? creator-id)
+          (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
+                     (:id exploration-query))
+          (request/with-current-user creator-id
+            (some-> (contextual-interestingness/score-and-describe-chart
+                     {:chart-config     chart-config
+                      :card-description card-description
+                      :chart-slicing    (slicing-note exploration-query)
+                      :sql              sql
+                      :context-string   prompt})
+                    (update :metric-description #(or card-description %)))))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
       nil)))
+
+(defn- execute-and-persist-query-result!
+  "Run the QP on `row`'s `:dataset_query`, compute the chart-config / stats / scores via the
+  `safe-*` helpers, persist a `StoredResult` + `ExplorationQueryResult` + `StoredResultUse`, and
+  flip the `ExplorationQuery` to `done`. `started` is the `OffsetDateTime` to stamp as the row's
+  `:started_at`."
+  [row ^OffsetDateTime started]
+  (let [qp-result    (qp/process-query
+                      (qp/userland-query-with-default-constraints
+                       (:dataset_query row)
+                       {:context :exploration}))
+        bytes        (serialize-result qp-result)
+        chart-config (safe-chart-config row qp-result)
+        stats        (safe-deep-stats row chart-config)
+        score        (safe-score row chart-config stats)
+        creator-id   (exploration-creator-id row)
+        ctx          (safe-score+describe row chart-config creator-id)
+        sr-id        (first
+                      (t2/insert-returning-pks!
+                       :model/StoredResult
+                       {:result_data   bytes
+                        :creator_id    creator-id
+                        :database_id   (-> row :dataset_query :database)
+                        :dataset_query (:dataset_query row)}))]
+    (t2/insert! :model/ExplorationQueryResult
+                {:exploration_query_id             (:id row)
+                 :stored_result_id                 sr-id
+                 :chart_stats                      stats
+                 :interestingness_score            score
+                 :contextual_interestingness_score (:score ctx)
+                 :metric_description               (:metric-description ctx)
+                 :chart_description                (:chart-description ctx)})
+    ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
+    (t2/insert! :model/StoredResultUse
+                {:stored_result_id sr-id
+                 :exploration_id   (exploration-id row)})
+    (t2/update! :model/ExplorationQuery (:id row)
+                {:status      "done"
+                 :started_at  started
+                 :finished_at (OffsetDateTime/now)})))
 
 (defn- run-one-query-iteration!
   "Try to claim and execute a single pending query. Returns truthy when work was done so the
@@ -348,40 +394,7 @@
         (reset! row-thread (:exploration_thread_id row))
         (let [started (OffsetDateTime/now)]
           (try
-            (let [row          (finalize-row! row)
-                  qp-result    (qp/process-query
-                                (qp/userland-query-with-default-constraints
-                                 (:dataset_query row)
-                                 {:context :exploration}))
-                  bytes        (serialize-result qp-result)
-                  chart-config (safe-chart-config row qp-result)
-                  stats        (safe-deep-stats row chart-config)
-                  score        (safe-score row chart-config stats)
-                  creator-id   (exploration-creator-id row)
-                  ctx          (safe-score+describe row chart-config creator-id)
-                  sr-id        (first
-                                (t2/insert-returning-pks!
-                                 :model/StoredResult
-                                 {:result_data   bytes
-                                  :creator_id    creator-id
-                                  :database_id   (-> row :dataset_query :database)
-                                  :dataset_query (:dataset_query row)}))]
-              (t2/insert! :model/ExplorationQueryResult
-                          {:exploration_query_id             (:id row)
-                           :stored_result_id                 sr-id
-                           :chart_stats                      stats
-                           :interestingness_score            score
-                           :contextual_interestingness_score (:score ctx)
-                           :metric_description               (:metric-description ctx)
-                           :chart_description                (:chart-description ctx)})
-              ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
-              (t2/insert! :model/StoredResultUse
-                          {:stored_result_id sr-id
-                           :exploration_id   (exploration-id row)})
-              (t2/update! :model/ExplorationQuery (:id row)
-                          {:status      "done"
-                           :started_at  started
-                           :finished_at (OffsetDateTime/now)}))
+            (execute-and-persist-query-result! (finalize-row! row) started)
             (catch Throwable e
               (log/errorf e "ExplorationQuery %d failed" (:id row))
               (t2/update! :model/ExplorationQuery (:id row)
@@ -433,40 +446,49 @@
      :order-by  [[:q.id :asc] [:ett.timeline_id :asc]]
      :limit     1})))
 
-(defn- claim-pending-timeline-pair!
-  "Reserve one `(query, timeline)` pair. For a fresh pair, INSERT a row with `scored_at=NULL`;
-  the unique constraint serializes competing INSERTs and the loser catches the conflict. For a
-  stale pair (a previous worker's claim row whose `scored_at` is still NULL and `created_at` is
-  older than the cutoff), CAS-bump `created_at` so any other worker that also saw the row stale
-  loses the reclaim race when its `WHERE created_at < cutoff` matches zero rows.
+(defn- reclaim-stale-timeline-pair!
+  "CAS-bump `created_at` on an existing claim row whose `scored_at` is still NULL and `created_at`
+  is older than the cutoff. Returns the claim shape on success, nil if another worker won the
+  reclaim race."
+  [exploration_query_id timeline_id stale_id]
+  (when (pos? (t2/update! :model/ExplorationQueryTimelineInterestingness
+                          :id         stale_id
+                          :scored_at  nil
+                          :created_at [:< (stale-cutoff)]
+                          {:created_at (OffsetDateTime/now)}))
+    (log/infof "Stale-reclaimed timeline pair (q=%s, t=%s, id=%s)"
+               exploration_query_id timeline_id stale_id)
+    {:id                   stale_id
+     :exploration_query_id exploration_query_id
+     :timeline_id          timeline_id}))
 
-  Returns the claim row's id on success, nil on race loss / no work."
+(defn- insert-fresh-timeline-pair!
+  "INSERT a fresh claim row with `scored_at=NULL`; the unique constraint serializes competing
+  INSERTs. Returns the claim shape on success, nil on conflict (the loser of the race)."
+  [exploration_query_id timeline_id]
+  (try
+    (when-let [row (first (t2/insert-returning-instances!
+                           :model/ExplorationQueryTimelineInterestingness
+                           {:exploration_query_id exploration_query_id
+                            :timeline_id          timeline_id}))]
+      {:id                   (:id row)
+       :exploration_query_id exploration_query_id
+       :timeline_id          timeline_id})
+    (catch Throwable e
+      (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
+                  exploration_query_id timeline_id)
+      nil)))
+
+(defn- claim-pending-timeline-pair!
+  "Reserve one `(query, timeline)` pair. Dispatches to [[reclaim-stale-timeline-pair!]] when
+  there's an existing stale claim row, otherwise to [[insert-fresh-timeline-pair!]]. Returns
+  the claim shape on success, nil on race loss / no work."
   []
-  (when-let [{:keys [exploration_query_id timeline_id stale_id]} (find-unscored-pair)]
-    (if stale_id
-      (when (pos? (t2/update! :model/ExplorationQueryTimelineInterestingness
-                              :id         stale_id
-                              :scored_at  nil
-                              :created_at [:< (stale-cutoff)]
-                              {:created_at (OffsetDateTime/now)}))
-        (log/infof "Stale-reclaimed timeline pair (q=%s, t=%s, id=%s)"
-                   exploration_query_id timeline_id stale_id)
-        ;; CAS won; we own the row.
-        {:id                   stale_id
-         :exploration_query_id exploration_query_id
-         :timeline_id          timeline_id})
-      (try
-        (when-let [row (first (t2/insert-returning-instances!
-                               :model/ExplorationQueryTimelineInterestingness
-                               {:exploration_query_id exploration_query_id
-                                :timeline_id          timeline_id}))]
-          {:id                   (:id row)
-           :exploration_query_id exploration_query_id
-           :timeline_id          timeline_id})
-        (catch Throwable e
-          (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
-                      exploration_query_id timeline_id)
-          nil)))))
+  (when-let [pair (find-unscored-pair)]
+    (let [{:keys [exploration_query_id timeline_id stale_id]} pair]
+      (if stale_id
+        (reclaim-stale-timeline-pair! exploration_query_id timeline_id stale_id)
+        (insert-fresh-timeline-pair! exploration_query_id timeline_id)))))
 
 (defn- run-one-timeline-iteration!
   "Try to claim and score one `(query, timeline)` pair. The scorer's own try/catch (in

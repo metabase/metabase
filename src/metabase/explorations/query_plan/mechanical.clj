@@ -2,9 +2,11 @@
   "Mechanical (deterministic) implementation of
   `metabase.explorations.query-plan.planner/QueryPlanner`. For every
   (metric, dimension) pair where the dimension resolves on the metric, emit
-  a `default` plan item plus eligible `temporal-pattern-day`,
-  `temporal-pattern-hour`, and `time-facet` variants. This mirrors the
-  pre-LLM `candidates-for-pair` strategy that lived in `api.clj`.
+  the eligible variants — `default`, `top-n-other`, `temporal-pattern-day`,
+  `temporal-pattern-hour`, `time-facet`. `default` and `top-n-other` are
+  cardinality-banded: known-low → default only; known-mid → both; known-high
+  or unknown → top-n-other only (the unbounded `default` shape must not be
+  emitted when cardinality might be high).
 
   Used as a fallback when the LLM isn't configured, and as the implementation
   reachable by setting an explicit override. Always succeeds (outcome `:ok`
@@ -22,6 +24,14 @@
   Matches the pre-LLM threshold."
   20)
 
+(def ^:private default-max-cardinality
+  "Maximum raw distinct-count for which the `default` variant emits a usable
+  chart. Above this the bar count is unreadable AND the serialized result
+  risks blowing the cache budget; top-n-other handles those cases. Unknown
+  cardinality also disqualifies — top-n-other will pick it up instead,
+  bounded by construction."
+  100)
+
 (defn- temporal-pattern-variants
   "Vector of `[variant unit]` pairs applicable to `dim`. Day-of-Week applies
   to any temporal dim (date or datetime). Hour-of-Day applies only to
@@ -34,6 +44,19 @@
 
     (qp.mbql/dim-type-isa? dim :type/DateTime)
     (conj "temporal-pattern-hour")))
+
+(defn- default-eligible?
+  "Eligibility for the `default` variant on this dim:
+   - Temporal: always — the breakout is bucketed by time unit, bounded.
+   - Auto-binned numeric: always — eff = bin count, always ≤ 20.
+   - Categorical: cardinality must be known AND ≤ `default-max-cardinality`.
+     Unknown / high cardinality routes through `top-n-other-eligible?` instead,
+     which is bounded by K."
+  [dim]
+  (or (qp.mbql/dim-type-isa? dim :type/Temporal)
+      (some? (qp.mbql/default-bucket-for-dim dim))
+      (let [eff (qp.mbql/effective-cardinality dim)]
+        (and (some? eff) (<= eff default-max-cardinality)))))
 
 (defn- time-facet-eligible?
   "Eligibility for the `time-facet` variant on this (metric, dim) pair:
@@ -76,15 +99,16 @@
       would be redundant. Mechanical stays conservative here: the LLM
       planner allows numerics via `semantic_type`, but mechanical has no
       semantic signal to lean on.
-   3. Dim's raw distinct-count is known and > `top-n-other-min-cardinality`.
-      Missing fingerprints fail closed — same conservative rule the other
-      variants use."
+   3. Dim's raw distinct-count is unknown OR > `top-n-other-min-cardinality`.
+      Missing fingerprints fail *safe* into top-n-other (bounded by K) so a
+      high-cardinality dim with no fingerprint doesn't fall through to the
+      unbounded `default` variant."
   [dim]
   (let [eff (qp.mbql/effective-cardinality dim)]
     (and (not (qp.mbql/dim-type-isa? dim :type/Temporal))
          (nil? (qp.mbql/default-bucket-for-dim dim))
-         (some? eff)
-         (> eff top-n-other-min-cardinality))))
+         (or (nil? eff)
+             (> eff top-n-other-min-cardinality)))))
 
 (defn- fan-segments
   "Expand one plan item across `[nil + metric.segments]`, producing N+1
@@ -100,9 +124,10 @@
             (update item :params assoc :segment_id (:id seg))))))
 
 (defn- items-for-pair
-  "Emit the baseline `default` plan item for one applicable (metric, dim)
-  pair, plus any eligible temporal-pattern / time-facet / top-n-other
-  variants. Each non-time-facet item is fanned out across the metric's
+  "Emit eligible variants for one applicable (metric, dim) pair: `default`
+  when `default-eligible?`, `top-n-other` when `top-n-other-eligible?`, plus
+  any temporal-pattern variants and `time-facet` when applicable. Each
+  non-time-facet item is fanned out across the metric's
   available segments — one copy per `[nil + segments]` — matching the
   pre-LLM behavior. All items share the same `(metric_id, dimension_id)`
   so the auto-groups sidebar collapses them under one leaf.
@@ -119,7 +144,7 @@
                        :dimension_id dim-id
                        :variant      variant
                        :params       {}})
-        base        [(item "default")]
+        base        (when (default-eligible? dim) [(item "default")])
         patterns    (mapv item (temporal-pattern-variants dim))
         facet       (when (time-facet-eligible? metric dim) [(item "time-facet")])
         top-n-other (when (top-n-other-eligible? dim)

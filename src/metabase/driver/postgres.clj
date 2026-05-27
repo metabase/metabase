@@ -1515,7 +1515,10 @@
                        ;; grant role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     {:schema           schema-name
      :database_details read-user}))
 

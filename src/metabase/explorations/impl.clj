@@ -265,9 +265,9 @@
   [{:keys [metric-ids q]}]
   (lib-be/with-metadata-provider-cache
     (let [card-ids   (accessible-metric-ids metric-ids)
-          cards      (load-metric-cards card-ids)
-          routed-dbs (routed-database-ids (into #{} (keep :database_id) cards))
-          cards      (remove (comp routed-dbs :database_id) cards)
+          all-cards  (load-metric-cards card-ids)
+          routed-dbs (routed-database-ids (into #{} (keep :database_id) all-cards))
+          cards      (remove (comp routed-dbs :database_id) all-cards)
           ;; Filter dimensions by user permissions for all metrics at once (one set of queries
           ;; for the whole batch, rather than per metric).
           permitted  (metrics/filter-dimensions-for-user-batch cards)

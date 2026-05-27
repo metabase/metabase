@@ -38,10 +38,43 @@
   same regardless of which categorical dim is being grouped."
   "(Other)")
 
+(def ^:private default-max-rows
+  "Safety cap on the row count returned by the `default` and `time-facet`
+  variants. Defense-in-depth against stale/missing fingerprints that route a
+  high-cardinality dim into a nominally bounded variant — without this, the
+  serialized result can exceed `query-caching-max-kb` and the chart fails to
+  persist. Sized well above the routing thresholds in `mechanical/items-for-pair`
+  (≤100 for default, ≤20 for time-facet) so it only fires when the fingerprint
+  was lying about cardinality."
+  2000)
+
+(defn- order-by-aggregation-and-limit
+  "Apply `order-by aggregation 0 desc → limit n` to `q` when `q` has at least one
+  aggregation. When the cap fires, the top-N rows by the metric survive — the
+  rows the chart most needs to show. The QP composes this with its own
+  user-defined max-results constraint and takes the tighter of the two."
+  [q n]
+  (cond-> q
+    (seq (lib/aggregations q))
+    (-> (lib/order-by (lib/aggregation-ref q 0) :desc)
+        (lib/limit n))))
+
 (defn- maybe-segment-filtered
   [query segment]
   (cond-> query
     segment (lib/filter segment)))
+
+(defn- resolve-target
+  "Resolve a dim `target` against `query`. Returns `[ref-clause field-ref]`
+  where `ref-clause` is the normalized target clause and `field-ref` is the
+  snapshot-resolved breakoutable column (nil if no match). Callers typically
+  pass `(or field-ref ref-clause)` to `lib/filter`/`lib/=` so an unmatched
+  target still flows through as the raw clause."
+  [query target]
+  (let [ref-clause (qp.mbql/normalize-target-ref target)
+        field-ref  (lib/find-matching-column query -1 ref-clause
+                                             (lib/breakoutable-columns query))]
+    [ref-clause field-ref]))
 
 (defn- with-segment-suffix
   [base-name segment]
@@ -219,7 +252,8 @@
 (defmethod dataset-query "default"
   [_ {:keys [mp card target dim segment]}]
   (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-      (maybe-segment-filtered segment)))
+      (maybe-segment-filtered segment)
+      (order-by-aggregation-and-limit default-max-rows)))
 
 (defn- temporal-pattern-mbql
   [{:keys [mp card target segment]} unit]
@@ -244,36 +278,35 @@
         dim-breakout (qp.mbql/apply-default-bucket base-query ref-clause dim)]
     (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
                                         mp (:dataset_query card))]
+      ;; Row cap is defense-in-depth: the planner's `:max-cardinality 20` gate
+      ;; is fingerprint-based and can be stale (claims low, reality high).
       (-> base-query
           (lib/breakout dim-breakout)
-          (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))))))
+          (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))
+          (order-by-aggregation-and-limit default-max-rows)))))
 
 (defmethod dataset-query "top-n-other"
   [_ {:keys [mp card target dim segment] :as ctx}]
   (let [top-values (cached-discovery ctx)]
     (when (seq top-values)
-      (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-            ref-clause (qp.mbql/normalize-target-ref target)
-            field-ref  (lib/find-matching-column base-query -1 ref-clause
-                                                 (lib/breakoutable-columns base-query))
-            pairs      (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
-            case-expr  (lib/case pairs other-bucket-label)
-            expr-name  (or (:display_name dim) (:dimension_id dim) "value")
-            with-expr  (lib/expression base-query expr-name case-expr)
-            expr-ref   (lib/expression-ref with-expr expr-name)
-            with-bo    (lib/breakout with-expr expr-ref)]
+      (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+            [ref-clause field-ref] (resolve-target base-query target)
+            pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) v]) top-values)
+            case-expr              (lib/case pairs other-bucket-label)
+            expr-name              (or (:display_name dim) (:dimension_id dim) "value")
+            with-expr              (lib/expression base-query expr-name case-expr)
+            expr-ref               (lib/expression-ref with-expr expr-name)
+            with-bo                (lib/breakout with-expr expr-ref)]
         (maybe-segment-filtered with-bo segment)))))
 
 (defmethod dataset-query "filtered-subset"
   [_ {:keys [mp card target dim segment params]}]
   (let [values (:filter_values params)]
     (when (seq values)
-      (let [snapshot      (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-            ref-clause    (qp.mbql/normalize-target-ref target)
-            field-ref     (lib/find-matching-column snapshot -1 ref-clause
-                                                    (lib/breakoutable-columns snapshot))
-            filter-clause (apply lib/= (or field-ref ref-clause) values)
-            filtered      (lib/filter snapshot filter-clause)]
+      (let [snapshot               (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
+            [ref-clause field-ref] (resolve-target snapshot target)
+            filter-clause          (apply lib/= (or field-ref ref-clause) values)
+            filtered               (lib/filter snapshot filter-clause)]
         (maybe-segment-filtered filtered segment)))))
 
 (defn- resolve-temporal-axis
@@ -283,13 +316,12 @@
   breakout. Returns `[col unit]` or nil."
   [{:keys [mp card temporal-target temporal-dim]}]
   (or (when temporal-target
-        (let [base       (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-              ref-clause (qp.mbql/normalize-target-ref temporal-target)
-              col        (lib/find-matching-column base -1 ref-clause
-                                                   (lib/breakoutable-columns base))
-              [_ unit]   (qp.mbql/default-bucket-for-dim temporal-dim)]
-          (when (or col ref-clause)
-            [(or col ref-clause) unit])))
+        (let [base                       (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+              [ref-clause temporal-col]  (resolve-target base temporal-target)
+              resolved-col               (or temporal-col ref-clause)
+              [_ unit]                   (qp.mbql/default-bucket-for-dim temporal-dim)]
+          (when resolved-col
+            [resolved-col unit])))
       (qp.mbql/extract-default-temporal-breakout-col mp (:dataset_query card))))
 
 (defmethod dataset-query "per-value-time-series"
@@ -297,10 +329,8 @@
   (let [v (nth (cached-discovery ctx) (:value_index params) nil)]
     (when (some? v)
       (when-let [[temporal-col raw-unit] (resolve-temporal-axis ctx)]
-        (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
-              ref-clause (qp.mbql/normalize-target-ref target)
-              field-ref  (lib/find-matching-column base-query -1 ref-clause
-                                                   (lib/breakoutable-columns base-query))]
+        (let [base-query             (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+              [ref-clause field-ref] (resolve-target base-query target)]
           (-> base-query
               (lib/filter (lib/= (or field-ref ref-clause) v))
               (lib/breakout (lib/with-temporal-bucket temporal-col (or raw-unit :month)))

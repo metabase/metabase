@@ -255,10 +255,10 @@
 
 (defn- repair-prompt
   [previous errors]
-  (let [echo (pr-str previous)
-        echo (if (<= (count echo) repair-echo-cap)
-               echo
-               (str (subs echo 0 repair-echo-cap) "\n... (truncated)"))]
+  (let [raw  (pr-str previous)
+        echo (if (<= (count raw) repair-echo-cap)
+               raw
+               (str (subs raw 0 repair-echo-cap) "\n... (truncated)"))]
     (qp.prompts/render
      "repair.selmer"
      {:no_tool_call  (nil? previous)
@@ -269,26 +269,33 @@
 ;; Planner entry point
 ;; ---------------------------------------------------------------------------
 
+(defn- render-prompt
+  [{:keys [thread-prompt metric-dim-ctx]}]
+  (qp.prompts/render
+   "plan.selmer"
+   (qp.context/prompt-vars
+    {:metric-dim-ctx metric-dim-ctx
+     :thread-prompt  thread-prompt})))
+
+(defn- call-llm
+  [{:keys [thread-id creator-id metric-by-id]} rendered-prompt]
+  (request/with-current-user creator-id
+    (ai.common/run-with-repair
+     {:thread-id      thread-id
+      :phase-name     "query-plan"
+      :llm-config     llm-config
+      :prompt         rendered-prompt
+      :schema         plan-schema
+      :extract-fn     extract-plan
+      :validate-fn    (partial validate-plan metric-by-id)
+      :repair-builder repair-prompt})))
+
 (defn- run-plan!
   "Render the planning prompt, call the LLM with `run-with-repair`, validate,
   and return a planner result map. Wrapped by `LlmPlanner` below."
-  [{:keys [thread-id thread-prompt metric-dim-ctx metric-by-id creator-id]}]
-  (let [rendered-prompt (qp.prompts/render
-                         "plan.selmer"
-                         (qp.context/prompt-vars
-                          {:metric-dim-ctx metric-dim-ctx
-                           :thread-prompt  thread-prompt}))
-        result (request/with-current-user creator-id
-                 (ai.common/run-with-repair
-                  {:thread-id      thread-id
-                   :phase-name     "query-plan"
-                   :llm-config     llm-config
-                   :prompt         rendered-prompt
-                   :schema         plan-schema
-                   :extract-fn     extract-plan
-                   :validate-fn    (partial validate-plan metric-by-id)
-                   :repair-builder repair-prompt}))
-        {:keys [value attempts outcome final-errors]} result
+  [ctx]
+  (let [rendered-prompt (render-prompt ctx)
+        {:keys [value attempts outcome final-errors]} (call-llm ctx rendered-prompt)
         transcript {:prompt       rendered-prompt
                     :attempts     attempts
                     :outcome      outcome

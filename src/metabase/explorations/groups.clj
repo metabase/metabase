@@ -52,6 +52,39 @@
   [{::keys [max-score] :keys [id]}]
   (if max-score [0 (- max-score) id] [1 0 id]))
 
+(defn- group-map
+  "Build an auto-group map. `card-id` and `score-queries` are stripped/computed into
+   the sort-only `::card-id` / `::max-score` keys before the final vector is emitted."
+  [{:keys [id parent-group-id display-type name query-ids card-id score-queries]}]
+  {:id              id
+   :parent_group_id parent-group-id
+   :type            "auto"
+   :display_type    display-type
+   :name            name
+   :query_ids       query-ids
+   ::card-id        card-id
+   ::max-score      (max-score score-queries)})
+
+(defn- leaf-group
+  [[card-id dim-id] qs]
+  (group-map {:id              (leaf-group-id card-id dim-id)
+              :parent-group-id (metric-group-id card-id)
+              :display-type    (if (= 1 (count qs)) "singleton" "page")
+              :name            (leaf-group-name qs)
+              :query-ids       (mapv :id qs)
+              :card-id         card-id
+              :score-queries   qs}))
+
+(defn- metric-group
+  [card-id qs card-names]
+  (group-map {:id              (metric-group-id card-id)
+              :parent-group-id nil
+              :display-type    "sidebar"
+              :name            (get card-names card-id)
+              :query-ids       []
+              :card-id         card-id
+              :score-queries   qs}))
+
 (defn auto-groups
   "Given a seq of hydrated `ExplorationQuery` rows for a single thread plus a
    `{card_id -> metric-name}` map, return a vector of auto-group maps:
@@ -76,36 +109,17 @@
    vector — the FE may use it for ordering, or walk `:parent_group_id` to build the
    tree directly."
   [queries card-names]
-  (let [;; Step 1: leaf (card, dim) groups, scored and tagged with their card_id.
-        leaves-by-card  (->> (group-by (juxt :card_id :dimension_id) queries)
-                             (map (fn [[[card-id dim-id] qs]]
-                                    {:id              (leaf-group-id card-id dim-id)
-                                     :parent_group_id (metric-group-id card-id)
-                                     :type            "auto"
-                                     :display_type    (if (= 1 (count qs)) "singleton" "page")
-                                     :name            (leaf-group-name qs)
-                                     :query_ids       (mapv :id qs)
-                                     ::card-id        card-id
-                                     ::max-score      (max-score qs)}))
-                             (group-by ::card-id))
-        ;; Step 2: metric-level groups, one per distinct card_id. Score them against
-        ;; every query under that metric so top-level ordering reflects the metric's
-        ;; best chart.
-        metric-groups   (->> (group-by :card_id queries)
-                             (map (fn [[card-id qs]]
-                                    {:id              (metric-group-id card-id)
-                                     :parent_group_id nil
-                                     :type            "auto"
-                                     :display_type    "sidebar"
-                                     :name            (get card-names card-id)
-                                     :query_ids       []
-                                     ::card-id        card-id
-                                     ::max-score      (max-score qs)})))
-        sorted-metrics  (sort-by sort-key metric-groups)
-        ;; Step 3: interleave each metric group with its sorted leaf children.
-        depth-first     (mapcat (fn [{::keys [card-id] :as metric}]
-                                  (cons metric (sort-by sort-key (get leaves-by-card card-id))))
-                                sorted-metrics)]
+  (let [leaves-by-card (->> queries
+                            (group-by (juxt :card_id :dimension_id))
+                            (map (fn [[k qs]] (leaf-group k qs)))
+                            (group-by ::card-id))
+        sorted-metrics (->> queries
+                            (group-by :card_id)
+                            (map (fn [[card-id qs]] (metric-group card-id qs card-names)))
+                            (sort-by sort-key))
+        depth-first    (mapcat (fn [{::keys [card-id] :as metric}]
+                                 (cons metric (sort-by sort-key (get leaves-by-card card-id))))
+                               sorted-metrics)]
     (into [] (comp (map-indexed #(assoc %2 :position %1))
                    (map #(dissoc % ::card-id ::max-score)))
           depth-first)))

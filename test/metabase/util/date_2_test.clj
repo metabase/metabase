@@ -425,7 +425,9 @@
                (comparison-range :>= nil)))
         (testing "exclusive start"
           (is (= {:start (t/local-date "2019-10-31")}
-                 (comparison-range :>= {:start :exclusive})))))))
+                 (comparison-range :>= {:start :exclusive}))))))))
+
+(deftest ^:parallel comparison-range-test-2
   (testing "Comparing DAY"
     (letfn [(comparison-range [comparison-type options]
               (u.date/comparison-range (t/local-date-time "2019-11-18T12:00") :day comparison-type (merge {:resolution :minute} options)))]

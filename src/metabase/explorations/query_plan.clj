@@ -166,6 +166,11 @@
     (catch Throwable e
       (log/warnf e "Failed to save query-plan transcript for thread %d" thread-id))))
 
+(defn- record-outcome!
+  "Persist a transcript with `:outcome` (and any extra kv pairs) merged onto `pre`."
+  [thread-id pre outcome & {:as extras}]
+  (save-transcript! thread-id (assoc (merge pre extras) :outcome outcome)))
+
 (defn- preamble
   "Common transcript preamble: who chose what, when, with which planner."
   [thread-id planner-name]
@@ -213,6 +218,43 @@
 ;; Public entry point — called from the worker
 ;; ---------------------------------------------------------------------------
 
+(defn- run-planner!
+  "Invoke the picked planner, persist rows / mark terminal as appropriate, and
+  return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
+  [{:keys [thread-id metric-dim-ctx metric-by-id creator-id] :as ctx} picked planner-id pre]
+  ;; Enforce the no-routed-databases constraint up front; both planners would
+  ;; produce items but the variant builders would later fail when running queries.
+  (qp.mbql/check-no-routed-databases!
+   (into {} (for [m (:metrics metric-dim-ctx)] [(:metric-id m) (:card m)])))
+  (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
+        transcript-body {:outcome      outcome
+                         :rationale    rationale
+                         :plan         plan
+                         :final-errors final-errors
+                         :planner      transcript}]
+    (case outcome
+      :ok
+      (let [n (insert-plan-rows! thread-id metric-by-id plan)]
+        (record-outcome! thread-id pre :ok :rows-count n :transcript transcript-body)
+        (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
+                   thread-id (name planner-id) n)
+        :ok)
+
+      :skip-not-applicable
+      (do (log/infof "Query plan for thread %d (%s): planner reported nothing to do"
+                     thread-id (name planner-id))
+          (record-outcome! thread-id pre :skip-empty :transcript transcript-body)
+          (mark-thread-terminally-failed! thread-id)
+          :skip-empty)
+
+      :failed
+      (do (log/warnf "Query plan for thread %d (%s): planner failed; terminally marking thread"
+                     thread-id (name planner-id))
+          (record-outcome! thread-id pre :failed :transcript transcript-body)
+          (write-planning-failed-doc! thread-id creator-id final-errors)
+          (mark-thread-terminally-failed! thread-id)
+          :failed))))
+
 (defn generate-query-plan!
   "Build a query plan for `thread-id` and materialize ExplorationQuery rows.
 
@@ -226,8 +268,7 @@
     `nil`                — uncaught throwable (logged, transcript best-effort)"
   [thread-id]
   (try
-    (let [{:keys [thread-metrics thread-dims metric-dim-ctx metric-by-id creator-id]
-           :as ctx} (build-planner-ctx thread-id)
+    (let [{:keys [thread-metrics thread-dims] :as ctx} (build-planner-ctx thread-id)
           picked     (pick-planner!)
           skip?      (:skip picked)
           planner-id (when-not skip? (planner/planner-name picked))
@@ -235,63 +276,21 @@
       (cond
         (or (empty? thread-metrics) (empty? thread-dims))
         (do (log/infof "Thread %d: no metrics or no dimensions; skipping query plan" thread-id)
-            (save-transcript! thread-id (assoc pre :outcome :skip-empty))
+            (record-outcome! thread-id pre :skip-empty)
             :skip-empty)
 
         skip?
         (do (log/infof "Thread %d: planner setting=%s and LLM not configured; skipping" thread-id
                        (explorations.settings/explorations-query-planner))
-            (save-transcript! thread-id (assoc pre :outcome skip?))
+            (record-outcome! thread-id pre skip?)
             skip?)
 
         :else
-        (do
-          ;; Enforce the no-routed-databases constraint up front; both planners would
-          ;; produce items but the variant builders would later fail when running queries.
-          (qp.mbql/check-no-routed-databases!
-           (into {} (for [m (:metrics metric-dim-ctx)] [(:metric-id m) (:card m)])))
-          (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
-                transcript-body {:outcome      outcome
-                                 :rationale    rationale
-                                 :plan         plan
-                                 :final-errors final-errors
-                                 :planner      transcript}]
-            (case outcome
-              :ok
-              (let [n (insert-plan-rows! thread-id metric-by-id plan)]
-                (save-transcript! thread-id (assoc pre
-                                                   :outcome    :ok
-                                                   :rows-count n
-                                                   :transcript transcript-body))
-                (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
-                           thread-id (name planner-id) n)
-                :ok)
-
-              :skip-not-applicable
-              (do (log/infof "Query plan for thread %d (%s): planner reported nothing to do"
-                             thread-id (name planner-id))
-                  (save-transcript! thread-id (assoc pre
-                                                     :outcome    :skip-empty
-                                                     :transcript transcript-body))
-                  ;; Treat as empty — no rows, no error doc. Mark terminally done so
-                  ;; the completion machinery doesn't wait forever.
-                  (mark-thread-terminally-failed! thread-id)
-                  :skip-empty)
-
-              :failed
-              (do (log/warnf "Query plan for thread %d (%s): planner failed; terminally marking thread"
-                             thread-id (name planner-id))
-                  (save-transcript! thread-id (assoc pre
-                                                     :outcome    :failed
-                                                     :transcript transcript-body))
-                  (write-planning-failed-doc! thread-id creator-id final-errors)
-                  (mark-thread-terminally-failed! thread-id)
-                  :failed))))))
+        (run-planner! ctx picked planner-id pre)))
     (catch Throwable e
       (log/errorf e "generate-query-plan! failed for thread %d" thread-id)
-      (save-transcript! thread-id (assoc (preamble thread-id :unknown)
-                                         :outcome :error
-                                         :error   (.getMessage e)))
+      (record-outcome! thread-id (preamble thread-id :unknown) :error
+                       :error (.getMessage e))
       (try
         (write-planning-failed-doc! thread-id
                                     (creator-id-for-thread thread-id)

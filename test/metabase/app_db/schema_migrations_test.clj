@@ -2915,7 +2915,9 @@
         (is (= "librarylibrarydatadat"
                (collection-entity-id data-id)))
         (is (= "librarylibrarymetrics"
-               (collection-entity-id metrics-id))))))
+               (collection-entity-id metrics-id)))))))
+
+(deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
     (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
@@ -2945,7 +2947,9 @@
         (is (= "legacy-other-data"
                (collection-entity-id duplicate-data-id)))
         (is (= "librarylibrarymetrics"
-               (collection-entity-id metrics-id))))))
+               (collection-entity-id metrics-id)))))))
+
+(deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
     (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"

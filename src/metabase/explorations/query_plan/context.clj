@@ -144,6 +144,30 @@
                       [dim-id {:target target :dim dim'}]))))
           dim-by-id)))
 
+(defn- metric-context
+  "Per-metric entry for [[metric-and-dim-context]]'s `:metrics` list. Enriches
+  the shared `dim-by-id` with this Card's `:group` metadata before computing
+  applicability, so `format-dim-block` and the variant builders see the same
+  enrichment."
+  [tm card mp dim-by-id]
+  (let [dataset-query        (:dataset_query card)
+        card-dims            (into {} (map (juxt :id identity)) (:dimensions card))
+        enriched-thread-dims (update-vals dim-by-id #(enrich-dim-with-card-group % card-dims))
+        appl                 (applicability enriched-thread-dims tm mp dataset-query)
+        default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
+    {:metric-id                 (:card_id tm)
+     :card                      card
+     :mp                        mp
+     :applicability             appl
+     :default-temporal-breakout (when default-temp
+                                  {:column (some-> (first default-temp) :display-name)
+                                   :unit   (some-> (second default-temp) name)})
+     :segments                  (segment-blurbs mp dataset-query)
+     :name                      (:name card)
+     :description               (some-> (:description card) str/trim not-empty)
+     :aggregation               (aggregation-summary mp dataset-query)
+     :result-column-name        (metrics/aggregation-column-name (:database_id card) dataset-query)}))
+
 (defn metric-and-dim-context
   "Hydrate the metric Cards, snapshot per-(metric, dim) applicability, and
   expose the lookup tables the orchestrator needs at materialization time:
@@ -166,39 +190,11 @@
                                       :id [:in card-ids]))
         mp-by-db  (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))
         dim-by-id (into {} (map (juxt :dimension_id identity)) thread-dims)
-        metrics   (vec
-                   (keep
-                    (fn [tm]
-                      (let [card (get cards (:card_id tm))]
-                        (when card
-                          (let [mp              (mp-by-db (:database_id card))
-                                card-dims       (into {} (map (juxt :id identity)) (:dimensions card))
-                                ;; Enrich each thread-dim with the metric Card's :group metadata
-                                ;; so format-dim-block can show "group → name" labels and the
-                                ;; variant builders see the same enrichment.
-                                enriched-thread-dims (into {}
-                                                           (map (fn [[dim-id d]]
-                                                                  [dim-id (enrich-dim-with-card-group d card-dims)]))
-                                                           dim-by-id)
-                                appl            (applicability enriched-thread-dims tm mp (:dataset_query card))
-                                default-temp    (qp.mbql/extract-default-temporal-breakout-col
-                                                 mp (:dataset_query card))
-                                result-col-name (metrics/aggregation-column-name
-                                                 (:database_id card)
-                                                 (:dataset_query card))]
-                            {:metric-id                 (:card_id tm)
-                             :card                      card
-                             :mp                        mp
-                             :applicability             appl
-                             :default-temporal-breakout (when default-temp
-                                                          {:column (some-> (first default-temp) :display-name)
-                                                           :unit   (some-> (second default-temp) name)})
-                             :segments                  (segment-blurbs mp (:dataset_query card))
-                             :name                      (:name card)
-                             :description               (some-> (:description card) str/trim not-empty)
-                             :aggregation               (aggregation-summary mp (:dataset_query card))
-                             :result-column-name        result-col-name}))))
-                    thread-metrics))
+        metrics   (into []
+                        (keep (fn [tm]
+                                (when-let [card (get cards (:card_id tm))]
+                                  (metric-context tm card (mp-by-db (:database_id card)) dim-by-id))))
+                        thread-metrics)
         ;; Build per-dim applicable-to lists by inverting applicability.
         applicable-to (reduce (fn [acc m]
                                 (reduce (fn [acc2 dim-id]
