@@ -3,8 +3,10 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -544,3 +546,23 @@
     ;; escape double-quotes in the role
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
     "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
+
+(deftest ^:synchronized assert-can-grant-select!-test
+  (testing "throws 412 with copy-pasteable SQL when user lacks SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "system.grants") []
+                                 (str/includes? sql "currentUser()") [{:u "stats_admin"}]))]
+      (try
+        (clickhouse/assert-can-grant-select! ::stub-conn "analytics")
+        (is false "expected assert-can-grant-select! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "analytics" (:schema (ex-data e))))
+          (is (= "stats_admin" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT SELECT ON `analytics`.* TO stats_admin WITH GRANT OPTION"))))))
+  (testing "no-op when user holds SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (when (str/includes? sql "system.grants")
+                                 [{:1 1}]))]
+      (is (nil? (clickhouse/assert-can-grant-select! ::stub-conn "analytics"))))))
