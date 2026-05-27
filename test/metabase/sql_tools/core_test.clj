@@ -234,5 +234,10 @@
 (deftest ^:parallel is-single-stmt-of-type-not-stripped-test
   (testing "we don't remove value clauses when validating impersonated queries (#74284)"
     (let [values-query (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")]
-      (is (= {:is-single-stmt? true, :sql values-query}
-             (sql-tools/is-single-stmt-of-type? :postgres values-query "read"))))))
+      (are [sql is-single-stmt?] (= {:is-single-stmt? is-single-stmt? :sql sql}
+                                    (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        values-query true
+        (str "SELECT 1; " values-query) false
+        (str "SET ROLE none; " values-query) false
+        (str values-query "; SELECT 1") false
+        (str values-query "; SET ROLE none") false))))
