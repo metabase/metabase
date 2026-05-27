@@ -189,6 +189,7 @@
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
+  "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
   (let [deps (dependencies)
         updated (updated-modules git-ref)
@@ -338,10 +339,14 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
+(defn break-quarantine-label
+  "PR label string that forces driver tests for `driver` to run even when otherwise quarantined."
+  [driver]
   (str "break-quarantine-" (name driver)))
 
-(defn run-driver-label [driver]
+(defn run-driver-label
+  "PR label string that opts `driver`'s test job into a given CI run."
+  [driver]
   (str "ci:run-" (name driver)))
 
 (defn- driver-decision
@@ -478,7 +483,6 @@
                                                       (not (contains? (:pr-labels ctx)
                                                                       (break-quarantine-label driver))))))
                                        all-drivers)]
-
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
@@ -486,7 +490,6 @@
           (println (str (name driver) "-should-run=" should-run)))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
-
       (do
         ;; Print module analysis summary
         (println "")
@@ -496,7 +499,6 @@
         (println "Important file changed:" (boolean important-file-changed?))
         (println "Drivers with file changes:" (pr-str particular-driver-changed?))
         (println "")
-
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
         (doseq [{:keys [driver should-run reason]} decisions]
@@ -505,7 +507,6 @@
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
                            reason)))
         (println "")
-
         ;; Print GITHUB_OUTPUT preview with colors
         (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
           (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
@@ -514,7 +515,6 @@
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
             (println (str (name driver) "-should-run=false"))))
-
         ;; Output quarantine conflict warnings with colors
         (when (seq quarantined-with-changes)
           (println "")
@@ -523,7 +523,6 @@
           (doseq [driver quarantined-with-changes]
             (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
             (println (str (name driver) "-quarantine-conflict=true"))))))
-
     (u/exit 0)))
 
 (defn -main
