@@ -7,7 +7,7 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import {
   createMockDatabase,
   createMockUser,
@@ -26,8 +26,8 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
-jest.mock("metabase/query_builder/actions", () => ({
-  ...jest.requireActual("metabase/query_builder/actions"),
+jest.mock("metabase/redux/query-builder", () => ({
+  ...jest.requireActual("metabase/redux/query-builder"),
   setIsNativeEditorOpen: jest.fn(),
 }));
 
