@@ -120,7 +120,6 @@
             (is (= [[123.456 789 "test"] [123.456 789 "another"]] result))
             (is (every? #(instance? Double (first %)) result))
             (is (every? #(instance? Long (second %)) result))))
-
         (testing "values that overflow primitive ranges become nil rather than silently truncating"
           (let [too-big-int (.shiftLeft (BigInteger. "1") 65) ; doesn't fit in long
                 too-big-dec (.scaleByPowerOfTen (BigDecimal. "1") 400)] ; beyond Double range
