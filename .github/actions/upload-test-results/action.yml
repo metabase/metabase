@@ -51,7 +51,7 @@ runs:
       # 1. This step must always run because it controls job's exit code.
       # 2. There's no point in running this outside the organization
       if: always() && github.repository_owner == 'metabase'
-      uses: trunk-io/analytics-uploader@main
+      uses: trunk-io/analytics-uploader@1198efcc0976501147b10a7e343c3fa069527526 # v2.0.9
       env:
         TRUNK_REPO_URL: git@github.com:metabase/metabase.git
       with:
