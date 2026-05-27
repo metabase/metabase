@@ -257,6 +257,12 @@
     "search"
     "visualize_query"})
 
+(deftest ui-tools-declare-required-extensions-test
+  (testing "UI tools declare their own required client extensions"
+    (doseq [{:keys [name required-extensions]} (mcp.resources/list-ui-tools)]
+      (is (= #{:mcp-app-ui} required-extensions)
+          (str name " should require MCP Apps UI support")))))
+
 (deftest tools-list-all-tools-declare-required-hints-test
   (testing "every tool advertises readOnlyHint, destructiveHint, openWorldHint (some MCP clients reject tools that omit them)"
     (let [[session-id _] (initialize!)

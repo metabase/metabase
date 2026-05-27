@@ -193,7 +193,9 @@
           tool  (-> tool
                     (update :inputSchema  malli->ui-input-schema)
                     (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
-                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
+                    (assoc :scope scope
+                           :required-extensions #{:mcp-app-ui}
+                           :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
