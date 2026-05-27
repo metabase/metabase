@@ -35,7 +35,6 @@ import {
   provideParameterValuesTags,
 } from "./tags";
 import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -241,8 +240,9 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/persist`,
         }),
-        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
-          handleQueryFulfilled(queryFulfilled, () => {
+        onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+          try {
+            await queryFulfilled;
             // we wait to invalidate this tag so the cache refresh has time to start before we refetch
             setTimeout(() => {
               dispatch(
@@ -253,7 +253,10 @@ export const cardApi = Api.injectEndpoints({
                 ]),
               );
             }, PERSISTED_MODEL_REFRESH_DELAY);
-          }),
+          } catch {
+            // mutation failed — nothing to invalidate
+          }
+        },
       }),
       unpersistModel: builder.mutation<void, CardId>({
         query: (id) => ({
@@ -272,8 +275,9 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/refresh`,
         }),
-        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
-          handleQueryFulfilled(queryFulfilled, () => {
+        onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+          try {
+            await queryFulfilled;
             // we wait to invalidate this tag so the cache refresh has time to start before we refetch
             setTimeout(() => {
               dispatch(
@@ -284,7 +288,10 @@ export const cardApi = Api.injectEndpoints({
                 ]),
               );
             }, PERSISTED_MODEL_REFRESH_DELAY);
-          }),
+          } catch {
+            // mutation failed — nothing to invalidate
+          }
+        },
       }),
       listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
         query: (params) => ({
@@ -339,7 +346,7 @@ export const cardApi = Api.injectEndpoints({
         "embedding_params" | "embedding_type"
       >(),
       getCardDashboards: builder.query<
-        { id: DashboardId; name: string }[],
+        { id: DashboardId; name: string; enable_embedding: boolean }[],
         Pick<Card, "id">
       >({
         query: ({ id }) => ({

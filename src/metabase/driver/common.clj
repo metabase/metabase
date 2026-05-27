@@ -141,6 +141,12 @@
    :type    :hidden
    :default false})
 
+(def admin-connection-option
+  "Map representing the 'is this an admin connection' option"
+  {:name    "admin-connection"
+   :type    :hidden
+   :default false})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."
@@ -159,7 +165,8 @@
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true
-                  "write-data-connection" false}})
+                  "write-data-connection" false
+                  "admin-connection" false}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -168,7 +175,8 @@
    :display-name (deferred-tru "Choose when syncs and scans happen")
    :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true
-                  "write-data-connection" false}})
+                  "write-data-connection" false
+                  "admin-connection" false}})
 
 (def metadata-sync-schedule
   "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
@@ -198,7 +206,8 @@
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
    :visible-if   {"advanced-options" true
-                  "write-data-connection" false}
+                  "write-data-connection" false
+                  "admin-connection" false}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
@@ -214,7 +223,8 @@
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true
-                  "write-data-connection" false}})
+                  "write-data-connection" false
+                  "admin-connection" false}})
 
 (def multi-level-schema
   "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
@@ -226,6 +236,7 @@
   "Vector containing the most common options present in the advanced option section of the DB connection form."
   [destination-database-option
    write-data-connection-option
+   admin-connection-option
    auto-run-queries
    let-user-control-scheduling
    metadata-sync-schedule
@@ -295,7 +306,7 @@
        :type :checked-section
        :check (fn []
                 (and
-                  ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+                 ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
                  (not (premium-features/is-hosted?))
                  (premium-features/enable-database-auth-providers?)))
        :default false}

@@ -62,27 +62,21 @@
             mock-source (->MockSource written-files)
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")]]
-
         (is (= "mock-written-version" (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")))
-
         (testing "write-files! was called with correct message"
           (is (= "Test commit message" (:message @written-files))))
-
         (testing "write-files! was called with correct number of files"
           (is (= 2 (count (:files @written-files)))))
-
         (testing "each file has path and content"
           (doseq [file (:files @written-files)]
             (is (contains? file :path) "File should have :path")
             (is (contains? file :content) "File should have :content")
             (is (string? (:path file)) "Path should be a string")
             (is (string? (:content file)) "Content should be a string")))
-
         (testing "file paths end with .yaml"
           (doseq [file (:files @written-files)]
             (is (str/ends-with? (:path file) ".yaml")
                 "File paths should end with .yaml")))
-
         (testing "file content is valid YAML containing entity data"
           (doseq [file (:files @written-files)]
             (is (str/includes? (:content file) "serdes/meta")
@@ -104,12 +98,9 @@
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")
                            (create-test-entity "test-id-3" "entity-three" "Dashboard")]]
-
         (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (nil? (:progress initial-task)) "Progress should be nil initially"))
-
         (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit")
-
         (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (some? (:progress final-task)) "Progress should be updated after store!")
           (is (> (:progress final-task) 0.3) "Progress should be greater than 0.3")
@@ -127,12 +118,9 @@
                                                         :initiated_by (:id user)}]
       (let [written-files (atom nil)
             mock-source (->MockSource written-files)]
-
         (source/store! [] (source.p/snapshot mock-source) task-id "Empty commit")
-
         (testing "write-files! was called even with empty stream"
           (is (some? @written-files)))
-
         (testing "files list is empty"
           (is (empty? (:files @written-files))))))))
 

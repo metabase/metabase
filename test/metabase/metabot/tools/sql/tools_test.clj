@@ -30,7 +30,6 @@
                              :new_string "id = 2"}]})]
               (is (= query-id (:query-id result)))
               (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
-
           (testing "edit with JSON-parsed MBQL 5 query (string enum values)"
             (let [original-sql "SELECT * FROM users WHERE id = 1"
                   query-id "q-mbql5"
@@ -47,7 +46,6 @@
                              :new_string "id = 2"}]})]
               (is (= query-id (:query-id result)))
               (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
-
           (testing "replace-all edit"
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users WHERE id = 1"
@@ -64,7 +62,6 @@
                              :replace_all true}]})]
               (is (= "SELECT user_id, user_id FROM users WHERE user_id = 1"
                      (:query-content result)))))
-
           (testing "rejects ambiguous edits"
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users"
@@ -100,7 +97,6 @@
                     :sql new-sql})]
               (is (= new-sql (:query-content result)))
               (is (= db-id (:database result)))))
-
           (testing "replace with JSON-parsed MBQL 5 query (string enum values)"
             (let [original-sql "SELECT * FROM users"
                   new-sql "SELECT id, name FROM customers"
@@ -116,7 +112,6 @@
                     :sql new-sql})]
               (is (= new-sql (:query-content result)))
               (is (= db-id (:database result)))))
-
           (testing "replaces SQL and updates name/description"
             (let [mp (mt/metadata-provider)
                   query-id "q6"
@@ -185,20 +180,16 @@
   (testing "extracts {{#N}} card references from SQL strings"
     (is (= [{:type "card" :id 42}]
            (sql-common/card-refs-in-sql "SELECT * FROM {{#42}}"))))
-
   (testing "tolerates inner whitespace and the optional `-slug` suffix"
     (is (= [{:type "card" :id 7} {:type "card" :id 8}]
            (sql-common/card-refs-in-sql
             "SELECT 1 FROM {{ #7 }} a JOIN {{#8-my-card}} b ON a.id = b.id"))))
-
   (testing "dedupes repeated refs in source order"
     (is (= [{:type "card" :id 1} {:type "card" :id 2}]
            (sql-common/card-refs-in-sql
             "SELECT * FROM {{#1}} JOIN {{#2}} JOIN {{#1-again}}"))))
-
   (testing "returns [] for SQL without card refs"
     (is (= [] (sql-common/card-refs-in-sql "SELECT 1"))))
-
   (testing "returns [] for nil or non-string inputs"
     (is (= [] (sql-common/card-refs-in-sql nil)))
     (is (= [] (sql-common/card-refs-in-sql 42)))))

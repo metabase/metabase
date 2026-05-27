@@ -126,7 +126,7 @@ describe(
 
         H.waitForSimpleEmbedIframesToLoad();
 
-        // Experience step
+        // Combined experience + resource step
         getEmbedSidebar().within(() => {
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
@@ -139,6 +139,19 @@ describe(
           cy.findByTestId("upsell-card").should("be.visible");
 
           cy.findByText("Chart").click();
+
+          cy.findByTestId("embed-browse-entity-button").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Select a chart").should("be.visible");
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
+          cy.findByText(FIRST_QUESTION_NAME).click();
+        });
+
+        getEmbedSidebar().within(() => {
           cy.findByText("Next").click();
         });
 
@@ -146,20 +159,6 @@ describe(
           event: "embed_wizard_experience_completed",
           event_detail:
             "authType=guest-embed,experience=chart,isDefaultExperience=false",
-        });
-
-        // Entity selection step
-        getEmbedSidebar().within(() => {
-          cy.findByTestId("embed-browse-entity-button").click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText("Select a chart").should("be.visible");
-          cy.findByText(FIRST_QUESTION_NAME).click();
-        });
-
-        getEmbedSidebar().within(() => {
-          cy.findByText("Next").click();
         });
 
         H.expectUnstructuredSnowplowEvent({

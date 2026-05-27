@@ -69,6 +69,10 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
+(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
+  (deferred-tru "Render query visualizations in the MCP UI"))
+(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
+  (deferred-tru "Render drill-through visualizations in the MCP UI"))
 
 ;; Alert
 (api-scope/defscope agent-alert-create "agent:alert:create"

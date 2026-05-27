@@ -47,6 +47,11 @@
                       ;; NB: because of test parallelism, this *will* affect other non-h2
                       ;; tests, but the check above in the test-driver function will
                       ;; prevent it from actually doing anything different in those tests.
+                      ;; The kondo ignore is the exemption: this `with-redefs` is
+                      ;; parallel-safe by construction (the redef target is a no-op
+                      ;; identity for h2, and the inner conditional in `test-driver`
+                      ;; prevents it from affecting non-h2 tests).
+                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                       (with-redefs [mtd/-test-driver test-driver]
                         (f))))
 
@@ -273,7 +278,6 @@
       "insert into venues (name) values ('bill')"
       "create table venues"
       "alter table venues add column address varchar(255)")
-
     (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
@@ -281,9 +285,7 @@
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
-
     (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
-
     (is (= nil (#'h2/check-action-commands-allowed
                 {:database (mt/id)
                  :engine :h2

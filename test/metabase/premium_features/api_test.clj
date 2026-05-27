@@ -21,11 +21,9 @@
       (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)]
         (is (= fake-token-status
                (mt/user-http-request :crowberto :get 200 "premium-features/token/status")))))
-
     (testing "requires superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "premium-features/token/status"))))
-
     (testing "returns 404 if no token is set"
       (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly nil)]
         (is (= "Not found."
@@ -41,11 +39,9 @@
           (is (=? (dissoc fake-token-status :trial)
                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
           (is (true? @cleared?))))))
-
   (testing "requires superusers"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "premium-features/token/refresh"))))
-
   (testing "returns 404 if no token is set"
     (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly nil)
                                 premium-features/premium-embedding-token (constantly nil)]
@@ -69,7 +65,6 @@
                   (is (= [(str "https://ai-service.example.com/v1/invalidate-token-cache/" token)
                           {:throw-exceptions false}]
                          @request*))))))))))
-
   (testing "POST /api/premium-features/token/refresh does not invalidate the AI service cache when it is not configured"
     (mt/with-dynamic-fn-redefs [premium-features/token-status            (constantly fake-token-status)
                                 premium-features/premium-embedding-token (constantly "proxy-token")

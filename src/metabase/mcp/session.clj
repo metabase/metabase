@@ -20,6 +20,7 @@
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -148,41 +149,63 @@
 ;; encoded query.
 
 (defn store-handle!
-  "Insert a new handle row binding `encoded-query` to the MCP session, and return
-   the freshly minted handle UUID.
+  "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   When `user-id` is non-nil, materializes the backing `core_session` so cleanup
-   happens via cascade when the session row is reaped. When nil — e.g. agent flows
-   that don't render an iframe — the row is stored without a `core_session_id` and
-   relies on explicit `delete!` for cleanup.
+   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+   when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
+   user-scoped, since handle UUIDs are globally unique.
 
-   `prompt` is optional, but should be supplied for construct_query handles so
-   visualize_query can later return both the query and original user prompt to
-   the MCP iframe for feedback submission."
-  ([session-id user-id encoded-query]
-   (store-handle! session-id user-id encoded-query nil))
-  ([session-id user-id encoded-query prompt]
-   (let [core-session-id (when user-id
-                           (:id (get-or-create-embedding-session! session-id user-id)))
+   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
+   return both the query and original user prompt to the MCP iframe for feedback submission."
+  ([mcp-session-id user-id encoded-query]
+   (store-handle! mcp-session-id user-id encoded-query nil))
+  ([mcp-session-id user-id encoded-query prompt]
+   ;; Materializing a core_session here serves two purposes: its FK is what makes handles
+   ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
+   ;; filters on for cross-session ownership.
+   (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
      (t2/insert! :model/McpQueryHandle
                  (cond-> {:id              handle-id
-                          :mcp_session_id  session-id
+                          :mcp_session_id  mcp-session-id
                           :core_session_id core-session-id
                           :encoded_query   encoded-query}
                    prompt (assoc :prompt prompt)))
      handle-id)))
 
+(defn- find-handle-row
+  "Look up the handle row by `handle-id`, scoped to `user-id`.
+   Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
+   row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
+   on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
+   cross-session resolutions for telemetry."
+  [mcp-session-id user-id handle-id]
+  (when (and user-id handle-id)
+    ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
+    ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
+    (let [row (t2/select-one :model/McpQueryHandle
+                             {:select [:mqh.*]
+                              :from   [[:mcp_query_handle :mqh]]
+                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
+                              :where  [:and
+                                       [:= :mqh.id handle-id]
+                                       [:= :cs.user_id user-id]]})]
+      (when (and row (not= mcp-session-id (:mcp_session_id row)))
+        (log/debugf "MCP handle %s resolved across sessions for user %s"
+                    handle-id user-id))
+      row)))
+
 (defn read-handle
-  "Return the encoded query for `handle-id` in `session-id`, or nil if no row exists."
-  [session-id handle-id]
-  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id, :mcp_session_id session-id))
+  "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  [mcp-session-id user-id handle-id]
+  (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn resolve-query-handle
-  "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
-   Used by visualize_query and execute_query to resolve construct_query handles."
-  [session-id handle-id]
-  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
+  "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
+   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  [mcp-session-id user-id handle-id]
+  (when-let [row (find-handle-row mcp-session-id user-id handle-id)]
     (select-keys row [:encoded_query :prompt])))
 
 (defn delete!

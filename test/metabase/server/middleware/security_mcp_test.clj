@@ -31,15 +31,12 @@
   (testing "Claude sandbox origins should be allowed when claude is enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["claude"]]
       (assert-cors-allowed! "https://abc.claudemcpcontent.com")))
-
   (testing "ChatGPT sandbox origins should be allowed when chatgpt is enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["chatgpt"]]
       (assert-cors-allowed! "https://abc.web-sandbox.oaiusercontent.com")))
-
   (testing "Claude sandbox origins should NOT be allowed when only chatgpt is enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["chatgpt"]]
       (assert-cors-blocked! "https://abc.claudemcpcontent.com")))
-
   (testing "Multiple MCP clients can be enabled simultaneously"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["claude" "chatgpt"]]
       (assert-cors-allowed! "https://abc.claudemcpcontent.com")
@@ -49,7 +46,6 @@
   (testing "vscode-webview:// origins should be allowed when vscode is enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["cursor-vscode"]]
       (assert-cors-allowed! "vscode-webview://abc123")))
-
   (testing "vscode-webview:// origins should NOT be allowed when vscode is not enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["claude"]]
       (assert-cors-blocked! "vscode-webview://abc123"))))
@@ -58,7 +54,6 @@
   (testing "Custom MCP origins should be allowed"
     (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "https://my-librechat.example.com"]
       (assert-cors-allowed! "https://my-librechat.example.com")))
-
   (testing "Custom MCP origins should work alongside common MCP origins"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  ["claude"]
                                        mcp-apps-cors-custom-origins "https://my-librechat.example.com"]
@@ -78,14 +73,12 @@
       (let [origins (mcp.settings/mcp-apps-cors-origins)]
         (is (str/includes? origins "*.claudemcpcontent.com"))
         (is (str/includes? origins "*.web-sandbox.oaiusercontent.com")))))
-
   (testing "mcp-apps-cors-origins includes custom origins"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  ["claude"]
                                        mcp-apps-cors-custom-origins "https://custom.example.com"]
       (let [origins (mcp.settings/mcp-apps-cors-origins)]
         (is (str/includes? origins "*.claudemcpcontent.com"))
         (is (str/includes? origins "https://custom.example.com")))))
-
   (testing "mcp-apps-cors-origins returns empty string when nothing is configured"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  []
                                        mcp-apps-cors-custom-origins ""]

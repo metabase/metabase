@@ -212,11 +212,16 @@
          entity-usage)))))
 
 (def ^:private model-chart-schema
+  "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
+  representations format: `:query` is a YAML string in MBQL 5 representations format.
+
+  Per `repr-plan.md` step 13, `:source_entity` is no longer part of the contract — the YAML
+  query is self-describing (carries `database:` at the top level and full portable FK paths
+  everywhere else)."
   [:map {:closed true}
    [:name :string]
    [:description :string]
-   [:source_entity [:map [:type :string] [:id :int]]]
-   [:program :map]
+   [:query :string]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
@@ -225,42 +230,38 @@
            :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
-  [{:keys [name description source_entity program viz_settings]} :- model-chart-schema]
-  (let [entity-usage (construct-tools/construct-entity-usage source_entity nil program)]
-    (try
-      (let [chart-type (get viz_settings :chart_type)
-            result     (construct-tools/construct-notebook-query-tool
-                        {:source_entity source_entity
-                         :program program
-                         :visualization {:chart_type chart-type}})
-            structured (or (:structured-output result) (:structured_output result))
-            query-id   (:query-id structured)
-            dataset-query (:query structured)]
-        (if (map? dataset-query)
-          {:output "Draft chart payload generated from model/notebook query."
-           :structured-output {:tool          "document_construct_model_chart"
-                               :name          name
-                               :description   description
-                               :dataset_query dataset-query
-                               :display       chart-type
-                               :chart_type    chart-type
-                               :query_id      query-id
-                               :query         dataset-query
-                               :result-type   :chart-draft
-                               :entity-usage  entity-usage}
-           :final-response? true}
-          ;; Preserve tool error messaging from construct_notebook_query path.
-          ;; The inner construct result already carries entity-usage with the
-          ;; same input (same source_entity + program forwarded), so reattaching
-          ;; here is a no-op for the inner-success branch; the fallback covers
-          ;; the construct-returned-nil case.
-          (construct-tools/entity-usage-on-result
-           (or result {:output "Failed to construct model chart draft."})
-           entity-usage)))
-      (catch Exception e
-        (log/error e "Error constructing model chart draft")
+  [{:keys [name description query viz_settings]} :- model-chart-schema]
+  ;; TODO(BOT-1569): populate `entity-usage` by walking the resolved
+  ;; `pmbql-query` (see `construct-tools/empty-entity-usage`).
+  (try
+    (let [chart-type (get viz_settings :chart_type)
+          result     (construct-tools/construct-notebook-query-tool
+                      {:query query
+                       :visualization {:chart_type chart-type}})
+          structured (or (:structured-output result) (:structured_output result))
+          query-id   (:query-id structured)
+          dataset-query (:query structured)]
+      (if (map? dataset-query)
+        {:output "Draft chart payload generated from model/notebook query."
+         :structured-output {:tool          "document_construct_model_chart"
+                             :name          name
+                             :description   description
+                             :dataset_query dataset-query
+                             :display       chart-type
+                             :chart_type    chart-type
+                             :query_id      query-id
+                             :query         dataset-query
+                             :result-type   :chart-draft
+                             :entity-usage  construct-tools/empty-entity-usage}
+         :final-response? true}
+        ;; Preserve tool error messaging from construct_notebook_query path.
         (construct-tools/entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))})
-         entity-usage)))))
+         (or result {:output "Failed to construct model chart draft."})
+         construct-tools/empty-entity-usage)))
+    (catch Exception e
+      (log/error e "Error constructing model chart draft")
+      (construct-tools/entity-usage-on-result
+       (if (:agent-error? (ex-data e))
+         {:output (ex-message e)}
+         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))})
+       construct-tools/empty-entity-usage))))

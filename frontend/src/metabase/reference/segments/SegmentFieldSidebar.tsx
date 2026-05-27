@@ -5,11 +5,12 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
-import type { Field, Segment } from "metabase-types/api";
+
+import type { StubbedField, StubbedSegment } from "../types";
 
 interface SegmentFieldSidebarProps {
-  segment: Segment;
-  field: Field;
+  segment: StubbedSegment;
+  field: StubbedField;
 }
 
 const SegmentFieldSidebar = ({ segment, field }: SegmentFieldSidebarProps) => (

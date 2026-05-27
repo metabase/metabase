@@ -60,7 +60,6 @@
                                                    :synonym-pairs     {:measurement 0.0 :score 0}
                                                    :repeated-measures {:measurement 0.0 :score 0}}}}}
             (#'complexity/score-catalog [] nil))))
-
   (testing "entity count contributes +10 per entity (lives under :size)"
     (let [es [(entity :name "orders")
               (entity :name "customers")
@@ -69,7 +68,6 @@
                :components {:size {:score      30
                                    :components {:entity-count {:measurement 3.0 :score 30}}}}}
               (#'complexity/score-catalog es nil)))))
-
   (testing "name collisions stack linearly: 3 identical names = +200 (lives under :ambiguity)"
     (let [es [(entity :name "orders")
               (entity :name "orders")
@@ -77,27 +75,23 @@
       (is (=? {:components {:size      {:components {:entity-count    {:measurement 3.0 :score 30}}}
                             :ambiguity {:components {:name-collisions {:measurement 2.0 :score 200}}}}}
               (#'complexity/score-catalog es nil)))))
-
   (testing "collision detection is case-insensitive and trims whitespace"
     (let [es [(entity :name "Orders")
               (entity :name " orders ")
               (entity :name "ORDERS")]]
       (is (=? {:components {:ambiguity {:components {:name-collisions {:measurement 2.0 :score 200}}}}}
               (#'complexity/score-catalog es nil)))))
-
   (testing "field count contributes +1 per field (lives under :size, summed across entities)"
     (let [es [(entity :name "a" :field-count 10)
               (entity :name "b" :field-count 25)]]
       (is (=? {:components {:size {:components {:field-count {:measurement 35.0 :score 35}}}}}
               (#'complexity/score-catalog es nil)))))
-
   (testing "repeated measures contribute +2 per repeat (lives under :ambiguity)"
     (let [es [(entity :name "invoices"      :measure-names ["revenue" "discount"])
               (entity :name "subscriptions" :measure-names ["revenue"])
               (entity :name "products"      :measure-names ["price"])]]
       (is (=? {:components {:ambiguity {:components {:repeated-measures {:measurement 1.0 :score 2}}}}}
               (#'complexity/score-catalog es nil)))))
-
   (testing "nil embedder disables synonym scoring"
     (let [es [(entity :name "customers") (entity :name "clients")]]
       (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 0.0 :score 0}}}}}
@@ -219,14 +213,12 @@
                                    "clients"   [0.9 0.1 0.0]})]
       (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 1.0 :score 50}}}}}
               (#'complexity/score-catalog es embedder)))))
-
   (testing "orthogonal embeddings produce no synonym pairs"
     (let [es       [(entity :name "customers") (entity :name "widgets")]
           embedder (mock-embedder {"customers" [1.0 0.0]
                                    "widgets"   [0.0 1.0]})]
       (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 0.0 :score 0}}}}}
               (#'complexity/score-catalog es embedder)))))
-
   (testing "exact-name duplicates don't double-count as synonym pairs"
     (let [es       [(entity :name "orders") (entity :name "orders") (entity :name "tickets")]
           embedder (mock-embedder {"orders"  [1.0 0.0]
@@ -234,7 +226,6 @@
       (is (=? {:components {:ambiguity {:components {:name-collisions {:measurement 1.0 :score 100}
                                                      :synonym-pairs   {:measurement 0.0 :score 0}}}}}
               (#'complexity/score-catalog es embedder)))))
-
   (testing "entities without a vector from the embedder are simply skipped"
     (let [es       [(entity :name "customers") (entity :name "clients") (entity :name "ghost")]
           ;; "ghost" is missing → not considered. The remaining two are synonyms.
@@ -242,7 +233,6 @@
                                    "clients"   [0.99 0.01]})]
       (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 1.0 :score 50}}}}}
               (#'complexity/score-catalog es embedder)))))
-
   (testing "embedder failure cascades nil through the catalog (no zero-fallback)"
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (fn [_] (throw (ex-info "boom" {})))]
@@ -258,7 +248,6 @@
                                        :components {:entity-count {:measurement 2.0 :score 20}
                                                     :field-count  {:measurement 0.0 :score 0}}}}}
              (#'complexity/score-catalog es embedder)))))
-
   (testing "throwable with a nil/blank message still records :error as a nonblank string"
     ;; Regression: we must keep :error present so an embedder failure is distinguishable from a
     ;; genuine zero-synonym result. Fall back to the exception class name.
@@ -538,7 +527,6 @@
                 "the row with the lowest numeric model_id wins")
             (is (empty? @unseen)
                 "every expected fetch-batch pair-set must be requested"))))))
-
   (testing "cross-model duplicates: lowest model_id wins, model is secondary tie-break"
     ;; :kind :question maps to "card" and :kind :table maps to "table" via entity-type->search-model,
     ;; so the real (model, model_id) query contract is exercised. Both have id 5, so model_ids tie
@@ -597,8 +585,9 @@
             (is (some? (get result "products"))
                 "non-colliding entity is retained")
             (is (empty? @unseen)
-                "every expected fetch-batch pair-set must be requested"))))))
+                "every expected fetch-batch pair-set must be requested")))))))
 
+(deftest ^:sequential search-index-embedder-cross-batch-dedup-test-2
   (testing "cross-batch, cross-model duplicates: model_id primary, model secondary"
     ;; Same normalized name from three different batches and three different model types.
     ;; model_id "5" appears twice (card + dataset); model_id "12" is in a third batch.
