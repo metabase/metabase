@@ -233,7 +233,7 @@
 (defmethod sql.qp/date [:teradata :year] [_ _ expr] (trunc :year expr))
 
 (defn- num-to-interval [unit amount]
-  [:raw (format "INTERVAL '%d' %s" (int (Math/abs amount)) (name unit))])
+  [:raw (format "INTERVAL '%d' %s" (int (Math/abs (long amount))) (name unit))])
 
 (defmethod sql.qp/add-interval-honeysql-form :teradata [_ hsql-form amount unit]
   (let [op (if (>= amount 0) h2x/+ h2x/-)]
@@ -364,33 +364,33 @@
 
 ;; We can't use getObject(int, Class) as the underlying Resultset used by the Teradata jdbc driver is based on jdk6.
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/TIMESTAMP]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
-    (when-let [value (.getTimestamp rs i)]
+    (when-let [^java.sql.Timestamp value (.getTimestamp rs i)]
       (.toLocalDateTime value))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (when-let [value (.getString rs i)]
       (OffsetDateTime/parse value))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/DATE]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
-    (when-let [value (.getDate rs i)]
+    (when-let [^java.sql.Date value (.getDate rs i)]
       (.toLocalDate value))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/TIME]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
-    (when-let [value (.getTime rs i)]
+    (when-let [^java.sql.Time value (.getTime rs i)]
       (.toLocalTime value))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:teradata Types/TIME_WITH_TIMEZONE]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
-    (when-let [value (.getTime rs i)]
+    (when-let [^java.sql.Time value (.getTime rs i)]
       (OffsetTime/parse value))))
 
 ;; TODO: use metabase.driver.sql-jdbc.execute.legacy-impl instead of re-implementing everything here
