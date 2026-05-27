@@ -143,6 +143,7 @@ export function ExplorationDocument({
           bd="1px solid border"
           bdrs="md"
           p="lg"
+          pt="5rem"
           gap={0}
         >
           <Group h="2.5rem" w="100%" maw="42.5rem" mx="auto">

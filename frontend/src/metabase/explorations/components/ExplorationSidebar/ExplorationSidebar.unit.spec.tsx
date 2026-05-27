@@ -231,104 +231,83 @@ describe("ExplorationSidebar", () => {
     const marker = (rowName: string) =>
       within(getRow(rowName)).queryByTestId("potentially-interesting-marker");
 
-    describe("exploration created without LLM context (no thread prompt)", () => {
-      it("shows the marker when the regular interestingness score passes the threshold", () => {
-        setup({
-          queries: [
-            createQuery({
-              id: 1,
-              name: "High interest",
-              status: "done",
-              interestingness_score: 0.9,
-            }),
-          ],
-        });
-
-        expect(marker("High interest")).toBeInTheDocument();
+    it("shows the marker when the heuristic score passes the threshold", () => {
+      setup({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "High interest",
+            status: "done",
+            interestingness_score: 0.9,
+          }),
+        ],
       });
 
-      it("hides the marker when the regular interestingness score is below the threshold", () => {
-        setup({
-          queries: [
-            createQuery({
-              id: 1,
-              name: "Low interest",
-              status: "done",
-              interestingness_score: 0.2,
-            }),
-          ],
-        });
-
-        expect(marker("Low interest")).not.toBeInTheDocument();
-      });
-
-      it("ignores contextual scores entirely — a high regular score still marks the row even when a low contextual score is present", () => {
-        setup({
-          queries: [
-            createQuery({
-              id: 1,
-              name: "High regular score",
-              status: "done",
-              interestingness_score: 0.95,
-              contextual_interestingness_score: 0.1,
-            }),
-          ],
-        });
-
-        expect(marker("High regular score")).toBeInTheDocument();
-      });
+      expect(marker("High interest")).toBeInTheDocument();
     });
 
-    describe("exploration created with LLM context (thread prompt present)", () => {
-      it("uses the contextual score for every group — marks a row whose contextual score passes even though its regular score does not", () => {
-        setup({
-          prompt: "Why are signups down?",
-          queries: [
-            createQuery({
-              id: 1,
-              name: "Contextually relevant",
-              status: "done",
-              interestingness_score: 0.1,
-              contextual_interestingness_score: 0.95,
-            }),
-          ],
-        });
-
-        expect(marker("Contextually relevant")).toBeInTheDocument();
+    it("hides the marker when the heuristic score is below the threshold", () => {
+      setup({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Low interest",
+            status: "done",
+            interestingness_score: 0.2,
+          }),
+        ],
       });
 
-      it("uses the contextual score for every group — does not mark a row whose regular score passes when its contextual score does not", () => {
-        setup({
-          prompt: "Why are signups down?",
-          queries: [
-            createQuery({
-              id: 1,
-              name: "Not contextually relevant",
-              status: "done",
-              interestingness_score: 0.95,
-              contextual_interestingness_score: 0.1,
-            }),
-          ],
-        });
+      expect(marker("Low interest")).not.toBeInTheDocument();
+    });
 
-        expect(marker("Not contextually relevant")).not.toBeInTheDocument();
+    it("prefers contextual over heuristic — marks when contextual passes even if heuristic does not", () => {
+      setup({
+        prompt: "Why are signups down?",
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Contextually relevant",
+            status: "done",
+            interestingness_score: 0.1,
+            contextual_interestingness_score: 0.95,
+          }),
+        ],
       });
 
-      it("applies the contextual decision uniformly — a row with no contextual score yet is left unmarked even when its regular score passes", () => {
-        setup({
-          prompt: "Why are signups down?",
-          queries: [
-            createQuery({
-              id: 1,
-              name: "Unscored row",
-              status: "done",
-              interestingness_score: 0.95,
-            }),
-          ],
-        });
+      expect(marker("Contextually relevant")).toBeInTheDocument();
+    });
 
-        expect(marker("Unscored row")).not.toBeInTheDocument();
+    it("prefers contextual over heuristic — does not mark when contextual is low even if heuristic passes", () => {
+      setup({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Not contextually relevant",
+            status: "done",
+            interestingness_score: 0.95,
+            contextual_interestingness_score: 0.1,
+          }),
+        ],
       });
+
+      expect(marker("Not contextually relevant")).not.toBeInTheDocument();
+    });
+
+    it("falls back to heuristic when contextual is missing", () => {
+      setup({
+        prompt: "Why are signups down?",
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Heuristic fallback",
+            status: "done",
+            interestingness_score: 0.95,
+          }),
+        ],
+      });
+
+      expect(marker("Heuristic fallback")).toBeInTheDocument();
     });
   });
 

@@ -12,7 +12,6 @@ import type {
   ExplorationThread,
 } from "metabase-types/api";
 import {
-  getExplorationQueryGroupContextualInterestingness,
   getExplorationQueryGroupInterestingness,
   getExplorationQueryGroupStatus,
 } from "metabase-types/api";
@@ -27,13 +26,6 @@ export interface ExplorationTreeQueryGroup {
   query_ids: ExplorationQueryId[];
   queries: ExplorationQuery[];
   status: ExplorationQueryStatus;
-  /**
-   * Interestingness score that drives the "potentially interesting" marker.
-   * Holds the prompt-relative `contextual_interestingness_score` when the
-   * thread was created with LLM context, otherwise the generic
-   * `interestingness_score`. The choice is made once per thread (see
-   * `usesContextualInterestingness`) and applied to every group in it.
-   */
   interestingness_score: number | null;
   parent_id: ExplorationQueryGroupId | null;
 }
@@ -79,21 +71,9 @@ export function getExplorationSidebarTree(
   return tree;
 }
 
-/**
- * Whether a thread was created with LLM context (a chat prompt). When true the
- * BE attaches `contextual_interestingness_score` to its queries, and the
- * sidebar ranks/marks every group in the thread by that prompt-relative score
- * instead of the generic `interestingness_score`. Decided once per thread so
- * the score source never varies query-by-query.
- */
-function usesContextualInterestingness(thread: ExplorationThread): boolean {
-  return Boolean(thread.prompt);
-}
-
 function getExplorationQueryTree(
   thread: ExplorationThread,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const useContextual = usesContextualInterestingness(thread);
   const groups = (thread.groups ?? []).filter(
     (group): group is ExplorationQueryGroup & { name: string } =>
       group.name != null, // don't show anything missing a name
@@ -150,9 +130,8 @@ function getExplorationQueryTree(
             query_ids: group.query_ids,
             queries: groupQueries,
             status: getExplorationQueryGroupStatus(groupQueries),
-            interestingness_score: useContextual
-              ? getExplorationQueryGroupContextualInterestingness(groupQueries)
-              : getExplorationQueryGroupInterestingness(groupQueries),
+            interestingness_score:
+              getExplorationQueryGroupInterestingness(groupQueries),
             parent_id: group.parent_group_id,
           },
         });
