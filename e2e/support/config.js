@@ -8,6 +8,10 @@ import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
+import {
+  extractFailedTests,
+  reportFailedTestsToConductor,
+} from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -178,9 +182,14 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
+    on("after:spec", async (spec, results) => {
+      // Report failures to ci-conductor mid-run (no-ops unless configured).
+      if (isCI) {
+        await reportFailedTestsToConductor(extractFailedTests(spec, results));
+      }
+
+      // this is an official workaround to keep recordings of the failed specs only
+      // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
         if (results && results.video && results.stats.failures === 0) {
