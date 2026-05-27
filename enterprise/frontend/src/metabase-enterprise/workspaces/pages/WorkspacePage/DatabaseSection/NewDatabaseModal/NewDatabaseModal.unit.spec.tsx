@@ -16,6 +16,8 @@ import {
 
 import { NewDatabaseModal } from "./NewDatabaseModal";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 const POSTGRES_DATABASE = createMockDatabase({
   id: 10,
   name: "Postgres",
@@ -76,6 +78,10 @@ function setup({
 }
 
 describe("NewDatabaseModal", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
@@ -87,6 +93,22 @@ describe("NewDatabaseModal", () => {
 
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
+    );
+  });
+
+  it("tracks an analytics event when a database is added", async () => {
+    const { workspace } = setup();
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "public" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "workspaces_database_added",
+        target_id: workspace.id,
+      }),
     );
   });
 
