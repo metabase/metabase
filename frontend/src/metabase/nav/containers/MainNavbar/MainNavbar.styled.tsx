@@ -63,7 +63,7 @@ export const SidebarSection = styled(Box)<BoxProps>`
   margin-top: var(--mantine-spacing-sm);
   margin-bottom: var(--mantine-spacing-md);
   padding-inline-start: var(--mantine-spacing-md);
-  padding-inline-end: var(--mantine-spacing-md);
+  padding-inline-end: 6px;
 ` as unknown as typeof Box;
 
 export const TrashSidebarSection = styled(SidebarSection)`
