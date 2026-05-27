@@ -390,9 +390,7 @@
                                        (get-embeddings-batch embedding-model batch-texts opts))
                           text-embedding-map (zipmap batch-texts embeddings)]
                       (process-fn text-embedding-map)))]
-
               (transduce (map-indexed process-batch) (partial merge-with +) batches))
-
             (let [embeddings (get-embeddings-batch embedding-model texts opts)
                   text-embedding-map (zipmap texts embeddings)]
               (process-fn text-embedding-map))))))))

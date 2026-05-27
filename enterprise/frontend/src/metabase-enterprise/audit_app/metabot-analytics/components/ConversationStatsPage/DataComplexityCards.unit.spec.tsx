@@ -6,9 +6,18 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import type { DataComplexityScoresResponse } from "../../types";
+import type {
+  DataComplexityRating,
+  DataComplexityScoresResponse,
+} from "../../types";
 
 import { DataComplexityCards } from "./DataComplexityCards";
+
+const mockScore = (
+  score: number,
+  rating: DataComplexityRating = "low",
+  rating_label = "Low complexity",
+) => ({ rating, rating_label, score });
 
 /* eslint-disable testing-library/no-node-access -- Snapshot cleanup is applied to a cloned DOM tree. */
 const cleanForSnapshot = (element: Element) => {
@@ -18,6 +27,7 @@ const cleanForSnapshot = (element: Element) => {
     node.removeAttribute("class");
     node.removeAttribute("style");
     node.removeAttribute("id");
+    node.removeAttribute("aria-controls");
     node.removeAttribute("aria-describedby");
     node.removeAttribute("aria-labelledby");
   });
@@ -26,63 +36,70 @@ const cleanForSnapshot = (element: Element) => {
 };
 /* eslint-enable testing-library/no-node-access */
 
+const mockComponentScore = (
+  measurement: number,
+  score: number,
+  rating: DataComplexityRating = "low",
+  rating_label = "Low complexity",
+) => ({ measurement, rating, rating_label, score });
+
 const mockScores: DataComplexityScoresResponse = {
   library: {
-    score: 18,
+    ...mockScore(18),
     components: {
       size: {
-        score: 18,
+        ...mockScore(18),
         components: {
-          entity_count: { measurement: 1, score: 10 },
-          field_count: { measurement: 8, score: 8 },
+          entity_count: mockComponentScore(1, 10),
+          field_count: mockComponentScore(8, 8),
         },
       },
       ambiguity: {
-        score: 0,
+        ...mockScore(0),
         components: {
-          name_collisions: { measurement: 0, score: 0 },
-          synonym_pairs: { measurement: 0, score: 0 },
-          repeated_measures: { measurement: 0, score: 0 },
+          name_collisions: mockComponentScore(0, 0),
+          synonym_pairs: mockComponentScore(0, 0),
+          repeated_measures: mockComponentScore(0, 0),
         },
       },
     },
   },
   universe: {
-    score: 54,
+    ...mockScore(54),
     components: {
       size: {
-        score: 44,
+        ...mockScore(44),
         components: {
-          entity_count: { measurement: 2, score: 20 },
-          field_count: { measurement: 24, score: 24 },
+          entity_count: mockComponentScore(2, 20),
+          field_count: mockComponentScore(24, 24),
         },
       },
       ambiguity: {
-        score: 10,
+        ...mockScore(10),
         components: {
-          name_collisions: { measurement: 0, score: 0 },
-          synonym_pairs: { measurement: 0, score: 0 },
-          repeated_measures: { measurement: 5, score: 10 },
+          name_collisions: mockComponentScore(0, 0),
+          synonym_pairs: mockComponentScore(0, 0),
+          repeated_measures: mockComponentScore(5, 10),
         },
       },
     },
   },
   metabot: {
-    score: 30,
+    ...mockScore(30),
     components: {
       size: {
-        score: 30,
+        ...mockScore(30),
         components: {
-          entity_count: { measurement: 1, score: 10 },
-          field_count: { measurement: 20, score: 20 },
+          entity_count: mockComponentScore(1, 10),
+          field_count: mockComponentScore(20, 20),
         },
       },
       ambiguity: {
-        score: 0,
+        ...mockScore(0),
         components: {
-          name_collisions: { measurement: 0, score: 0 },
-          synonym_pairs: { measurement: 0, score: 0 },
-          repeated_measures: { measurement: 0, score: 0 },
+          name_collisions: mockComponentScore(0, 0),
+          synonym_pairs: mockComponentScore(0, 0),
+          repeated_measures: mockComponentScore(0, 0),
         },
       },
     },
@@ -98,10 +115,14 @@ const mockScoresWithError: DataComplexityScoresResponse = {
   ...mockScores,
   metabot: {
     score: null,
+    rating: null,
+    rating_label: null,
     components: {
       ...mockScores.metabot.components,
       ambiguity: {
         score: null,
+        rating: null,
+        rating_label: null,
         components: {
           ...mockScores.metabot.components.ambiguity.components,
           synonym_pairs: {

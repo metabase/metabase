@@ -109,7 +109,6 @@
                 (lib/order-by (meta/field-metadata :venues :id))
                 (lib/order-by (meta/field-metadata :venues :price))
                 lib/order-bys))))
-
   (testing "Should be able to order by two distinct expressions"
     (is (=? [[:asc
               {:lib/uuid string?}

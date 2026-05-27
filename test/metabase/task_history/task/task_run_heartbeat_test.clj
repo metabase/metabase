@@ -238,7 +238,6 @@
           (heartbeat/send-heartbeat!)
           (let [orphaned-run-ids (heartbeat/mark-orphaned-runs!)]
             (heartbeat/mark-orphaned-tasks! orphaned-run-ids))
-
           ;; Live run should have updated heartbeat, dead run should be orphaned
           (let [live-run (t2/select-one :model/TaskRun :id live-run-id)
                 dead-run (t2/select-one :model/TaskRun :id dead-run-id)]
@@ -246,7 +245,6 @@
             (is (t/after? (:updated_at live-run) old-time) "live run got heartbeat")
             (is (= :abandoned (:status dead-run)) "dead run marked abandoned")
             (is (some? (:ended_at dead-run)) "dead run has ended_at"))
-
           ;; Live task should be unchanged, dead task should be marked unknown
           (let [live-task (t2/select-one :model/TaskHistory :id live-task-id)
                 dead-task (t2/select-one :model/TaskHistory :id dead-task-id)]

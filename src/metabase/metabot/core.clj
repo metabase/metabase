@@ -15,6 +15,7 @@
   agent-dashboard-create
   agent-metric-read
   agent-question-create
+  agent-query
   agent-query-construct
   agent-query-execute
   agent-search

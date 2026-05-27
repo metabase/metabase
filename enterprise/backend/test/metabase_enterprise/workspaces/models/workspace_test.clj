@@ -59,7 +59,6 @@
         (is (= "Fetch Me" (:name fetched)))
         (is (= 1 (count (:databases fetched))))
         (is (= (mt/id) (:database_id (first (:databases fetched))))))))
-
   (testing "get-workspace returns nil for a missing id"
     (is (nil? (workspace/get-workspace Integer/MAX_VALUE)))))
 
@@ -255,7 +254,6 @@
         (with-normal-user (is (false? (mi/can-read? ws)))))
       (testing "Data Analyst, empty workspace — true"
         (with-data-analyst (is (true? (mi/can-read? ws))))))
-
     (mt/with-temp [:model/Workspace         {ws-id :id :as ws} {}
                    :model/WorkspaceDatabase _                  {:workspace_id ws-id}]
       (testing "Data Analyst with attached database — every WSD `can-read?` is satisfied (analyst-level)"
@@ -283,7 +281,6 @@
         (with-data-analyst
           (with-workspaces-perm (mt/id)
             (is (true? (mi/can-write? ws)))))))
-
     (mt/with-temp [:model/Database          {db1-id :id}      {}
                    :model/Database          {db2-id :id}      {}
                    :model/Workspace         {ws-id :id :as ws} {}

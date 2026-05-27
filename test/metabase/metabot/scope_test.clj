@@ -9,30 +9,24 @@
   (testing "exact match"
     (is (api-scope/scope-matches? #{"agent:sql:create"} "agent:sql:create"))
     (is (not (api-scope/scope-matches? #{"agent:sql:edit"} "agent:sql:create"))))
-
   (testing "unrestricted wildcard"
     (is (api-scope/scope-matches? #{"*"} "agent:sql:create"))
     (is (api-scope/scope-matches? api-scope/unrestricted "agent:anything:here")))
-
   (testing "hierarchical wildcard"
     (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:edit"))
     (is (not (api-scope/scope-matches? #{"agent:sql:*"} "agent:notebook:create"))))
-
   (testing "mid-level wildcard"
     (is (api-scope/scope-matches? #{"agent:*"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:*"} "agent:viz:edit"))
     (is (not (api-scope/scope-matches? #{"other:*"} "agent:sql:create"))))
-
   (testing "empty scope set grants nothing"
     (is (not (api-scope/scope-matches? #{} "agent:sql:create")))
     (is (not (api-scope/scope-matches? #{} "agent:search"))))
-
   (testing "multiple granted scopes"
     (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:sql:create"))
     (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:viz:edit"))
     (is (not (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:notebook:create"))))
-
   (testing "malformed scope strings do not match"
     (is (not (api-scope/scope-matches? #{""} "agent:sql:create")))
     (is (not (api-scope/scope-matches? #{":"} "agent:sql:create")))

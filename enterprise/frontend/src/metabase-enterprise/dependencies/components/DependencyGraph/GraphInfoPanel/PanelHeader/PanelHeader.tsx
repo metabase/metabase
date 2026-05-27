@@ -80,6 +80,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         <PLUGIN_REPLACEMENT.SourceReplacementModal
           opened={isReplaceModalOpened}
           initialSource={sourceEntry}
+          triggeredFrom="dependency_graph"
           onClose={closeReplaceModal}
         />
       )}

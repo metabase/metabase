@@ -589,13 +589,10 @@
         dataset-name (driver.u/workspace-isolation-namespace-name workspace)]
     (try
       (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
-
       ;; Delete the dataset if it exists (deleteContents=true removes all tables)
       (drop-dataset! client project-id dataset-name)
-
       ;; Delete the service account (this also removes its IAM bindings)
       (ws-delete-service-account! iam-client project-id workspace)
-
       {:success true}
       (finally
         (.close iam-client)))))
@@ -608,41 +605,32 @@
         project-id    (bigquery.common/get-project-id details)
         main-sa-email (.getClientEmail (ws-service-account-credentials details))
         dataset-name  (driver.u/workspace-isolation-namespace-name workspace)]
-
     (try
       ;; Create the workspace service account (or get existing)
       (let [ws-sa-email (ws-create-service-account! iam-client project-id workspace)
             dataset-id  (DatasetId/of project-id dataset-name)]
-
         (log/infof "Initializing BigQuery workspace isolation: dataset=%s, service-account=%s"
                    dataset-name ws-sa-email)
-
         ;; Wait until the new SA is visible to IAM read + policy endpoints
         ;; before we hand its email to any grant call -- without this the
         ;; immediate `setIamPolicy` calls below race with GCP IAM's
         ;; eventual-consistency propagation and throw
         ;; `INVALID_ARGUMENT: ... does not exist`.
         (ws-wait-for-service-account! iam-client project-id ws-sa-email)
-
         ;; Grant main SA permission to impersonate workspace SA
         (ws-grant-impersonation-permission! iam-client project-id main-sa-email ws-sa-email)
-
         ;; Grant the workspace SA permission to run BigQuery jobs (queries) at project level
         ;; Note: We intentionally do NOT grant project-level dataEditor as that would give
         ;; access to all datasets. The workspace SA only gets dataEditor on its isolated dataset.
         (ws-grant-project-role! details project-id ws-sa-email "roles/bigquery.jobUser")
-
         ;; Wait for IAM permissions to propagate by polling until impersonation works
         (ws-wait-for-impersonation-ready! details ws-sa-email)
-
         ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
         (create-dataset! client project-id dataset-name
                          {:description (format "Metabase workspace isolation for workspace %s" (:id workspace))})
-
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
         (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataEditor")
-
         ;; Return workspace connection details for impersonation
         ;; :user is used by grant-read-access-to-tables! to know which SA to grant access to
         ;; :impersonate-service-account is used by the connection swap to use impersonated credentials
@@ -688,4 +676,3 @@
           (try
             (driver/destroy-workspace-isolation! driver database test-workspace)
             (catch Exception _ nil)))))))
-

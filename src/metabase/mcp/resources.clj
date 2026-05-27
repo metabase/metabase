@@ -11,8 +11,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.config.core :as config]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.request.core :as request]
@@ -32,7 +34,7 @@
 ;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
 ;; it, so tests install a minimal inline template via `with-fallback-template`.
 (def ^:private test-fallback-template
-  (str "<!doctype html><html><body><script>"
+  (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
        "sessionToken: {{{sessionToken}}}"
@@ -111,6 +113,11 @@
       (cond-> (str scheme "://" host)
         (not (neg? port)) (str ":" port)))))
 
+(defn- resource-domains
+  [url]
+  (cond-> [url]
+    config/is-dev? (conj (str "http://localhost:" (or (env/env :mb-frontend-dev-port) "8080")))))
+
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
    Hosts that render the resource in a sandboxed iframe (notably ChatGPT's MCP app surface) use this
@@ -121,6 +128,8 @@
                           Claude validates this against its own namespace
                           (`*.claudemcpcontent.com`) and rejects anything else,
                           so we emit it only for ChatGPT (gated by [[chatgpt-client?]]).
+   - `csp.baseUriDomains`  — hosts the iframe may use in its document `<base>` tag
+                              (relative bundle assets resolve against the Metabase instance)
    - `csp.connectDomains`  — hosts the iframe may XHR/fetch/WebSocket to
                               (the embedded SDK calls back to this Metabase instance)
    - `csp.resourceDomains` — hosts the iframe may load scripts/styles/images from
@@ -130,8 +139,9 @@
    it out narrows the CSP for security review."
   [resource]
   (let [url (site-origin)]
-    {:ui (cond-> {:csp {:connectDomains  [url]
-                        :resourceDomains [url]}}
+    {:ui (cond-> {:csp {:baseUriDomains  [url]
+                        :connectDomains  [url]
+                        :resourceDomains (resource-domains url)}}
            (contains? resource :prefersBorder)
            (assoc :prefersBorder (:prefersBorder resource))
 
@@ -268,22 +278,43 @@
   :mimeType    "text/markdown"
   :render-fn   (classpath-text-resource "metabot/prompts/tools/construct_notebook_query.md")})
 
+(defn- visualize-query-render-fn
+  "Shared render-fn for visualize_query and render_drill_through. Both expose the
+   same iframe template; they only differ in URI so hosts that dedupe by URI
+   (notably ChatGPT, which otherwise skips rendering a new iframe for a tool
+   whose `_meta.ui.resourceUri` already has one mounted) treat them as distinct.
+   `tag` is a per-URI marker embedded in the rendered HTML so the bytes hash
+   differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
+   distinct bodies the second URI's asset is silently dropped and the widget 404s."
+  [tag]
+  (fn [opts]
+    (let [site-url    (system/site-url)
+          session-key (:session-key opts)
+          session-id  (:session-id opts)]
+      (str "<!-- metabase-mcp-asset: " tag " -->\n"
+           (render-embed-mcp-template
+            {:instanceUrl    (json/encode site-url)
+             :instanceUrlRaw site-url
+             :sessionToken   (when session-key (json/encode session-key))
+             :mcpSessionId   (when session-id (json/encode session-id))})))))
+
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
- "agent:visualize"
- {:name        "Visualize Query"
-  :description "Interactive Metabase SDK visualization for a query"
+ "agent:viz:mcp-ui:query"
+ {:name          "Visualize Query"
+  :description   "Interactive Metabase SDK visualization for a query"
   :prefersBorder true
-  :render-fn   (fn [opts]
-                 (let [site-url    (system/site-url)
-                       session-key (:session-key opts)
-                       session-id  (:session-id opts)]
-                   (render-embed-mcp-template
-                    {:instanceUrl    (json/encode site-url)
-                     :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))
-                     :mcpSessionId   (when session-id (json/encode session-id))})))})
+  :render-fn     (visualize-query-render-fn "visualize-query")})
+
+(register-ui-resource!
+ :render-drill-through
+ "ui://metabase/render-drill-through.html"
+ "agent:viz:mcp-ui:drill-through"
+ {:name          "Render Drill Through"
+  :description   "Interactive Metabase SDK visualization for a drill-through follow-up"
+  :prefersBorder true
+  :render-fn     (visualize-query-render-fn "render-drill-through")})
 
 (register-ui-tool!
  :visualize-query
@@ -343,7 +374,7 @@
                       :isError true})))})
 
 (register-ui-tool!
- :visualize-query
+ :render-drill-through
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
                     "Use this tool, not execute_query, when the user asks to show the result and "

@@ -26,7 +26,6 @@
                                                                                                                         [:name :string]
                                                                                                                         [:description {:optional true} [:maybe :string]]
                                                                                                                         [:timestamp :string]]]]]]]
-
   (metabot.config/check-metabot-enabled!)
   (metabot.usage/check-metabase-managed-free-limit!)
   (let [chart-data {:image_base64 image_base64

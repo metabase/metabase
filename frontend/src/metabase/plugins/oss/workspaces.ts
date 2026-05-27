@@ -12,7 +12,7 @@ export type AdminConnectionInfoSectionProps = {
 
 const getDefaultWorkspaces = () => ({
   canManageWorkspaces: (_state: State): boolean => false,
-  hasActiveWorkspace: (_state: State): boolean => false,
+  canManageWorkspaceInstance: (_state: State): boolean => false,
   getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
   AdminConnectionInfoSection:

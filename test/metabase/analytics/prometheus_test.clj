@@ -173,7 +173,6 @@
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
-
   (testing "inc with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
@@ -185,12 +184,10 @@
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
                             (prometheus/dec! :metabase-email/unknown-metric)))))
-
   (testing "dec is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/queue-size)
       (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
-
   (testing "dec with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
@@ -229,29 +226,23 @@
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-public/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"} 0)
-
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
       (prometheus/inc! :metabase-sdk/response {:status "404"})
-
       ;; Track iframe responses
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
-
       ;; Track new embedding responses
       (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"})
       (prometheus/inc! :metabase-embedding-public/response {:status "200"})
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"})
-
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
-
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"}))))
-
       (testing "new embedding response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
