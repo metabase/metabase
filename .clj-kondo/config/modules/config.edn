@@ -2973,11 +2973,8 @@
   enterprise/data-app-demo
   {:team "Gadget"
    :api  #{metabase-enterprise.data-app-demo.api
-           metabase-enterprise.data-app-demo.init
-           metabase-enterprise.data-app-demo.settings}
-   :uses #{api
-           settings
-           util}}
+           metabase-enterprise.data-app-demo.init}
+   :uses #{api}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
