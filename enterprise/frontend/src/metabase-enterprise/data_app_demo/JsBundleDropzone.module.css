@@ -1,0 +1,27 @@
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mantine-spacing-sm);
+  min-height: 9rem;
+  padding: var(--mantine-spacing-xl);
+  background-color: var(--mb-color-background-secondary);
+  border: 1px dashed var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+  outline: none;
+}
+
+.dropzone:focus-visible,
+.dropzone.dropzoneActive {
+  background-color: var(--mb-color-background-hover);
+  border-color: var(--mb-color-brand);
+}
+
+.dropzone.dropzoneError {
+  border-color: var(--mb-color-error);
+}
