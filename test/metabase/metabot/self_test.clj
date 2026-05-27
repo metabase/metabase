@@ -867,7 +867,6 @@
       (is (=? {:api-error true :provider "anthropic" :error-code :provider-api-error
                :status 500 :body {:error {:message "model decommissioned"}}}
               (ex-data ex)))))
-
   (testing "non-JSON bodies still get a preview appended"
     (let [upstream (ex-info "clj-http error"
                             {:status 502 :reason-phrase "Bad Gateway"
@@ -881,7 +880,6 @@
       (is (str/includes? (ex-message ex) "upstream gateway timeout"))
       (is (= #{:status :reason-phrase :headers :body :api-error :provider :error-code}
              (set (keys (ex-data ex)))))))
-
   (testing "structured maps without :error/:detail/:message pr-str into the user-facing message"
     (let [upstream (ex-info "clj-http error"
                             {:status 500 :reason-phrase "Internal Server Error"
@@ -911,7 +909,6 @@
       (is (=? {:api-error true :provider "openai" :error-code :provider-request-failed
                :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex)))))
-
   (testing "no-body branch drops the trailing colon when ex-message is blank"
     (let [ex (caught #(self.core/rethrow-api-error! "openai" (constantly "unused") (RuntimeException.)))]
       (is (= "openai API request failed" (ex-message ex)))
@@ -931,7 +928,6 @@
                              upstream))]
       (is (= "Anthropic API error (HTTP 500) — model decommissioned" (ex-message ex)))
       (is (=? {:error {:message "model decommissioned"}} (:body (ex-data ex))))))
-
   (testing "Large InputStream bodies are bounded — not fully slurped into memory"
     ;; ByteArrayInputStream.available() returns the unread byte count, so we can
     ;; measure how much rethrow-api-error! pulled off the stream without proxying.
@@ -950,7 +946,6 @@
       (is (str/ends-with? (ex-message ex) "…"))
       (is (< consumed (alength body-bytes))
           "should not consume the entire 2MB stream just to surface an error preview")))
-
   (testing "Truncated InputStream JSON bodies fall back to the raw bounded string"
     ;; A small slurp cap forces the JSON to be cut mid-envelope. We should fall back
     ;; to surfacing the raw bounded string rather than throwing on parse failure.
