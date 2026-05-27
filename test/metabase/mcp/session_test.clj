@@ -62,6 +62,12 @@
 (deftest malformed-session-payload-test
   (testing "two-part session ids must include a decodable capability hint"
     (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64")))))
+  (testing "blank capability hints are logged"
+    (mt/with-log-messages-for-level [messages [metabase.mcp.session :warn]]
+      (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) "."))))
+      (is (=? [{:level   :warn
+                :message "MCP session id contains a blank capability payload"}]
+              (messages)))))
   (testing "two-part session ids must match the supported capability hint shape"
     (is (false? (mcp.session/valid-id? (extended-session-id {:v 1}))))
     (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui "true"}))))

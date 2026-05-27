@@ -124,7 +124,9 @@
     {:extended false}
 
     (str/blank? payload)
-    nil
+    (do
+      (log/warn "MCP session id contains a blank capability payload")
+      nil)
 
     :else
     (when-let [decoded-payload (decode-session-payload payload)]
