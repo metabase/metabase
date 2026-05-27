@@ -97,7 +97,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       <Text fw={600}>{t`About`}</Text>
       <Tooltip label={<DateTime value={card.updated_at} />}>
         <Text size="sm" c="text-secondary" data-testid="metric-last-updated">
-          {t`Last updated`} {getRelativeTime(card.updated_at)}
+          {t`Last updated ${getRelativeTime(card.updated_at)}`}
         </Text>
       </Tooltip>
       <div data-testid="metric-description-section">
