@@ -131,6 +131,7 @@
      pulse
      remote-sync
      request
+     sample-data
      search
      secrets
      server
