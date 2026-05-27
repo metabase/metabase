@@ -13,17 +13,6 @@ export function trackModelToTransformsMigrationModalOpened({
   });
 }
 
-export function trackReplaceDataSourceStarted({
-  triggeredFrom,
-}: {
-  triggeredFrom: SourceReplacementTriggeredFrom;
-}) {
-  trackSimpleEvent({
-    event: "replace_data_source_started",
-    triggered_from: triggeredFrom,
-  });
-}
-
 export function trackReplaceDataSourceConfirmed({
   triggeredFrom,
 }: {

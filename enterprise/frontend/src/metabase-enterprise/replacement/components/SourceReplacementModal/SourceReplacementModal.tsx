@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
@@ -15,10 +15,7 @@ import {
 import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
 import type { SourceReplacementEntry } from "metabase-types/api";
 
-import {
-  trackReplaceDataSourceConfirmed,
-  trackReplaceDataSourceStarted,
-} from "../../analytics";
+import { trackReplaceDataSourceConfirmed } from "../../analytics";
 
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
@@ -41,12 +38,6 @@ export function SourceReplacementModal({
   opened,
   onClose,
 }: SourceReplacementModalProps) {
-  useEffect(() => {
-    if (opened) {
-      trackReplaceDataSourceStarted({ triggeredFrom });
-    }
-  }, [opened, triggeredFrom]);
-
   return (
     <Modal.Root opened={opened} fullScreen onClose={onClose}>
       <Modal.Overlay />

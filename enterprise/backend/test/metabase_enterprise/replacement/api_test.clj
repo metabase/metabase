@@ -283,8 +283,11 @@
                   "is_active should be nil when run is complete")
               (is (some? (:end_time final-run))
                   "end_time should be set")
-              (testing "tracks the replace_data_source_succeeded analytics event after the run completes"
-                (is (contains? (tracked-event-names!) "replace_data_source_succeeded"))))))))))
+              (testing "tracks the replace_data_source started and succeeded analytics events, not failed"
+                (let [events (tracked-event-names!)]
+                  (is (contains? events "replace_data_source_started"))
+                  (is (contains? events "replace_data_source_succeeded"))
+                  (is (not (contains? events "replace_data_source_failed"))))))))))))
 
 (deftest get-run-not-found-test
   (testing "GET /runs/:id — returns 404 for non-existent run"
@@ -403,10 +406,11 @@
                             "transforms/output-table should return the output table")
                         (is (= (:id output-table)
                                (lib/primary-source-table-id question-query)))))
-                    (testing "tracks the migration started and success analytics events"
+                    (testing "tracks the migration started and success analytics events, not failure"
                       (let [events (tracked-event-names!)]
                         (is (contains? events "model_to_transforms_migration_started"))
-                        (is (contains? events "model_to_transforms_migration_success"))))))))))))))
+                        (is (contains? events "model_to_transforms_migration_success"))
+                        (is (not (contains? events "model_to_transforms_migration_failure")))))))))))))))
 
 (deftest replace-model-with-transform-failure-test
   (testing "POST /replace-model-with-transform — transform execution failure leaves model unchanged"

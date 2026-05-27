@@ -7,7 +7,6 @@
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase-enterprise.replacement.util :as replacement.util]
-   [metabase.analytics.core :as analytics]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -195,31 +194,19 @@
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress & {:keys [user-id]}]
-   (analytics/track-event! :snowplow/simple_event
-                           {:event     "model_to_transforms_migration_started"
-                            :target_id card-id})
-   (try
-     (let [transform (or (t2/select-one :model/Transform :id transform-id)
-                         (throw (ex-info "Transform not found" {:transform-id transform-id})))]
-       ;; phase 1: execute the transform
-       (transforms/execute! transform (cond-> {:run-method :manual}
-                                        user-id (assoc :user-id user-id)))
-       ;; phase 2: find the output table, copy metadata overrides, and swap sources
-       (let [table (or (transforms/output-table transform)
-                       (throw (ex-info "Output table not found after transform execution"
-                                       {:transform-id (:id transform)})))]
-         (copy-model-metadata-overrides! card-id (:id table))
-         (run-swap-source! [:card card-id] [:table (:id table)] progress))
-       ;; phase 3: unpersist the model if it was persisted
-       (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-         (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
-       ;; phase 4: convert the model to a saved question
-       (u/prog1 (t2/update! :model/Card card-id {:type :question})
-         (analytics/track-event! :snowplow/simple_event
-                                 {:event     "model_to_transforms_migration_success"
-                                  :target_id card-id})))
-     (catch Throwable e
-       (analytics/track-event! :snowplow/simple_event
-                               {:event     "model_to_transforms_migration_failure"
-                                :target_id card-id})
-       (throw e)))))
+   (let [transform (or (t2/select-one :model/Transform :id transform-id)
+                       (throw (ex-info "Transform not found" {:transform-id transform-id})))]
+     ;; phase 1: execute the transform
+     (transforms/execute! transform (cond-> {:run-method :manual}
+                                      user-id (assoc :user-id user-id)))
+     ;; phase 2: find the output table, copy metadata overrides, and swap sources
+     (let [table (or (transforms/output-table transform)
+                     (throw (ex-info "Output table not found after transform execution"
+                                     {:transform-id (:id transform)})))]
+       (copy-model-metadata-overrides! card-id (:id table))
+       (run-swap-source! [:card card-id] [:table (:id table)] progress))
+     ;; phase 3: unpersist the model if it was persisted
+     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+     ;; phase 4: convert the model to a saved question
+     (t2/update! :model/Card card-id {:type :question}))))
