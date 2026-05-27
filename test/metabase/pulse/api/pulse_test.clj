@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.pulse.api.pulse-test
   "Tests for /api/pulse endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.api.pulse-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -376,7 +377,6 @@
                 (create-pulse! 200 pulse-name card collection)
                 (is (= {:collection_id (u/the-id collection), :collection_position 1}
                        (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name)))))))
-
           (testing "...but not if we don't have permissions for the Collection"
             (mt/with-non-admin-groups-no-root-collection-perms
               (let [pulse-name (mt/random-name)]
@@ -412,11 +412,9 @@
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
                         (mt/user-http-request :crowberto :post 403 "pulse"
                                               (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
-
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 200 "pulse"
                                        (assoc-in pulse [:channels 0 :recipients] success-recipients))))
-
              (testing "on update"
                (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
                                                            :dashboard_id  dashboard-id}]
@@ -424,17 +422,14 @@
                    (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
                           (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
                                                 (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
-
                  (testing "success if recipients matches allowed domains"
                    (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
                                          (assoc-in pulse [:channels 0 :recipients] success-recipients)))))
-
              (testing "on test send"
                (testing "fail if recipients does not match allowed domains"
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
                         (mt/user-http-request :crowberto :post 403 "pulse/test"
                                               (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
-
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 200 "pulse/test"
                                        (assoc-in pulse [:channels 0 :recipients] success-recipients)))))))))))
@@ -573,7 +568,6 @@
         ;; Check to make sure the ID has changed in the DB
         (is (= (t2/select-one-fn :collection_id :model/Pulse :id (u/the-id pulse))
                (u/the-id new-collection)))))
-
     (testing "...but if we don't have the Permissions for the old collection, we should get an Exception"
       (pulse-test/with-pulse-in-collection! [_db _collection pulse]
         (mt/with-temp [:model/Collection new-collection]
@@ -582,7 +576,6 @@
           ;; now make an API call to move collections. Should fail
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))
-
     (testing "...and if we don't have the Permissions for the new collection, we should get an Exception"
       (pulse-test/with-pulse-in-collection! [_db collection pulse]
         (mt/with-temp [:model/Collection new-collection]
@@ -600,7 +593,6 @@
                             {:collection_position 1})
       (is (= 1
              (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))
-
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection! [_ collection pulse]
         (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
@@ -609,14 +601,12 @@
                               {:collection_position nil})
         (is (= nil
                (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))))
-
     (testing "...we shouldn't be able to if we don't have permissions for the Collection"
       (pulse-test/with-pulse-in-collection! [_db _collection pulse]
         (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                               {:collection_position 1})
         (is (= nil
                (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))
-
         (testing "shouldn't be able to unset (unpin) a Pulse"
           (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
@@ -642,7 +632,6 @@
                             {:archived false})
       (is (= false
              (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse))))))
-
   (testing "Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection            collection {}
@@ -825,7 +814,6 @@
                "b" 3
                "c" 4
                "d" 5}}
-
    {:message  "Add a new pulse without a position, should leave existing positions unchanged"
     :action   [:insert-pulse 1]
     :expected {"x" nil
@@ -904,7 +892,6 @@
                   (assoc (pulse-details pulse-2) :can_write true, :collection_id true)
                   (assoc (pulse-details pulse-3) :can_write true, :collection_id true)]
                  (map #(update % :collection_id boolean) results)))))
-
         (testing "non-admins only see pulses they created by default"
           (let [results (-> (mt/user-http-request :rasta :get 200 "pulse")
                             (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
@@ -912,7 +899,6 @@
             (is (partial=
                  [(assoc (pulse-details pulse-1) :can_write true, :collection_id true)]
                  (map #(update % :collection_id boolean) results)))))
-
         (testing "when `creator_or_recipient=true`, all users only see pulses they created or are a recipient of"
           (let [expected-pulse-shape (fn [pulse] (-> pulse
                                                      pulse-details
@@ -924,7 +910,6 @@
               (is (partial=
                    [(expected-pulse-shape pulse-2) (expected-pulse-shape pulse-3)]
                    (map #(update % :collection_id boolean) results))))
-
             (let [results (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
                               (filter-pulse-results :id #{pulse-1-id pulse-2-id pulse-3-id}))]
               (is (= 2 (count results)))
@@ -932,7 +917,6 @@
                    [(expected-pulse-shape pulse-1)
                     (assoc (expected-pulse-shape pulse-3) :can_write false)]
                    (map #(update % :collection_id boolean) results)))))))
-
       (with-pulses-in-nonreadable-collection! [pulse-3]
         (testing "when `creator_or_recipient=true`, cards and recipients are not included in results if the user
                  does not have collection perms"
@@ -941,7 +925,6 @@
                            first)]
             (is (nil? (:cards result)))
             (is (nil? (get-in result [:channels 0 :recipients])))))))
-
     (testing "should not return alerts"
       (mt/with-temp [:model/Pulse pulse-1 {:name "ABCDEF"}
                      :model/Pulse pulse-2 {:name "GHIJKL"}
@@ -953,7 +936,6 @@
                  (for [pulse (-> (mt/user-http-request :rasta :get 200 "pulse")
                                  (filter-pulse-results :name #{"ABCDEF" "GHIJKL" "AAAAAA"}))]
                    (update pulse :collection_id boolean)))))))
-
     (testing "by default, archived Pulses should be excluded"
       (mt/with-temp [:model/Pulse not-archived-pulse {:name "Not Archived"}
                      :model/Pulse archived-pulse     {:name "Archived" :archived true}]
@@ -961,7 +943,6 @@
           (is (= #{"Not Archived"}
                  (set (map :name (-> (mt/user-http-request :rasta :get 200 "pulse")
                                      (filter-pulse-results :name #{"Not Archived" "Archived"})))))))))
-
     (testing "can we fetch archived Pulses?"
       (mt/with-temp [:model/Pulse not-archived-pulse {:name "Not Archived"}
                      :model/Pulse archived-pulse     {:name "Archived" :archived true}]
@@ -969,7 +950,6 @@
           (is (= #{"Archived"}
                  (set (map :name (-> (mt/user-http-request :rasta :get 200 "pulse?archived=true")
                                      (filter-pulse-results :name #{"Not Archived" "Archived"})))))))))
-
     (testing "excludes dashboard subscriptions associated with archived dashboards"
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:archived true}
                      :model/Pulse     {pulse-id :id} {:dashboard_id dashboard-id}]
@@ -985,17 +965,14 @@
                       :collection_id true)
                (-> (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))
                    (update :collection_id boolean))))))
-
     (testing "cannot normally fetch a pulse without collection permissions"
       (mt/with-temp [:model/Pulse pulse {:creator_id (mt/user->id :crowberto)}]
         (with-pulses-in-nonreadable-collection! [pulse]
           (mt/user-http-request :rasta :get 403 (str "pulse/" (u/the-id pulse))))))
-
     (testing "can fetch a pulse without collection permissions if you are the creator or a recipient"
       (mt/with-temp [:model/Pulse pulse {:creator_id (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection! [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
-
       (mt/with-temp [:model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)}
                      :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                      :model/PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc)
@@ -1129,8 +1106,8 @@
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
-                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+      (mt/with-dynamic-fn-redefs [pulse-channel/validate-email-domains (fn [& _]
+                                                                         (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
         (doseq [channel [{:details {:emails ["test@metabase.com"]}}
@@ -1275,9 +1252,7 @@
     (testing "Check that Slack channels come back when configured"
       (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
-
                                          channel.settings/slack-app-token "test-token"
-
                                          channel.settings/slack-cached-channels-and-usernames
                                          {:channels [{:type "channel"
                                                       :name "foo"
@@ -1297,13 +1272,10 @@
                            {:displayName "@user1"   :id "U1DYU9W3WZ2"}], :required true}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))
-
     (testing "Duplicate Slack channel display names are deduplicated"
       (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
-
                                          channel.settings/slack-app-token "test-token"
-
                                          channel.settings/slack-cached-channels-and-usernames
                                          {:channels [{:type "channel"
                                                       :name "channel"
@@ -1329,13 +1301,10 @@
                             (get-in [:channels :slack :fields])
                             first
                             :options))))))
-
     (testing "Duplicate Slack channel IDs are deduplicated, keeping the first entry"
       (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
-
                                          channel.settings/slack-app-token "test-token"
-
                                          channel.settings/slack-cached-channels-and-usernames
                                          {:channels [{:type "channel"
                                                       :name "old-name"
@@ -1355,7 +1324,6 @@
                    (get-in [:channels :slack :fields])
                    first
                    :options)))))
-
     (testing "When slack is not configured, `form_input` returns no channels"
       (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
         (is (empty?
@@ -1376,7 +1344,6 @@
         (mt/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
-
       (testing "Users can't delete someone else's pulse subscription"
         (mt/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."

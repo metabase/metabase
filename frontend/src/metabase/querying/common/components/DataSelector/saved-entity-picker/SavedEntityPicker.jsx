@@ -1,8 +1,13 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import {
+  buildCollectionTree,
   currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
@@ -10,12 +15,8 @@ import {
 import { Tree } from "metabase/common/components/tree";
 import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
-import {
-  Collections,
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree,
-} from "metabase/entities/collections";
-import { connect } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";
 
 import { SavedEntityList } from "./SavedEntityList";
@@ -26,12 +27,9 @@ const propTypes = {
   type: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
-  collections: PropTypes.array.isRequired,
-  currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
   collectionId: PropTypes.number,
-  rootCollection: PropTypes.object,
 };
 
 const getOurAnalyticsCollection = (collectionEntity) => {
@@ -46,17 +44,35 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
 };
 
+export function SavedEntityPicker(props) {
+  const { data: collections } = useListCollectionsTreeQuery({
+    "exclude-archived": true,
+  });
+  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  if (!collections || !rootCollection) {
+    return null;
+  }
+  return (
+    <SavedEntityPickerInner
+      {...props}
+      collections={collections}
+      rootCollection={rootCollection}
+    />
+  );
+}
+
 function SavedEntityPickerInner({
   type,
   onBack,
   onSelect,
-  collections,
-  currentUser,
   databaseId,
   tableId,
   collectionId,
+  collections,
   rootCollection,
 }) {
+  const currentUser = useSelector(getUser);
+
   const collectionTree = useMemo(() => {
     const modelFilter = (model) => CARD_INFO[type].model === model;
 
@@ -139,18 +155,9 @@ function SavedEntityPickerInner({
   );
 }
 
-SavedEntityPickerInner.propTypes = propTypes;
-
-const mapStateToProps = ({ currentUser }) => ({ currentUser });
-
-export const SavedEntityPicker = _.compose(
-  Collections.load({
-    id: () => "root",
-    entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
-  }),
-  connect(mapStateToProps),
-)(SavedEntityPickerInner);
+SavedEntityPicker.propTypes = propTypes;
+SavedEntityPickerInner.propTypes = {
+  ...propTypes,
+  collections: PropTypes.array.isRequired,
+  rootCollection: PropTypes.object.isRequired,
+};

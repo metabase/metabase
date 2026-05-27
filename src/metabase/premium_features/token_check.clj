@@ -76,7 +76,6 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-
                             ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
                             ;; the `after-select` method on users, which calls an EE method that needs ... a token
                             ;; check :|
@@ -392,6 +391,23 @@
   []
   (t2/delete! :model/PremiumFeaturesCache))
 
+(defn- extract-locks
+  "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
+   Meters without an `:is-locked` field are dropped."
+  [meters]
+  (into {} (keep (fn [[k v]] (when-some [locked (:is-locked v)] [k locked]))) meters))
+
+(defn- update-locked-meters!
+  "Mirror the `:is-locked` flag for each meter in `result` to the local `:locked-meters`
+   setting, when `:meters` is present in a successful token-check response. Best-effort:
+   failures are logged but never propagated to the refresh path."
+  [result]
+  (when (contains? result :meters)
+    (try
+      (premium-features.settings/locked-meters! (extract-locks (:meters result)))
+      (catch Throwable t
+        (log/warn t "Failed to mirror :locked-meters from token-check response")))))
+
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
    For testing only — do not use in production."
@@ -416,6 +432,7 @@
                     result-hash (hash-token-status result)
                     now         (t/instant)]
                 (write-cache-to-db! token-hash result-hash)
+                (update-locked-meters! result)
                 (swap! local-cache assoc token-hash {:result      result
                                                      :result-hash result-hash
                                                      :updated-at  now})
@@ -456,7 +473,6 @@
                     ;; Expired (> hard-ttl): synchronous refresh
                     :else
                     (do-refresh! token token-hash)))
-
                 ;; No local cache, no DB row, or hash mismatch: synchronous fetch
                 (do-refresh! token token-hash)))))
         (-clear-cache! [_]

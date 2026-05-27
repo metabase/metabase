@@ -36,7 +36,8 @@
            :database-partitioned       (:database_partitioned field)
            :database-required          (:database_required field)
            :visibility-type            (:visibility_type field)
-           :preview-display            (:preview_display field)}
+           :preview-display            (:preview_display field)
+           :nfc-path                   (:nfc_path field)}
           (u/remove-nils
            {:pk?                   (:database_is_pk field)
             :database-is-generated (:database_is_generated field)

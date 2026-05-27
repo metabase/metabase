@@ -1,13 +1,17 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { DashboardSubscription } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardSubscription,
+  createMockParameter,
 } from "metabase-types/api/mocks";
 
 import { ParameterSidebar } from "./ParameterSidebar";
@@ -17,6 +21,8 @@ interface SetupOpts {
   nextParameter?: UiParameter;
   otherParameters: UiParameter[];
   hasMapping?: boolean;
+  subscriptions?: DashboardSubscription[];
+  removeParameter?: (parameterId: string) => Promise<any>;
 }
 
 const setup = ({
@@ -24,9 +30,13 @@ const setup = ({
   nextParameter,
   otherParameters,
   hasMapping,
+  subscriptions = [],
+  removeParameter,
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
+  fetchMock.get("path:/api/pulse", subscriptions);
+
   const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
 
   const TestWrapper = ({
@@ -63,6 +73,7 @@ const setup = ({
           })}
           parameters={[parameter, ...otherParameters]}
           editingParameter={parameter}
+          removeParameter={removeParameter}
         >
           <ParameterSidebar />
         </MockDashboardContext>
@@ -88,6 +99,12 @@ const setup = ({
 async function fillValue(input: HTMLElement, value: string) {
   await userEvent.clear(input);
   await userEvent.type(input, value);
+}
+
+async function clickRemove() {
+  const button = await screen.findByRole("button", { name: "Remove" });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
 }
 
 describe("ParameterSidebar", () => {
@@ -202,6 +219,119 @@ describe("ParameterSidebar", () => {
           name: "Label",
         }),
       ).toHaveValue("Bar");
+    });
+  });
+
+  describe("removing a parameter that affects active subscriptions (metabase#54603)", () => {
+    const filterParameter = createMockUiParameter({
+      id: "filter-id",
+      name: "Category",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    it("removes the parameter immediately when no active subscriptions reference it", async () => {
+      const removeParameter = jest.fn();
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [],
+        removeParameter,
+      });
+
+      await clickRemove();
+      expect(removeParameter).toHaveBeenCalledWith("filter-id");
+      expect(
+        screen.queryByRole("dialog", { name: /remove this filter/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("warns before removing a parameter that is used by an active subscription", async () => {
+      const removeParameter = jest.fn();
+      const subscription = createMockDashboardSubscription({
+        id: 42,
+        name: "Weekly email",
+        dashboard_id: 1,
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [subscription],
+        removeParameter,
+      });
+
+      await clickRemove();
+
+      // The remove is not called yet — a confirmation modal appears first
+      expect(removeParameter).not.toHaveBeenCalled();
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent(/active subscription/i);
+      expect(dialog).toHaveTextContent(/archive/i);
+    });
+
+    it("removes the parameter when the user confirms in the warning dialog", async () => {
+      const removeParameter = jest.fn();
+      const subscription = createMockDashboardSubscription({
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [subscription],
+        removeParameter,
+      });
+
+      await clickRemove();
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        await screen.findByRole("button", { name: /^Remove filter$/i }),
+      );
+
+      expect(removeParameter).toHaveBeenCalledWith("filter-id");
+      expect(dialog).not.toBeInTheDocument();
+    });
+
+    it("does not remove the parameter when the user cancels the warning dialog", async () => {
+      const removeParameter = jest.fn();
+      const subscription = createMockDashboardSubscription({
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [subscription],
+        removeParameter,
+      });
+
+      await clickRemove();
+      await screen.findByRole("dialog");
+      await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(removeParameter).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("ignores archived subscriptions when deciding whether to warn", async () => {
+      const removeParameter = jest.fn();
+      const archivedSubscription = createMockDashboardSubscription({
+        archived: true,
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [archivedSubscription],
+        removeParameter,
+      });
+
+      await clickRemove();
+      expect(removeParameter).toHaveBeenCalledWith("filter-id");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 

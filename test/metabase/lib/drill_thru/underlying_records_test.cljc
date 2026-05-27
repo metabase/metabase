@@ -28,15 +28,15 @@
     (canned/canned-test
      :drill-thru/underlying-records
      (fn [test-case context {:keys [click column-kind]}]
-        ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
-        ;; never occurs in actual pivot tables!
-        ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
-        ;;   cell clicks (column and value set per the breakout, no :dimensions).
-        ;; - Clicks on cells (that is, aggregation values) have column, column-ref and value all nil, and :dimensions
-        ;;   contains all the breakouts (not exactly 2 as claimed in the spec).
-        ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
-        ;; code that should be setting the aggregation :value for cell clicks?
-        ;; Tech debt issue: #39380
+       ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
+       ;; never occurs in actual pivot tables!
+       ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
+       ;;   cell clicks (column and value set per the breakout, no :dimensions).
+       ;; - Clicks on cells (that is, aggregation values) have column, column-ref and value all nil, and :dimensions
+       ;;   contains all the breakouts (not exactly 2 as claimed in the spec).
+       ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
+       ;; code that should be setting the aggregation :value for cell clicks?
+       ;; Tech debt issue: #39380
        (and (#{:cell #_:pivot :legend} click)
             (not (:native? test-case))
             (or (seq (:dimensions context))
@@ -784,6 +784,51 @@
                    :cljs "Total is less than 92")]
                (map #(:long-display-name (lib/display-info query' %))
                     (lib/filters query'))))))))
+
+(deftest ^:parallel underlying-records-month-breakout-with-tz-offset-test
+  (testing "drilling on a `month`-bucketed cell whose value carries a non-UTC offset filters the right month (#71147)"
+    ;; The bug: a pivot cell for February stamped as Berlin local time ("2024-02-01T00:00:00+01:00") was
+    ;; being shifted to UTC (2024-01-31T23:00Z) before truncation, so the resulting filter spanned January.
+    (doseq [[unit value start end]
+            [[:month   "2024-02-01T00:00:00+01:00" "2024-02-01" "2024-02-29"]
+             [:quarter "2024-04-01T00:00:00+02:00" "2024-04-01" "2024-06-30"]
+             [:year    "2024-01-01T00:00:00+02:00" "2024-01-01" "2024-12-31"]]]
+      (testing (str unit " bucket, value " value)
+        (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                              (lib/with-temporal-bucket unit)))
+                            (lib/breakout (meta/field-metadata :orders :product-id)))
+              cols      (lib/returned-columns query)
+              created   (lib.tu.notebook/find-col-with-spec
+                         query cols {} {:display-name (str "Created At: "
+                                                           (case unit
+                                                             :month   "Month"
+                                                             :quarter "Quarter"
+                                                             :year    "Year"))})
+              product   (lib.tu.notebook/find-col-with-spec
+                         query cols {} {:display-name "Product ID"})
+              count-col (lib.tu.notebook/find-col-with-spec
+                         query cols {} {:display-name "Count"})
+              context   {:column     count-col
+                         :column-ref (lib/ref count-col)
+                         :value      77
+                         :row        [{:column created,   :column-ref (lib/ref created),   :value value}
+                                      {:column product,   :column-ref (lib/ref product),   :value 14}
+                                      {:column count-col, :column-ref (lib/ref count-col), :value 77}]
+                         :dimensions [{:column created,   :column-ref (lib/ref created),   :value value}
+                                      {:column product,   :column-ref (lib/ref product),   :value 14}]}
+              drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                      (lib/available-drill-thrus query context))]
+          (is (some? drill))
+          (is (=? {:stages [{:filters [[:between {}
+                                        [:field {:temporal-unit unit} (meta/id :orders :created-at)]
+                                        start
+                                        end]
+                                       [:= {}
+                                        [:field {} (meta/id :orders :product-id)]
+                                        14]]}]}
+                  (lib/drill-thru query drill))))))))
 
 (deftest ^:parallel double-summarize-then-drill-twice-test
   (testing "drilling twice on a double-summarize query keeps the correct date filter (#72937)"

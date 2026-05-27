@@ -30,11 +30,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
 
 (mr/def ::col
@@ -170,7 +170,7 @@
                                                            (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                            (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                            nil))]
-                                         (lib.util.match/match-lite expr
+                                         (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]
                                            source-tz))))]
             (cond-> col
@@ -240,7 +240,7 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace-lite a-ref
+    (match/replace a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)

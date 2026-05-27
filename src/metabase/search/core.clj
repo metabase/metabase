@@ -25,24 +25,19 @@
 (p/import-vars
  [search.config
   SearchableModel]
-
  [search.engine
   model-set]
-
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
-
  [search.ingestion
   bulk-ingest!
   max-searchable-value-length
   searchable-value-trim-sql]
-
  [search.spec
   spec
   define-spec]
-
  [search.util
   collapse-id
   indexed-entity-id->model-index-id
@@ -57,6 +52,15 @@
     {:model model}))
 
 (defmethod analytics.core/known-labels :metabase-search/index-reindexes
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
+  [_]
+  [{:table-type :active} {:table-type :pending}])
+
+(defmethod analytics.core/known-labels :metabase-search/index-documents-skipped
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))

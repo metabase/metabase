@@ -41,11 +41,15 @@
    [:search_count            ms/IntGreaterThanOrEqualToZero]
    [:query_count             ms/IntGreaterThanOrEqualToZero]
    [:ip_address              [:maybe :string]]
+   [:embedding_hostname      [:maybe :string]]
+   [:embedding_path          [:maybe :string]]
+   [:user_agent              [:maybe :string]]
+   [:sanitized_user_agent    [:maybe :string]]
    [:user                    [:maybe UserInfo]]])
 
 (def ^:private SortColumn
   "Allow-list of columns the list endpoint can sort by."
-  [:enum "created_at" "message_count" "total_tokens"])
+  [:enum "created_at" "message_count" "total_tokens" "user" "profile_id" "ip_address"])
 
 (def ^:private SortDirection
   [:enum "asc" "desc"])
@@ -108,8 +112,12 @@
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]
-   [:ip_address      [:maybe :string]]
-   [:feedback        [:sequential ConversationFeedback]]])
+   [:ip_address           [:maybe :string]]
+   [:embedding_hostname   [:maybe :string]]
+   [:embedding_path       [:maybe :string]]
+   [:user_agent           [:maybe :string]]
+   [:sanitized_user_agent [:maybe :string]]
+   [:feedback             [:sequential ConversationFeedback]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."

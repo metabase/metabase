@@ -13,12 +13,11 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export function EnableTransformsCard({
   onEnableClick,
   permissionsErrorMessage,

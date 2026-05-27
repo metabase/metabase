@@ -1,4 +1,3 @@
-import { TimelineSchema } from "metabase/schema";
 import type {
   CreateTimelineRequest,
   GetTimelineRequest,
@@ -18,7 +17,6 @@ import {
   provideTimelineTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,7 +27,6 @@ export const timelineApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (timelines = []) => provideTimelineListTags(timelines),
-      onQueryStarted: hydrateLegacyEntities([TimelineSchema]),
     }),
     listCollectionTimelines: builder.query<
       Timeline[],
@@ -41,7 +38,6 @@ export const timelineApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (timelines = []) => provideTimelineListTags(timelines),
-      onQueryStarted: hydrateLegacyEntities([TimelineSchema]),
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({
       query: ({ id, ...params }) => ({
@@ -51,7 +47,6 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timeline) =>
         timeline ? provideTimelineTags(timeline) : [],
-      onQueryStarted: hydrateLegacyEntities(TimelineSchema),
     }),
     createTimeline: builder.mutation<Timeline, CreateTimelineRequest>({
       query: (body) => ({

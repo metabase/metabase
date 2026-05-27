@@ -7,17 +7,18 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Tooltip } from "metabase/ui";
-import { Flex, type IconName, Skeleton } from "metabase/ui";
+import { Flex, Skeleton, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
+  IconName,
   RecentCollectionItem,
 } from "metabase-types/api";
 
@@ -27,7 +28,6 @@ import {
   Description,
   Header,
   ItemCard,
-  ItemIcon,
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
@@ -93,13 +93,15 @@ function PinnedItemCard({
   onClick,
   iconForSkeleton,
 }: PinnedItemCardProps) {
+  const getIcon = useGetIcon();
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const icon =
-    iconForSkeleton ??
-    getIcon({
-      model: item.model,
-      moderated_status: item.moderated_status,
-    }).name;
+  const iconData = iconForSkeleton
+    ? { name: iconForSkeleton }
+    : getIcon({
+        model: item.model,
+        display: item.display,
+        moderated_status: item.moderated_status,
+      });
 
   const maybeEnableTooltip = (
     event: MouseEvent<HTMLDivElement>,
@@ -126,7 +128,7 @@ function PinnedItemCard({
       <ItemCard flat>
         <Body>
           <Header>
-            <ItemIcon name={icon as unknown as IconName} />
+            <EntityIcon {...iconData} size="1.5rem" color="brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
               {hasActions && (
                 // This component is used within a `<Link>` component,

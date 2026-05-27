@@ -1,4 +1,3 @@
-import { PulseSchema } from "metabase/schema";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -16,7 +15,6 @@ import {
   provideSubscriptionListTags,
   provideSubscriptionTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const subscriptionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,7 +29,6 @@ export const subscriptionApi = Api.injectEndpoints({
       }),
       providesTags: (subscriptions = []) =>
         provideSubscriptionListTags(subscriptions),
-      onQueryStarted: hydrateLegacyEntities([PulseSchema]),
     }),
     getSubscription: builder.query<DashboardSubscription, number>({
       query: (id) => ({
@@ -40,7 +37,6 @@ export const subscriptionApi = Api.injectEndpoints({
       }),
       providesTags: (subscription) =>
         subscription ? provideSubscriptionTags(subscription) : [],
-      onQueryStarted: hydrateLegacyEntities(PulseSchema),
     }),
     createSubscription: builder.mutation<
       DashboardSubscription,

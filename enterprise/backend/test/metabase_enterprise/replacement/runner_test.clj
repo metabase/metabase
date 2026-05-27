@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.runner-test
   "Tests for bulk metadata loading in the replacement runner."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
@@ -45,11 +46,9 @@
             loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
-
         (testing "returns map with all fetched entities"
           (is (map? loaded))
           (is (= 4 (count loaded))))
-
         (testing "card entities are keyed by [:card id]"
           (is (contains? loaded [:card card-id-1]))
           (is (contains? loaded [:card card-id-2]))
@@ -59,12 +58,10 @@
             (is (= "Card 2" (:name card2)))
             (is (some? (:dataset_query card1)))
             (is (some? (:dataset_query card2)))))
-
         (testing "table entities are keyed by [:table id]"
           (is (contains? loaded [:table table-id]))
           (let [table (get loaded [:table table-id])]
             (is (= "Custom Table" (:name table)))))
-
         (testing "segment entities are keyed by [:segment id]"
           (is (contains? loaded [:segment segment-id]))
           (let [segment (get loaded [:segment segment-id])]
@@ -94,7 +91,6 @@
                                  entities)
               ;; After bulk loading, the source card should be in the metadata provider's cache
               source-card-meta  (lib.metadata/card metadata-provider source-card-id)]
-
           (testing "referenced cards are loaded into metadata provider cache"
             (is (some? source-card-meta))
             (is (= "Source Card" (:name source-card-meta)))
@@ -133,14 +129,12 @@
             loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
-
         (testing "handles cards, segments, measures, and dashboards in one batch"
           (is (= 4 (count loaded)))
           (is (contains? loaded [:card card-id]))
           (is (contains? loaded [:segment segment-id]))
           (is (contains? loaded [:measure measure-id]))
           (is (contains? loaded [:dashboard dashboard-id])))
-
         (testing "all entities have required fields"
           (is (some? (:dataset_query (get loaded [:card card-id]))))
           (is (some? (:definition (get loaded [:segment segment-id]))))
@@ -154,7 +148,6 @@
           loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                              metadata-provider
                              entities)]
-
       (testing "returns empty map for empty batch"
         (is (= {} loaded))))))
 
@@ -168,10 +161,8 @@
             loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
-
         (testing "dashboards are pre-loaded"
           (is (= [{:id "param1" :type :string/= :name "Test Param"}] (:parameters (get loaded [:dashboard dashboard-id])))))
-
         (testing "documents are not fetched (no-op entities)"
           (is (not (contains? loaded [:document 123]))))))))
 
@@ -202,11 +193,9 @@
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-backfill!)
-
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
                                       [:stages 0 :source-card]))))
-
               (let [progress-log (atom [])
                     progress     (reify replacement.protocols/IRunnerProgress
                                    (set-total! [_ total] (swap! progress-log conj [:set-total total]))
@@ -218,11 +207,9 @@
                                    (fail-run! [_ _]))]
                 #_{:clj-kondo/ignore [:unresolved-var]}
                 (replacement.runner/run-swap-source! [:card old-id] [:card new-id] progress)
-
                 (testing "child card's source-card is updated to new model"
                   (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
                                         [:stages 0 :source-card]))))
-
                 (testing "progress was tracked"
                   (is (some #(= :set-total (first %)) @progress-log)
                       "set-total! should have been called")
@@ -261,7 +248,6 @@
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
               (deps.test/synchronously-run-backfill!)
-
               (let [original-swap! replacement.source-swap/swap-source!]
                 (with-redefs [replacement.source-swap/swap-source!
                               (fn [entity object old-source new-source]
@@ -273,11 +259,9 @@
                                                   [:card old-id] [:card new-id])))]
                     (testing "failure details are in ex-data"
                       (is (= 1 (count (:failures (ex-data ex))))))
-
                     (testing "child-2 was still swapped successfully"
                       (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-2-id)
                                             [:stages 0 :source-card]))))
-
                     (testing "child-1 retains original source (swap failed)"
                       (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-1-id)
                                             [:stages 0 :source-card]))))))))))))))
@@ -315,19 +299,15 @@
                                              :semantic_type "type/CreationTimestamp"
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
                      :where  [:= :id card-id]})
-
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-
       (testing "Field records are updated with overrides from model metadata"
         (let [field-1 (t2/select-one :model/Field :id field-1-id)
               field-2 (t2/select-one :model/Field :id field-2-id)]
           (is (= "Order Total" (:display_name field-1)))
           (is (= "The total amount" (:description field-1)))
           (is (= :type/Currency (:semantic_type field-1)))
-
           (is (= "Order Date" (:display_name field-2)))
           (is (= :type/CreationTimestamp (:semantic_type field-2)))))
-
       (testing "FieldUserSettings are created so overrides survive sync"
         (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
               fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
@@ -335,11 +315,11 @@
           (is (= "Order Total" (:display_name fus-1)))
           (is (= "The total amount" (:description fus-1)))
           (is (= :type/Currency (:semantic_type fus-1)))
-
           (is (some? fus-2))
           (is (= "Order Date" (:display_name fus-2)))
-          (is (= :type/CreationTimestamp (:semantic_type fus-2)))))))
+          (is (= :type/CreationTimestamp (:semantic_type fus-2))))))))
 
+(deftest copy-model-metadata-overrides!-test-2
   (testing "matches joined columns using :lib/desired-column-alias instead of :name"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_joined_output"
                                                 :db_id  (mt/id)
@@ -363,13 +343,10 @@
                                              :description               "The product identifier"
                                              :base_type                 "type/Integer"}])}
                      :where  [:= :id card-id]})
-
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-
       (let [field (t2/select-one :model/Field :id field-id)]
         (is (= "Product ID" (:display_name field)))
         (is (= "The product identifier" (:description field))))
-
       (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))

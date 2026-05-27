@@ -163,7 +163,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       describe("login page illustration", () => {
         it(
           "should only allow uploading a valid image files (PNG, JPG, SVG) and display on login page",
-          { tags: "@smoke" },
+          { tags: "@prerelease" },
           () => {
             /**
              * Unfortunately, we couldn't test the browser file selector with Cypress yet.
@@ -553,33 +553,40 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("font", () => {
-    const font = "Open Sans";
-
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
     });
 
     it("should apply correct font", () => {
-      setApplicationFontTo(font);
+      setApplicationFontTo("Open Sans");
       cy.signInAsNormalUser();
       cy.visit("/");
-      cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
+      cy.get("body").should(
+        "have.css",
+        "font-family",
+        '"Open Sans", Lato, sans-serif',
+      );
     });
 
     it("should be able to make multiple font changes (metabase#45486)", () => {
       cy.intercept("PUT", "/api/setting/application-font").as("saveFont");
-      const fonts = ["Lora", "Merriweather", "Montserrat", "Lato"];
+      const fontsWithExpectedFallback = [
+        ["Lora", "serif"],
+        ["Merriweather", "Lora, serif"],
+        ["Montserrat", "sans-serif"],
+        ["Lato", "Arial, sans-serif"],
+      ];
       cy.visit("/admin/settings/whitelabel/branding");
 
-      fonts.forEach((newFont) => {
+      fontsWithExpectedFallback.forEach(([newFont, fallback]) => {
         cy.findByLabelText("Font").click();
         H.selectDropdown().findByText(newFont).click();
         cy.wait("@saveFont");
         cy.get("body").should(
           "have.css",
           "font-family",
-          `${newFont}, sans-serif`,
+          `${newFont}, ${fallback}`,
         );
       });
     });
@@ -722,46 +729,44 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.intercept("GET", "/api/setting").as("getSettings");
       cy.signInAsAdmin();
       cy.visit("/admin/settings/general");
+      cy.wait("@getSettings");
     });
 
-    it("should not render the widget when users does not have a valid license", () => {
+    const urlInput = () =>
+      cy
+        .findByTestId("homepage-setting")
+        .findByLabelText("Landing page custom destination");
+
+    it("should not offer the Custom URL option when the user does not have a valid license", () => {
       H.activateToken("starter");
       cy.reload();
-      cy.findByLabelText("Landing page custom destination").should("not.exist");
+      cy.wait("@getSettings");
+      // Anchor on a positive signal so the negative assertion can't pass while
+      // the page is still loading.
+      cy.findByTestId("homepage-setting")
+        .findByRole("radio", { name: "Default Metabase home" })
+        .should("be.visible");
+      cy.findByTestId("homepage-setting")
+        .findByRole("radio", { name: "Custom URL" })
+        .should("not.exist");
     });
 
-    it("should allow users to provide internal urls", () => {
-      cy.findByLabelText("Landing page custom destination")
-        .click()
-        .clear()
-        .type("/test-1")
-        .blur();
+    it("should validate the URL and persist only same-origin relative paths", () => {
+      cy.findByTestId("homepage-setting")
+        .findByRole("radio", { name: "Custom URL" })
+        .click();
+
+      urlInput().click().clear().type("/test-1").blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      H.goToMainApp();
-      cy.url().should("include", "/test-1");
-    });
-
-    it("should not allow users to provide external urls", () => {
-      cy.findByLabelText("Landing page custom destination")
-        .click()
-        .clear()
-        .type("/test-2")
-        .blur();
-      H.undoToast().findByText("Changes saved").should("be.visible");
-
-      // set to valid value then test invalid value is not persisted
-      cy.findByLabelText("Landing page custom destination")
-        .click()
-        .clear()
-        .type("https://google.com")
-        .blur();
+      // External URLs are rejected and the previous value is preserved.
+      urlInput().click().clear().type("https://google.com").blur();
       cy.findByTestId("admin-layout-content")
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
       H.goToMainApp();
-      cy.url().should("include", "/test-2");
+      cy.url().should("include", "/test-1");
     });
   });
 });

@@ -1,14 +1,17 @@
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import {
+  databaseApi,
+  invalidateNotificationsApiCache,
+  revisionApi,
+} from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities";
-import { Databases } from "metabase/entities/databases";
-import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -25,21 +28,18 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
-import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
+import { getDefaultSize } from "metabase/visualizations";
+import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  DashboardTabId,
-  Database,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
+import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   getCard,
   getIsResultDirty,
@@ -236,9 +236,9 @@ export const apiCreateQuestion = (
       options,
     );
 
-    const databases: Database[] = Databases.selectors.getList(getState());
+    const databases = getMetadata(getState()).databasesList();
     if (databases && !databases.some((d) => d.is_saved_questions)) {
-      dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
+      dispatch(databaseApi.util.invalidateTags([listTag("database")]));
     }
 
     trackNewQuestionSaved(
@@ -375,10 +375,13 @@ async function reduxCreateQuestion(
   dispatch: Dispatch,
   options?: OnCreateOptions,
 ) {
+  const display = question.display();
+  const size = getDefaultSize(display);
   const action = await dispatch(
     Questions.actions.create({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
+      ...(size && { size_x: size.width, size_y: size.height }),
     }),
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));

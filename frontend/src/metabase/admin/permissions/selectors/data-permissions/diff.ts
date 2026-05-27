@@ -5,7 +5,7 @@ import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.dataPermissions,
@@ -18,7 +18,7 @@ export const getIsDirty = createSelector(
 
 interface DiffProps {
   databases: Database[];
-  groups: Group[];
+  groups: GroupInfo[];
 }
 
 export const getDiff = createSelector(

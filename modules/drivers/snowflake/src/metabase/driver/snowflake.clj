@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -36,7 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -73,7 +73,7 @@
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
                               :transforms/table                       true
-                              :workspace                              true}]
+                              :workspace                              false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -223,6 +223,13 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
+(defn- set-put-get [additional-options]
+  (cond (empty? additional-options) "enablePutGet=false"
+        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
+                                                                       #"enablePutGet=[^&]+"
+                                                                       "enablePutGet=false")
+        :else (str additional-options "&enablePutGet=false")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -274,7 +281,8 @@
                    (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
-        (sql-jdbc.common/handle-additional-options details)
+        (sql-jdbc.common/handle-additional-options (update details
+                                                           :additional-options set-put-get))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details))))
@@ -513,12 +521,10 @@
            [:< x y]
            [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and
            [:> x y]
            [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -552,7 +558,6 @@
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
@@ -919,7 +924,8 @@
   [_ database]
   (-> database
       (m/update-existing :details normalize-details)
-      (m/update-existing :write_data_details normalize-details)))
+      (m/update-existing :write_data_details normalize-details)
+      (m/update-existing :admin_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -959,13 +965,19 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :snowflake
-  [_ role]
+(defmethod sql-jdbc/set-role-statement :snowflake
+  [_driver _conn role]
+  ;; Apparently `identifier(?)` still parses the identifier string as an unquoted identifier, so we still need to
+  ;; manually wrap it in double quotes and manually escape doubles quotes inside `role` itself :unamused: ...
+  ;; see (#73788)
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "USE ROLE \"%s\";" role)
-      (format "USE ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (if needs-quote?
+                                (-> role
+                                    (str/replace #"\"" "\"\"")
+                                    (as-> $role (str \" $role \")))
+                                role)]
+    ["USE ROLE identifier(?);" quoted-role]))
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
@@ -1024,7 +1036,7 @@
 
 (defn- string-filter
   [driver str-filter field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]
-  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))]
+  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare driver field))]
     [str-filter
      (if case-sensitive casted-field [:lower casted-field])
      (get-string-filter-arg driver arg options)]))
@@ -1067,17 +1079,20 @@
       (throw (ex-info (tru "Snowflake database configuration is missing required ''warehouse'' setting")
                       {:database-id (:id database) :step :init})))
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
-    (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                 (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
-                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
-                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
-                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
-                         (:user read-user) (:password read-user) role-name)
-                 (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
-      (jdbc/execute! conn-spec [sql]))
+    (try
+      (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
+                   (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
+                   (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
+                   (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
+                   (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                   (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                   (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
+                   (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
+                           (:user read-user) (:password read-user) role-name)
+                   (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
+        (jdbc/execute! conn-spec [sql]))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions t [(:password read-user)]))))
     {:schema           schema-name
      :database_details (assoc read-user :role role-name :use-password true)}))
 
@@ -1099,29 +1114,31 @@
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         db-name   (:db (driver.conn/effective-details database))
         role-name (-> workspace :database_details :role)]
-    (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
-                      {:database-id (:id database) :step :grant})))
     (when-not role-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
                       {:workspace-id (:id workspace) :step :grant})))
-    (let [qdb (sql.u/quote-name :snowflake :schema db-name)
-          qr  (sql.u/quote-name :snowflake :field role-name)]
-      ;; Grant USAGE on each unique schema first (required to access tables within)
-      (doseq [schema (distinct (map :schema tables))]
-        (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s"
-                                          qdb (sql.u/quote-name :snowflake :schema schema) qr)]))
-      ;; Grant SELECT on each specific table
-      (doseq [table tables]
-        (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE %s.%s.%s TO ROLE %s"
-                                          qdb
-                                          (sql.u/quote-name :snowflake :schema (:schema table))
-                                          (sql.u/quote-name :snowflake :table (:name table))
-                                          qr)])))))
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Snowflake workspaces require an explicit database in connection details")
+                      {:database-id (:id database) :step :grant})))
+    ;; Each entry in `schemas` is a Snowflake schema in the bound database. The
+    ;; catalog (`:db`) comes from connection details rather than per-input — a
+    ;; Metabase `Database` row binds to one Snowflake database.
+    (let [qr  (sql.u/quote-name :snowflake :field role-name)
+          qdb (sql.u/quote-name :snowflake :schema db-name)]
+      (doseq [schema schemas]
+        (when (str/blank? schema)
+          (throw (ex-info (tru "Snowflake workspace input schema is blank")
+                          {:database-id (:id database) :step :grant})))
+        (let [qs (sql.u/quote-name :snowflake :schema schema)]
+          (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" qdb qr)
+                       (format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s" qdb qs qr)
+                       (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)
+                       (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)]]
+            (jdbc/execute! conn-spec [sql])))))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "metabot/prompts/dialects/snowflake.md")

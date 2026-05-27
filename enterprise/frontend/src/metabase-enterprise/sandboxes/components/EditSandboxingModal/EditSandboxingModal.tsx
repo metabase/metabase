@@ -4,7 +4,12 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetPermissionsGroupQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
@@ -15,9 +20,10 @@ import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { GTAPApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
 import { Button, Center, Icon, Loader } from "metabase/ui";
+import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -25,7 +31,9 @@ import type {
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
+  IconName,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
@@ -310,12 +318,18 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
   </div>
 );
 
+const PermissionsGroupName = ({ groupId }: { groupId: GroupId }) => {
+  const { data: group } = useGetPermissionsGroupQuery(groupId);
+  return group ? <span>{group.name}</span> : null;
+};
+
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
   policyTable: Table | undefined;
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -329,7 +343,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
         icon="group"
         content={jt`Users in ${(
           <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
+            <PermissionsGroupName groupId={policy.group_id} />
           </strong>
         )} can view`}
       />
@@ -346,9 +360,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />

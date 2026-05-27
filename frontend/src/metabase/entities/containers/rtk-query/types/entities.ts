@@ -35,27 +35,17 @@ export type ReloadIntervalSelector<Entity> = (
  * There should be an entry here for every "createEntity" function call.
  */
 export type EntityType =
-  | "actions"
   | "alerts"
   | "bookmarks"
-  | "collections"
-  | "dashboards"
-  | "databases"
   | "documents"
-  | "fields"
-  | "groups"
-  | "indexedEntities"
-  | "persistedModels"
   | "pulses"
   | "questions"
   | "revisions"
-  | "schemas"
   | "search"
   | "segments"
   | "snippetCollections"
   | "snippets"
   | "tables"
-  | "timelineEvents"
   | "timelines"
   | "users";
 

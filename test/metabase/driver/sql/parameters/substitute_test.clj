@@ -1,12 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.parameters.substitute-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -22,8 +21,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
-(defn- optional [& args] (params/->Optional args))
-(defn- param [param-name] (params/->Param param-name))
+(defn- optional [& args] (lib/parsed-optional-param args))
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
@@ -42,51 +40,51 @@
   (testing "normal substitution"
     (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
            (substitute
-            ["select * from foobars where bird_type = " (param "bird_type")]
+            ["select * from foobars where bird_type = " (lib/parsed-param "bird_type")]
             {"bird_type" "Steller's Jay"}))))
   (testing "make sure falsey values are substituted correctly"
     (testing "`nil` should get substituted as `NULL`"
       (is (= ["select * from foobars where bird_type = NULL" []]
              (substitute
-              ["select * from foobars where bird_type = " (param "bird_type")]
+              ["select * from foobars where bird_type = " (lib/parsed-param "bird_type")]
               {"bird_type" nil})))))
   (testing "`false` should get substituted as `false`"
     (is (= ["select * from foobars where bird_type = FALSE" []]
            (substitute
-            ["select * from foobars where bird_type = " (param "bird_type")]
+            ["select * from foobars where bird_type = " (lib/parsed-param "bird_type")]
             {"bird_type" false}))))
   (testing "optional substitution -- param present"
     (testing "should preserve whitespace inside optional params"
       (is (= ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
              (substitute
-              ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
+              ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type"))]
               {"bird_type" "Steller's Jay"})))))
   (testing "optional substitution -- param not present"
     (is (= ["select * from foobars" nil]
            (substitute
-            ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
+            ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type"))]
             {}))))
   (testing "optional -- multiple params -- all present"
     (is (= ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
            (substitute
-            ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
+            ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type") " AND color = " (lib/parsed-param "bird_color"))]
             {"bird_type" "Steller's Jay", "bird_color" "Blue"}))))
   (testing "optional -- multiple params -- some present"
     (is (= ["select * from foobars" nil]
            (substitute
-            ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
+            ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type") " AND color = " (lib/parsed-param "bird_color"))]
             {"bird_type" "Steller's Jay"}))))
   (testing "nested optionals -- all present"
     (is (= ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
            (substitute
-            ["select * from foobars " (optional " where bird_type = " (param "bird_type")
-                                                (optional " AND color = " (param "bird_color")))]
+            ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type")
+                                                (optional " AND color = " (lib/parsed-param "bird_color")))]
             {"bird_type" "Steller's Jay", "bird_color" "Blue"}))))
   (testing "nested optionals -- some present"
     (is (= ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
            (substitute
-            ["select * from foobars " (optional " where bird_type = " (param "bird_type")
-                                                (optional " AND color = " (param "bird_color")))]
+            ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type")
+                                                (optional " AND color = " (lib/parsed-param "bird_color")))]
             {"bird_type" "Steller's Jay"})))))
 
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
@@ -95,15 +93,15 @@
   "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain
   information about"
   []
-  (params/map->FieldFilter
-   {:field (meta/field-metadata :orders :created-at)
-    :value {:type  :date/single
-            :value (str (t/offset-date-time "2019-09-20T19:52:00.000-07:00"))}}))
+  (lib/parsed-field-filter-param
+   (meta/field-metadata :orders :created-at)
+   {:type  :date/single
+    :value (str (t/offset-date-time "2019-09-20T19:52:00.000-07:00"))}))
 
 (deftest ^:parallel substitute-field-filter-test
   (testing "field-filters"
     (testing "non-optional"
-      (let [query ["select * from orders where " (param "created_at")]]
+      (let [query ["select * from orders where " (lib/parsed-param "created_at")]]
         (testing "param is present"
           (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
                   [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
@@ -111,10 +109,10 @@
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from orders where 1 = 1" []]
-                 (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))
+                 (substitute query {"created_at" (assoc (date-field-filter-value) :value lib/parsed-param-no-value-placeholder)}))
               "should be replaced with 1 = 1"))))
     (testing "optional"
-      (let [query ["select * from orders " (optional "where " (param "created_at"))]]
+      (let [query ["select * from orders " (optional "where " (lib/parsed-param "created_at"))]]
         (testing "param is present"
           (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
                   [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
@@ -122,16 +120,16 @@
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
-                 (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))))))))
+                 (substitute query {"created_at" (assoc (date-field-filter-value) :value lib/parsed-param-no-value-placeholder)}))))))))
 
 (deftest ^:parallel substitute-field-filter-for-nested-field-test
   (testing "field filter for a nested field (with parent-id) should include parent field name in identifier (#47003)"
     (mt/test-drivers (set/intersection (sql-parameters-engines)
                                        (mt/normal-drivers-with-feature :nested-field-columns))
-      (let [;; Use high IDs that won't collide with existing test metadata
+      (let [ ;; Use high IDs that won't collide with existing test metadata
             parent-field-id 999901
             nested-field-id 999902
-          ;; Create a metadata provider that has a parent struct field and a nested child field
+            ;; Create a metadata provider that has a parent struct field and a nested child field
             metadata-provider
             (lib.tu/merged-mock-metadata-provider
              meta/metadata-provider
@@ -151,7 +149,7 @@
                         :database-type "CHARACTER VARYING"
                         :parent-id     parent-field-id
                         :nfc-path      nil}]})
-            query          ["select * from venues where " (param "tag")]
+            query          ["select * from venues where " (lib/parsed-param "tag")]
             field-metadata (assoc (meta/field-metadata :venues :name)
                                   :id            nested-field-id
                                   :name          "tag_name"
@@ -160,10 +158,10 @@
                                   :database-type "CHARACTER VARYING"
                                   :parent-id     parent-field-id
                                   :nfc-path      nil)
-            field-filter   (params/map->FieldFilter
-                            {:field field-metadata
-                             :value {:type  :string/=
-                                     :value ["banana"]}})
+            field-filter   (lib/parsed-field-filter-param
+                            field-metadata
+                            {:type  :string/=
+                             :value ["banana"]})
             [sql _args] (mt/with-metadata-provider metadata-provider
                           (sql.params.substitute/substitute query {"tag" field-filter}))]
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
@@ -346,15 +344,15 @@
 (deftest ^:parallel substitute-field-filter-test-2
   (testing "new operators"
     (testing "string operators"
-      (let [query ["select * from venues where " (param "param")]]
+      (let [query ["select * from venues where " (lib/parsed-param "param")]]
         (doseq [[operator {:keys [field value expected options]}] substitute-field-filter-test-2-test-cases]
           (testing operator
             (is (= expected
-                   (-> (substitute query {"param" (params/map->FieldFilter
-                                                   {:field (meta/field-metadata :venues field)
-                                                    :value {:type  operator
-                                                            :value value
-                                                            :options options}})})
+                   (-> (substitute query {"param" (lib/parsed-field-filter-param
+                                                   (meta/field-metadata :venues field)
+                                                   {:type    operator
+                                                    :value   value
+                                                    :options options})})
                        vec
                        (update 0 (partial driver/prettify-native-form :h2))
                        (update 0 str/split-lines))))))))))
@@ -363,14 +361,13 @@
 
 (deftest ^:parallel substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
-    (let [query ["SELECT * FROM " (param "#123")]]
+    (let [query ["SELECT * FROM " (lib/parsed-param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))
+             (substitute query {"#123" (lib/parsed-referenced-card-query-param 123 "SELECT 1 `x`")})))))
   (testing "Referenced card query substitution removes comments (#29168), trailing semicolons (#28218) and whitespace"
-    (let [query ["SELECT * FROM " (param "#123")]]
+    (let [query ["SELECT * FROM " (lib/parsed-param "#123")]]
       (are [nested expected] (= [(str "SELECT * FROM (" expected ")") []]
-                                (substitute query {"#123" (params/map->ReferencedCardQuery
-                                                           {:card-id 123, :query nested})}))
+                                (substitute query {"#123" (lib/parsed-referenced-card-query-param 123 nested)}))
         "SELECT ';' `x`; ; "             "SELECT ';' `x`"
         "SELECT * FROM table\n-- remark" "SELECT * FROM table\n-- remark\n"))))
 
@@ -378,23 +375,23 @@
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: symbol_is_A")]]
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: symbol_is_A")]]
       (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-              (substitute query {"snippet: symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+              (substitute query {"snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 123 "symbol = 'A'")}))))))
 
 (deftest ^:parallel substitute-recursive-native-query-snippets-test
   (testing "Recursive native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: outer")]]
+    (let [query ["SELECT * FROM test_scores WHERE " (lib/parsed-param "snippet: outer")]]
       (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-              (substitute query {"snippet: outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
-                                 "snippet: symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
+              (substitute query {"snippet: outer" (lib/parsed-referenced-query-snippet-param 123 "{{snippet:symbol_is_A}}")
+                                 "snippet: symbol_is_A" (lib/parsed-referenced-query-snippet-param 124 "symbol = 'A'")}))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
                          (mt/with-metadata-provider meta/metadata-provider
-                           (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
+                           (#'sql.params.substitute/substitute (lib/parse-parameters sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -411,7 +408,6 @@
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
                            {"toucans_are_cool" true, "bird_type" "toucan"}))))
-
   (testing "Should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
@@ -425,115 +421,93 @@
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
                          {"toucans_are_cool" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
                          {"toucans_are_cool_2" true})))
-
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
                          {"toucans_are_cool" true})))
-
   (testing "Two parameters in an optional"
     (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
                            {"toucans_are_cool" true, "bird_type" "toucan"}))))
-
   (is (= {:query  "SELECT * FROM bird_facts"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" 5})))
-
   (testing "make sure nil gets substitute-e2ed in as `NULL`"
     (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
             :params []}
            (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                            {"num_toucans" nil}))))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" true})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" false})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["abc"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" "abc"})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["yo' mama"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          {"num_toucans" "yo' mama"})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 2, "total_birds" 5})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"total_birds" 5})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 3})))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          nil)))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
           :params ["toucan"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
-
   (testing "should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
                          {"num_toucans" 2, "total_birds" 5}))))
-
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
                          {"num_toucans" 5})))
-
   (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
@@ -1310,12 +1284,9 @@
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
              (sql.params.substitute/substitute
-              ["SELECT * FROM " (params/->Param "#1")]
+              ["SELECT * FROM " (lib/parsed-param "#1")]
               {"#1"
-               (params/map->ReferencedCardQuery
-                {:card-id 1
-                 :query   "SELECT * FROM table WHERE x LIKE ?"
-                 :params  ["G%"]})}))))))
+               (lib/parsed-referenced-card-query-param 1 "SELECT * FROM table WHERE x LIKE ?" ["G%"])}))))))
 
 (deftest ^:parallel offset-as-filter-variable-value-test
   (let [query "select 1 where {{variable}} is not null"]

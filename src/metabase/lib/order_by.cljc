@@ -14,9 +14,9 @@
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some mapv empty? not-empty #?(:clj for)]]))
 
 (lib.hierarchy/derive :asc  ::order-by-clause)
@@ -189,7 +189,7 @@
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
    (let [lib-uuid (lib.options/uuid current-order-by)]
-     (lib.util.match/replace-lite query
+     (match/replace query
        [direction {:lib/uuid (uuid :guard (= uuid lib-uuid))} _]
        (assoc &match 0 (opposite-direction direction))))))
 

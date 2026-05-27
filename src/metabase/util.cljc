@@ -57,6 +57,7 @@
   format-nanoseconds
   format-seconds
   format-plural
+  qualified-key
   qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
@@ -771,7 +772,6 @@
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
-
       :cljs-dev
       ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
       ;; default value wastes too much space, 120 is a little easier to read actually.
@@ -779,7 +779,6 @@
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
-
       :default
       ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
       (str x)))
@@ -1180,7 +1179,6 @@
                                                            (long (+
                                                                   cumulative-byte-count
                                                                   (string-byte-count (string-character-at s i)))))))
-
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}

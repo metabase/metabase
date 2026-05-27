@@ -1,14 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
+import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListCollectionItemsQuery } from "metabase/api";
-import { deletePermanently } from "metabase/archive/actions";
+import {
+  Api,
+  useDeleteCollectionMutation,
+  useListCollectionItemsQuery,
+} from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { useSetArchive } from "metabase/archive/hooks";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
@@ -30,12 +36,10 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
-import { useSetArchive, useToast } from "metabase/common/hooks";
+import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Collections } from "metabase/entities/collections";
-import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -80,6 +84,7 @@ export const CollectionContentView = ({
   visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const dispatch = useDispatch();
+  const [deleteCollection] = useDeleteCollectionMutation();
 
   const { data: pinnedItemsData, isLoading: loading } =
     useListCollectionItemsQuery({
@@ -89,11 +94,7 @@ export const CollectionContentView = ({
       sort_direction: "asc",
     });
 
-  const list = useMemo(
-    () =>
-      pinnedItemsData?.data.map((item) => Search.wrapEntity(item, dispatch)),
-    [pinnedItemsData, dispatch],
-  );
+  const list = pinnedItemsData?.data;
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,
@@ -147,6 +148,7 @@ export const CollectionContentView = ({
   }, [bookmarks, collectionId]);
 
   const archive = useSetArchive();
+  const setCollection = useSetCollection();
   const [sendToast] = useToast();
 
   const visibleColumnsMap = useMemo(
@@ -241,7 +243,6 @@ export const CollectionContentView = ({
 
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
-  const actionId = { id: collectionId };
 
   return (
     <CollectionRoot {...dropzoneProps}>
@@ -266,14 +267,28 @@ export const CollectionContentView = ({
           canDelete={collection.can_delete}
           onUnarchive={async () => {
             await archive({ id: collectionId, model: "collection" }, false);
-            await dispatch(Bookmarks.actions.invalidateLists());
+            dispatch(Api.util.invalidateTags([listTag("bookmark")]));
           }}
           onMove={({ id }) =>
-            dispatch(Collections.actions.setCollection(actionId, { id }))
+            setCollection({ model: "collection", id: collectionId }, { id })
           }
-          onDeletePermanently={() =>
-            dispatch(deletePermanently(Collections.actions.delete(actionId)))
-          }
+          onDeletePermanently={async () => {
+            try {
+              await deleteCollection({ id: collectionId }).unwrap();
+              dispatch(push("/trash"));
+              dispatch(
+                addUndo({
+                  message: t`This item has been permanently deleted.`,
+                }),
+              );
+            } catch {
+              dispatch(
+                addUndo({
+                  message: t`There was an error permanently deleting this item.`,
+                }),
+              );
+            }
+          }}
         />
       )}
 

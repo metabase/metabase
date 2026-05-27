@@ -259,17 +259,21 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(
-  datasets: Dataset[],
-  isGuestEmbed: boolean,
+export function isDashcardAccessRestricted(
+  datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  const isAccessRestricted = datasets.some(
+  return datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
       (typeof s.error === "object" && s.error?.status === 403),
   );
+}
 
-  if (isAccessRestricted) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
+  if (isDashcardAccessRestricted(datasets)) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,

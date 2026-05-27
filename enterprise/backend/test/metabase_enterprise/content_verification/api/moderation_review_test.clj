@@ -19,7 +19,6 @@
                                                                                            :status              "verified"
                                                                                            :moderated_item_id   1
                                                                                            :moderated_item_type "card"}))))
-
     (mt/with-premium-features #{:content-verification}
       (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}]
         (mt/with-model-cleanup [:model/ModerationReview]

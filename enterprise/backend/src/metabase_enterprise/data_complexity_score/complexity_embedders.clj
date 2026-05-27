@@ -20,7 +20,6 @@
 
   `_`, `-`, `.`, and camelCase boundaries become spaces; adjacent whitespace is collapsed and
   the result is lowercased.
-  Splitting happens *before* lowercasing so the camelCase boundary stays visible.
 
   Embedding models are trained on English: `\"monthly_active_users\"` is an out-of-distribution
   token while `\"monthly active users\"` hits three well-understood ones.
@@ -47,24 +46,9 @@
           vectors (when (seq names) (vec (name-embed-fn names)))]
       (into {} (filter val) (zipmap names vectors)))))
 
-(def default-text-variant
-  "Which text form of each entity name gets embedded by the default synonym embedder.
-
-  `:names-split` rewrites snake/kebab/dotted/camelCase names into space-separated English
-  tokens before sending them to the provider — see [[split-for-embedding]].
-
-  Alternatives worth considering (not implemented): `:names` (raw lowercased name),
-  `:search-text` (type + name + description + schema, as the semantic-search indexer does),
-  or `:typed-split` ([source|value] prefix + split name).
-  The 2026-04-21 analysis shows names-split as the best default for both Arctic and MiniLM.
-
-  The value rides the fingerprint so a future swap to another variant forces a re-score
-  without a `formula-version` bump."
-  :names-split)
-
 (def ^:private ^Class floats-class
-  "`float[]` class object — cached so [[ensure-floats]] can `instance?`-check without
-  re-resolving on every vector."
+  "`float[]` class object — cached so callers can `instance?`-check without re-resolving on every
+  vector."
   (class (float-array 0)))
 
 (defn- ensure-floats
@@ -74,6 +58,33 @@
   in `metabase-enterprise.semantic-search.embedding`), so the common path skips the copy."
   ^floats [v]
   (if (instance? floats-class v) v (float-array v)))
+
+(defn file-embedder
+  "Build an embedder from a pre-loaded `{name -> [float ...]}` map.
+  Keys are run through [[normalize-name]] here so callers can hand in raw display names.
+  Values may be seqs/vectors of floats or `^floats` arrays.
+  Entities whose normalized name isn't in the map get no vector — same contract as the other embedders."
+  [name->vec]
+  (let [normalized (into {}
+                         (keep (fn [[k v]]
+                                 (when-let [n (normalize-name k)]
+                                   [n (ensure-floats v)])))
+                         name->vec)]
+    (fn embed [_entities] normalized)))
+
+(def default-text-variant
+  "Which text form of each entity name gets embedded by the default synonym embedder.
+
+  `:names-split` rewrites snake/kebab/dotted/camelCase names into space-separated English
+  tokens before sending them to the provider — see [[split-for-embedding]].
+
+  Alternatives worth considering (not implemented):
+  - `:names` (raw lowercased name)
+  - `:search-text` (type + name + description + schema, as the semantic-search indexer does)
+  - `:typed-split` ([source|value] prefix + split name).
+
+  The 2026-04-21 analysis suggested names-split as the best default for both Arctic and MiniLM."
+  :names-split)
 
 (def ^:private provider-batch-size
   "Names per `get-embeddings-batch` HTTP call.
@@ -95,6 +106,11 @@
   single oversized HTTP request — `get-embeddings-batch` does no chunking of its own for the
   ai-service / openai providers.
 
+  Passes `:record-tokens? false` so complexity-score runs don't write to
+  `semantic_search_token_tracking` — the score is its own analytics signal and the embedding
+  calls here aren't user-driven search traffic. Holds for the CLI, the Quartz cron, and the
+  API endpoint alike.
+
   Errors from the provider bubble up — `score-synonym-pairs` converts them into `nil`
   measurements + an `:error` field so a broken run is visible downstream."
   [model-descriptor]
@@ -109,7 +125,8 @@
       (when (seq names)
         (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
               vectors (into []
-                            (mapcat #(embeddings/get-embeddings-batch model-descriptor %))
+                            (mapcat #(embeddings/get-embeddings-batch
+                                      model-descriptor % :record-tokens? false))
                             (partition-all provider-batch-size texts))]
           (into {}
                 (keep (fn [[n v]] (when v [n (ensure-floats v)])))

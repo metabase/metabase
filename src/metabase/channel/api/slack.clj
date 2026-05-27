@@ -119,7 +119,6 @@
           (setting/set-many! {:slack-app-token    slack-app-token
                               :slack-token-valid? true})
           (slack/refresh-channels-and-usernames-when-needed!))))
-
     (when (contains? body :slack-bug-report-channel)
       (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
         (when (and processed-bug-channel
@@ -127,7 +126,6 @@
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
-
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))

@@ -31,17 +31,22 @@ export type MetabotAgentChartMessage = {
   Chart: React.ComponentType<MetabotChartProps>;
 };
 
-// Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
-// - `tool_call`: debug-only, gated on metabot's `debugMode`.
-// - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
-// - `action`: unused in shipped code.
-// - `todo_list`: only reachable via the `codegen/transforms` profile, not the SDK.
+// Internal variants intentionally omitted. `use-metabot.tsx` only exposes
+// `type === "text"` messages `:
+// - `tool_call` messages: debug-only, gated on metabot's `debugMode`.
+// - `action` user messages: produced only when replaying historical audit conversations,
+//   never via the SDK input path.
+// - `data_part` messages other than `navigate_to` (`code_edit`, `transform_suggestion`,
+//   `todo_list`, `adhoc_viz`, `static_viz`, `state`): in-app surfaces (Transform editor,
+//   codegen profiles) the SDK does not render.
 export type MetabotAgentMessage =
   | MetabotAgentTextMessage
   | MetabotAgentChartMessage;
 
+/** @category useMetabot */
 export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
+/** @category useMetabot */
 export type MetabotChartProps =
   | (Omit<StaticQuestionProps, "questionId" | "token" | "query"> & {
       drills?: false;
@@ -50,12 +55,14 @@ export type MetabotChartProps =
       drills: true;
     });
 
+/** @category useMetabot */
 export type MetabotErrorMessage = {
   /** `"alert"` renders with a warning icon and error color; `"message"` renders as plain text. */
   type: "message" | "alert" | "locked";
   message: string;
 };
 
+/** @category useMetabot */
 export type UseMetabotResult = {
   /** Submit a new message to the conversation. */
   submitMessage: (message: string) => Promise<void>;

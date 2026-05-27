@@ -1,13 +1,14 @@
 (ns metabase.driver.common.parameters.values-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.common.parameters.values-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -23,8 +24,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
-   (metabase.driver.common.parameters ReferencedCardQuery ReferencedTableQuery)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,13 +36,11 @@
            (#'params.values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}]))))
-
   (testing "Specified value, targeted by ID"
     (is (= "2"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "2"}]))))
-
   (testing "Multiple values with new operators"
     (is (= 20
            (#'params.values/value-for-tag
@@ -52,38 +50,31 @@
            (#'params.values/value-for-tag
             {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
             [{:type :number/=, :value ["20" "40"], :target [:variable [:template-tag "number_filter"]]}]))))
-
   (testing "Unspecified value"
-    (is (= params/no-value
+    (is (= lib/parsed-param-no-value-placeholder
            (#'params.values/value-for-tag {:name "id", :display-name "ID", :type :text} nil))))
-
   (testing "Unspecified value when required"
     (is (thrown? Exception
                  (#'params.values/value-for-tag {:name "id", :display-name "ID", :required true, :type :text} nil))))
-
   (testing "Empty value when required"
     (is (thrown? Exception
                  (#'params.values/value-for-tag
                   {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
                   [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "Default used with unspecified value"
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil))))
-
   (testing "Default not used with empty value"
-    (is (= params/no-value
+    (is (= lib/parsed-param-no-value-placeholder
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "Default used with empty value when required"
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "BigInteger value"
     (is (= 9223372036854775808
            (#'params.values/value-for-tag
@@ -114,7 +105,7 @@
                 [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
                  {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
       (testing "optional tags get no value"
-        (is (= params/no-value
+        (is (= lib/parsed-param-no-value-placeholder
                (#'params.values/value-for-tag
                 {:name "id", :display-name "ID", :type :text, :required false, :default "100"}
                 [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
@@ -228,7 +219,7 @@
                       :table-id      (mt/id :checkins)
                       :base-type     :type/Date
                       :semantic-type nil})
-             :value params/no-value}
+             :value lib/parsed-param-no-value-placeholder}
             (value-for-tag
              {:name         "checkin_date"
               :display-name "Checkin Date"
@@ -346,7 +337,7 @@
                         :table-id       (meta/id :checkins)
                         :base-type      :type/Date
                         :effective-type :type/Date})
-               :value params/no-value}
+               :value lib/parsed-param-no-value-placeholder}
               (parse-tag
                {:name         "checkin_date"
                 :display-name "Checkin Date"
@@ -382,7 +373,7 @@
                                           [{:database (meta/id)
                                             :type     "native"
                                             :native   {:query test-query}}])
-          (is (=? {:card-id 1, :query test-query, :params nil}
+          (is (=? {:card-id 1, :query test-query, :parameters nil}
                   (value-for-tag
                    {:name         "card-template-tag-test"
                     :display-name "Card template tag test"
@@ -409,7 +400,10 @@
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                             meta/metadata-provider
                                             [mbql-query])
-            (is (= {:card-id 1, :query expected-sql, :params nil}
+            (is (= {:lib/type   :metabase.lib.parameters.parse.types/referenced-card-query
+                    :card-id    1
+                    :query      expected-sql
+                    :parameters nil}
                    (value-for-tag
                     {:name         "card-template-tag-test"
                      :display-name "Card template tag test"
@@ -573,8 +567,7 @@
   (testing "Snippet parsing should work correctly for a valid Snippet"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
                                                                :content "venues WHERE price = 4"}]
-      (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
-                                                                              :content    "venues WHERE price = 4"})}]
+      (let [expected {"expensive-venues" (lib/parsed-referenced-query-snippet-param snippet-id "venues WHERE price = 4")}]
         (is (= expected
                (query->params-map (query-with-snippet :snippet-id snippet-id))))
         (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
@@ -587,8 +580,7 @@
                                       meta/metadata-provider
                                       {:native-query-snippets [{:id      1
                                                                 :content "venues WHERE price = 4"}]})
-      (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id 1
-                                                                              :content    "venues WHERE price = 4"})}]
+      (let [expected {"expensive-venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}]
         (is (= expected
                (query->params-map (query-with-snippet :snippet-id 1))))
         (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
@@ -599,26 +591,25 @@
   (testing "Snippet parsing should normalize snippet names when parsing"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
                                                                :content "venues WHERE price = 4"}]
-      (let [expected {"snippet: expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
-                                                                                       :content    "venues WHERE price = 4"})}
-            query (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
-                         :template-tags {"snippet:expensive-venues" {:type :snippet
-                                                                     :name         "expensive-venues"
-                                                                     :display-name "Expensive Venues"
-                                                                     :snippet-name "expensive-venues"
-                                                                     :snippet-id snippet-id}})]
+      (let [expected {"snippet: expensive-venues" (lib/parsed-referenced-query-snippet-param snippet-id "venues WHERE price = 4")}
+            query    (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
+                            :template-tags {"snippet:expensive-venues" {:type         :snippet
+                                                                        :name         "expensive-venues"
+                                                                        :display-name "Expensive Venues"
+                                                                        :snippet-name "expensive-venues"
+                                                                        :snippet-id   snippet-id}})]
         (is (= expected
                (query->params-map query)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"
-    (is (instance? ReferencedTableQuery
-                   (#'params.values/value-for-tag
-                    {:name         "table-tag-test"
-                     :display-name "Table tag test"
-                     :type         :table
-                     :table-id     1}
-                    [])))
+    (is (=? {:lib/type :metabase.lib.parameters.parse.types/referenced-table-query}
+            (#'params.values/value-for-tag
+             {:name         "table-tag-test"
+              :display-name "Table tag test"
+              :type         :table
+              :table-id     1}
+             [])))
     (is (=? {:table-id 1}
             (value-for-tag {:name         "table-tag-test"
                             :display-name "Table tag test"
@@ -715,9 +706,9 @@
                                                                                        [:count-where [:starts-with $product-id->products.category "G"]]
                                                                                        {:name "G Monies", :display-name "G Monies"}]]
                                                                         :breakout    [!month.created-at]}))]})
-      (is (=? {:card-id 1
-               :query   (every-pred string? (complement str/blank?))
-               :params  ["G%"]}
+      (is (=? {:card-id    1
+               :query      (every-pred string? (complement str/blank?))
+               :parameters ["G%"]}
               (#'params.values/parse-tag
                {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
                 :name         "#1"
@@ -767,7 +758,7 @@
   (testing "Default values passed in as part of the request should not apply when the value is nil"
     (mt/dataset test-data
       (testing "Field filters"
-        (is (=? {"filter" {:value ::params/no-value}}
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
                 (query->params-map
                  {:template-tags {"filter"
                                   {:id           "xyz456"
@@ -785,7 +776,7 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
-    (is (= {"filter" ::params/no-value}
+    (is (= {"filter" lib/parsed-param-no-value-placeholder}
            (query->params-map
             {:template-tags {"filter"
                              {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
@@ -819,7 +810,7 @@
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (mt/dataset test-data
       (testing "Field filters"
-        (is (=? {"filter" {:value ::params/no-value}}
+        (is (=? {"filter" {:value lib/parsed-param-no-value-placeholder}}
                 (query->params-map
                  {:template-tags {"filter"
                                   {:id           "xyz456"
@@ -837,7 +828,7 @@
 (deftest ^:parallel use-parameter-defaults-raw-value-template-tags-test
   (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (testing "Raw value template tags"
-      (is (= {"filter" ::params/no-value}
+      (is (= {"filter" lib/parsed-param-no-value-placeholder}
              (query->params-map
               {:template-tags {"filter"
                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
@@ -873,13 +864,13 @@
                                          :id           "__source__"
                                          :name         param-name}}]
           (testing "With no parameters passed in"
-            (is (=? {param-name ReferencedCardQuery}
+            (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
                     (query->params-map {:template-tags template-tags}))))
           (testing "WITH parameters passed in"
             (let [parameters [{:type   :date/all-options
                                :value  "2022-04-20"
                                :target [:dimension [:template-tag "created_at"]]}]]
-              (is (=? {param-name ReferencedCardQuery}
+              (is (=? {param-name {:lib/type :metabase.lib.parameters.parse.types/referenced-card-query}}
                       (query->params-map {:template-tags template-tags
                                           :parameters    parameters}))))))))))
 
@@ -893,14 +884,13 @@
                                           :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                           :display-name "CreatedAt"
                                           :widget-type  :date/all-options}}]
-
           (testing "with no parameters given, no value"
             (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                  :value params/no-value}}
+                                  :value lib/parsed-param-no-value-placeholder}}
                     (query->params-map {:template-tags template-tags}))))
           (testing "with parameters given but blank, no value"
             (is (=? {"createdAt" {:field {:lib/type :metadata/column}
-                                  :value params/no-value}}
+                                  :value lib/parsed-param-no-value-placeholder}}
                     (query->params-map {:template-tags template-tags
                                         :parameters    [{:type   :date/relative
                                                          :value  nil

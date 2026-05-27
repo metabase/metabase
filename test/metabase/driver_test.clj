@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -44,7 +45,7 @@
            (.getContextClassLoader (Thread/currentThread))))))
 
 (deftest available?-test
-  (with-redefs [driver.impl/concrete? (constantly true)]
+  (mt/with-dynamic-fn-redefs [driver.impl/concrete? (constantly true)]
     (is (driver/available? ::test-driver))
     (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))
@@ -197,7 +198,6 @@
                               "created_at" "$_id.created_at"
                               "sum"        true}}]
           formatted-query (driver/prettify-native-form :mongo query)]
-
       (testing "Formatting a mongo query returns a JSON-like string"
         (is (= (str/join "\n"
                          ["["
@@ -244,19 +244,17 @@
                           "  }"
                           "]"])
                formatted-query)))
-
       (testing "The formatted JSON-like string is equivalent to the query"
         (is (= query (json/decode formatted-query))))
-
-        ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
+      ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
       (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
-              ;; This is a corner case since the system should always be using the right driver
+            ;; This is a corner case since the system should always be using the right driver
             weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
         (testing "The wrong formatter will change the format..."
           (is (not= query weird-formatted-query)))
         (testing "...but the resulting data is still the same"
-            ;; Bottom line - Use the right driver, but if you use the wrong
-            ;; one it should be harmless but annoying
+          ;; Bottom line - Use the right driver, but if you use the wrong
+          ;; one it should be harmless but annoying
           (is (= query
                  (json/decode weird-formatted-query))))))))
 

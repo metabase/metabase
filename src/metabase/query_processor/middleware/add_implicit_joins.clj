@@ -16,13 +16,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv some empty? not-empty get-in]]))
 
 (defn- implicitly-joined-fields
@@ -34,7 +34,7 @@
   [x]
   (into []
         (distinct)
-        (lib.util.match/match-many (dissoc x :lib/stage-metadata)
+        (match/match-many (dissoc x :lib/stage-metadata)
           [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-oname]
           &match)))
 
@@ -82,7 +82,6 @@
         (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
               {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
               (lib/with-join-conditions [(lib/= [:field
@@ -119,7 +118,7 @@
   (-> join
       (assoc :alias new-alias)
       (update :conditions lib.walk/walk-clauses* (fn [clause]
-                                                   (lib.util.match/match-lite clause
+                                                   (match/match-one clause
                                                      [:field {:join-alias (ja :guard (= ja join-alias))} _id-or-name]
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
@@ -129,7 +128,7 @@
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite clause
+                                    (match/match-one clause
                                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
@@ -180,7 +179,7 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
-        (let [stage' (lib.util.match/replace-lite stage
+        (let [stage' (match/replace stage
                        [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
@@ -259,7 +258,7 @@
         (let [next-stage (get-in query next-path)]
           (when-let [reused-join-aliases (not-empty (::reused-join-aliases next-stage))]
             (when-let [referenced-fields (not-empty
-                                          (set (lib.util.match/match-many (dissoc next-stage :joins :lib/stage-metadata)
+                                          (set (match/match-many (dissoc next-stage :joins :lib/stage-metadata)
                                                  [:field & _]
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
@@ -306,7 +305,7 @@
   "Get a set of join aliases that `join` has an immediate dependency on."
   [join :- ::lib.schema.join/join]
   (set
-   (lib.util.match/match-many (:conditions join)
+   (match/match-many (:conditions join)
      [:field {:join-alias (join-alias :guard (and join-alias (not= join-alias (:alias join))))} _id-or-name]
      join-alias)))
 
@@ -374,7 +373,7 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (lib.util.match/match-lite stage
+             (match/match-one stage
                [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
@@ -401,7 +400,7 @@
   [query :- ::lib.schema/query]
   (-> query
       (lib.walk/walk-stages first-pass)
-        ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
-        ;; See #63245 and
-        ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
+      ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
+      ;; See #63245 and
+      ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
       (lib.walk/walk-stages second-pass {:reversed? true})))

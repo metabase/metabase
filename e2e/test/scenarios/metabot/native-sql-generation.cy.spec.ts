@@ -17,7 +17,7 @@ const rejectButton = () => cy.findByTestId("reject-proposed-changes-button");
 const generatingLoader = () => cy.findByTestId("metabot-inline-sql-generating");
 
 describe("Native SQL generation", () => {
-  it("should not be available when metabot is not configured", () => {
+  it("should show setup guidance when metabot is not configured", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -25,7 +25,14 @@ describe("Native SQL generation", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.get().should("be.visible");
     toggleInlineSQLPrompt();
-    inlinePrompt().should("not.exist");
+    inlinePrompt().should("be.visible");
+    inlinePrompt()
+      .findByText(/To use SQL generation, please/)
+      .should("be.visible");
+    generateButton().should("not.exist");
+
+    cy.findByRole("button", { name: "connect to a model" }).click();
+    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
   });
 
   describe("single db", () => {
@@ -166,15 +173,14 @@ describe("Native SQL generation", () => {
       });
       acceptButton().should("be.visible");
 
-      // change the selected database, should close the input
+      // change the selected database, should keep the input open
       rejectButton().click();
       toggleInlineSQLPrompt();
       inlinePrompt().should("be.visible");
       H.NativeEditor.selectDataSource("QA Postgres12");
-      inlinePrompt().should("not.exist");
+      inlinePrompt().should("be.visible");
 
-      // open again, send a prompt, req.body.history should be empty
-      toggleInlineSQLPrompt();
+      // send a prompt, req.body.history should be empty
       inlinePromptInput().click();
       cy.realType("select something", { pressDelay: 10 });
       H.mockMetabotResponse({

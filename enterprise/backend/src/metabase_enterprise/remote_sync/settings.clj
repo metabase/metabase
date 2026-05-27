@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -180,7 +181,6 @@
                  (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
-
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
@@ -205,6 +205,7 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  (guards/ensure-no-active-task!)
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))
         env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))

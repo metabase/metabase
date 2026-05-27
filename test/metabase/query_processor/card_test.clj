@@ -4,7 +4,8 @@
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
                        {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.card-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -89,7 +90,6 @@
           :display-name "#1234"
           :type         :card
           :card-id      1234}
-
          "xyz"
          {:id           "xyz"
           :name         "snippet: My Snippet"

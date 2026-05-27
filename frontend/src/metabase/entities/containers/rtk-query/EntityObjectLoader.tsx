@@ -1,9 +1,9 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { skipToken } from "metabase/api";
 import {
   LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,

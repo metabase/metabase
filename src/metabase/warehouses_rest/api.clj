@@ -20,7 +20,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -28,7 +27,6 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
-   [metabase.server.streaming-response :as server.streaming-response :refer [streaming-response]]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
@@ -38,11 +36,11 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
@@ -192,7 +190,7 @@
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
                                          [:dataset_query ::queries.schema/query]]]
-  (lib.util.match/match-lite (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
+  (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -589,243 +587,6 @@
                          :let [query (database-usage-query model id)]
                          :when query]
                      [query model])})))
-
-;;; ----------------------------------------- GET /api/database/metadata ------------------------------------------
-
-(defn- format-database-metadata
-  "Formats a Database record for the /metadata endpoint response."
-  [{:keys [id name engine]}]
-  {:id id :name name :engine engine})
-
-(defn- format-table-metadata
-  "Formats a Table record for the /metadata endpoint response, omitting nil optional fields."
-  [{:keys [id db_id name schema description]}]
-  (m/assoc-some {:id id :db_id db_id :name name}
-                :schema schema
-                :description description))
-
-(defn- format-field-metadata
-  "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
-  [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
-  (m/assoc-some {:id id :table_id table_id :name name}
-                :parent_id parent_id
-                :fk_target_field_id fk_target_field_id
-                :description description
-                :base_type base_type
-                :database_type database_type
-                :effective_type (when (and effective_type (not= base_type effective_type)) effective_type)
-                :semantic_type semantic_type
-                :coercion_strategy coercion_strategy))
-
-(defn- perm-user-info
-  "User information used to check permissions."
-  []
-  {:user-id       api/*current-user-id*
-   :is-superuser? api/*is-superuser?*})
-
-(defn- perm-mapping
-  "Permission mapping used to filter databases and tables to those visible to the current user.
-  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or `Query builder and native`)."
-  []
-  {:perms/view-data      :unrestricted
-   :perms/create-queries :query-builder})
-
-(defn- write-json-array!
-  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row.
-
-  `run!` is required here because it dispatches through `reduce`, which consumes the
-  `IReduceInit` returned by `t2/reducible-select` row-by-row without materializing.
-  `doseq` cannot be used: it walks a seq, and producing a seq from the reducible
-  would realize every row into memory — defeating the point of streaming."
-  [^java.io.Writer writer reducible format-fn]
-  (.write writer "[")
-  (let [first? (volatile! true)]
-    (run! (fn [row]
-            (if @first?
-              (vreset! first? false)
-              (.write writer ","))
-            (json/encode-to (format-fn row) writer {}))
-          reducible))
-  (.write writer "]"))
-
-(defn- visible-db-where
-  "Honeysql `:where` clause restricting a `:metabase_database :d` join to databases that
-  belong in a bulk export for the current user: not audit, not a router DB, and inside
-  the query-builder visibility filter."
-  []
-  [:and
-   [:= :d.is_audit false]
-   [:= :d.router_database_id nil]
-   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
-
-(defn- visible-table-where
-  "Honeysql `:where` clause restricting a `:metabase_table :t` join to active, non-hidden
-  tables inside the current user's query-builder visibility filter."
-  []
-  [:and
-   [:= :t.active true]
-   [:= :t.visibility_type nil]
-   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
-
-(defn- visible-field-where
-  "Honeysql `:where` clause restricting a `:metabase_field :f` join to active,
-  non-sensitive fields."
-  []
-  [:and
-   [:= :f.active true]
-   [:<> :f.visibility_type "sensitive"]])
-
-(defn- write-databases-metadata!
-  "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
-
-  Warehouses with large schemas can produce gigabytes of metadata, so streaming is
-  required — materializing the full response in memory would OOM the server. Each
-  section is written directly to the underlying writer as rows are pulled from a
-  reducible query, keeping memory usage bounded regardless of schema size."
-  [^java.io.OutputStream os]
-  (let [db-filter (visible-db-where)
-        t-filter  (visible-table-where)
-        f-filter  (visible-field-where)
-        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
-    (.write writer "{\"databases\":")
-    (write-json-array! writer
-                       (t2/reducible-select [:model/Database :d.id :d.name :d.engine]
-                                            {:from  [[:metabase_database :d]]
-                                             :where db-filter})
-                       format-database-metadata)
-    (.write writer ",\"tables\":")
-    (write-json-array! writer
-                       (t2/reducible-select [:model/Table :t.id :t.db_id :t.name :t.schema :t.description]
-                                            {:from  [[:metabase_table :t]]
-                                             :join  [[:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and db-filter t-filter]})
-                       format-table-metadata)
-    (.write writer ",\"fields\":")
-    (write-json-array! writer
-                       (t2/reducible-select [:model/Field :f.id :f.table_id :f.parent_id :f.fk_target_field_id
-                                             :f.name :f.description :f.base_type :f.database_type
-                                             :f.effective_type :f.semantic_type :f.coercion_strategy]
-                                            {:from  [[:metabase_field :f]]
-                                             :join  [[:metabase_table :t]    [:= :f.table_id :t.id]
-                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and db-filter t-filter f-filter]})
-                       format-field-metadata)
-    (.write writer "}")
-    (.flush writer)))
-
-(mr/def ::database-info
-  [:map
-   [:id ::lib.schema.id/database]
-   [:name :string]
-   [:engine :string]])
-
-(mr/def ::table-info
-  [:map
-   [:id ::lib.schema.id/table]
-   [:db_id ::lib.schema.id/database]
-   [:name :string]
-   [:schema {:optional true} :string]
-   [:description {:optional true} :string]])
-
-(mr/def ::field-info
-  [:map
-   [:id ::lib.schema.id/field]
-   [:table_id ::lib.schema.id/table]
-   [:name :string]
-   [:parent_id {:optional true} ::lib.schema.id/field]
-   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-   [:description {:optional true} :string]
-   [:base_type :string]
-   [:database_type {:optional true} :string]
-   [:effective_type {:optional true} :string]
-   [:semantic_type {:optional true} :string]
-   [:coercion_strategy {:optional true} :string]])
-
-(mr/def ::databases-metadata-response
-  [:map
-   [:databases [:sequential ::database-info]]
-   [:tables    [:sequential ::table-info]]
-   [:fields    [:sequential ::field-info]]])
-
-(api.macros/defendpoint :get "/metadata"
-  :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
-  "Get metadata (databases, tables, and fields) for all databases visible to the current user.
-  Returns a flat structure with three arrays: databases, tables, and fields.
-  Response is streamed for efficiency with large schemas.
-
-  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
-  `Query builder and native`) permissions on each database and table."
-  []
-  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-                      (write-databases-metadata! os)))
-
-;;; --------------------------------------- GET /api/database/field-values ---------------------------------------
-
-(defn- format-field-values-entry
-  "Formats a FieldValues row for the /field-values response. Omits `human_readable_values`
-  when empty to keep the common case compact."
-  [{:keys [field_id values human_readable_values has_more_values]}]
-  (m/assoc-some {:field_id        field_id
-                 :values          (or values [])
-                 :has_more_values (boolean has_more_values)}
-                :human_readable_values (not-empty human_readable_values)))
-
-(defn- write-field-values!
-  "Streams the `field_values` JSON array to `os`. Exports only unconstrained (`:full`)
-  FieldValues — sandboxed, impersonation, and linked-filter variants are user-specific
-  and excluded from the bulk export. Visibility filter matches `GET /api/database/metadata`
-  so every streamed row has a corresponding field entry there."
-  [^java.io.OutputStream os]
-  (let [db-filter (visible-db-where)
-        t-filter  (visible-table-where)
-        f-filter  (visible-field-where)
-        fv-filter [:and
-                   [:= :fv.type "full"]
-                   [:= :fv.hash_key nil]]
-        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
-    (.write writer "{\"field_values\":")
-    (write-json-array! writer
-                       (t2/reducible-select [:model/FieldValues
-                                             :fv.field_id :fv.values :fv.human_readable_values :fv.has_more_values]
-                                            {:from  [[:metabase_fieldvalues :fv]]
-                                             :join  [[:metabase_field :f]    [:= :fv.field_id :f.id]
-                                                     [:metabase_table :t]    [:= :f.table_id :t.id]
-                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and db-filter t-filter f-filter fv-filter]})
-                       format-field-values-entry)
-    (.write writer "}")
-    (.flush writer)))
-
-(mr/def ::field-values-info
-  [:map
-   [:field_id ::lib.schema.id/field]
-   [:values [:sequential [:sequential :any]]]
-   [:has_more_values :boolean]
-   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
-
-(mr/def ::field-values-response
-  [:map
-   [:field_values [:sequential ::field-values-info]]])
-
-(api.macros/defendpoint :get "/field-values"
-  :- (server.streaming-response/streaming-response-schema ::field-values-response)
-  "Get sampled field values for every field in the instance, streamed as a single
-  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,
-  optional `human_readable_values`, and `has_more_values`.
-
-  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and
-  linked-filter variants are user-specific and would bypass their own enforcement
-  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve
-  `field_id` to table and field names. Response is streamed for efficiency with large
-  schemas.
-
-  Admin-only: this endpoint exposes cached values computed over the unrestricted
-  dataset, so it would leak data past sandbox / impersonation rules if served to
-  regular users."
-  []
-  (api/check-superuser)
-  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-                      (write-field-values! os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -1230,28 +991,55 @@
              details
              (database/sensitive-fields-for-db database))))))
 
+(def ^:private connection-marker-key->details-column
+  {:write-data-connection "write_data_details"
+   :admin-connection      "admin_details"})
+
+(defn- validate-overlay-details!
+  "Common guardrails for overlay-details (write_data_details, admin_details).
+   Throws 400 on violation."
+  [existing-database overlay-details
+   {:keys [marker-key article+noun hidden-fields-fn]}]
+  (let [[article noun] article+noun
+        marker-name    (name marker-key)
+        column-name    (connection-marker-key->details-column marker-key)
+        article-noun   (str article " " noun)]
+    (api/check-400 (not (:router_database_id existing-database))
+                   (tru "Cannot configure {0} connection on a destination database" article-noun))
+    (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
+                   (tru "Cannot configure {0} connection on a router database" article-noun))
+    (when-not (get overlay-details marker-key)
+      (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
+                      {:status-code 400})))
+    (when (:destination-database overlay-details)
+      (throw (ex-info (tru "destination-database must be false in {0}" column-name)
+                      {:status-code 400})))
+    (when-let [hidden-fields (not-empty (hidden-fields-fn (keyword (:engine existing-database))))]
+      (let [hidden-kws      (into #{} (map keyword) hidden-fields)
+            disallowed-keys (filterv #(contains? hidden-kws %) (keys overlay-details))]
+        (when (seq disallowed-keys)
+          (throw (ex-info (tru "{0} must not contain fields hidden for {1} connections: {2}"
+                               column-name noun (str/join ", " (sort (map name disallowed-keys))))
+                          {:status-code     400
+                           :disallowed-keys disallowed-keys})))))))
+
 (defn- validate-write-data-details!
   "Validates write_data_details guardrails. Throws 400 on violation."
   [existing-database write-data-details]
-  (api/check-400 (not (:router_database_id existing-database))
-                 (tru "Cannot configure a write connection on a destination database"))
-  (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
-                 (tru "Cannot configure a write connection on a router database"))
-  (when-not (:write-data-connection write-data-details)
-    (throw (ex-info (tru "write-data-connection must be set in write_data_details")
-                    {:status-code 400})))
-  (when (:destination-database write-data-details)
-    (throw (ex-info (tru "destination-database must be false in write_data_details")
-                    {:status-code 400})))
-  (let [engine (keyword (:engine existing-database))]
-    (when-let [hidden-fields (not-empty (driver.u/fields-hidden-for-write-data-connection engine))]
-      (let [hidden-kws      (into #{} (map keyword) hidden-fields)
-            disallowed-keys (filterv #(contains? hidden-kws %) (keys write-data-details))]
-        (when (seq disallowed-keys)
-          (throw (ex-info (tru "write_data_details must not contain fields hidden for write connections: {0}"
-                               (str/join ", " (sort (map name disallowed-keys))))
-                          {:status-code     400
-                           :disallowed-keys disallowed-keys})))))))
+  (validate-overlay-details!
+   existing-database write-data-details
+   {:marker-key       :write-data-connection
+    :article+noun     ["a" "write"]
+    :hidden-fields-fn driver.u/fields-hidden-for-write-data-connection}))
+
+(defn- validate-admin-details!
+  "Validates admin_details guardrails. Throws 400 on violation."
+  [existing-database admin-details]
+  (validate-overlay-details!
+   existing-database admin-details
+   {:marker-key       :admin-connection
+    :article+noun     ["an" "admin"]
+    :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1262,14 +1050,15 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats points_of_interest
-           schedules auto_run_queries refingerprint cache_ttl settings provider_name]}
+   {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
+           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]}
    :- [:map
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
        [:details            {:optional true} [:maybe ms/Map]]
        [:write_data_details {:optional true} [:maybe ms/Map]]
+       [:admin_details      {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:description        {:optional true} [:maybe :string]]
        [:caveats            {:optional true} [:maybe :string]]
@@ -1281,21 +1070,32 @@
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
+  (when (some? admin_details)
+    (premium-features/assert-has-feature :workspaces (tru "Admin Connection")))
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
+                    {:status-code 400})))
+  (when (:admin-connection details)
+    (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
+        _                               (when admin_details
+                                          (validate-admin-details! existing-database admin_details))
         incoming-details                details
         incoming-write-data-details     write_data_details
+        incoming-admin-details          admin_details
         details-with-secrets            (some->> details
                                                  (upsert-sensitive-fields existing-database))
         write-data-details-with-secrets (when write_data_details
                                           (upsert-sensitive-fields existing-database write_data_details :write_data_details))
+        admin-details-with-secrets      (when admin_details
+                                          (upsert-sensitive-fields existing-database admin_details :admin_details))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
+        admin-details-changed?          (some-> admin-details-with-secrets (not= (:admin_details existing-database)))
         engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         main-conn-error                 (when (or details-changed? engine-changed?)
                                           (warehouses/test-database-connection (or engine (:engine existing-database))
@@ -1307,13 +1107,19 @@
                                             (driver.conn/with-write-connection
                                               (warehouses/test-database-connection (or engine (:engine would-be-database))
                                                                                    (driver.conn/effective-details would-be-database)))))
+        admin-conn-error                (when (or admin-details-changed? engine-changed?)
+                                          (let [would-be-database (cond-> existing-database
+                                                                    details-with-secrets       (assoc :details details-with-secrets)
+                                                                    admin-details-with-secrets (assoc :admin_details admin-details-with-secrets))]
+                                            (driver.conn/with-admin-connection
+                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                   (driver.conn/effective-details would-be-database)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
-    (if (or main-conn-error write-conn-error)
+    (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
       ;; failed to connect, return error
       {:status 400
-       ;; Write details are a merge over the top of default connection:
-       :body   (or main-conn-error write-conn-error)}
+       :body   conn-error}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
             pending-settings  (into {}
@@ -1329,6 +1135,7 @@
                                  :engine             engine
                                  :details            details-with-secrets
                                  :write_data_details write-data-details-with-secrets
+                                 :admin_details      admin-details-with-secrets
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
@@ -1340,7 +1147,7 @@
                                  :provider_name      provider_name}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings}
-                                :present #{:provider_name :write_data_details})
+                                :present #{:provider_name :write_data_details :admin_details})
                                ;; cache_field_values_schedule can be nil
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
@@ -1352,10 +1159,10 @@
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
                   :when                  (and (some? new-value)
-                             ;; Allow explicit default value as well (typically this is what FE will actually do)
-                             ;; Should we translate this into setting it to NULL? That seems too opinionated.
+                                              ;; Allow explicit default value as well (typically this is what FE will actually do)
+                                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
                                               (not= new-value (try (setting/default-value setting-kw)
-                                                  ;; fallback to a redundant nil check
+                                                                   ;; fallback to a redundant nil check
                                                                    (catch Exception _)))
                                               (not= new-value (get existing-settings setting-kw)))]
             (try
@@ -1367,7 +1174,6 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
-
         (let [db (t2/select-one :model/Database :id id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
@@ -1381,7 +1187,8 @@
               add-expanded-schedules
               ;; return the DB with the passed in details in place
               (m/update-existing :details #(merge incoming-details %))
-              (m/update-existing :write_data_details #(merge incoming-write-data-details %))))))))
+              (m/update-existing :write_data_details #(merge incoming-write-data-details %))
+              (m/update-existing :admin_details #(merge incoming-admin-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
@@ -1435,8 +1242,9 @@
         (quick-task/submit-task!
          (fn []
            (database-routing/with-database-routing-off
-             (sync/sync-db-metadata! db)
-             (sync/analyze-db! db))))
+             ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
+             (sync/sync-db-metadata-explicit! db)
+             (sync/analyze-db-explicit! db))))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

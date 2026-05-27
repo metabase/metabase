@@ -7,6 +7,8 @@ import type {
   FieldId,
   FieldValue,
   GetFieldRequest,
+  GetFieldTableIdsRequest,
+  GetFieldTableIdsResponse,
   GetFieldValuesResponse,
   GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
@@ -39,6 +41,17 @@ export const fieldApi = Api.injectEndpoints({
         handleQueryFulfilled(queryFulfilled, (data) =>
           dispatch(updateMetadata(data, FieldSchema)),
         ),
+    }),
+    getFieldTableIds: builder.query<
+      GetFieldTableIdsResponse,
+      GetFieldTableIdsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/field/table-ids",
+        body,
+      }),
+      providesTags: [listTag("field")],
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({
@@ -153,6 +166,7 @@ export const fieldApi = Api.injectEndpoints({
 
 export const {
   useGetFieldQuery,
+  useGetFieldTableIdsQuery,
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,

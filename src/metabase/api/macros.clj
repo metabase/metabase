@@ -586,9 +586,10 @@
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Supports:
 
-    {:multipart true}  — wraps with multipart-params middleware
-    {:scope \"agent:workspaces\"} — wraps with scope enforcement middleware
-    {:scope :unchecked} — skips both enforce-scope and ensure-scopes-checked
+    {:multipart true}                         — wraps with multipart-params middleware
+    {:multipart {:max-file-size N, ...}}      — same, passing options to wrap-multipart-params
+    {:scope \"agent:workspaces\"}               — wraps with scope enforcement middleware
+    {:scope :unchecked}                       — skips both enforce-scope and ensure-scopes-checked
 
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
    tokens from reaching endpoints that haven't opted in."
@@ -597,10 +598,13 @@
         scope-middleware (cond
                            (= scope :unchecked) []
                            (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
-                           :else ['metabase.api.macros.scope/ensure-scopes-checked])]
+                           :else ['metabase.api.macros.scope/ensure-scopes-checked])
+        multipart        (:multipart metadata)]
     (cond-> (vec scope-middleware)
-      (:multipart metadata)
-      (conj 'ring.middleware.multipart-params/wrap-multipart-params))))
+      multipart
+      (conj (if (map? multipart)
+              `(fn [handler#] (ring.middleware.multipart-params/wrap-multipart-params handler# ~multipart))
+              'ring.middleware.multipart-params/wrap-multipart-params)))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler

@@ -1,4 +1,3 @@
-import ActionViz from "metabase/actions/components/ActionViz";
 import { ListViz } from "metabase/list-view/components/ListViz";
 import {
   registerVisualization,
@@ -46,8 +45,6 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
-
-  registerVisualization(ActionViz);
 
   registerVisualization(ListViz);
 

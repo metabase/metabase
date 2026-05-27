@@ -4,17 +4,20 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
-import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { useRefreshDataComplexityScoresMutation } from "../../api";
+import {
+  useGetDataComplexityScoresQuery,
+  useRefreshDataComplexityScoresMutation,
+} from "../../api";
 import {
   VIEW_CONVERSATIONS,
   VIEW_GROUP_MEMBERS,
@@ -153,6 +156,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   const usageLogAudit = useAuditTable(VIEW_USAGE_LOG);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
+  const hasDataComplexityFeature = hasPremiumFeature("data-complexity-score");
+
   const sharedChartProps: ChartProps = {
     provider: conversationsAudit.provider,
     table: tableForMetric(
@@ -254,12 +259,21 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   return (
     <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
+      <SettingsPageWrapper
+        mt="sm"
+        title={hasDataComplexityFeature ? t`Usage stats` : undefined}
+      >
         <DataComplexitySection />
         <Flex align="center" justify="space-between">
-          <Title order={3} display="flex" style={{ alignItems: "center" }}>
-            {t`Usage metrics`}
-          </Title>
+          {hasDataComplexityFeature ? (
+            <Title order={3} display="flex" style={{ alignItems: "center" }}>
+              {t`Usage metrics`}
+            </Title>
+          ) : (
+            <Title order={2} display="flex" style={{ alignItems: "center" }}>
+              {t`Usage stats`}
+            </Title>
+          )}
 
           <ConversationFilters
             date={date}
@@ -379,11 +393,14 @@ export function DataComplexitySection() {
 }
 
 export function DataComplexityHeader() {
+  const { data } = useGetDataComplexityScoresQuery();
   const [
     refreshDataComplexityScores,
     { isLoading: refreshDataComplexityScoresLoading },
   ] = useRefreshDataComplexityScoresMutation();
   const [sendToast] = useToast();
+  const calculatedAt = data?.meta?.calculated_at;
+  const lastCalculated = calculatedAt ? dayjs(calculatedAt).fromNow() : null;
 
   const handleRecompute = useCallback(async () => {
     try {
@@ -402,9 +419,16 @@ export function DataComplexityHeader() {
 
   return (
     <Flex align="center" justify="space-between">
-      <Title order={3} display="flex" style={{ alignItems: "center" }}>
-        {t`Data complexity`}
-      </Title>
+      <Flex direction="column" gap={4}>
+        <Title order={3} display="flex" style={{ alignItems: "center" }}>
+          {t`Data complexity`}
+        </Title>
+        {lastCalculated && (
+          <Text c="text-secondary" size="sm">
+            {t`Last calculated ${lastCalculated}`}
+          </Text>
+        )}
+      </Flex>
 
       <Flex gap="sm" wrap="wrap" align="center">
         <Button

@@ -1,10 +1,15 @@
 import { t } from "ttag";
 
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
+import { UpsellGem } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 
 export function getMetabotAnalyticsNavItems() {
   return <MetabotAnalyticsNavItems />;
+}
+
+export function getMetabotAnalyticsUpsellNavItems() {
+  return <MetabotAnalyticsUpsellNavItems />;
 }
 
 function MetabotAnalyticsNavItems() {
@@ -33,5 +38,16 @@ function MetabotAnalyticsNavItems() {
         disabled={!isConfigured}
       />
     </AdminNavItem>
+  );
+}
+
+function MetabotAnalyticsUpsellNavItems() {
+  return (
+    <AdminNavItem
+      icon="audit"
+      label={t`Usage auditing`}
+      path="/admin/metabot/usage-auditing"
+      rightSection={<UpsellGem.New size={14} />}
+    />
   );
 }

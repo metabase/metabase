@@ -5,9 +5,11 @@ const chalk = require("chalk");
 const webpack = require("webpack");
 
 const {
+  RESOLVE_ALIASES,
+} = require("../../frontend/build/shared/rspack/resolve-aliases");
+const {
   SVGO_CONFIG,
 } = require("../../frontend/build/shared/rspack/svgo-config");
-const mainConfig = require("../../rspack.main.config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
@@ -26,7 +28,7 @@ module.exports = {
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
-      ...mainConfig.resolve.alias,
+      ...RESOLVE_ALIASES,
       ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
     fallback: {

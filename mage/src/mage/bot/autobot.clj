@@ -250,7 +250,7 @@
                   (shell/sh* {:quiet? true}
                              "tmux" "list-sessions" "-F" "#{session_name}")
                   others (when (zero? exit)
-                           (->> (str/split-lines (or out ""))
+                           (->> (or out [])
                                 (remove #(or (str/blank? %) (= % bootstrap)))
                                 seq))]
               (when others

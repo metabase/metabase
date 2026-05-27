@@ -12,7 +12,6 @@ import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
 } from "metabase/common/utils/dashboard";
-import { Dashboards } from "metabase/entities/dashboards";
 import {
   Form,
   FormCheckbox,
@@ -82,8 +81,7 @@ function CopyDashboardForm({
 
   const handleSubmit = useCallback(
     async (values: CopyDashboardFormProperties) => {
-      const result = await onSubmit?.(values);
-      const dashboard = Dashboards.HACK_getObjectFromAction(result);
+      const dashboard = await onSubmit?.(values);
       onSaved?.(dashboard);
     },
     [onSubmit, onSaved],

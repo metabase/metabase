@@ -11,7 +11,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { mockAdvancedTransformsAddOn } from "metabase-types/api/mocks/add-ons";
+import { mockAdvancedTransformsCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
 import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 
@@ -36,8 +36,9 @@ const setup = () => {
   renderWithProviders(
     <PurchaseAdvancedTransforms
       handleModalClose={handleModalClose}
-      addOn={mockAdvancedTransformsAddOn}
+      addOn={mockAdvancedTransformsCloudAddOn}
       freeUnitsIncluded
+      onSuccess={jest.fn()}
     />,
     {
       storeInitialState: state,

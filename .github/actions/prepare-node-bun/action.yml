@@ -8,7 +8,7 @@ runs:
   using: "composite"
   steps:
     - name: Prepare Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6.4.0
       with:
         node-version: ${{ inputs.node-version }}
         node-version-file: ".nvmrc"

@@ -1,6 +1,7 @@
 import type { SlackAppInfo, SlackSettings } from "metabase-types/api";
 
 import { Api } from "./api";
+import { listTag } from "./tags";
 
 export const slackApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -23,7 +24,11 @@ export const slackApi = Api.injectEndpoints({
         url: `/api/slack/settings`,
         body: settings,
       }),
-      invalidatesTags: ["session-properties", "slack-app-info"],
+      invalidatesTags: [
+        "session-properties",
+        "slack-app-info",
+        listTag("subscription-channel"),
+      ],
     }),
   }),
 });

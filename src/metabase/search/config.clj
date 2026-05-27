@@ -107,7 +107,15 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}})
+    :model/question 0}
+   :metabot
+   {:library             100
+    :official-collection 80
+    :verified            80
+    :data-layer          1     ; overall multiplier; per-tier weights live under :data-layer/* below
+    :data-layer/final    33
+    :data-layer/internal 10
+    :data-layer/hidden   1}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -174,12 +182,10 @@
    :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
-  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
-  [engine context filter-key]
+  "Get the default value for the given filter in the given context."
+  [_engine context filter-key]
   (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
-    (if (= engine :search.engine/in-place)
-      (fetch :default)
-      (or (fetch context) (fetch :default)))))
+    (or (fetch context) (fetch :default))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
@@ -243,7 +249,6 @@
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
-
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!

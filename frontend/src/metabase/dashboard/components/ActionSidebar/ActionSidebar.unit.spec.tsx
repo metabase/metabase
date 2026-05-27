@@ -12,7 +12,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import type { DashCardId } from "metabase-types/api";
 import {
   createMockActionDashboardCard,

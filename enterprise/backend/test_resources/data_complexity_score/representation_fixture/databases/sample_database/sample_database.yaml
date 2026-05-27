@@ -1,0 +1,7 @@
+name: Sample Database
+entity_id: sAmPlEdAtAbAsE0000001
+engine: h2
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: Sample Database
+  model: Database

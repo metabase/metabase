@@ -1,5 +1,6 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -361,7 +362,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

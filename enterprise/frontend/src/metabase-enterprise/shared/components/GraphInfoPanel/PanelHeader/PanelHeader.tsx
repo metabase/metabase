@@ -108,6 +108,7 @@ export function PanelHeader({
         <PLUGIN_REPLACEMENT.SourceReplacementModal
           opened={isReplaceModalOpened}
           initialSource={sourceEntry}
+          triggeredFrom="dependency_graph"
           onClose={closeReplaceModal}
         />
       )}

@@ -1,4 +1,5 @@
 (ns metabase.documents.models.document-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.documents.models.document-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
@@ -47,7 +48,6 @@
       (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
         ;; Should update exactly 2 cards
         (is (= 2 updated-count))
-
         ;; Verify the document cards were updated
         (let [updated-card1 (t2/select-one :model/Card :id card1-id)
               updated-card2 (t2/select-one :model/Card :id card2-id)
@@ -68,7 +68,6 @@
       (let [updated-count (document/sync-document-cards-collection! document-id collection-id)]
         ;; Should update 0 cards since no cards have matching document_id
         (is (= 0 updated-count))
-
         ;; Verify the card with nil document_id was not affected
         (let [unchanged-card (t2/select-one :model/Card :id nil-document-card-id)]
           (is (nil? (:collection_id unchanged-card))))))))
@@ -95,10 +94,8 @@
        :model/Card {card2-id :id} {:name "Card 2"
                                    :document_id document-id
                                    :collection_id old-collection-id}]
-
       ;; Update the document's collection_id
       (t2/update! :model/Document document-id {:collection_id new-collection-id})
-
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -112,10 +109,8 @@
        :model/Card {card-id :id} {:name "Card"
                                   :document_id document-id
                                   :collection_id collection-id}]
-
       ;; Move document to no collection (nil)
       (t2/update! :model/Document document-id {:collection_id nil})
-
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -138,13 +133,10 @@
        ;; Card that should NOT be updated (no document_id)
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
-
       ;; Update the document's collection_id
       (t2/update! :model/Document document-id {:collection_id new-collection-id})
-
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
-
       ;; Verify other cards were NOT updated
       (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id question-card-id))))
       (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id regular-card-id)))))))
@@ -162,21 +154,17 @@
                                                 :document_id document-id
                                                 :collection_id regular-collection-id
                                                 :dataset_query (mt/mbql-query venues)}]
-
         (testing "moving document to personal collection moves associated cards"
           (mt/with-current-user user-id
             ;; As the personal collection owner, update should succeed
             (t2/update! :model/Document document-id {:collection_id personal-collection-id})
-
             ;; Verify both document and card moved to personal collection
             (is (= personal-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
             (is (= personal-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))
-
         (testing "moving document from personal collection works"
           (mt/with-current-user user-id
             ;; Move back to regular collection
             (t2/update! :model/Document document-id {:collection_id regular-collection-id})
-
             ;; Verify both document and card moved back
             (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
             (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))))))
@@ -191,7 +179,6 @@
           ;; Grant write permissions to both collections
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-
           ;; Should not throw any exception
           (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
@@ -204,7 +191,6 @@
         (mt/with-current-user user-id
           ;; Grant write permission only to new collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-
           ;; Should throw 403 exception
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
@@ -218,7 +204,6 @@
         (mt/with-current-user user-id
           ;; Grant write permission only to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-
           ;; Should throw 403 exception
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
@@ -244,7 +229,6 @@
         (mt/with-current-user user-id
           ;; Grant write permission to new collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-
           ;; Should not throw any exception when old collection is nil
           (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
@@ -256,7 +240,6 @@
         (mt/with-current-user user-id
           ;; Grant write permission to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-
           ;; Should not throw any exception when new collection is nil
           (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
 
@@ -275,7 +258,6 @@
         (mt/with-current-user user-id
           ;; Grant write permission to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-
           ;; Use a non-existent collection ID
           (let [non-existent-id 999999]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Request."
@@ -291,7 +273,6 @@
           ;; Grant write permissions to both collections
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection-id)
-
           ;; Should throw 400 exception for archived collection
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
                                 (document/validate-collection-move-permissions old-collection-id archived-collection-id))))))))
@@ -343,17 +324,14 @@
             (is (some? (get-in doc [:creator :first_name])))
             (is (some? (get-in doc [:creator :last_name])))
             (is (some? (get-in doc [:creator :email])))))
-
         (testing "creators are correctly matched to documents"
           (let [doc1 (first (filter #(= doc1-id (:id %)) hydrated-docs))
                 doc2 (first (filter #(= doc2-id (:id %)) hydrated-docs))
                 doc3 (first (filter #(= doc3-id (:id %)) hydrated-docs))]
             (is (= user1-id (get-in doc1 [:creator :id])))
             (is (= "Alice" (get-in doc1 [:creator :first_name])))
-
             (is (= user2-id (get-in doc2 [:creator :id])))
             (is (= "Bob" (get-in doc2 [:creator :first_name])))
-
             (is (= user1-id (get-in doc3 [:creator :id])))
             (is (= "Alice" (get-in doc3 [:creator :first_name])))))))))
 
@@ -372,7 +350,6 @@
           (is (= 2 (count (:cards hydrated-doc))))
           (is (contains? (:cards hydrated-doc) card1-id))
           (is (contains? (:cards hydrated-doc) card2-id)))
-
         (testing "cards contain correct data"
           (is (= "Card 1" (get-in hydrated-doc [:cards card1-id :name])))
           (is (= "Card 2" (get-in hydrated-doc [:cards card2-id :name])))
@@ -416,7 +393,6 @@
           (is (= 3 (count hydrated-docs)))
           (doseq [doc hydrated-docs]
             (is (map? (:cards doc)))))
-
         (testing "cards are correctly matched to documents"
           (let [doc1 (first (filter #(= doc1-id (:id %)) hydrated-docs))
                 doc2 (first (filter #(= doc2-id (:id %)) hydrated-docs))
@@ -425,11 +401,9 @@
               (is (= 2 (count (:cards doc1))))
               (is (contains? (:cards doc1) card1-id))
               (is (contains? (:cards doc1) card2-id)))
-
             (testing "document 2 has one card"
               (is (= 1 (count (:cards doc2))))
               (is (contains? (:cards doc2) card3-id)))
-
             (testing "document 3 has no cards"
               (is (empty? (:cards doc3))))))))))
 
@@ -442,12 +416,10 @@
       (let [document (t2/select-one :model/Document :id document-id)]
         (testing "collection_position is stored and retrieved correctly"
           (is (= 5 (:collection_position document)))))
-
       (testing "collection_position can be updated"
         (t2/update! :model/Document document-id {:collection_position 10})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (= 10 (:collection_position updated-document)))))
-
       (testing "collection_position can be set to nil"
         (t2/update! :model/Document document-id {:collection_position nil})
         (let [updated-document (t2/select-one :model/Document :id document-id)]

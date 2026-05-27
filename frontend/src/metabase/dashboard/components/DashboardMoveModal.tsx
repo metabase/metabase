@@ -1,37 +1,31 @@
 import { c, t } from "ttag";
-import _ from "underscore";
 
-import { useGetCollectionQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+} from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Dashboards } from "metabase/entities/dashboards";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useSetCollection } from "metabase/common/hooks";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
-import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";
-
-const mapDispatchToProps = {
-  setDashboardCollection: Dashboards.actions.setCollection,
-};
 
 function DashboardMoveModal({
   dashboard,
   onClose,
-  setDashboardCollection,
 }: {
   dashboard: Dashboard;
   onClose: () => void;
-  setDashboardCollection: (
-    source: { id: DashboardId },
-    destination: { id: CollectionId },
-    options: any,
-  ) => void;
 }) {
+  const setCollection = useSetCollection();
+
   return (
     <MoveModal
       title={t`Move dashboard to…`}
@@ -47,15 +41,17 @@ function DashboardMoveModal({
         model: "dashboard",
       }}
       onMove={async (destination) => {
-        await setDashboardCollection({ id: dashboard.id }, destination, {
-          notify: {
+        await setCollection(
+          { model: "dashboard", id: dashboard.id },
+          destination,
+          {
             message: (
               <DashboardMoveToast
                 collectionId={destination.id || ROOT_COLLECTION.id}
               />
             ),
           },
-        });
+        );
         onClose();
       }}
     />
@@ -94,10 +90,27 @@ const DashboardMoveToast = ({
   );
 };
 
-export const DashboardMoveModalConnected = _.compose(
-  connect(null, mapDispatchToProps),
-  Dashboards.load({
-    id: (_state: State, props: { params: { slug: string } }) =>
-      Urls.extractCollectionId(props.params.slug),
-  }),
-)(DashboardMoveModal);
+export const DashboardMoveModalConnected = ({
+  params,
+  onClose,
+}: {
+  params: { slug: string };
+  onClose: () => void;
+}) => {
+  const id = Urls.extractCollectionId(params.slug);
+  const { currentData: dashboard, error } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <DashboardMoveModal dashboard={dashboard} onClose={onClose} />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};

@@ -3,12 +3,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]))
 
 (mu/defn validate-temporal-bucketing
   "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
@@ -18,7 +18,7 @@
     (lib.walk/walk-clauses
      query
      (fn [query _path-type path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:field (:and opts {:temporal-unit temporal-unit}) _id-or-name]
          (let [effective-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)
                valid-units    (lib.temporal-bucket/valid-units-for-type effective-type)]

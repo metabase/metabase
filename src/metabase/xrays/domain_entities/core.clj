@@ -5,10 +5,10 @@
    ;; legacy usage, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
 
@@ -61,7 +61,7 @@
   [bindings :- Bindings
    source   :- SourceName
    obj]
-  (lib.util.match/replace-lite obj
+  (match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
@@ -101,7 +101,7 @@
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
               :when (every? (get-in bindings [source :dimensions])
-                            (lib.util.match/match-many entity [:dimension dimension] dimension))]
+                            (match/match-many entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
 (mu/defn- instantiate-domain-entity :- ::domain-entities.specs/instantiated-domain-entity

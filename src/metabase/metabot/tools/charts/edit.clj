@@ -62,11 +62,9 @@
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
-
     (let [new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
-
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
                 :chart-content (format-chart-for-llm new-chart-data)

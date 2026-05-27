@@ -2,18 +2,30 @@
   text-align: center;
   border-radius: var(--mantine-radius-sm);
   cursor: pointer;
+  color: transparent;
 
-  &::placeholder {
+  &[data-variant="default"]:hover:not(:disabled) {
+    border-color: var(--mb-color-border);
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.CollapsedMoveParameterMenuInputWrapper {
+  position: relative;
+
+  &::after {
+    content: attr(data-label);
     color: var(--mb-color-text-primary);
     font-weight: 700;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
   }
 
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-
-    &::placeholder {
-      color: var(--mb-color-brand);
-    }
+  &:hover::after {
+    color: var(--mb-color-text-hover);
   }
 }
 
@@ -28,6 +40,6 @@
 .MoveParameterMenuOption[aria-selected="true"] {
   .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--mb-color-text-selected);
   }
 }

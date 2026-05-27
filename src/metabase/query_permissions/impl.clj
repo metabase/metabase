@@ -15,7 +15,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -26,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -126,7 +126,7 @@
      (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
      ;; already legacy MBQL
      (apply merge-with merge-source-ids
-            (lib.util.match/match-many query
+            (match/match-many query
               (:and m {:qp/stage-is-from-source-card (id :guard identity)})
               (merge-with merge-source-ids
                           (when-not parent-source-card-id
@@ -373,12 +373,10 @@
     (when-let [paths (:paths required-perms)]
       (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
           (throw (perms-exception paths))))
-
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
-
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -391,11 +389,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))

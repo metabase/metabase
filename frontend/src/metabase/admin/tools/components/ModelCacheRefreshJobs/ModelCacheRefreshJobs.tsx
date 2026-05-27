@@ -8,7 +8,10 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useListPersistedInfoQuery } from "metabase/api";
+import {
+  useListPersistedInfoQuery,
+  useRefreshModelCacheMutation,
+} from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
@@ -17,8 +20,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { PersistedModels } from "metabase/entities/persisted-models";
-import { connect } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
@@ -103,16 +104,8 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
 
 const PAGE_SIZE = 20;
 
-type Props = {
-  onRefresh: (job: ModelCacheRefreshStatus) => void;
-};
-
-const mapDispatchToProps = {
-  onRefresh: (job: ModelCacheRefreshStatus) =>
-    PersistedModels.objectActions.refreshCache(job),
-};
-
-function ModelCacheRefreshJobsInner({ onRefresh }: Props) {
+export function ModelCacheRefreshJobs() {
+  const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
   const { data, error, isFetching } = useListPersistedInfoQuery({
     limit: PAGE_SIZE,
@@ -163,7 +156,7 @@ function ModelCacheRefreshJobsInner({ onRefresh }: Props) {
             <JobTableItem
               key={job.id}
               job={job}
-              onRefresh={() => onRefresh(job)}
+              onRefresh={() => refreshModelCache(job.card_id)}
             />
           ))}
         </tbody>
@@ -184,11 +177,6 @@ function ModelCacheRefreshJobsInner({ onRefresh }: Props) {
     </div>
   );
 }
-
-export const ModelCacheRefreshJobs = connect(
-  null,
-  mapDispatchToProps,
-)(ModelCacheRefreshJobsInner);
 
 export function ModelCachePage({ children }: { children?: React.ReactNode }) {
   return (

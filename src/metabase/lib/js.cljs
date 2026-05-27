@@ -61,6 +61,7 @@
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.analytics.experiment]
    [metabase.analytics.impl]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -98,8 +99,10 @@
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 ;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics-interface.core]].
+;;; metabase.analytics.experiment wires the default experiment report fn.
 
 (comment lib.core/keep-me
+         metabase.analytics.experiment/keep-me
          metabase.analytics.impl/keep-me)
 
 ;; Expose for E2E testing
@@ -237,16 +240,16 @@
     (if (and
          (empty? (lib.core/aggregations a-query stage-number))
          (empty? (lib.core/breakouts a-query stage-number)))
-    ;; No extra stage needed with no aggregations.
+      ;; No extra stage needed with no aggregations.
       #js {:query      a-query
            :stageIndex stage-number}
-    ;; An extra stage is needed, so see if one already exists.
+      ;; An extra stage is needed, so see if one already exists.
       (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
                                (lib.util/next-stage-number a-query))]
-      ;; Already an extra stage, so use it.
+        ;; Already an extra stage, so use it.
         #js {:query      a-query
              :stageIndex next-stage}
-      ;; No new stage, so append one.
+        ;; No new stage, so append one.
         #js {:query      (lib.core/append-stage a-query)
              :stageIndex -1}))))
 
@@ -1786,10 +1789,10 @@
   > **Code health:** Healthy"
   [a-query stage-number expression-position]
   (lib.cache/side-channel-cache
-    ;; Caching is based on both the stage and expression position, since they can return different sets.
-    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
-    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
-    ;; support that currently.
+   ;; Caching is based on both the stage and expression position, since they can return different sets.
+   ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+   ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+   ;; support that currently.
    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
@@ -1807,10 +1810,10 @@
   > **Code health:** Healthy"
   [a-query stage-number expression-position]
   (lib.cache/side-channel-cache
-    ;; Caching is based on both the stage and expression position, since they can return different sets.
-    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
-    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
-    ;; support that currently.
+   ;; Caching is based on both the stage and expression position, since they can return different sets.
+   ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+   ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+   ;; support that currently.
    (keyword "aggregable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
@@ -2594,6 +2597,21 @@
   > **Code health:** Healthy"
   [a-query card-id card-type]
   (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
+
+(defn ^:export all-source-table-ids
+  "Return a JS array of all source table IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-table-ids a-query) #{}))))
+
+(defn ^:export all-source-card-ids
+  "Return a JS array of all source card IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export all-field-ids
+  "Return a JS array of all field IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

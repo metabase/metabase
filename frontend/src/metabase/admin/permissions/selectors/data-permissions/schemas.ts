@@ -202,6 +202,7 @@ export const buildSchemasPermissions = ({
   database,
   permissionView,
   showTransformPermissions,
+  showWorkspacesPermissions,
 }: {
   entityId: DatabaseEntityId;
   groupId: number;
@@ -212,6 +213,7 @@ export const buildSchemasPermissions = ({
   database: Database;
   permissionView: "group" | "database";
   showTransformPermissions: boolean;
+  showWorkspacesPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
@@ -252,6 +254,7 @@ export const buildSchemasPermissions = ({
       permissionSubject: "schemas",
       permissionView,
       showTransformPermissions,
+      showWorkspacesPermissions,
     }),
   ]);
 };

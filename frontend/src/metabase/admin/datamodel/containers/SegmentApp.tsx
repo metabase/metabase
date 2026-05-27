@@ -2,17 +2,24 @@ import { useCallback, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  useCreateSegmentMutation,
+  useGetSegmentQuery,
+  useUpdateSegmentMutation,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { trackSegmentCreated } from "metabase/data-studio/analytics";
-import { Segments } from "metabase/entities/segments";
-import { Tables } from "metabase/entities/tables";
+import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import type { Segment } from "metabase-types/api";
+import { useDispatch } from "metabase/redux";
+import type {
+  CreateSegmentRequest,
+  Segment,
+  UpdateSegmentRequest,
+} from "metabase-types/api";
 
 import { SegmentForm } from "../components/SegmentForm";
 
@@ -23,62 +30,54 @@ type SegmentAppOwnProps = {
   route: Route;
 };
 
-type NormalizedSegmentResponse = {
-  payload: {
-    segment: Segment;
-  };
+type UpdateSegmentFormProps = {
+  route: Route;
+  segmentId: number;
 };
 
-type SegmentAppDispatchProps = {
-  createSegment: (
-    segment: Partial<Segment>,
-  ) => Promise<NormalizedSegmentResponse>;
-  updateSegment: (
-    segment: Partial<Segment>,
-  ) => Promise<NormalizedSegmentResponse>;
-  onChangeLocation: (path: string) => void;
-};
-
-const mapDispatchToProps: SegmentAppDispatchProps = {
-  createSegment: Segments.actions.create,
-  updateSegment: Segments.actions.update,
-  onChangeLocation: push,
-};
-
-type UpdateSegmentFormInnerProps = SegmentAppOwnProps &
-  SegmentAppDispatchProps & {
-    segment: Segment & {
-      // Attributes from entity framework object wrapper
-      getPlainObject(): Segment;
-    };
-  };
-
-function UpdateSegmentFormInner({
-  route,
-  segment,
-  updateSegment,
-  onChangeLocation,
-}: UpdateSegmentFormInnerProps) {
+function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
+  const dispatch = useDispatch();
   const [isDirty, setIsDirty] = useState(false);
+  const [updateSegment] = useUpdateSegmentMutation();
+
+  const {
+    data: segment,
+    isLoading: isLoadingSegment,
+    error: segmentError,
+  } = useGetSegmentQuery(segmentId);
+
+  const { isLoading: isLoadingTable, error: tableError } =
+    useLoadTableWithMetadata(segment?.table_id, {
+      includeForeignTables: true,
+    });
 
   const handleSubmit = useCallback(
     async (segmentValues: Partial<Segment>) => {
       setIsDirty(false);
 
-      try {
-        await updateSegment(segmentValues);
-        onChangeLocation("/admin/datamodel/segments");
-      } catch {
+      const result = await updateSegment(
+        toUpdateSegmentRequest(segmentId, segmentValues),
+      );
+      if (result.error) {
         setIsDirty(isDirty);
+        return;
       }
+      dispatch(push("/admin/datamodel/segments"));
     },
-    [updateSegment, isDirty, onChangeLocation],
+    [dispatch, segmentId, updateSegment, isDirty],
   );
+
+  const isLoading = isLoadingSegment || isLoadingTable;
+  const error = segmentError ?? tableError;
+
+  if (isLoading || error || !segment) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
     <>
       <SegmentForm
-        segment={segment.getPlainObject()}
+        segment={segment}
         onIsDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
       />
@@ -88,29 +87,15 @@ function UpdateSegmentFormInner({
   );
 }
 
-const UpdateSegmentForm = _.compose(
-  Segments.load({
-    id: (_state: State, { params }: SegmentAppOwnProps) =>
-      parseInt(params.id, 10),
-  }),
-  Tables.load({
-    id: (_state: State, { segment }: { segment?: Segment }) =>
-      segment?.table_id,
-    fetchType: "fetchMetadataAndForeignTables",
-    requestType: "fetchMetadataDeprecated",
-  }),
-)(UpdateSegmentFormInner);
+type CreateSegmentFormProps = {
+  route: Route;
+};
 
-type CreateSegmentFormProps = SegmentAppOwnProps & SegmentAppDispatchProps;
-
-function CreateSegmentForm({
-  createSegment,
-  route,
-  onChangeLocation,
-  ...props
-}: CreateSegmentFormProps) {
+function CreateSegmentForm({ route }: CreateSegmentFormProps) {
+  const dispatch = useDispatch();
   const [isDirty, setIsDirty] = useState(false);
   const { sendErrorToast } = useMetadataToasts();
+  const [createSegment] = useCreateSegmentMutation();
 
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -123,52 +108,54 @@ function CreateSegmentForm({
       setIsDirty(false);
 
       scheduleCallback(async () => {
-        try {
-          const { payload } = await createSegment(segment);
-          trackSegmentCreated(
-            "success",
-            "admin_datamodel_segments",
-            payload.segment?.id,
-          );
-          onChangeLocation("/admin/datamodel/segments");
-        } catch (error) {
+        const result = await createSegment(segment as CreateSegmentRequest);
+        if (result.error) {
           sendErrorToast(t`Failed to create segment`);
           trackSegmentCreated("failure", "admin_datamodel_segments");
           setIsDirty(isDirty);
-          console.warn(error);
+          console.warn(result.error);
+          return;
         }
+        trackSegmentCreated(
+          "success",
+          "admin_datamodel_segments",
+          result.data?.id,
+        );
+        dispatch(push("/admin/datamodel/segments"));
       });
     },
-    [
-      scheduleCallback,
-      createSegment,
-      onChangeLocation,
-      sendErrorToast,
-      isDirty,
-    ],
+    [scheduleCallback, createSegment, dispatch, sendErrorToast, isDirty],
   );
 
   return (
     <>
-      <SegmentForm
-        {...props}
-        onIsDirtyChange={setIsDirty}
-        onSubmit={handleSubmit}
-      />
+      <SegmentForm onIsDirtyChange={setIsDirty} onSubmit={handleSubmit} />
 
       <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
     </>
   );
 }
 
-type SegmentAppInnerProps = SegmentAppOwnProps & SegmentAppDispatchProps;
-
-function SegmentAppInner(props: SegmentAppInnerProps) {
-  if (props.params.id) {
-    return <UpdateSegmentForm {...props} />;
+export function SegmentApp({ params, route }: SegmentAppOwnProps) {
+  if (params.id) {
+    return (
+      <UpdateSegmentForm route={route} segmentId={parseInt(params.id, 10)} />
+    );
   }
 
-  return <CreateSegmentForm {...props} />;
+  return <CreateSegmentForm route={route} />;
 }
 
-export const SegmentApp = connect(null, mapDispatchToProps)(SegmentAppInner);
+function toUpdateSegmentRequest(
+  id: number,
+  values: Partial<Segment>,
+): UpdateSegmentRequest {
+  return {
+    id,
+    name: values.name,
+    description: values.description,
+    definition: values.definition,
+    archived: values.archived,
+    revision_message: values.revision_message ?? "",
+  };
+}

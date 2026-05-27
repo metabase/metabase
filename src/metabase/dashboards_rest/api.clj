@@ -103,7 +103,7 @@
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (cond->>  [[:dashcards
-                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                  ;; disabled :can_run_adhoc_query for performance reasons in 50 release
                   [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
                   [:series :can_write #_:can_run_adhoc_query]
                   :dashcard/action
@@ -554,10 +554,10 @@
                         :width               (:width existing-dashboard)}
         new-cards      (atom nil)
         dashboard      (t2/with-transaction [_conn]
-                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                        ;; collection to change position, check that and fix up if needed
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
-                        ;; Ok, now save the Dashboard
+                         ;; Ok, now save the Dashboard
                          (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
                                {id->new-card :copied
                                 id->referenced-card :referenced
@@ -984,12 +984,11 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-
       (api/check-500
        (do
          (t2/with-transaction [_conn]
-            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-            ;; adjust the collection position of other dashboards in the collection
+           ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+           ;; adjust the collection position of other dashboards in the collection
            (api/maybe-reconcile-collection-position! current-dash dash-updates)
            (when-let [updates (not-empty
                                (u/select-keys-when
@@ -1013,7 +1012,7 @@
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
-              ;; Handle broken subscriptions, if any, when parameters changed
+             ;; Handle broken subscriptions, if any, when parameters changed
              (when parameters
                (handle-broken-subscriptions id original-params)))
            (when update-dashcards-and-tabs?
@@ -1042,7 +1041,7 @@
                                                                        (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
                                                                      current-dashcards)
                    new-dashcards                             (cond->> dashcards
-                                                                ;; fixup the temporary tab ids with the real ones
+                                                               ;; fixup the temporary tab ids with the real ones
                                                                (seq old->new-tab-id)
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
@@ -1053,7 +1052,6 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-
            (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]

@@ -10,7 +10,7 @@ Set:
 - `TIMESTAMP=<YYYYMMDD-HHMMSS>`
 - `OUTPUT_DIR=.bot/reprobot/<TIMESTAMP>`
 
-Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/reprobot` invocations in the same repo do not collide.
+Run `mkdir -p <OUTPUT_DIR>` immediately so subsequent `cp`/`Write` calls into it succeed. Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/reprobot` invocations in the same repo do not collide. Do not copy artifacts from a previous run's directory; let discover regenerate them.
 
 ### 2. Gather context
 

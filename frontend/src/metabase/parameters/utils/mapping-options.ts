@@ -3,14 +3,13 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import type { IconName } from "metabase/ui";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { getAllowedIframeAttributes } from "metabase/visualizations/lib/iframe";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -32,6 +31,7 @@ import type {
   BaseDashboardCard,
   Card,
   DimensionReference,
+  IconName,
   NativeParameterDimensionTarget,
   Parameter,
   ParameterTarget,

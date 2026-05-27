@@ -102,6 +102,8 @@ The checklist mirrors the order of the conventions file. Items marked **(lint)**
 
 ### Performance
 
+> **Look up actual CI duration before flagging slowness.** `e2e/support/timings.json` holds the latest CI run's per-spec wall time in ms (entries keyed as `../test/scenarios/...`). Read it instead of running the spec — running adds minutes; reading is instant. Compare the spec to its siblings in the same directory to ground the "this is expensive" claim. Per-`it()` granularity is not in this file.
+
 - [ ] **Tiny tests** — multiple `it()` blocks for the same flow with the same `beforeEach` setup are a smell. Each `it()` costs 5–10s of Cypress runner overhead + the `beforeEach` cost; merge into a single flow when possible.
 - [ ] **Tiny tests that should be unit tests** — a test that only asserts on element existence/visibility (no flow, no real backend interaction, no cross-screen traversal) belongs in a Jest + RTL unit test, not e2e. Common offenders: token-gated UI checks, "renders the help panel" tests.
 - [ ] **Near-duplicate tests** — a new `it()` that shares 80–90% of its setup and steps with a sibling test should extend the existing test, not spawn a clone.

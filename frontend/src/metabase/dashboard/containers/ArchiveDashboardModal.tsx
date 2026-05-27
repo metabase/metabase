@@ -3,10 +3,10 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
-import { Collections } from "metabase/entities/collections";
-import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
@@ -15,10 +15,9 @@ type OwnProps = {
   onClose: () => void;
 };
 
-type ArchiveDashboardModalProps = OwnProps &
-  WithRouterProps & {
-    dashboard: Dashboard;
-  };
+type ArchiveDashboardModalProps = OwnProps & {
+  dashboard: Dashboard;
+};
 
 const ArchiveDashboardModal = ({
   onClose,
@@ -57,15 +56,27 @@ const ArchiveDashboardModal = ({
   );
 };
 
-export const ArchiveDashboardModalConnected = _.compose(
-  Dashboards.load({
-    id: (_state: unknown, props: WithRouterProps) =>
-      Urls.extractCollectionId(props.params?.slug),
-  }),
-  Collections.load({
-    id: (_state: unknown, props: { dashboard?: Dashboard }) =>
-      props.dashboard?.collection_id,
-    loadingAndErrorWrapper: false,
-  }),
-  withRouter,
-)(ArchiveDashboardModal);
+export const ArchiveDashboardModalConnectedInner = (
+  props: OwnProps & WithRouterProps,
+) => {
+  const id = Urls.extractCollectionId(props.params?.slug);
+  const { currentData: dashboard, error } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};
+
+export const ArchiveDashboardModalConnected = withRouter(
+  ArchiveDashboardModalConnectedInner,
+);

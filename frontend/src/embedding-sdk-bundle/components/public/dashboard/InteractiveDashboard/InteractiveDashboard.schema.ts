@@ -37,6 +37,8 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
     .noUnknown(),
   hiddenParameters: Yup.mixed().optional(),
   initialParameters: Yup.mixed().optional(),
+  parameters: Yup.mixed().optional(),
+  onParametersChange: Yup.mixed().optional(),
   onLoad: Yup.mixed().optional(),
   onLoadWithoutCards: Yup.mixed().optional(),
   plugins: Yup.object({

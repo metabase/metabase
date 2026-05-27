@@ -5,10 +5,9 @@ import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
+import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
-import { Timelines } from "metabase/entities/timelines";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -60,6 +59,7 @@ import type {
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import { cleanIndexFlags } from "./model-indexes/actions";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
@@ -112,7 +112,6 @@ export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = (state: State) => state.entities;
 export const getVisibleTimelineEventIds = (state: State) =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: State) =>
@@ -829,12 +828,13 @@ export const getTimeseriesXDomain = createSelector(
   },
 );
 
+const selectListTimelines = timelineApi.endpoints.listTimelines.select({
+  include: "events",
+});
+
 export const getFetchedTimelines = createSelector(
-  [getEntities],
-  (entities): Timeline[] => {
-    const entityQuery = { include: "events" };
-    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
-  },
+  [selectListTimelines],
+  (result): Timeline[] => result.data ?? [],
 );
 
 export const getTransformedTimelines = createSelector(
