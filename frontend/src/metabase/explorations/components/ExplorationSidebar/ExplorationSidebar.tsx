@@ -87,7 +87,9 @@ export function ExplorationSidebar({
       }
       const queries = item.data.queries;
       for (const query of queries) {
-        prefetchQueryResult(query.id);
+        if (query.status === "done") {
+          prefetchQueryResult(query.id);
+        }
       }
     },
     [prefetchQueryResult],
