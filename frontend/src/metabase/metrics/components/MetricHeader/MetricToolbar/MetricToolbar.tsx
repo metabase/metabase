@@ -8,10 +8,8 @@ import {
   useListBookmarksQuery,
   useListNotificationsQuery,
 } from "metabase/api";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
-import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -26,7 +24,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { ActionIcon, Button, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Group, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -121,16 +119,6 @@ function MetricToolbarButtons({
 
   return (
     <Group wrap="nowrap" gap="sm">
-      {isNumericMetric(card) && (
-        <Button
-          component={ForwardRefLink}
-          to={Urls.exploreMetric(card.id)}
-          leftSection={<Icon name="external" />}
-          data-testid="explore-link"
-        >
-          {t`Explore`}
-        </Button>
-      )}
       <Menu position="bottom-end">
         <Menu.Target>
           <ActionIcon

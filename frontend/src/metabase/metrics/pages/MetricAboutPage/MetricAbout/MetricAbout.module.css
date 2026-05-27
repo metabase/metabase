@@ -5,13 +5,7 @@
 .chartContainer {
   display: flex;
   flex-direction: column;
-  cursor: pointer;
-  transition: box-shadow 200ms ease;
   border-radius: var(--default-border-radius) 0 0 var(--default-border-radius);
-
-  &:hover {
-    box-shadow: var(--mantine-shadow-md);
-  }
 }
 
 .descriptionSection {
