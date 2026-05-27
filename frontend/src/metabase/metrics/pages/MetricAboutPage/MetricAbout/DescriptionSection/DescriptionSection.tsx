@@ -79,48 +79,49 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
     });
   }
 
-  const dependenciesUrl = urls.dependencies(card.id);
+  const relationshipRows: MetadataRow[] = [];
+  if (canSeeRelationships) {
+    const dependenciesUrl = urls.dependencies(card.id);
 
-  const relationshipRows: MetadataRow[] = canSeeRelationships
-    ? [
-        dependenciesCount > 0
-          ? {
-              icon: "link",
-              content: ngettext(
-                msgid`${dependenciesCount} dependency`,
-                `${dependenciesCount} dependencies`,
-                dependenciesCount,
-              ),
-              to: dependenciesUrl,
-            }
-          : {
-              icon: "link",
-              content: t`No dependencies`,
-            },
-        dependentsCount > 0
-          ? {
-              icon: "lineandbar",
-              content: jt`${(
-                <Text key="count" component="span" fw={600} c="brand">
-                  {ngettext(
-                    msgid`${dependentsCount} chart`,
-                    `${dependentsCount} charts`,
-                    dependentsCount,
-                  )}
-                </Text>
-              )} ${ngettext(
-                msgid`uses this metric`,
-                `use this metric`,
-                dependentsCount,
-              )}`,
-              to: dependenciesUrl,
-            }
-          : {
-              icon: "lineandbar",
-              content: t`No charts use this metric`,
-            },
-      ]
-    : [];
+    if (dependenciesCount > 0) {
+      relationshipRows.push({
+        icon: "link",
+        content: ngettext(
+          msgid`${dependenciesCount} dependency`,
+          `${dependenciesCount} dependencies`,
+          dependenciesCount,
+        ),
+        to: dependenciesUrl,
+      });
+    } else {
+      relationshipRows.push({ icon: "link", content: t`No dependencies` });
+    }
+
+    if (dependentsCount > 0) {
+      relationshipRows.push({
+        icon: "lineandbar",
+        content: jt`${(
+          <Text key="count" component="span" fw={600} c="brand">
+            {ngettext(
+              msgid`${dependentsCount} chart`,
+              `${dependentsCount} charts`,
+              dependentsCount,
+            )}
+          </Text>
+        )} ${ngettext(
+          msgid`uses this metric`,
+          `use this metric`,
+          dependentsCount,
+        )}`,
+        to: dependenciesUrl,
+      });
+    } else {
+      relationshipRows.push({
+        icon: "lineandbar",
+        content: t`No charts use this metric`,
+      });
+    }
+  }
 
   return (
     <Stack
