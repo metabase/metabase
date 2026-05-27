@@ -42,7 +42,7 @@ export function NewExplorationLeftTabs({
     >
       <Tabs.List className={cx(S.tabList, S.topTabList)}>
         <Tabs.Tab value="chat">{t`Chat`}</Tabs.Tab>
-        <Tabs.Tab value="browse">{t`Browse`}</Tabs.Tab>
+        <Tabs.Tab value="browse">{t`Add data`}</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="chat" className={S.tabPanel}>
         <NewExplorationChat selection={selection} />
