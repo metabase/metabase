@@ -312,11 +312,11 @@
                                                          :prompt "existing prompt"
                                                          :model :model
                                                          :card_id card-id}]
-      (with-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
-                    metabot.suggested-prompts/generate-sample-prompts
-                    (fn [& _]
-                      (throw (ex-info "locked" {:status-code 402
-                                                :error-code  "metabase_ai_managed_locked"})))]
+      (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                                  metabot.suggested-prompts/generate-sample-prompts
+                                  (fn [& _]
+                                    (throw (ex-info "locked" {:status-code 402
+                                                              :error-code  "metabase_ai_managed_locked"})))]
         (let [response (mt/user-http-request :crowberto :put 200
                                              (format "metabot/metabot/%d" metabot-id)
                                              {:collection_id nil})]
@@ -333,10 +333,10 @@
                                                          :prompt "existing prompt"
                                                          :model :model
                                                          :card_id card-id}]
-      (with-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
-                    metabot.suggested-prompts/generate-sample-prompts
-                    (fn [& _]
-                      (throw (ex-info "boom" {:status-code 500})))]
+      (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
+                                  metabot.suggested-prompts/generate-sample-prompts
+                                  (fn [& _]
+                                    (throw (ex-info "boom" {:status-code 500})))]
         (mt/user-http-request :crowberto :put 500
                               (format "metabot/metabot/%d" metabot-id)
                               {:collection_id nil})
@@ -379,8 +379,8 @@
                      :model/Metabot    {metabot-id :id}    {:name          "Empty metabot"
                                                             :collection_id collection-id}]
         ;; No cards in the collection — the LLM should never be called.
-        (with-redefs [metabot.example-question-generator/generate-example-questions
-                      (fn [& _] (throw (ex-info "LLM should not be called for an empty library" {})))]
+        (mt/with-dynamic-fn-redefs [metabot.example-question-generator/generate-example-questions
+                                    (fn [& _] (throw (ex-info "LLM should not be called for an empty library" {})))]
           (is (= {:status "no-library-content"}
                  (mt/user-http-request :crowberto :post 200
                                        (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))))
@@ -394,9 +394,9 @@
                                                                 :collection_id collection-id}
                          :model/Metabot    {metabot-id :id}    {:name          "Productive metabot"
                                                                 :collection_id collection-id}]
-            (with-redefs [metabot.example-question-generator/generate-example-questions
-                          (constantly {:table_questions  [{:questions []}]
-                                       :metric_questions []})]
+            (mt/with-dynamic-fn-redefs [metabot.example-question-generator/generate-example-questions
+                                        (constantly {:table_questions  [{:questions []}]
+                                                     :metric_questions []})]
               (is (= {:status "ai-produced-no-prompts"}
                      (mt/user-http-request :crowberto :post 200
                                            (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))))
