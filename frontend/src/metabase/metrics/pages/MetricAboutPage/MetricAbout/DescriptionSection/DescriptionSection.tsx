@@ -30,9 +30,9 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const canSeeRelationships = useSelector(
-    (state) => getUserIsAdmin(state) || getUserIsAnalyst(state),
-  );
+  const canSeeRelationships =
+    useSelector((state) => getUserIsAdmin(state) || getUserIsAnalyst(state)) &&
+    PLUGIN_DEPENDENCIES.isEnabled;
 
   const { data: database } = useGetDatabaseQuery(
     { id: card.database_id! },
@@ -131,23 +131,17 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
             )}
             {dependentsCount > 0 ? (
               <MetadataRow icon="dependencies" to={dependenciesUrl}>
-                {jt`${(
-                  <Text key="count" component="span" fw={600} c="brand">
-                    {ngettext(
-                      msgid`${dependentsCount} chart`,
-                      `${dependentsCount} charts`,
-                      dependentsCount,
-                    )}
-                  </Text>
-                )} ${(
-                  <Text key="verb" component="span" c="text-primary" fw={400}>
-                    {ngettext(
-                      msgid`uses this metric`,
-                      `use this metric`,
-                      dependentsCount,
-                    )}
-                  </Text>
-                )}`}
+                <Text component="span" c="text-primary" fw={400}>
+                  {jt`${(
+                    <Text key="count" component="span" fw={600} c="brand">
+                      {ngettext(
+                        msgid`${dependentsCount} chart`,
+                        `${dependentsCount} charts`,
+                        dependentsCount,
+                      )}
+                    </Text>
+                  )} ${ngettext(msgid`uses`, `use`, dependentsCount)} this metric`}
+                </Text>
               </MetadataRow>
             ) : (
               <MetadataRow icon="dependencies">

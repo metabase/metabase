@@ -37,6 +37,7 @@ type SetupOpts = {
   role?: "admin" | "analyst" | "consumer";
   dependenciesCount?: number;
   dependentsCount?: number;
+  dependenciesEnabled?: boolean;
 };
 
 function setup({
@@ -44,10 +45,14 @@ function setup({
   role = "consumer",
   dependenciesCount = 0,
   dependentsCount = 0,
+  // Default on so admin/analyst role-gate tests see the Relationships section
+  // (which itself requires the dependencies plugin to be enabled).
+  dependenciesEnabled = true,
 }: SetupOpts = {}) {
   jest
     .spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount")
     .mockReturnValue({ dependenciesCount, dependentsCount });
+  jest.replaceProperty(PLUGIN_DEPENDENCIES, "isEnabled", dependenciesEnabled);
   const card = createMockCard({
     id: CARD_ID,
     type: "metric",
@@ -161,6 +166,12 @@ describe("DescriptionSection", () => {
     it("is visible for data analysts", async () => {
       setup({ role: "analyst" });
       expect(await screen.findByText("Relationships")).toBeInTheDocument();
+    });
+
+    it("is hidden when the dependencies plugin is disabled, even for admins", async () => {
+      setup({ role: "admin", dependenciesEnabled: false });
+      await screen.findByText("About");
+      expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
     });
 
     it("shows empty-state copy when there are no dependencies or charts", async () => {

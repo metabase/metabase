@@ -2,13 +2,15 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockField,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockMetric,
@@ -42,11 +44,18 @@ describe("MetricTabs", () => {
     card: cardOverrides,
     hasDimensions = true,
     hasDataPermissions = true,
+    role = "consumer",
+    // Default off so pre-existing tab-list assertions don't pick up Dependencies.
+    dependenciesEnabled = false,
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
+    role?: "admin" | "analyst" | "consumer";
+    dependenciesEnabled?: boolean;
   } = {}) {
+    jest.replaceProperty(PLUGIN_DEPENDENCIES, "isEnabled", dependenciesEnabled);
+
     const card = createMockCard({
       type: "metric",
       can_write: true,
@@ -63,6 +72,10 @@ describe("MetricTabs", () => {
     setupMetricEndpoint(metric);
 
     const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: role === "admin",
+        is_data_analyst: role === "analyst",
+      }),
       entities: createMockEntitiesState({
         databases: hasDataPermissions ? [createSampleDatabase()] : [],
         questions: [card],
@@ -73,6 +86,10 @@ describe("MetricTabs", () => {
       storeInitialState: state,
     });
   }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   function getTabLabels() {
     return Array.from(
@@ -119,6 +136,34 @@ describe("MetricTabs", () => {
     });
     await waitFor(() => {
       expect(getTabLabels()).toEqual(["About", "History"]);
+    });
+  });
+
+  describe("Dependencies tab (role-gated)", () => {
+    it("shows for admins when the plugin is enabled", async () => {
+      setup({ role: "admin", dependenciesEnabled: true });
+      await waitFor(() => {
+        expect(getTabLabels()).toContain("Dependencies");
+      });
+    });
+
+    it("shows for data analysts when the plugin is enabled", async () => {
+      setup({ role: "analyst", dependenciesEnabled: true });
+      await waitFor(() => {
+        expect(getTabLabels()).toContain("Dependencies");
+      });
+    });
+
+    it("is hidden for consumers even when the plugin is enabled", async () => {
+      setup({ role: "consumer", dependenciesEnabled: true });
+      await screen.findByText("About");
+      expect(getTabLabels()).not.toContain("Dependencies");
+    });
+
+    it("is hidden when the plugin is disabled, even for admins", async () => {
+      setup({ role: "admin", dependenciesEnabled: false });
+      await screen.findByText("About");
+      expect(getTabLabels()).not.toContain("Dependencies");
     });
   });
 });
