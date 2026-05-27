@@ -12,8 +12,4 @@ databaseChangeLog:
             tableName: mcp_query_handle
             columnName: mcp_session_id
             newDataType: varchar(254)
-      rollback:
-        - modifyDataType:
-            tableName: mcp_query_handle
-            columnName: mcp_session_id
-            newDataType: varchar(36)
+      rollback: []
