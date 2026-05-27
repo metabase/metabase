@@ -137,32 +137,60 @@
   (or @cache (reset! cache (build-cache))))
 
 (defn modules-list
-  "[{:label :team :apiCount}] for the picker dropdown."
+  "[{:label :team :apiCount :edgeCount}] for the picker dropdown. `edgeCount` = number of distinct
+  edges touching this module (in or out), used by the client to pick a sensible default focus."
   []
-  (let [{:keys [module-nodes]} (ensure-cache!)]
+  (let [{:keys [module-nodes edges-by-mod]} (ensure-cache!)]
     (->> (vals module-nodes)
-         (map (fn [n] {:label    (get-in n [:data :label])
-                       :team     (get-in n [:data :team])
-                       :apiCount (get-in n [:data :apiCount])}))
+         (map (fn [n]
+                (let [label (get-in n [:data :label])]
+                  {:label     label
+                   :team      (get-in n [:data :team])
+                   :apiCount  (get-in n [:data :apiCount])
+                   :edgeCount (count (get edges-by-mod (symbol label) []))})))
          (sort-by :label))))
 
 (defn- bfs-neighbors
-  "Return modules within `degree` hops of `start` over the undirected module-edge graph."
-  [edges-by-mod start degree]
-  (loop [frontier #{start}
-         visited  #{start}
-         hops     0]
-    (if (or (zero? (count frontier)) (>= hops degree))
-      visited
-      (let [next-frontier (into #{}
-                                (comp
-                                 (mapcat (fn [m] (get edges-by-mod m [])))
-                                 (mapcat (fn [e]
-                                           [(symbol (get-in e [:data :sourceModule]))
-                                            (symbol (get-in e [:data :targetModule]))]))
-                                 (remove visited))
-                                frontier)]
-        (recur next-frontier (into visited next-frontier) (inc hops))))))
+  "Return modules within `degree` hops of `start` over the undirected module-edge graph, skipping
+  any module that fails the optional `keep?` predicate."
+  ([edges-by-mod start degree]
+   (bfs-neighbors edges-by-mod start degree (constantly true)))
+  ([edges-by-mod start degree keep?]
+   (loop [frontier #{start}
+          visited  #{start}
+          hops     0]
+     (if (or (zero? (count frontier)) (>= hops degree))
+       visited
+       (let [next-frontier (into #{}
+                                 (comp
+                                  (mapcat (fn [m] (get edges-by-mod m [])))
+                                  (mapcat (fn [e]
+                                            [(symbol (get-in e [:data :sourceModule]))
+                                             (symbol (get-in e [:data :targetModule]))]))
+                                  (remove visited)
+                                  (filter keep?))
+                                 frontier)]
+         (recur next-frontier (into visited next-frontier) (inc hops)))))))
+
+(defn- parse-hidden
+  "Parse the `hidden` query string into a predicate `(fn [module-symbol] -> hide?)`. Tokens that
+  start with `re:` are treated as regex patterns; everything else is an exact label match."
+  [hidden-str]
+  (if (str/blank? hidden-str)
+    (constantly false)
+    (let [tokens (remove str/blank? (str/split hidden-str #","))
+          {regex-toks true literal-toks false} (group-by #(str/starts-with? % "re:") tokens)
+          literals (set literal-toks)
+          regexes  (into []
+                         (keep (fn [tok]
+                                 (let [pat (subs tok 3)]
+                                   (try (re-pattern pat)
+                                        (catch Exception _ nil)))))
+                         regex-toks)]
+      (fn [m]
+        (let [s (str m)]
+          (or (contains? literals s)
+              (some #(re-find % s) regexes)))))))
 
 (defn- aggregate-edges
   "Collapse per-ns edges between `expanded-set` complement modules into one edge per (consumer,
@@ -214,19 +242,23 @@
 
   When `expanded` is empty we aggregate edges so each (consumer, producer) module pair becomes one
   weighted edge instead of many per-ns lines. Pass `expanded` as a set of module symbols that should
-  remain disaggregated (so the user can see individual api ns connections for those modules)."
-  ([module-label] (focus-subgraph module-label 1 #{}))
-  ([module-label degree] (focus-subgraph module-label degree #{}))
-  ([module-label degree expanded]
+  remain disaggregated. `hide?` is an optional predicate `(fn [module-symbol] -> hide?)` used to
+  prune unwanted modules from the visible set."
+  ([module-label] (focus-subgraph module-label 1 #{} (constantly false)))
+  ([module-label degree] (focus-subgraph module-label degree #{} (constantly false)))
+  ([module-label degree expanded] (focus-subgraph module-label degree expanded (constantly false)))
+  ([module-label degree expanded hide?]
    (let [{:keys [module-nodes api-children edges-by-mod all-edges]} (ensure-cache!)
-         m-sym  (symbol module-label)
-         degree (max 1 (min 3 (or degree 1)))
-         expanded (set (map symbol (or expanded #{})))]
+         m-sym    (symbol module-label)
+         degree   (max 1 (min 3 (or degree 1)))
+         expanded (set (map symbol (or expanded #{})))
+         hide?    (or hide? (constantly false))]
      (if-not (contains? module-nodes m-sym)
        {:error (str "unknown module: " module-label) :nodes [] :edges []}
-       (let [visible (bfs-neighbors edges-by-mod m-sym degree)
-             ;; Only include api-ns children for expanded modules. Collapsed modules render as a
-             ;; single node + aggregated edges -> way less for cola to chew on.
+       (let [;; We let the focused module itself stay visible even if it matches a hide rule —
+             ;; otherwise focusing it makes the page go blank.
+             keep? (fn [m] (or (= m m-sym) (not (hide? m))))
+             visible (bfs-neighbors edges-by-mod m-sym degree keep?)
              nodes (vec
                     (mapcat (fn [label]
                               (when-let [mn (get module-nodes label)]
@@ -313,6 +345,14 @@
   <div id=\"side\">
     <h2>Metabase Modules</h2>
     <div class=\"muted\">Select a module to focus its 1-degree neighborhood.</div>
+    <details id=\"hiddenWrap\" style=\"margin:8px 0;\">
+      <summary class=\"muted\" style=\"cursor:pointer\">hidden modules (<span id=\"hiddenCount\">0</span>)</summary>
+      <div id=\"hiddenPanel\" style=\"margin-top:6px;\"></div>
+      <div class=\"muted\" style=\"margin-top:4px\">one entry per line; lines starting <code>re:</code> are regex (e.g. <code>re:^enterprise/</code>)</div>
+      <textarea id=\"hiddenEditor\" rows=\"5\" style=\"width:100%; box-sizing:border-box; font:12px/1.4 monospace;\"></textarea>
+      <button id=\"hiddenSave\" style=\"margin-top:4px\">save</button>
+      <button id=\"hiddenClear\">clear all</button>
+    </details>
     <div id=\"detail\"></div>
   </div>
 </div>
@@ -420,7 +460,6 @@ function showCtxMenu(x, y, items) {
 }
 function hideCtxMenu() { ctxMenu.style.display = 'none'; }
 document.addEventListener('click', hideCtxMenu);
-document.getElementById('cy').addEventListener('contextmenu', (e) => e.preventDefault());
 
 function focusOnAt(label, deg) {
   document.getElementById('degree').value = String(deg);
@@ -435,6 +474,13 @@ function toggleExpanded(label) {
 
 function openGithub(url) { if (url) window.open(url, '_blank', 'noopener'); }
 
+function hideLabel(label) {
+  hiddenLabels.add(label);
+  saveHidden();
+  renderHiddenPanel();
+  if (currentFocus) focusOn(currentFocus);
+}
+
 function handleModuleCxt(evt) {
   const n = evt.target;
   const label = n.data('label');
@@ -446,11 +492,40 @@ function handleModuleCxt(evt) {
     ['focus  (2°)', () => focusOnAt(label, 2)],
     [expanded ? 'collapse api namespaces' : 'expand api namespaces',
      () => toggleExpanded(label)],
+    ['hide this module', () => hideLabel(label)],
     ['show details', () => renderDetail(n)],
     ['open on github ↗', () => openGithub(n.data('githubUrl'))],
   ]);
 }
-cy.on('cxttapend', 'node[type=\"module\"]', handleModuleCxt);
+cy.on('cxttapstart', 'node[type=\"module\"]', (e) => console.log('cxttapstart', e.target.data('label')));
+cy.on('cxttap',      'node[type=\"module\"]', (e) => console.log('cxttap',      e.target.data('label')));
+cy.on('cxttapend',   'node[type=\"module\"]', handleModuleCxt);
+
+// Fallback: native contextmenu on the canvas. Cytoscape's cxttap detection sometimes wedges after
+// a drag (the renderer keeps a stale grab state). The native event always fires.
+document.getElementById('cy').addEventListener('contextmenu', (ev) => {
+  ev.preventDefault();
+  const rect = ev.currentTarget.getBoundingClientRect();
+  const pos  = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  // Convert page coords to cytoscape model coords via pan/zoom.
+  const pan = cy.pan(), zoom = cy.zoom();
+  const model = { x: (pos.x - pan.x) / zoom, y: (pos.y - pan.y) / zoom };
+  // Walk nodes from top to find the one under the cursor (small N, cheap).
+  const hit = cy.nodes().filter(n => {
+    const bb = n.boundingBox();
+    return model.x >= bb.x1 && model.x <= bb.x2 && model.y >= bb.y1 && model.y <= bb.y2;
+  }).last();
+  if (hit && !hit.empty()) {
+    console.log('native ctx -> ', hit.data('label'));
+    if (hit.data('type') === 'module') {
+      handleModuleCxt({target: hit, originalEvent: ev});
+    } else if (hit.data('type') === 'ns') {
+      handleNsCxt({target: hit, originalEvent: ev});
+    }
+  } else {
+    hideCtxMenu();
+  }
+});
 
 function handleNsCxt(evt) {
   const n = evt.target;
@@ -528,6 +603,94 @@ let expandedModules = new Set();   // module labels w/ api-ns children visible
 let modulesIndex = {};   // label -> {label, team, apiCount}
 let pendingSurvivors = [];         // nodes locked for the current layout run
 let inflightFocus = null;          // AbortController for the current /api/focus fetch
+// Hidden modules: exact-match labels + regex strings. Persisted to localStorage so it survives
+// reloads. The server applies these as a pre-BFS filter so 2-degree views don't sprout via a
+// module the user explicitly hid.
+let hiddenLabels   = new Set();
+let hiddenPatterns = [];           // array of {pattern: string, re: RegExp}
+
+function loadHidden() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('moduleVizHidden') || '{}');
+    hiddenLabels   = new Set(raw.labels   || []);
+    hiddenPatterns = (raw.patterns || []).map(p => ({pattern: p, re: new RegExp(p)}));
+  } catch (e) { console.warn('loadHidden failed', e); }
+}
+function saveHidden() {
+  localStorage.setItem('moduleVizHidden', JSON.stringify({
+    labels:   [...hiddenLabels],
+    patterns: hiddenPatterns.map(p => p.pattern),
+  }));
+}
+function hiddenQueryParam() {
+  // Combined comma-separated list. Regex entries are prefixed with `re:` so the server can tell.
+  return [
+    ...[...hiddenLabels],
+    ...hiddenPatterns.map(p => 're:' + p.pattern),
+  ].join(',');
+}
+loadHidden();
+
+function hiddenLines() {
+  return [
+    ...[...hiddenLabels],
+    ...hiddenPatterns.map(p => 're:' + p.pattern),
+  ];
+}
+
+function renderHiddenPanel() {
+  const panel = document.getElementById('hiddenPanel');
+  const editor = document.getElementById('hiddenEditor');
+  const count = document.getElementById('hiddenCount');
+  if (!panel) return;
+  clear(panel);
+  const lines = hiddenLines();
+  count.textContent = String(lines.length);
+  editor.value = lines.join('\\n');
+  if (lines.length === 0) {
+    panel.appendChild(mk('div', {class: 'muted'}, 'nothing hidden'));
+    return;
+  }
+  const ul = mk('ul', {style: 'list-style:none; padding-left:0; margin:0;'});
+  lines.forEach(line => {
+    const li = mk('li', {style: 'display:flex; gap:6px; align-items:center; padding:2px 0;'});
+    const btn = mk('button', {style: 'font-size:11px; padding:0 4px; cursor:pointer;'}, '×');
+    btn.onclick = () => {
+      if (line.startsWith('re:')) {
+        const pat = line.slice(3);
+        hiddenPatterns = hiddenPatterns.filter(p => p.pattern !== pat);
+      } else {
+        hiddenLabels.delete(line);
+      }
+      saveHidden();
+      renderHiddenPanel();
+      if (currentFocus) focusOn(currentFocus);
+    };
+    li.appendChild(btn);
+    li.appendChild(mk('code', null, line));
+    ul.appendChild(li);
+  });
+  panel.appendChild(ul);
+}
+
+function applyHiddenEditor() {
+  const editor = document.getElementById('hiddenEditor');
+  const lines = editor.value.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+  hiddenLabels = new Set();
+  hiddenPatterns = [];
+  lines.forEach(line => {
+    if (line.startsWith('re:')) {
+      const pat = line.slice(3);
+      try { hiddenPatterns.push({pattern: pat, re: new RegExp(pat)}); }
+      catch (e) { console.warn('bad regex', pat, e); }
+    } else {
+      hiddenLabels.add(line);
+    }
+  });
+  saveHidden();
+  renderHiddenPanel();
+  if (currentFocus) focusOn(currentFocus);
+}
 
 async function fetchModules() {
   console.log('fetchModules start');
@@ -542,6 +705,16 @@ async function fetchModules() {
     list.forEach(m => dl.appendChild(mk('option', {value: m.label})));
     renderModuleList(list);
     console.log('fetchModules done');
+    // Auto-focus a module whose edge count is closest to 50 so the first paint shows a
+    // representative neighborhood instead of a blank canvas.
+    if (!currentFocus) {
+      const pick = list.slice().sort((a, b) =>
+        Math.abs((a.edgeCount || 0) - 50) - Math.abs((b.edgeCount || 0) - 50))[0];
+      if (pick) {
+        console.log('auto-focus', pick.label, 'edgeCount', pick.edgeCount);
+        focusOn(pick.label);
+      }
+    }
   } catch (e) {
     console.error('fetchModules failed', e);
   }
@@ -577,8 +750,10 @@ async function focusOn(moduleLabel) {
   try {
     const deg = currentDegree();
     const exp = [...expandedModules].join(',');
+    const hid = hiddenQueryParam();
     const url = '/api/focus?m=' + encodeURIComponent(moduleLabel) + '&degree=' + deg +
-                (exp ? '&expanded=' + encodeURIComponent(exp) : '');
+                (exp ? '&expanded=' + encodeURIComponent(exp) : '') +
+                (hid ? '&hidden='   + encodeURIComponent(hid) : '');
     if (inflightFocus) inflightFocus.abort();
     inflightFocus = new AbortController();
     const r = await fetch(url, {signal: inflightFocus.signal});
@@ -593,18 +768,21 @@ async function focusOn(moduleLabel) {
       cy.add(nsNodes);
       cy.add(sub.edges);
     });
-    // Restore positions for survivors; new nodes get whatever cola decides.
+    // Unlock any leftover survivors from a prior interrupted layout before we lock the new set.
+    pendingSurvivors.forEach(n => { try { if (n && n.unlock) n.unlock(); } catch (_) {} });
+    pendingSurvivors = [];
+
+    // Restore positions for survivors; new nodes get whatever cola decides. Re-query by id since
+    // cy.elements().remove() + cy.add() produces fresh node refs.
     const survivors = [];
-    cy.nodes().forEach(n => {
-      const p = oldPositions[n.data('id')];
-      if (p) {
-        n.position(p);
+    Object.keys(oldPositions).forEach(id => {
+      const n = cy.getElementById(id);
+      if (!n.empty()) {
+        n.position(oldPositions[id]);
+        n.lock();
         survivors.push(n);
       }
     });
-    // Lock survivors so cola only moves new nodes. Unlock when the layout finishes — cola fires
-    // 'layoutstop' on the layout instance. Stash a ref to clear on the next run.
-    survivors.forEach(n => n.lock());
     pendingSurvivors = survivors;
     document.getElementById('debug').textContent =
       'cy: ' + cy.nodes().length + ' nodes · ' + cy.edges().length + ' edges';
@@ -746,6 +924,14 @@ document.getElementById('expand-all').onclick = () => {
 };
 document.getElementById('relayout').onclick     = () => runLayout();
 
+document.getElementById('hiddenSave').onclick  = applyHiddenEditor;
+document.getElementById('hiddenClear').onclick = () => {
+  hiddenLabels = new Set(); hiddenPatterns = [];
+  saveHidden(); renderHiddenPanel();
+  if (currentFocus) focusOn(currentFocus);
+};
+renderHiddenPanel();
+
 fetchModules();
 </script>
 </body>
@@ -784,7 +970,8 @@ fetchModules();
                                        (try (Integer/parseInt (or (get q "degree") "1"))
                                             (catch Exception _ 1))
                                        (when-let [exp (get q "expanded")]
-                                         (set (remove str/blank? (str/split exp #","))))))
+                                         (set (remove str/blank? (str/split exp #","))))
+                                       (parse-hidden (get q "hidden"))))
       "/api/full"     (json-response (full-graph))
       {:status 404 :body "not found"})))
 
