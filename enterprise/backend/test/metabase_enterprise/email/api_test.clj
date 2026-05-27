@@ -66,7 +66,6 @@
                                 default-email-override-settings
                                 original-values)
                               (email-override-settings)))))))))))
-
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
           (is (= "Invalid email-smtp-security-override value"

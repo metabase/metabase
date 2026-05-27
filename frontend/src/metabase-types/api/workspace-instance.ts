@@ -15,6 +15,10 @@ export type WorkspaceInstance = {
   databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
 };
 
+export type GetCurrentWorkspaceResponse = {
+  data: WorkspaceInstance | null;
+};
+
 export type TableRemappingId = number;
 
 export type TableRemapping = {

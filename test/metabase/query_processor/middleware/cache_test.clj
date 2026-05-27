@@ -274,7 +274,6 @@
                (mt/wait-for-result save-chan)))
         (is (= :not-cached
                (run-query))))))
-
   (testing "...but if it takes *longer* than the min TTL, it should be cached"
     (with-mock-cache! [save-chan]
       (binding [*query-caching-min-ttl* 0.1]

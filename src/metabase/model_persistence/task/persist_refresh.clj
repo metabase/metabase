@@ -311,7 +311,6 @@
 (comment
   (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
         hours 1]
-
     (if (= 24 hours)
       (format "0 %d %d * * ? *" start-minute start-hour)
       (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))

@@ -3,10 +3,12 @@ import type {
   AcknowledgeAdvisoryResponse,
   AdvisoryId,
   ListAdvisoriesResponse,
+  SendTestNotificationRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import { listTag } from "./tags";
+
 export const securityCenterApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
@@ -41,10 +43,17 @@ export const securityCenterApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
-    sendTestNotification: builder.mutation<{ success: boolean }, void>({
-      query: () => ({
+    sendTestNotification: builder.mutation<
+      { success: boolean },
+      SendTestNotificationRequest
+    >({
+      query: ({ emailRecipients, slackChannel }) => ({
         method: "POST",
         url: "/api/ee/security-center/test-notification",
+        body: {
+          email_recipients: emailRecipients,
+          slack_channel: slackChannel,
+        },
       }),
     }),
   }),
