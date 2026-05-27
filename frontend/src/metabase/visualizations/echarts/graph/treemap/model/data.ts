@@ -52,79 +52,74 @@ export function getTreemapData(
   ] = rawSeries;
   const { grouping, subGrouping, value } = treemapColumns;
 
-  if (subGrouping == null) {
-    const nodeByKey = new Map<RowValue, TreemapNode>();
-
-    rows.forEach((row, rowIndex) => {
-      const groupingValue = row[grouping.index];
-      const metricValue = row[value.index];
-
-      const existing = nodeByKey.get(groupingValue);
-      if (existing) {
-        existing.value =
-          sumMetric(existing.value, metricValue) ?? existing.value;
-        existing.rowIndices.push(rowIndex);
-      } else {
-        nodeByKey.set(groupingValue, {
-          rawName: groupingValue,
-          displayName: String(groupingValue ?? ""),
-          value: sumMetric(0, metricValue) ?? 0,
-          rowIndices: [rowIndex],
-        });
-      }
-    });
-
-    return Array.from(nodeByKey.values());
-  }
-
-  type RootEntry = {
-    node: TreemapNode;
-    leafByKey: Map<RowValue, TreemapNode>;
-  };
-  const rootByKey = new Map<RowValue, RootEntry>();
+  const rootByKey = new Map<RowValue, TreemapNode>();
+  const leafMapByRoot = new Map<TreemapNode, Map<RowValue, TreemapNode>>();
 
   rows.forEach((row, rowIndex) => {
     const groupingValue = row[grouping.index];
-    const subGroupingValue = row[subGrouping.index];
     const metricValue = row[value.index];
 
-    let rootEntry = rootByKey.get(groupingValue);
-    if (!rootEntry) {
-      const rootNode: TreemapNode = {
-        rawName: groupingValue,
-        displayName: String(groupingValue ?? ""),
-        value: 0,
-        rowIndices: [],
-        children: [],
-      };
-      rootEntry = { node: rootNode, leafByKey: new Map() };
-      rootByKey.set(groupingValue, rootEntry);
+    const { node: rootNode } = getOrCreateNode(
+      rootByKey,
+      groupingValue,
+      String(groupingValue ?? ""),
+      subGrouping != null,
+    );
+    addRowMetric(rootNode, metricValue, rowIndex);
+
+    if (subGrouping == null) {
+      return;
     }
 
-    const { node: rootNode, leafByKey } = rootEntry;
-
-    const existingLeaf = leafByKey.get(subGroupingValue);
-    if (existingLeaf) {
-      existingLeaf.value =
-        sumMetric(existingLeaf.value, metricValue) ?? existingLeaf.value;
-      existingLeaf.rowIndices.push(rowIndex);
-    } else {
-      const newLeaf: TreemapNode = {
-        rawName: subGroupingValue,
-        displayName:
-          subGroupingValue == null
-            ? NULL_DISPLAY_VALUE
-            : String(subGroupingValue),
-        value: sumMetric(0, metricValue) ?? 0,
-        rowIndices: [rowIndex],
-      };
-      leafByKey.set(subGroupingValue, newLeaf);
-      rootNode.children?.push(newLeaf);
+    const subGroupingValue = row[subGrouping.index];
+    let leafMap = leafMapByRoot.get(rootNode);
+    if (leafMap == null) {
+      leafMap = new Map();
+      leafMapByRoot.set(rootNode, leafMap);
     }
-
-    rootNode.value = sumMetric(rootNode.value, metricValue) ?? rootNode.value;
-    rootNode.rowIndices.push(rowIndex);
+    const { node: leaf, wasCreated } = getOrCreateNode(
+      leafMap,
+      subGroupingValue,
+      subGroupingValue == null
+        ? NULL_DISPLAY_VALUE
+        : String(subGroupingValue),
+      false,
+    );
+    addRowMetric(leaf, metricValue, rowIndex);
+    if (wasCreated) {
+      rootNode.children?.push(leaf);
+    }
   });
 
-  return Array.from(rootByKey.values()).map((entry) => entry.node);
+  return Array.from(rootByKey.values());
+}
+
+function getOrCreateNode(
+  map: Map<RowValue, TreemapNode>,
+  rawName: RowValue,
+  displayName: string,
+  withChildren: boolean,
+): { node: TreemapNode; wasCreated: boolean } {
+  const existing = map.get(rawName);
+  if (existing != null) {
+    return { node: existing, wasCreated: false };
+  }
+  const node: TreemapNode = {
+    rawName,
+    displayName,
+    value: 0,
+    rowIndices: [],
+    ...(withChildren ? { children: [] } : {}),
+  };
+  map.set(rawName, node);
+  return { node, wasCreated: true };
+}
+
+function addRowMetric(
+  node: TreemapNode,
+  metricValue: RowValue,
+  rowIndex: number,
+): void {
+  node.value = sumMetric(node.value, metricValue) ?? node.value;
+  node.rowIndices.push(rowIndex);
 }
