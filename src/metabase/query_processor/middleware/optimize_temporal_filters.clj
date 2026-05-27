@@ -293,7 +293,7 @@
 (def ^:private optimizable-clause-types
   (set (keys (methods optimize-clause))))
 
-(defn- optimize-temporal-clauses [query path clause]
+(defn- optimize-temporal-clauses* [query path clause]
   (when (lib/clause-of-type? clause optimizable-clause-types)
     (or (when (can-optimize-clause? clause)
           (u/prog1 (optimize-clause query path clause)
@@ -306,9 +306,9 @@
               (log/error "Error optimizing temporal clause: optimize-clause unexpectedly returned nil" (pr-str clause)))))
         clause)))
 
-(mu/defn optimize-temporal-filters :- ::lib.schema/query
-  "Middleware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
-  bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
+(mu/defn optimize-temporal-clauses :- ::lib.schema/query
+  "Middleware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) clauses against
+  bucketed datetime fields. Rewrites those clauses as logically equivalent clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
     [:= [:field 1 {:temporal-unit :month}] [:absolute-datetime #t \"2019-09-01\" :month]]
@@ -334,31 +334,24 @@
   (lib.walk/walk-stages
    query
    (fn [query path stage]
-     (when (seq (:filters stage))
-       (letfn [(update-filters [filters]
-                 (let [filters' (lib.walk/walk-clauses* filters #(optimize-temporal-clauses query path %))]
+     (cond-> stage
+       (seq (:filters stage))
+       (update :filters
+               (fn [filters]
+                 (let [filters' (lib.walk/walk-clauses* filters #(optimize-temporal-clauses* query path %))]
                    (if (= filters' filters)
                      filters
                      ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
-                     (lib/simplify-filters filters'))))]
-         (update stage :filters update-filters))))))
+                     (lib/simplify-filters filters')))))
 
-(mu/defn optimize-temporal-expressions :- ::lib.schema/query
-  "Middleware that applies the same temporal optimizations as [[optimize-temporal-filters]] but to `:expressions`
-  (custom columns). For example, `between([timestamp_col], \"2026-05-10\", \"2026-05-13\")` as a custom column
-  expression needs its upper bound adjusted to be truly inclusive. See metabase#74860."
-  [query :- ::lib.schema/query]
-  (lib.walk/walk-stages
-   query
-   (fn [query path stage]
-     (when (seq (:expressions stage))
-       (letfn [(optimize-expression [[_ opts & _rest :as expr]]
-                 (let [expr' (lib.walk/walk-clause expr #(optimize-temporal-clauses query path %))]
-                   (if (= expr' expr)
-                     expr
-                     (let [expr-name (:lib/expression-name opts)]
-                       (cond-> expr'
-                         expr-name (lib.options/update-options assoc :lib/expression-name expr-name))))))
-               (update-expressions [expressions]
-                 (mapv optimize-expression expressions))]
-         (update stage :expressions update-expressions))))))
+       (seq (:expressions stage))
+       (update :expressions
+               (fn [expressions]
+                 (mapv (fn [[_ opts & _rest :as expr]]
+                         (let [expr' (lib.walk/walk-clause expr #(optimize-temporal-clauses* query path %))]
+                           (if (= expr' expr)
+                             expr
+                             (let [expr-name (:lib/expression-name opts)]
+                               (cond-> expr'
+                                 expr-name (lib.options/update-options assoc :lib/expression-name expr-name))))))
+                       expressions)))))))
