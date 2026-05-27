@@ -27,7 +27,7 @@ export const NotificationRunSummaryLog = ({
     if (isLoading) {
       return (
         <Flex align="center" justify="center" py="lg">
-          <Loader size="sm" />
+          <Loader size="sm" data-testid="run-summary-loader" />
         </Flex>
       );
     }

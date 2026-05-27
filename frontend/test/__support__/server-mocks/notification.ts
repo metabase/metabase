@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import type {
   AdminNotification,
+  AdminNotificationDetail,
   AdminNotificationListResponse,
   ListNotificationsRequest,
   Notification,
@@ -42,13 +43,24 @@ export const setupAdminListNotificationsEndpoint = (
 };
 
 export const setupAdminNotificationDetailEndpoint = (
-  notification: AdminNotification,
+  notification: AdminNotification | AdminNotificationDetail,
+  options?: { delay?: number },
 ) => {
-  fetchMock.get(`path:/api/ee/notifications/${notification.id}`, notification);
+  fetchMock.get(
+    `path:/api/ee/notifications/${notification.id}`,
+    notification,
+    options,
+  );
 };
 
 export const setupAdminNotificationDetailErrorEndpoint = (
   id: NotificationId,
 ) => {
   fetchMock.get(`path:/api/ee/notifications/${id}`, { status: 500 });
+};
+
+export const setupBulkNotificationActionEndpoint = (
+  response: { updated: number } = { updated: 1 },
+) => {
+  fetchMock.post("path:/api/ee/notifications/bulk", response);
 };
