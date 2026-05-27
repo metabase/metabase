@@ -1432,3 +1432,63 @@ databaseChangeLog:
             tableName: exploration_query
             columnName: entity_id
             columnDataType: char(21)
+
+  - changeSet:
+      id: v62.expquerycardidx
+      author: nvoxland
+      comment: Index on exploration_query.card_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v62.expquerysegidx
+      author: nvoxland
+      comment: Index on exploration_query.segment_id
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_segment_id
+            columns:
+              - column:
+                  name: segment_id
+
+  - changeSet:
+      id: v62.expqueryresultsridx
+      author: nvoxland
+      comment: Index on exploration_query_result.stored_result_id
+      changes:
+        - createIndex:
+            tableName: exploration_query_result
+            indexName: idx_exploration_query_result_stored_result_id
+            columns:
+              - column:
+                  name: stored_result_id
+
+  - changeSet:
+      id: v62.expthreadaidocidx
+      author: nvoxland
+      comment: Index on exploration_thread.ai_summary_document_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread
+            indexName: idx_exploration_thread_ai_summary_document_id
+            columns:
+              - column:
+                  name: ai_summary_document_id
+
+  - changeSet:
+      id: v62.storedresultcreatoridx
+      author: nvoxland
+      comment: Index on stored_result.creator_id
+      changes:
+        - createIndex:
+            tableName: stored_result
+            indexName: idx_stored_result_creator_id
+            columns:
+              - column:
+                  name: creator_id
