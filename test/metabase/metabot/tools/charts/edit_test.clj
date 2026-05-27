@@ -183,10 +183,13 @@
                     {:query         external-query
                      :visualization {:chart_type "bar"}})]
         (testing "tool returns a clear, agent-targeted error rather than producing a chart"
-          ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
-          ;; `{:output <message>}` (no `:structured-output`). That's the LLM-visible signal.
-          (is (nil? (:structured-output result))
-              (str "expected no structured-output, got: " (pr-str result)))
+          ;; `construct-notebook-query-tool` catches the ex-info, returns `{:output <message>}`
+          ;; plus a `:structured-output` containing only the empty-entity-usage placeholder
+          ;; required by the authoring-tool validator — no leaked query / chart data.
+          (is (= {:entity-usage {:input [] :output []}}
+                 (:structured-output result))
+              (str "expected structured-output to carry only the empty :entity-usage placeholder, got: "
+                   (pr-str (:structured-output result))))
           (is (string? (:output result)))
           (is (re-find #"Sample" (:output result))
               (str "error message should mention the offending DB name; got: "

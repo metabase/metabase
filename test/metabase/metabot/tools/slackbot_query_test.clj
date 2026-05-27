@@ -172,11 +172,13 @@
         (let [result (slackbot-query/slackbot-construct-notebook-query-tool
                       {:reasoning "test agent-error path"
                        :query     {:lib/type "mbql/query" :stages []}})]
-          (testing "bare :output key with the agent message, no structured-output or data-parts"
+          (testing "bare :output key with the agent message, placeholder entity-usage, no data-parts"
             (is (string? (:output result)))
             (is (re-find #"Unknown database" (:output result)))
             (is (re-find #"Sample" (:output result)))
-            (is (nil? (:structured-output result)))
+            (is (= {:entity-usage {:input [] :output []}}
+                   (:structured-output result))
+                "error branch carries only the empty :entity-usage placeholder — no leaked query data")
             (is (nil? (:data-parts result)))))))))
 
 (deftest slackbot-tool-unexpected-error-is-wrapped-test
@@ -252,8 +254,10 @@
                     {:reasoning "wrong db name"
                      :query     external-query
                      :display   "table"})]
-        (testing "no structured-output, no data-parts, clear message"
-          (is (nil? (:structured-output result)))
+        (testing "only placeholder entity-usage in structured-output, no data-parts, clear message"
+          (is (= {:entity-usage {:input [] :output []}}
+                 (:structured-output result))
+              "error branch carries only the empty :entity-usage placeholder — no leaked query data")
           (is (nil? (:data-parts result)))
           (is (string? (:output result)))
           (is (re-find #"Unknown database" (:output result)))

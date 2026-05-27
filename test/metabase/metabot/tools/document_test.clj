@@ -183,11 +183,25 @@
         (is (= [] (:output eu)))))))
 
 (deftest document-construct-model-chart-entity-usage-test
-  ;; TODO(BOT-1569): once `construct/empty-entity-usage` is replaced with a real walk of the
-  ;; resolved pmbql-query, restore an assertion that the input contains the entities the
-  ;; query references (source-table / source-card / fields / metrics). Until then we only
-  ;; assert the placeholder shape.
-  (testing "document_construct_model_chart success path emits a valid :entity-usage placeholder"
+  (testing "success path forwards :entity-usage from the underlying construct_notebook_query"
+    (let [forwarded-eu {:input  [{:type "database" :id 1}
+                                 {:type "card"     :id 42}]
+                        :output []}]
+      (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
+                                  (fn [_]
+                                    {:structured-output {:query-id     "3"
+                                                         :query        {:database 1 :type "query"}
+                                                         :entity-usage forwarded-eu}})]
+        (let [result (document-tools/document-construct-model-chart-tool
+                      {:name "N"
+                       :description "D"
+                       :query ""
+                       :viz_settings {:chart_type "bar"}})
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= forwarded-eu eu)
+              "entity-usage from the inner construct_notebook_query call should pass through unchanged")))))
+  (testing "falls back to empty entity-usage when the inner tool didn't attach one"
     (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
                                 (fn [_]
                                   {:structured-output {:query-id "3"
@@ -195,10 +209,7 @@
       (let [result (document-tools/document-construct-model-chart-tool
                     {:name "N"
                      :description "D"
-                     :query {:lib/type :mbql/query
-                             :database 1
-                             :stages [{:lib/type :mbql.stage/mbql
-                                       :source-card "abcdefghijklmnopqrstu"}]}
+                     :query ""
                      :viz_settings {:chart_type "bar"}})
             eu     (get-in result [:structured-output :entity-usage])]
         (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))

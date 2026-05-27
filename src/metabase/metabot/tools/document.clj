@@ -231,8 +231,6 @@
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
   [{:keys [name description query viz_settings]} :- model-chart-schema]
-  ;; TODO(BOT-1569): populate `entity-usage` by walking the resolved
-  ;; `pmbql-query` (see `construct-tools/empty-entity-usage`).
   (try
     (let [chart-type (get viz_settings :chart_type)
           result     (construct-tools/construct-notebook-query-tool
@@ -240,7 +238,8 @@
                        :visualization {:chart_type chart-type}})
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)
-          dataset-query (:query structured)]
+          dataset-query (:query structured)
+          entity-usage  (get structured :entity-usage construct-tools/empty-entity-usage)]
       (if (map? dataset-query)
         {:output "Draft chart payload generated from model/notebook query."
          :structured-output {:tool          "document_construct_model_chart"
@@ -252,12 +251,12 @@
                              :query_id      query-id
                              :query         dataset-query
                              :result-type   :chart-draft
-                             :entity-usage  construct-tools/empty-entity-usage}
+                             :entity-usage  entity-usage}
          :final-response? true}
         ;; Preserve tool error messaging from construct_notebook_query path.
         (construct-tools/entity-usage-on-result
          (or result {:output "Failed to construct model chart draft."})
-         construct-tools/empty-entity-usage)))
+         entity-usage)))
     (catch Exception e
       (log/error e "Error constructing model chart draft")
       (construct-tools/entity-usage-on-result

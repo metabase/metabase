@@ -14,7 +14,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.metabot.tools.entity-usage :as entity-usage]
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -809,3 +811,88 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; entity-usage (BOT-1569)
+;;; ============================================================
+
+(deftest execute-representations-query-attaches-entity-usage-test
+  (testing "happy path puts a schema-valid :entity-usage on :structured-output"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]}]}))
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-source-table-test
+  (testing "source-table contributes a :table entry alongside the :database entry"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-implicit-join-and-field-refs-test
+  (testing "an implicit join + breakout field surfaces both tables and the field id"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {}
+                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}
+                           {:type "table"    :id 20}
+                           {:type "field"    :id 201}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-source-card-test
+  (testing "source-card contributes a catch-all `card` entry — subtype is NOT resolved"
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "fields"      [["field" {} "TOTAL"]]
+                                     "limit"       5}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "card"     :id 500}]
+                  :output []}
+                 eu))
+          (is (every? #(not= "model" (:type %)) (:input eu))
+              "source-card type stays `card`, never `model`/`question`/`metric`"))))))

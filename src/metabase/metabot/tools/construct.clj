@@ -206,6 +206,48 @@
         cols  (lib/returned-columns query)]
     (mapv #(tools.u/->result-column query %) cols)))
 
+;;; ---------------------------------------- Entity usage ----------------------------------------
+
+(def empty-entity-usage
+  "Placeholder `:entity-usage` for construct-family error branches that don't have a resolved
+  query in scope (LLM-input failures, generic exceptions, the degraded structured-output
+  branch). The success path populates `:entity-usage` from a real walk of the resolved
+  pmbql-query — see [[query->entity-usage]]."
+  {:input [] :output []})
+
+(defn entity-usage-on-result
+  "Attach an `:entity-usage` map under `:structured-output` on a tool result, preserving any
+  structured-output already present."
+  [result entity-usage]
+  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
+
+(defn query->entity-usage
+  "Produce an `:entity-usage` map from a resolved pMBQL query.
+
+  Walks the query for table / card / metric references via
+  [[lib/all-referenced-entity-ids]], collects `:field` refs via [[lib/all-field-ids]], and
+  prepends the query's own `:database` id. Card subtypes (model / question / metric) are NOT
+  resolved — `\"card\"` is used as the catch-all type, matching how the SQL tools emit
+  `{{#N}}` template-tag refs. `:measure`, `:segment`, and `:snippet` references are dropped
+  because they are not present in the entity-usage vocabulary (see
+  [[metabase.metabot.tools.entity-usage/entity-types]]).
+
+  Authoring construct-family tools have no `:output` entities, so the output vector is
+  always empty."
+  [pmbql-query]
+  (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [pmbql-query])
+        field-ids (lib/all-field-ids pmbql-query)
+        entry     (fn [type id] {:type type :id id})
+        sorted    (fn [ids] (sort (seq ids)))]
+    {:input  (vec (concat
+                   (when-let [db (:database pmbql-query)]
+                     [(entry "database" db)])
+                   (for [id (sorted table)]    (entry "table"  id))
+                   (for [id (sorted card)]     (entry "card"   id))
+                   (for [id (sorted metric)]   (entry "metric" id))
+                   (for [id (sorted field-ids)] (entry "field" id))))
+     :output []}))
+
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn- as-agent-input-error
@@ -290,7 +332,8 @@
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
                              :query-json     exported-repr
-                             :result-columns (result-columns-for-query pmbql-query mp)}
+                             :result-columns (result-columns-for-query pmbql-query mp)
+                             :entity-usage   (query->entity-usage pmbql-query)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
@@ -298,29 +341,6 @@
         (if (= 403 (:status-code (ex-data e)))
           (throw e)
           (throw (as-agent-input-error e)))))))
-
-;;; ---------------------------------------- Entity usage ----------------------------------------
-
-(def empty-entity-usage
-  "Placeholder `:entity-usage` for the construct family of authoring tools.
-
-  TODO(BOT-1569): replace with a real walk of the resolved pmbql-query (via
-  `metabase.lib.walk.util/all-referenced-entity-ids` + `all-field-ids`) so
-  source-table / source-card / field / metric references contribute `:input`
-  entries with `:arg_slot` annotations. The previous implementation walked the
-  sexp-pipeline `program` arg via `agent-lib.refs/collect-program-refs`; that
-  pipeline was removed in `repr-plan` step 16, and the construct tools now
-  accept a single self-describing portable `query` instead. Until the walker
-  is ported, every construct-family tool returns this empty shape so the
-  entity-usage validator (authoring tools must populate `:entity-usage`) is
-  satisfied."
-  {:input [] :output []})
-
-(defn entity-usage-on-result
-  "Attach an `:entity-usage` map under `:structured-output` on a tool result,
-   preserving any structured-output already present."
-  [result entity-usage]
-  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 
@@ -382,11 +402,6 @@
   Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
-  ;; TODO(BOT-1569): populate `entity-usage` by walking the resolved
-  ;; `pmbql-query` (via `metabase.lib.walk.util/all-referenced-entity-ids`
-  ;; + `all-field-ids`). See `empty-entity-usage` above for the back-story —
-  ;; the previous program-walking implementation was removed when master
-  ;; retired the sexp pipeline.
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -404,8 +419,7 @@
                                      :chart-id      (:chart-id chart-result)
                                      :chart-type    (:chart-type chart-result)
                                      :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result)
-                                     :entity-usage  empty-entity-usage)
+                                     :chart-content (:chart-content chart-result))
               instruction-text
               (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
                 (te/lines
@@ -429,7 +443,7 @@
              (assoc query-result
                     :output (str "<result>\n" query-xml "\n</result>\n"
                                  "<instructions>\n" instruction-text "\n</instructions>"))
-             empty-entity-usage))
+             (get s :entity-usage empty-entity-usage)))
           (entity-usage-on-result query-result empty-entity-usage))))
     (catch Exception e
       (entity-usage-on-result

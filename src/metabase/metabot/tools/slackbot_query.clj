@@ -41,8 +41,6 @@
   `:query` argument must follow — the prompt is shared with the main `construct_notebook_query`
   tool."
   [{:keys [_reasoning query title display]} :- slackbot-query-schema]
-  ;; TODO(BOT-1569): populate `entity-usage` by walking the resolved
-  ;; `pmbql-query` (see `construct/empty-entity-usage`).
   (try
     (let [query-result (construct/execute-representations-query query)
           structured   (or (:structured-output query-result) (:structured_output query-result))]
@@ -52,13 +50,14 @@
                                        :link  metabase-link}
                                 title   (assoc :title title)
                                 display (assoc :display display))]
-          {:structured-output (assoc structured :entity-usage construct/empty-entity-usage)
+          {:structured-output structured
            :instructions (str "Query created. The visualization will be posted as a separate "
                               "follow-up message in the thread with the query results. "
                               "Use future tense when referring to results — they haven't "
                               "appeared yet when the user sees your text.")
            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
-        (construct/entity-usage-on-result query-result construct/empty-entity-usage)))
+        (construct/entity-usage-on-result query-result
+                                          (get structured :entity-usage construct/empty-entity-usage))))
     (catch Exception e
       (log/error e "Failed to construct slackbot notebook query")
       (construct/entity-usage-on-result
