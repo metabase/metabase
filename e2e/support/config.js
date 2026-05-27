@@ -40,7 +40,14 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
-const COVERAGE_MANIFEST_DIR = path.resolve(__dirname, "../coverage-manifest");
+// Cypress sets the project root to the config file's directory, so cwd-relative
+// paths land under e2e/support/. Anchor to __dirname so output lands at repo
+// root (where the workflow uploads from) and we read .nyc_output from wherever
+// @cypress/code-coverage actually wrote it (next to the config).
+const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
+  __dirname,
+  "../coverage-manifest-raw",
+);
 const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
@@ -48,25 +55,34 @@ const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-// We delete .nyc_output/out.json between specs so each per-spec entry reflects
-// only that spec's execution — @cypress/code-coverage otherwise accumulates.
+// Persists raw __coverage__ counters per spec. The manifest builder reads
+// these later, applies baseline subtraction, and maps surviving files to
+// modules. We delete .nyc_output/out.json between specs so each entry
+// reflects only that spec's execution — @cypress/code-coverage otherwise
+// accumulates.
 function writeSpecCoverageEntry(spec) {
   if (!fs.existsSync(NYC_OUTPUT_FILE)) {
     return;
   }
 
   const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
-  const executed = Object.entries(coverage)
-    .filter(([, fileCov]) =>
-      Object.values(fileCov.s || {}).some((count) => count > 0),
-    )
-    .map(([file]) => file);
 
-  fs.mkdirSync(COVERAGE_MANIFEST_DIR, { recursive: true });
+  // The manifest builder only needs per-file function counters to compute the
+  // baseline greater-delta. Drop statement/branch maps and counters, and drop
+  // files where no function was invoked. Cuts each entry from ~25MB to <200KB.
+  const trimmed = {};
+  for (const [file, fc] of Object.entries(coverage)) {
+    if (!Object.values(fc.f || {}).some((c) => c > 0)) {
+      continue;
+    }
+    trimmed[file] = { f: fc.f };
+  }
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
   const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
   fs.writeFileSync(
-    path.join(COVERAGE_MANIFEST_DIR, entryName),
-    JSON.stringify({ spec: spec.relative, files: executed }, null, 2),
+    path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
+    JSON.stringify({ spec: spec.relative, coverage: trimmed }),
   );
 
   fs.unlinkSync(NYC_OUTPUT_FILE);

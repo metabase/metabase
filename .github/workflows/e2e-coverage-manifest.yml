@@ -101,7 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-shard-*
-          path: e2e/coverage-manifest
+          path: e2e/coverage-manifest-raw
           merge-multiple: true
       - name: Build coverage manifest
         run: node e2e/coverage/build-coverage-manifest.mjs

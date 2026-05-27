@@ -82,7 +82,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       # cypress-split divides the spec set by timing data; INSTRUMENT_COVERAGE
-      # makes the support hook drain __coverage__ into e2e/coverage-manifest/.
+      # makes the support hook drain __coverage__ into e2e/coverage-manifest-raw/.
       - name: Run shard ${{ inputs.split_index }}
         # No SPLIT_FILE: cypress-split shards evenly by spec count using
         # SPLIT/SPLIT_INDEX alone. Omitting it means no timings are read or
@@ -107,6 +107,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-shard-${{ inputs.split_index }}
-          path: e2e/coverage-manifest/
+          path: e2e/coverage-manifest-raw/
           retention-days: 7
           if-no-files-found: warn
