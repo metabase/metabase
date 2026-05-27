@@ -9,7 +9,7 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
  * than waiting for the whole job to finish — lets failures be tied back to the
  * CI run (and through it the PR / release branch) before the job completes.
  *
- * The URL is only supplied via env in CI, so local runs no-op.
+ * The webhooks base URL is only supplied via env in CI, so local runs no-op.
  *
  * See DEV-1999.
  */
@@ -135,7 +135,16 @@ export async function reportFailedTestsToConductor(
       return;
     }
 
-    const response = await fetch(CI_CONDUCTOR_WEBHOOK_URL, {
+    if (!CI_CONDUCTOR_WEBHOOK_URL) {
+      // already excluded by the guard above; this also narrows the type
+      return;
+    }
+
+    // The secret holds the webhooks *base* (e.g. ".../webhooks"); we append the
+    // specific endpoint so the same secret can serve other webhooks later.
+    const endpoint = `${CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "")}/failed-tests`;
+
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

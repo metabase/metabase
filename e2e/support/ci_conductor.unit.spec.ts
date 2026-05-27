@@ -160,7 +160,8 @@ describe("extractFailedTests", () => {
 });
 
 describe("reportFailedTestsToConductor", () => {
-  const url = "https://conductor.example/webhooks/failed-tests";
+  const url = "https://conductor.example/webhooks";
+  const endpoint = "https://conductor.example/webhooks/failed-tests";
   const oneTest = [{ name: "a test", file: "foo.cy.spec.ts" }];
 
   beforeEach(() => {
@@ -197,7 +198,7 @@ describe("reportFailedTestsToConductor", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [calledUrl, options] = mockFetch.mock.calls[0];
-    expect(calledUrl).toBe(url);
+    expect(calledUrl).toBe(endpoint);
     expect(options.method).toBe("POST");
     expect(options.headers).toMatchObject({
       "Content-Type": "application/json",
@@ -208,6 +209,15 @@ describe("reportFailedTestsToConductor", () => {
       job_id: null,
       tests: oneTest,
     });
+  });
+
+  it("appends the endpoint regardless of a trailing slash on the base URL", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: `${url}/`,
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+    expect(mockFetch.mock.calls[0][0]).toBe(endpoint);
   });
 
   it("sends null ids when the env vars are missing or non-numeric", async () => {

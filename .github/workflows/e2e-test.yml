@@ -37,8 +37,9 @@ env:
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   JOB_NAME: ${{ inputs.name }}
-  # ci-conductor failed-tests reporting (DEV-1999). URL is a secret (callers pass
-  # `secrets: inherit`); reporting no-ops when it's unset.
+  # ci-conductor failed-tests reporting (DEV-1999). Secret holds the webhooks
+  # base URL (".../webhooks"); the reporter appends the endpoint. Callers pass
+  # `secrets: inherit`; reporting no-ops when it's unset.
   CI_CONDUCTOR_WEBHOOK_URL: ${{ secrets.CI_CONDUCTOR_WEBHOOK_URL }}
   REPO_ID: ${{ github.event.repository.id }}
   # TODO(DEV-1999): dry run — log the payload instead of POSTing while we
