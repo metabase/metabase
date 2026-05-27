@@ -92,7 +92,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
               withDownloads
               isSaveEnabled={!isReadOnly}
               entityTypes={settings.dataPickerEntityTypes}
-              targetCollection={targetCollection}
+              initialCollection={targetCollection}
             />
           </Box>
         ))

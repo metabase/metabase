@@ -20,7 +20,6 @@
             (server.settings/redirect-all-requests-to-https! v)
             (is (true?
                  (server.settings/redirect-all-requests-to-https)))))
-
         (testing "\n`site-url` is not HTTPS"
           (mt/with-temporary-setting-values [site-url                       "http://example.com"
                                              redirect-all-requests-to-https false]

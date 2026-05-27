@@ -380,16 +380,12 @@
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:=`
        [(op :guard #{:= :in})             _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:!=`
        [(op :guard #{:!= :not-in})        _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; exactly 1 argument
        [(op :guard #{:> :>= :< :<=})      _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
       {:operator ({:in :=, :not-in :!=} op op)
@@ -525,7 +521,6 @@
       (:or
        ;; exactly 1 argument
        [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))])
       (result op col-ref args)

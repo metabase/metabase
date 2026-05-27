@@ -25,14 +25,12 @@
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
-
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
     (let [venues-fields (t2/select :model/Field :table_id (mt/id :venues))]
       (t2/with-call-count [call-count]
         (t2/hydrate venues-fields :name_field)
         (is (= 1
                (call-count))))))
-
   (testing "It shouldn't hydrate for Fields that aren't PKs"
     (is (= {:name          "PRICE"
             :table_id      (mt/id :venues)
@@ -41,7 +39,6 @@
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (t2/hydrate :name_field)
                mt/derecordize))))
-
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
     (is (= {:name          "ID"
             :table_id      (mt/id :checkins)
@@ -50,7 +47,6 @@
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
-
   (testing "Inactive Entity Name fields should not be hydrated (#65207)"
     (let [name-field-id (mt/id :venues :name)]
       (try
@@ -203,7 +199,6 @@
       (is (= {"11111111" #{(mt/id :venues :id)}
               "aaaaaaaa" #{}}
              (#'params/card->template-tag-id->field-ids card))))
-
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))

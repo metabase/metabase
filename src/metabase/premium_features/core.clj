@@ -16,7 +16,6 @@
  [metabase.premium-features.defenterprise
   defenterprise
   defenterprise-schema]
-
  [metabase.premium-features.token-check
   ;; TODO: move airgap code to a dedicated namespace?
   assert-valid-airgap-user-count!
@@ -38,7 +37,6 @@
   token-check-url
   transform-metered-as
   transform-stats]
-
  (metabase.premium-features.settings
   active-users-count
   airgap-enabled

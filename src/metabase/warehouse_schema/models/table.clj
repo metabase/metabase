@@ -190,18 +190,15 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-
     ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
     ;; Tables can be moved out of any collection, however.
     (when (:collection_id changes)
       (collection/check-allowed-content :table (:collection_id changes)))
-
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
-
     ;; Prevent changing data_source to/from metabase-transform.
     ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
     ;; can be migrated to a transform-managed table via serdes.
@@ -217,7 +214,6 @@
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
-
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond

@@ -49,7 +49,7 @@ export function WorkspaceHeader({ workspace, actions }: WorkspaceHeaderProps) {
       }
       breadcrumbs={
         <DataStudioBreadcrumbs>
-          <Link key="workspace-list" to={Urls.workspaceList()}>
+          <Link key="workspace-list" to={Urls.workspaces()}>
             {t`Workspaces`}
           </Link>
           {workspace.name}
@@ -69,7 +69,7 @@ type WorkspaceHeaderMenuProps = {
 function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
   const dispatch = useDispatch();
   const { handleDelete, modalContent } = useDeleteWorkspace({
-    onSuccess: () => dispatch(push(Urls.workspaceList())),
+    onSuccess: () => dispatch(push(Urls.workspaces())),
   });
 
   return (
