@@ -591,22 +591,24 @@
        [:display                 {:optional true} [:maybe :string]]
        [:visualization_settings  {:optional true} [:maybe :map]]]]
   (write-check-thread thread-id)
-  (let [doc        (get-thread-document-or-404 thread-id document-id)
-        first-eq   (api/check-404 (t2/select-one :model/ExplorationQuery :id (first exploration_query_ids)))
-        _          (doseq [eq-id exploration_query_ids]
-                     (let [eq (api/check-404 (t2/select-one [:model/ExplorationQuery :exploration_thread_id]
-                                                            :id eq-id))]
-                       (api/check-404 (= thread-id (:exploration_thread_id eq)))))
-        {:keys [card-id stored-result-id]}
-        (eqr/create-ephemeral-card-for-exploration-queries!
-         exploration_query_ids (:id doc) (:collection_id doc)
-         @api/*current-user*
-         {:display                display
-          :visualization-settings visualization_settings})
-        exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-        chart-href (chart-page-url exp-id (:card_id first-eq) (:dimension_id first-eq))
-        new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
-    (t2/update! :model/Document (:id doc) {:document new-body})
+  (let [doc      (get-thread-document-or-404 thread-id document-id)
+        first-eq (api/check-404 (t2/select-one :model/ExplorationQuery :id (first exploration_query_ids)))]
+    ;; Every requested EQ must exist and belong to this thread — validate in one query.
+    (api/check-404 (= (count (distinct exploration_query_ids))
+                      (t2/count :model/ExplorationQuery
+                                :id [:in exploration_query_ids]
+                                :exploration_thread_id thread-id)))
+    (t2/with-transaction [_conn]
+      (let [{:keys [card-id stored-result-id]}
+            (eqr/create-ephemeral-card-for-exploration-queries!
+             exploration_query_ids (:id doc) (:collection_id doc)
+             @api/*current-user*
+             {:display                display
+              :visualization-settings visualization_settings})
+            exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
+            chart-href (chart-page-url exp-id (:card_id first-eq) (:dimension_id first-eq))
+            new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
+        (t2/update! :model/Document (:id doc) {:document new-body})))
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 
 (api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]

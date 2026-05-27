@@ -43,17 +43,17 @@
        vec))
 
 (defn- combine-cols
-  "Take the first triple's cols and append the discriminator column.
+  "Take the first eq-result's cols and append the discriminator column.
   All source qp-results share the same column shape upstream (they come
   from the same parent card with different filters/breakouts), so the
-  first triple's cols are representative."
+  first eq-result's cols are representative."
   [eq-results col-name]
   (let [first-cols (get-in (first eq-results) [:qp-result :data :cols])]
     (conj (vec first-cols) (discriminator-col col-name))))
 
 (defn- combine-with-discriminator
   "Build a composite qp-result by appending a discriminator column to
-  every row. The first triple supplies the structural scaffolding
+  every row. The first eq-result supplies the structural scaffolding
   (`:status`, etc.); we replace `:data` with the merged cols + rows and
   refresh `:row_count` so downstream consumers see the new size."
   [eq-results col-name]

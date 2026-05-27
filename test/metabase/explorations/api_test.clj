@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -14,7 +15,9 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
@@ -1009,6 +1012,81 @@
               "appending records a stored_result_use row for the source snapshot — the GC chain reaches the source even through the new composite snapshot in-between")
           (is (nil? (:exploration_id use-row))
               "the card-use row has no exploration_id"))))))
+
+(deftest exploration-append-rolls-back-on-failure-test
+  (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
+    (mt/with-temp [:model/User u {:email "append-rollback@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-rollback"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id "d1"}]})
+            tid    (-> resp :threads first :id)
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (let [doc-id (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
+                         first :id)
+              doc    (t2/select-one :model/Document :id doc-id)]
+          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
+          ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
+          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+            (is (thrown? Throwable
+                         (eqr/create-ephemeral-card-for-exploration-queries!
+                          [qid] doc-id (:collection_id doc) u {}))))
+          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
+              "the composite StoredResult is rolled back when a later write fails")
+          (is (zero? (t2/count :model/Card :document_id doc-id))
+              "no ephemeral Card leaks from the rolled-back append")
+          (is (zero? (t2/count :model/StoredResultUse :stored_result_id
+                               (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                 :exploration_query_id qid)))
+              "no stored_result_use rows leak from the rolled-back append"))))))
+
+(deftest exploration-append-single-query-reuses-source-snapshot-test
+  (testing "A single-query append reuses the source stored_result instead of duplicating its bytes into a fresh row"
+    (mt/with-temp [:model/User u {:email "append-single@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (create-exploration! u
+                                        {:name "append-single"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id "d1"}]})
+            tid    (-> resp :threads first :id)
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1]]}
+                    :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                          :exploration_query_id qid)
+              doc-id    (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
+                            first :id)
+              doc       (t2/select-one :model/Document :id doc-id)
+              ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
+              ;; the real create-card! / stored_result write path.
+              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                          (eqr/create-ephemeral-card-for-exploration-queries!
+                           [qid] doc-id (:collection_id doc) u {}))
+              use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
+          (is (= src-sr-id (:stored-result-id result))
+              "the embed points back at the source stored_result rather than a fresh copy")
+          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
+              "no duplicate composite StoredResult is created for a single-query embed")
+          (is (= [src-sr-id] (mapv :stored_result_id use-rows))
+              "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
 (deftest exploration-user-interestingness-roundtrip-test
   (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"

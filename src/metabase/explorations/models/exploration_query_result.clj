@@ -164,9 +164,9 @@
      (in qp-result)
      (result-fn))))
 
-(defn- load-eq-result-triples
-  "For each `eq-id`, resolve the `{:eq … :eqr … :sr … :qp-result …}` quadruple. Asserts the
-  EQ exists and its stored_result_id is set + the snapshot bytes deserialise. Order is
+(defn- load-eq-results
+  "For each `eq-id`, resolve the `{:eq … :eqr … :sr … :qp-result …}` map. Asserts the EQ
+  exists and its stored_result_id is set + the snapshot bytes deserialise. Order is
   preserved from `eq-ids` — that ordering drives the composite snapshot row order."
   [eq-ids]
   (mapv
@@ -206,8 +206,9 @@
   - `eq-ids`         Non-empty seq of `ExplorationQuery` ids; their stored_result snapshots
                      are combined by `metabase.explorations.composite/combine` into one
                      composite qp-result. The first id supplies metadata fallbacks (source
-                     card, dataset_query). The composite is persisted as a brand-new
-                     `stored_result` row.
+                     card, dataset_query). A multi-id combine is persisted as a brand-new
+                     `stored_result` row; a single id reuses the source snapshot as-is (no
+                     duplicate row).
   - `document-id`    Target document — the materialised card is scoped to it (`document_id`
                      set + `collection_id` matched), which keeps it out of the regular
                      collection-browser / data-picker pickers.
@@ -218,49 +219,59 @@
                      verbatim. Either can be nil — the gap is filled by the legacy
                      `pick-display+viz-settings` recompute.
 
-  Inserts N `StoredResultUse` rows tying the ephemeral card to each source stored_result so
-  GC of any source cascades through (and to the composite via the new SR id).
+  For a multi-id combine, inserts a `StoredResultUse` row for the new composite snapshot plus
+  one per source stored_result, so GC of any source cascades through. For a single id, inserts
+  the one row tying the card to the (reused) source snapshot.
 
-  Returns a map `{:card-id … :stored-result-id …}`."
+  Returns a map `{:card-id … :stored-result-id …}` — `stored-result-id` is the new composite
+  row for a combine, or the source snapshot id for a single-query embed."
   [eq-ids document-id collection-id creator
    {:keys [display visualization-settings]}]
-  (api/check-400 (seq eq-ids))
-  (let [triples         (load-eq-result-triples eq-ids)
-        first-eq        (:eq (first triples))
-        first-sr        (:sr (first triples))
+  (let [eq-results      (load-eq-results eq-ids)
+        first-eq        (:eq (first eq-results))
+        first-sr        (:sr (first eq-results))
         src-card        (when-let [card-id (:card_id first-eq)]
                           (t2/select-one [:model/Card :name :description :display :visualization_settings]
                                          :id card-id))
-        composite-qp    (composite/combine triples (or visualization-settings {}))
+        composite-qp    (composite/combine eq-results (or visualization-settings {}))
         composed        (compose-display+viz-settings
                          composite-qp first-eq src-card display visualization-settings)
         dataset-query   (:dataset_query first-eq)
         creator-id      (:id creator)]
     (query-perms/check-run-permissions-for-query dataset-query)
-    (let [composite-bytes (serialize-qp-result composite-qp)
-          composite-sr-id (first (t2/insert-returning-pks!
-                                  :model/StoredResult
-                                  {:result_data   composite-bytes
-                                   :creator_id    creator-id
-                                   :database_id   (or (:database_id first-sr)
-                                                      (-> dataset-query :database))
-                                   :dataset_query dataset-query}))
-          card-id         (:id (queries/create-card!
-                                {:name                   (or (not-empty (:name first-eq))
-                                                             (not-empty (:name src-card))
-                                                             (tru "Chart"))
-                                 :description            (:description src-card)
-                                 :type                   :question
-                                 :dashboard_id           nil
-                                 :dataset_query          dataset-query
-                                 :display                (:display composed)
-                                 :visualization_settings (:visualization_settings composed)
-                                 :document_id            document-id
-                                 :collection_id          collection-id}
-                                creator))]
-      ;; Record the (card -> stored_result) refs for lifecycle/GC tracking — both the new
-      ;; composite snapshot AND every source snapshot, so a delete of any source cascades.
-      (t2/insert! :model/StoredResultUse {:stored_result_id composite-sr-id :card_id card-id})
-      (doseq [{:keys [sr]} triples]
-        (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id}))
-      {:card-id card-id :stored-result-id composite-sr-id})))
+    ;; Single-query embeds reuse the source snapshot as-is — `composite/combine` returned it
+    ;; unchanged, so copying its bytes into a fresh stored_result would just duplicate them.
+    ;; Only a genuine multi-snapshot combine produces new cols/rows that need their own row.
+    (let [single?         (= 1 (count eq-results))
+          composite-bytes (when-not single? (serialize-qp-result composite-qp))]
+      (t2/with-transaction [_conn]
+        (let [stored-result-id (if single?
+                                 (:id first-sr)
+                                 (first (t2/insert-returning-pks!
+                                         :model/StoredResult
+                                         {:result_data   composite-bytes
+                                          :creator_id    creator-id
+                                          :database_id   (or (:database_id first-sr)
+                                                             (-> dataset-query :database))
+                                          :dataset_query dataset-query})))
+              card-id          (:id (queries/create-card!
+                                     {:name                   (or (not-empty (:name first-eq))
+                                                                  (not-empty (:name src-card))
+                                                                  (tru "Chart"))
+                                      :description            (:description src-card)
+                                      :type                   :question
+                                      :dashboard_id           nil
+                                      :dataset_query          dataset-query
+                                      :display                (:display composed)
+                                      :visualization_settings (:visualization_settings composed)
+                                      :document_id            document-id
+                                      :collection_id          collection-id}
+                                     creator))]
+          ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
+          ;; reference the new composite snapshot plus every source, so a delete of any source
+          ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
+          (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+          (when-not single?
+            (doseq [{:keys [sr]} eq-results]
+              (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
+          {:card-id card-id :stored-result-id stored-result-id})))))
