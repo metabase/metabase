@@ -288,6 +288,16 @@
   :visibility :settings-manager
   :audit      :getter)
 
+(defsetting email-max-recipients-per-message
+  (deferred-tru "The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap.")
+  :export?    true
+  :type       :integer
+  :default    50
+  :visibility :settings-manager
+  :audit      :getter)
+
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
   :type       :boolean
