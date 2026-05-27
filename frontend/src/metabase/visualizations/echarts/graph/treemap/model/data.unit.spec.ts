@@ -1,3 +1,4 @@
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -22,9 +23,34 @@ const columns: DatasetColumn[] = [
   }),
 ];
 
+const columnsWithSub: DatasetColumn[] = [
+  createMockColumn({
+    name: "Category",
+    display_name: "Category",
+    base_type: "type/Text",
+  }),
+  createMockColumn({
+    name: "SubCategory",
+    display_name: "Sub-Category",
+    base_type: "type/Text",
+  }),
+  createMockColumn({
+    name: "Amount",
+    display_name: "Amount",
+    base_type: "type/Number",
+    semantic_type: "type/Number",
+  }),
+];
+
 const treemapColumns: TreemapChartColumns = {
   grouping: { index: 0, column: columns[0] },
   value: { index: 1, column: columns[1] },
+};
+
+const treemapColumnsWithSub: TreemapChartColumns = {
+  grouping: { index: 0, column: columnsWithSub[0] },
+  subGrouping: { index: 1, column: columnsWithSub[1] },
+  value: { index: 2, column: columnsWithSub[2] },
 };
 
 describe("getTreemapChartColumns", () => {
@@ -59,6 +85,41 @@ describe("getTreemapChartColumns", () => {
       grouping: expect.objectContaining({ index: 0 }),
       value: expect.objectContaining({ index: 1 }),
     });
+  });
+
+  it("returns a subGrouping descriptor when treemap.sub_grouping is set", () => {
+    const result = getTreemapChartColumns(columnsWithSub, {
+      "treemap.grouping": "Category",
+      "treemap.sub_grouping": "SubCategory",
+      "treemap.value": "Amount",
+    });
+
+    expect(result).toEqual({
+      grouping: expect.objectContaining({ index: 0 }),
+      subGrouping: expect.objectContaining({ index: 1 }),
+      value: expect.objectContaining({ index: 2 }),
+    });
+  });
+
+  it("omits subGrouping when treemap.sub_grouping is unset", () => {
+    const result = getTreemapChartColumns(columnsWithSub, {
+      "treemap.grouping": "Category",
+      "treemap.value": "Amount",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("subGrouping");
+  });
+
+  it("silently falls back to 1-level when treemap.sub_grouping references a missing column", () => {
+    const result = getTreemapChartColumns(columnsWithSub, {
+      "treemap.grouping": "Category",
+      "treemap.sub_grouping": "DoesNotExist",
+      "treemap.value": "Amount",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("subGrouping");
   });
 });
 
@@ -163,5 +224,185 @@ describe("getTreemapData (1-level)", () => {
       displayName: "",
       value: 7,
     });
+  });
+});
+
+describe("getTreemapData (2-level)", () => {
+  function makeRawSeries(rows: RowValue[][]) {
+    return [
+      {
+        card: createMockCard({ name: "Treemap card" }),
+        data: createMockDatasetData({ rows, cols: columnsWithSub }),
+      },
+    ];
+  }
+
+  it("returns an empty tree for an empty rowset", () => {
+    expect(getTreemapData(makeRawSeries([]), treemapColumnsWithSub)).toEqual(
+      [],
+    );
+  });
+
+  it("builds one leaf per (grouping, sub-grouping) pair under each root", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", "x", 10],
+        ["A", "y", 5],
+        ["B", "x", 20],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result).toEqual([
+      {
+        rawName: "A",
+        displayName: "A",
+        value: 15,
+        rowIndices: [0, 1],
+        children: [
+          {
+            rawName: "x",
+            displayName: "x",
+            value: 10,
+            rowIndices: [0],
+          },
+          {
+            rawName: "y",
+            displayName: "y",
+            value: 5,
+            rowIndices: [1],
+          },
+        ],
+      },
+      {
+        rawName: "B",
+        displayName: "B",
+        value: 20,
+        rowIndices: [2],
+        children: [
+          {
+            rawName: "x",
+            displayName: "x",
+            value: 20,
+            rowIndices: [2],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("sets root value as the sum of its children's values", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", "x", 3],
+        ["A", "y", 4],
+        ["A", "z", 5],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(12);
+    expect(result[0].children?.map((c) => c.value)).toEqual([3, 4, 5]);
+  });
+
+  it("sums duplicate (grouping, sub-grouping) pairs into a single leaf", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", "x", 10],
+        ["A", "x", 3],
+        ["A", "y", 2],
+        ["A", "x", 1],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(16);
+    expect(result[0].children).toEqual([
+      {
+        rawName: "x",
+        displayName: "x",
+        value: 14,
+        rowIndices: [0, 1, 3],
+      },
+      {
+        rawName: "y",
+        displayName: "y",
+        value: 2,
+        rowIndices: [2],
+      },
+    ]);
+  });
+
+  it("renders null sub-grouping as a leaf using the standard null display value", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", "x", 10],
+        ["A", null, 4],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].children).toEqual([
+      {
+        rawName: "x",
+        displayName: "x",
+        value: 10,
+        rowIndices: [0],
+      },
+      {
+        rawName: null,
+        displayName: NULL_DISPLAY_VALUE,
+        value: 4,
+        rowIndices: [1],
+      },
+    ]);
+  });
+
+  it("aggregates duplicate null sub-grouping rows into a single (null) leaf", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", null, 4],
+        ["A", "x", 10],
+        ["A", null, 6],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(20);
+    expect(result[0].children).toEqual([
+      {
+        rawName: null,
+        displayName: NULL_DISPLAY_VALUE,
+        value: 10,
+        rowIndices: [0, 2],
+      },
+      {
+        rawName: "x",
+        displayName: "x",
+        value: 10,
+        rowIndices: [1],
+      },
+    ]);
+  });
+
+  it("accumulates rowIndices on the root across all of its leaves", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", "x", 10],
+        ["B", "x", 1],
+        ["A", "y", 4],
+        ["A", "x", 2],
+      ]),
+      treemapColumnsWithSub,
+    );
+
+    expect(result.find((n) => n.rawName === "A")?.rowIndices).toEqual([
+      0, 2, 3,
+    ]);
+    expect(result.find((n) => n.rawName === "B")?.rowIndices).toEqual([1]);
   });
 });

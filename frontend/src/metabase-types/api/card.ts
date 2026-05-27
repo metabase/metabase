@@ -357,6 +357,7 @@ export type VisualizationSettings = {
 
   // Treemap settings
   "treemap.grouping"?: string;
+  "treemap.sub_grouping"?: string;
   "treemap.value"?: string;
 
   // BoxPlot settings
