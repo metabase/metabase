@@ -22,6 +22,7 @@
    it needs the BigQuery driver module on the classpath."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -29,7 +30,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -958,3 +960,112 @@
                    (log/warnf t "destroy-workspace-isolation! failed for %s during public-grant test cleanup"
                               driver)))
             (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)))))))
+
+;; --- Grant-pre-flight negative path -----------------------------------------
+;; The unit tests in each driver's test ns prove the helper builds the right
+;; error shape when stubbed `jdbc/query` returns "no grant option." This test
+;; verifies the real driver path: spin up an unprivileged admin role on the
+;; warehouse, splice its credentials into a temp Database row, call
+;; [[driver/check-can-grant-workspace-access!]], and assert it throws 412 with
+;; the expected remediation fragment. Without this, a SQL typo in the probe
+;; (e.g. wrong column name in `has_schema_privilege`) would slip past the unit
+;; tests because they stub the SQL response.
+;;
+;; Postgres-only for now. Mirroring shapes for mysql/sqlserver/clickhouse is a
+;; mechanical extension once those test envs are available locally; the
+;; multimethods below already dispatch on `driver/*driver*` so adding cases is
+;; the only change required.
+
+(defmulti ^:private create-unprivileged-admin-fixture!
+  "Create an unprivileged admin principal that can connect to the warehouse but
+   cannot grant the access required by [[grant-workspace-read-access!]] on
+   `input-namespace`. Returns a map with at least `:details` (to splice into a
+   temp Database row) and `:cleanup-sqls` (run as admin to tear down). Run as
+   the superuser/admin connection backing `(mt/db)`."
+  {:arglists '([driver admin-spec input-namespace suffix])}
+  (fn [driver _admin-spec _input-namespace _suffix] driver))
+
+(defmulti ^:private expected-preflight-fragment
+  "A substring expected to appear in the 412 ex-info `:cause` message when the
+   pre-flight runs against the unprivileged admin from
+   [[create-unprivileged-admin-fixture!]]. Used to confirm we got *our* 412 and
+   not some other failure."
+  {:arglists '([driver input-namespace])}
+  (fn [driver _input-namespace] driver))
+
+(defmethod create-unprivileged-admin-fixture! :postgres
+  [_driver admin-spec input-namespace suffix]
+  (let [admin-role  (str "mb_iso_admin_" suffix)
+        owner-role  (str "mb_iso_owner_" suffix)
+        password    "preflight-test-pw"]
+    (jdbc/execute! admin-spec [(format "CREATE ROLE \"%s\" LOGIN PASSWORD '%s' CREATEROLE"
+                                       admin-role password)])
+    (jdbc/execute! admin-spec [(format "CREATE ROLE \"%s\"" owner-role)])
+    (jdbc/execute! admin-spec [(format "ALTER SCHEMA \"%s\" OWNER TO \"%s\""
+                                       input-namespace owner-role)])
+    ;; USAGE only, intentionally NO grant option.
+    (jdbc/execute! admin-spec [(format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\""
+                                       input-namespace admin-role)])
+    {:details      {:user     admin-role
+                    :password password}
+     :owner-role   owner-role
+     :admin-role   admin-role
+     :cleanup-sqls [(format "REVOKE USAGE ON SCHEMA \"%s\" FROM \"%s\"" input-namespace admin-role)
+                    (format "DROP ROLE IF EXISTS \"%s\"" admin-role)
+                    (format "ALTER SCHEMA \"%s\" OWNER TO CURRENT_USER" input-namespace)
+                    (format "DROP ROLE IF EXISTS \"%s\"" owner-role)]}))
+
+(defmethod expected-preflight-fragment :postgres
+  [_driver input-namespace]
+  (format "cannot grant USAGE on schema \"%s\"" input-namespace))
+
+(defn- grant-preflight-negative-supported?
+  "Drivers we have a real-DB negative-path fixture for. Other drivers fall back
+   to the unit test in their own ns."
+  [driver]
+  (contains? #{:postgres} driver))
+
+(deftest ^:synchronized grant-preflight-rejects-unprivileged-admin-test
+  ;; Real-DB assertion that [[driver/check-can-grant-workspace-access!]] throws
+  ;; 412 with the expected remediation fragment when the admin connection
+  ;; genuinely lacks grant option on the input namespace. Complements the
+  ;; per-driver unit tests (which stub `jdbc/query`) by exercising the actual
+  ;; SQL probes against a real warehouse.
+  (mt/test-drivers (filter grant-preflight-negative-supported?
+                           (mt/normal-drivers-with-feature :workspace))
+    (testing "check-can-grant-workspace-access! surfaces 412 with remediation when admin lacks grant option"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            run-id       (random-suffix)
+            in-ns        (input-namespace-name driver database (str "mb_iso_pre_" run-id))
+            fixture      (atom nil)]
+        (try
+          (maybe-create-input-namespace! admin-spec driver database in-ns)
+          (reset! fixture (create-unprivileged-admin-fixture! driver admin-spec in-ns run-id))
+          (mt/with-temp [:model/Database {db-id :id}
+                         {:name    (str "mb-iso-preflight-" run-id)
+                          :engine  driver
+                          :details (merge details (:details @fixture))}]
+            (let [unprivileged-db (t2/select-one :model/Database :id db-id)]
+              (try
+                (driver/check-can-grant-workspace-access! driver unprivileged-db [in-ns])
+                (is false "expected check-can-grant-workspace-access! to throw")
+                (catch clojure.lang.ExceptionInfo e
+                  (is (= 412 (:status-code (ex-data e)))
+                      "pre-flight should throw with status-code 412")
+                  (is (= in-ns (:schema (ex-data e)))
+                      "ex-data :schema should name the failing namespace")
+                  (let [msg (ex-message e)]
+                    (is (str/includes? msg (expected-preflight-fragment driver in-ns))
+                        (format "expected fragment %s in message: %s"
+                                (pr-str (expected-preflight-fragment driver in-ns))
+                                (pr-str msg))))))))
+          (finally
+            (when-let [fx @fixture]
+              (doseq [sql (:cleanup-sqls fx)]
+                (try (jdbc/execute! admin-spec [sql])
+                     (catch Throwable t
+                       (log/warnf t "cleanup SQL failed: %s" sql)))))
+            (maybe-drop-input-namespace! admin-spec driver database in-ns [])))))))
