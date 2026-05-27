@@ -26,8 +26,8 @@ export function MetadataLinkCard({ rows }: MetadataLinkCardProps) {
   return (
     <Paper bg="background-secondary" radius={rem(16)} p="md">
       <Stack gap="sm">
-        {rows.map((row, i) => (
-          <MetadataRowView key={i} {...row} />
+        {rows.map((row) => (
+          <MetadataRowView key={row.icon} {...row} />
         ))}
       </Stack>
     </Paper>

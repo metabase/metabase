@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
@@ -34,9 +35,19 @@ const URLS: MetricUrls = {
 type SetupOpts = {
   card?: Partial<Card>;
   role?: "admin" | "analyst" | "consumer";
+  dependenciesCount?: number;
+  dependentsCount?: number;
 };
 
-function setup({ card: cardOverrides, role = "consumer" }: SetupOpts = {}) {
+function setup({
+  card: cardOverrides,
+  role = "consumer",
+  dependenciesCount = 0,
+  dependentsCount = 0,
+}: SetupOpts = {}) {
+  jest
+    .spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount")
+    .mockReturnValue({ dependenciesCount, dependentsCount });
   const card = createMockCard({
     id: CARD_ID,
     type: "metric",
@@ -158,6 +169,18 @@ describe("DescriptionSection", () => {
       expect(
         screen.queryByRole("link", { name: /dependency|dependencies/i }),
       ).not.toBeInTheDocument();
+    });
+
+    it("uses singular verb agreement for one dependent chart", async () => {
+      setup({ role: "admin", dependentsCount: 1 });
+      const link = (await screen.findByText("1 chart")).closest("a");
+      expect(link).toHaveTextContent("1 chart uses this metric");
+    });
+
+    it("uses plural verb agreement for multiple dependent charts", async () => {
+      setup({ role: "admin", dependentsCount: 3 });
+      const link = (await screen.findByText("3 charts")).closest("a");
+      expect(link).toHaveTextContent("3 charts use this metric");
     });
   });
 });
