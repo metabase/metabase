@@ -74,16 +74,11 @@ const InvalidateNowFormBody = ({
           return false;
         }}
         disabled={wasFormRecentlyPending}
-        p="sm"
-        miw="2.5rem"
-        h="2.5rem"
-        style={{ alignSelf: "flex-start" }}
-        label={
-          <Group gap="sm" align="center">
-            <Icon c="danger" name="trash" />
-            <Text>{buttonText}</Text>
-          </Group>
-        }
+        variant="subtle"
+        c="error"
+        px="sm"
+        leftSection={<Icon name="trash" />}
+        label={buttonText}
         activeLabel={
           <Group gap="sm" align="center">
             <Loader size="1rem" />

@@ -9,11 +9,7 @@ import S from "./ResetButtonContainer.module.css";
 
 export const ResetButtonContainer = () => {
   return (
-    <Box
-      pb="1rem"
-      mt="auto"
-      style={{ marginInlineStart: "auto", marginInlineEnd: "1.5rem" }}
-    >
+    <Box pb="md" mt="auto" ms="auto" me="lg">
       <ResetAllToDefaultButtonFormBody />
     </Box>
   );
@@ -39,7 +35,7 @@ const ResetAllToDefaultButtonFormBody = () => {
       <Form>
         <Flex justify="flex-end">
           <FormSubmitButton
-            px="1rem"
+            px="md"
             py=".75rem"
             lh="1"
             onClick={(e) => {

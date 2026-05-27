@@ -85,13 +85,13 @@ export const StrategyFormLauncher = ({
         shouldDisableTooltip ? "" : "-with-tooltip"
       }`}
     >
-      <Flex gap="0.5rem" c="text-secondary" align="center">
+      <Flex gap="sm" c="text-secondary" align="center">
         <FixedSizeIcon name={forRoot ? "star" : "database"} c="inherit" />
         <Title c="inherit" order={6}>
           {title}
         </Title>
       </Flex>
-      <Flex wrap="nowrap" lh="1.5rem" gap=".5rem">
+      <Flex wrap="nowrap" lh="1.5rem" gap="sm">
         <Tooltip
           position="bottom"
           disabled={shouldDisableTooltip}

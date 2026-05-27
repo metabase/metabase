@@ -220,28 +220,21 @@ const StrategyFormBody = ({
     <Flex direction="column" h="100%" mih={0}>
       <Form
         display="flex"
-        style={{
-          overflow: layout === "default" ? "auto" : "hidden",
-          flexDirection: "column",
-          flexGrow: 1,
-          minHeight: 0,
-        }}
+        className={cx(S.form, { [S.formFixedHeight]: layout !== "default" })}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         {layout === "modal" && (
-          <StrategySelectorHeading headingId={headingId} />
+          <Box pt="md">
+            <StrategySelectorHeading headingId={headingId} />
+          </Box>
         )}
         <Box
           className={cx({
             [PerformanceAppStyles.FormBox]: layout !== "modal",
             [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
+            [S.modalBody]: layout === "modal",
           })}
-          style={
-            layout === "modal"
-              ? { flex: 1, overflowY: "auto", minHeight: 0, marginTop: "1rem" }
-              : undefined
-          }
         >
           {shouldShowName && (
             <Box lh="1rem" pt="md" c="text-secondary">
@@ -249,7 +242,7 @@ const StrategyFormBody = ({
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" c="inherit" />
                 )}
-                <Text fw="bold" py="1rem">
+                <Text fw="bold" py="md">
                   {targetName}
                 </Text>
               </Group>
@@ -527,10 +520,10 @@ export const StrategySelectorHeading = ({
   headingId: string;
 }) => (
   <Stack gap="xs">
-    <Text lh="1.5rem" fw="bold" fz="md" id={headingId}>
+    <Text lh="1.25rem" fw="bold" fz="md" id={headingId}>
       {t`Select the cache invalidation policy`}
     </Text>
-    <Text lh="1rem" fw="normal" size="sm" c="text-secondary">
+    <Text lh="1.25rem" fw="normal" fz="md" c="text-secondary">
       {t`This determines how long cached results will be stored.`}
     </Text>
   </Stack>
@@ -549,9 +542,9 @@ const StrategyOption = ({
 }) => (
   <Radio
     value={value}
-    className={S.strategyOption}
+    classNames={{ description: S.radioDescription }}
     label={
-      <Text component="strong" fw="bold">
+      <Text component="strong" fw="bold" lh="1.25rem">
         {title}
       </Text>
     }

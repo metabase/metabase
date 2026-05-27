@@ -1,5 +1,9 @@
+.root {
+  overflow-y: auto;
+}
+
 .section {
-  padding: 1.5rem;
+  padding: var(--mantine-spacing-lg);
 }
 
 .divided {
@@ -7,7 +11,7 @@
 }
 
 .stack {
-  gap: 1rem;
+  gap: var(--mantine-spacing-md);
 }
 
 @media screen and (max-width: 40em) {
@@ -16,6 +20,6 @@
   }
 
   .stack {
-    gap: 0.5rem;
+    gap: var(--mantine-spacing-sm);
   }
 }

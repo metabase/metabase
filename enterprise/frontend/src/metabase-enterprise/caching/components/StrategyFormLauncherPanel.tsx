@@ -46,7 +46,7 @@ export const StrategyFormLauncherPanel = ({
       role="group"
       h="100%"
       bg="background-secondary"
-      style={{ overflowY: "auto" }}
+      className={S.root}
     >
       <Box className={cx(S.section, S.divided)}>
         <StrategyFormLauncher

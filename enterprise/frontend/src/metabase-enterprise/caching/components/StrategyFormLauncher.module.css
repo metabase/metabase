@@ -4,10 +4,10 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--mantine-spacing-sm);
   width: 100%;
-  padding: 1rem;
-  border-radius: 0.5rem;
+  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-background-primary);
   font-weight: bold;
@@ -34,7 +34,7 @@
 }
 
 .token :global(.mantine-Button-inner) {
-  gap: 0.5rem;
+  gap: var(--mantine-spacing-sm);
 }
 
 @media (max-width: 40em) {
