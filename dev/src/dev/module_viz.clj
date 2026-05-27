@@ -173,23 +173,36 @@
          (recur next-frontier (into visited next-frontier) (inc hops)))))))
 
 (defn- parse-hidden
-  "Parse the `hidden` query string into a predicate `(fn [module-symbol] -> hide?)`. Tokens that
-  start with `re:` are treated as regex patterns; everything else is an exact label match."
-  [hidden-str]
+  "Parse the `hidden` query string into a predicate `(fn [module-symbol] -> hide?)`. Tokens:
+    * plain string        -> exact label match
+    * `re:<pattern>`      -> regex match against the label
+    * `team:<team>`       -> match every module whose `:team` equals `<team>`
+  The team match needs the kondo config to resolve label -> team, so the returned predicate is a
+  closure over `module-nodes`."
+  [hidden-str module-nodes]
   (if (str/blank? hidden-str)
     (constantly false)
-    (let [tokens (remove str/blank? (str/split hidden-str #","))
-          {regex-toks true literal-toks false} (group-by #(str/starts-with? % "re:") tokens)
-          literals (set literal-toks)
+    (let [tokens   (remove str/blank? (str/split hidden-str #","))
+          literals (into #{}
+                         (remove #(or (str/starts-with? % "re:")
+                                      (str/starts-with? % "team:")))
+                         tokens)
           regexes  (into []
                          (keep (fn [tok]
-                                 (let [pat (subs tok 3)]
-                                   (try (re-pattern pat)
+                                 (when (str/starts-with? tok "re:")
+                                   (try (re-pattern (subs tok 3))
                                         (catch Exception _ nil)))))
-                         regex-toks)]
+                         tokens)
+          teams    (into #{}
+                         (keep (fn [tok]
+                                 (when (str/starts-with? tok "team:")
+                                   (subs tok 5))))
+                         tokens)
+          team-of  (fn [m] (get-in module-nodes [m :data :team]))]
       (fn [m]
         (let [s (str m)]
           (or (contains? literals s)
+              (contains? teams (team-of m))
               (some #(re-find % s) regexes)))))))
 
 (defn- aggregate-edges
@@ -238,48 +251,51 @@
     (into (vec agg) keep-as-is)))
 
 (defn focus-subgraph
-  "Subgraph centered on `module-label` out to `degree` hops (default 1).
+  "Subgraph for one or more focused modules.
 
-  When `expanded` is empty we aggregate edges so each (consumer, producer) module pair becomes one
-  weighted edge instead of many per-ns lines. Pass `expanded` as a set of module symbols that should
-  remain disaggregated. `hide?` is an optional predicate `(fn [module-symbol] -> hide?)` used to
-  prune unwanted modules from the visible set."
-  ([module-label] (focus-subgraph module-label 1 #{} (constantly false)))
-  ([module-label degree] (focus-subgraph module-label degree #{} (constantly false)))
-  ([module-label degree expanded] (focus-subgraph module-label degree expanded (constantly false)))
-  ([module-label degree expanded hide?]
-   (let [{:keys [module-nodes api-children edges-by-mod all-edges]} (ensure-cache!)
-         m-sym    (symbol module-label)
-         degree   (max 1 (min 3 (or degree 1)))
-         expanded (set (map symbol (or expanded #{})))
-         hide?    (or hide? (constantly false))]
-     (if-not (contains? module-nodes m-sym)
-       {:error (str "unknown module: " module-label) :nodes [] :edges []}
-       (let [;; We let the focused module itself stay visible even if it matches a hide rule —
-             ;; otherwise focusing it makes the page go blank.
-             keep? (fn [m] (or (= m m-sym) (not (hide? m))))
-             visible (bfs-neighbors edges-by-mod m-sym degree keep?)
-             nodes (vec
-                    (mapcat (fn [label]
-                              (when-let [mn (get module-nodes label)]
-                                (if (contains? expanded label)
-                                  (cons mn (get api-children label []))
-                                  [mn])))
-                            visible))
-             raw-edges (filterv (fn [e]
-                                  (let [s (symbol (get-in e [:data :sourceModule]))
-                                        t (symbol (get-in e [:data :targetModule]))]
-                                    (and (contains? visible s) (contains? visible t))))
-                                all-edges)
-             edges (aggregate-edges raw-edges expanded)]
-         {:focus    module-label
-          :degree   degree
-          :expanded (mapv str expanded)
-          :nodes    nodes
-          :edges    edges
-          :stats    {:moduleCount (count visible)
-                     :edgeCount   (count edges)
-                     :rawEdges    (count raw-edges)}})))))
+  `focus-labels` is a non-empty seq of module label strings; the visible set is the union of each
+  label's `degree`-hop BFS neighborhood, minus anything matched by `hide?`. `expanded` is the set of
+  module symbols whose api-ns children should render (and whose edges stay disaggregated)."
+  [focus-labels degree expanded hide?]
+  (let [{:keys [module-nodes api-children edges-by-mod all-edges]} (ensure-cache!)
+        degree     (max 1 (min 3 (or degree 1)))
+        expanded   (set (map symbol (or expanded #{})))
+        hide?      (or hide? (constantly false))
+        focus-syms (into [] (comp (remove str/blank?) (map symbol)) (or focus-labels []))
+        unknown    (remove #(contains? module-nodes %) focus-syms)
+        known      (filter #(contains? module-nodes %) focus-syms)]
+    (if (empty? known)
+      {:error (str "no known focus modules in " (pr-str focus-labels))
+       :nodes [] :edges [] :focus [] :unknown (mapv str unknown)}
+      (let [focus-set (set known)
+            ;; Focused modules stay visible even if they match a hide rule.
+            keep?     (fn [m] (or (contains? focus-set m) (not (hide? m))))
+            visible   (reduce (fn [acc start]
+                                (into acc (bfs-neighbors edges-by-mod start degree keep?)))
+                              #{}
+                              known)
+            nodes (vec
+                   (mapcat (fn [label]
+                             (when-let [mn (get module-nodes label)]
+                               (if (contains? expanded label)
+                                 (cons mn (get api-children label []))
+                                 [mn])))
+                           visible))
+            raw-edges (filterv (fn [e]
+                                 (let [s (symbol (get-in e [:data :sourceModule]))
+                                       t (symbol (get-in e [:data :targetModule]))]
+                                   (and (contains? visible s) (contains? visible t))))
+                               all-edges)
+            edges (aggregate-edges raw-edges expanded)]
+        {:focus    (mapv str known)
+         :unknown  (mapv str unknown)
+         :degree   degree
+         :expanded (mapv str expanded)
+         :nodes    nodes
+         :edges    edges
+         :stats    {:moduleCount (count visible)
+                    :edgeCount   (count edges)
+                    :rawEdges    (count raw-edges)}}))))
 
 (defn full-graph []
   (let [{:keys [module-nodes api-children all-edges]} (ensure-cache!)
@@ -326,6 +342,7 @@
     <div id=\"toolbar\">
       <input id=\"focus\" type=\"text\" list=\"modlist\" placeholder=\"focus module…\"/>
       <datalist id=\"modlist\"></datalist>
+      <div id=\"focusChips\" style=\"display:flex; gap:4px; flex-wrap:wrap;\"></div>
       <label class=\"muted\">degree
         <select id=\"degree\">
           <option value=\"1\" selected>1</option>
@@ -347,8 +364,11 @@
     <div class=\"muted\">Select a module to focus its 1-degree neighborhood.</div>
     <details id=\"hiddenWrap\" style=\"margin:8px 0;\">
       <summary class=\"muted\" style=\"cursor:pointer\">hidden modules (<span id=\"hiddenCount\">0</span>)</summary>
-      <div id=\"hiddenPanel\" style=\"margin-top:6px;\"></div>
-      <div class=\"muted\" style=\"margin-top:4px\">one entry per line; lines starting <code>re:</code> are regex (e.g. <code>re:^enterprise/</code>)</div>
+      <div style=\"margin-top:6px;\"><strong class=\"muted\">hide by team</strong></div>
+      <div id=\"teamChips\" style=\"display:flex; gap:4px; flex-wrap:wrap; margin:4px 0;\"></div>
+      <div style=\"margin-top:6px;\"><strong class=\"muted\">hide by name/regex</strong></div>
+      <div id=\"hiddenPanel\" style=\"margin-top:4px;\"></div>
+      <div class=\"muted\" style=\"margin-top:4px\">one entry per line. <code>re:</code> prefix = regex, <code>team:</code> prefix = team. example: <code>re:^enterprise/</code></div>
       <textarea id=\"hiddenEditor\" rows=\"5\" style=\"width:100%; box-sizing:border-box; font:12px/1.4 monospace;\"></textarea>
       <button id=\"hiddenSave\" style=\"margin-top:4px\">save</button>
       <button id=\"hiddenClear\">clear all</button>
@@ -469,7 +489,8 @@ function focusOnAt(label, deg) {
 function toggleExpanded(label) {
   if (expandedModules.has(label)) expandedModules.delete(label);
   else expandedModules.add(label);
-  if (currentFocus) focusOn(currentFocus);
+  writeUrlState();
+  refetch();
 }
 
 function openGithub(url) { if (url) window.open(url, '_blank', 'noopener'); }
@@ -477,8 +498,9 @@ function openGithub(url) { if (url) window.open(url, '_blank', 'noopener'); }
 function hideLabel(label) {
   hiddenLabels.add(label);
   saveHidden();
+  writeUrlState();
   renderHiddenPanel();
-  if (currentFocus) focusOn(currentFocus);
+  refetch();
 }
 
 function handleModuleCxt(evt) {
@@ -487,15 +509,21 @@ function handleModuleCxt(evt) {
   const pos = evt.originalEvent;
   console.log('cxt module', label);
   const expanded = expandedModules.has(label);
-  showCtxMenu(pos.clientX, pos.clientY, [
-    ['focus  (1°)', () => focusOnAt(label, 1)],
-    ['focus  (2°)', () => focusOnAt(label, 2)],
+  const isFocused = focusedLabels.has(label);
+  const items = [
+    ['focus only this  (1°)',  () => { document.getElementById('degree').value = '1'; focusOn(label, 'replace'); }],
+    ['focus only this  (2°)',  () => { document.getElementById('degree').value = '2'; focusOn(label, 'replace'); }],
+  ];
+  if (isFocused) items.push(['remove from focus', () => focusOn(label, 'remove')]);
+  else           items.push(['add to focus',      () => focusOn(label, 'add')]);
+  items.push(
     [expanded ? 'collapse api namespaces' : 'expand api namespaces',
      () => toggleExpanded(label)],
     ['hide this module', () => hideLabel(label)],
     ['show details', () => renderDetail(n)],
     ['open on github ↗', () => openGithub(n.data('githubUrl'))],
-  ]);
+  );
+  showCtxMenu(pos.clientX, pos.clientY, items);
 }
 cy.on('cxttapstart', 'node[type=\"module\"]', (e) => console.log('cxttapstart', e.target.data('label')));
 cy.on('cxttap',      'node[type=\"module\"]', (e) => console.log('cxttap',      e.target.data('label')));
@@ -598,9 +626,89 @@ function mk(tag, attrs, ...kids) {
   return el;
 }
 
-let currentFocus = null;
+// Focus is now a SET. Single-focus is just |focusedLabels| == 1.
+let focusedLabels = new Set();
 let expandedModules = new Set();   // module labels w/ api-ns children visible
 let modulesIndex = {};   // label -> {label, team, apiCount}
+
+function loadFocus() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('moduleVizFocus') || '[]');
+    if (Array.isArray(raw)) focusedLabels = new Set(raw);
+  } catch (e) {}
+}
+function saveFocus() {
+  localStorage.setItem('moduleVizFocus', JSON.stringify([...focusedLabels]));
+}
+loadFocus();
+
+// --- URL state -------------------------------------------------------------
+// The URL hash mirrors focusedLabels/degree/expandedModules/hiddenLabels so:
+//   * back/forward buttons replay focus changes
+//   * deep links work (paste URL, get same view)
+// localStorage stays the stickiness-across-sessions fallback when no hash is present.
+function readUrlState() {
+  const hash = (location.hash || '').replace(/^#/, '');
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  return {
+    focus:    (params.get('focus')    || '').split(',').filter(Boolean),
+    degree:   parseInt(params.get('degree')  || '1', 10) || 1,
+    expanded: (params.get('expanded') || '').split(',').filter(Boolean),
+    hidden:   (params.get('hidden')   || '').split(',').filter(Boolean),
+  };
+}
+
+let suppressHistoryWrite = false;
+
+function writeUrlState() {
+  if (suppressHistoryWrite) return;
+  const params = new URLSearchParams();
+  if (focusedLabels.size)   params.set('focus',    [...focusedLabels].join(','));
+  const deg = document.getElementById('degree') && document.getElementById('degree').value;
+  if (deg && deg !== '1')   params.set('degree',   deg);
+  if (expandedModules.size) params.set('expanded', [...expandedModules].join(','));
+  const hid = hiddenQueryParam();
+  if (hid)                  params.set('hidden',   hid);
+  const next = '#' + params.toString();
+  if (next === location.hash) return;
+  history.pushState(null, '', next);
+}
+
+function applyUrlState(s) {
+  if (!s) return false;
+  suppressHistoryWrite = true;
+  try {
+    focusedLabels   = new Set(s.focus);
+    expandedModules = new Set(s.expanded);
+    // Hidden: each token is either a literal label or `re:<pattern>`.
+    hiddenLabels   = new Set();
+    hiddenPatterns = [];
+    hiddenTeams    = new Set();
+    s.hidden.forEach(tok => {
+      if (tok.startsWith('re:')) {
+        const pat = tok.slice(3);
+        try { hiddenPatterns.push({pattern: pat, re: new RegExp(pat)}); } catch (e) {}
+      } else if (tok.startsWith('team:')) {
+        hiddenTeams.add(tok.slice(5));
+      } else hiddenLabels.add(tok);
+    });
+    saveFocus(); saveHidden();
+    const degEl = document.getElementById('degree');
+    if (degEl) degEl.value = String(s.degree || 1);
+  } finally {
+    suppressHistoryWrite = false;
+  }
+  return true;
+}
+
+window.addEventListener('popstate', () => {
+  applyUrlState(readUrlState());
+  renderFocusChips();
+  renderHiddenPanel();
+  if (focusedLabels.size) refetch();
+  else clearFocus();
+});
 let pendingSurvivors = [];         // nodes locked for the current layout run
 let inflightFocus = null;          // AbortController for the current /api/focus fetch
 // Hidden modules: exact-match labels + regex strings. Persisted to localStorage so it survives
@@ -608,25 +716,29 @@ let inflightFocus = null;          // AbortController for the current /api/focus
 // module the user explicitly hid.
 let hiddenLabels   = new Set();
 let hiddenPatterns = [];           // array of {pattern: string, re: RegExp}
+let hiddenTeams    = new Set();    // exact team names
 
 function loadHidden() {
   try {
     const raw = JSON.parse(localStorage.getItem('moduleVizHidden') || '{}');
     hiddenLabels   = new Set(raw.labels   || []);
     hiddenPatterns = (raw.patterns || []).map(p => ({pattern: p, re: new RegExp(p)}));
+    hiddenTeams    = new Set(raw.teams    || []);
   } catch (e) { console.warn('loadHidden failed', e); }
 }
 function saveHidden() {
   localStorage.setItem('moduleVizHidden', JSON.stringify({
     labels:   [...hiddenLabels],
     patterns: hiddenPatterns.map(p => p.pattern),
+    teams:    [...hiddenTeams],
   }));
 }
 function hiddenQueryParam() {
-  // Combined comma-separated list. Regex entries are prefixed with `re:` so the server can tell.
+  // Comma-joined: bare labels, re:<pat> for regex, team:<name> for teams.
   return [
     ...[...hiddenLabels],
-    ...hiddenPatterns.map(p => 're:' + p.pattern),
+    ...hiddenPatterns.map(p => 're:'   + p.pattern),
+    ...[...hiddenTeams].map(t  => 'team:' + t),
   ].join(',');
 }
 loadHidden();
@@ -634,8 +746,37 @@ loadHidden();
 function hiddenLines() {
   return [
     ...[...hiddenLabels],
-    ...hiddenPatterns.map(p => 're:' + p.pattern),
+    ...hiddenPatterns.map(p => 're:'   + p.pattern),
+    ...[...hiddenTeams].map(t  => 'team:' + t),
   ];
+}
+
+function renderTeamChips() {
+  const wrap = document.getElementById('teamChips');
+  if (!wrap) return;
+  clear(wrap);
+  const teams = [...new Set(Object.values(modulesIndex).map(m => m.team).filter(Boolean))].sort();
+  teams.forEach(team => {
+    const on = hiddenTeams.has(team);
+    const chip = mk('button',
+      {style:
+        'cursor:pointer; padding:2px 6px; border-radius:10px; font-size:11px; ' +
+        'border:1px solid ' + (on ? '#e25' : '#aaa') + '; ' +
+        'background:'  + (on ? '#fce4e4' : '#fff') + '; ' +
+        'color:'       + (on ? '#a00' : '#333') + '; ' +
+        'text-decoration:' + (on ? 'line-through' : 'none') + ';'},
+      team);
+    chip.onclick = () => {
+      if (hiddenTeams.has(team)) hiddenTeams.delete(team);
+      else hiddenTeams.add(team);
+      saveHidden();
+      writeUrlState();
+      renderTeamChips();
+      renderHiddenPanel();
+      refetch();
+    };
+    wrap.appendChild(chip);
+  });
 }
 
 function renderHiddenPanel() {
@@ -659,12 +800,16 @@ function renderHiddenPanel() {
       if (line.startsWith('re:')) {
         const pat = line.slice(3);
         hiddenPatterns = hiddenPatterns.filter(p => p.pattern !== pat);
+      } else if (line.startsWith('team:')) {
+        hiddenTeams.delete(line.slice(5));
       } else {
         hiddenLabels.delete(line);
       }
       saveHidden();
+      writeUrlState();
       renderHiddenPanel();
-      if (currentFocus) focusOn(currentFocus);
+      renderTeamChips();
+      refetch();
     };
     li.appendChild(btn);
     li.appendChild(mk('code', null, line));
@@ -678,18 +823,22 @@ function applyHiddenEditor() {
   const lines = editor.value.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
   hiddenLabels = new Set();
   hiddenPatterns = [];
+  hiddenTeams = new Set();
   lines.forEach(line => {
     if (line.startsWith('re:')) {
       const pat = line.slice(3);
       try { hiddenPatterns.push({pattern: pat, re: new RegExp(pat)}); }
       catch (e) { console.warn('bad regex', pat, e); }
+    } else if (line.startsWith('team:')) {
+      hiddenTeams.add(line.slice(5));
     } else {
       hiddenLabels.add(line);
     }
   });
   saveHidden();
+  writeUrlState();
   renderHiddenPanel();
-  if (currentFocus) focusOn(currentFocus);
+  refetch();
 }
 
 async function fetchModules() {
@@ -704,16 +853,24 @@ async function fetchModules() {
     clear(dl);
     list.forEach(m => dl.appendChild(mk('option', {value: m.label})));
     renderModuleList(list);
+    renderTeamChips();
     console.log('fetchModules done');
-    // Auto-focus a module whose edge count is closest to 50 so the first paint shows a
-    // representative neighborhood instead of a blank canvas.
-    if (!currentFocus) {
-      const pick = list.slice().sort((a, b) =>
-        Math.abs((a.edgeCount || 0) - 50) - Math.abs((b.edgeCount || 0) - 50))[0];
+    // URL hash beats localStorage on first paint. applyUrlState was called pre-fetch but we
+    // re-validate now that modulesIndex is populated.
+    const urlState = readUrlState();
+    if (urlState) applyUrlState(urlState);
+    if (focusedLabels.size === 0) {
+      // Auto-focus: pick the module w/ the LARGEST edgeCount that is still <= 50.
+      const candidates = list.filter(m => (m.edgeCount || 0) <= 50);
+      const pick = candidates.sort((a, b) => (b.edgeCount || 0) - (a.edgeCount || 0))[0];
       if (pick) {
         console.log('auto-focus', pick.label, 'edgeCount', pick.edgeCount);
         focusOn(pick.label);
       }
+    } else {
+      renderFocusChips();
+      renderHiddenPanel();
+      refetch();
     }
   } catch (e) {
     console.error('fetchModules failed', e);
@@ -736,8 +893,41 @@ function currentDegree() {
   return parseInt(document.getElementById('degree').value, 10) || 1;
 }
 
-async function focusOn(moduleLabel) {
-  if (!modulesIndex[moduleLabel]) { console.warn('unknown module:', moduleLabel); return; }
+function updateFocusSet(labels, mode) {
+  const arr = Array.isArray(labels) ? labels : [labels];
+  switch (mode) {
+    case 'add':
+      arr.forEach(l => modulesIndex[l] && focusedLabels.add(l));
+      break;
+    case 'remove':
+      arr.forEach(l => focusedLabels.delete(l));
+      break;
+    case 'toggle':
+      arr.forEach(l => {
+        if (!modulesIndex[l]) return;
+        if (focusedLabels.has(l)) focusedLabels.delete(l);
+        else focusedLabels.add(l);
+      });
+      break;
+    case 'replace':
+    default:
+      focusedLabels = new Set(arr.filter(l => modulesIndex[l]));
+      break;
+  }
+  saveFocus();
+  writeUrlState();
+}
+
+// Backward-compatible single-arg form ('focusOn(label)' = replace w/ that label) + optional mode.
+async function focusOn(labelOrLabels, mode) {
+  updateFocusSet(labelOrLabels, mode || 'replace');
+  if (focusedLabels.size === 0) {
+    cy.elements().remove();
+    document.getElementById('stats').textContent = '';
+    renderFocusChips();
+    renderModuleListIfNeeded();
+    return;
+  }
   // Snapshot positions of every node currently in cy so survivors stay put across the refetch.
   const oldPositions = {};
   cy.nodes().forEach(n => {
@@ -745,13 +935,14 @@ async function focusOn(moduleLabel) {
     oldPositions[n.data('id')] = { x: p.x, y: p.y };
   });
 
-  currentFocus = moduleLabel;
-  document.getElementById('focus').value = moduleLabel;
+  document.getElementById('focus').value = [...focusedLabels].join(', ');
+  renderFocusChips();
   try {
     const deg = currentDegree();
     const exp = [...expandedModules].join(',');
     const hid = hiddenQueryParam();
-    const url = '/api/focus?m=' + encodeURIComponent(moduleLabel) + '&degree=' + deg +
+    const fs  = [...focusedLabels].join(',');
+    const url = '/api/focus?m=' + encodeURIComponent(fs) + '&degree=' + deg +
                 (exp ? '&expanded=' + encodeURIComponent(exp) : '') +
                 (hid ? '&hidden='   + encodeURIComponent(hid) : '');
     if (inflightFocus) inflightFocus.abort();
@@ -759,7 +950,7 @@ async function focusOn(moduleLabel) {
     const r = await fetch(url, {signal: inflightFocus.signal});
     inflightFocus = null;
     const sub = await r.json();
-    console.log('focus', moduleLabel, 'degree', deg, 'expanded=', exp, 'nodes=', sub.nodes.length, 'edges=', sub.edges.length);
+    console.log('focus', fs, 'degree', deg, 'expanded=', exp, 'nodes=', sub.nodes.length, 'edges=', sub.edges.length);
     cy.batch(() => {
       cy.elements().remove();
       const modNodes = sub.nodes.filter(n => n.data.type === 'module');
@@ -787,18 +978,24 @@ async function focusOn(moduleLabel) {
     document.getElementById('debug').textContent =
       'cy: ' + cy.nodes().length + ' nodes · ' + cy.edges().length + ' edges';
     console.log('cy now has', cy.nodes().length, 'nodes', cy.edges().length, 'edges');
-    // Expand/collapse is server-side now — what we got back IS already collapsed except for the
-    // modules the user explicitly expanded.
-    const focusedNode = cy.getElementById('mod:' + moduleLabel);
-    if (focusedNode.empty()) console.warn('focused node not found in cy after add');
-    else focusedNode.addClass('focused');
+    // Mark every focused module + the edges that touch any focused module.
+    focusedLabels.forEach(label => {
+      const node = cy.getElementById('mod:' + label);
+      if (!node.empty()) node.addClass('focused');
+    });
     cy.edges().forEach(e => {
-      if (e.data('sourceModule') === moduleLabel || e.data('targetModule') === moduleLabel) {
+      if (focusedLabels.has(e.data('sourceModule')) || focusedLabels.has(e.data('targetModule'))) {
         e.addClass('focused');
       }
     });
     runLayout();
-    if (!focusedNode.empty()) renderDetail(focusedNode);
+    // Sidebar detail: if exactly one focused, show it; otherwise show a summary.
+    if (focusedLabels.size === 1) {
+      const only = cy.getElementById('mod:' + [...focusedLabels][0]);
+      if (!only.empty()) renderDetail(only);
+    } else {
+      renderFocusSummary();
+    }
     document.getElementById('stats').textContent =
       sub.stats.moduleCount + ' modules · ' + sub.stats.edgeCount + ' edges' +
       (sub.stats.rawEdges ? ' (raw ' + sub.stats.rawEdges + ')' : '') +
@@ -810,12 +1007,58 @@ async function focusOn(moduleLabel) {
 }
 
 function clearFocus() {
-  currentFocus = null;
+  focusedLabels = new Set();
+  saveFocus();
   document.getElementById('focus').value = '';
   document.getElementById('stats').textContent = '';
   cy.elements().remove();
+  renderFocusChips();
   // Don't auto-load the full graph — it's the hairball we're trying to avoid.
   fetchModules();
+}
+
+function refetch() {
+  if (focusedLabels.size > 0) focusOn([...focusedLabels], 'replace');
+}
+
+function renderFocusSummary() {
+  const el = document.getElementById('detail');
+  if (!el) return;
+  clear(el);
+  el.appendChild(mk('h2', null, focusedLabels.size + ' focused modules'));
+  const ul = mk('ul');
+  [...focusedLabels].sort().forEach(label => {
+    const li = mk('li', {style: 'display:flex; gap:6px; align-items:center;'});
+    const link = mk('a', {href: '#'}, label);
+    link.onclick = (e) => { e.preventDefault(); focusOn(label, 'replace'); };
+    const x = mk('button', {style: 'font-size:11px; cursor:pointer'}, 'remove');
+    x.onclick = () => focusOn(label, 'remove');
+    li.appendChild(link);
+    li.appendChild(x);
+    ul.appendChild(li);
+  });
+  el.appendChild(ul);
+}
+
+function renderFocusChips() {
+  const wrap = document.getElementById('focusChips');
+  if (!wrap) return;
+  clear(wrap);
+  [...focusedLabels].sort().forEach(label => {
+    const chip = mk('span', {style:
+      'display:inline-flex; align-items:center; gap:4px; padding:2px 6px; ' +
+      'background:#fce4e4; border:1px solid #e25; border-radius:10px; font-size:12px;'},
+      label);
+    const x = mk('button', {style: 'border:0; background:transparent; cursor:pointer; padding:0;'}, '×');
+    x.onclick = () => focusOn(label, 'remove');
+    chip.appendChild(x);
+    wrap.appendChild(chip);
+  });
+}
+
+function renderModuleListIfNeeded() {
+  // After clearing focus we want the sidebar to fall back to the module list.
+  fetch('/api/modules').then(r => r.json()).then(renderModuleList);
 }
 
 function renderDetail(node) {
@@ -892,12 +1135,11 @@ function renderDetail(node) {
 
 cy.on('tap', 'node', (evt) => {
   const n = evt.target;
-  // Shift-tap or tap on a non-focused module re-centers the view on that module.
-  if (n.data('type') === 'module' && currentFocus &&
-      n.data('label') !== currentFocus &&
-      (evt.originalEvent && evt.originalEvent.shiftKey)) {
-    focusOn(n.data('label'));
-    return;
+  if (n.data('type') === 'module' && evt.originalEvent) {
+    const ev = evt.originalEvent;
+    // Shift  = toggle in focus set; Cmd/Ctrl = remove; otherwise just show details.
+    if (ev.shiftKey)       return focusOn(n.data('label'), 'toggle');
+    if (ev.metaKey || ev.ctrlKey) return focusOn(n.data('label'), 'remove');
   }
   renderDetail(n);
 });
@@ -911,24 +1153,25 @@ document.getElementById('focus').addEventListener('change', (e) => {
 });
 document.getElementById('clear-focus').onclick = clearFocus;
 document.getElementById('degree').addEventListener('change', () => {
-  if (currentFocus) focusOn(currentFocus);
+  writeUrlState();
+  refetch();
 });
 document.getElementById('collapse-all').onclick = () => {
   expandedModules.clear();
-  if (currentFocus) focusOn(currentFocus);
+  refetch();
 };
 document.getElementById('expand-all').onclick = () => {
   // Expand every currently visible module.
   cy.nodes('[type=\"module\"]').forEach(n => expandedModules.add(n.data('label')));
-  if (currentFocus) focusOn(currentFocus);
+  refetch();
 };
 document.getElementById('relayout').onclick     = () => runLayout();
 
 document.getElementById('hiddenSave').onclick  = applyHiddenEditor;
 document.getElementById('hiddenClear').onclick = () => {
-  hiddenLabels = new Set(); hiddenPatterns = [];
-  saveHidden(); renderHiddenPanel();
-  if (currentFocus) focusOn(currentFocus);
+  hiddenLabels = new Set(); hiddenPatterns = []; hiddenTeams = new Set();
+  saveHidden(); writeUrlState(); renderHiddenPanel(); renderTeamChips();
+  refetch();
 };
 renderHiddenPanel();
 
@@ -966,12 +1209,13 @@ fetchModules();
       "/"             (html-response html-page)
       "/api/modules"  (json-response (modules-list))
       "/api/focus"    (json-response
-                       (focus-subgraph (get q "m")
+                       (focus-subgraph (some-> (get q "m") (str/split #","))
                                        (try (Integer/parseInt (or (get q "degree") "1"))
                                             (catch Exception _ 1))
                                        (when-let [exp (get q "expanded")]
                                          (set (remove str/blank? (str/split exp #","))))
-                                       (parse-hidden (get q "hidden"))))
+                                       (parse-hidden (get q "hidden")
+                                                     (:module-nodes (ensure-cache!)))))
       "/api/full"     (json-response (full-graph))
       {:status 404 :body "not found"})))
 
