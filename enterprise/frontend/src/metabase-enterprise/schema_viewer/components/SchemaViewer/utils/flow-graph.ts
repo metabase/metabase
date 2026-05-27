@@ -42,21 +42,19 @@ function sortFields(fields: ErdField[]): ErdField[] {
     const aFK = isTypeFK(a.semantic_type);
     const bFK = isTypeFK(b.semantic_type);
 
-    // PK first
     if (aPK && !bPK) {
       return -1;
     }
     if (!aPK && bPK) {
       return 1;
     }
-    // FK second
     if (aFK && !bFK) {
       return -1;
     }
     if (!aFK && bFK) {
       return 1;
     }
-    // Keep original order for same category
+
     return 0;
   });
 }
@@ -149,7 +147,7 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
 
 const memoizedToFlowGraph = memoize((data: ErdResponse) => {
   // Per-table field roles: which fields act as source, target, or self-ref target
-  // of any edge. Handle rendering keys off this (not off semantic_type) so an
+  // of any edge. Handles rendering is based on this (not on semantic_type) so an
   // edge whose target field isn't tagged as a PK still gets a matching handle.
   const rolesByTable = new Map<TableId, TableEdgeRoles>();
   const ensureRoles = (tableId: TableId): TableEdgeRoles => {
