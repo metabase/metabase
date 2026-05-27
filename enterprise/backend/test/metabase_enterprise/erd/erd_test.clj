@@ -57,7 +57,6 @@
               :people   []
               :products []}
              (graph-shape (erd-request! {:table-ids [(mt/id :orders)]})))))
-
     (testing "table with no outbound FKs stays isolated"
       (is (= {:products []}
              (graph-shape (erd-request! {:table-ids [(mt/id :products)]})))))))
@@ -70,7 +69,6 @@
               :products []
               :reviews  [:products]}
              (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :reviews)]})))))
-
     (testing "selecting an FK target as focal too doesn't duplicate it"
       (is (= {:orders   [:people :products]
               :people   []
@@ -168,7 +166,6 @@
               "b_id FK field should carry the cross-schema table ID")
           (is (= b-pk-id (:fk_target_field_id b-id-field))
               "b_id FK field should carry the cross-schema target field ID"))))
-
     (testing "explicit cross-schema focal tables are loaded regardless of schema filter"
       ;; User clicks to expand to erd.b → frontend sends table-ids=[a, b]
       ;; while still in schema=public view. b must still be loaded as a node.
@@ -229,7 +226,6 @@
           (is (= "PUBLIC" (:schema node))))
         (is (= expected node-names)
             "every readable table in the schema is present as a node")))
-
     (testing "schema plus extra table-ids: all schema tables PLUS the external tables"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table _        {:db_id db-id :name "p1" :schema "public"}
@@ -253,7 +249,6 @@
                                                :database-id db-id)
               node-names (set (map :name (:nodes response)))]
           (is (= #{"nil_schema" "empty_schema" "other_schema"} node-names)))))
-
     (testing "blank schema request matches nil and empty-string schemas only"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
@@ -374,7 +369,6 @@
     (mt/with-premium-features #{}
       (mt/user-http-request :rasta :get 402 "ee/erd"
                             :database-id (mt/id))))
-
   (mt/with-premium-features #{:schema-viewer}
     (testing "non-existent database returns 404"
       (mt/user-http-request :rasta :get 404 "ee/erd"
