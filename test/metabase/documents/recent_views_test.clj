@@ -163,7 +163,6 @@
                           (= (:name %) "Test Document"))
                     (:recents response))
               "Document should be present in recents when premium feature is enabled")))))
-
   (deftest recents-api-excludes-exploration-documents-test
     (testing "/recents API hides documents attached to an exploration thread"
       (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Test Collection"}
@@ -181,7 +180,6 @@
         ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
         (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
         (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
-
         (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
               ids    (set (map :id (filter #(= (:model %) "document") recents)))]
           (is (contains? ids plain-id)

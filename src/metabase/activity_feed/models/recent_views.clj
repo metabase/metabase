@@ -530,7 +530,6 @@
                                                [:and
                                                 [:= :rv.model "collection"]
                                                 [:= :coll.id :rv.model_id]]
-
                                                [:document :doc]
                                                [:and
                                                 [:= :rv.model "document"]
