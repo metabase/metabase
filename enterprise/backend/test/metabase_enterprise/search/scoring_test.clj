@@ -64,7 +64,8 @@
              (mapv :name (sort-by #(oss-score search-string %)
                                   (shuffle [a b c d])))))
       ;; With :official-collection lifted to 80 in :default, the official bump dominates the
-      ;; text scorers — `d` rises to the top despite having the weakest text match.
+      ;; text scorers — `d` now ranks highest, landing last under the ascending sort, despite
+      ;; having the weakest text match.
       (is (= ["customer success stories"
               "examples of custom expressions"
               "custom expression examples"
