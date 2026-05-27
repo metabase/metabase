@@ -2,8 +2,18 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
+import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
+import { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import {
+  EditableDashboard,
+  InteractiveDashboard,
+  StaticDashboard,
+} from "embedding-sdk-bundle/components/public/dashboard";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { makeDistortionCallback } from "metabase-enterprise/custom_viz/sandbox/distortions";
@@ -18,11 +28,11 @@ import { getHostBackedSdkStore } from "./host-sdk-init";
  *   - MetabaseProvider: wraps a subtree with the SDK Redux store and an
  *     `SdkThemeProvider`. The plugin uses this exactly as it would the
  *     public SDK's `MetabaseProvider`: wrap your tree once, pass `theme`,
- *     and use `StaticQuestion` / `InteractiveQuestion` inside.
- *   - StaticQuestion / InteractiveQuestion: the raw SDK components. They
- *     assume they're rendered inside a `MetabaseProvider`. No internal
- *     wrapping — the provider is the bundle's responsibility, matching
- *     the published SDK API.
+ *     and use the other SDK components inside.
+ *   - All public SDK components (questions, dashboards, collection browser,
+ *     create-question / create-dashboard modals, Metabot question, debug
+ *     info). Each one assumes it's rendered inside a `MetabaseProvider` —
+ *     no internal wrapping — matching the published SDK API.
  *
  * Plugin contract: write a factory function to globalThis.__customVizPlugin__.
  * The host calls factory(hostApi) and renders the returned `component` inside
@@ -76,8 +86,19 @@ export function createDataAppSandbox() {
     endowments: Object.getOwnPropertyDescriptors({
       React,
       MetabaseProvider,
+      // Question components
       InteractiveQuestion,
       StaticQuestion,
+      SdkQuestion,
+      CreateQuestion,
+      MetabotQuestion,
+      // Dashboard components
+      EditableDashboard,
+      InteractiveDashboard,
+      StaticDashboard,
+      CreateDashboardModal,
+      // Collection
+      CollectionBrowser,
       get __customVizPlugin__() {
         return captured;
       },
