@@ -1362,6 +1362,56 @@
                          (sql.u/quote-name :mysql :schema db) qu))
                source-databases)))
 
+(defn- can-grant-select-on-db?
+  "Can the current MySQL admin user issue `GRANT SELECT ON <db>.* TO ...`?
+
+   MySQL has no schema 'owner'; grantability is determined by whether the
+   admin holds the privilege `WITH GRANT OPTION` (`IS_GRANTABLE = 'YES'` in
+   `information_schema`). Either a database-scoped `SELECT WITH GRANT OPTION`
+   on this database, or a global `SELECT WITH GRANT OPTION`, suffices."
+  [conn db-name]
+  (boolean
+   (or (seq (jdbc/query conn
+                        ["SELECT 1 FROM information_schema.SCHEMA_PRIVILEGES
+                           WHERE GRANTEE = CONCAT(\"'\", REPLACE(CURRENT_USER(), '@', \"'@'\"), \"'\")
+                             AND TABLE_SCHEMA = ?
+                             AND PRIVILEGE_TYPE = 'SELECT'
+                             AND IS_GRANTABLE = 'YES'"
+                         db-name]))
+       (seq (jdbc/query conn
+                        ["SELECT 1 FROM information_schema.USER_PRIVILEGES
+                           WHERE GRANTEE = CONCAT(\"'\", REPLACE(CURRENT_USER(), '@', \"'@'\"), \"'\")
+                             AND PRIVILEGE_TYPE = 'SELECT'
+                             AND IS_GRANTABLE = 'YES'"])))))
+
+(defn assert-can-grant-select!
+  "Throws when the current admin connection cannot grant SELECT on `db-name`.
+   MySQL doesn't have schema ownership the way Postgres does; the only
+   relevant axis is whether the admin holds the privilege `WITH GRANT
+   OPTION`. We surface a clear remediation instead of leaving the operator
+   to decode a generic `Access denied` error from MySQL."
+  [conn db-name]
+  (when-not (can-grant-select-on-db? conn db-name)
+    (let [current-user (:current_user_name (first (jdbc/query conn
+                                                              ["SELECT CURRENT_USER() AS current_user_name"])))]
+      (throw (ex-info (format (str "Workspace admin %s cannot grant SELECT on database `%s`. "
+                                   "MySQL requires the granting user to hold SELECT WITH GRANT "
+                                   "OPTION on the database (or globally). Run as root or a user "
+                                   "with sufficient privileges:\n\n"
+                                   "    GRANT SELECT ON `%s`.* TO %s WITH GRANT OPTION;\n\n"
+                                   "then retry workspace provisioning.")
+                              current-user db-name
+                              db-name current-user)
+                      {:status-code 412
+                       :schema      db-name
+                       :admin-user  current-user})))))
+
+(defmethod driver/check-can-grant-workspace-access! :mysql
+  [_driver database schemas]
+  (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [d (set schemas)]
+      (assert-can-grant-select! check-conn d))))
+
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]
   ;; Each entry in `schemas` is interpreted as a MySQL database name. The

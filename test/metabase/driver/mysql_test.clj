@@ -1077,3 +1077,30 @@
 
          "webapp@localhost"
          "SET ROLE 'webapp'@'localhost';")))))
+
+(deftest ^:synchronized assert-can-grant-select!-test
+  (testing "throws 412 with copy-pasteable SQL when admin lacks SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "SCHEMA_PRIVILEGES") []
+                                 (str/includes? sql "USER_PRIVILEGES")   []
+                                 (str/includes? sql "CURRENT_USER()")    [{:current_user_name "stats_admin@%"}]))]
+      (try
+        (mysql/assert-can-grant-select! ::stub-conn "analytics")
+        (is false "expected assert-can-grant-select! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "analytics" (:schema (ex-data e))))
+          (is (= "stats_admin@%" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT SELECT ON `analytics`.* TO stats_admin@% WITH GRANT OPTION"))))))
+  (testing "no-op when admin holds DB-scoped SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (when (str/includes? sql "SCHEMA_PRIVILEGES")
+                                 [{:1 1}]))]
+      (is (nil? (mysql/assert-can-grant-select! ::stub-conn "analytics")))))
+  (testing "no-op when admin holds global SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "SCHEMA_PRIVILEGES") []
+                                 (str/includes? sql "USER_PRIVILEGES")   [{:1 1}]))]
+      (is (nil? (mysql/assert-can-grant-select! ::stub-conn "analytics"))))))
