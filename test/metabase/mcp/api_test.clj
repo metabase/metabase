@@ -1144,7 +1144,7 @@
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:visualize"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:viz:mcp-ui:query"}))))
   (testing "returns :ok with wildcard scope"
     (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
   (testing "returns :scope-denied for a known URI with non-matching scope"
