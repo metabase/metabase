@@ -41,7 +41,7 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
   const { backgroundColor, iconColor } = match(channel)
     .with("channel/slack", () => ({
       backgroundColor:
-        "color-mix(in srgb, var(--mb-color-saturated-purple) 10%, white)",
+        "color-mix(in srgb, var(--mb-color-saturated-purple) 10%, var(--mb-color-background-primary))",
       iconColor: "saturated-purple" as const,
     }))
     .otherwise(() => ({
