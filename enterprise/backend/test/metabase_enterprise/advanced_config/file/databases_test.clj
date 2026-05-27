@@ -99,6 +99,26 @@
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
+(deftest init-from-config-file-stub-does-not-clobber-existing-test
+  (testing "Stub config entries with the same name+engine as an existing real DB must not overwrite it.
+            This protects round-trip workflows where /config emits stubs for the same instance's other DBs."
+    (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+      (mt/with-temp [:model/Database existing {:name    test-db-name
+                                               :engine  "h2"
+                                               :details {:db "real-details"}}]
+        (is (= :ok
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config  {:databases [{:name    test-db-name
+                                        :engine  "h2"
+                                        :details {}
+                                        :is_stub true}]}})))
+        (let [reloaded (t2/select-one :model/Database :id (:id existing))]
+          (testing "existing :details are preserved"
+            (is (= {:db "real-details"} (:details reloaded))))
+          (testing "existing :is_stub flag is preserved (still false)"
+            (is (false? (:is_stub reloaded)))))))))
+
 (deftest sync-test
   (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
     ;; unset setting to test default behavior

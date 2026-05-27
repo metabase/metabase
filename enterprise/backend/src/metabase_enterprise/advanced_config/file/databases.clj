@@ -86,10 +86,16 @@
       (when-not (:is_stub database)
         (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions))
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
-        (let [database (cond-> database
-                         (:is_attached_dwh database) strip-attached-dwh-update-ks)]
-          (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
-          (t2/update! :model/Database existing-database-id (normalize-settings database)))
+        (if (:is_stub database)
+          ;; A stub entry is just a placeholder to satisfy serdes references. If a real database
+          ;; with this name+engine already exists, leave it alone — overwriting it with `:details {}`
+          ;; and `:is_stub true` would break a working database.
+          (log/info (u/format-color :yellow "Database %s %s already exists; ignoring stub entry"
+                                    (:engine database) (pr-str (:name database))))
+          (let [database (cond-> database
+                           (:is_attached_dwh database) strip-attached-dwh-update-ks)]
+            (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
+            (t2/update! :model/Database existing-database-id (normalize-settings database))))
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
           (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
