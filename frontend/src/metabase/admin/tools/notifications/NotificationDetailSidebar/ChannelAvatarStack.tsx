@@ -9,13 +9,15 @@ import { getChannelIconName } from "../NotificationsAdminPage/utils";
 import S from "./NotificationDetailSidebar.module.css";
 import type { ChannelAvatarProps } from "./types";
 
+const AVATAR_SIZE = 36;
+
 export const ChannelAvatarStack = ({
   handlers,
 }: {
   handlers: NotificationHandler[] | undefined;
 }) => {
   const channels = _.uniq(
-    (handlers ?? []).map((handler) => handler.channel_type),
+    handlers?.map((handler) => handler.channel_type) ?? [],
   );
 
   return (
@@ -23,8 +25,10 @@ export const ChannelAvatarStack = ({
       {channels.map((channel, index) => (
         <Box
           key={channel}
-          ml={index === 0 ? 0 : -18}
-          style={{ zIndex: channels.length - index }}
+          style={{
+            marginLeft: index === 0 ? 0 : -AVATAR_SIZE / 2,
+            zIndex: channels.length - index,
+          }}
         >
           <ChannelAvatar channel={channel} bordered={channels.length > 1} />
         </Box>
@@ -49,8 +53,8 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
     <Flex
       align="center"
       justify="center"
-      w={36}
-      h={36}
+      w={AVATAR_SIZE}
+      h={AVATAR_SIZE}
       bd={bordered ? "2px solid var(--mb-color-background-primary)" : undefined}
       bdrs="50%"
       className={S.channelAvatar}
@@ -59,7 +63,6 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
       <Icon
         name={channel ? getChannelIconName(channel) : "bell"}
         c={iconColor}
-        size={16}
       />
     </Flex>
   );
