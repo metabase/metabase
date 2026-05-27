@@ -8,6 +8,13 @@
   border-radius: var(--default-border-radius) 0 0 var(--default-border-radius);
 }
 
+.exploreButtonOverlay {
+  position: absolute;
+  top: var(--mantine-spacing-md);
+  right: var(--mantine-spacing-md);
+  z-index: 1;
+}
+
 .descriptionSection {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);

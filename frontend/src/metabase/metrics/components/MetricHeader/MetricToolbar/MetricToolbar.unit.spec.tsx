@@ -257,9 +257,7 @@ describe("MetricToolbar", () => {
   });
 
   describe("Explore button", () => {
-    it("should not render an Explore button in the toolbar for numeric metrics", () => {
-      const validation = jest.requireMock("metabase/metrics/utils/validation");
-      validation.isNumericMetric.mockReturnValueOnce(true);
+    it("should not render an Explore button in the toolbar", () => {
       setup({ canWrite: true });
 
       expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
