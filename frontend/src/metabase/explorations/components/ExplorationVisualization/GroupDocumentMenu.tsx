@@ -7,7 +7,8 @@ import {
   useCreateExplorationDocumentMutation,
 } from "metabase/api/exploration";
 import { useToast } from "metabase/common/hooks";
-import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Anchor, Box, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   DocumentId,
@@ -157,15 +158,17 @@ export function GroupDocumentMenu({
         {selectedQuery == null ? (
           <>
             <Menu.Label>{t`Pick a chart`}</Menu.Label>
-            {queries.map((query) => (
-              <Menu.Item
-                key={query.id}
-                leftSection={<Icon name="line" c="icon-primary" />}
-                onClick={() => setSelectedQuery(query)}
-              >
-                {query.name ?? t`Chart`}
-              </Menu.Item>
-            ))}
+            <Box className={CS.overflowYAuto} mah="50vh">
+              {queries.map((query) => (
+                <Menu.Item
+                  key={query.id}
+                  leftSection={<Icon name="line" c="icon-primary" />}
+                  onClick={() => setSelectedQuery(query)}
+                >
+                  {query.name ?? t`Chart`}
+                </Menu.Item>
+              ))}
+            </Box>
           </>
         ) : (
           <>
