@@ -558,6 +558,99 @@
           (log/infof "Created service account: %s" sa-email))))
     sa-email))
 
+(defn- ws-dataset-acl-permits-update?
+  "True when `main-sa-email` appears as OWNER or WRITER on the dataset's existing
+   ACL — both roles can edit the dataset ACL via `.update`. We can't call
+   `testIamPermissions` on datasets (the BigQuery Java SDK exposes that only
+   for tables), so we inspect the ACL the dataset already advertises. A return
+   of `false` also covers the case where the main SA holds project-level
+   `roles/bigquery.dataOwner` — in that case the SA can still update the
+   dataset ACL, so we don't 412 on a false negative; we let
+   `grant-workspace-read-access!` proceed and surface whatever BigQuery
+   returns. Treat this as an advisory probe, not a hard gate."
+  [^Dataset dataset ^String main-sa-email]
+  (let [acl-user (Acl$User. main-sa-email)]
+    (boolean
+     (some (fn [^Acl acl]
+             (and (= (.getEntity acl) acl-user)
+                  (or (= (.getRole acl) Acl$Role/OWNER)
+                      (= (.getRole acl) Acl$Role/WRITER))))
+           (.getAcl dataset)))))
+
+(defn assert-can-grant-dataset-access!
+  "Throws 412 when the workspace admin service account `main-sa-email` cannot
+   plausibly update the ACL on `dataset` in `project-id`. Two failure modes:
+
+   - The dataset doesn't exist or isn't readable by the admin SA. Surfaces a
+     412 telling the operator to confirm the dataset name and grant the admin
+     SA at least `roles/bigquery.dataViewer`.
+   - The dataset is readable but the admin SA appears in neither the dataset
+     ACL (as OWNER/WRITER) nor — we infer — at the project level. The probe
+     only inspects dataset ACL, so this is best-effort: project-level
+     `dataOwner` would also unblock the GRANT but we can't see that without
+     a getIamPolicy call. We log the warning and skip the throw in that case
+     so we don't false-positive on project-level admins."
+  [^BigQuery client ^String project-id ^String dataset-name ^String main-sa-email]
+  (let [dataset-id (DatasetId/of project-id dataset-name)
+        dataset    (try
+                     (.getDataset client dataset-id
+                                  ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                                  (into-array BigQuery$DatasetOption []))
+                     (catch Exception e
+                       (throw (ex-info (format (str "Workspace admin %s cannot read dataset %s.%s. "
+                                                    "BigQuery requires the admin service account to hold at least "
+                                                    "`roles/bigquery.dataViewer` on the dataset (or at the project "
+                                                    "level) before workspace provisioning can grant access to it. "
+                                                    "Run as a project owner:\n\n"
+                                                    "    gcloud projects add-iam-policy-binding %s \\\n"
+                                                    "        --member=serviceAccount:%s \\\n"
+                                                    "        --role=roles/bigquery.dataOwner\n\n"
+                                                    "or grant dataset-level access:\n\n"
+                                                    "    bq update --source <(bq show --format=prettyjson %s:%s) %s:%s\n\n"
+                                                    "then retry workspace provisioning.")
+                                               main-sa-email project-id dataset-name
+                                               project-id main-sa-email
+                                               project-id dataset-name project-id dataset-name)
+                                       {:status-code 412
+                                        :schema      dataset-name
+                                        :project     project-id
+                                        :admin-user  main-sa-email
+                                        :cause-type  :dataset-unreadable}
+                                       e))))]
+    (when-not dataset
+      (throw (ex-info (format (str "Workspace admin %s cannot find dataset %s.%s. "
+                                   "Confirm the dataset name and that it exists in the bound project.")
+                              main-sa-email project-id dataset-name)
+                      {:status-code 412
+                       :schema      dataset-name
+                       :project     project-id
+                       :admin-user  main-sa-email
+                       :cause-type  :dataset-missing})))
+    (when-not (ws-dataset-acl-permits-update? dataset main-sa-email)
+      (log/warnf (str "Workspace admin %s is not OWNER/WRITER on dataset %s.%s. "
+                      "If the SA does not also hold a project-level dataOwner / admin role, "
+                      "the upcoming GRANT will fail. Continuing pre-flight; the actual "
+                      "GRANT will surface a more specific BigQuery error if so.")
+                 main-sa-email project-id dataset-name))))
+
+(defmethod driver/check-can-grant-workspace-access! :bigquery-cloud-sdk
+  [_driver database schemas]
+  ;; BigQuery's permission model is IAM, not SQL grants. We can't call
+  ;; `testIamPermissions` on a dataset via the high-level Java SDK (only
+  ;; tables expose it), so the probe is best-effort: confirm the admin SA
+  ;; can read each input dataset, and inspect dataset-level ACL for an
+  ;; OWNER/WRITER entry. Project-level dataOwner is a false negative we
+  ;; accept rather than calling `getIamPolicy` on the project.
+  (let [details       (driver.conn/effective-details database)
+        client        (ws-database-details->client details)
+        project-id    (bigquery.common/get-project-id details)
+        main-sa-email (.getClientEmail (ws-service-account-credentials details))]
+    (doseq [dataset-name (set schemas)]
+      (when (str/blank? dataset-name)
+        (throw (ex-info (tru "BigQuery workspace input dataset is blank")
+                        {:database-id (:id database) :step :grant})))
+      (assert-can-grant-dataset-access! client project-id dataset-name main-sa-email))))
+
 (defmethod driver/grant-workspace-read-access! :bigquery-cloud-sdk
   [_driver database workspace schemas]
   ;; `schemas` is a vector of BigQuery dataset names. The project comes from the
