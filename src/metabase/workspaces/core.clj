@@ -36,9 +36,9 @@
 
    The OSS jar has no workspace mode (`workspace-mode?` returns false), so
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
-   reads the in-process workspace atom."
+   reads the `instance-workspace` setting."
   (:require
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------- Workspace config schemas ----------------------------------
@@ -66,9 +66,9 @@
    [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
-  "The shape stored in the EE workspace atom after the `:workspace` config.yml
-   loader has resolved database names to ids. Database keys are integer ids
-   (post-resolution); the wire format with name keys lives in
+  "The shape stored in the EE `instance-workspace` setting after the `:workspace`
+   config.yml loader has resolved database names to ids. Database keys are integer
+   ids (post-resolution); the wire format with name keys lives in
    `metabase-enterprise.advanced-config.file.workspace`."
   [:map
    [:name      [:string {:min 1}]]
@@ -89,23 +89,6 @@
   metabase-enterprise.workspaces.core
   []
   false)
-
-(defenterprise-schema set-instance-workspace! :- :any
-  "Install the in-process workspace config atom on this instance. The shape is
-   validated against `::workspace-instance-config` at the OSS boundary so a
-   malformed config never reaches the EE atom or the QP / transform hooks that
-   read from it.
-
-   No-op on OSS — workspace mode is EE-only."
-  metabase-enterprise.workspaces.core
-  [_config :- ::workspace-instance-config]
-  nil)
-
-(defenterprise clear-instance-workspace!
-  "Clear the in-process workspace config atom. No-op on OSS."
-  metabase-enterprise.workspaces.core
-  []
-  nil)
 
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.

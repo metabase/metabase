@@ -1,21 +1,21 @@
 (ns metabase-enterprise.advanced-config.file.workspace
   "Loader for the `:workspace` section of `config.yml`.
 
-  On boot, parses the section and stores it in the in-process atom:
-  [[metabase-enterprise.workspaces.core/workspace-instance-config]].
-  That atom is the instance-side source of truth for `db-workspace-namespace`.
+  On boot, parses the section and stores it in the `instance-workspace` setting
+  (see [[metabase-enterprise.workspaces.settings]]). That setting is the
+  instance-side source of truth for `db-workspace-namespace`.
 
-  The atom is fresh per process, every boot re-reads `config.yml` and replaces the
-  prior value. There is no durable storage of instance-side workspace state, by
-  design: the file IS the source of truth, and a different file at boot means a
-  different workspace, no questions asked."
+  Every boot re-reads `config.yml` and overwrites the prior value. The setting
+  persists across restarts in the instance's app DB, so a running workspace
+  survives a process bounce even without `config.yml` — but if `config.yml` is
+  present at boot, it wins."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.driver :as driver]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -33,12 +33,21 @@
   (s/and string? (complement str/blank?)))
 
 (s/def ::input_schemas
-  (s/coll-of ::non-blank-string :min-count 1))
+  (s/coll-of ::non-blank-string))
 
-(s/def ::output_namespace ::non-blank-string)
+(s/def ::wkspc-output/db
+  (s/nilable string?))
+
+(s/def ::wkspc-output/schema
+  (s/nilable string?))
+
+(s/def ::output
+  (s/and (s/keys :opt-un [::wkspc-output/db
+                          ::wkspc-output/schema])
+         (fn [m] (or (some? (:db m)) (some? (:schema m))))))
 
 (s/def ::workspace-database-config
-  (s/keys :req-un [::input_schemas ::output_namespace]))
+  (s/keys :req-un [::input_schemas ::output]))
 
 (s/def ::databases
   ;; map of database-name -> per-database workspace config. Keys may be keywords or
@@ -50,13 +59,6 @@
 
 (s/def ::config-file-spec
   (s/keys :req-un [::name ::databases]))
-
-(defn valid-workspace-section?
-  "Predicate used by the file-level loader to decide whether `(:workspace m)` is a
-  structurally-valid bring-up manifest. Only a valid section opens the
-  config-text-file gate for OSS instances — a typo or empty section must not."
-  [section-config]
-  (s/valid? ::config-file-spec section-config))
 
 (defmethod advanced-config.file.i/section-spec :workspace
   [_section-name]
@@ -79,46 +81,23 @@
       (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
                       {:database-name db-name}))))
 
-(defn- expand-output
-  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   atom shape that QP middleware, transform_hooks, and table_remapping consume.
-
-   The atom contract is map-shaped on purpose: doing this expansion once at
-   boot lets the per-query hot path read both slots without re-running the
-   per-engine case. For 3-slot drivers (SQL Server, BigQuery) the
-   `:db` slot is filled from `Database.details`. For 2-slot drivers the
-   `output_namespace` string lands in the schema slot.
-
-   `output_namespace` blank means the workspace database isn't provisioned yet —
-   the atom carries `{:db ? :schema nil}` and QP/transform consumers treat the
-   workspace as having no output mapping."
-  [db output-namespace]
-  (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
-        schema     (when-not (str/blank? output-namespace) output-namespace)]
-    (cond-> {}
-      (:db components)     (assoc :db (:db positions))
-      (:schema components) (assoc :schema schema)
-      ;; No-schema drivers (MySQL): the namespace name lands in the db slot.
-      (and (:db components) (not (:schema components)))
-      (assoc :db schema))))
-
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
    Shape (post-`ordered->plain`):
 
      {:name      \"<workspace-name>\"
-      :databases {\"<db-name>\" {:input_schemas    [<schema-name>, ...]
-                                  :output_namespace <ns-string>}
+      :databases {\"<db-name>\" {:input_schemas [<schema-name>, ...]
+                                  :output        {:db ?, :schema ?}}
                   ...}}
 
    Resolves each database name to a `:model/Database` (rows are populated by the
-   `:databases` section, which runs earlier — see [[metabase-enterprise.advanced-config.file/initialize!]])
-   and stores the result in [[metabase-enterprise.workspaces.core/workspace-instance-config]] keyed by
-   db-id. The atom carries `{:input_schemas [String], :output {:db ?, :schema ?}}`.
-   `:output` is expanded once at boot via [[expand-output]] so the QP hot path
-   doesn't re-run the per-engine case per query."
+   `:databases` section, which runs earlier — see
+   [[metabase-enterprise.advanced-config.file/initialize!]]) and stores the
+   result in the `instance-workspace` setting keyed by db-id.
+
+   The per-database `:output` map is taken verbatim — `workspaces.config/build-workspace-config`
+   on the manager side emits it already-expanded, so we don't re-derive it here."
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
         resolved-databases (into {}
@@ -126,7 +105,7 @@
                                         (let [db-name (clojure.core/name db-name-kw)
                                               db      (resolve-db db-name)]
                                           [(:id db) {:input_schemas (vec (:input_schemas wsd-config))
-                                                     :output        (expand-output db (:output_namespace wsd-config))}])))
+                                                     :output        (:output wsd-config)}])))
                                  databases)]
     (ws/set-instance-workspace! {:name      name
                                  :databases resolved-databases})

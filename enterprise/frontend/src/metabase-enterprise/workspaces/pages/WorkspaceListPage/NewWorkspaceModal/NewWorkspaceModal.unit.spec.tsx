@@ -7,6 +7,8 @@ import { createMockWorkspace } from "metabase-types/api/mocks";
 
 import { NewWorkspaceModal } from "./NewWorkspaceModal";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 type SetupOpts = {
   createdWorkspace?: Workspace;
 };
@@ -27,6 +29,10 @@ function setup({
 }
 
 describe("NewWorkspaceModal", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("can create a workspace", async () => {
     const { onCreate, createdWorkspace } = setup();
 
@@ -35,6 +41,20 @@ describe("NewWorkspaceModal", () => {
 
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
+    );
+  });
+
+  it("tracks an analytics event when a workspace is created", async () => {
+    const { createdWorkspace } = setup();
+
+    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "workspaces_new_created",
+        target_id: createdWorkspace.id,
+      }),
     );
   });
 });

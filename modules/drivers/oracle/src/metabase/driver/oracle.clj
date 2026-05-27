@@ -813,3 +813,7 @@
                   (update :update pos?)
                   (update :insert pos?)
                   (update :delete pos?))))))
+
+(defmethod sql.qp/transform-literal-like-pattern-honeysql :oracle
+  [_driver like-rhs-honeysql]
+  [:escape like-rhs-honeysql [:raw "CHR(92)"]])

@@ -12,8 +12,8 @@ import type { Database, Workspace } from "metabase-types/api";
 import { HelpMenu } from "../../components/HelpMenu";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
-import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceItem } from "./WorkspaceItem";
+import { WorkspaceListEmptyState } from "./WorkspaceListEmptyState";
 
 export function WorkspaceListPage() {
   const {
@@ -85,7 +85,7 @@ function WorkspaceListPageBody({
           ))}
         </Stack>
       ) : (
-        <WorkspaceEmptyState />
+        <WorkspaceListEmptyState />
       )}
     </PageContainer>
   );

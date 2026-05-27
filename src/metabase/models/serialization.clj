@@ -524,7 +524,6 @@
                                       {:model    model-name
                                        :key      k
                                        :instance instance})))
-
                     [export-k res])))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
@@ -1868,16 +1867,19 @@
 ;;; Common transformers
 
 (defn fk "Export Foreign Key" [model & [field-name]]
-  (cond
-    ;; this `::fk` is used in tests to determine that foreign keys are handled
-    (= model :model/User)     {::fk true :export *export-user* :import *import-user*}
-    (= model :model/Database) {::fk true :export *export-database-fk* :import *import-database-fk*}
-    (= model :model/Table)    {::fk true :export *export-table-fk* :import *import-table-fk*}
-    (= model :model/Field)    {::fk true :export *export-field-fk* :import *import-field-fk*}
-    field-name             {::fk    true
-                            :export #(*export-fk-keyed* % model field-name)
-                            :import #(*import-fk-keyed* % model field-name)}
-    :else                  {::fk true :export #(*export-fk* % model) :import #(*import-fk* % model)}))
+  (let [base {::fk true ::fk-model model}]
+    (cond
+      ;; this `::fk` is used in tests to determine that foreign keys are handled
+      (= model :model/User)     (assoc base :export *export-user* :import *import-user*)
+      (= model :model/Database) (assoc base :export *export-database-fk* :import *import-database-fk*)
+      (= model :model/Table)    (assoc base :export *export-table-fk* :import *import-table-fk*)
+      (= model :model/Field)    (assoc base :export *export-field-fk* :import *import-field-fk*)
+      field-name                (assoc base
+                                       :export #(*export-fk-keyed* % model field-name)
+                                       :import #(*import-fk-keyed* % model field-name))
+      :else                     (assoc base
+                                       :export #(*export-fk* % model)
+                                       :import #(*import-fk* % model)))))
 
 (defn nested "Nested entities" [model backward-fk opts]
   (let [model-name (name model)

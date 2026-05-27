@@ -756,7 +756,6 @@
           _ (a/>!! canceled-chan ::cancel)
           query (mt/mbql-query venues {:limit 1})
           mock-rff (constantly identity)]
-
       (binding [qp.pipeline/*canceled-chan* canceled-chan]
         (let [result (qp.pipeline/*run* query mock-rff)]
           (is (nil? result) "Cancelled query returns nil")
@@ -768,7 +767,6 @@
                        ;; Simulate immediate cancellation
                        (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly true)]
                          (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
-
       ;; Should not throw "QP unexpectedly returned nil" assertion error
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
@@ -779,7 +777,6 @@
                        ;; Return nil and set up canceled? to return truthy
                        (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly ::cancel)]
                          nil))]
-
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))

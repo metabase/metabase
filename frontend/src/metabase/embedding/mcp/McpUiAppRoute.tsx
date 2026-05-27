@@ -62,8 +62,13 @@ export function McpUiAppRoute() {
   );
 
   const theme = useMemo(
-    () => buildMcpAppsTheme(hostCssVariables, scheme),
-    [hostCssVariables, scheme],
+    () =>
+      buildMcpAppsTheme({
+        hostCssVariables,
+        preset: scheme,
+        agentName: hostContext?.userAgent,
+      }),
+    [hostCssVariables, scheme, hostContext?.userAgent],
   );
 
   return (
