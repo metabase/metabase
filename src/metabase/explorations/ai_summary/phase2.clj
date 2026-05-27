@@ -310,7 +310,7 @@
 
 (defn- extract-doc [response]
   (when (map? response)
-    (or (:document response) (get response "document"))))
+    (:document response)))
 
 ;;; ----- static cardEmbed validation -----
 ;;;
@@ -326,26 +326,22 @@
   children. Live-mode embeds (with `:id`) are passed through — the generic validator handles
   them."
   [node path]
-  (let [attrs    (or (get node :attrs) (get node "attrs"))
-        sr-id    (or (get attrs :stored_result_id) (get attrs "stored_result_id"))
-        sort-val (or (get attrs :sort) (get attrs "sort"))
-        content  (or (get node :content) (get node "content"))]
-    (cond
+  (let [{:keys [attrs content]} node
+        {:keys [stored_result_id sort id]} attrs
+        sr-id stored_result_id]
+    (if (and (nil? sr-id) (some? id))
       ;; Live-mode embed: defer to the generic validator.
-      (and (nil? sr-id) (some? (or (get attrs :id) (get attrs "id"))))
       []
-
-      :else
       (cond-> []
         (not (or (integer? sr-id)
                  (and (string? sr-id) (re-matches #"\d+" sr-id))))
         (conj (str path ".attrs.stored_result_id: must be an integer, got "
                    (pr-str sr-id)))
 
-        (and (some? sort-val) (not (contains? queries/allowed-chart-sorts sort-val)))
+        (and (some? sort) (not (contains? queries/allowed-chart-sorts sort)))
         (conj (str path ".attrs.sort: must be one of "
-                   (str/join ", " (sort queries/allowed-chart-sorts))
-                   " (or omitted), got " (pr-str sort-val)))
+                   (str/join ", " (clojure.core/sort queries/allowed-chart-sorts))
+                   " (or omitted), got " (pr-str sort)))
 
         content
         (conj (str path ": cardEmbed must not have a `content` array"
@@ -356,17 +352,14 @@
 
 (defn- node-type [node]
   (when (map? node)
-    (or (get node :type) (get node "type"))))
+    (:type node)))
 
 (defn- card-embed-stored-result-id
-  "Pull a numeric `stored_result_id` out of a static `cardEmbed` node, tolerating string /
-  keyword keys and numeric strings. Returns nil for live-mode embeds (those without
-  `:stored_result_id`)."
+  "Pull a numeric `stored_result_id` out of a static `cardEmbed` node, tolerating numeric
+  strings. Returns nil for live-mode embeds (those without `:stored_result_id`)."
   [node]
   (when (= prose-mirror/card-embed-type (node-type node))
-    (let [attrs (or (get node :attrs) (get node "attrs"))
-          raw   (or (get attrs :stored_result_id)
-                    (get attrs "stored_result_id"))]
+    (let [raw (get-in node [:attrs :stored_result_id])]
       (cond
         (integer? raw) raw
         (string? raw)  (try (Long/parseLong raw) (catch Exception _ nil))))))
@@ -374,8 +367,7 @@
 (defn- card-embed-sort
   "Pull the validated `sort` attribute out of a static `cardEmbed` node, or nil when absent."
   [node]
-  (let [attrs (or (get node :attrs) (get node "attrs"))
-        raw   (or (get attrs :sort) (get attrs "sort"))]
+  (let [raw (get-in node [:attrs :sort])]
     (when (contains? queries/allowed-chart-sorts raw) raw)))
 
 (defn- all-static-card-embed-nodes
@@ -389,8 +381,7 @@
     [pm-doc]
 
     (map? pm-doc)
-    (mapcat all-static-card-embed-nodes
-            (or (:content pm-doc) (get pm-doc "content")))
+    (mapcat all-static-card-embed-nodes (:content pm-doc))
 
     (sequential? pm-doc)
     (mapcat all-static-card-embed-nodes pm-doc)
@@ -457,10 +448,10 @@
   "Repair message for Phase 2 (analysis): point at the prose-mirror validation
   errors in the previous response and ask for a corrected document."
   [previous-doc errors]
-  (let [echo (pr-str previous-doc)
-        echo (if (<= (count echo) max-repair-echo-chars)
-               echo
-               (str (subs echo 0 max-repair-echo-chars) "\n... (truncated)"))]
+  (let [raw  (pr-str previous-doc)
+        echo (if (<= (count raw) max-repair-echo-chars)
+               raw
+               (str (subs raw 0 max-repair-echo-chars) "\n... (truncated)"))]
     (prompts/render
      "phase2_repair.selmer"
      {:no_tool_call  (nil? previous-doc)

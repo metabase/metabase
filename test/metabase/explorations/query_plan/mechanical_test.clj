@@ -1,8 +1,9 @@
 (ns metabase.explorations.query-plan.mechanical-test
   "Unit tests for the mechanical planner. Hand-built `metric-dim-ctx`
-  fixtures cover the variant-emission heuristics: every applicable pair
-  gets a `default`, temporal dims add the pattern variants, and the
-  time-facet variant gates on metric temporal breakout + dim fingerprint."
+  fixtures cover the variant-emission heuristics: `default` for low-cardinality
+  or temporal/auto-binned dims, `top-n-other` for high-or-unknown cardinality,
+  temporal dims add the pattern variants, and time-facet gates on metric
+  temporal breakout + dim fingerprint."
   (:require
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.mechanical :as qp.mech]
@@ -16,14 +17,14 @@
   ([dim-id]                (text-dim dim-id nil))
   ([dim-id distinct-count] {:dimension_id   dim-id
                             :display_name   dim-id
-                            :effective_type "type/Text"
-                            :semantic_type  "type/Category"
+                            :effective_type :type/Text
+                            :semantic_type  :type/Category
                             :fingerprint    (when distinct-count
                                               {:global {:distinct-count distinct-count}})}))
 
-(defn- date-dim     [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/Date"})
-(defn- datetime-dim [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/DateTime"})
-(defn- numeric-dim  [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/Float"})
+(defn- date-dim     [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Date})
+(defn- datetime-dim [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/DateTime})
+(defn- numeric-dim  [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Float})
 
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`
@@ -57,13 +58,26 @@
       (is (= :skip-not-applicable (:outcome r)))
       (is (nil? (:plan r))))))
 
-(deftest default-per-pair-test
-  (testing "Every applicable (metric, dim) pair gets a default item"
-    (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a") "b" (text-dim "b")}))]
+(deftest default-eligibility-test
+  (testing "default emitted for a text dim with known low cardinality"
+    (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 10)}))]
       (is (= :ok (:outcome r)))
-      (is (= 2 (count (:plan r))))
-      (is (every? #(= "default" (:variant %)) (:plan r)))
-      (is (= #{"a" "b"} (set (map :dimension_id (:plan r))))))))
+      (is (contains? (set (map :variant (:plan r))) "default"))))
+  (testing "default emitted for a text dim with known mid cardinality (21-100)"
+    (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 50)}))]
+      (is (contains? (set (map :variant (:plan r))) "default"))))
+  (testing "default skipped for a text dim with known high cardinality (>100)"
+    (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 500)}))]
+      (is (not (contains? (set (map :variant (:plan r))) "default")))))
+  (testing "default skipped for a text dim with unknown cardinality"
+    (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a")}))]
+      (is (not (contains? (set (map :variant (:plan r))) "default")))))
+  (testing "default always emitted for a temporal dim (cardinality irrelevant)"
+    (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
+      (is (contains? (set (map :variant (:plan r))) "default"))))
+  (testing "default always emitted for an auto-binned numeric dim"
+    (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")}))]
+      (is (contains? (set (map :variant (:plan r))) "default")))))
 
 (deftest temporal-pattern-emission-test
   (testing "Date dim emits default + temporal-pattern-day (no hour)"
@@ -106,9 +120,9 @@
   (testing "top-n-other skipped when dim is temporal"
     (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
       (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))
-  (testing "top-n-other skipped when dim cardinality unknown"
+  (testing "top-n-other EMITTED when dim cardinality unknown (fail-safe — high-card without fingerprint must not fall through to unbounded default)"
     (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d")}))]
-      (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))
+      (is (contains? (set (map :variant (:plan r))) "top-n-other"))))
   (testing "top-n-other skipped when cardinality at or below the threshold (default already fits)"
     (let [r (plan! (metric-with-dims 1 {"d" (text-dim "d" 20)}))]
       (is (not (contains? (set (map :variant (:plan r))) "top-n-other")))))

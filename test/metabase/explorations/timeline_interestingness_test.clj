@@ -20,14 +20,16 @@
      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
          (lib/aggregate (lib/count))))))
 
-(defn- count-by-category-query
-  "Schema-valid legacy MBQL `count` broken out by category for fixture queries."
+(defn- count-by-month-query
+  "Schema-valid legacy MBQL `count` broken out by month"
   []
   (lib/->legacy-MBQL
    (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
          (lib/aggregate (lib/count))
-         (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
+         (lib/breakout (lib/with-temporal-bucket
+                         (lib.metadata/field mp (mt/id :orders :created_at))
+                         :month))))))
 
 (defn- store-fake-result!
   "Mirror the worker's storage: serialize the fixture qp-result onto a StoredResult and
@@ -78,7 +80,7 @@
                                                  {:exploration_thread_id thread-id
                                                   :card_id               card-id
                                                   :dimension_id          "d1"
-                                                  :dataset_query         (count-by-category-query)
+                                                  :dataset_query         (count-by-month-query)
                                                   :status                "done"
                                                   :position              0}))]
     (store-fake-result! (:id q) (fixture-qp-result))

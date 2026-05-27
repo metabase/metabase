@@ -93,11 +93,9 @@
 
 ;;; ---------------------------------------------- extract-doc ----------------------------------------------
 
-(deftest extract-doc-tolerates-key-shapes-test
-  (testing "Keyword document field"
+(deftest extract-doc-test
+  (testing "Pulls :document from a keywordized LLM response"
     (is (= {:type "doc"} (#'phase2/extract-doc {:document {:type "doc"}}))))
-  (testing "String document field"
-    (is (= {:type "doc"} (#'phase2/extract-doc {"document" {:type "doc"}}))))
   (testing "Missing field or non-map input returns nil"
     (is (nil? (#'phase2/extract-doc {})))
     (is (nil? (#'phase2/extract-doc "not a map")))
@@ -155,18 +153,17 @@
                 (assoc valid-node :content [{:type "text" :text "no"}]) "$")]
       (is (some #(str/includes? % "must not have a `content` array") errs)))))
 
-(deftest validate-static-card-embed-string-keyed-attrs-test
-  (testing "String-keyed attrs / content are tolerated (post-JSON-decode shape)"
+(deftest validate-static-card-embed-keywordized-llm-payload-test
+  (testing "Accepts the keywordized shape produced by json/decode+kw on an LLM tool-call payload"
     (is (= [] (#'phase2/validate-static-card-embed
-               {"type" "cardEmbed"
-                "attrs" {"stored_result_id" 42 "sort" "value_desc"}}
-               "$")))))
+               {:type "cardEmbed"
+                :attrs {:stored_result_id 42 :sort "value_desc"}}
+               "$.content[0]")))))
 
 ;;; ---------------------------------------------- node-type / card-embed-* ----------------------------------------------
 
 (deftest node-type-test
   (is (= "paragraph" (#'phase2/node-type {:type "paragraph"})))
-  (is (= "paragraph" (#'phase2/node-type {"type" "paragraph"})))
   (is (nil? (#'phase2/node-type "not a map")))
   (is (nil? (#'phase2/node-type nil))))
 
@@ -185,10 +182,7 @@
                {:type "cardEmbed" :attrs {:id 99}}))))
   (testing "Non-cardEmbed nodes return nil even with a valid attr"
     (is (nil? (#'phase2/card-embed-stored-result-id
-               {:type "paragraph" :attrs {:stored_result_id 42}}))))
-  (testing "String-keyed attrs work"
-    (is (= 42 (#'phase2/card-embed-stored-result-id
-               {"type" "cardEmbed" "attrs" {"stored_result_id" 42}})))))
+               {:type "paragraph" :attrs {:stored_result_id 42}})))))
 
 (deftest card-embed-sort-test
   (testing "Allowed sort values pass through"
@@ -228,12 +222,7 @@
       (is (= 1 (count (#'phase2/all-static-card-embed-nodes doc))))
       (is (= 1 (-> (#'phase2/all-static-card-embed-nodes doc) first :attrs :stored_result_id)))))
   (testing "Empty doc → empty"
-    (is (= [] (#'phase2/all-static-card-embed-nodes {:type "doc" :content []}))))
-  (testing "Tolerates string keys"
-    (is (= 1 (count (#'phase2/all-static-card-embed-nodes
-                     {"type"    "doc"
-                      "content" [{"type"  "cardEmbed"
-                                  "attrs" {"stored_result_id" 1}}]}))))))
+    (is (= [] (#'phase2/all-static-card-embed-nodes {:type "doc" :content []})))))
 
 ;;; ---------------------------------------------- validate-categorical-sorts ----------------------------------------------
 

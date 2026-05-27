@@ -146,6 +146,17 @@ Always return a single object matching the supplied schema. Do not respond with 
              :timeline     hydrated
              :prompt       (:prompt thread)}))))))
 
+(defn- score-loaded-context
+  "Given the output of `load-context`, build the chart config and dispatch to
+  the LLM scorer. Returns nil when the chart-config builder rejects the query."
+  [{:keys [query result-bytes timeline prompt]}]
+  (let [qp-result   (deserialize-result result-bytes)
+        base-config (explorations.interestingness/qp-result->chart-config query qp-result)]
+    (when base-config
+      (let [events       (mapv event->timeline-event (:events timeline))
+            chart-config (assoc base-config :timeline_events events)]
+        (llm-score! chart-config prompt timeline)))))
+
 (defn score-query-timeline
   "Compute the LLM-driven interestingness score for the given
   `(exploration-query-id, timeline-id)` pair. Returns a `double` in `[0.0, 1.0]` or `nil` when
@@ -158,14 +169,8 @@ Always return a single object matching the supplied schema. Do not respond with 
   [exploration-query-id timeline-id]
   (try
     (when (metabot/llm-call-available? :permission/metabot-other-tools)
-      (when-let [{:keys [query result-bytes timeline prompt]}
-                 (load-context exploration-query-id timeline-id)]
-        (let [qp-result   (deserialize-result result-bytes)
-              base-config (explorations.interestingness/qp-result->chart-config query qp-result)]
-          (when base-config
-            (let [events       (mapv event->timeline-event (:events timeline))
-                  chart-config (assoc base-config :timeline_events events)]
-              (llm-score! chart-config prompt timeline))))))
+      (when-let [ctx (load-context exploration-query-id timeline-id)]
+        (score-loaded-context ctx)))
     (catch Throwable e
       (log/warnf e "Timeline interestingness scoring failed for query=%s timeline=%s"
                  exploration-query-id timeline-id)

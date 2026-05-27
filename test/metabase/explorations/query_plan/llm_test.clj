@@ -24,8 +24,8 @@
   [dim-id distinct-count]
   {:dimension_id   dim-id
    :display_name   dim-id
-   :effective_type "type/Text"
-   :semantic_type  "type/Category"
+   :effective_type :type/Text
+   :semantic_type  :type/Category
    :fingerprint    {:global {:distinct-count distinct-count}}})
 
 (defn- date-dim
@@ -33,22 +33,22 @@
   [dim-id]
   {:dimension_id   dim-id
    :display_name   dim-id
-   :effective_type "type/Date"
-   :semantic_type  "type/CreationDate"})
+   :effective_type :type/Date
+   :semantic_type  :type/CreationDate})
 
 (defn- datetime-dim
   [dim-id]
   {:dimension_id   dim-id
    :display_name   dim-id
-   :effective_type "type/DateTime"
-   :semantic_type  "type/CreationTimestamp"})
+   :effective_type :type/DateTime
+   :semantic_type  :type/CreationTimestamp})
 
 (defn- numeric-dim
   [dim-id]
   {:dimension_id   dim-id
    :display_name   dim-id
-   :effective_type "type/Float"
-   :semantic_type  "type/Score"})
+   :effective_type :type/Float
+   :semantic_type  :type/Score})
 
 (defn- metric-with-dims
   "Build the per-metric context lookup the validator consumes. `dim-map` is

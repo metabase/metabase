@@ -272,7 +272,10 @@
   (let [mp    (mt/metadata-provider)
         oq    (lib/->legacy-MBQL
                (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                   (lib/aggregate (lib/count))))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (lib/with-temporal-bucket
+                                   (lib.metadata/field mp (mt/id :orders :created_at))
+                                   :month))))
         card  (first (t2/insert-returning-instances!
                       :model/Card
                       {:name          "rev"
