@@ -1600,24 +1600,28 @@
                  (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
             source-schemas)))
 
+(defmethod driver/check-can-grant-workspace-access! :postgres
+  [_driver database schemas]
+  ;; Probe each input schema: admin role must hold USAGE WITH GRANT OPTION (or own
+  ;; the schema). Otherwise the GRANT batch in [[grant-workspace-read-access!]]
+  ;; would fail with a generic JDBC `permission denied for schema X`. See
+  ;; [[assert-can-grant-usage!]] for the full remediation message.
+  (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [s (set schemas)]
+      (assert-can-grant-usage! check-conn s))))
+
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
-        ;; Pre-flight checks per input schema:
-        ;;   1. Schema must not grant CREATE to PUBLIC (isolation hole — see comment
-        ;;      block above [[init-workspace-isolation! :postgres]]).
-        ;;   2. The current admin role must hold USAGE WITH GRANT OPTION on the
-        ;;      schema (or own it). PostgreSQL won't let a role pass on USAGE
-        ;;      otherwise, and the resulting JDBC error ("permission denied for
-        ;;      schema X") doesn't tell the operator what's missing.
-        ;; We probe per-schema so only the schemas actually used as inputs need to
-        ;; be locked down — schemas the workspace never touches can keep their
-        ;; default ACLs.
+        ;; Isolation pre-flight: input schema must not grant CREATE to PUBLIC,
+        ;; else the workspace user inherits CREATE transitively (see comment
+        ;; block above [[init-workspace-isolation! :postgres]]). Stays inline
+        ;; (rather than under [[check-can-grant-workspace-access!]]) because
+        ;; it's an isolation concern, not a grantability concern.
         _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
-                           (assert-no-public-create-grant! check-conn s)
-                           (assert-can-grant-usage! check-conn s)))
+                           (assert-no-public-create-grant! check-conn s)))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

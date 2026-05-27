@@ -42,6 +42,7 @@
         (driver/init-workspace-isolation! driver database workspace)))
     (grant! [_ driver database workspace schemas]
       (driver.conn/with-admin-connection
+        (driver/check-can-grant-workspace-access! driver database schemas)
         (driver/grant-workspace-read-access! driver database workspace schemas)))
     (destroy! [_ driver database workspace]
       (driver.conn/with-admin-connection
