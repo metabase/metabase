@@ -1,6 +1,7 @@
 import type * as React from "react";
 
 import { getSubpathSafeUrl } from "metabase/urls";
+import type { DataAppId } from "metabase-types/api";
 
 import { type DataAppHostApi, createDataAppSandbox } from "./sandbox";
 
@@ -12,8 +13,15 @@ export interface LoadedDataApp {
  * Fetch a data-app bundle by name, evaluate it in a Near Membrane sandbox
  * with React + the SDK component set endowed, and return the host-renderable
  * React component the factory produces.
+ *
+ * `id` is used to scope the sandbox's DOM access — it's compared against the
+ * `data-data-app=<id>` attribute on the container element AppView renders
+ * around the returned component.
  */
-export async function loadDataAppBundle(name: string): Promise<LoadedDataApp> {
+export async function loadDataAppBundle(
+  name: string,
+  id: DataAppId,
+): Promise<LoadedDataApp> {
   const url = getSubpathSafeUrl(
     `/api/ee/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
@@ -23,7 +31,7 @@ export async function loadDataAppBundle(name: string): Promise<LoadedDataApp> {
   }
   const code = await res.text();
 
-  const sandbox = createDataAppSandbox();
+  const sandbox = createDataAppSandbox(id);
   const factory = sandbox.evaluate(code);
 
   const hostApi: DataAppHostApi = {};
