@@ -160,12 +160,15 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              collections
               dashboards
               events
               lib
+              lib-be
               llm
               metabot
               queries
+              query-permissions
               query-processor
               request
               server
