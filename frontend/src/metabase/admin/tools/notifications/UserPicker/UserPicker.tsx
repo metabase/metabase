@@ -31,10 +31,21 @@ export const UserPicker = ({
     limit: 50,
   });
 
-  const options = (data?.data ?? []).map((user) => ({
+  const fetchedOptions = (data?.data ?? []).map((user) => ({
     value: String(user.id),
-    label: user.common_name || user.email,
+    label: user.common_name,
   }));
+
+  const selectedOption = value && {
+    value: String(value.id),
+    label: value.label,
+  };
+
+  const options =
+    selectedOption &&
+    !fetchedOptions.some((o) => o.value === selectedOption.value)
+      ? [selectedOption, ...fetchedOptions]
+      : fetchedOptions;
 
   const handleChange = (next: string | null) => {
     const option = options.find((o) => o.value === next);
@@ -49,7 +60,7 @@ export const UserPicker = ({
       label={label}
       placeholder={placeholder ?? t`Select a user`}
       data={options}
-      value={value === null ? null : String(value.id)}
+      value={selectedOption?.value}
       onChange={handleChange}
       searchable
       searchValue={search}

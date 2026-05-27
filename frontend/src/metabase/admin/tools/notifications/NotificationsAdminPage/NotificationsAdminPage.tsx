@@ -42,7 +42,7 @@ import {
   PAGE_SIZE,
   SORT_COLUMN_VALUES,
 } from "./constants";
-import type { ChangeOwnerTarget, RouteParams } from "./types";
+import type { RouteParams } from "./types";
 import { buildListParams, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = ({
@@ -61,8 +61,7 @@ export const NotificationsAdminPage = ({
       selectedIds.has(row.original.id) ? "all" : "none",
     [selectedIds],
   );
-  const [changeOwnerTarget, setChangeOwnerTarget] =
-    useState<ChangeOwnerTarget | null>(null);
+  const [isChangeOwnerOpened, setIsChangeOwnerOpened] = useState(false);
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
 
@@ -72,6 +71,10 @@ export const NotificationsAdminPage = ({
   const notifications = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
   const selectedCount = selectedIds.size;
+  const selectedNotifications = useMemo(
+    () => notifications.filter((n) => selectedIds.has(n.id)),
+    [notifications, selectedIds],
+  );
 
   const { data: failingData, isLoading: isFailingLoading } =
     useAdminListNotificationsQuery({
@@ -212,16 +215,17 @@ export const NotificationsAdminPage = ({
   );
 
   const handleDeleteBulk = useCallback(() => {
-    const count = selectedIds.size;
+    const count = selectedNotifications.length;
     showConfirm({
       title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
       size: "md",
-      onConfirm: () => deleteNotifications(Array.from(selectedIds)),
+      onConfirm: () =>
+        deleteNotifications(selectedNotifications.map((n) => n.id)),
     });
-  }, [deleteNotifications, selectedIds, showConfirm]);
+  }, [deleteNotifications, selectedNotifications, showConfirm]);
 
   const handleSidebarDelete = useCallback(
     (id: NotificationId) => {
@@ -238,14 +242,10 @@ export const NotificationsAdminPage = ({
 
   const handleChangeOwnerConfirm = useCallback(
     async (creatorId: UserId) => {
-      if (!changeOwnerTarget) {
-        return;
-      }
-      const { ids, isBulk } = changeOwnerTarget;
-      const count = ids.length;
+      const count = selectedNotifications.length;
       try {
         await bulkAction({
-          notification_ids: ids,
+          notification_ids: selectedNotifications.map((n) => n.id),
           action: "change-creator",
           creator_id: creatorId,
         }).unwrap();
@@ -257,10 +257,8 @@ export const NotificationsAdminPage = ({
                 : t`Changed owner for ${count} alerts`,
           }),
         );
-        if (isBulk) {
-          clearSelected();
-        }
-        setChangeOwnerTarget(null);
+        clearSelected();
+        setIsChangeOwnerOpened(false);
       } catch {
         dispatch(
           addUndo({
@@ -270,7 +268,7 @@ export const NotificationsAdminPage = ({
         );
       }
     },
-    [bulkAction, changeOwnerTarget, clearSelected, dispatch],
+    [bulkAction, selectedNotifications, clearSelected, dispatch],
   );
 
   const isSidebarOpen = notificationId !== undefined;
@@ -384,12 +382,7 @@ export const NotificationsAdminPage = ({
           {t`Delete`}
         </BulkActionDangerButton>
         <BulkActionButton
-          onClick={() =>
-            setChangeOwnerTarget({
-              ids: Array.from(selectedIds),
-              isBulk: true,
-            })
-          }
+          onClick={() => setIsChangeOwnerOpened(true)}
           disabled={isBulkLoading}
         >
           {t`Change owner`}
@@ -398,10 +391,11 @@ export const NotificationsAdminPage = ({
       </BulkActionBar>
 
       <ChangeOwnerModal
-        opened={changeOwnerTarget !== null}
-        count={changeOwnerTarget?.ids.length ?? 0}
+        key={String(isChangeOwnerOpened)}
+        opened={isChangeOwnerOpened}
+        notifications={selectedNotifications}
         isSubmitting={isBulkLoading}
-        onClose={() => setChangeOwnerTarget(null)}
+        onClose={() => setIsChangeOwnerOpened(false)}
         onConfirm={handleChangeOwnerConfirm}
       />
 

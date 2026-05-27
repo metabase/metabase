@@ -1,18 +1,12 @@
 import type {
   AdminNotificationSortColumn,
   NotificationChannelType,
-  NotificationId,
   NotificationRunStatus,
   SortDirection,
 } from "metabase-types/api";
 
 export type RouteParams = {
   notificationId?: string;
-};
-
-export type ChangeOwnerTarget = {
-  ids: NotificationId[];
-  isBulk: boolean;
 };
 
 export type NotificationsTab = "all" | "failing" | "ownerless";

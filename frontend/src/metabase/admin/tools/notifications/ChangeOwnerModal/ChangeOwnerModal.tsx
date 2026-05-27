@@ -2,13 +2,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Modal } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
+import type { AdminNotification, UserId } from "metabase-types/api";
 
 import { type UserOption, UserPicker } from "../UserPicker";
 
 type Props = {
   opened: boolean;
-  count: number;
+  notifications: AdminNotification[];
   isSubmitting?: boolean;
   onClose: () => void;
   onConfirm: (creatorId: UserId) => void;
@@ -16,19 +16,22 @@ type Props = {
 
 export const ChangeOwnerModal = ({
   opened,
-  count,
+  notifications,
   isSubmitting,
   onClose,
   onConfirm,
 }: Props) => {
-  const [selectedCreator, setSelectedCreator] = useState<UserOption | null>(
-    null,
-  );
+  const count = notifications.length;
 
-  const handleClose = () => {
-    setSelectedCreator(null);
-    onClose();
-  };
+  const [selectedCreator, setSelectedCreator] = useState<UserOption | null>(
+    () => {
+      if (notifications.length !== 1) {
+        return null;
+      }
+      const creator = notifications[0].creator;
+      return creator ? { id: creator.id, label: creator.common_name } : null;
+    },
+  );
 
   const handleSubmit = () => {
     if (selectedCreator !== null) {
@@ -42,12 +45,12 @@ export const ChangeOwnerModal = ({
       : t`Select new owner of ${count} alerts`;
 
   return (
-    <Modal opened={opened} onClose={handleClose} title={title} size="md">
+    <Modal opened={opened} onClose={onClose} title={title} size="md">
       <Flex direction="column" gap="md">
         <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
 
         <Flex justify="flex-end" gap="sm">
-          <Button variant="default" onClick={handleClose}>
+          <Button variant="default" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button
