@@ -136,7 +136,7 @@ describe("SchemaViewerNodeSearch", () => {
 
     // useHotkeys listens at the document level — dispatch the event there
     // rather than on a specific element so the handler picks it up.
-    await userEvent.keyboard("{Meta>}f{/Meta}");
+    await userEvent.keyboard("f");
 
     expect(input).toHaveFocus();
     expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
