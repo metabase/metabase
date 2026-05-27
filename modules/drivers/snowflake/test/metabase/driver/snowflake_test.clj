@@ -1724,3 +1724,47 @@
           (mt/with-native-query-testing-context query
             (is (some? (mt/rows (qp/process-query query)))
                 "Hour bucketing on a time field from a source query should not error")))))))
+
+(deftest ^:synchronized assert-can-grant-usage!-test
+  (testing "throws 412 with copy-pasteable SQL when role lacks USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               ;; Stub for SHOW GRANTS — no matching row for our role.
+                               [{:privilege    "USAGE"
+                                 :grantee_name "OTHER_ROLE"
+                                 :granted_on   "SCHEMA"
+                                 :grant_option "true"}])]
+      (try
+        (driver.snowflake/assert-can-grant-usage! ::stub-conn "WAREHOUSE_DB" "DBT_MODELS" "STATS_ADMIN")
+        (is false "expected assert-can-grant-usage! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "DBT_MODELS" (:schema (ex-data e))))
+          (is (= "WAREHOUSE_DB" (:db (ex-data e))))
+          (is (= "STATS_ADMIN" (:admin-role (ex-data e))))
+          (is (str/includes? (ex-message e)
+                             "GRANT USAGE ON SCHEMA \"WAREHOUSE_DB\".\"DBT_MODELS\" TO ROLE STATS_ADMIN WITH GRANT OPTION"))))))
+  (testing "no-op when role owns the schema"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               [{:privilege    "OWNERSHIP"
+                                 :grantee_name "STATS_ADMIN"
+                                 :granted_on   "SCHEMA"
+                                 :grant_option "false"}])]
+      (is (nil? (driver.snowflake/assert-can-grant-usage! ::stub-conn "WAREHOUSE_DB" "DBT_MODELS" "STATS_ADMIN")))))
+  (testing "no-op when role holds USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               [{:privilege    "USAGE"
+                                 :grantee_name "STATS_ADMIN"
+                                 :granted_on   "SCHEMA"
+                                 :grant_option "true"}])]
+      (is (nil? (driver.snowflake/assert-can-grant-usage! ::stub-conn "WAREHOUSE_DB" "DBT_MODELS" "STATS_ADMIN")))))
+  (testing "USAGE without grant_option does not count"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               [{:privilege    "USAGE"
+                                 :grantee_name "STATS_ADMIN"
+                                 :granted_on   "SCHEMA"
+                                 :grant_option "false"}])]
+      (try
+        (driver.snowflake/assert-can-grant-usage! ::stub-conn "WAREHOUSE_DB" "DBT_MODELS" "STATS_ADMIN")
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e)))))))))

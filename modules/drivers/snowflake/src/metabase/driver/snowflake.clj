@@ -36,7 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
+   [metabase.util.performance :refer [mapv empty? not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -1112,6 +1112,80 @@
                  (format "DROP USER IF EXISTS \"%s\"" username)
                  (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
       (jdbc/execute! conn-spec [sql]))))
+
+(defn- snowflake-current-role
+  [conn-spec]
+  (-> (jdbc/query conn-spec ["SELECT CURRENT_ROLE() AS r"]) first :r))
+
+(defn- snowflake-schema-grants
+  "Returns rows describing privileges granted on `db-name.schema` to any role.
+   Each row maps :privilege, :grantee, :granted_on, :grant_option (bool string)."
+  [conn-spec db-name schema]
+  (try
+    (jdbc/query conn-spec
+                [(format "SHOW GRANTS ON SCHEMA \"%s\".\"%s\"" db-name schema)])
+    (catch Throwable _
+      ;; If we can't even SHOW GRANTS, we definitely can't grant — return nil so
+      ;; the caller throws the standard 412 with the schema name.
+      nil)))
+
+(defn- snowflake-can-grant-usage?
+  "True when `role` either owns `db-name.schema` or holds `USAGE WITH GRANT
+   OPTION` on it. Ownership implies grant option in Snowflake."
+  [conn-spec db-name schema role]
+  (let [rows (snowflake-schema-grants conn-spec db-name schema)]
+    (boolean
+     (some
+      (fn [{:keys [privilege grantee_name granted_on grant_option]}]
+        (and grantee_name
+             (= role grantee_name)
+             (or (= "OWNERSHIP" privilege)
+                 (and (= "USAGE" privilege)
+                      ;; grant_option arrives as "true"/"false" from SHOW GRANTS.
+                      (contains? #{"true" true} grant_option)))
+             (= "SCHEMA" granted_on)))
+      rows))))
+
+(defn assert-can-grant-usage!
+  "Throws when the current admin role cannot grant USAGE on `db-name.schema`.
+   Same intent as the Postgres helper but uses Snowflake's `SHOW GRANTS` to
+   inspect the role's grants on the schema. Snowflake's ownership/grant-option
+   model is role-based rather than user-based — the relevant identity here is
+   `CURRENT_ROLE()`, not the connection user."
+  [conn-spec db-name schema role]
+  (when-not (snowflake-can-grant-usage? conn-spec db-name schema role)
+    (throw (ex-info (format (str "Workspace admin role %s cannot grant USAGE on schema \"%s\".\"%s\". "
+                                 "Snowflake requires the granting role to own the schema or hold "
+                                 "USAGE WITH GRANT OPTION on it. Run as ACCOUNTADMIN or the schema "
+                                 "owner role:\n\n"
+                                 "    GRANT USAGE ON DATABASE \"%s\" TO ROLE %s WITH GRANT OPTION;\n"
+                                 "    GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE %s WITH GRANT OPTION;\n"
+                                 "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE %s WITH GRANT OPTION;\n"
+                                 "    GRANT SELECT ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE %s WITH GRANT OPTION;\n\n"
+                                 "then retry workspace provisioning.")
+                            role db-name schema
+                            db-name role
+                            db-name schema role
+                            db-name schema role
+                            db-name schema role)
+                    {:status-code 412
+                     :schema      schema
+                     :db          db-name
+                     :admin-role  role}))))
+
+(defmethod driver/check-can-grant-workspace-access! :snowflake
+  [_driver database schemas]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        db-name   (:db (driver.conn/effective-details database))
+        role      (snowflake-current-role conn-spec)]
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Snowflake workspaces require an explicit database in connection details")
+                      {:database-id (:id database) :step :grant})))
+    (doseq [schema (set schemas)]
+      (when (str/blank? schema)
+        (throw (ex-info (tru "Snowflake workspace input schema is blank")
+                        {:database-id (:id database) :step :grant})))
+      (assert-can-grant-usage! conn-spec db-name schema role))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
   [_driver database workspace schemas]
