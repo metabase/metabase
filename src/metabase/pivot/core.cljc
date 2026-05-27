@@ -366,8 +366,12 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
-                         (:value row-item))]
+  (let [v            (:value row-item)
+        ;; In XLSX exports, :value is the formatter map {:col, :value, :xlsx-formatted-value, :styles}.
+        ;; Elsewhere (CSV, FE) it's the formatted value directly. (#71220)
+        subtotal-val (if (and (map? v) (contains? v :xlsx-formatted-value))
+                       (or (:xlsx-formatted-value v) (:value v) (i18n/tru "(empty)"))
+                       (if (some? v) v (i18n/tru "(empty)")))]
     {:value (i18n/tru "Totals for {0}" subtotal-val)
      :rawValue (:rawValue row-item)
      :span 1
