@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.app-db.core :as mdb]
    [metabase.driver.settings :as driver.settings]
+   [metabase.sample-data.core :as sample-data]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -118,6 +119,80 @@
             (is (= {:db "real-details"} (:details reloaded))))
           (testing "existing :is_stub flag is preserved (still false)"
             (is (false? (:is_stub reloaded)))))))))
+
+(deftest init-from-config-file-sample-recreates-missing-test
+  (testing "An is_sample entry triggers recreation of the Sample Database when one is not present."
+    (let [delete-existing! (fn []
+                             (when-let [ids (seq (t2/select-pks-vec :model/Database :is_sample true))]
+                               (t2/delete! :model/Database :id [:in ids])))
+          extract-calls    (atom 0)]
+      (delete-existing!)
+      (try
+        (with-redefs [sample-data/extract-and-sync-sample-database!
+                      (fn []
+                        (swap! extract-calls inc)
+                        ;; simulate extract by inserting a sample row
+                        (t2/insert! :model/Database
+                                    {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
+          (is (= :ok
+                 (advanced-config.file/initialize!
+                  {:version 1
+                   :config  {:databases [{:name      "Sample Database"
+                                          :engine    "h2"
+                                          :details   {}
+                                          :is_sample true}]}})))
+          (testing "extract-and-sync-sample-database! is invoked exactly once"
+            (is (= 1 @extract-calls)))
+          (testing "a sample DB row now exists"
+            (is (t2/exists? :model/Database :is_sample true))))
+        (finally
+          (delete-existing!))))))
+
+(deftest init-from-config-file-sample-noop-when-present-test
+  (testing "An is_sample entry is a no-op when the Sample Database already exists."
+    (let [extract-calls (atom 0)]
+      (mt/with-temp [:model/Database _existing {:name      "Sample Database"
+                                                :engine    :h2
+                                                :details   {:db "preexisting"}
+                                                :is_sample true}]
+        (with-redefs [sample-data/extract-and-sync-sample-database!
+                      (fn [] (swap! extract-calls inc))]
+          (is (= :ok
+                 (advanced-config.file/initialize!
+                  {:version 1
+                   :config  {:databases [{:name      "Sample Database"
+                                          :engine    "h2"
+                                          :details   {}
+                                          :is_sample true}]}})))
+          (testing "extract-and-sync-sample-database! is NOT invoked"
+            (is (zero? @extract-calls)))
+          (testing "existing sample row is untouched"
+            (is (= {:db "preexisting"}
+                   (:details (t2/select-one :model/Database :is_sample true))))))))))
+
+(deftest init-from-config-file-sample-rejects-wrong-name-test
+  (testing "An is_sample entry with a name other than the canonical Sample Database name is rejected."
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"(?i)sample database"
+         (advanced-config.file/initialize!
+          {:version 1
+           :config  {:databases [{:name      "ABC"
+                                  :engine    "h2"
+                                  :details   {}
+                                  :is_sample true}]}})))))
+
+(deftest init-from-config-file-sample-rejects-wrong-engine-test
+  (testing "An is_sample entry with an engine other than h2 is rejected."
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"(?i)sample database"
+         (advanced-config.file/initialize!
+          {:version 1
+           :config  {:databases [{:name      "Sample Database"
+                                  :engine    "postgres"
+                                  :details   {}
+                                  :is_sample true}]}})))))
 
 (deftest sync-test
   (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
