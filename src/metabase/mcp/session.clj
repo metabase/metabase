@@ -23,7 +23,6 @@
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.string :as u.str]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -146,14 +145,10 @@
   (when (and (string? session-id)
              (<= (count session-id) max-session-id-length))
     (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
-      (when (and (#{1 2} (count parts))
-                 (u.str/valid-uuid? uuid))
-        (some-> (parse-session-payload payload)
-                (assoc :uuid uuid))))))
-
-(defn- session-uuid
-  [session-id]
-  (some-> (session-parts session-id) :uuid UUID/fromString))
+      (when (#{1 2} (count parts))
+        (when-let [uuid (parse-uuid uuid)]
+          (some-> (parse-session-payload payload)
+                  (assoc :uuid uuid)))))))
 
 (defn- create-session-id
   "Create a stateless MCP session id containing client capability hints.
@@ -171,7 +166,7 @@
    Format check only — authentication is handled separately by cookie or bearer token,
    not by the session ID itself."
   [session-id]
-  (some? (session-uuid session-id)))
+  (some? (session-parts session-id)))
 
 (defn create!
   "Create a new MCP session. Returns a session id string.
