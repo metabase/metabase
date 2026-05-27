@@ -93,6 +93,10 @@ function setup({
 }
 
 describe("DescriptionSection", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("renders the About heading and last-updated subline", async () => {
     setup();
     expect(screen.getByText("About")).toBeInTheDocument();

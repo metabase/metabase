@@ -12,8 +12,8 @@ interface MetadataCardProps {
 
 export function MetadataCard({ children }: MetadataCardProps) {
   return (
-    <Paper bg="background-tertiary" radius={rem(16)} p="md">
-      <Stack gap="md" className={S.rows}>
+    <Paper className={S.card}>
+      <Stack gap={rem(12)} className={S.rows}>
         {children}
       </Stack>
     </Paper>
@@ -28,15 +28,18 @@ interface MetadataRowProps {
 
 export function MetadataRow({ icon, to, children }: MetadataRowProps) {
   const body = (
-    <Group gap="sm" wrap="nowrap" align="center">
+    <Group gap={rem(10)} wrap="nowrap" align="center">
       <Center
         bg="background-primary"
-        w={rem(28)}
-        h={rem(28)}
+        w={rem(24)}
+        h={rem(24)}
         className={S.iconCircle}
-        style={{ borderRadius: "100%", flexShrink: 0 }}
       >
-        <Icon name={icon} c={to ? "text-primary" : "text-secondary"} />
+        <Icon
+          name={icon}
+          size={12}
+          c={to ? "text-primary" : "text-secondary"}
+        />
       </Center>
       <Text
         component="span"

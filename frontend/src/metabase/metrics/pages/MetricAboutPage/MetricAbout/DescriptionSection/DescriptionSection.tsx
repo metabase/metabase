@@ -12,7 +12,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
-import { Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Stack, Text, Tooltip, rem } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
@@ -69,7 +69,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   return (
     <Stack
       p="md"
-      gap="xl"
+      gap={0}
       align="stretch"
       data-testid="metric-description-sidebar"
     >
@@ -79,7 +79,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
           {t`Last updated ${getRelativeTime(card.updated_at)}`}
         </Text>
       </Tooltip>
-      <div data-testid="metric-description-section">
+      <Box mt={rem(8)} data-testid="metric-description-section">
         {card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
@@ -93,10 +93,10 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         ) : (
           <Markdown>{card.description || t`No description`}</Markdown>
         )}
-      </div>
+      </Box>
 
       {hasSource && (
-        <MetricSubSection title={t`Source`}>
+        <MetricSubSection title={t`Source`} mt={rem(32)}>
           <MetadataCard>
             {database && (
               <MetadataRow icon="database" to={urls.database?.(database.id)}>
@@ -116,7 +116,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       )}
 
       {canSeeRelationships && (
-        <MetricSubSection title={t`Relationships`}>
+        <MetricSubSection title={t`Relationships`} mt={rem(32)}>
           <MetadataCard>
             {dependenciesCount > 0 ? (
               <MetadataRow icon="dependencies" to={dependenciesUrl}>
