@@ -46,8 +46,12 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       ({ settings }) => ({
         ...settings,
         drills: "drills" in defaultSettings && defaultSettings.drills,
-        isSaveEnabled:
-          "isSaveEnabled" in defaultSettings && defaultSettings.isSaveEnabled,
+        // Skip when the experience defaults don't define isSaveEnabled
+        // (dashboard, browser) — otherwise we'd stamp a stray `false` onto
+        // settings that leaks into Snowplow analytics.
+        ...("isSaveEnabled" in defaultSettings && {
+          isSaveEnabled: defaultSettings.isSaveEnabled,
+        }),
         ...getCommonEmbedSettings({
           experience,
           isGuestEmbedsEnabled,
