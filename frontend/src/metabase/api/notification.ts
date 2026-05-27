@@ -54,7 +54,10 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_notification, error) =>
-        invalidateTags(error, [listTag("notification")]),
+        invalidateTags(error, [
+          listTag("notification"),
+          adminNotificationListTag(),
+        ]),
     }),
     updateNotification: builder.mutation<
       Notification,
