@@ -980,10 +980,11 @@ describe(suiteTitle, () => {
     // in the colors configuration
     codeBlock().should("not.contain", '"background-hover"');
 
-    // QUICK VERIFICATION: wait for the debounced theme persist to land before
-    // the test ends — otherwise an orphaned `_.debounce` callback fires after
-    // `H.restore()` of the next test and writes the custom theme back into
-    // the freshly-restored DB, polluting downstream snowplow assertions.
+    // Wait for the debounced theme persist to land before the test ends —
+    // otherwise the orphaned `_.debounce` callback in `useUserSetting` fires
+    // after `H.restore()` of the next test and writes the custom theme back
+    // into the freshly-restored DB, polluting downstream snowplow assertions.
+    // Proper fix is flush-on-unmount in `useUserSetting`; tracking separately.
     cy.wait("@persistSettings");
   });
 
