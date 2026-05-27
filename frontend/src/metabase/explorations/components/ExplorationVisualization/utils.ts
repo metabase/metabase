@@ -33,7 +33,7 @@ interface BuildSeriesGroupsParams {
   queryColors: Record<string, string>;
 }
 
-interface SeriesGroup {
+export interface SeriesGroup {
   series: SingleSeries[];
   queryType: ExplorationQueryType;
   isTimeseries: boolean;
@@ -358,13 +358,28 @@ export interface ExplorationChartForDocumentEmbed {
 
 const CARTESIAN_SERIES_COL_NAME = "Series";
 
-function composeChartForDocumentEmbed(
+function composeChartsForGroup(
   group: SeriesGroup,
-): ExplorationChartForDocumentEmbed {
+): ExplorationChartForDocumentEmbed[] {
   const firstSeries = group.series[0];
+  const display = firstSeries.card.display;
+
+  // Maps render one `<Visualization>` per series side-by-side (no
+  // `graph.split_panels` analogue), so the user perceives each map as a
+  // standalone chart. Expand a multi-series map group into N picker
+  // entries — each appends a single-snapshot embed (the N=1
+  // pass-through path through `composite/combine` server-side).
+  if (display === "map" && group.series.length > 1) {
+    return group.series.map((s) => ({
+      queryIds: [s.card.id],
+      label: s.card.name ?? group.chartLabel ?? "Chart",
+      display: s.card.display,
+      visualization_settings: s.card.visualization_settings ?? {},
+    }));
+  }
+
   const queryIds = group.series.map((s) => s.card.id);
   const label = group.chartLabel ?? firstSeries.card.name ?? "Chart";
-  const display = firstSeries.card.display;
   let visualization_settings: VisualizationSettings =
     firstSeries.card.visualization_settings ?? {};
 
@@ -391,13 +406,13 @@ function composeChartForDocumentEmbed(
     }
   }
 
-  return { queryIds, label, display, visualization_settings };
+  return [{ queryIds, label, display, visualization_settings }];
 }
 
 export function composeChartsForDocumentEmbed(
   seriesGroups: SeriesGroup[],
 ): ExplorationChartForDocumentEmbed[] {
-  return seriesGroups.map(composeChartForDocumentEmbed);
+  return seriesGroups.flatMap(composeChartsForGroup);
 }
 
 // the Table viz only supports one series, so we have to combine them

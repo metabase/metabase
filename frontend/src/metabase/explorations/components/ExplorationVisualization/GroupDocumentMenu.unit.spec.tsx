@@ -189,6 +189,65 @@ describe("GroupDocumentMenu", () => {
     });
   });
 
+  it("renders one entry per map even when those maps originated from the same SeriesGroup (compose-time expansion)", async () => {
+    // The menu doesn't know whether two entries came from the same
+    // underlying SeriesGroup — it just renders the `charts` list it's
+    // given. This test guarantees the per-map UX works end-to-end: each
+    // map is an independent picker entry, and clicking one sends just
+    // that map's query id (no composite of the other maps).
+    setup({
+      charts: [
+        makeChart({
+          queryIds: [301],
+          label: "Sessions in US",
+          display: "map",
+          visualization_settings: {
+            "map.type": "region",
+            "map.region": "us_states",
+            "map.colors": ["red", "white"],
+          },
+        }),
+        makeChart({
+          queryIds: [302],
+          label: "Sessions in EU",
+          display: "map",
+          visualization_settings: {
+            "map.type": "region",
+            "map.region": "us_states",
+            "map.colors": ["blue", "white"],
+          },
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to document" }),
+    );
+
+    expect(await screen.findByText("Pick a chart")).toBeInTheDocument();
+    expect(screen.getByText("Sessions in US")).toBeInTheDocument();
+    expect(screen.getByText("Sessions in EU")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Sessions in EU"));
+    await userEvent.click(await screen.findByText("Notes"));
+
+    await waitFor(() => {
+      expect(mockAppend).toHaveBeenCalledTimes(1);
+    });
+    // Only the picked map's query id flows through — no composite.
+    expect(mockAppend).toHaveBeenCalledWith({
+      threadId: 7,
+      documentId: 11,
+      exploration_query_ids: [302],
+      display: "map",
+      visualization_settings: {
+        "map.type": "region",
+        "map.region": "us_states",
+        "map.colors": ["blue", "white"],
+      },
+    });
+  });
+
   it("New document creates a doc and then appends the picked chart to it", async () => {
     setup();
 
