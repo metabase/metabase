@@ -68,6 +68,7 @@ export const notificationApi = Api.injectEndpoints({
       invalidatesTags: (notification, error) =>
         invalidateTags(error, [
           listTag("notification"),
+          adminNotificationListTag(),
           ...(notification ? [idTag("notification", notification.id)] : []),
         ]),
     }),
