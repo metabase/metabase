@@ -59,6 +59,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -70,6 +71,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatasetColumn,
   Field,
+  IconName,
   RawSeries,
   ResultsMetadata,
   Series,
@@ -356,6 +358,86 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       datasetEditorTab === "columns" ? "table" : question.display(),
     );
   }, [rawSeries, datasetEditorTab, question]);
+
+  const isShowingListViewConfig =
+    isShowingListViewConfiguration &&
+    question.display() === "list" &&
+    rawSeries != null;
+
+  const listConfigData = useMemo(
+    () => (isShowingListViewConfig ? rawSeries?.[0]?.data : null),
+    [isShowingListViewConfig, rawSeries],
+  );
+
+  const listConfigSettings = useMemo(
+    () =>
+      isShowingListViewConfig
+        ? getComputedVisualizationSettings(rawSeries)
+        : null,
+    [isShowingListViewConfig, rawSeries],
+  );
+
+  const listColumnsMetadata = useMemo(() => {
+    if (!isShowingListViewConfig || !listConfigData) {
+      return [];
+    }
+    const query = question.query();
+    return listConfigData.cols.map((col) =>
+      Lib.fromLegacyColumn(query, -1, col),
+    );
+  }, [isShowingListViewConfig, listConfigData, question]);
+
+  const listEntityType = useMemo(() => {
+    if (!isShowingListViewConfig) {
+      return undefined;
+    }
+    try {
+      const query = question.query();
+      const sourceTableId = Lib.sourceTableOrCardId(query);
+      const table = question.metadata().table(sourceTableId);
+      // entity_type exists in the database but not in the TypeScript types
+      return (table as any)?.entity_type;
+    } catch {
+      return undefined;
+    }
+  }, [isShowingListViewConfig, question]);
+
+  const handleUpdateListSettings = useCallback(
+    ({
+      left,
+      right,
+      entityIcon,
+      entityIconColor,
+      entityIconEnabled,
+      useImageColumn,
+    }: {
+      left?: string[];
+      right?: string[];
+      entityIcon?: IconName | null;
+      entityIconColor?: string;
+      entityIconEnabled?: boolean;
+      useImageColumn?: boolean;
+    }) => {
+      const settings = { ...(question.settings() || {}) };
+      if (left && right) {
+        settings["list.columns"] = { left, right };
+      }
+      if (entityIcon !== undefined) {
+        settings["list.entity_icon"] = entityIcon;
+      }
+      if (entityIconColor !== undefined) {
+        settings["list.entity_icon_color"] = entityIconColor;
+      }
+      if (entityIconEnabled !== undefined) {
+        settings["list.entity_icon_enabled"] = entityIconEnabled;
+      }
+      if (useImageColumn !== undefined) {
+        settings["list.use_image_column"] = useImageColumn;
+      }
+      dispatch(updateQuestionAction(question.updateSettings(settings)));
+    },
+    [question, dispatch],
+  );
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
 
@@ -748,21 +830,31 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
             })}
           >
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
-              <QueryVisualization
-                {...props}
-                rawSeries={tempRawSeries}
-                className={CS.spread}
-                noHeader
-                queryBuilderMode="dataset"
-                onHeaderColumnReorder={handleHeaderColumnReorder}
-                isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
-                hasMetadataPopovers={false}
-                handleVisualizationClick={handleTableElementClick}
-                tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
-                renderTableHeader={renderTableHeader}
-                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-                renderEmptyMessage={isEditingColumns}
-              />
+              {isShowingListViewConfig && listConfigData ? (
+                <ListViewConfiguration
+                  data={listConfigData}
+                  settings={listConfigSettings ?? undefined}
+                  columnsMetadata={listColumnsMetadata}
+                  entityType={listEntityType}
+                  onChange={handleUpdateListSettings}
+                />
+              ) : (
+                <QueryVisualization
+                  {...props}
+                  rawSeries={tempRawSeries}
+                  className={CS.spread}
+                  noHeader
+                  queryBuilderMode="dataset"
+                  onHeaderColumnReorder={handleHeaderColumnReorder}
+                  isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
+                  hasMetadataPopovers={false}
+                  handleVisualizationClick={handleTableElementClick}
+                  tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
+                  renderTableHeader={renderTableHeader}
+                  scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
+                  renderEmptyMessage={isEditingColumns}
+                />
+              )}
             </DebouncedFrame>
           </Box>
         </Flex>
