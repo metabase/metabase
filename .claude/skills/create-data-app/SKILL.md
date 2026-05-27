@@ -118,10 +118,17 @@ Vite normally doesn't watch `public/`. The tiny inline plugin watches `public/in
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import {
+  CollectionBrowser,
+  CreateDashboardModal,
+  CreateQuestion,
+  EditableDashboard,
+  InteractiveDashboard,
   InteractiveQuestion,
-  MetabaseProvider as SdkMetabaseProvider,
-  StaticQuestion,
   type MetabaseAuthConfig,
+  MetabaseProvider as SdkMetabaseProvider,
+  MetabotQuestion,
+  StaticDashboard,
+  StaticQuestion,
 } from "@metabase/embedding-sdk-react";
 
 const authConfig: MetabaseAuthConfig = {
@@ -129,18 +136,40 @@ const authConfig: MetabaseAuthConfig = {
   apiKey: import.meta.env.VITE_MB_API_KEY,
 };
 
-function MetabaseProviderShim({ theme, children }: any) {
+function MetabaseProviderShim({
+  theme,
+  children,
+}: {
+  theme?: unknown;
+  children?: React.ReactNode;
+}) {
   return (
-    <SdkMetabaseProvider authConfig={authConfig} theme={theme}>
+    <SdkMetabaseProvider
+      authConfig={authConfig}
+      theme={theme as Parameters<typeof SdkMetabaseProvider>[0]["theme"]}
+    >
       {children}
     </SdkMetabaseProvider>
   );
 }
 
-(globalThis as any).React = React;
-(globalThis as any).MetabaseProvider = MetabaseProviderShim;
-(globalThis as any).StaticQuestion = StaticQuestion;
-(globalThis as any).InteractiveQuestion = InteractiveQuestion;
+const globals: Record<string, unknown> = {
+  React,
+  MetabaseProvider: MetabaseProviderShim,
+  InteractiveQuestion,
+  StaticQuestion,
+  CreateQuestion,
+  MetabotQuestion,
+  EditableDashboard,
+  InteractiveDashboard,
+  StaticDashboard,
+  CreateDashboardModal,
+  CollectionBrowser,
+};
+
+for (const [name, value] of Object.entries(globals)) {
+  (globalThis as unknown as Record<string, unknown>)[name] = value;
+}
 
 async function boot() {
   const root = createRoot(document.getElementById("root")!);
@@ -149,19 +178,33 @@ async function boot() {
     root.render(
       <div style={{ padding: 24, fontFamily: "monospace" }}>
         <h2>Missing env</h2>
-        <p>Set <code>VITE_MB_URL</code> and <code>VITE_MB_API_KEY</code> in <code>.env.local</code>, then restart.</p>
-      </div>
+        <p>
+          Set <code>VITE_MB_URL</code> and <code>VITE_MB_API_KEY</code> in{" "}
+          <code>.env.local</code>, then restart.
+        </p>
+      </div>,
     );
     return;
   }
 
-  const code = await fetch("/index.js", { cache: "no-store" }).then(r => r.text());
+  const code = await fetch("/index.js", { cache: "no-store" }).then((r) =>
+    r.text(),
+  );
   // eslint-disable-next-line no-new-func
   new Function(code)();
 
-  const factory = (globalThis as any).__customVizPlugin__;
+  const factory = (
+    globalThis as unknown as {
+      __customVizPlugin__?: (hostApi: Record<string, unknown>) => {
+        component: React.ComponentType<Record<string, unknown>>;
+      };
+    }
+  ).__customVizPlugin__;
+
   if (typeof factory !== "function") {
-    root.render(<pre>Bundle did not assign a function to __customVizPlugin__</pre>);
+    root.render(
+      <pre>Bundle did not assign a function to __customVizPlugin__</pre>,
+    );
     return;
   }
   const def = factory({});
@@ -450,6 +493,13 @@ The host puts these on `globalThis` inside the sandbox before evaluating your bu
 | `MetabaseProvider` | Provider — wraps the root. Takes `{ theme, children }`. |
 | `StaticQuestion` | Non-drillable question. Props: `questionId` (required), `withChartTypeSelector?`, `height?`, `width?`. |
 | `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. |
+| `CreateQuestion` | UI for creating a new saved question. |
+| `MetabotQuestion` | Metabot-backed conversational question component. |
+| `StaticDashboard` | Read-only dashboard view. Props: `dashboardId` (required). |
+| `InteractiveDashboard` | Read-only dashboard with drill-throughs. Props: `dashboardId` (required). |
+| `EditableDashboard` | Full edit UI for a dashboard. Props: `dashboardId` (required). |
+| `CreateDashboardModal` | Modal for creating a new dashboard. |
+| `CollectionBrowser` | Tree view of collections. |
 | `__customVizPlugin__` | Accessor pair — assign your factory to it as the bundle's last statement. |
 
 Anything else (`fetch`, `XMLHttpRequest`, `WebSocket`, etc.) may be blocked by the sandbox in production. **Never make direct network requests from the bundle.** Get data through SDK components only.
