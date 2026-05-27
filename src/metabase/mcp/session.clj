@@ -159,10 +159,13 @@
    The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
    limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
   [{:keys [supports-mcp-ui?]}]
-  (str (UUID/randomUUID)
-       "."
-       (encode-session-payload {:v  session-payload-version
-                                :ui (true? supports-mcp-ui?)})))
+  (let [session-id (str (UUID/randomUUID)
+                        "."
+                        (encode-session-payload {:v  session-payload-version
+                                                 :ui (true? supports-mcp-ui?)}))]
+    (assert (<= (count session-id) max-session-id-length)
+            "MCP session id is too long")
+    session-id))
 
 (defn valid-id?
   "Return true if `session-id` has a UUID correlator (the format `create!` produces).

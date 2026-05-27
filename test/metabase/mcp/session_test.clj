@@ -55,6 +55,16 @@
       (is (not (t2/exists? :core_session :key_hashed (derived-hash plain-session-id)))
           "Capability tracking should not materialize a core_session"))))
 
+(deftest create-session-id-length-test
+  (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column"
+    (is (<= (count (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})) 254)))
+  (testing "payload growth fails early in dev and tests"
+    (with-redefs [mcp.session/encode-session-payload (fn [_payload]
+                                                       (apply str (repeat 300 "x")))]
+      (is (thrown-with-msg? AssertionError
+                            #"MCP session id is too long"
+                            (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))))))
+
 (deftest legacy-session-ui-capability-test
   (testing "plain UUID sessions minted before capability hints keep the old tools/list behavior"
     (is (true? (mcp.session/supports-mcp-ui? (str (java.util.UUID/randomUUID)))))))
