@@ -235,7 +235,6 @@
                                    (juxt :schema :name)
                                    :object
                                    second)))))))
-
         (testing "returns 404 for tables that don't exist"
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
@@ -473,32 +472,26 @@
       (mt/with-temp [:model/Table table {}]
         (testing "Initially data_authority should be unconfigured"
           (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-
         (testing "Can save an unrelated change with this field redundantly included"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:active false, :data_authority "unconfigured"})
           (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-
         (testing "Can set data_authority to authoritative"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "authoritative"})
           (is (= :authoritative (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-
         (testing "Can set data_authority between different values"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "computed"})
           (is (= :computed (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-
         (testing "Can set data_authority to ingested"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "ingested"})
           (is (= :ingested (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-
         (testing "Cannot un-configure again"
           (is (= "Cannot set data_authority back to unconfigured once it has been configured"
                  (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                        {:data_authority "unconfigured"}))))
-
         (testing "Cannot set data_authority to unknown via API"
           (is (= [:data_authority]
                  (keys (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -511,10 +504,8 @@
       (t2/query-one {:update :metabase_table
                      :set    {:data_authority "federated"}
                      :where  [:= :id (:id table)]})
-
       (testing "Unexpected values are converted to :unknown"
         (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] :id (:id table)))))
-
       (testing "API GET endpoint returns :unknown for tables with unknown data_authority"
         (let [api-response (mt/user-http-request :crowberto :get 200 (format "table/%d" (:id table)))]
           (is (= "unknown" (:data_authority api-response))))))))
@@ -552,7 +543,6 @@
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
                                               {:display_name (mt/random-name)
                                                :description  "What a nice table!"})))]
-
               (set-visibility! "hidden")
               (set-visibility! nil)     ; <- should get synced
               (is (= 1
@@ -569,8 +559,9 @@
               (testing "Update table's properties shouldn't trigger sync"
                 (set-name!)
                 (is (= 2
-                       @called)))))))))
+                       @called))))))))))
 
+(deftest update-table-sync-test-2
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [:model/Table {id-1 :id} {}
@@ -583,7 +574,6 @@
                                             {:ids ids :visibility_type state})))]
             (set-many-vis! [id-1 id-2] nil) ;; unhides only 2
             (is (= @unhidden-ids #{id-2}))
-
             (set-many-vis! [id-1 id-2] "hidden")
             (is (= #{}
                    @unhidden-ids)) ;; no syncing when they are hidden
@@ -1056,13 +1046,11 @@
                  (mt/user-http-request :rasta :post 403 url)))
           (testing "FieldValues should still exist"
             (is (t2/exists? :model/FieldValues :id (u/the-id field-values)))))
-
         (testing "Admins should be able to successfuly delete them"
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"
             (is (not (t2/exists? :model/FieldValues :id (u/the-id field-values))))))))
-
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
@@ -1285,12 +1273,9 @@
                  {:display_name "Products"}
                  {:display_name "Products2"}]
                 (list-tables :term "P")))
-
         (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "final"})
-
         (is (=? [{:display_name "Products2"}]
                 (list-tables :term "P" :data-layer "final")))
-
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
                 (list-tables :term "P" :data-layer "internal")))))))
@@ -1303,13 +1288,11 @@
                               {:visibility_type "hidden"})
         (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
-
       (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:data_layer "internal"})
         (is (= :internal (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
-
       (testing "cannot update both visibility_type and data_layer at once"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -1337,14 +1320,12 @@
                       (filter #(= (:db_id %) db-id))
                       (map :id)
                       set))))
-
         (testing "both tables returned with orphan-only=false"
           (is (= #{table-1-id table-2-id}
                  (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
                       (filter #(= (:db_id %) db-id))
                       (map :id)
                       set))))
-
         (testing "only table-2 is returned with orphan-only=true"
           (is (= #{table-2-id}
                  (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
@@ -1369,11 +1350,9 @@
           (is (= (mt/id :continent :id)
                  (get-fk-target))))
         (is (= 1 (count (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))
-
         ;; 2. drop the country table
         (jdbc/execute! db-spec "DROP TABLE country;")
         (sync/sync-database! db {:scan :schema})
-
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
 ;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
@@ -1394,7 +1373,6 @@
       (data-perms/set-table-permission! pg table-1-id :perms/create-queries :query-builder)
       ;; Grant only view-data to table-2 (not queryable)
       (data-perms/set-table-permission! pg table-2-id :perms/view-data :unrestricted)
-
       (let [response (->> (mt/user-http-request :rasta :get 200 "table" :can-query true)
                           (filter #(= (:db_id %) db-id)))]
         (is (= 1 (count response)))

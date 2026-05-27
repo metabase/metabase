@@ -1406,7 +1406,6 @@
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
-
  [lib.extraction
   column-extractions
   extract

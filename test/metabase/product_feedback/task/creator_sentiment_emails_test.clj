@@ -101,7 +101,6 @@
       (let [creators (#'creator-sentiment-emails/fetch-creators false)]
         (is (= 1 (count creators)))
         (is (= creator-email (-> creators first :email)))))
-
     (testing "Whitelabelling only fetches superusers (doesn't fetch anyone)."
       (let [creators (#'creator-sentiment-emails/fetch-creators true)]
         (is (= 0 (count creators)))))))

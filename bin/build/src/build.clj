@@ -64,7 +64,6 @@
           (run! (comp (partial u/error "Missing License: %s") first)
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
-
     (u/step "Run `bun run generate-license-disclaimer`"
       (u/sh {:dir u/project-root-directory}
             "bun" "run" "generate-license-disclaimer"))))

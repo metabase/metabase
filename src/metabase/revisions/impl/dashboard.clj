@@ -165,7 +165,6 @@
                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
                (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
                :else                                                   (deferred-tru "modified the cards"))))
-
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)
                  new-tabs      (:tabs dashboard)

@@ -10,7 +10,6 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "collections" "1234567890abcdefABCDE_the_label" "fake") ; Prepare the right directories.
     (io/make-parents dump-dir "collections" "0987654321zyxwvuABCDE" "fake")
-
     (spit (io/file dump-dir "settings.yaml")
           (yaml/generate-string {:some-key "with string value"
                                  :another-key 7
@@ -21,7 +20,6 @@
                                                                                                                                   :label "the_label"}]}))
     (spit (io/file dump-dir "collections" "0987654321zyxwvuABCDE" "0987654321zyxwvuABCDE.yaml")
           (yaml/generate-string {:some "other" :data "in this one" :entity_id "0987654321zyxwvuABCDE" :serdes/meta [{:model "Collection" :id "0987654321zyxwvuABCDE"}]}))
-
     (let [ingestable (ingest/ingest-yaml dump-dir)
           exp-files  {[{:model "Collection"
                         :id    "1234567890abcdefABCDE"
@@ -38,7 +36,6 @@
       (testing "the right set of files is returned by ingest-list"
         (is (= (set (map #'ingest/strip-labels (keys exp-files)))
                (set (ingest/ingest-list ingestable)))))
-
       (testing "individual reads in any order are correct"
         (doseq [abs-path (->> exp-files
                               keys
@@ -56,13 +53,11 @@
     (spit (io/file dump-dir "collections" "1234567890abcdefABCDE_human-readable-things"
                    "1234567890abcdefABCDE_human-readable-things.yaml")
           (yaml/generate-string {:some "made up" :data "here" :serdes/meta [{:model "Collection" :id "1234567890abcdefABCDE" :label "human-readable-things"}]}))
-
     (let [ingestable (ingest/ingest-yaml dump-dir)
           exp {:some "made up" :data "here" :serdes/meta [{:model "Collection" :id "1234567890abcdefABCDE" :label "human-readable-things"}]}]
       (testing "the returned set of abstract paths does not contain labels"
         (is (= #{[{:model "Collection" :id "1234567890abcdefABCDE"}]}
                (into #{} (ingest/ingest-list ingestable)))))
-
       (testing "fetching the file with the label works"
         (is (= exp
                (ingest/ingest-one ingestable [{:model "Collection" :id "1234567890abcdefABCDE" :label "human-readable-things"}]))))
@@ -77,7 +72,6 @@
           (yaml/generate-string {:visualization_settings
                                  {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}
                                  :serdes/meta [{:model "Card" :id "1234567890abcdefABCDE"}]}))
-
     (let [ingestable (ingest/ingest-yaml dump-dir)
           exp {:visualization_settings {:column_settings {"[\"name\",\"sum\"]" {:number_style "currency"}}}
                :serdes/meta [{:model "Card" :id "1234567890abcdefABCDE"}]}]

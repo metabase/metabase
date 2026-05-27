@@ -259,28 +259,24 @@
     :details        {}
     :source-table   "orders"
     :canonical-sql  "SELECT \"public\".\"orders\".\"id\" FROM \"public\".\"orders\""}
-
    {:fixture-driver :mysql
     :driver         :mysql
     :engine         :mysql
     :details        {:db "prod_db"}
     :source-table   "orders"
     :canonical-sql  "SELECT `orders`.`id` FROM `orders`"}
-
    {:fixture-driver :clickhouse
     :driver         :clickhouse
     :engine         :clickhouse
     :details        {}
     :source-table   "events"
     :canonical-sql  "SELECT `prod_events`.`events`.`tag` FROM `prod_events`.`events`"}
-
    {:fixture-driver :sqlserver
     :driver         :sqlserver
     :engine         :sqlserver
     :details        {:db "AnalyticsDB"}
     :source-table   "orders"
     :canonical-sql  "SELECT [AnalyticsDB].[dbo].[orders].[id] FROM [AnalyticsDB].[dbo].[orders]"}
-
    {:fixture-driver :bigquery
     :driver         :bigquery-cloud-sdk
     :engine         :bigquery-cloud-sdk
