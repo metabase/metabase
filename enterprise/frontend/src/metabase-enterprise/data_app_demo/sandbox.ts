@@ -77,11 +77,11 @@ function MetabaseProvider(props: MetabaseProviderProps) {
   );
 }
 
-export function createDataAppSandbox() {
+export function createDataAppSandbox(appId: number = 0) {
   let captured: unknown;
 
   const env = createVirtualEnvironment(window, {
-    distortionCallback: makeDistortionCallback(1),
+    distortionCallback: makeDistortionCallback(appId),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
       React,
