@@ -1,6 +1,7 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.query-plan :as query-plan]
@@ -1677,38 +1678,40 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest exploration-create-rejects-routed-database-metric-test
-  (testing "Exploration planner refuses when any selected metric lives in a router database"
-    (mt/with-temp [:model/User u {:email "routed@example.com"}
-                   :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
-                   :model/DatabaseRouter _ {:database_id    (mt/id)
-                                            :user_attribute "team"}]
-      ;; POST creates the exploration (now returns 200; routed-db check is async).
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name    "routed"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1"
-                                                                         :table_id (mt/id :venues)
-                                                                         :target ["field" {} (mt/id :venues :price)]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
-            tid    (-> resp :threads first :id)
-            result (query-plan/generate-query-plan! tid)]
-        ;; The planner detects the routed database and returns nil (caught throwable).
-        (is (nil? result) "planning should fail for routed-database metrics")
-        (let [thread (t2/select-one :model/ExplorationThread :id tid)]
-          ;; mark-thread-terminally-failed! sets completed_at (not query_plan_started_at,
-          ;; which is stamped by the task runner before calling generate-query-plan!).
-          (is (some? (:completed_at thread))
-              "thread is stamped as terminally processed"))))))
-
-(deftest dimensions-excludes-routed-database-metrics-test
-  (testing "GET /api/exploration/dimensions hides metrics whose database is a router"
-    (with-sample-metrics-archived
-      (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
-                                           :type          :metric
-                                           :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+  (when config/ee-available?
+    (testing "Exploration planner refuses when any selected metric lives in a router database"
+      (mt/with-temp [:model/User u {:email "routed@example.com"}
+                     :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
                      :model/DatabaseRouter _ {:database_id    (mt/id)
                                               :user_attribute "team"}]
-        (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
-              names (set (map :name (:metrics resp)))]
-          (is (not (contains? names "Routed Hidden"))
-              "metric on a router database is filtered out of /dimensions"))))))
+        ;; POST creates the exploration (now returns 200; routed-db check is async).
+        (let [resp (mt/user-http-request u :post 200 "exploration"
+                                         {:name    "routed"
+                                          :metrics [{:card_id (:id metric)
+                                                     :dimension_mappings [{:dimension_id "d1"
+                                                                           :table_id (mt/id :venues)
+                                                                           :target ["field" {} (mt/id :venues :price)]}]}]
+                                          :dimensions [{:dimension_id "d1"}]})
+              tid    (-> resp :threads first :id)
+              result (query-plan/generate-query-plan! tid)]
+          ;; The planner detects the routed database and returns nil (caught throwable).
+          (is (nil? result) "planning should fail for routed-database metrics")
+          (let [thread (t2/select-one :model/ExplorationThread :id tid)]
+            ;; mark-thread-terminally-failed! sets completed_at (not query_plan_started_at,
+            ;; which is stamped by the task runner before calling generate-query-plan!).
+            (is (some? (:completed_at thread))
+                "thread is stamped as terminally processed")))))))
+
+(deftest dimensions-excludes-routed-database-metrics-test
+  (when config/ee-available?
+    (testing "GET /api/exploration/dimensions hides metrics whose database is a router"
+      (with-sample-metrics-archived
+        (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
+                                             :type          :metric
+                                             :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                       :model/DatabaseRouter _ {:database_id    (mt/id)
+                                                :user_attribute "team"}]
+          (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
+                names (set (map :name (:metrics resp)))]
+            (is (not (contains? names "Routed Hidden"))
+                "metric on a router database is filtered out of /dimensions")))))))

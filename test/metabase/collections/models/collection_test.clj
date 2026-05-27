@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -2962,11 +2963,12 @@
                                                         :creator_id            (:id user)
                                                         :collection_id         (:id coll)
                                                         :exploration_thread_id (:id thread)}]
-      (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
-        (is (contains? descendants ["Document" (:id plain-doc)])
-            "plain documents should be included")
-        (is (not (contains? descendants ["Document" (:id explo-doc)]))
-            "exploration documents should be excluded")))))
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Document" (:id plain-doc)])
+              "plain documents should be included")
+          (is (not (contains? descendants ["Document" (:id explo-doc)]))
+              "exploration documents should be excluded"))))))
 
 (deftest serdes-descendants-skip-archived-test-2
   (testing "Collection descendants with skip-archived: true includes non-archived items"
