@@ -262,7 +262,6 @@ export const PublicApi = {
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
   document: GET(`/api/public/document/:uuid`),
-  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {

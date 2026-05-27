@@ -28,7 +28,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
-import type { Dataset, Document } from "metabase-types/api";
+import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
 
@@ -128,8 +128,6 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     () => ({
       cards: document?.cards ?? {},
       documentUuid: uuid,
-      loadCardQuery: (cardId: number) =>
-        PublicApi.documentCardQuery({ uuid, cardId }) as Promise<Dataset>,
     }),
     [document?.cards, uuid],
   );

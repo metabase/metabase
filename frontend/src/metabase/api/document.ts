@@ -3,12 +3,18 @@ import { idTag, listTag } from "metabase/api/tags";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
+  Dataset,
   DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
   GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+
+export interface GetPublicDocumentCardQueryRequest {
+  uuid: string;
+  cardId: number;
+}
 
 export const documentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -95,6 +101,15 @@ export const documentApi = Api.injectEndpoints({
         listTag("public-document"),
       ],
     }),
+    getPublicDocumentCardQuery: builder.query<
+      Dataset,
+      GetPublicDocumentCardQueryRequest
+    >({
+      query: ({ uuid, cardId }) => ({
+        method: "GET",
+        url: `/api/public/document/${uuid}/card/${cardId}`,
+      }),
+    }),
     createDocumentPublicLink: builder.mutation<
       Pick<Document, "id"> & { uuid: Document["public_uuid"] },
       Pick<Document, "id">
@@ -138,6 +153,7 @@ export const {
   useDeleteDocumentMutation,
   useCopyDocumentMutation,
   useListPublicDocumentsQuery,
+  useGetPublicDocumentCardQueryQuery,
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
 } = documentApi;
