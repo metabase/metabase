@@ -282,11 +282,11 @@
          (semantic-settings/ee-embedding-service-api-key)]
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
-        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
+        [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
          nil]
 
         :else
-        (throw (ex-info "Embedding service and ai service base URLs and not configured"
+        (throw (ex-info "Embedding service and ai service base URLs are not configured"
                         {:settings ["ee-embedding-service-base-url"
                                     "ai-service-base-url"]}))))
 
