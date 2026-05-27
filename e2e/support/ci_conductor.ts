@@ -14,7 +14,16 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
  * See DEV-1999.
  */
 
-const { CI_CONDUCTOR_WEBHOOK_URL, REPO_ID, GITHUB_RUN_ID } = process.env;
+const {
+  CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_DRY_RUN,
+  REPO_ID,
+  GITHUB_RUN_ID,
+} = process.env;
+
+// When set, the payload is logged instead of POSTed — used to validate env
+// resolution and payload shape in CI before sending real data. See DEV-1999.
+const isDryRun = CI_CONDUCTOR_DRY_RUN === "true";
 
 /** Matches the `tests[]` shape consumed by ci-conductor's `ingestFailedTests`. */
 type ConductorTest = {
@@ -96,14 +105,15 @@ export function extractFailedTests(
 }
 
 /**
- * POST the given failures to ci-conductor. No-ops when the webhook URL isn't
- * configured (local runs, PRs without the var). Never throws — reporting must
- * not break a test run — so all errors are logged and swallowed.
+ * Report the given failures to ci-conductor. In dry-run mode the payload is
+ * logged and nothing is sent. Otherwise it's POSTed, no-opping when the webhook
+ * URL isn't configured (local runs, PRs without the secret). Never throws —
+ * reporting must not break a test run — so all errors are logged and swallowed.
  */
 export async function reportFailedTestsToConductor(
   tests: ConductorTest[],
 ): Promise<void> {
-  if (!CI_CONDUCTOR_WEBHOOK_URL || tests.length === 0) {
+  if (tests.length === 0 || (!CI_CONDUCTOR_WEBHOOK_URL && !isDryRun)) {
     return;
   }
 
@@ -113,6 +123,14 @@ export async function reportFailedTestsToConductor(
     job_id: getJobId(),
     tests,
   };
+
+  if (isDryRun) {
+    console.log(
+      `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
+      JSON.stringify(body),
+    );
+    return;
+  }
 
   try {
     const response = await fetch(CI_CONDUCTOR_WEBHOOK_URL, {

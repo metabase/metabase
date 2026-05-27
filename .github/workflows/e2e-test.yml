@@ -41,6 +41,9 @@ env:
   # `secrets: inherit`); reporting no-ops when it's unset.
   CI_CONDUCTOR_WEBHOOK_URL: ${{ secrets.CI_CONDUCTOR_WEBHOOK_URL }}
   REPO_ID: ${{ github.event.repository.id }}
+  # TODO(DEV-1999): dry run — log the payload instead of POSTing while we
+  # validate env resolution + payload shape. Remove to start sending for real.
+  CI_CONDUCTOR_DRY_RUN: "true"
 
 jobs:
   e2e-tests:

@@ -239,6 +239,40 @@ describe("reportFailedTestsToConductor", () => {
     (console.error as jest.Mock).mockRestore();
   });
 
+  it("logs the payload and does not POST in dry-run mode", async () => {
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_DRY_RUN: "true",
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      REPO_ID: "123",
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("dry run"),
+      expect.stringContaining('"repo_id":123'),
+    );
+    logSpy.mockRestore();
+  });
+
+  it("logs in dry-run mode even when no webhook URL is configured", async () => {
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_DRY_RUN: "true",
+      CI_CONDUCTOR_WEBHOOK_URL: undefined,
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
+
   it("logs but does not throw on a non-ok response", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     mockFetch.mockResolvedValue({
