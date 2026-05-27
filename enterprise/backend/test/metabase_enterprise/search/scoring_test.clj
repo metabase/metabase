@@ -37,7 +37,7 @@
   (mt/with-premium-features #{}
     (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
-(deftest official-collection-tests
+(deftest official-collection-bumps-value-test
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by premium features token check
     (let [search-string "custom expression examples"
@@ -70,7 +70,9 @@
               "custom expression examples"
               "customer examples of bad sorting"]
              (mapv :name (sort-by #(ee-score search-string %)
-                                  (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
+                                  (shuffle [a b c (assoc d :collection_authority_level "official")]))))))))
+
+(deftest verified-items-bump-value-test
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
           a  {:name                "foobar"
