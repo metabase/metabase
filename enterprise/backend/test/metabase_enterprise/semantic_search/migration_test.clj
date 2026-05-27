@@ -11,7 +11,6 @@
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
-   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -83,8 +82,7 @@
               original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
-          (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
-                           ;; Wrap maybe-migrate! to log timestamps AFTER lock is acquired
+          (with-redefs-fn {;; Wrap maybe-migrate! to log timestamps AFTER lock is acquired
                            ;; (maybe-migrate! is called inside with-migrate-tx, after the lock)
                            #'semantic.db.migration/maybe-migrate!
                            (fn [& args]
