@@ -1,3 +1,7 @@
+.strategyOption label {
+  cursor: pointer;
+}
+
 .radioDescription {
   font-size: var(--mantine-font-size-md);
   line-height: 1.25rem;

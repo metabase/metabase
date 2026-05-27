@@ -542,6 +542,7 @@ const StrategyOption = ({
 }) => (
   <Radio
     value={value}
+    className={S.strategyOption}
     classNames={{ description: S.radioDescription }}
     label={
       <Text component="strong" fw="bold" lh="1.25rem">
