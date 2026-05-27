@@ -77,7 +77,7 @@
    (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))
 
-(defn- handle-tools-list [id _params token-scopes session-id]
+(defn- handle-tools-list [id _params session-id token-scopes]
   (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
     (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
                                                                      supports-mcp-ui?})})))
@@ -118,7 +118,7 @@
   (try
     (case method
       "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params token-scopes session-id)
+      "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
