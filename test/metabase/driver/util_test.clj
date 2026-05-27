@@ -14,6 +14,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
+   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -50,18 +51,15 @@
     (let [cert-string (slurp "./test_resources/ssl/ca.pem")
           keystore (driver.u/generate-trust-store cert-string)]
       (is (true? (.containsAlias keystore test-ca-dn)))))
-
   (testing "bad cert provided"
     (is (thrown? java.security.cert.CertificateException
                  (driver.u/generate-trust-store "fooobar"))))
-
   (testing "multiple certs are read"
     (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
                            (slurp "./test_resources/ssl/server.pem"))
           keystore (driver.u/generate-trust-store cert-string)]
       (is (.containsAlias keystore test-server-dn))
       (is (.containsAlias keystore test-ca-dn))))
-
   (testing "can create SocketFactory for CA cert"
     ;; this is a tough method to test - the resulting `SSLSocketFactory`
     ;; doesn't have any public members to access the underlying `KeyStore`
@@ -150,20 +148,17 @@
                                       :secret-test-driver
                                       :details-fields)]
             (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))
-
     (testing "connection-props-server->client works as expected for info field types"
       (testing "info fields with placeholder defined are unmodified"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info, :placeholder "placeholder"}]))))
-
       (testing "info fields with getter defined invoke the getter to generate the placeholder"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info, :getter (constantly "placeholder")}]))))
-
       (testing "info fields are omitted if getter returns nil, a non-string value, or throws an exception"
         (is (= []
                (driver.u/connection-props-server->client
@@ -224,37 +219,38 @@
                 a
                 props-by-name
                 :test-driver))))
-
       (testing "property with single-level visible-if is preserved"
         (is (= b
                (#'driver.u/resolve-transitive-visible-if
                 b
                 props-by-name
                 :test-driver))))
-
       (testing "property with transitive visible-if includes all dependencies"
         (is (= {:name "prop-c" :visible-if {:prop-b true
                                             :prop-a true}}
                (#'driver.u/resolve-transitive-visible-if
                 c
                 props-by-name
-                :test-driver))))))
+                :test-driver)))))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test-2
   (testing "empty visible-if is removed"
     (is (= {:name "prop-x"}
            (#'driver.u/resolve-transitive-visible-if
             {:name "prop-x" :visible-if {}}
             {}
-            :test-driver))))
+            :test-driver)))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test-3
   (testing "dependencies on non-existent properties are kept (not filtered)"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
       (is (= {:name "prop-b" :visible-if {:non-existent-prop true}}
              (#'driver.u/resolve-transitive-visible-if
               {:name "prop-b" :visible-if {:non-existent-prop true}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test-4
   (testing "false dependencies (from removed :checked-section) are filtered out"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
       (is (= {:name "prop-b" :visible-if {:prop-a true}}
@@ -262,8 +258,9 @@
               {:name "prop-b" :visible-if {:prop-a true
                                            :removed-section false}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test-5
   (testing "multi-level transitive dependencies are fully resolved"
     (let [props-by-name {"prop-a" {:name "prop-a"}
                          "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
@@ -275,8 +272,9 @@
              (#'driver.u/resolve-transitive-visible-if
               {:name "prop-d" :visible-if {:prop-c true}}
               props-by-name
-              :test-driver)))))
+              :test-driver))))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test-6
   (testing "cycle detection throws exception with appropriate error data"
     (let [props-by-name {"prop-a" {:name "prop-a" :visible-if {:prop-c true}}
                          "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
@@ -300,7 +298,6 @@
         (is (= {"prop-a" {:name "prop-a"}
                 "prop-b" {:name "prop-b"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "single group with nested fields"
       (let [props [{:name "top-level"}
                    {:type :group
@@ -311,7 +308,6 @@
                 "nested-1" {:name "nested-1"}
                 "nested-2" {:name "nested-2"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "deeply nested groups"
       (let [props [{:name "top"}
                    {:type :group
@@ -324,7 +320,6 @@
                 "level-2" {:name "level-2"}
                 "level-2-b" {:name "level-2-b"}}
                (#'driver.u/collect-all-props-by-name props)))))
-
     (testing "properties without names are skipped"
       (let [props [{:name "has-name"}
                    {:type :info :placeholder "no name"}]]
@@ -345,7 +340,6 @@
                 group
                 props-by-name
                 :test-driver)))))
-
     (testing "nested field with transitive dependency"
       (let [props-by-name {"field-a" {:name "field-a"}
                            "field-b" {:name "field-b" :visible-if {:field-a true}}
@@ -359,7 +353,6 @@
                 group
                 props-by-name
                 :test-driver)))))
-
     (testing "top-level field depending on nested field"
       (let [props-by-name {"nested-a" {:name "nested-a"}
                            "nested-b" {:name "nested-b" :visible-if {:nested-a true}}}
@@ -382,7 +375,6 @@
         (is (= :group (:type (first result))))
         (is (= {:name "top-field" :visible-if {:nested-field true}}
                (second result)))))
-
     (testing "nested field depends on top-level field with transitive chain"
       (let [props [{:name "field-a"}
                    {:name "field-b" :visible-if {:field-a true}}
@@ -396,7 +388,6 @@
               nested-field (first (:fields group))]
           (is (= {:field-b true :field-a true}
                  (:visible-if nested-field))))))
-
     (testing "deeply nested groups with cross-boundary dependencies"
       (let [props [{:name "root-field"}
                    {:type :group
@@ -508,21 +499,18 @@
         (is (= 1 (count result)))
         (is (= "Test message" (:placeholder (first result))))
         (is (nil? (:getter (first result))) "Getter should be removed after processing")))
-
     (testing ":info type with nil getter returns empty vector"
       (let [info-prop {:name "test-info"
                        :type :info
                        :getter (constantly nil)}
             result (#'driver.u/process-connection-prop info-prop)]
         (is (= [] result) "Should return empty vector when getter returns nil")))
-
     (testing "regular property passes through unchanged"
       (let [regular-prop {:name "host"
                           :type :string
                           :display-name "Host"}
             result (#'driver.u/process-connection-prop regular-prop)]
         (is (= [regular-prop] result))))
-
     (testing ":group type with simple fields"
       (let [group-prop {:type :group
                         :container-style ["grid"]
@@ -532,7 +520,6 @@
         (is (= 1 (count result)))
         (is (= :group (:type (first result))))
         (is (= 2 (count (:fields (first result)))))))
-
     (testing ":group type flattens vectors in :fields array"
       (let [vector-of-props [{:name "tunnel-host" :type :string}
                              {:name "tunnel-port" :type :integer}]
@@ -546,7 +533,6 @@
               fields (:fields processed-group)]
           (is (= 3 (count fields)) "Vector should be flattened into 3 separate fields")
           (is (= ["ssl" "tunnel-host" "tunnel-port"] (map :name fields))))))
-
     (testing ":group type recursively processes :info fields"
       (let [group-prop {:type :group
                         :fields [{:name "regular" :type :string}
@@ -559,7 +545,6 @@
           (is (= 2 (count fields)))
           (is (= "Info message" (:placeholder (second fields))))
           (is (nil? (:getter (second fields))) "Getter should be removed"))))
-
     (testing ":group type handles nested groups"
       (let [nested-group {:type :group
                           :fields [{:name "inner1" :type :string}
@@ -595,21 +580,65 @@
                             :type :info
                             :getter (constantly "Group info message")}]}]
           result (driver.u/connection-props-server->client mock-driver props)]
-
       (testing "top-level :info property is processed"
         (let [top-info (first (filter #(= "top-level-info" (:name %)) result))]
           (is (some? top-info))
           (is (= "Top level message" (:placeholder top-info)))))
-
       (testing "group contains flattened fields"
         (let [group (first (filter #(= :group (:type %)) result))
               fields (:fields group)]
           (is (= 4 (count fields)) "Should have 4 fields: ssl, tunnel-host, tunnel-port, group-info")
           (is (= ["ssl" "tunnel-host" "tunnel-port" "group-info"] (map :name fields)))))
-
       (testing ":info property inside group is processed"
         (let [group (first (filter #(= :group (:type %)) result))
               group-info (first (filter #(= "group-info" (:name %)) (:fields group)))]
           (is (some? group-info))
           (is (= "Group info message" (:placeholder group-info)))
           (is (nil? (:getter group-info)) "Getter should be removed"))))))
+
+;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
+
+(deftest ^:parallel scrub-exceptions-test
+  (testing "plain Exception: secret is redacted from message"
+    (let [e (driver.u/scrub-exceptions (Exception. "PASSWORD='s3cret'") ["s3cret"])]
+      (is (= "PASSWORD='****'" (ex-message e)))))
+  (testing "secret not present: message unchanged"
+    (let [e (driver.u/scrub-exceptions (Exception. "no secret here") ["s3cret"])]
+      (is (= "no secret here" (ex-message e)))))
+  (testing "cause chain is scrubbed"
+    (let [e (driver.u/scrub-exceptions
+             (Exception. "outer pw=s3cret" (Exception. "inner pw=s3cret"))
+             ["s3cret"])]
+      (is (= "outer pw=****" (ex-message e)))
+      (is (= "inner pw=****" (ex-message (.getCause ^Exception e))))))
+  (testing "ExceptionInfo: ex-data is preserved, message is scrubbed"
+    (let [e (driver.u/scrub-exceptions (ex-info "pw=s3cret" {:code 42}) ["s3cret"])]
+      (is (= "pw=****" (ex-message e)))
+      (is (= {:code 42} (ex-data e)))))
+  (testing "SQLException: SQLState and errorCode are preserved"
+    (let [e (driver.u/scrub-exceptions (SQLException. "pw=s3cret" "42501" 7) ["s3cret"])]
+      (is (= "pw=****" (ex-message e)))
+      (is (= "42501" (.getSQLState ^SQLException e)))
+      (is (= 7 (.getErrorCode ^SQLException e)))))
+  (testing "SQLException next-exception chain is scrubbed"
+    (let [next-ex (SQLException. "next pw=s3cret" "42501" 7)
+          main    (doto (SQLException. "main pw=s3cret" "42000" 1)
+                    (.setNextException next-ex))
+          e       (driver.u/scrub-exceptions main ["s3cret"])]
+      (is (= "main pw=****" (ex-message e)))
+      (is (= "next pw=****" (ex-message (.getNextException ^SQLException e))))
+      (is (= "42501" (.getSQLState (.getNextException ^SQLException e))))))
+  (testing "multiple secrets are all redacted"
+    (let [e (driver.u/scrub-exceptions
+             (Exception. "user=admin password=s3cret escaped=s3cr\\et")
+             ["s3cret" "s3cr\\et"])]
+      (is (= "user=admin password=**** escaped=****" (ex-message e)))))
+  (testing "password with backslash sequences is treated literally, not as regex"
+    (let [pw "p\\nass\\r\\twor$d"
+          e  (driver.u/scrub-exceptions (Exception. (str "CREATE USER x PASSWORD='" pw "'")) [pw])]
+      (is (= "CREATE USER x PASSWORD='****'" (ex-message e)))))
+  (testing "stack trace is preserved"
+    (let [original (Exception. "pw=s3cret")
+          trace    (.getStackTrace original)
+          e        (driver.u/scrub-exceptions original ["s3cret"])]
+      (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))

@@ -77,7 +77,6 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-
               (perms/disable-perms-cache
                 (binding [*current-user-id*              user-id
                           *current-user-permissions-set* (delay (perms/user-permissions-set user-id))

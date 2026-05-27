@@ -163,7 +163,6 @@
 (mr/def ::temporal-literal
   #?(:clj
      ::lib.schema.literal/temporal
-
      :cljs
      [:or
       ::lib.schema.literal/temporal

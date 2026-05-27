@@ -231,7 +231,6 @@
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
-
     (let [[status response] (hm-create-gdrive-conn! url)
           created-at (seconds-from-epoch-now)
           created-by-id api/*current-user-id*]
@@ -401,6 +400,5 @@
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
-
     (sync-metadata/sync-db-metadata!
      (t2/select-one :model/Database :is_attached_dwh true))))

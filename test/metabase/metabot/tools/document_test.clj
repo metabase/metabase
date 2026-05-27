@@ -24,13 +24,11 @@
         (is (= {:database_id 1
                 :sql_engine  "h2"}
                (:structured-output result))))))
-
   (testing "returns missing-database message when no database references are present"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {}})]
       (let [result (document-tools/document-schema-collect-tool {})]
         (is (= "You must `@` mention a database to use when not querying an existing model"
                (:output result))))))
-
   (testing "returns multiple-database message when more than one database is referenced"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test DB 1"
                                                                             "database:2" "Test DB 2"}})]
@@ -70,8 +68,9 @@
                 :type "native"
                 :native {:query "SELECT * FROM test"
                          :template-tags {}}}
-               (:dataset_query structured))))))
+               (:dataset_query structured)))))))
 
+(deftest document-construct-sql-chart-tool-test-2
   (testing "returns instructions when SQL validation fails"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]
@@ -89,8 +88,9 @@
         (is (nil? (:final-response? result)))
         (is (nil? (:structured-output result)))
         (is (re-find #"SQL chart draft generation failed" (:output result)))
-        (is (re-find #"syntax error near FROM" (:output result))))))
+        (is (re-find #"syntax error near FROM" (:output result)))))))
 
+(deftest document-construct-sql-chart-tool-test-3
   (testing "returns instructions when query processor rejects generated SQL"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]

@@ -9,21 +9,17 @@
     (let [result (ask-clarification/ask-for-sql-clarification {:question "What table should I use?"})]
       (is (map? result))
       (is (true? (:final-response? result)))))
-
   (testing "returns question in structured output"
     (let [result (ask-clarification/ask-for-sql-clarification {:question "What columns do you need?"})]
       (is (= "What columns do you need?" (get-in result [:structured-output :question])))))
-
   (testing "returns options in structured output when provided"
     (let [result (ask-clarification/ask-for-sql-clarification
                   {:question "Which table?"
                    :options ["users" "orders" "products"]})]
       (is (= ["users" "orders" "products"] (get-in result [:structured-output :options])))))
-
   (testing "returns empty options when not provided"
     (let [result (ask-clarification/ask-for-sql-clarification {:question "What do you want?"})]
       (is (= [] (get-in result [:structured-output :options])))))
-
   (testing "includes instructions for LLM"
     (let [result (ask-clarification/ask-for-sql-clarification {:question "Any question?"})]
       (is (contains? result :instructions))

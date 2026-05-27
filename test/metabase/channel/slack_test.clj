@@ -85,7 +85,6 @@
 (deftest conversations-list-test
   (testing "conversations-list"
     (test-auth! conversations-endpoint slack/conversations-list)
-
     (testing ":private_channel flag determines the \"types\" param sent to slack"
       (are [opts conversation-types]
            (let [request (atom nil)]
@@ -102,7 +101,6 @@
         {}                        "public_channel"
         {:private-channels false} "public_channel"
         {:private-channels true}  "public_channel,private_channel"))
-
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
         (let [expected-result (map slack/channel-transform
@@ -148,7 +146,6 @@
 (deftest users-list-test
   (testing "users-list"
     (test-auth! users-endpoint slack/users-list)
-
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (let [expected-result (map slack/user-transform
@@ -216,7 +213,6 @@
                   (is (= (t2/select-fn-set :email :model/User :is_superuser true)
                          (set (keys recipient->emails)))))
                 (is (false? (channel.settings/slack-token-valid?))))))
-
           (testing "If `slack-token-valid?` is already false, no email should be sent"
             (mt/reset-inbox!)
             (try
@@ -224,7 +220,6 @@
               (catch Throwable e
                 (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
-
         (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
           (mt/with-temporary-setting-values [slack-token-valid? true]
             (http-fake/with-fake-routes {conversations-endpoint (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}

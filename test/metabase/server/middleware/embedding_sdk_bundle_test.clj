@@ -91,7 +91,6 @@
               resp    (handler {:headers {}})]
           (is (= 200 (:status resp)))
           (is (str/includes? @requested-resource "legacy/"))))))
-
   (testing "packageVersion present → serves bootstrap resource"
     (let [requested-resource (atom nil)]
       (with-redefs [config/is-prod? false
@@ -103,7 +102,6 @@
                                 :query-params {"packageVersion" "0.59.0"}})]
           (is (= 200 (:status resp)))
           (is (str/includes? @requested-resource "chunks/"))))))
-
   (testing "packageVersion + useLegacyMonolithicBundle=true → serves legacy resource"
     (let [requested-resource (atom nil)]
       (with-redefs [config/is-prod? false
@@ -131,7 +129,6 @@
         (is (= far-future-cache-header (get-in resp [:headers "Cache-Control"])))
         (is (= js-ct (get-in resp [:headers "Content-Type"])))
         (is (= "Accept-Encoding" (get-in resp [:headers "Vary"]))))))
-
   (testing "Missing chunk resource → 404"
     (mt/with-dynamic-fn-redefs [static/static-resource (constantly nil)]
       (let [handler (mw.embedding-sdk-bundle/serve-chunk-handler "embedding-sdk-chunk-nonexistent.js")

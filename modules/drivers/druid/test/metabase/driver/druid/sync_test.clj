@@ -19,7 +19,6 @@
       (testing "describe-database"
         (is (= {:tables #{{:schema nil, :name "checkins"}}}
                (driver/describe-database :druid (mt/db)))))
-
       (testing "describe-table"
         (is (= {:schema nil
                 :name   "checkins"
