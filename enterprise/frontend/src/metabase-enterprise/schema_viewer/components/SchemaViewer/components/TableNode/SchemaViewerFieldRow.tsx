@@ -2,10 +2,10 @@ import { Handle, Position, useReactFlow } from "@xyflow/react";
 import cx from "classnames";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Box, FixedSizeIcon, Group, type IconName, Loader } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type { ErdField } from "metabase-types/api";
+import type { ErdField, IconName } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import { ROW_HEIGHT_PX } from "../../constants";

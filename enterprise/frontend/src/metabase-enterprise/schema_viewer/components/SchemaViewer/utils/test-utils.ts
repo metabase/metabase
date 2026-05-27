@@ -51,6 +51,8 @@ export function makeFlowNode({
       table_id: tableId,
       name: displayName,
       display_name: displayName,
+      description: null,
+      owner: null,
       schema: "public",
       db_id: 1,
       fields: resolvedFields.map((f, i) => ({

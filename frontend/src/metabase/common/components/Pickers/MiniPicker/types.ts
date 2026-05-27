@@ -34,7 +34,7 @@ export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
 export type MiniPickerSchemaItem = {
   model: "schema";
   id: SchemaName;
-  dbId: DatabaseId;
+  database_id: DatabaseId;
   name: SchemaName;
 };
 

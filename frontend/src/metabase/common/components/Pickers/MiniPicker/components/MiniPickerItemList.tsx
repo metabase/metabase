@@ -295,13 +295,13 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
+  const dbId = parent.model === "database" ? parent.id : parent.database_id!;
 
   const schemas = allSchemas?.filter((schema) => {
     return !isHidden({
       model: "schema",
       id: schema,
-      dbId,
+      database_id: dbId,
       name: schema,
     });
   });
@@ -339,7 +339,7 @@ function DatabaseItemList({
           const schemaItem: MiniPickerSchemaItem = {
             model: "schema",
             id: schema,
-            dbId,
+            database_id: dbId,
             name: schema,
           };
           return (
@@ -630,7 +630,7 @@ const useLocationDetails = (item: MiniPickerPickableItem) => {
     // Schemas don't appear in search results (see SearchableMiniPickerItem)
     // so this branch is defensive; surface the parent database id at most.
     return {
-      itemText: String(item.dbId),
+      itemText: String(item.database_id),
       iconProps: { name: "database" as const },
     };
   }

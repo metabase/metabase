@@ -8,7 +8,10 @@ import {
 } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import type { UserKeyValue } from "metabase-types/api";
+import type {
+  UpdateUserKeyValueRequest,
+  UserKeyValue,
+} from "metabase-types/api";
 
 type UserKeyValueNamespace<Namespace extends UserKeyValue["namespace"]> =
   Extract<UserKeyValue, { namespace: Namespace }>;
@@ -30,21 +33,21 @@ type UserKeyValueFor<Params extends Pick<UserKeyValue, "namespace" | "key">> = [
     : never
   : ExactUserKeyValue<Params["namespace"], Params["key"]>;
 
-export interface UseUserKeyValueParams<
+export type UseUserKeyValueParams<
   Params extends Pick<UserKeyValue, "namespace" | "key"> = UserKeyValue,
-> {
+> = {
   namespace: Params["namespace"];
   key: Params["key"];
   defaultValue?: UserKeyValueFor<Params>["value"];
   skip?: boolean;
-}
+};
 
-interface UseUserKeyValueImplementationParams<T extends UserKeyValue> {
+type UseUserKeyValueImplementationParams<T extends UserKeyValue> = {
   namespace: T["namespace"];
   key: T["key"];
   defaultValue?: T["value"];
   skip?: boolean;
-}
+};
 
 export type UseUserKeyValueResult<T extends UserKeyValue> = {
   value: T["value"];
@@ -95,7 +98,18 @@ export function useUserKeyValue<T extends UserKeyValue>({
       if (!user) {
         return { error: "No user" };
       }
-      return await setMutation({ namespace, key, value });
+      // The implementation signature uses `T extends UserKeyValue`, which
+      // doesn't preserve the correlation between `namespace`, `key`, and
+      // `value` across the union — TypeScript widens the constructed object
+      // to a cross-product and rejects it against the per-variant
+      // `UpdateUserKeyValueRequest`. The runtime call is correct because
+      // the public overload signature constrains the inputs, so cast here
+      // to bridge the body-level type loss.
+      return await setMutation({
+        namespace,
+        key,
+        value,
+      } as UpdateUserKeyValueRequest);
     },
     [setMutation, namespace, key, user],
   );

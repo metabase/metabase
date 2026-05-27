@@ -114,7 +114,14 @@ async function getTablePathFromValue(
   return [
     ...(db ? [{ id: db.id, name: db.name, model: "database" as const }] : []),
     ...(db && schema
-      ? [{ id: schema, name: schema, model: "schema" as const, dbId: db.id }]
+      ? [
+          {
+            id: schema,
+            name: schema,
+            model: "schema" as const,
+            database_id: db.id,
+          },
+        ]
       : []),
   ];
 }

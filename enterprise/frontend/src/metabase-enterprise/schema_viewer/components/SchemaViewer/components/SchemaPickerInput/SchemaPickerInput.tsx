@@ -35,7 +35,7 @@ export function SchemaPickerInput({
       dispatch(
         push(
           Urls.dataStudioSchemaViewer({
-            databaseId: picked.dbId,
+            databaseId: picked.database_id,
             schema: picked.name,
           }),
         ),
