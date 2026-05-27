@@ -63,10 +63,12 @@
               "custom expression examples"]
              (mapv :name (sort-by #(oss-score search-string %)
                                   (shuffle [a b c d])))))
-      (is (= ["customer examples of bad sorting"
-              "customer success stories"
+      ;; With :official-collection lifted to 80 in :default, the official bump dominates the
+      ;; text scorers — `d` rises to the top despite having the weakest text match.
+      (is (= ["customer success stories"
               "examples of custom expressions"
-              "custom expression examples"]
+              "custom expression examples"
+              "customer examples of bad sorting"]
              (mapv :name (sort-by #(ee-score search-string %)
                                   (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
   (testing "It should bump up the value of verified items"
