@@ -36,7 +36,7 @@ export function AppView({ params }: AppViewProps) {
     let cancelled = false;
     setApp(null);
     setBundleError(null);
-    loadDataAppBundle(name)
+    loadDataAppBundle(name, meta.id)
       .then((loaded) => {
         if (!cancelled) {
           setApp(loaded);
