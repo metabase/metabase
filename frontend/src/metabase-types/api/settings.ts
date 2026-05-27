@@ -648,7 +648,6 @@ interface PublicSettings {
   "airgap-enabled": boolean;
   "custom-viz-enabled": boolean;
   "custom-viz-plugin-dev-mode-enabled": boolean;
-  "data-app-demo-dev-bundle-url": string | null;
   "non-table-chart-generated": boolean;
   "use-tenants": boolean;
 }
