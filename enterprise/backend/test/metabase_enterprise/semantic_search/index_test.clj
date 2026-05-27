@@ -162,15 +162,12 @@
                                                (swap! realized inc)
                                                (assoc (first docs) :id id))))
                                   (range 123 500))]
-
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
-
             (testing "upsert-index!"
               (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
-
             (reset! realized 0)
             (testing "delete-from-index!"
               (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
@@ -242,12 +239,10 @@
                        :content "Dog Training Guide"
                        :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
               (is (= [{:model "card" :model_id "2" :creator_id 2
                        :content "Elephant Migration"
                        :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
               (is (= [{:model "card" :model_id "3" :creator_id 3
                        :content "Tiger Conservation"
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
@@ -298,12 +293,10 @@
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
       (is (= [{:model "card" :model_id "2" :creator_id 2
                :content "Elephant Migration"
                :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
       (is (= [{:model "card" :model_id "3" :creator_id 3
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
@@ -352,20 +345,17 @@
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "dog training"}))
-
               (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
                 (is (= 1 (count permission-calls)))
                 (let [time-ms (first (second (first permission-calls)))]
                   (is (number? time-ms))
                   (is (< time-ms 1000) "Permission filtering should complete within 1000ms"))))
-
             (testing "Semantic search timing metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "elephant migration"
                                              :filter-items-in-personal-collection "only"}))
-
               (let [metric-names (set (map first @analytics-calls))]
                 (is (contains? metric-names :metabase-search/semantic-search-ms))
                 (is (contains? metric-names :metabase-search/semantic-embedding-ms))
@@ -373,7 +363,6 @@
                 (is (contains? metric-names :metabase-search/semantic-permission-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-collection-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-appdb-scores-ms)))
-
               (testing "timing values  are reasonable"
                 (doseq [[metric args] @analytics-calls
                         :when (#{:metabase-search/semantic-search-ms
@@ -391,7 +380,6 @@
                     (is (number? time-ms) (str "Time for " metric " should be numeric"))
                     (is (>= time-ms 0) (str "Time for " metric " should be non-negative"))
                     (is (< time-ms 1000) (str "Time for " metric " should be under 1000ms")))))
-
               (let [embedding-metrics (filter #(#{:metabase-search/semantic-search-ms
                                                   :metabase-search/semantic-embedding-ms
                                                   :metabase-search/semantic-db-query-ms} (first %)) @analytics-calls)]
@@ -410,44 +398,37 @@
         [:model/Collection {shared-coll-id :id} {:name "Shared Collection"}
          :model/Collection {user1-sub-coll-id :id} {:location (str "/" user1-personal-coll-id "/") :name "User1 Sub"}
          :model/Collection {user2-sub-coll-id :id} {:location (str "/" user2-personal-coll-id "/") :name "User2 Sub"}]
-
         (let [docs [{:id "doc1" :model "card" :collection_id user1-personal-coll-id}
                     {:id "doc2" :model "card" :collection_id user2-personal-coll-id}
                     {:id "doc3" :model "card" :collection_id shared-coll-id}
                     {:id "doc4" :model "card" :collection_id nil}
                     {:id "doc5" :model "card" :collection_id user1-sub-coll-id}
                     {:id "doc6" :model "card" :collection_id user2-sub-coll-id}]]
-
           (testing "filter-type 'all' returns all documents unchanged"
             (let [context {:filter-items-in-personal-collection "all" :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)]
               (is (= 6 (count result)))
               (is (= (set (map :id docs)) (set (map :id result))))))
-
           (testing "filter-type nil defaults to 'all' behavior"
             (let [context {:filter-items-in-personal-collection nil :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)]
               (is (= 6 (count result)))
               (is (= (set (map :id docs)) (set (map :id result))))))
-
           (testing "filter-type 'only-mine' returns only current user's personal collection items"
             (let [context {:filter-items-in-personal-collection "only-mine" :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)
                   result-ids (set (map :id result))]
               (is (= #{"doc1" "doc5"} result-ids))))
-
           (testing "filter-type 'only' returns all personal collection items (any user)"
             (let [context {:filter-items-in-personal-collection "only" :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)
                   result-ids (set (map :id result))]
               (is (= #{"doc1" "doc2" "doc5" "doc6"} result-ids))))
-
           (testing "filter-type 'exclude' returns only shared and uncollected items"
             (let [context {:filter-items-in-personal-collection "exclude" :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)
                   result-ids (set (map :id result))]
               (is (= #{"doc3" "doc4"} result-ids))))
-
           (testing "filter-type 'exclude-others' returns user's personal items plus shared/uncollected items"
             (let [context {:filter-items-in-personal-collection "exclude-others" :current-user-id user1-id}
                   result (#'semantic.index/filter-by-collection docs context)
@@ -493,32 +474,26 @@
                                    {:id "invalid:789"
                                     :model "indexed-entity"
                                     :content "Invalid Entity"}]]
-
           (testing "returns all entities when user can read all parent cards"
             (binding [api/*current-user-permissions-set* (atom #{"/"})]
               (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
                 (is (= 2 (count result)))
                 (is (= #{(str (:id model-index-1) ":123") (str (:id model-index-2) ":456")}
                        (set (map :id result)))))))
-
           (testing "returns no entities when user cannot read any parent cards"
             (binding [api/*current-user-permissions-set* (atom #{})]
               (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
                 (is (= 0 (count result))))))
-
           (testing "returns subset when user can read some parent cards"
             (with-redefs [mi/can-read? (fn [card] (= (:id card) (:id model-1)))]
               (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
                 (is (= 1 (count result)))
                 (is (= (str (:id model-index-1) ":123") (:id (first result)))))))
-
           (testing "handles empty input"
             (is (= [] (#'semantic.index/filter-can-read-indexed-entity []))))
-
           (testing "handles invalid entity IDs"
             (let [invalid-only-docs [{:id "invalid:789" :model "indexed-entity" :content "Invalid"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity invalid-only-docs)))))
-
           (testing "handles non-existent model indexes"
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
@@ -528,7 +503,6 @@
     (testing "boolean inputs are returned unchanged"
       (is (true? (#'semantic.index/to-boolean true)))
       (is (false? (#'semantic.index/to-boolean false))))
-
     (testing "MySQL-style integer booleans are converted correctly"
       (is (false? (#'semantic.index/to-boolean 0)))
       (is (true? (#'semantic.index/to-boolean 1))))))
@@ -541,7 +515,6 @@
                     :searchable_text "test content"
                     :embeddable_text "test content"
                     :creator_id 1}]
-
       (testing "MySQL-style integer booleans are converted to real booleans"
         (let [doc-with-mysql-booleans (assoc base-doc
                                              :archived 0
@@ -553,7 +526,6 @@
           (is (true? (:official_collection result)))
           (is (false? (:pinned result)))
           (is (true? (:verified result)))))
-
       (testing "real boolean values are preserved"
         (let [doc-with-real-booleans (assoc base-doc
                                             :archived true
@@ -565,7 +537,6 @@
           (is (false? (:official_collection result)))
           (is (true? (:pinned result)))
           (is (false? (:verified result)))))
-
       (testing "nil boolean fields are handled correctly"
         (let [doc-with-nil-booleans base-doc
               result (#'semantic.index/doc->db-record embedding-vec doc-with-nil-booleans)]

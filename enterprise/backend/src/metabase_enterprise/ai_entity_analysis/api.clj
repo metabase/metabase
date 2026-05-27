@@ -25,7 +25,6 @@
                                                                                                                         [:name :string]
                                                                                                                         [:description {:optional true} [:maybe :string]]
                                                                                                                         [:timestamp :string]]]]]]]
-
   (premium-features/assert-has-feature :ai-entity-analysis "chart analysis")
   (let [chart-data {:image_base64 image_base64
                     :chart {:name name

@@ -52,7 +52,6 @@
                   #_(transforms.tu/wait-for-table (:name output-table) 1000))
                 (is (str/starts-with? (:schema output-table) "mb__isolation"))
                 #_(is (= 1 (count (transforms.tu/table-rows table-name)))))
-
               (testing "changing the query without granting access will fail"
                 (t2/update! :model/WorkspaceTransform
                             {:workspace_id (:id workspace) :ref_id (:ref_id isolated-transform)}

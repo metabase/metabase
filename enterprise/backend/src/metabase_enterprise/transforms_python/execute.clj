@@ -149,12 +149,10 @@
         temp-table-name   (driver.u/temp-table-name driver table-name)]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
-
       (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
       (transforms.util/rename-tables! driver db-id {table-name temp-table-name
                                                     source-table-name table-name})
       (transforms.util/drop-table! driver db-id temp-table-name)
-
       (catch Exception e
         (log/error e "Failed to transfer data using rename-tables strategy")
         (try
@@ -169,11 +167,9 @@
   (let [source-table-name (driver.u/temp-table-name driver table-name)]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
-
       (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
       (transforms.util/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
-
       (catch Exception e
         (log/error e "Failed to transfer data using create-drop-rename strategy")
         (try
@@ -187,10 +183,8 @@
   [driver db-id table-name metadata data-source]
   (log/info "Using drop-create fallback strategy")
   (try
-
     (transforms.util/drop-table! driver db-id table-name)
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
-
     (catch Exception e
       (log/error e "Failed to transfer data using drop-create fallback strategy")
       (throw e))))

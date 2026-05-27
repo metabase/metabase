@@ -140,7 +140,6 @@
       (is (api-key-exists? "Duplicate Name Key"))
       (let [original-key (t2/select-one :model/ApiKey :name "Duplicate Name Key")
             original-key-prefix (:key_prefix original-key)]
-
         ;; Now attempt to create another key with the same name but different prefix
         (binding [config.file/*config* {:version 1
                                         :config {:api-keys [{:name "Duplicate Name Key"

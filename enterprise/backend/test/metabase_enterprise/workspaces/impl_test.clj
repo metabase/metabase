@@ -44,7 +44,6 @@
           (testing "grants access to ORDERS"
             (is (= 1 (count @grant-calls)))
             (is (contains? (first @grant-calls) (mt/format-name :orders)))))
-
         (testing "Transform B depends on PRODUCTS, table_a is internal output"
           (reset! grant-calls [])
           (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
@@ -131,10 +130,8 @@
                 entity    (find-t1 graph)]
             (is (= {:definition_changed true :input_data_changed false}
                    (select-keys entity [:definition_changed :input_data_changed])))))
-
         (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
                     {:definition_changed false :input_data_changed true})
-
         (testing "after updating flags in DB, graph read reflects the change"
           (let [workspace (t2/select-one :model/Workspace workspace-id)
                 graph     (ws.impl/with-staleness workspace (ws.impl/get-or-calculate-graph! workspace))
@@ -151,7 +148,6 @@
       (let [t1-ref (workspace-map :x1)
             t2-ref (workspace-map :x2)]
         (ws.tu/mock-run-transform! workspace-id t1-ref)
-
         (testing "after running t1: t1 is fresh, t2 is input_data_changed"
           (is (= {t1-ref {:definition_changed false :input_data_changed false}
                   t2-ref {:definition_changed false :input_data_changed true}}
@@ -168,7 +164,6 @@
             t2-ref (workspace-map :x2)
             t3-ref (workspace-map :x3)]
         (ws.tu/mock-run-transform! workspace-id t1-ref)
-
         (testing "after running t1: both t2 and t3 are input_data_changed"
           (is (= {t1-ref {:definition_changed false :input_data_changed false}
                   t2-ref {:definition_changed false :input_data_changed true}
@@ -187,9 +182,7 @@
           (is (= {t1-ref {:definition_changed false :input_data_changed false}
                   t2-ref {:definition_changed true  :input_data_changed true}}
                  (ws.tu/staleness-flags workspace-id))))
-
         (ws.tu/mock-run-transform! workspace-id t2-ref)
-
         (testing "after running t2 with fresh ancestor: both flags are cleared"
           (is (= {t1-ref {:definition_changed false :input_data_changed false}
                   t2-ref {:definition_changed false :input_data_changed false}}
@@ -229,13 +222,11 @@
               result    (ws.impl/annotate-staleness graph staleness)]
           (is (= {true #{"t1" "t2" "t3"} false #{}}
                  (stale->id (:entities result))))))
-
       (testing "stale middle only propagates downstream"
         (let [staleness {"t2" {:definition_changed true :input_data_changed false}}
               result    (ws.impl/annotate-staleness graph staleness)]
           (is (= {true #{"t2" "t3"} false #{"t1"}}
                  (stale->id (:entities result))))))
-
       (testing "stale leaf doesn't propagate upstream"
         (let [staleness {"t3" {:definition_changed true :input_data_changed false}}
               result    (ws.impl/annotate-staleness graph staleness)]
@@ -262,7 +253,6 @@
               result    (ws.impl/annotate-staleness graph staleness)]
           (is (= {true #{"t1" "t2" "t3" "t4"} false #{}}
                  (stale->id (:entities result))))))
-
       (testing "stale on one branch only propagates through that path"
         (let [staleness {"t2" {:definition_changed true :input_data_changed false}}
               result    (ws.impl/annotate-staleness graph staleness)]

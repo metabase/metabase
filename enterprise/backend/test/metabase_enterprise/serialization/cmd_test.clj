@@ -53,7 +53,6 @@
                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                              (filter #(= "serialization" (get % "event")))
                              first))))
-
               (testing "Snowplow import event was sent"
                 (cmd/import dump-dir)
                 (is (=? {"event"         "serialization"
@@ -65,7 +64,6 @@
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
-
               (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
                                                          (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
@@ -87,7 +85,6 @@
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                                (filter #(= "serialization" (get % "event")))
                                first)))))
-
               (let [ingest-file @#'v2.ingest/ingest-file]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably

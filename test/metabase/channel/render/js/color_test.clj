@@ -92,31 +92,26 @@
             (is (= red (js.color/get-background-color color-selector (formatter/->TextWrapper "" "") "test" 0))))
           (testing "TextWrapper cell with original value of nil should not receive color"
             (is (nil? (js.color/get-background-color color-selector (formatter/->TextWrapper "" nil) "test" 0))))))))
-
   (deftest convert-bignumbers-by-column-test
     (testing "convert-bignumbers-by-column should convert BigDecimal and BigInteger values to doubles/longs"
       (let [convert-fn #'js.color/convert-bignumbers-by-column]
         (testing "empty data returns empty vector"
           (is (= [] (convert-fn []))))
-
         (testing "data with no BigDecimals or BigIntegers remains unchanged"
           (let [data [[1 2 "test"] [3 4 "another"]]]
             (is (= data (convert-fn data)))))
-
         (testing "BigDecimal values are converted to doubles"
           (let [big-decimal (BigDecimal. "123.456")
                 data [[big-decimal 2 "test"] [big-decimal 4 "another"]]
                 result (convert-fn data)]
             (is (= [[123.456 2 "test"] [123.456 4 "another"]] result))
             (is (every? #(instance? Double (first %)) result))))
-
         (testing "BigInteger values are converted to longs"
           (let [big-integer (BigInteger. "987654321")
                 data [[big-integer 2 "test"] [big-integer 4 "another"]]
                 result (convert-fn data)]
             (is (= [[987654321 2 "test"] [987654321 4 "another"]] result))
             (is (every? #(instance? Long (first %)) result))))
-
         (testing "mixed BigDecimal and BigInteger conversion"
           (let [big-decimal (BigDecimal. "123.456")
                 big-integer (BigInteger. "789")

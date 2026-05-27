@@ -73,7 +73,6 @@
                                    (:creator_id ws-transform)))}
                  (catch Throwable e
                    {:error e}))))]
-
     (when-not error
       ;; See https://linear.app/metabase/issue/GDGT-1591/merging-a-workspace-removes-transforms-from-it
       ;; Keeping this stub as we may want to revisit it in the future.
@@ -86,7 +85,6 @@
         :transform_id       (:global_id result)
         :commit_message     commit-message
         :merging_user_id    merging-user-id}))
-
     result))
 
 (defn merge-workspace!

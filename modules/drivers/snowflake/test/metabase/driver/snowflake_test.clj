@@ -428,20 +428,15 @@
              (testing "dynamic-table?"
                (testing "returns true for dynamic table"
                  (is (true? (#'driver.snowflake/dynamic-table? conn db-name (:schema dynamic-table) (:name dynamic-table)))))
-
                (testing "returns false for normal table"
                  (is (false? (#'driver.snowflake/dynamic-table? conn db-name (:schema normal-table) (:name normal-table)))))
-
                (testing "returns false if db-name is invalid, make sure we don't throw an exception"
                  (is (false? (#'driver.snowflake/dynamic-table? conn (mt/random-name) (:schema normal-table) (:name normal-table))))))
-
              (testing "sql-jdbc.describe-table/get-table-pks"
                (testing "returns empty array for dynamic table"
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn db-name dynamic-table))))
-
                (testing "also works if db-name is nil"
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
-
              (testing "driver/describe-table-fks returns empty set for dynamic table"
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
@@ -636,7 +631,6 @@
                               expected-migrated (cond-> details-to-succeed
                                                   uses-secret? (assoc :private-key-id secret-id)
                                                   :always (dissoc :private-key-options :private-key-value :private-key-path))]
-
                           (testing "Migration persists as expected"
                             (is (= expected-migrated migrated-details)))
                           (testing "Migration results in unambiguous details"
@@ -1189,7 +1183,6 @@
                       (testing "Last row has expected values"
                         (is (= yesterday-last-str
                                (ffirst (reverse rows)))))))
-
                   (testing "Rows should be properly allocated to days"
                     (let [tested-day (assoc-in tested-field [2 :temporal-unit] :day)
                           tested-minute (assoc-in tested-field [2 :temporal-unit] :minute)]
@@ -1237,22 +1230,18 @@
           (when (and password use-password)
             (is (= :password (first result))
                 [idxs result])))
-
         (testing "password comes last if use-password is false or nil"
           (when (and password (not use-password))
             (is (= :password (last result))
                 [idxs result])))
-
         (testing "path is preferred if options is local"
           (when (and (= "local" options) private-key-value private-key-path)
             (is (= :private-key-path (m/find-first #{:private-key-path :private-key-value} result))
                 [idxs result])))
-
         (testing "value is preferred if options is nil or uploaded"
           (when (and (not= "local" options) private-key-value private-key-path)
             (is (= :private-key-value (m/find-first #{:private-key-path :private-key-value} result))
                 [idxs result])))
-
         (testing "ID is checked last if path or value exists"
           (when (or (and private-key-value private-key-id)
                     (and private-key-path private-key-id))
@@ -1367,7 +1356,6 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
-
                                                 ["case sensitive contains has rows"
                                                  (-> (lib/contains products-category "Gad")
                                                      (lib.options/update-options assoc :case-sensitive true))
@@ -1375,13 +1363,11 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
-
                                                 ["case sensitive contains with no rows"
                                                  (-> (lib/contains products-category "gad")
                                                      (lib.options/update-options assoc :case-sensitive true))
                                                  "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
-
                                                 ["case insensitive starts with has rows"
                                                  (-> (lib/starts-with products-category "GAD")
                                                      (lib.options/update-options assoc :case-sensitive false))
@@ -1389,7 +1375,6 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
-
                                                 ["case sensitive starts with has rows"
                                                  (-> (lib/starts-with products-category "Gad")
                                                      (lib.options/update-options assoc :case-sensitive true))
@@ -1397,13 +1382,11 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
-
                                                 ["case sensitive starts with has no rows"
                                                  (-> (lib/starts-with products-category "gad")
                                                      (lib.options/update-options assoc :case-sensitive true))
                                                  "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
-
                                                 ["case insensitive ends with has rows"
                                                  (-> (lib/ends-with products-category "GET")
                                                      (lib.options/update-options assoc :case-sensitive false))
@@ -1411,7 +1394,6 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
-
                                                 ["case sensitive ends with has rows"
                                                  (-> (lib/ends-with products-category "get")
                                                      (lib.options/update-options assoc :case-sensitive true))
@@ -1419,7 +1401,6 @@
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
-
                                                 ["case sensitive ends with has no rows"
                                                  (-> (lib/ends-with products-category "GET")
                                                      (lib.options/update-options assoc :case-sensitive true))

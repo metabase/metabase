@@ -170,7 +170,6 @@
       (mt/with-temporary-setting-values [prometheus-server-port 0]
         (prometheus/inc! :metabase-email/messages) ; << Does not throw.
         (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
-
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
@@ -180,7 +179,6 @@
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
-
   (testing "inc with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
@@ -192,18 +190,15 @@
       (with-redefs [prometheus/system nil]
         (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
         (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
-
   (testing "dec throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
                             (prometheus/dec! :metabase-email/unknown-metric)))))
-
   (testing "dec is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/queue-size)
       (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
-
   (testing "dec with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
@@ -215,12 +210,10 @@
       (mt/with-temporary-setting-values [prometheus-server-port 0]
         (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
         (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
-
   (testing "observe! with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type :notification/card} 2)
       (is (approx= 2 (:sum (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type :notification/card}))))))
-
   (testing "observe! throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
@@ -256,19 +249,15 @@
       (prometheus/inc! :metabase-sdk/response {:status "404"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"} 0)
-
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
       (prometheus/inc! :metabase-sdk/response {:status "404"})
-
       ;; Track iframe responses
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
-
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
-
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"})))))))

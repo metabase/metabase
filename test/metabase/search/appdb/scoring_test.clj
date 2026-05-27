@@ -249,7 +249,6 @@
             (is (= [["card" c2 "card crowberto loved"]
                     ["card" c1 "card normal"]]
                    (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Dashboard {d1 :id} {}
                    :model/Dashboard {d2 :id} {}]
       (testing "bookmarked dashboard"
@@ -261,7 +260,6 @@
             (is (= [["dashboard" d2 "dashboard crowberto loved"]
                     ["dashboard" d1 "dashboard normal"]]
                    (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Collection {c1 :id} {}
                    :model/Collection {c2 :id} {}]
       (testing "bookmarked collection"

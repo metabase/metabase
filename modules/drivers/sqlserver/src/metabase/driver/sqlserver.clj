@@ -895,7 +895,6 @@
       ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
-
       (m :guard (add-limit? &parents m))
       (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 

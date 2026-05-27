@@ -84,7 +84,6 @@
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])
         embedding-sdk-header? (embed.util/is-modular-embedding-request? req)]
-
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
@@ -179,7 +178,6 @@
     (when (and token-value (not token-valid?))
       (throw (ex-info (tru "Invalid authentication token")
                       {:status-code 401})))
-
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [redirect-url (or continue-url (system/site-url))

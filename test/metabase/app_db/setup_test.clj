@@ -70,10 +70,8 @@
       (testing "Running setup with `auto-migrate?`=false should pass if no migrations exist which need to be run"
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
-
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false false)))))
-
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
       ;; when we re-run `setup-db!`
@@ -81,7 +79,6 @@
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (is (= :done
                  (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
-
           (is (thrown-with-msg?
                Exception
                #"Database requires manual upgrade."
@@ -121,14 +118,12 @@
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; migrate to v45
       (update-to-changelog-id "v45.00-001" conn)
-
       ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
       ;; version by telling Liquibase that's the migrations file.
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
-
       ;; check that the error correctly reports the version to run `downgrade` from
       (update-to-changelog-id "v46.00-001" conn)
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]

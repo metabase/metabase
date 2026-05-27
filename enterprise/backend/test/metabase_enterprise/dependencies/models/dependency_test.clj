@@ -54,7 +54,6 @@
               (testing "when creating a new card"
                 (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                         (upstream-of :card (:id card1))))
-
                 (testing "that depends on another card"
                   (let [card2 (card/create-card! (wrap-card card1) user)]
                     (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
@@ -62,7 +61,6 @@
                     (testing "but that doesn't affect the upstream deps of the inner card"
                       (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                               (upstream-of :card (:id card1))))))))
-
               (testing "when updating an existing card"
                 (testing "to add a new table dep"
                   (card/update-card! {:card-before-update card1
@@ -94,7 +92,6 @@
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
                 (is (=? #{(depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
-
               (testing "transitive deps are computed correctly"
                 (testing "for each card"
                   (is (=? {:card #{id2 id3}}

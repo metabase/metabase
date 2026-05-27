@@ -19,7 +19,6 @@
     [:message ms/NonBlankString]]
    [:multi {:dispatch :status}
     ["not-connected" [:map]]
-
     ["syncing"
      [:map
       [:url ms/NonBlankString]
@@ -29,7 +28,6 @@
       [:sync_started_at pos-int?]
       [:created_by_id pos-int?]
       [:db_id pos-int?]]]
-
     ["active"
      [:map
       [:url ms/NonBlankString]

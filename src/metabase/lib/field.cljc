@@ -608,7 +608,6 @@
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
-
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
     (if (or (= join-fields :all)

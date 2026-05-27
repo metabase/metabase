@@ -30,14 +30,12 @@
               (is (= "0 0 0 * * ?" (:schedule response)))
               (is (= "cron/builder" (:ui_display_type response)))
               (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
-
           (testing "Validates cron expression"
             (let [response (mt/user-http-request :lucky :post 400 "transform-job"
                                                  {:name     "Bad Cron Job"
                                                   :schedule "invalid cron"})]
               (is (string? response))
               (is (re-find #"Invalid cron expression" response))))
-
           (testing "Validates tag IDs exist"
             (let [response (mt/user-http-request :lucky :post 400 "transform-job"
                                                  {:name     "Job with bad tags"
@@ -60,7 +58,6 @@
               (is (= "Test Job" (:name response)))
               (is (= [(:id tag)] (:tag_ids response)))
               (is (nil? (:last_run response)))))
-
           (testing "Returns 404 for non-existent job"
             (mt/user-http-request :lucky :get 404 "transform-job/999999")))))))
 
@@ -84,7 +81,6 @@
                 (testing "Response hydrates creator"
                   (is (every? #(map? (:creator %)) response))
                   (is (every? #(= lucky-id (get-in % [:creator :id])) response)))))
-
             (testing "Returns 404 for non-existent job"
               (mt/user-http-request :lucky :get 404 "transform-job/999999/transforms"))))))))
 
@@ -166,7 +162,6 @@
                 (is (= "New Description" (:description response)))
                 (is (= "0 0 */2 * * ?" (:schedule response)))
                 (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
-
             (testing "Validates cron expression"
               (let [response (mt/user-http-request :lucky :put 400 (str "transform-job/" (:id job))
                                                    {:schedule "invalid"})]
@@ -193,7 +188,6 @@
           (testing "Deletes job"
             (mt/user-http-request :lucky :delete 204 (str "transform-job/" (:id job)))
             (is (nil? (t2/select-one :model/TransformJob :id (:id job)))))
-
           (testing "Returns 404 for non-existent job"
             (mt/user-http-request :lucky :delete 404 "transform-job/999999")))))))
 

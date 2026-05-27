@@ -367,7 +367,6 @@
    {:keys [database_id] :as body} :- CreateWorkspace]
   (when database_id
     (check-transforms-enabled! database_id))
-
   ;; If no database_id provided, use first supported DB as provisional default (uninitialized workspace)
   (let [provisional? (not database_id)
         database-id  (or database_id
@@ -647,7 +646,6 @@
                         {}
                         dependencies)
         dep-count      #(frequencies (map node-type (get inverted %)))]
-
     {:nodes (concat (for [i inputs]
                       {:type             :input-table
                        ;; Use an id that's independent of whether the table exists yet.
@@ -1209,7 +1207,6 @@
   (mr/def ::dependency-graph
     "Map of shorthand symbols to lists of dependencies. The latter are all strings, and refs need to be detected."
     [:map-of :keyword [:sequential :string]])
-
   (mr/def ::test-resources-request
     "Request body for creating test resources."
     [:map
@@ -1219,14 +1216,12 @@
                                    [:name {:optional true} :string]
                                    [:checkouts {:optional true} [:sequential :keyword]]
                                    [:definitions {:optional true} ::dependency-graph]]]])
-
   (mr/def ::test-resources-response
     "Response from creating test resources."
     [:map
      [:workspace-id [:maybe :int]]
      [:global-map [:map-of [:or :keyword :string] :int]]
      [:workspace-map [:map-of :keyword :string]]])
-
   (api.macros/defendpoint :post "/test-resources" :- ::test-resources-response
     "Create test resources for workspace e2e tests. Only available in dev/test mode.
 

@@ -458,7 +458,6 @@
                 (mapv (fn [table]
                         (update table :columns format-columns-for-response fk-targets-map))
                       tables-with-enriched-fps)]
-
             (when (seq enriched-tables)
               {:ddl    (format-schema-ddl enriched-tables)
                :tables response-tables})))))))
@@ -494,7 +493,6 @@
 
                 all-columns    (mapcat :columns tables-with-columns)
                 fk-targets-map (fetch-fk-targets all-columns)]
-
             (mapv (fn [table]
                     (update table :columns
                             (fn [cols]

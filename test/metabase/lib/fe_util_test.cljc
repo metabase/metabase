@@ -229,7 +229,6 @@
                  :lib/expression-name expression-name
                  :lib/source :source/expressions}
                 (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
-
     (testing "nested expression references"
       (mu/disable-enforcement
         (is (=? {:lib/type :metadata/column
@@ -306,7 +305,6 @@
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
           (is (=? (map :id args) (map :id (:args res)))))))
-
     (testing "case pairs should be unflattened in expression clause"
       (doseq [[expected-expression parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -315,7 +313,6 @@
               [actual-op _ actual-args] actual-expression]
           (is (=? expected-op actual-op))
           (is (=? (map :id expected-args) (map :id actual-args))))))
-
     (testing "case/if should round-trip through expression-parts and expression-clause"
       (doseq [[clause] test-cases]
         (let [parts                     (lib.fe-util/expression-parts query clause)
@@ -324,7 +321,6 @@
                                          (:args parts)
                                          nil)
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
-
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
@@ -339,7 +335,6 @@
                       :args [boolean-field
                              string-field
                              "default"]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -354,7 +349,6 @@
                                       :args [boolean-field
                                              string-field
                                              "default"]}]}]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -365,7 +359,6 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field string-field]}]}]}]]
-
         (let [expression (lib.fe-util/expression-clause
                           (:operator parts)
                           (:args parts)

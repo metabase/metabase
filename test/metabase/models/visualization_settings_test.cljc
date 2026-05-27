@@ -79,7 +79,6 @@
           norm-col-settings   {::mb.viz/column-settings {{::mb.viz/column-name "Column Name"} {::mb.viz/time-style "HH:mm"}}}]
       (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
       (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings)))))
-
   (t/testing "Invalid column refs are dropped when viz settings are normalized (#18972)"
     (t/is (= {::mb.viz/column-settings {}}
              (mb.viz/db->norm {:column_settings {"[\"ref\",null]" {:column_title "invalid"}}})))

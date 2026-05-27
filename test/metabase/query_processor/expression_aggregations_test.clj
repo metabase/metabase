@@ -257,7 +257,6 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:aggregation-options [:sum [:+ $price 1]] {:name "sum_of_price"}]]
                   :breakout    [$price]}))))))
-
     (testing "check that we can name an expression aggregation w/ expression at top-level"
       (is (= {:rows    [[1 -19]
                         [2  77]

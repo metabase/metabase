@@ -16,11 +16,9 @@
                 :features ["test" "fixture"]
                 :trial    false}
                (mt/user-http-request :crowberto :get 200 "premium-features/token/status"))))
-
       (testing "requires superusers"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "premium-features/token/status")))))
-
     (mt/with-temporary-setting-values [:premium-embedding-token nil]
       (testing "returns 404 if no token is set"
         (is (= "Not found."
@@ -37,11 +35,9 @@
                      :features ["test" "fixture"]}
                     (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
             (is (true? @cleared?)))))
-
       (testing "requires superusers"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "premium-features/token/refresh")))))
-
     (mt/with-temporary-setting-values [:premium-embedding-token nil]
       (testing "returns 404 if no token is set"
         (is (= "Not found."

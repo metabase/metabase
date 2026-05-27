@@ -231,14 +231,12 @@
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (some #{:lib/stage-metadata :joins} &parents))
     &match
-
     [:field & _]
     (let [col (resolve-field-ref query path &match)]
       (-> (add-source-to-field-ref query path &match col)
           (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
-
     [#{:expression :aggregation} & _]
     (lib/update-options &match assoc ::source-table ::none)))
 
@@ -282,7 +280,6 @@
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
     (_ :guard (some #{:lib/stage-metadata :joins ::resolved} &parents))
     &match
-
     [:field opts _id-or-name]
     (let [resolved (or (::resolved opts)
                        (throw (ex-info "Missing ::resolved -- should have been added by add-source-aliases"
@@ -300,11 +297,9 @@
                                 (-> opts
                                     (assoc ::desired-alias (escaped-desired-alias query path (:lib/desired-column-alias col)))
                                     (dissoc ::resolved))))))
-
     [:expression _opts expression-name]
     (let [col (get by-expression-name expression-name)]
       (lib/update-options &match assoc ::desired-alias (escaped-desired-alias query path (:lib/desired-column-alias col))))
-
     [:aggregation _opts uuid]
     (let [aggregation (or (m/find-first #(= (lib.options/uuid %) uuid)
                                         (:aggregation stage))

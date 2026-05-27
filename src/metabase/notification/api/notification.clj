@@ -106,7 +106,6 @@
                                   (sql.helpers/where [:or
                                                       [:= :notification_recipient.user_id legacy-user-id]
                                                       [:= :notification.creator_id legacy-user-id]]))))
-
        (into [] (comp
                  (map t2.realize/realize)
                  (filter mi/can-read?)))

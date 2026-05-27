@@ -74,7 +74,6 @@
               (:copy spec) (:skip spec)
               (:copy spec) (keys (:transform spec))
               (:skip spec) (keys (:transform spec))))
-
           (testing "Every column should be declared in serialization spec"
             (let [specs (->> (keys spec')
                              (map name)
@@ -82,10 +81,8 @@
                   fields (->> (keys fields)
                               (map u/lower-case-en)
                               set)]
-
               (is (set/subset? fields specs)
                   (format "Missing specs: %s" (pr-str (set/difference fields specs))))))
-
           (testing "Foreign keys should be declared as such\n"
             (doseq [[fk _] (filter #(:fk (second %)) fields)
                     :let   [fk        (u/lower-case-en fk)
@@ -94,12 +91,10 @@
               (testing (format "`%s.%s` is foreign key which is handled correctly" m fk)
                 ;; uses `(serdes/fk ...)` function
                 (is (::serdes/fk transform)))))
-
           (testing "created_at should be one of known timestamp types so we can catch others"
             (when-let [field-def (or (get fields "created_at")
                                      (get fields "CREATED_AT"))]
               (is (contains? datetime? (:type field-def)))))
-
           (testing "Datetime fields should be declared as such\n"
             (doseq [[dt _] (filter #(datetime? (:type (second %))) fields)
                     :let   [dt        (u/lower-case-en dt)
@@ -107,7 +102,6 @@
                     :when  (not= transform :skip)]
               (testing (format "`%s.%s` is datetime field which is handled correctly" m dt)
                 (is (= (serdes/date) transform)))))
-
           (testing "Nested models should declare `parent-ref`\n"
             (doseq [[_nested transform] (filter #(::serdes/nested (second %)) spec')
                     :let                [{:keys [model backward-fk]} transform

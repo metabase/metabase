@@ -104,7 +104,6 @@
         notification    (t2/select-one :model/Notification notification-id)]
     (log/with-context {:subscription-id subscription-id
                        :notification-id notification-id}
-
       (cond
         (:active notification)
         (task-history/with-task-run (some-> (notification.send/notification->task-run-info notification) (assoc :auto-complete false))

@@ -407,4 +407,3 @@
           (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
                       (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
                  (:query (qp.compile/compile-with-inline-parameters query)))))))))
-

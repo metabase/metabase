@@ -44,7 +44,6 @@
         (is (= js-ct (get-in resp [:headers "Content-Type"])))
         (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))
         (is (= "dummy" (:body resp))))))
-
   (deftest serve-bundle-handler-dev-skips-etag-and-sets-no-store
     (testing "Dev skips with-etag and sets no-store + Content-Type, no prod-only headers"
       (with-redefs [config/is-prod? false
@@ -59,7 +58,6 @@
           (is (= js-ct (get-in resp [:headers "Content-Type"])))
           (is (nil? (get-in resp [:headers "Vary"])))
           (is (= "dummy" (:body resp))))))
-
     (deftest serve-bundle-handler-404-propagates
       (testing "Missing resource → 404 with no-store; no prod-only headers"
         (with-redefs [config/is-prod? true

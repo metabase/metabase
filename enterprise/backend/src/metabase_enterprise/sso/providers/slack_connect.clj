@@ -102,7 +102,6 @@
         {:success? false
          :error :configuration-error
          :message (tru "Failed to build Slack OIDC configuration")}
-
         (let [auth-result (next-method _provider (assoc request :oidc-config oidc-config))]
           (if (and (:success? auth-result)
                    (:user-data auth-result))

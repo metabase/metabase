@@ -179,7 +179,6 @@
                   (qp/process-query
                    (qp/userland-query
                     (mt/mbql-query venues {:fields [!month.id]})))))))
-
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)

@@ -171,7 +171,6 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
-
         (let [update-attempts (volatile! 0)
               failures (inc @#'dependencies.backfill/max-retries)]
           (with-redefs [env/env (assoc env/env
@@ -188,10 +187,8 @@
             ;; fail MAX_RETRIES + 1 times
             (while (< @update-attempts failures)
               (backfill-dependencies-single-trigger!))))
-
         ;; verify card is not processed and is terminally broken
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
-
         ;; verify subsequent runs don't process it
         (backfill-dependencies-single-trigger!)
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))))))
@@ -214,18 +211,15 @@
                                          (throw (ex-info "Simulated DB error" {:id id})))
                                        (apply t2/update! model-kw id args)))]
             (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
-
             ;; first failure - should be put into retry state
             ;; fail MAX_RETRIES + 1 times
             (while (zero? @update-attempts)
               (backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0)))
-
           ;; advance time by less than retry delay - should NOT be processed
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
             (backfill-dependencies-single-trigger!))
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
-
           ;; advance time by more than retry delay - should be processed
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
             (backfill-dependencies-single-trigger!))

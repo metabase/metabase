@@ -52,7 +52,6 @@
                    :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag) :position 0}]
       (is (= #{(:id t)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job has 2 tags, transform has only 1 — must still be found"
     (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
                    :model/TransformTag tag-b {:name "tag-b"}
@@ -63,7 +62,6 @@
                    :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag-a) :position 0}]
       (is (= #{(:id t)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job has 2 tags, two transforms with different tag subsets — both found"
     (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
                    :model/TransformTag tag-b {:name "tag-b"}
@@ -76,13 +74,11 @@
                    :model/TransformTransformTag _ {:transform_id (:id t2) :tag_id (:id tag-b) :position 0}]
       (is (= #{(:id t1) (:id t2)}
              (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job tag with no matching transforms — empty set"
     (mt/with-temp [:model/TransformTag tag {:name "tag-orphan"}
                    :model/TransformJob job {:name "job-4" :schedule "0 0 * * * ? *"}
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       (is (= #{} (#'jobs/job-transform-ids (:id job))))))
-
   (testing "job with no tags — empty set"
     (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
       (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
@@ -184,7 +180,6 @@
           (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
                           (:message (first @logged-messages)))
               "Warning message should indicate transform was skipped due to missing features")))))
-
   (testing "Query transforms run with :transforms-basic feature"
     (mt/with-premium-features #{:hosting :transforms-basic}
       (let [query-transform {:id 3

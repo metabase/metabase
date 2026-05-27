@@ -57,7 +57,6 @@
   (testing "get-secret-string from value only"
     (is (= "titok"
            (secret/value-as-string :secret-test-driver {:keystore-value "titok"} "keystore"))))
-
   (testing "get-secret-string from value only from the database"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                            :kind       ::secret/pem-cert
@@ -65,7 +64,6 @@
                                            :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/value-as-string :secret-test-driver {:keystore-id id} "keystore")))))
-
   (testing "get-secret-string from value only from the database ignore protected-password **MetabasePass**"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                            :kind       ::secret/pem-cert
@@ -73,7 +71,6 @@
                                            :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/value-as-string :secret-test-driver {:keystore-id id :keystore-value secret/protected-password} "keystore")))))
-
   (testing "get-secret-string from uploaded value"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                            :kind       ::secret/pem-cert
@@ -94,13 +91,11 @@
                          "keystore"))
           "psszt!"
           (mt/bytes->base64-data-uri (.getBytes "psszt!" "UTF-8"))))))
-
   (testing "get-secret-string from local file"
     (mt/with-temp-file [file-db "-1-key.pem"
                         file-value "-2-key.pem"]
       (spit file-db "titok")
       (spit file-value "psszt!")
-
       (testing "from value"
         (is (= "titok"
                (secret/value-as-string
@@ -108,7 +103,6 @@
                 {:keystore-path    file-db
                  :keystore-options "local"}
                 "keystore"))))
-
       (testing "from the database"
         (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                                :kind       ::secret/pem-cert

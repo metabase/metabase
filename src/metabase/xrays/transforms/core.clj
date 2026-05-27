@@ -33,7 +33,6 @@
   (lib.util.match/match-lite field-clause
     [:field (field-name :guard string?) _]
     field-name
-
     [:field (id :guard integer?) _]
     (t2/select-one-fn :name :model/Field :id id)))
 
