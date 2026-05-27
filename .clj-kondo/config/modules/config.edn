@@ -3075,8 +3075,12 @@
   enterprise/data-app-demo
   {:team "Gadget"
    :api  #{metabase-enterprise.data-app-demo.api
-           metabase-enterprise.data-app-demo.init}
-   :uses #{api}}
+           metabase-enterprise.data-app-demo.init
+           metabase-enterprise.data-app-demo.models.data-app}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/DataApp}}
 
   enterprise/data-complexity-score
   {:team "Metabot"

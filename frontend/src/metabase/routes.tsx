@@ -125,9 +125,11 @@ export const getRoutes = (store: AppStore) => {
         <Route element={<IsAuthenticated />}>
           {getMetabotRoutes()}
 
-          {/* PoC data-app host — admin-only; backend bundle endpoint is superuser-only. */}
-          <Route path="data-app-demo" component={IsAdmin}>
-            <Route index component={PLUGIN_DATA_APP_DEMO.DataAppDemo} />
+          {/* PoC data-app host — admin-only; backend bundle endpoint is
+              superuser-only. Path can't be `/app/:name` because the server
+               reserves `/app/*` for static asset serving. */}
+          <Route path="data-app/:name" component={IsAdmin}>
+            <Route index component={PLUGIN_DATA_APP_DEMO.AppView} />
           </Route>
 
           {/* The global all hands routes, things in here are for all the folks */}
