@@ -2,7 +2,10 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { ZOOM_DURATION_MS, zoomToNodes } from "../utils/zoom";
+import {
+  ZOOM_DURATION_MS,
+  zoomToNode as zoomToNodeInternal,
+} from "../utils/zoom";
 
 type PendingZoomRequest =
   | { kind: "all" }
@@ -52,7 +55,7 @@ export function useSchemaViewerZoomMethods(
       instance.fitView({ duration: ZOOM_DURATION_MS });
       return;
     }
-    const succeeded = zoomToNodes(instance, [pendingZoomRequest.nodeId]);
+    const succeeded = zoomToNodeInternal(instance, pendingZoomRequest.nodeId);
     if (succeeded) {
       pendingZoomRequestRef.current = null;
       return;
