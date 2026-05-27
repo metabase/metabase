@@ -5,6 +5,9 @@ import { useListDatabaseSchemasQuery } from "metabase/api";
 import { Button, Group, Input, MultiSelect, Stack } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
+// to not cover the add database button
+const DROPDOWN_WIDTH = 432;
+
 export type SchemaMultiSelectProps = {
   databaseId: DatabaseId;
   value: string[];
@@ -42,6 +45,7 @@ export function SchemaMultiSelect({
         data={schemas.map((schema) => ({ value: schema, label: schema }))}
         value={value}
         placeholder={isAll ? t`All schemas selected` : t`Select schemas`}
+        comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
         onChange={onChange}
       />
     </Stack>
