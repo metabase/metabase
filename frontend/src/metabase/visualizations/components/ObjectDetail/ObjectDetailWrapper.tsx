@@ -26,10 +26,10 @@ export function ObjectDetailWrapper({
     }
   }, [data.rows, currentObjectIndex]);
 
-  const getFallbackQuestion = () =>
-    card && rest.metadata ? new Question(card, rest.metadata) : undefined;
-
   const hasPagination = data?.rows?.length > 1;
+  const resolvedQuestion =
+    question ??
+    (card && rest.metadata ? new Question(card, rest.metadata) : undefined);
 
   return (
     <>
@@ -37,7 +37,7 @@ export function ObjectDetailWrapper({
         {...rest}
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
-        question={question ?? getFallbackQuestion()}
+        question={resolvedQuestion}
         showHeader={rest.settings["detail.showHeader"]}
         showControls={false}
         showRelations={false}
