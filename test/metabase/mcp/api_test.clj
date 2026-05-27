@@ -709,6 +709,18 @@
 
 ;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
 
+(deftest render-drill-through-publishes-its-own-resource-uri-test
+  (testing "render_drill_through publishes a distinct `_meta.ui.resourceUri` from visualize_query — ChatGPT dedupes iframes by URI, and reusing the visualize_query URI would prevent a fresh drill widget from mounting"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools-by-name  (into {} (map (juxt :name identity)) (get-in response [:body :result :tools]))
+          drill-uri      (get-in tools-by-name ["render_drill_through" :_meta :ui :resourceUri])
+          viz-uri        (get-in tools-by-name ["visualize_query"      :_meta :ui :resourceUri])]
+      (is (string? drill-uri))
+      (is (string? viz-uri))
+      (is (not= drill-uri viz-uri)
+          "render_drill_through and visualize_query must publish different resourceUris"))))
+
 (deftest tools-call-render-drill-through-test
   (testing "render_drill_through resolves a stored handle to its encoded query"
     (let [user-id        (mt/user->id :crowberto)

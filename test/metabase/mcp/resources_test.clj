@@ -93,6 +93,24 @@
                                            #{"agent:visualize"}
                                            {}))))))
 
+(deftest drill-through-ui-resource-is-distinct-from-visualize-query-test
+  (testing "render_drill_through has its own UI resource URI (ChatGPT dedupes the iframe by `_meta.ui.resourceUri`; sharing the URI prevents a fresh widget from mounting on drill)"
+    (let [uris (set (map :uri (:resources (mcp.resources/list-resources #{"agent:visualize"}))))]
+      (is (contains? uris "ui://metabase/visualize-query.html"))
+      (is (contains? uris "ui://metabase/render-drill-through.html"))))
+  (testing "the two UI resources return byte-distinct HTML (ChatGPT's asset CDN appears to dedupe by body hash, so identical bodies cause the second asset to silently 404)"
+    (mcp.resources/with-fallback-template
+      (let [viz-html   (-> (mcp.resources/read-resource "ui://metabase/visualize-query.html"
+                                                        #{"agent:visualize"} {})
+                           :contents first :text)
+            drill-html (-> (mcp.resources/read-resource "ui://metabase/render-drill-through.html"
+                                                        #{"agent:visualize"} {})
+                           :contents first :text)]
+        (is (string? viz-html))
+        (is (string? drill-html))
+        (is (not= viz-html drill-html)
+            "visualize-query and render-drill-through HTML must differ byte-wise")))))
+
 (deftest builtin-visualize-query-ui-resource-metadata-test
   (testing "the visualize_query UI resource publishes bare origins; :domain is gated on the ChatGPT client"
     ;; site-url is set with a subpath to confirm `_meta.ui.domain` and the CSP domain lists strip the
