@@ -6,7 +6,8 @@
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.request.core :as request]
-   [metabase.system.core :as system]))
+   [metabase.system.core :as system]
+   [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
 
@@ -141,7 +142,8 @@
 (deftest embed-mcp-template-base-url-test
   (testing "the MCP iframe document resolves relative bundle assets from the Metabase instance"
     (let [site-url "https://metabase.example.com/sub/path"
-          html     (mcp.resources/render-embed-mcp-template
+          html     (stencil/render-file
+                    "frontend_client/mcp_apps_template.html"
                     {:instanceUrl    "\"https://metabase.example.com/sub/path\""
                      :instanceUrlRaw site-url
                      :sessionToken   nil
