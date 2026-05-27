@@ -66,11 +66,11 @@ export function useHeatmapPlugin() {
         identifier: PLUGIN_IDENTIFIER,
         icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
       },
-      undefined,
-      undefined,
-      // Storybook has no backend for the sandbox-host endpoint and no strict
-      // parent CSP, so use about:blank instead of the iframe-src sandbox.
-      "blank",
+      {
+        // Storybook has no backend for the sandbox-host endpoint and no strict
+        // parent CSP, so use about:blank instead of the iframe-src sandbox.
+        sandboxMode: "blank",
+      },
     ).then(() => {
       if (!cancelled) {
         setReady(true);

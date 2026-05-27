@@ -106,7 +106,10 @@ function useCustomVizDevReload(
       );
       setLoading(true);
       try {
-        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`, onInfo);
+        await loadCustomVizPlugin(plugin, {
+          cacheBustSuffix: `?t=${Date.now()}`,
+          onInfo,
+        });
       } finally {
         setLoading(false);
       }
@@ -162,7 +165,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
+        await loadCustomVizPlugin(pluginToLoad, { onInfo });
       } finally {
         loadingRef.current = null;
         setLoading(false);
@@ -247,6 +250,12 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   return { loading: needsCustomViz && !isReady };
 }
 
+export type LoadCustomVizPluginOptions = {
+  cacheBustSuffix?: string;
+  onInfo?: (message: string) => void;
+  sandboxMode?: SandboxMode;
+};
+
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -254,10 +263,9 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
  */
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
-  cacheBustSuffix?: string,
-  onInfo?: (message: string) => void,
-  sandboxMode: SandboxMode = "hosted",
+  options: LoadCustomVizPluginOptions = {},
 ): Promise<string | null> {
+  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
   if (
