@@ -16,9 +16,9 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { makeDistortionCallback } from "metabase-enterprise/custom_viz/sandbox/distortions";
 
 import { getHostBackedSdkStore } from "./host-sdk-init";
+import { makeDistortionCallback } from "./sandbox/distortions";
 
 /**
  * Sandbox for data-app plugin bundles.
