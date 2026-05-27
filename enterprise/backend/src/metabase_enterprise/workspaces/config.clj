@@ -88,18 +88,16 @@
 (defn- stub-databases
   "Databases that exist in the instance but are not provisioned for this workspace.
    Excludes the sample DB (handled by GHY-3687), the audit DB, and routing-target
-   databases (destinations with `:router_database_id` set).
-
-   `workspace-db-ids` is chunked into NOT-IN clauses of 500 so we stay well below
-   driver parameter limits (Oracle caps `IN` at 1000)."
+   databases (destinations with `:router_database_id` set)."
   [workspace-db-ids]
   (t2/select :model/Database
-             {:where (into [:and
-                            [:= :is_sample false]
-                            [:= :is_audit  false]
-                            [:= :router_database_id nil]]
-                           (map (fn [chunk] [:not-in :id (vec chunk)]))
-                           (partition-all 500 workspace-db-ids))}))
+             {:where [:and
+                      [:= :is_sample false]
+                      [:= :is_audit  false]
+                      [:= :router_database_id nil]
+                      (if (seq workspace-db-ids)
+                        [:not-in :id workspace-db-ids]
+                        true)]}))
 
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
@@ -125,12 +123,10 @@
                         {:status-code  409
                          :workspace_id workspace-id})))
       (let [workspace-db-ids (mapv :database_id wsds)
-            ;; Chunk the IN clause into batches of 500 — see [[stub-databases]] for the same reason.
-            dbs-by-id        (into {}
-                                   (map (juxt :id identity))
-                                   (mapcat (fn [chunk]
-                                             (t2/select :model/Database :id [:in (vec chunk)]))
-                                           (partition-all 500 workspace-db-ids)))
+            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                               (into {} (map (juxt :id identity))
+                                     (t2/select :model/Database :id [:in ids]))
+                               {})
             pairs            (for [wsd wsds
                                    :let [db (get dbs-by-id (:database_id wsd))]]
                                [wsd db])
