@@ -267,20 +267,28 @@
 
 ;;;; Embedding-service provider
 
+(defn- trim-trailing-slashes
+  [s]
+  (cond-> s
+    (string? s) (str/replace #"/+$" "")))
+
 (defn- embedding-service-resolve-config!
   "Returns [endpoint api-key]. When api key is not set or when service url is not set but
   `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. Throws if base url of both vars is not set is not configured."
+  is used for authentication. Throws if neither base URL is configured."
   []
-  (if (empty? (semantic-settings/ee-embedding-service-base-url))
-    (if (empty? (llm.settings/ai-service-base-url))
-      (throw (ex-info "Embedding service and ai service base URLs and not configured"
-                      {:setting ["ee-embedding-service-base-url"
-                                 "ai-service-base-url"]}))
-      [(str (llm.settings/ai-service-base-url) "/v1/embeddings") nil])
-    (let [base-url (semantic-settings/ee-embedding-service-base-url)
-          api-key  (semantic-settings/ee-embedding-service-api-key)]
-      [(str base-url "/v1/embeddings") api-key])))
+  (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
+        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
+         (semantic-settings/ee-embedding-service-api-key)]
+
+        (string? (not-empty (llm.settings/ai-service-base-url)))
+        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
+         nil]
+
+        :else
+        (throw (ex-info "Embedding service and ai service base URLs and not configured"
+                        {:settings ["ee-embedding-service-base-url"
+                                    "ai-service-base-url"]}))))
 
 (defmethod get-embedding "ai-service"
   [{:keys [model-name]} text & {:keys [record-tokens? type]}]
