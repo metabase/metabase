@@ -37,13 +37,14 @@
             (is (= "Analytics Data Warehouse" (:name db)))
             (is (= :postgres (:engine db)))
             (testing "original details are preserved, workspace overrides win, schema-filters appended"
-              (is (= {:host                    "mbdata.metabase.com"
-                      :port                    5432
-                      :user                    "mb_isolation_github"
-                      :password                "secret"
-                      :dbname                  "stitchdata_incoming"
-                      :schema-filters-type     "inclusion"
-                      :schema-filters-patterns "raw_github"}
+              (is (= {:host                        "mbdata.metabase.com"
+                      :port                        5432
+                      :user                        "mb_isolation_github"
+                      :password                    "secret"
+                      :dbname                      "stitchdata_incoming"
+                      :schema-filters-type         "inclusion"
+                      :schema-filters-patterns     "raw_github"
+                      :let-user-control-scheduling false}
                      (:details db))))))
         (testing "workspace entry uses flat input_schemas + expanded :output map"
           (is (= "github" (-> cfg :config :workspace :name)))
@@ -190,3 +191,30 @@
   (testing "A missing workspace returns nil"
     (mt/with-model-cleanup [:model/Workspace]
       (is (nil? (config/build-workspace-config Integer/MAX_VALUE))))))
+
+(deftest build-workspace-config-forces-let-user-control-scheduling-false-test
+  (testing "Non-stub database entries emit :let-user-control-scheduling false even if the source
+            database had it true. The YAML carries :details only — not the schedule cron columns —
+            so on import infer-db-schedules must take the auto-schedule branch instead of asserting
+            on missing cache_field_values_schedule / metadata_sync_schedule."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "User-Scheduled DW"
+                    :engine  :postgres
+                    :details {:host                        "h"
+                              :port                        5432
+                              :let-user-control-scheduling true}}
+                   :model/Workspace {ws-id :id} {:name       "sched"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_alice"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [own-db (->> (config/build-workspace-config ws-id)
+                        :config
+                        :databases
+                        (remove :is_stub)
+                        first)]
+        (is (false? (get-in own-db [:details :let-user-control-scheduling])))))))
