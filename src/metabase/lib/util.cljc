@@ -35,7 +35,6 @@
 ;;; Cljs. They both work like [[clojure.core/format]], but since that doesn't exist in Cljs, you can use this instead.
 #?(:clj
    (p/import-vars [clojure.core format])
-
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 

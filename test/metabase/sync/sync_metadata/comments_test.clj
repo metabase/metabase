@@ -117,7 +117,7 @@
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
         (mt/dataset dbdef
-         ;; create the comment
+          ;; create the comment
           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                          [(sql.tx/standalone-table-comment-sql
                            driver/*driver*

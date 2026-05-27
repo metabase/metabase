@@ -9,7 +9,7 @@
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -17,7 +17,7 @@
 
 (defn- format-chart-output
   [{:keys [chart-id] :as structured}]
-  (let [chart-xml (llm-rep/chart->xml structured)]
+  (let [chart-xml (llm-shape/chart->xml structured)]
     (str "<result>\n" chart-xml "\n</result>\n"
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
@@ -82,12 +82,10 @@
             :charts-state (shared/current-charts-state)})
 
           structured (assoc result :result-type :chart)]
-
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
       (when (and (:chart_id new-chart-data) shared/*memory-atom*)
         (swap! shared/*memory-atom* assoc-in [:state :charts (:chart_id new-chart-data)]
                new-chart-data))
-
       {:output (format-chart-output structured)
        :structured-output structured
        :data-parts [(streaming/navigate-to-part
@@ -95,7 +93,6 @@
                       {:dataset_query query
                        :display new-viz
                        :displayIsLocked true}))]})
-
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))

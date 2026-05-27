@@ -11,7 +11,6 @@
       (is (= messages (:input-messages mem)))
       (is (= state (:state mem)))
       (is (= [] (:steps-taken mem)))))
-
   (testing "initializes with default state when nil"
     (let [messages [{:role :user :content "Hello"}]
           mem (memory/initialize messages nil)]
@@ -26,7 +25,6 @@
           mem' (memory/add-step mem parts)]
       (is (= 1 (count (:steps-taken mem'))))
       (is (= parts (-> mem' :steps-taken first :parts)))))
-
   (testing "adds multiple steps"
     (let [mem (memory/initialize [] {})
           parts1 [{:type :tool-input :function "search"}]
@@ -50,7 +48,6 @@
           mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
       (is (= {:queries {} :charts {"c1" {:id "c1"}}}
              (memory/get-state mem')))))
-
   (testing "merges state updates"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})
           mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
@@ -82,7 +79,6 @@
                   (memory/add-step [{:type :text}])
                   (memory/add-step [{:type :tool-input}]))]
       (is (= 3 (memory/iteration-count mem)))))
-
   (testing "returns 0 for new memory"
     (let [mem (memory/initialize [] {})]
       (is (= 0 (memory/iteration-count mem))))))

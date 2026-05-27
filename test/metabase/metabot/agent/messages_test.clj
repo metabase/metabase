@@ -15,7 +15,6 @@
   (testing "plain user message"
     (is (=? [{:role :user :content "Hello"}]
             (messages/input-message->parts {:role :user :content "Hello"}))))
-
   (testing "user message with string role"
     (is (=? [{:role :user :content "Hello"}]
             (messages/input-message->parts {:role "user" :content "Hello"})))))
@@ -24,7 +23,6 @@
   (testing "assistant with plain text"
     (is (=? [{:type :text :text "Hi there"}]
             (messages/input-message->parts {:role :assistant :content "Hi there"}))))
-
   (testing "assistant with tool_calls (OpenAI style)"
     (is (=? [{:type :text :text "Searching..."}
              {:type :tool-input :id "t1" :function "search" :arguments {:q "test"}}]
@@ -32,13 +30,11 @@
              {:role       :assistant
               :content    "Searching..."
               :tool_calls [{:id "t1" :name "search" :arguments "{\"q\":\"test\"}"}]}))))
-
   (testing "assistant with only tool_calls (no content)"
     (is (=? [{:type :tool-input :id "t1" :function "search" :arguments {}}]
             (messages/input-message->parts
              {:role       :assistant
               :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}))))
-
   (testing "assistant with content blocks (Claude style)"
     (is (=? [{:type :text :text "Let me check..."}
              {:type :tool-input :id "t1" :function "search" :arguments {:q "test"}}]
@@ -46,13 +42,11 @@
              {:role    :assistant
               :content [{:type "text" :text "Let me check..."}
                         {:type "tool_use" :id "t1" :name "search" :input {:q "test"}}]}))))
-
   (testing "assistant with only content block tool_use (no text)"
     (is (=? [{:type :tool-input :id "t1" :function "search"}]
             (messages/input-message->parts
              {:role    :assistant
               :content [{:type "tool_use" :id "t1" :name "search" :input {:q "test"}}]}))))
-
   (testing "malformed tool_call arguments fall through"
     (is (=? [{:type :tool-input :id "t1" :function "search" :arguments "{bad-json"}]
             (messages/input-message->parts
@@ -64,7 +58,6 @@
     (is (=? [{:type :tool-output :id "t1" :result {:output "Found 42"}}]
             (messages/input-message->parts
              {:role :tool :tool_call_id "t1" :content "Found 42"}))))
-
   (testing "tool result with string role"
     (is (=? [{:type :tool-output :id "t1" :result {:output "results"}}]
             (messages/input-message->parts
@@ -88,24 +81,27 @@
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}]
             (messages/build-message-history
              {}
-             (memory/initialize [{:role :user :content "Hello"}] {})))))
+             (memory/initialize [{:role :user :content "Hello"}] {}))))))
 
+(deftest ^:parallel build-message-history-test-2
   (testing "includes assistant text from input"
     (is (=? [{:role :user :content "Hello"}
              {:type :text :text "Hi there"}]
             (messages/build-message-history
              {}
              (memory/initialize [{:role :user :content "Hello"}
-                                 {:role :assistant :content "Hi there"}] {})))))
+                                 {:role :assistant :content "Hi there"}] {}))))))
 
+(deftest ^:parallel build-message-history-test-3
   (testing "includes step parts from memory"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}
              {:type :text :text "Response text"}]
             (messages/build-message-history
              {}
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
-                 (memory/add-step [{:type :text :text "Response text"}]))))))
+                 (memory/add-step [{:type :text :text "Response text"}])))))))
 
+(deftest ^:parallel build-message-history-test-4
   (testing "includes tool calls from steps"
     (is (=? [{:role :user :content #(str/ends-with? % "Search for revenue")}
              {:type :tool-input :id "t1" :function "search" :arguments {:query "revenue"}}]
@@ -115,8 +111,9 @@
                  (memory/add-step [{:type      :tool-input
                                     :id        "t1"
                                     :function  "search"
-                                    :arguments {:query "revenue"}}]))))))
+                                    :arguments {:query "revenue"}}])))))))
 
+(deftest ^:parallel build-message-history-test-5
   (testing "includes tool results from steps"
     (is (=? [{:role :user :content #(str/ends-with? % "Search")}
              {:type :tool-input :id "t1" :function "search"}
@@ -125,8 +122,9 @@
              {}
              (-> (memory/initialize [{:role :user :content "Search"}] {})
                  (memory/add-step [{:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}])
-                 (memory/add-step [{:type :tool-output :id "t1" :result {:data []}}]))))))
+                 (memory/add-step [{:type :tool-output :id "t1" :result {:data []}}])))))))
 
+(deftest ^:parallel build-message-history-test-6
   (testing "handles multiple iterations"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}
              {:type :tool-input :id "t1"}
@@ -137,8 +135,9 @@
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
                  (memory/add-step [{:type :tool-input :id "t1" :function "search" :arguments {}}])
                  (memory/add-step [{:type :tool-output :id "t1" :result {:data []}}])
-                 (memory/add-step [{:type :text :text "Found results"}]))))))
+                 (memory/add-step [{:type :text :text "Found results"}])))))))
 
+(deftest ^:parallel build-message-history-test-7
   (testing "filters out non-message parts from steps"
     (is (=? [{:role :user :content #(str/ends-with? % "Hello")}
              {:type :text :text "Response"}]
@@ -147,8 +146,9 @@
              (-> (memory/initialize [{:role :user :content "Hello"}] {})
                  (memory/add-step [{:type :start :messageId "m1"}
                                    {:type :text :text "Response"}
-                                   {:type :usage :usage {:promptTokens 10}}]))))))
+                                   {:type :usage :usage {:promptTokens 10}}])))))))
 
+(deftest ^:parallel build-message-history-test-8
   (testing "merges consecutive assistant messages from input history"
     ;; Frontend may send separate text and tool_calls messages
     (is (=? [{:role :user :content "Hello"}
@@ -218,7 +218,6 @@
                     {:first_day_of_week "Monday"}
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Monday"))))
-
   (testing "default first_day_of_week is Sunday"
     (let [content (last-user-content
                    (messages/build-message-history
@@ -272,14 +271,12 @@
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:role "system" :content #"(?s).*Metabot.*"}
               (messages/build-system-message {} profile {})))))
-
   (testing "includes viewing context when provided"
     (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
           profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
               (messages/build-system-message context profile {})))))
-
   (testing "handles empty context gracefully"
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]

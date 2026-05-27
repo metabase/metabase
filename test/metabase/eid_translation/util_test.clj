@@ -36,15 +36,12 @@
     (is (partial= {:ok 2 :total 2} (#'stats/get-translation-count))
         "Translations are counted when they do occur")
     (#'stats/clear-translation-count!))
-
   (let [samples (t2/select-fn->fn :id :entity_id [:model/Card :id :entity_id] {:limit 100})]
     (when (seq samples)
       (doseq [[card-id entity-id] samples]
         (testing (str "card-id: " card-id " entity-id: " entity-id)
-
           (is (= card-id (eid-translation.util/->id :model/Card card-id)))
           (is (= card-id (eid-translation.util/->id :card card-id)))
-
           (is (= card-id (eid-translation.util/->id :model/Card entity-id)))
           (is (= card-id (eid-translation.util/->id :card entity-id)))))
       (is (malli= [:map [:ok pos-int?] [:total pos-int?]]
@@ -148,11 +145,9 @@
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
       (is (= card-id (eid-translation.util/->id-or-404 :card card-id)))
       (is (= card-id (eid-translation.util/->id-or-404 :card card-eid)))))
-
   (testing "->id-or-404 should throw 404 error for non-existent entity IDs"
     (is (thrown-with-msg? Exception #"Not found\."
                           (eid-translation.util/->id-or-404 :card "abcdefghijklmnopqrstu"))))
-
   (testing "->id-or-404 should preserve original error for invalid format"
     (is (thrown-with-msg? Exception #"problem looking up id from entity_id"
                           (eid-translation.util/->id-or-404 :card "invalid-format")))))

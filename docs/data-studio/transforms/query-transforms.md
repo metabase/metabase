@@ -5,7 +5,7 @@ summary: Create Metabase questions and SQL queries to transform your data and wr
 
 # Query-based transforms
 
-> On Metabase Cloud, you need the **Transforms** add-on to run query-based transforms.
+> On Metabase Cloud, you need the [**Basic transforms** add-on](addons.md) to run query-based transforms.
 
 With query-based transforms, you can write a query in SQL or Metabase's query builder, and then write the results of the query back into the database on schedule.
 
@@ -23,23 +23,24 @@ For general information about Metabase transforms, see [Transforms](transforms-o
 
 ## Create a query-based transform
 
-On Metabase Cloud, you need the **Transforms** add-on to create query-based transforms.
+On Metabase Cloud, you need the [**Basic transforms** add-on](addons.md) to create query-based transforms.
 
-1. Go to **Data studio > Transforms**.
+1. [Enable transforms](transforms-overview.md#enable-transforms).
+2. Go to **Data studio > Transforms**.
 
-2. Click **+ New** and pick "Query builder", "SQL", or "Copy of existing question".
+3. Click **+ New** and pick "Query builder", "SQL", or "Copy of existing question".
 
    Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
-3. Write your transform query as you would normally write a query in Metabase. See [Query builder](../../questions/query-builder/editor.md) and [SQL editor](../../questions/native-editor/writing-sql.md) documentation for more information.
+4. Write your transform query as you would normally write a query in Metabase. See [Query builder](../../questions/query-builder/editor.md) and [SQL editor](../../questions/native-editor/writing-sql.md) documentation for more information.
 
    Not all databases support transforms, see [Databases that support transforms](transforms-overview.md#databases-that-support-transforms).
 
-4. To test your transform, press the **Run** button at the bottom of the editor.
+5. To test your transform, press the **Run** button at the bottom of the editor.
 
    Previewing a query transform in the editor will _not_ write the result of the transform back to the database.
 
-5. Click **Save** in the top right corner and fill out the transform information:
+6. Click **Save** in the top right corner and fill out the transform information:
 
    - **Name** (required): The name of the transform.
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
@@ -47,7 +48,7 @@ On Metabase Cloud, you need the **Transforms** add-on to create query-based tran
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query transforms](#incremental-query-transforms)
 
-6. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
+7. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
 
 ## Variables in SQL transforms
 
@@ -84,8 +85,6 @@ Parameters in transforms must either:
 - Supply a default value.
 
 The reason transform variables must have a default value (or be optional) is that transforms run on a schedule, so there's no way to pass a value to the variable when the job runs the transform.
-
-The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
 
 ## Run a query transform
 
@@ -127,8 +126,8 @@ To make this transform incrementally load the data based on new values of `order
 1. Add a table variable, for example `{{orders_var}}` replacing `orders` in the `FROM` statement;
 2. In the table variable settings, connect the table variable to the `orders` table;
 3. Replace other references to the table in your query with either:
-    - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
-    - Your own handcrafted alias for the variable.
+   - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
+   - Your own handcrafted alias for the variable.
 
 So your query will look like this:
 
@@ -152,3 +151,36 @@ To make a query transform incremental:
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
 3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+
+## Convert models to transforms
+
+{% include plans-blockquote.html feature="Converting models to transforms"%}
+
+If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
+
+1. Creates a new transform based on the model's query.
+2. Runs the transform to create the output table in your database.
+3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
+4. Converts the original model to a question.
+
+You must be an admin to convert models, and the model's database must [support transforms](transforms-overview.md#databases-that-support-transforms).
+
+To convert a model into a transform:
+
+1. Review [Replacing data sources](../dependencies/replace-data-sources.md) docs for overview and limitations of the process.
+2. Open **Data Studio** and select **Transforms** in the sidebar.
+3. Click **Tools > Migrate models**.
+4. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
+5. Click **Convert to a transform**.
+6. Fill out the transform settings. See [Create a transform](#create-a-query-based-transform) for the overview of settings.
+7. Click **Convert to a transform**.
+
+Metabase runs the conversion in the background. A status indicator at the bottom of the screen shows progress.
+
+If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
+
+If the transform runs successfully, but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point the remaining content from the model to the transform's output table.
+
+Once conversion completes, all content that previously queried the model now queries the transform's output table. The original model just becomes a question.
+
+Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.

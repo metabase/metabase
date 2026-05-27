@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: master
           sparse-checkout: |
@@ -22,7 +22,7 @@ jobs:
 
       - name: Preflight
         id: preflight
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { versionRequirements } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -87,7 +87,7 @@ jobs:
       - name: Create 0.${{ steps.preflight.outputs.nextMilestone }} milestone
         id: milestone
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
@@ -113,7 +113,7 @@ jobs:
       - name: Create Bug:v${{ steps.preflight.outputs.nextMilestone }} label
         id: label
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
@@ -145,7 +145,7 @@ jobs:
         continue-on-error: true
         env:
           STATS_API_KEY: ${{ secrets.STATS_API_KEY }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const next = '${{ steps.preflight.outputs.next }}';
@@ -178,7 +178,7 @@ jobs:
             console.log(`Created timeline event ${name}`);
 
       - name: Notify Slack
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -233,7 +233,7 @@ jobs:
 
       # Heads-up to the broader eng audience about where backports go now.
       - name: Notify the engineering team
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -262,7 +262,7 @@ jobs:
       # the happy-path message above.
       - name: Notify Slack on cut failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:

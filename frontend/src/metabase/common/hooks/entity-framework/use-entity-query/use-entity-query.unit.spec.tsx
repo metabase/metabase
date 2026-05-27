@@ -1,51 +1,46 @@
 import fetchMock from "fetch-mock";
 
-import {
-  setupDatabaseEndpoints,
-  setupTableEndpoints,
-} from "__support__/server-mocks";
+import { setupCardEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Databases } from "metabase/entities/databases";
-import { Tables } from "metabase/entities/tables";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { DatabaseId, TableId } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { Questions } from "metabase/entities/questions";
+import type Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { useEntityQuery } from "./use-entity-query";
 
-const TEST_DB = createMockDatabase();
-const TEST_TABLE = createMockTable();
+const TEST_CARD = createMockCard({ id: 1, name: "Card One" });
+const TEST_CARD_RELOAD = createMockCard({ id: 2, name: "Card Two" });
 
 const TestComponent = () => {
   const {
-    data: database,
+    data: question,
     isLoading,
     error,
-  } = useEntityQuery<DatabaseId, Database>(
+  } = useEntityQuery<CardId, Question>(
     {
-      id: TEST_DB.id,
+      id: TEST_CARD.id,
     },
     {
-      fetch: Databases.actions.fetch,
-      getObject: Databases.selectors.getObject,
-      getLoading: Databases.selectors.getLoading,
-      getError: Databases.selectors.getError,
+      fetch: Questions.actions.fetch,
+      getObject: Questions.selectors.getObject,
+      getLoading: Questions.selectors.getLoading,
+      getError: Questions.selectors.getError,
     },
   );
 
-  if (isLoading || error || !database) {
+  if (isLoading || error || !question) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
     <div>
-      <div>{database.name}</div>
+      <div>{question.displayName()}</div>
       <TestInnerComponent />
     </div>
   );
@@ -53,32 +48,32 @@ const TestComponent = () => {
 
 const TestInnerComponent = () => {
   const {
-    data: table,
+    data: question,
     isLoading,
     error,
-  } = useEntityQuery<TableId, Table>(
+  } = useEntityQuery<CardId, Question>(
     {
-      id: TEST_TABLE.id,
+      id: TEST_CARD_RELOAD.id,
       reload: true,
     },
     {
-      fetch: Tables.actions.fetch,
-      getObject: Tables.selectors.getObject,
-      getLoading: Tables.selectors.getLoading,
-      getError: Tables.selectors.getError,
+      fetch: Questions.actions.fetch,
+      getObject: Questions.selectors.getObject,
+      getLoading: Questions.selectors.getLoading,
+      getError: Questions.selectors.getError,
     },
   );
 
-  if (isLoading || error || !table) {
+  if (isLoading || error || !question) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <div>{table.name}</div>;
+  return <div>{question.displayName()}</div>;
 };
 
 const setup = () => {
-  setupDatabaseEndpoints(TEST_DB);
-  setupTableEndpoints(TEST_TABLE);
+  setupCardEndpoints(TEST_CARD);
+  setupCardEndpoints(TEST_CARD_RELOAD);
   return renderWithProviders(<TestComponent />);
 };
 
@@ -94,13 +89,13 @@ describe("useEntityQuery", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD_RELOAD.name)).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD.id}`),
     ).toHaveLength(1);
     expect(
-      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD_RELOAD.id}`),
     ).toHaveLength(1);
   });
 
@@ -110,13 +105,13 @@ describe("useEntityQuery", () => {
     await waitForLoaderToBeRemoved();
     rerender(<TestComponent />);
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD_RELOAD.name)).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD.id}`),
     ).toHaveLength(1);
     expect(
-      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD_RELOAD.id}`),
     ).toHaveLength(1);
   });
 
@@ -128,13 +123,13 @@ describe("useEntityQuery", () => {
     rerender(<TestComponent />);
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_CARD_RELOAD.name)).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls(`path:/api/database/${TEST_DB.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD.id}`),
     ).toHaveLength(1);
     expect(
-      fetchMock.callHistory.calls(`path:/api/table/${TEST_TABLE.id}`),
+      fetchMock.callHistory.calls(`path:/api/card/${TEST_CARD_RELOAD.id}`),
     ).toHaveLength(2);
   });
 });

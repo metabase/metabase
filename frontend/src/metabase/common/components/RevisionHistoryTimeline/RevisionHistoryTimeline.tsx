@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import { Box, Button, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Revision } from "metabase-types/api";
@@ -18,7 +21,9 @@ export type RevisionHistoryEntity =
 interface RevisionHistoryTimelineProps {
   entity: RevisionHistoryEntity;
   events: RevisionOrModerationEvent[];
-  revert: (revision: Revision) => void;
+  // Must reject on failure so the timeline can surface a toast. RTK Query
+  // callers should pipe the trigger result through `.unwrap()`.
+  revert: (revision: Revision) => Promise<unknown>;
   canWrite: boolean;
   className?: string;
   "data-testid": string;
@@ -32,6 +37,26 @@ export function RevisionHistoryTimeline({
   className,
   entity,
 }: RevisionHistoryTimelineProps) {
+  const dispatch = useDispatch();
+
+  const handleRevert = async (revision: Revision) => {
+    trackVersionRevertClicked(entity);
+    try {
+      await revert(revision);
+    } catch (error) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: getErrorMessage(
+            error,
+            t`Failed to revert to previous version.`,
+          ),
+        }),
+      );
+    }
+  };
+
   return (
     <Box className={className} data-testid={dataTestId}>
       <Box className={S.root}>
@@ -74,10 +99,7 @@ export function RevisionHistoryTimeline({
                     <Button
                       className={S.revertButton}
                       variant="subtle"
-                      onClick={() => {
-                        trackVersionRevertClicked(entity);
-                        revert(revision);
-                      }}
+                      onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
                     >

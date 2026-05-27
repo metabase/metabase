@@ -52,7 +52,6 @@
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
                   (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-
                   (let [rows (transforms.tu/table-rows table-name)]
                     (is (= 5 (count rows)))
                     (is (every? #(= (* 2 (first %)) (second %)) rows))
