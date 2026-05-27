@@ -90,6 +90,31 @@
               (is (string? rendered-content))
               (is (str/includes? rendered-content "http://example.com/dashboard/42?state=CA&amp;state=NY&amp;state=NJ#scrollTo=456")))))))))
 
+(deftest dashboard-subscription-part-error-isolation-test
+  (testing "One card failing to render does not break the whole dashboard subscription; the failed
+            card degrades to an error placeholder and the remaining cards still render (#74007)"
+    (let [notification {:payload_type :notification/dashboard
+                        :payload {:dashboard       {:id 1 :name "Test Dashboard"}
+                                  :parameters      []
+                                  :dashboard_parts [{:type :card :card {:id 1 :name "Good Card"} :dashcard {:id 10 :dashboard_id 1}}
+                                                    {:type :card :card {:id 2 :name "Bad Card"}  :dashcard {:id 20 :dashboard_id 1}}]
+                                  :dashboard_subscription {:id 9 :dashboard_subscription_dashcards []}}}
+          recipients   [{:type :notification-recipient/user :user {:email "test@example.com"}}]]
+      (mt/with-temporary-setting-values [site-url "http://example.com"]
+        ;; The bad card returns lazy Hiccup that throws only when realized by `html` - the exact failure
+        ;; mode where a render error escapes the per-card try/catch and would otherwise abort delivery.
+        (mt/with-dynamic-fn-redefs [email.impl/render-part (fn [_timezone part _options]
+                                                             (if (= 2 (-> part :card :id))
+                                                               {:content [:div (lazy-seq (throw (ex-info "boom while realizing" {})))]}
+                                                               {:content [:div "GOOD-CARD-BODY"]}))]
+          (let [result  (channel/render-notification :channel/email notification {:recipients recipients})
+                content (-> result first :message first :content)]
+            (is (string? content))
+            (testing "the healthy card still renders"
+              (is (str/includes? content "GOOD-CARD-BODY")))
+            (testing "the failed card degrades to the error placeholder"
+              (is (str/includes? content "An error occurred while displaying this card.")))))))))
+
 (deftest render-body-prometheus-metric-test
   (testing "rendering a user-provided template increments the template-render counter"
     (mt/with-prometheus-system! [_ system]
