@@ -8,15 +8,15 @@ export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;
 }
 
-const BUNDLE_PATH = "/api/ee/data-app-demo/bundle";
-
 /**
- * Fetch the demo data-app bundle, evaluate it in a Near Membrane sandbox
- * with React endowed, and return the host-renderable React component the
- * factory produces.
+ * Fetch a data-app bundle by name, evaluate it in a Near Membrane sandbox
+ * with React + the SDK component set endowed, and return the host-renderable
+ * React component the factory produces.
  */
-export async function loadDataAppBundle(): Promise<LoadedDataApp> {
-  const url = getSubpathSafeUrl(`${BUNDLE_PATH}?t=${Date.now()}`);
+export async function loadDataAppBundle(name: string): Promise<LoadedDataApp> {
+  const url = getSubpathSafeUrl(
+    `/api/ee/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+  );
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to fetch data-app bundle: HTTP ${res.status}`);

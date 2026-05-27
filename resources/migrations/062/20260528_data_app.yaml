@@ -1,0 +1,90 @@
+## Create data_app table for the data-app PoC
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+  - changeSet:
+      id: v62.2026-05-28T00:00:00
+      author: timofei
+      comment: Create data_app table for uploaded data-app bundles
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_app
+      changes:
+        - createTable:
+            tableName: data_app
+            remarks: Stores uploaded data-app bundles (single JS file). PoC scope - no manifest yet.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Unique short identifier used in URLs and admin lists
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: display_name
+                  type: varchar(254)
+                  remarks: Human-readable name shown in the admin UI
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bundle
+                  type: ${blob.type}
+                  remarks: Raw bytes of the uploaded index.js
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bundle_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex of the uploaded bytes, used as HTTP ETag and cache buster
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who uploaded this data app
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_data_app_creator_id
+                    references: core_user(id)
+                    deleteCascade: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the data app was uploaded
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the data app was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-05-28T00:00:01
+      author: timofei
+      comment: Use longblob for data_app.bundle on MySQL/MariaDB so it can hold multi-MB uploads
+      changes:
+        - modifyDataType:
+            tableName: data_app
+            columnName: bundle
+            newDataType: longblob
+      rollback:
+        - modifyDataType:
+            tableName: data_app
+            columnName: bundle
+            newDataType: ${blob.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
