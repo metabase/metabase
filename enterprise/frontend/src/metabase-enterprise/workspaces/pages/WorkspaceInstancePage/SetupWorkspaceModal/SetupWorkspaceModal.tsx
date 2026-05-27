@@ -22,6 +22,8 @@ import {
 import * as Urls from "metabase/urls";
 import { useApplyAdvancedConfigMutation } from "metabase-enterprise/api";
 
+import { trackWorkspaceInstanceSetup } from "../../../analytics";
+
 const CONFIG_FILENAME = "config.yml";
 
 type SetupWorkspaceModalProps = {
@@ -67,6 +69,7 @@ function SetupWorkspaceForm({ onClose }: SetupWorkspaceFormProps) {
       return;
     }
     await applyConfig({ config }).unwrap();
+    trackWorkspaceInstanceSetup();
     onClose();
     dispatch(push(Urls.workspaces()));
   };
