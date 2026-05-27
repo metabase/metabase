@@ -217,7 +217,6 @@
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
-
       (testing "When we have multiple FieldValues rows in the database, "
         (is (= 3 (count (t2/select :model/FieldValues :field_id field-id :type :full :hash_key nil))))
         (testing "we always return the most recently updated row"
@@ -257,13 +256,11 @@
                        field-values/get-or-create-full-field-values!
                        :type)))
       (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full)))
-
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)
                                              :type     :sandbox
                                              :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
-
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
         (t2/query-one {:update :metabase_fieldvalues
                        :where [:and
@@ -319,11 +316,9 @@
                                            :human_readable_values ["-2" "-1" "0" "a" "b" "c"]}]
              (is (= expected-original-values
                     (find-values field-values-id)))
-
              (testing "There should be no changes to human_readable_values when resync'd"
                (is (= expected-original-values
                       (sync-and-find-values! db field-values-id))))
-
              (testing "Add new rows that will have new field values"
                (jdbc/insert-multi! {:connection conn} :foo [{:id 4 :category_id -2 :desc "foo"}
                                                             {:id 5 :category_id -1 :desc "bar"}
@@ -331,11 +326,9 @@
                (testing "Sync to pickup the new field values and rebuild the human_readable_values"
                  (is (= expected-updated-values
                         (sync-and-find-values! db field-values-id)))))
-
              (testing "Resyncing this (with the new field values) should result in the same human_readable_values"
                (is (= expected-updated-values
                       (sync-and-find-values! db field-values-id))))
-
              (testing "Test that field values can be removed and the corresponding human_readable_values are removed as well"
                (jdbc/delete! {:connection conn} :foo ["id in (?,?,?)" 1 2 3])
                (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
@@ -421,7 +414,6 @@
         (is (thrown-with-msg? ExceptionInfo
                               #"Can't update field_id, type, or hash_key for a FieldValues."
                               (t2/update! :model/FieldValues id update-map)))))
-
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
@@ -476,7 +468,6 @@
       (is (thrown-with-msg? ExceptionInfo
                             #"Invalid query - :full FieldValues cannot have a hash_key"
                             (t2/select :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
-
       (t2/select :model/FieldValues :field_id field-id :type :sandbox)
       (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")
       (is (thrown-with-msg? ExceptionInfo
@@ -490,13 +481,11 @@
     ;; Is there really a use-case for reading all these values?
     ;; Perhaps we should require a type/hash combo - we would need to be careful it doesn't break any existing queries.
     (is (= {:field_id 1} (#'field-values/add-mismatched-hash-filter {:field_id 1}))))
-
   ;; There's an argument to be made that we should only query on these "identity" fields if the field-id is present,
   ;; but perhaps there are use cases that I haven't considered.
   (testing "Queries that fully specify the identity are not mangled"
     (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full, :hash_key nil})))
     (is (= {:type :sandbox, :hash_key "random-hash"} (#'field-values/add-mismatched-hash-filter {:type :sandbox, :hash_key "random-hash"}))))
-
   (testing "Ambiguous queries are upgraded to ensure invalid rows are filtered"
     (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full})))
     (is (= {:type :sandbox, :hash_key [:not= nil]} (#'field-values/add-mismatched-hash-filter {:type :sandbox})))))

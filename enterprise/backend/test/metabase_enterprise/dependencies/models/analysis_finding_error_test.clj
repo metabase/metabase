@@ -58,7 +58,6 @@
           (is (= 1 (t2/count :model/AnalysisFindingError
                              :analyzed_entity_type :card
                              :analyzed_entity_id 1)))
-
           (deps.analysis-finding-error/replace-errors-for-entity! :card 1 [])
           (is (= 0 (t2/count :model/AnalysisFindingError
                              :analyzed_entity_type :card

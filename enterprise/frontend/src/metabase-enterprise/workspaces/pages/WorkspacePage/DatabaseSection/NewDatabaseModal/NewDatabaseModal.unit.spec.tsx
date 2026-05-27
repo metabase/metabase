@@ -16,6 +16,8 @@ import {
 
 import { NewDatabaseModal } from "./NewDatabaseModal";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 const POSTGRES_DATABASE = createMockDatabase({
   id: 10,
   name: "Postgres",
@@ -76,10 +78,14 @@ function setup({
 }
 
 describe("NewDatabaseModal", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
@@ -90,18 +96,41 @@ describe("NewDatabaseModal", () => {
     );
   });
 
-  it("renders a single database as text without a radio group", () => {
+  it("tracks an analytics event when a database is added", async () => {
+    const { workspace } = setup();
+
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "public" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "workspaces_database_added",
+        target_id: workspace.id,
+      }),
+    );
+  });
+
+  it("renders a single database as text without a select", () => {
     setup({ availableDatabases: [POSTGRES_DATABASE] });
 
     expect(screen.getByText("Postgres")).toBeInTheDocument();
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("disables radios for databases that do not support workspaces", () => {
+  it("disables options for databases that do not support workspaces", async () => {
     setup({ availableDatabases: [POSTGRES_DATABASE, UNSUPPORTED_DATABASE] });
 
-    expect(screen.getByRole("radio", { name: "Postgres" })).toBeEnabled();
-    expect(screen.getByRole("radio", { name: /Unsupported/ })).toBeDisabled();
+    await userEvent.click(screen.getByRole("textbox", { name: "Database" }));
+
+    expect(
+      screen.getByRole("option", { name: "Postgres" }),
+    ).not.toHaveAttribute("data-combobox-disabled");
+    expect(screen.getByRole("option", { name: "Unsupported" })).toHaveAttribute(
+      "data-combobox-disabled",
+    );
   });
 
   it("requires at least one schema when the database supports schemas", async () => {

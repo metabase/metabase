@@ -7,7 +7,6 @@
   (testing "returns false for DB without remappings"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
       (is (false? (ws.remapping/enabled-for-db? 999)))))
-
   (testing "returns true for DB with remappings"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                               {1 {{:db "" :schema "public" :table "orders"}
@@ -19,7 +18,6 @@
   (testing "returns empty map for DB without remappings"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
       (is (= {} (ws.remapping/remappings-for-db 999)))))
-
   (testing "returns correct mappings (canonical ::table-spec shape)"
     (let [mappings {{:db "" :schema "github_analytics" :table "commits"}
                     {:db "" :schema "mb_iso_abc"       :table "commits"}
@@ -27,7 +25,6 @@
                     {:db "" :schema "mb_iso_abc"       :table "prs"}}]
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {1 mappings})]
         (is (= mappings (ws.remapping/remappings-for-db 1))))))
-
   (testing "different DBs have independent remappings"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                               {1 {{:db "" :schema "s1" :table "t1"} {:db "" :schema "s2" :table "t1"}}
@@ -36,7 +33,6 @@
              (ws.remapping/remappings-for-db 1)))
       (is (= {{:db "" :schema "s3" :table "t3"} {:db "" :schema "s4" :table "t3"}}
              (ws.remapping/remappings-for-db 2)))))
-
   (testing "BigQuery 3-slot specs (catalog populated)"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                               {1 {{:db "mb-prod" :schema "core"     :table "orders"}
@@ -79,7 +75,6 @@
       (is (= {{:db "" :schema "public" :table "orders"}
               {:db "" :schema "ws"     :table "orders"}}
              (ws.remapping/remappings-for-db 1)))))
-
   (testing "insert is idempotent on the (db, from) key"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
       (is (some? (ws.remapping/insert-mapping! 1
@@ -91,7 +86,6 @@
           "duplicate insert resolves cleanly (returns truthy, no exception)")
       (is (= 1 (count (ws.remapping/remappings-for-db 1)))
           "only one row persists after duplicate insert")))
-
   (testing "BigQuery 3-slot insert"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
       (ws.remapping/insert-mapping! 1
@@ -108,7 +102,6 @@
                                                   {:db "" :schema "ws"     :table "orders"}}})]
       (is (= 1 (ws.remapping/remove-mapping! 1 {:db "" :schema "public" :table "orders"})))
       (is (= {} (ws.remapping/remappings-for-db 1)))))
-
   (testing "remove a non-existent mapping returns 0"
     (binding [ws.remapping/*remapping-store* (ws.remapping/map-store {})]
       (is (= 0 (ws.remapping/remove-mapping! 1 {:db "" :schema "public" :table "orders"}))))))

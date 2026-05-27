@@ -161,7 +161,6 @@
                               {:id                 (meta/id :checkins :user-id)
                                :semantic-type      :type/PK
                                :fk-target-field-id nil}
-
                               ;; Then turn Orders.USER_ID and Orders.PRODUCT_ID into FKs pointing at Checkins.
                               {:id                 (meta/id :orders :user-id)
                                :semantic-type      :type/FK
@@ -191,7 +190,6 @@
                            ;; Tech Debt Issue: #39409
                            :many-pks?       false}
           :expected-query {:stages [{:filters [[:= {} exp-venue-id venue-id]]}]}}))
-
       (testing "preserve any existing filter for another PK on the same table"
         (testing "existing USER_ID, new \"VENUE_ID\" (really PRODUCT_ID)"
           (letfn [(filtered-user [query]
