@@ -237,6 +237,7 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
 }));
 
 const TEXT_PK_VALUE = "SKU-001";
+const CUSTOM_PK_PARAMETER_ID = "sku_code";
 
 const testDatasetWithCustomPk: DatasetData = createMockDatasetData({
   cols: testDataset.cols.map((col) =>
@@ -253,6 +254,28 @@ const testDatasetWithCustomPk: DatasetData = createMockDatasetData({
   rows: testDataset.rows.map((row, index) =>
     index === 0 ? [TEXT_PK_VALUE, ...row.slice(1)] : row,
   ),
+});
+
+const actionsWithCustomPk: WritebackAction[] = actions.map((action) => {
+  if (
+    action.type === "implicit" &&
+    (action.kind === "row/delete" || action.kind === "row/update")
+  ) {
+    return {
+      ...action,
+      parameters: [
+        {
+          id: CUSTOM_PK_PARAMETER_ID,
+          type: "string/=",
+          target: [
+            "variable",
+            ["template-tag", CUSTOM_PK_PARAMETER_ID],
+          ] as const,
+        },
+      ],
+    } as typeof action;
+  }
+  return action;
 });
 
 function setupPrefetch() {
@@ -537,9 +560,9 @@ describe("ObjectDetailView", () => {
     );
   });
 
-  it("should use the slugified PK parameter id when prefetching update action values", async () => {
+  it("should use PK parameter id from action metadata when prefetching update action values", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
+    setupActionsEndpoints(actionsWithCustomPk);
     const prefetchSpy = jest
       .spyOn(ActionsApi, "prefetchValues")
       .mockResolvedValue({});
@@ -556,7 +579,9 @@ describe("ObjectDetailView", () => {
     await waitFor(() => {
       expect(prefetchSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: JSON.stringify({ sku_code: TEXT_PK_VALUE }),
+          parameters: JSON.stringify({
+            [CUSTOM_PK_PARAMETER_ID]: TEXT_PK_VALUE,
+          }),
         }),
       );
     });
@@ -564,9 +589,9 @@ describe("ObjectDetailView", () => {
     prefetchSpy.mockRestore();
   });
 
-  it("should execute delete action with unchanged text PK value", async () => {
+  it("should execute delete action with PK parameter id from action metadata", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
-    setupActionsEndpoints(actions);
+    setupActionsEndpoints(actionsWithCustomPk);
     const executeSpy = jest.spyOn(ActionsApi, "execute").mockResolvedValue({});
     setup({
       question: mockDataset,
@@ -588,7 +613,7 @@ describe("ObjectDetailView", () => {
     await waitFor(() => {
       expect(executeSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: { sku_code: TEXT_PK_VALUE },
+          parameters: { [CUSTOM_PK_PARAMETER_ID]: TEXT_PK_VALUE },
         }),
       );
     });

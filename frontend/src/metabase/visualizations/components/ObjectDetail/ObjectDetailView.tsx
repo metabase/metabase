@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getPkParameterIdFromActions } from "metabase/actions/utils";
 import { datasetApi, skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
@@ -13,7 +14,6 @@ import { runQuestionQuery } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
-import { slugify } from "metabase/visualizations/lib/formatting/url";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -124,11 +124,6 @@ export function ObjectDetailView({
     () => getSinglePKIndex(passedData?.cols),
     [passedData],
   );
-
-  const pkColumnName =
-    pkIndex != null ? passedData?.cols[pkIndex]?.name : undefined;
-  const pkParameterId =
-    pkColumnName != null ? slugify(pkColumnName) : undefined;
 
   const zoomedRow = useMemo(() => {
     const zoomedRowIDNumber =
@@ -270,6 +265,11 @@ export function ObjectDetailView({
     areImplicitActionsEnabled && modelId != null
       ? { "model-id": modelId }
       : skipToken,
+  );
+
+  const pkParameterId = useMemo(
+    () => getPkParameterIdFromActions(actions),
+    [actions],
   );
 
   const { data: databases = [] } = useDatabaseListQuery({

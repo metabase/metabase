@@ -342,3 +342,10 @@ export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
 
 export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
   action.type === "implicit" && action.kind === "row/update";
+
+export function getPkParameterIdFromActions(
+  actions: WritebackAction[] | undefined,
+): string | undefined {
+  const deleteAction = actions?.find(isImplicitDeleteAction);
+  return deleteAction?.parameters?.[0]?.id;
+}

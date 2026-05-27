@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getPkParameterIdFromActions } from "metabase/actions/utils";
 import {
   skipToken,
   useGetAdhocQueryQuery,
@@ -37,7 +38,6 @@ import {
 } from "metabase/ui";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
-import { slugify } from "metabase/visualizations/lib/formatting/url";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -108,25 +108,27 @@ export function DetailViewSidesheet({
   const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
-  const pkParameterId = useMemo(() => {
-    const pkColumnName = columns.find(isPK)?.name;
-    return pkColumnName != null ? slugify(pkColumnName) : undefined;
-  }, [columns]);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
   const isActionExecuteModalOpen = typeof actionId === "number";
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
-  const initialValues = useMemo(
-    () => ({ [pkParameterId ?? "id"]: rowId ?? null }),
-    [pkParameterId, rowId],
-  );
 
   const { data: actions } = useListActionsQuery(
     showImplicitActions && modelId != null
       ? { "model-id": modelId }
       : skipToken,
+  );
+
+  const pkParameterId = useMemo(
+    () => getPkParameterIdFromActions(actions),
+    [actions],
+  );
+
+  const initialValues = useMemo(
+    () => ({ [pkParameterId ?? "id"]: rowId ?? null }),
+    [pkParameterId, rowId],
   );
 
   const { data: databases } = useListDatabasesQuery(
