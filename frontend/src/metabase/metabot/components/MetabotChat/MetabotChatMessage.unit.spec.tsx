@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { MetabotAgentChatMessage } from "metabase/metabot/state";
 
@@ -8,7 +8,9 @@ import { AgentMessage, Messages } from "./MetabotChatMessage";
 
 const mockSetPrompt = jest.fn();
 const mockFocusPromptInput = jest.fn();
+const mockSubmitInput = jest.fn();
 let mockPrompt = "";
+let mockQuestionDisplay = "bar";
 let mockChatContextProvider: (() => Promise<unknown>) | undefined;
 
 jest.mock("metabase/metabot", () => ({
@@ -23,6 +25,8 @@ jest.mock("metabase/metabot/hooks", () => ({
     prompt: mockPrompt,
     setPrompt: mockSetPrompt,
     focusPromptInput: mockFocusPromptInput,
+    submitInput: mockSubmitInput,
+    isDoingScience: false,
   }),
 }));
 
@@ -30,7 +34,11 @@ const mockQuestion = {
   displayName: () => "Revenue by month",
   description: () => null,
   datasetQuery: () => ({ type: "query", database: 1, query: {} }),
-  display: () => "bar",
+  display: () => mockQuestionDisplay,
+  card: () => ({
+    display: mockQuestionDisplay,
+    visualization_settings: {},
+  }),
 };
 
 jest.mock("metabase/common/components/AdHocQuestionLoader", () => ({
@@ -77,46 +85,61 @@ jest.mock("metabase/common/components/QuestionResultLoader", () => ({
 }));
 
 jest.mock("metabase/querying/components/QueryVisualization", () => ({
-  QueryVisualization: ({ clicked, handleVisualizationClick }: any) => (
-    <button
-      data-testid="embedded-question"
-      data-clicked={clicked ? "true" : "false"}
-      onClick={() =>
-        handleVisualizationClick?.({
-          value: 123,
-          column: {
-            name: "REVENUE",
-            display_name: "Revenue",
-            base_type: "type/Float",
-          },
-          dimensions: [
-            {
-              value: "2026-01-01",
-              column: {
-                name: "CREATED_AT",
-                display_name: "Created At",
-                base_type: "type/DateTime",
-              },
+  QueryVisualization: ({
+    clicked,
+    handleVisualizationClick,
+    onVisualizationRenderError,
+  }: any) => (
+    <>
+      <button
+        data-testid="embedded-question"
+        data-clicked={clicked ? "true" : "false"}
+        onClick={() =>
+          handleVisualizationClick?.({
+            value: 123,
+            column: {
+              name: "REVENUE",
+              display_name: "Revenue",
+              base_type: "type/Float",
             },
-          ],
-          origin: {
-            cols: [
+            dimensions: [
               {
-                name: "CREATED_AT",
-                display_name: "Created At",
-                base_type: "type/DateTime",
-              },
-              {
-                name: "REVENUE",
-                display_name: "Revenue",
-                base_type: "type/Float",
+                value: "2026-01-01",
+                column: {
+                  name: "CREATED_AT",
+                  display_name: "Created At",
+                  base_type: "type/DateTime",
+                },
               },
             ],
-            row: ["2026-01-01", 123],
-          },
-        })
-      }
-    />
+            origin: {
+              cols: [
+                {
+                  name: "CREATED_AT",
+                  display_name: "Created At",
+                  base_type: "type/DateTime",
+                },
+                {
+                  name: "REVENUE",
+                  display_name: "Revenue",
+                  base_type: "type/Float",
+                },
+              ],
+              row: ["2026-01-01", 123],
+            },
+          })
+        }
+      />
+      <button
+        data-testid="embedded-question-error"
+        onClick={() =>
+          onVisualizationRenderError?.(
+            new Error("[plugin 4] blocked createElement: input"),
+            { phase: "render", display: "custom:broken-viz" },
+          )
+        }
+      />
+    </>
   ),
 }));
 
@@ -137,8 +160,10 @@ const setup = (message: MetabotAgentChatMessage) =>
 describe("AgentMessage", () => {
   beforeEach(() => {
     mockPrompt = "";
+    mockQuestionDisplay = "bar";
     mockSetPrompt.mockClear();
     mockFocusPromptInput.mockClear();
+    mockSubmitInput.mockClear();
     mockChatContextProvider = undefined;
   });
 
@@ -215,6 +240,40 @@ describe("AgentMessage", () => {
           ],
         }),
       ],
+    });
+  });
+
+  it("submits hidden repair feedback when an embedded custom visualization fails", async () => {
+    mockQuestionDisplay = "custom:broken-viz";
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "custom:broken-viz",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      role: "agent",
+      type: "data_part",
+      part: { type: "navigate_to", version: 1, value: `/question#${cardHash}` },
+    });
+
+    await userEvent.click(screen.getByTestId("embedded-question-error"));
+
+    await waitFor(() => {
+      expect(mockSubmitInput).toHaveBeenCalledTimes(1);
+    });
+    const [feedback, options] = mockSubmitInput.mock.calls[0];
+    expect(feedback).toContain("Custom visualization render feedback: failed.");
+    expect(feedback).toContain("[plugin 4] blocked createElement: input");
+    expect(options).toMatchObject({
+      hidden: true,
+      preventOpenSidebar: true,
+      suppressNavigateTo: true,
     });
   });
 

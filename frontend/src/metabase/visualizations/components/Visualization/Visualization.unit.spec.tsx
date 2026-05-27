@@ -27,6 +27,7 @@ import {
 registerVisualizations();
 
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
+const ERRORING_DISPLAY = "erroring-visualization" as VisualizationDisplay;
 
 const MockedVisualization = Object.assign(
   ({ onRenderError }: Pick<VisualizationProps, "onRenderError">) => {
@@ -48,6 +49,25 @@ const MockedVisualization = Object.assign(
 );
 
 registerVisualization(MockedVisualization);
+
+const ErroringVisualization = Object.assign(
+  () => <div>Hello, I should not render</div>,
+  {
+    getUiName: () => "Erroring Visualization",
+    identifier: ERRORING_DISPLAY,
+    iconName: "unknown" as const,
+    noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => {
+      throw new Error("Blocked render");
+    },
+  },
+);
+
+registerVisualization(ErroringVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (
@@ -120,6 +140,32 @@ describe("Visualization", () => {
       expect(screen.getByText("This is an error message")).toBeInTheDocument();
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Products, Count, Grouped by Category and Vendor",
+      );
+    });
+
+    it("should notify callers when checkRenderable fails", async () => {
+      const onVisualizationRenderError = jest.fn();
+
+      await renderViz(
+        [
+          {
+            data: createMockDatasetData({
+              cols: [createMockNumericColumn({ name: "count" })],
+              rows: [[1]],
+            }),
+            card: createMockCard({
+              display: ERRORING_DISPLAY,
+            }),
+          },
+        ],
+        {
+          onVisualizationRenderError,
+        },
+      );
+
+      expect(onVisualizationRenderError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Blocked render" }),
+        { phase: "check", display: ERRORING_DISPLAY },
       );
     });
   });

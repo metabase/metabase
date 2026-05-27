@@ -59,7 +59,7 @@
   (pseudo-card->link
    {:dataset_query query
     :displayIsLocked true
-    :display (keyword chart-type)}))
+    :display (if (string? chart-type) chart-type (keyword chart-type))}))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."

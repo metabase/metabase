@@ -15,6 +15,12 @@ import type {
   MetabotAgentDataPartMessage,
   MetabotAgentId,
 } from "metabase/metabot/state";
+import {
+  getCustomVizRenderFeedbackAttemptKey,
+  getCustomVizRenderFeedbackKey,
+  getCustomVizRenderFeedbackPrompt,
+} from "metabase/metabot/utils/custom-viz-render-feedback";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import {
   ActionIcon,
@@ -26,7 +32,10 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { TableSelectionMention } from "metabase/visualizations/types";
+import type {
+  TableSelectionMention,
+  VisualizationRenderErrorContext,
+} from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -52,6 +61,10 @@ import {
   getSelectedChartData,
   getSelectedChartRange,
 } from "./data-point-mentions";
+
+const MAX_CUSTOM_VIZ_RENDER_FEEDBACK_ATTEMPTS = 3;
+const submittedCustomVizRenderFeedbackKeys = new Set<string>();
+const customVizRenderFeedbackAttemptCounts = new Map<string, number>();
 
 type AgentDataPartMessageProps = {
   agentId: MetabotAgentId;
@@ -123,10 +136,14 @@ const NavigateToQuestionCard = ({
   agentId: MetabotAgentId;
   path: string;
 }) => {
-  const { prompt, setPrompt, focusPromptInput } = useMetabotAgent(agentId);
+  const { prompt, setPrompt, focusPromptInput, submitInput, isDoingScience } =
+    useMetabotAgent(agentId);
   const { fullscreenQuestion, openFullscreenQuestion } =
     useMetabotQuestionFullscreen();
   const cardRef = useRef<HTMLDivElement>(null);
+  const [pendingRenderFeedback, setPendingRenderFeedback] = useState<
+    string | null
+  >(null);
   const [selectedContext, setSelectedContext] =
     useState<MetabotAdhocQueryInfo | null>(null);
   const [selectedClicked, setSelectedClicked] = useState<ClickObject | null>(
@@ -154,6 +171,20 @@ const NavigateToQuestionCard = ({
       selectedContext ? { user_is_viewing: [selectedContext] } : undefined,
     [selectedContext],
   );
+
+  useEffect(() => {
+    if (!pendingRenderFeedback || isDoingScience) {
+      return;
+    }
+
+    const feedback = pendingRenderFeedback;
+    setPendingRenderFeedback(null);
+    void submitInput(feedback, {
+      hidden: true,
+      preventOpenSidebar: true,
+      suppressNavigateTo: true,
+    });
+  }, [isDoingScience, pendingRenderFeedback, submitInput]);
 
   useEffect(() => {
     const handleMentionClick = (event: Event) => {
@@ -188,6 +219,52 @@ const NavigateToQuestionCard = ({
       );
     };
   }, [selectedClicked, selectedContext]);
+
+  const handleVisualizationRenderError = useCallback(
+    ({
+      question,
+      error,
+      context,
+    }: {
+      question: Question;
+      error: unknown;
+      context?: VisualizationRenderErrorContext;
+    }) => {
+      const display = question.display();
+      if (!PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+        return;
+      }
+
+      const plugin = PLUGIN_CUSTOM_VIZ.getCustomVizPluginFromSettings(
+        question.card().visualization_settings,
+      );
+      const details = {
+        agentId,
+        display,
+        questionName: question.displayName() ?? questionName,
+        path,
+        plugin,
+        error,
+        context,
+      };
+      const feedbackKey = getCustomVizRenderFeedbackKey(details);
+      if (submittedCustomVizRenderFeedbackKeys.has(feedbackKey)) {
+        return;
+      }
+
+      const attemptKey = getCustomVizRenderFeedbackAttemptKey(details);
+      const attemptCount =
+        customVizRenderFeedbackAttemptCounts.get(attemptKey) ?? 0;
+      if (attemptCount >= MAX_CUSTOM_VIZ_RENDER_FEEDBACK_ATTEMPTS) {
+        return;
+      }
+
+      submittedCustomVizRenderFeedbackKeys.add(feedbackKey);
+      customVizRenderFeedbackAttemptCounts.set(attemptKey, attemptCount + 1);
+      setPendingRenderFeedback(getCustomVizRenderFeedbackPrompt(details));
+    },
+    [agentId, path, questionName],
+  );
 
   const handleVisualizationClick = useCallback(
     ({
@@ -366,6 +443,16 @@ const NavigateToQuestionCard = ({
                             question,
                             result,
                             selection,
+                          })
+                        }
+                        onVisualizationRenderError={(
+                          error: unknown,
+                          context?: VisualizationRenderErrorContext,
+                        ) =>
+                          handleVisualizationRenderError({
+                            question,
+                            error,
+                            context,
                           })
                         }
                       />

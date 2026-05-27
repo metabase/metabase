@@ -22,6 +22,53 @@ export const MarkdownSmartLink = ({
   name: string;
   model: MetabaseProtocolEntityModel | "data-point";
 }) => {
+  if (model === "data-point") {
+    return <MarkdownDataPointSmartLink id={id} name={name} />;
+  }
+
+  return (
+    <MarkdownEntitySmartLink
+      onInternalLinkClick={onInternalLinkClick}
+      id={id}
+      name={name}
+      model={model}
+    />
+  );
+};
+
+const MarkdownDataPointSmartLink = ({
+  id,
+  name,
+}: {
+  id: number;
+  name: string;
+}) => (
+  <button
+    type="button"
+    className={S.smartLink}
+    onClick={() => {
+      window.dispatchEvent(
+        new CustomEvent("metabot:data-point-mention-click", {
+          detail: { id },
+        }),
+      );
+    }}
+  >
+    <span className={S.smartLinkInner}>@{name}</span>
+  </button>
+);
+
+const MarkdownEntitySmartLink = ({
+  onInternalLinkClick,
+  id,
+  name,
+  model,
+}: {
+  onInternalLinkClick?: (href: string) => void;
+  id: number;
+  name: string;
+  model: MetabaseProtocolEntityModel;
+}) => {
   const getIcon = useGetIcon();
 
   const entityModel = match(model)
@@ -31,24 +78,6 @@ export const MarkdownSmartLink = ({
   const icon = getIcon({ model: entityModel });
 
   const { entity, isLoading, error } = useEntityData(id, entityModel);
-
-  if (model === "data-point") {
-    return (
-      <button
-        type="button"
-        className={S.smartLink}
-        onClick={() => {
-          window.dispatchEvent(
-            new CustomEvent("metabot:data-point-mention-click", {
-              detail: { id },
-            }),
-          );
-        }}
-      >
-        <span className={S.smartLinkInner}>@{name}</span>
-      </button>
-    );
-  }
 
   const entityUrl =
     !isLoading && !error && entity

@@ -110,6 +110,29 @@ describe("multi-convo support", () => {
     expect(getMessages(store.getState(), "test_1")).toHaveLength(0);
   });
 
+  it("should support hidden follow-up prompts", async () => {
+    const { store } = setup({ agentIds: ["test_1"] });
+    mockAgentEndpoint({
+      textChunks: [
+        `0:"fixed"`,
+        `d:{"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":1}}`,
+      ],
+    });
+
+    await store.dispatch(
+      submitInput({
+        ...input,
+        message: "Custom visualization render feedback: failed.",
+        agentId: "test_1",
+        hidden: true,
+      }),
+    );
+
+    expect(getMessages(store.getState(), "test_1")).toMatchObject([
+      { message: "fixed", role: "agent", type: "text" },
+    ]);
+  });
+
   it("should be able to remove a conversation", async () => {
     const { hook } = setup({ agentIds: ["test_1"] });
 

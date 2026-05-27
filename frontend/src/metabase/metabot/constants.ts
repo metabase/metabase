@@ -35,6 +35,11 @@ export const METABOT_PROFILES = {
       return t`SQL`;
     },
   },
+  nlq: {
+    get label() {
+      return t`Natural language querying`;
+    },
+  },
   // deprecated
   slack: {
     get label() {
@@ -138,5 +143,8 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   },
   get search_tables() {
     return t`Searching database tables`;
+  },
+  get create_custom_visualization() {
+    return t`Creating a custom visualization`;
   },
 };

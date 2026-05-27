@@ -98,11 +98,14 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
         preventOpenSidebar?: boolean;
         focusInput?: boolean;
         suppressNavigateTo?: boolean;
+        hidden?: boolean;
       },
     ) => {
-      setPrompt("");
+      if (!options?.hidden) {
+        setPrompt("");
+      }
 
-      if (!visible && !options?.preventOpenSidebar) {
+      if (!options?.hidden && !visible && !options?.preventOpenSidebar) {
         setVisible(true);
       }
 
@@ -120,12 +123,15 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           metabot_id: metabotRequestId,
           profile: options?.profile,
           suppressNavigateTo: options?.suppressNavigateTo,
+          hidden: options?.hidden,
         }),
       );
 
-      trackMetabotRequestSent();
+      if (!options?.hidden) {
+        trackMetabotRequestSent();
+      }
 
-      if (isFulfilled(action)) {
+      if (!options?.hidden && isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
       }
 

@@ -90,6 +90,20 @@
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
 
+(deftest ^:parallel resolve-metabase-uri-custom-chart-link-test
+  (testing "resolves custom visualization chart links without keywordizing the display"
+    (let [query-id      "query-custom"
+          chart-id      "chart-custom"
+          query         (lib.tu/venues-query)
+          queries-state {query-id query}
+          charts-state  {chart-id {:chart_id chart-id
+                                   :queries [query]
+                                   :visualization_settings {:chart_type "custom:star-rating"}}}
+          result        (links/resolve-metabase-uri "metabase://chart/chart-custom" queries-state charts-state)
+          decoded       (decode-question-url result)]
+      (is (str/starts-with? result "/question#"))
+      (is (= "custom:star-rating" (:display decoded))))))
+
 (deftest ^:parallel resolve-metabase-uri-chart-fallback-to-query-test
   (testing "falls back to query when chart link uses query ID"
     ;; LLM sometimes uses metabase://chart/ when it should use metabase://query/

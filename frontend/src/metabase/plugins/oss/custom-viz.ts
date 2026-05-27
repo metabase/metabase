@@ -5,6 +5,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
@@ -23,9 +24,16 @@ const getDefaultPluginCustomViz = () => ({
   CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
 
   // Hooks & functions
-  useAutoLoadCustomVizPlugin: (_display: string | undefined) => ({
+  useAutoLoadCustomVizPlugin: (
+    _display: string | undefined,
+    _embeddedPlugin?: CustomVizPluginRuntime,
+  ) => ({
     loading: false,
+    error: undefined as Error | undefined,
   }),
+  getCustomVizPluginFromSettings: (
+    _settings: VisualizationSettings | undefined,
+  ) => undefined as CustomVizPluginRuntime | undefined,
   useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
     ({ plugins: undefined, isLoading: false }) as {
       plugins: CustomVizPluginRuntime[] | undefined;

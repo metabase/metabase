@@ -9,6 +9,8 @@ import React, {
   type ReactNode,
   type Ref,
   forwardRef,
+  useEffect,
+  useRef,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -58,6 +60,7 @@ import {
   type VisualizationDefinition,
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
+  type VisualizationRenderErrorContext,
   type Visualization as VisualizationType,
   isClickActionsMode,
   isRegularClickAction,
@@ -189,6 +192,10 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  onVisualizationRenderError?: (
+    error: unknown,
+    context?: VisualizationRenderErrorContext,
+  ) => void;
   onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
   enableEntityNavigation?: boolean;
@@ -632,9 +639,16 @@ class Visualization extends PureComponent<
     }
   };
 
-  onRenderError = (error: string | undefined) => {
+  onRenderError = (error: string | Error | undefined) => {
     console.error(error);
-    this.setState({ error });
+    const message = typeof error === "string" ? error : error?.message;
+    if (error) {
+      this.props.onVisualizationRenderError?.(error, {
+        phase: "render",
+        display: this.state.visualization?.identifier,
+      });
+    }
+    this.setState({ error: message });
   };
 
   onErrorBoundaryError = (genericError: ErrorInfo) => {
@@ -765,6 +779,10 @@ class Visualization extends PureComponent<
             visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
+          this.props.onVisualizationRenderError?.(e, {
+            phase: "check",
+            display: visualization?.identifier,
+          });
           error =
             (e as Error).message ||
             t`Could not display this chart with this data.`;
@@ -1047,9 +1065,33 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
-      const display = props.rawSeries?.[0]?.card?.display;
-      const { loading: customVizLoading } =
-        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+      const card = props.rawSeries?.[0]?.card;
+      const display = card?.display;
+      const embeddedPlugin = PLUGIN_CUSTOM_VIZ.getCustomVizPluginFromSettings(
+        card?.visualization_settings,
+      );
+      const { onVisualizationRenderError } = props;
+      const reportedCustomVizErrorRef = useRef<string | null>(null);
+      const { loading: customVizLoading, error: customVizLoadError } =
+        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display, embeddedPlugin);
+
+      useEffect(() => {
+        if (!customVizLoadError) {
+          reportedCustomVizErrorRef.current = null;
+          return;
+        }
+
+        const key = `${display ?? ""}:${customVizLoadError.name}:${customVizLoadError.message}`;
+        if (reportedCustomVizErrorRef.current === key) {
+          return;
+        }
+
+        reportedCustomVizErrorRef.current = key;
+        onVisualizationRenderError?.(customVizLoadError, {
+          phase: "load",
+          display,
+        });
+      }, [customVizLoadError, display, onVisualizationRenderError]);
 
       if (customVizLoading) {
         if (props.isDocument) {

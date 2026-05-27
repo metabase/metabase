@@ -233,12 +233,13 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     suppressNavigateTo?: boolean;
+    hidden?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, profile, ...data } = payload;
+    const { agentId, message: rawPrompt, profile, hidden, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -281,14 +282,16 @@ export const submitInput = createAsyncThunk<
       const agentMetadata = getAgentRequestMetadata(getState(), agentId);
       const messageId = createMessageId();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
-      dispatch(
-        addUserMessage({
-          id: messageId,
-          ..._.omit(data, ["context", "metabot_id", "suppressNavigateTo"]),
-          message: prompt,
-          agentId,
-        }),
-      );
+      if (!hidden) {
+        dispatch(
+          addUserMessage({
+            id: messageId,
+            ..._.omit(data, ["context", "metabot_id", "suppressNavigateTo"]),
+            message: prompt,
+            agentId,
+          }),
+        );
+      }
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
