@@ -28,8 +28,9 @@
 
 (driver/register! :teradata, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:metadata/key-constraints    false
-                              :test/jvm-timezone-setting   false}]
+(doseq [[feature supported?] {:metadata/key-constraints  false
+                              :test/jvm-timezone-setting false
+                              :database-routing.         false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
@@ -253,6 +254,11 @@
 (defmethod sql.qp/float-dbtype :teradata
   [_]
   "DOUBLE PRECISION")
+
+;; Teradata truncates on CAST(float AS INTEGER) instead of rounding
+(defmethod sql.qp/->integer :teradata
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:teradata :regex-match-first]
   [driver [_ arg pattern]]

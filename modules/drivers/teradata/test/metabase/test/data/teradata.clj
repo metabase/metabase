@@ -1,6 +1,9 @@
 (ns metabase.test.data.teradata
   (:require
+   [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
@@ -8,7 +11,8 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql.ddl :as ddl])
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u])
   (:import
    (java.sql Connection PreparedStatement SQLException Types)))
 
@@ -197,3 +201,23 @@
 (defmethod load-data/chunk-size :teradata
   [_driver _dbdef _tabledef]
   200)
+
+(defmethod tx/drop-view! :teradata
+  [driver database view-name {:keys [materialized?]}]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
+    (u/ignore-exceptions
+      ;; Teradata doesn't support DROP VIEW IF EXISTS
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                     (sql/format
+                      {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
+                      :dialect (sql.qp/quote-style driver))
+                     {:transaction? false}))))
+
+;; Teradata uses REPLACE VIEW instead of CREATE VIEW
+(defmethod sql.tx/create-view-of-table-sql :teradata
+  [driver database view-name table-name {:keys [_materialized?]}]
+  (let [database-name (get-in database [:settings :database-source-dataset-name])
+        qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
+        qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
+    [(format "REPLACE VIEW %s AS SELECT * FROM %s" qualified-view qualified-table)]))
