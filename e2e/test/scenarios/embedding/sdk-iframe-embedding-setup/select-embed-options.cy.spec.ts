@@ -94,6 +94,9 @@ describe(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
+      "persistSettings",
+    );
 
     mockEmbedJsToDevServer();
   });
@@ -976,6 +979,12 @@ describe(suiteTitle, () => {
     // Should no longer derive background-hover as it is color-mix'd
     // in the colors configuration
     codeBlock().should("not.contain", '"background-hover"');
+
+    // QUICK VERIFICATION: wait for the debounced theme persist to land before
+    // the test ends — otherwise an orphaned `_.debounce` callback fires after
+    // `H.restore()` of the next test and writes the custom theme back into
+    // the freshly-restored DB, polluting downstream snowplow assertions.
+    cy.wait("@persistSettings");
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
