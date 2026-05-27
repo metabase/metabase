@@ -5,6 +5,7 @@ import { validateDatabase } from "metabase/transforms/utils";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import type { Card, Database } from "metabase-types/api";
 
+import { trackModelToTransformsMigrationModalOpened } from "../../../../analytics";
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
 import { ReplaceWithTransformModal } from "../../ReplaceWithTransformModal";
 
@@ -30,7 +31,12 @@ export function ActionSection({ card, database }: ActionSectionProps) {
                 variant="filled"
                 leftSection={<Icon name="transform" />}
                 disabled={isButtonDisabled}
-                onClick={() => setOpened(true)}
+                onClick={() => {
+                  trackModelToTransformsMigrationModalOpened({
+                    cardId: card.id,
+                  });
+                  setOpened(true);
+                }}
               >
                 {t`Convert to a transform`}
               </Button>

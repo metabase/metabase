@@ -807,6 +807,18 @@
 
 ;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
 
+(deftest render-drill-through-publishes-its-own-resource-uri-test
+  (testing "render_drill_through publishes a distinct `_meta.ui.resourceUri` from visualize_query — ChatGPT dedupes iframes by URI, and reusing the visualize_query URI would prevent a fresh drill widget from mounting"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools-by-name  (into {} (map (juxt :name identity)) (get-in response [:body :result :tools]))
+          drill-uri      (get-in tools-by-name ["render_drill_through" :_meta :ui :resourceUri])
+          viz-uri        (get-in tools-by-name ["visualize_query"      :_meta :ui :resourceUri])]
+      (is (string? drill-uri))
+      (is (string? viz-uri))
+      (is (not= drill-uri viz-uri)
+          "render_drill_through and visualize_query must publish different resourceUris"))))
+
 (deftest tools-call-render-drill-through-test
   (testing "render_drill_through resolves a stored handle to its encoded query"
     (let [user-id        (mt/user->id :crowberto)
@@ -838,7 +850,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query "ZW5jb2RlZA=="}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-2
   (testing "visualize_query resolves a stored handle"
     (let [user-id        (mt/user->id :crowberto)
           [session-id _] (initialize!)
@@ -849,7 +863,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-3
   (testing "visualize_query includes the prompt stored with a construct_query handle"
     ;; Mirrors master's assertion that the user's original prompt round-trips through the
     ;; construct→store→visualize flow so the iframe can include it when submitting
@@ -872,7 +888,9 @@
       (is (=? {:status 200
                :body   {:result {:structuredContent {:query  string?
                                                      :prompt "show 5 orders"}}}}
-              response))))
+              response)))))
+
+(deftest tools-call-visualize-query-test-4
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -881,7 +899,9 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {}})
-                           {"mcp-session-id" session-id})))))
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-5
   (testing "visualize_query returns 'handle not found' when query_handle is unknown"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -1228,7 +1248,7 @@
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:visualize"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:viz:mcp-ui:query"}))))
   (testing "returns :ok with wildcard scope"
     (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
   (testing "returns :scope-denied for a known URI with non-matching scope"

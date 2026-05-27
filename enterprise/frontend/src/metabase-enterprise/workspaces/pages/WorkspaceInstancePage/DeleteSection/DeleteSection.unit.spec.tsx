@@ -7,6 +7,8 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { DeleteSection } from "./DeleteSection";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 function setup() {
   setupDeleteWorkspaceInstanceEndpoint();
 
@@ -16,6 +18,10 @@ function setup() {
 }
 
 describe("DeleteSection", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("calls DELETE /api/ee/workspace-instance/current after confirming", async () => {
     setup();
 
@@ -35,5 +41,23 @@ describe("DeleteSection", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it("tracks an analytics event when the instance is torn down", async () => {
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Leave workspace" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Leave workspace" }),
+    );
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "workspaces_instance_teardown",
+      }),
+    );
   });
 });

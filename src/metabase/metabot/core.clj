@@ -18,6 +18,7 @@
   agent-query
   agent-question-create
   agent-question-update
+  agent-query
   agent-query-construct
   agent-query-execute
   agent-resource-read

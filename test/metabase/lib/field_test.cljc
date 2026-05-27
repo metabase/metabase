@@ -909,14 +909,18 @@
              [:field {} (meta/id :orders :user-id)]]
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (#'lib.field/populate-fields-for-stage -1)
-                fields-of))))
+                fields-of)))))
+
+(deftest ^:parallel populate-fields-for-stage-test-2
   (testing "aggregated"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate -1 (lib/count)))]
       (is (=? [[:aggregation {} (-> query lib/aggregations first lib.options/uuid)]]
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
-                  fields-of)))))
+                  fields-of))))))
+
+(deftest ^:parallel populate-fields-for-stage-test-3
   (testing "aggregated with breakout"
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/aggregate -1 (lib/count)))
@@ -927,7 +931,9 @@
                               [:aggregation {} (-> query lib/aggregations first lib.options/uuid)]])
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
-                  fields-of)))))
+                  fields-of))))))
+
+(deftest ^:parallel populate-fields-for-stage-test-4
   (testing "explicit join fields are *not* included"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
@@ -954,7 +960,9 @@
                   (-> query
                       (lib.util/update-query-stage -1 update-in [:joins 0] lib/with-join-fields (take 3 returned))
                       (#'lib.field/populate-fields-for-stage -1)
-                      fields-of)))))))
+                      fields-of))))))))
+
+(deftest ^:parallel populate-fields-for-stage-test-5
   (testing "sourced from another card"
     (let [query   (lib.tu/query-with-source-card)]
       (testing "starts with no :fields"

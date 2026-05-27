@@ -317,7 +317,9 @@
           (is (= :type/Currency (:semantic_type fus-1)))
           (is (some? fus-2))
           (is (= "Order Date" (:display_name fus-2)))
-          (is (= :type/CreationTimestamp (:semantic_type fus-2)))))))
+          (is (= :type/CreationTimestamp (:semantic_type fus-2))))))))
+
+(deftest copy-model-metadata-overrides!-test-2
   (testing "matches joined columns using :lib/desired-column-alias instead of :name"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_joined_output"
                                                 :db_id  (mt/id)
