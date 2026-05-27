@@ -73,7 +73,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       align="stretch"
       data-testid="metric-description-sidebar"
     >
-      <Text fw={600}>{t`About`}</Text>
+      <Text fz="lg" fw={700}>{t`About`}</Text>
       <Tooltip label={<DateTime value={card.updated_at} />}>
         <Text size="sm" c="text-secondary" data-testid="metric-last-updated">
           {t`Last updated ${getRelativeTime(card.updated_at)}`}
@@ -139,10 +139,14 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
                       dependentsCount,
                     )}
                   </Text>
-                )} ${ngettext(
-                  msgid`uses this metric`,
-                  `use this metric`,
-                  dependentsCount,
+                )} ${(
+                  <Text key="verb" component="span" c="text-primary" fw={400}>
+                    {ngettext(
+                      msgid`uses this metric`,
+                      `use this metric`,
+                      dependentsCount,
+                    )}
+                  </Text>
                 )}`}
               </MetadataRow>
             ) : (

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Link } from "metabase/common/components/Link/Link";
-import { Group, Icon, Paper, Stack, Text, rem } from "metabase/ui";
+import { Center, Group, Icon, Paper, Stack, Text, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 interface MetadataCardProps {
@@ -23,11 +23,21 @@ interface MetadataRowProps {
 }
 
 export function MetadataRow({ icon, to, children }: MetadataRowProps) {
-  const color = to ? "brand" : "text-secondary";
   const body = (
-    <Group gap="sm" wrap="nowrap">
-      <Icon name={icon} c={color} />
-      <Text component="span" c={color} fw={to ? 600 : 400}>
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Center
+        bg="background-primary"
+        w={rem(28)}
+        h={rem(28)}
+        style={{ borderRadius: "100%", flexShrink: 0 }}
+      >
+        <Icon name={icon} c={to ? "text-primary" : "text-secondary"} />
+      </Center>
+      <Text
+        component="span"
+        c={to ? "brand" : "text-secondary"}
+        fw={to ? 600 : 400}
+      >
         {children}
       </Text>
     </Group>
