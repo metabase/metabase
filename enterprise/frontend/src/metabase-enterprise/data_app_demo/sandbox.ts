@@ -6,7 +6,6 @@ import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/Inte
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { makeDistortionCallback } from "metabase-enterprise/custom_viz/sandbox/distortions";
 
 import { getHostBackedSdkStore } from "./host-sdk-init";
 
@@ -71,7 +70,6 @@ export function createDataAppSandbox() {
   let captured: unknown;
 
   const env = createVirtualEnvironment(window, {
-    distortionCallback: makeDistortionCallback(1),
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
       React,
