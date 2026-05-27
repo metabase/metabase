@@ -66,7 +66,10 @@ describe("WorkspacePage", () => {
 
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(
-      await within(dialog).findByRole("checkbox", { name: "public" }),
+      await within(dialog).findByLabelText("Schemas to include"),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "public" }),
     );
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Add database" }),
