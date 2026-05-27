@@ -763,6 +763,58 @@
   (when (public-create-grant? conn schema-name)
     (driver.postgres/raise-public-create-grant! schema-name)))
 
+(defn- schema-owner
+  "Look up the owner of `schema-name` for diagnostics. Redshift exposes namespace
+   ownership through `pg_namespace.nspowner` -> `pg_user.usesysid`. Returns the
+   `usename` string or nil if the schema doesn't exist on this connection."
+  [conn schema-name]
+  (-> (jdbc/query conn
+                  ["SELECT u.usename AS owner
+                    FROM pg_namespace n
+                    JOIN pg_user u ON u.usesysid = n.nspowner
+                    WHERE n.nspname = ?"
+                   schema-name])
+      first
+      :owner))
+
+(defn assert-can-grant-usage!
+  "Throws when the current admin connection cannot grant USAGE on `schema-name`.
+   Same intent as [[metabase.driver.postgres/assert-can-grant-usage!]] but on
+   Redshift. Redshift inherits `has_schema_privilege` from its PostgreSQL
+   ancestry, so the probe SQL is identical; only the owner lookup differs
+   (Redshift uses `pg_user`, not `pg_roles`)."
+  [conn schema-name]
+  (let [{:keys [can_grant current_user_name]}
+        (first (jdbc/query conn
+                           ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant,
+                                    current_user AS current_user_name"
+                            schema-name]))]
+    (when-not can_grant
+      (let [owner (schema-owner conn schema-name)]
+        (throw (ex-info (format (str "Workspace admin %s cannot grant USAGE on schema \"%s\" "
+                                     "(owned by %s). Redshift requires the granting user to own "
+                                     "the schema or hold USAGE WITH GRANT OPTION on it. Run as a "
+                                     "superuser or as the schema owner:\n\n"
+                                     "    GRANT USAGE ON SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
+                                     "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
+                                     "    ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" "
+                                     "GRANT SELECT ON TABLES TO %s WITH GRANT OPTION;\n\n"
+                                     "then retry workspace provisioning.")
+                                current_user_name schema-name (or owner "<unknown>")
+                                schema-name current_user_name
+                                schema-name current_user_name
+                                schema-name current_user_name)
+                        {:status-code 412
+                         :schema      schema-name
+                         :owner       owner
+                         :admin-user  current_user_name}))))))
+
+(defmethod driver/check-can-grant-workspace-access! :redshift
+  [_driver database schemas]
+  (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [s (set schemas)]
+      (assert-can-grant-usage! check-conn s))))
+
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
