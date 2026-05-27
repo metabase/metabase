@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -18,7 +19,9 @@
   (:import
    (java.sql PreparedStatement ResultSet)
    (java.time Instant)
-   (java.time.temporal ChronoUnit)))
+   (java.time.temporal ChronoUnit)
+   (java.util.concurrent.locks ReadWriteLock Lock)
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -293,6 +296,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
+  ;; TODO: we want to drop them only if they have random names
   ;; (drop-old-datasets!)
   (drop-orphan-isolation-schemas!)
   (drop-orphan-isolation-users!)
@@ -625,3 +629,48 @@
     "TIME"         :type/Time
     ;; Default: unknown types get :type/*
     :type/*))
+
+;; Sadly Snowflake does not implement locks outside very limited scope of
+;; automatic locking around DDL; there are no advisory locks, so we are stuck
+;; building them ourselves out of table rows.
+(defn- setup-locks [conn]
+  ;; Reuse the existing tracking database, but make a new table.
+  (jdbc/execute! conn "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")
+  ;; normal tables literally cannot have primary keys enforced! must be hybrid.
+  (jdbc/execute! conn "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
+                       (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())"))
+
+(defn- acquire-lock [conn dataset-name]
+  (try
+    (jdbc/execute! conn ["INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES (?)"
+                         dataset-name])
+    true
+    (catch SnowflakeSQLException e
+      (when-not (= "A primary key already exists." (.getMessage e))
+        (throw e))
+      (jdbc/execute! conn ["DELETE FROM metabase_test_tracking.PUBLIC.locks
+                             WHERE TIMEDIFF('seconds', current_timestamp()::TIMESTAMPTZ, at) > 60"
+                           dataset-name])
+      false)))
+
+(defmethod test.data.impl.get-or-create/dataset-lock :snowflake
+  [_driver dataset-name]
+  (let [lock (reify Lock
+               (lock [_]
+                 (let [conn (no-db-connection-spec)]
+                   (setup-locks conn)
+                   (loop [locked? (acquire-lock conn dataset-name)
+                          tries 0]
+                     (when (< 10000 tries)
+                       (throw (Exception. "could not acquire snowflake lock")))
+                     (when (not locked?)
+                       (Thread/sleep 100)
+                       (recur (acquire-lock conn dataset-name) (inc tries))))))
+               (unlock [_]
+                 (jdbc/execute! (no-db-connection-spec)
+                                ["DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = ?"
+                                 dataset-name])))]
+    (reify ReadWriteLock
+      ;; currently readLock is only used for one call, so use same lock as write
+      (readLock [_] lock)
+      (writeLock [_] lock))))
