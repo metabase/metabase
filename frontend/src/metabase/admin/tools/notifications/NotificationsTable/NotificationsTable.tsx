@@ -185,8 +185,12 @@ export const NotificationsTable = ({
       {
         id: "channel",
         header: t`Channel`,
-        width: 120,
+        width: "auto",
         enableSorting: false,
+        accessorFn: (notification) =>
+          summarizeChannels(notification)
+            .map(({ channel, count }) => `${channel}${count}`)
+            .join(" "),
         cell: ({ row }) => {
           const summaries = summarizeChannels(row.original);
           if (summaries.length === 0) {
