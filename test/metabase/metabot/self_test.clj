@@ -891,7 +891,9 @@
                    (is (every? nil? (map body-preview [{} []])))
                    (msgs))]
         (is (empty? msgs))))
-    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview + warn"
+    (testing "non-empty maps/arrays without a recognised error field pr-str into the preview, no warn"
+      ;; rethrow-api-error! already emits a single warn at the failure boundary with the full body,
+      ;; so body-preview must not emit a second warn for unrecognised shapes — that's a duplicate.
       (let [bodies [{:request-id "abc" :trace ["frame1"]}
                     [42 :kw]
                     [{:request-id "abc"}]
@@ -901,9 +903,8 @@
                        (is (= (pr-str b) (body-preview b))
                            (str "pr-str fallback for " (pr-str b))))
                      (msgs))]
-        (is (= (count bodies) (count msgs))
-            "one warn line per pr-str fallback")
-        (is (every? #(re-find #"unrecognised error body shape" (:message %)) msgs))))
+        (is (empty? msgs)
+            "body-preview must not warn — rethrow-api-error! logs the full body once already")))
     (testing "JSON arrays probe their first element"
       (is (= "rate limited"  (body-preview [{:error {:message "rate limited"}} {:type "x"}])))
       (is (= "first message" (body-preview ["first message" "ignored"]))))
@@ -931,7 +932,19 @@
         (is (str/includes? out "...") "the *print-length* elision marker is present")))
     (testing "a small recognised body is left untouched by the bounds"
       (is (= (pr-str {:error {:message "nope"}})
-             (body-for-log {:error {:message "nope"}}))))))
+             (body-for-log {:error {:message "nope"}}))))
+    (testing "a huge string leaf inside a collection is sliced before pr-str renders the parent"
+      ;; Regression: previously `bounded-pr-str` only pre-sliced *top-level* strings.
+      ;; A map with a near-cap string leaf (e.g. parsed JSON `{:detail "<1MB>"}`)
+      ;; would allocate the whole leaf inside pr-str and rely on the outer truncate-to
+      ;; to cap the result — wasteful on the error path. Now nested string leaves
+      ;; get sliced too.
+      (let [body {:detail (apply str (repeat 1000000 \x))}
+            out  (bounded-pr-str body max-log)]
+        (is (<= (count out) (+ max-log 100))
+            "bounded-pr-str should not render the full huge string leaf")
+        (is (str/includes? out ":detail")
+            "the map structure should still survive past the slicing")))))
 
 (defn- caught
   "Run `thunk` and return the thrown exception, or nil if it didn't throw."
