@@ -842,7 +842,8 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]}
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]
+    :as   body}
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
@@ -855,6 +856,9 @@
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
        [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
+  (when (true? (:is_stub body))
+    (throw (ex-info (tru "is_stub may not be set via the API")
+                    {:status-code 400})))
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
@@ -1007,7 +1011,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
-           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]}
+           points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
+    :as   body}
    :- [:map
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
@@ -1023,6 +1028,9 @@
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
        [:settings           {:optional true} [:maybe ms/Map]]]]
+  (when (true? (:is_stub body))
+    (throw (ex-info (tru "is_stub may not be set via the API")
+                    {:status-code 400})))
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
@@ -1095,13 +1103,16 @@
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
+                                 :is_stub            (when (and (or details-changed? engine-changed?)
+                                                                (nil? main-conn-error))
+                                                       false)
                                  :description        description
                                  :caveats            caveats
                                  :points_of_interest points_of_interest
                                  :auto_run_queries   auto_run_queries
                                  :settings           (when (seq settings) pending-settings)
                                  :provider_name      provider_name}
-                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
+                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand :is_stub
                                            :description :caveats :points_of_interest :auto_run_queries :settings}
                                 :present #{:provider_name :write_data_details :admin_details})
                                ;; cache_field_values_schedule can be nil
@@ -1115,10 +1126,10 @@
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
                   :when                  (and (some? new-value)
-                             ;; Allow explicit default value as well (typically this is what FE will actually do)
-                             ;; Should we translate this into setting it to NULL? That seems too opinionated.
+                                              ;; Allow explicit default value as well (typically this is what FE will actually do)
+                                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
                                               (not= new-value (try (setting/default-value setting-kw)
-                                                  ;; fallback to a redundant nil check
+                                                                   ;; fallback to a redundant nil check
                                                                    (catch Exception _)))
                                               (not= new-value (get existing-settings setting-kw)))]
             (try
@@ -1130,7 +1141,6 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
-
         (let [db (t2/select-one :model/Database :id id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization

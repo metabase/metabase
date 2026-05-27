@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import * as Urls from "metabase/urls";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -202,6 +203,37 @@ describe("DataStudioLayout", () => {
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("workspaces tab", () => {
+    it("admin sees the tab and it links to the workspaces index", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
+
+      const tab = await screen.findByLabelText("Workspaces");
+      expect(tab).toHaveAttribute("href", Urls.workspaces());
+    });
+
+    it("non-admin with manage-workspaces permission sees the tab linking to the workspaces index", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: false,
+        canManageWorkspaces: true,
+      });
+
+      const tab = await screen.findByLabelText("Workspaces");
+      expect(tab).toHaveAttribute("href", Urls.workspaces());
+    });
+
+    it("non-admin without manage-workspaces permission does not see the tab", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: false,
+        canManageWorkspaces: false,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
     });
   });
 });

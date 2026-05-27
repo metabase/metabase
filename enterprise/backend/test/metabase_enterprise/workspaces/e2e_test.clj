@@ -6,8 +6,8 @@
    provisions an isolation schema + workspace user via
    `workspaces.provisioning/*`, builds the canonical `config.yml` map via
    `workspaces.config/build-workspace-config`, round-trips it through YAML,
-   binds it to `advanced-config.file/*config*`, and calls `initialize!` —
-   which runs the same `:databases` and `:workspace` section loaders the
+   and passes it to `advanced-config.file/initialize!` — which runs the same
+   `:databases` and `:workspace` section loaders the
    child instance uses at boot. Then it runs a transform whose target gets
    rewritten to the isolation schema, and verifies that visibility from
    Metabase's perspective is confined to the input schema — neither the
@@ -239,8 +239,9 @@
                   (vec vs))))
          set)))
 
-;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
-;; running concurrently with other workspace-mode tests would cross-pollute.
+;; `^:synchronized` because the `instance-workspace` setting is process-wide state
+;; backed by the shared test app DB; running concurrently with other workspace-mode
+;; tests would cross-pollute.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (defn- with-redshift-describe-filter-disabled
   "Redshift test infra normally filters describe-database to only return tables
@@ -257,7 +258,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers
-    (mt/with-premium-features #{:workspaces}
+    (mt/with-premium-features #{:workspaces :config-text-file}
       ;; The default test-time `db-connection-timeout-ms` is 5s. BigQuery's
       ;; first call through a freshly-built impersonated client (cold gRPC
       ;; handshake + impersonation token mint + `listDatasets`) regularly
@@ -275,76 +276,73 @@
                     admin-details (:details admin-db)
                     admin-spec (admin-warehouse admin-driver admin-details)
                     run-id (random-suffix)
-                  ;; All identifiers carry [[run-id]] — we share a single test DB across
-                  ;; runs, so any leftover state from a failed run has to be
-                  ;; distinguishable from this one.
+                    ;; All identifiers carry [[run-id]] — we share a single test DB across
+                    ;; runs, so any leftover state from a failed run has to be
+                    ;; distinguishable from this one.
                     main-schema (canonical-schema-name admin-driver run-id admin-details)
-                  ;; Value Metabase stores in `:model/Table.schema` for synced tables.
-                  ;; Equals [[main-schema]] for schema-having drivers; nil for MySQL.
+                    ;; Value Metabase stores in `:model/Table.schema` for synced tables.
+                    ;; Equals [[main-schema]] for schema-having drivers; nil for MySQL.
                     tbl-schema  (table-row-schema-value admin-driver main-schema)
                     src-name (str "x_input_table_" run-id)
                     output-table-name (str "x_output_table_" run-id)]
                 (try
-                ;; --- Setup: DWH main schema + source table ---------------------------
-                ;; Schema-creation: most workspace-supported drivers accept `CREATE SCHEMA "<name>"`,
-                ;; but MySQL "schemas" are databases. See [[canonical-schema-name]] for why we
-                ;; reuse the bound database there instead of creating a fresh one.
+                  ;; --- Setup: DWH main schema + source table ---------------------------
+                  ;; Schema-creation: most workspace-supported drivers accept `CREATE SCHEMA "<name>"`,
+                  ;; but MySQL "schemas" are databases. See [[canonical-schema-name]] for why we
+                  ;; reuse the bound database there instead of creating a fresh one.
                   (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
                   (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
-                ;; Diagnostic: confirm the source table exists in the warehouse before we
-                ;; lean on Metabase sync to surface it. If this fails, the problem is in
-                ;; the test-side DDL, not workspace code.
+                  ;; Diagnostic: confirm the source table exists in the warehouse before we
+                  ;; lean on Metabase sync to surface it. If this fails, the problem is in
+                  ;; the test-side DDL, not workspace code.
                   (let [warehouse-tables (case admin-driver
                                            :bigquery-cloud-sdk ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/list-tables) admin-spec
                                                                                                                                                         ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)
                                                                                                                                                         main-schema)
-                                         ;; No LIMIT/TOP — the source table is seeded with 3
-                                         ;; rows above ([[create-source-table!]]); the assertion
-                                         ;; below only needs >= 1 row, and avoiding `LIMIT`
-                                         ;; keeps this portable across SQL Server (`TOP`) and
-                                         ;; the LIMIT-aware drivers.
+                                           ;; No LIMIT/TOP — the source table is seeded with 3
+                                           ;; rows above ([[create-source-table!]]); the assertion
+                                           ;; below only needs >= 1 row, and avoiding `LIMIT`
+                                           ;; keeps this portable across SQL Server (`TOP`) and
+                                           ;; the LIMIT-aware drivers.
                                            (jdbc/query admin-spec
                                                        [(format "SELECT 1 FROM %s"
                                                                 (qualified-table-sql admin-driver admin-details main-schema src-name))]))]
                     (is (>= (count warehouse-tables) 1)
                         (str "warehouse source table " main-schema "." src-name " is not queryable")))
-
-                ;; TODO: copy this test, but instead of pre-seeding the canonical output table, leave it uncreated and
-                ;;       verify the workspace transform can create it from scratch. That would be a more direct test of the
-                ;;       transform's ability to write to the warehouse, without the wrinkle of pre-existing rows. The
-                ;;       canonical-table-protection test covers the "pre-existing rows stay intact" angle, so we have that
-                ;;       covered either way.
-                ;; --- Setup: pre-existing canonical OUTPUT table with distinct rows ---------
-                ;; The workspace transform writes to canonical {schema main-schema, name output-table-name}.
-                ;; We seed that table with rows BEFORE the workspace is provisioned so we can
-                ;; later verify (a) the workspace's view of the canonical name returns the
-                ;; transform's output (via remap), and (b) the canonical warehouse table itself
-                ;; was never mutated by the transform - the workspace transform only wrote to
-                ;; iso.<derived>, leaving the canonical contents intact.
+                  ;; TODO: copy this test, but instead of pre-seeding the canonical output table, leave it uncreated and
+                  ;;       verify the workspace transform can create it from scratch. That would be a more direct test of the
+                  ;;       transform's ability to write to the warehouse, without the wrinkle of pre-existing rows. The
+                  ;;       canonical-table-protection test covers the "pre-existing rows stay intact" angle, so we have that
+                  ;;       covered either way.
+                  ;; --- Setup: pre-existing canonical OUTPUT table with distinct rows ---------
+                  ;; The workspace transform writes to canonical {schema main-schema, name output-table-name}.
+                  ;; We seed that table with rows BEFORE the workspace is provisioned so we can
+                  ;; later verify (a) the workspace's view of the canonical name returns the
+                  ;; transform's output (via remap), and (b) the canonical warehouse table itself
+                  ;; was never mutated by the transform - the workspace transform only wrote to
+                  ;; iso.<derived>, leaving the canonical contents intact.
                   (create-output-table! admin-driver admin-spec admin-details main-schema output-table-name
                                         [[99 "pre-existing"]
                                          [98 "still-pre-existing"]])
-
-                ;; --- Setup: a Metabase Database row attached to the warehouse with admin
-                ;; creds. The config-loader path (below) will rewrite its `:details` with
-                ;; workspace user creds + schema-filters when `initialize!` runs the
-                ;; `:databases` section, mirroring what a child instance does at boot.
+                  ;; --- Setup: a Metabase Database row attached to the warehouse with admin
+                  ;; creds. The config-loader path (below) will rewrite its `:details` with
+                  ;; workspace user creds + schema-filters when `initialize!` runs the
+                  ;; `:databases` section, mirroring what a child instance does at boot.
                   (mt/with-temp [:model/Database ws-db {:engine  admin-driver
                                                         :details admin-details
                                                         :name    (str "ws-e2e-" run-id)}]
                     (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id)
                                                              :creator_id (mt/user->id :crowberto)})]
                       (try
-
-                      ;; --- Stage 1: provision via the workspace provisioning entrypoint.
-                      ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
-                      ;; multimethods, but through `provisioning/provision-single!`, which writes
-                      ;; the resulting `:database_details` and `:output_namespace` back to the
-                      ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
+                        ;; --- Stage 1: provision via the workspace provisioning entrypoint.
+                        ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
+                        ;; multimethods, but through `provisioning/provision-single!`, which writes
+                        ;; the resulting `:database_details` and `:output_namespace` back to the
+                        ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
                         (ws/add-database! ws-id (:id ws-db)
                                           [(workspace-input-schema admin-driver admin-details main-schema)])
-                      ;; Sanity check: provisioning must have populated :output_namespace and flipped
-                      ;; status to :provisioned. If empty, the workspace driver impl is broken.
+                        ;; Sanity check: provisioning must have populated :output_namespace and flipped
+                        ;; status to :provisioned. If empty, the workspace driver impl is broken.
                         (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
                           (is (= :provisioned (:status wsd))
                               "WorkspaceDatabase provisioning did not reach :provisioned status")
@@ -352,52 +350,49 @@
                                    (seq (:output_namespace wsd)))
                               (str "provisioning wrote an empty :output_namespace (got "
                                    (pr-str (:output_namespace wsd)) ")")))
-
-                      ;; --- Stage 2: build the canonical config.yml-shaped map and round-trip
-                      ;; through YAML, the same way a child instance receives the file from disk.
-                      ;; The round-trip is load-bearing: [[build-workspace-config]] returns
-                      ;; `:engine :postgres` (keyword), but the `:databases` section spec requires
-                      ;; a string. [[yaml/parse-string]] or [[yaml/generate-string]] collapses keyword
-                      ;; values to strings, matching the on-disk wire format.
+                        ;; --- Stage 2: build the canonical config.yml-shaped map and round-trip
+                        ;; through YAML, the same way a child instance receives the file from disk.
+                        ;; The round-trip is load-bearing: [[build-workspace-config]] returns
+                        ;; `:engine :postgres` (keyword), but the `:databases` section spec requires
+                        ;; a string. [[yaml/parse-string]] or [[yaml/generate-string]] collapses keyword
+                        ;; values to strings, matching the on-disk wire format.
                         (let [yaml-str (-> ws-id
                                            ws.config/build-workspace-config
                                            ws.config/config->yaml)
-                            ;; Read the provisioned isolation schema name back from the WSD row;
-                            ;; `provision-single!` derives it from the WSD id, not the workspace id.
+                              ;; Read the provisioned isolation schema name back from the WSD row;
+                              ;; `provision-single!` derives it from the WSD id, not the workspace id.
                               wsd      (-> (ws/get-workspace ws-id) :databases first)
                               isolation-schema (:output_namespace wsd)]
-
-                        ;;+---------------------------+
-                        ;;|       Parent above        |
-                        ;;+---------------------------+
+                          ;;+---------------------------+
+                          ;;|       Parent above        |
+                          ;;+---------------------------+
 
                         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-                        ;;+---------------------------+
-                        ;;|       Child  below        |
-                        ;;+---------------------------+
+                          ;;+---------------------------+
+                          ;;|       Child  below        |
+                          ;;+---------------------------+
 
-                        ;; --- Stage 3: bind `*config*` and run the file loader. This invokes
-                        ;; `init-from-config-file!` for the `:databases` section (updates the
-                        ;; existing Database row with merged workspace creds + schema-filters)
-                        ;; and `apply-workspace-section!` for the `:workspace` section (resolves
-                        ;; db names → ids and populates `ws/workspace-instance-config`).
-                          (binding [advanced-config.file/*config* (yaml/parse-string yaml-str)]
-                            (advanced-config.file/initialize!))
-                        ;; Diagnostic: the loader should have populated the in-process workspace
-                        ;; atom and rewritten the Database row's :details to workspace-user creds.
+                          ;; --- Stage 3: feed the parsed YAML to the file loader. This invokes
+                          ;; `init-from-config-file!` for the `:databases` section (updates the
+                          ;; existing Database row with merged workspace creds + schema-filters)
+                          ;; and `apply-workspace-section!` for the `:workspace` section (resolves
+                          ;; db names → ids and writes the `instance-workspace` setting).
+                          (advanced-config.file/initialize! (yaml/parse-string yaml-str))
+                          ;; Diagnostic: the loader should have written the workspace-instance
+                          ;; setting and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
                               "loader did not put the instance into workspace-mode (atom not populated)")
-                        ;; The Database row's `:details` was just rewritten by the loader. Re-read
-                        ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
+                          ;; The Database row's `:details` was just rewritten by the loader. Re-read
+                          ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
                           (let [ws-db (t2/select-one :model/Database :id (:id ws-db))
                                 input-ns-db (when (three-slot-driver? admin-driver) (:db admin-details))]
                             (is (not= (:details admin-db) (:details ws-db))
                                 "loader did not rewrite Database :details with workspace-user creds")
-                          ;; Regression guard: a colleague caught a pre-fix bug visually by spotting
-                          ;; the iso DB name in the YAML's :db slot. Pin it down with an assertion so
-                          ;; any future driver that puts :db into :database_details fails here loudly,
-                          ;; not 100 lines downstream as "sync produced no rows".
+                            ;; Regression guard: a colleague caught a pre-fix bug visually by spotting
+                            ;; the iso DB name in the YAML's :db slot. Pin it down with an assertion so
+                            ;; any future driver that puts :db into :database_details fails here loudly,
+                            ;; not 100 lines downstream as "sync produced no rows".
                             (is (= (:db admin-details) (:db (:details ws-db)))
                                 (str "loader must preserve canonical :db on the workspace Database. "
                                      "If you see the isolation DB here, a driver's "
@@ -406,8 +401,8 @@
                                      "and breaks the connection's bound database for sync."))
                             (mt/with-db ws-db
                               (sync/sync-database! ws-db {:scan :schema})
-                            ;; Diagnostic: enumerate what sync produced so a missing src-table
-                            ;; gives us a useful error instead of `(some? nil)`.
+                              ;; Diagnostic: enumerate what sync produced so a missing src-table
+                              ;; gives us a useful error instead of `(some? nil)`.
                               (let [synced (->> (t2/select :model/Table :db_id (:id ws-db) :active true)
                                                 (map #(select-keys % [:schema :name])))]
                                 (is (seq synced)
@@ -416,8 +411,7 @@
                                     (str "sync did not surface " main-schema "." src-name
                                          " (Table.schema expected " (pr-str tbl-schema) ")"
                                          ". Synced tables: " (pr-str synced))))
-
-                            ;; --- Action: define + run a transform ------------------
+                              ;; --- Action: define + run a transform ------------------
                               (let [src-table (t2/select-one :model/Table
                                                              :db_id (:id ws-db)
                                                              :schema tbl-schema
@@ -426,7 +420,7 @@
                                           "input-schema source table is synced before the transform runs")
                                     mp (mt/metadata-provider)
                                     query (lib/query mp (lib.metadata/table mp (:id src-table)))
-                                  ;; the workspace transform-hook rewrites `:schema` to `isolation-schema`
+                                    ;; the workspace transform-hook rewrites `:schema` to `isolation-schema`
                                     canonical-target-table {:type   :table
                                                             :schema main-schema
                                                             :name   output-table-name}]
@@ -435,7 +429,7 @@
                                                 :source {:type :query :query query}
                                                 :target canonical-target-table}]
                                   (transforms.execute/execute! transform {:run-method :manual})
-                                ;; --- Assertion: app db tables stay in main schema ----
+                                  ;; --- Assertion: app db tables stay in main schema ----
                                   (testing "app db Table entities are confined to the input schema"
                                     (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
@@ -448,11 +442,11 @@
                                                 tables)
                                           "the input-schema output table appears in the app db")
                                       (if (= :mysql admin-driver)
-                                      ;; MySQL stores `:schema nil` for every Table row regardless of
-                                      ;; which database it lives in, so we can't distinguish input-DB
-                                      ;; from isolation-DB rows via `:schema`. Instead probe the
-                                      ;; warehouse directly: any tables actually in the isolation DB
-                                      ;; should not show up as app-db Table rows under this Database.
+                                        ;; MySQL stores `:schema nil` for every Table row regardless of
+                                        ;; which database it lives in, so we can't distinguish input-DB
+                                        ;; from isolation-DB rows via `:schema`. Instead probe the
+                                        ;; warehouse directly: any tables actually in the isolation DB
+                                        ;; should not show up as app-db Table rows under this Database.
                                         (let [iso-warehouse-tables
                                               (->> (jdbc/query admin-spec
                                                                [(str/join ["SELECT table_name "
@@ -467,20 +461,19 @@
                                                    " (leaked: " (pr-str (map :name leaked)) ")")))
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                             "no app-db Table row points at the isolation schema"))))
-
                                   (testing "A table remapping record exists"
-                                  ;; `:from_db` is the empty-string sentinel for 2-slot drivers (Postgres,
-                                  ;; Redshift, ClickHouse) and the connection's bound DB for drivers whose
-                                  ;; `qualified-name-components` populates `:db` (SQL Server, BigQuery,
-                                  ;; MySQL).
-                                  ;;
-                                  ;; `:to_db` equals `:from_db` for drivers whose iso namespace lives in
-                                  ;; the SAME DB as canonical (Postgres-family schema-based, SQL Server
-                                  ;; schema-based). On MySQL the iso namespace is a different
-                                  ;; DATABASE, so `:to_db` is the iso DB name (= isolation-schema).
-                                  ;;
-                                  ;; `:from_schema` is the canonical schema name on schema-having drivers,
-                                  ;; and the empty-string sentinel on MySQL (no schema layer).
+                                    ;; `:from_db` is the empty-string sentinel for 2-slot drivers (Postgres,
+                                    ;; Redshift, ClickHouse) and the connection's bound DB for drivers whose
+                                    ;; `qualified-name-components` populates `:db` (SQL Server, BigQuery,
+                                    ;; MySQL).
+                                    ;;
+                                    ;; `:to_db` equals `:from_db` for drivers whose iso namespace lives in
+                                    ;; the SAME DB as canonical (Postgres-family schema-based, SQL Server
+                                    ;; schema-based). On MySQL the iso namespace is a different
+                                    ;; DATABASE, so `:to_db` is the iso DB name (= isolation-schema).
+                                    ;;
+                                    ;; `:from_schema` is the canonical schema name on schema-having drivers,
+                                    ;; and the empty-string sentinel on MySQL (no schema layer).
                                     (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)
                                           to-db-stored      (if (= :mysql admin-driver)
                                                               isolation-schema
@@ -494,11 +487,10 @@
                                                :database_id     (:id ws-db)}]
                                              (for [r (t2/select :model/TableRemapping :database_id (:id ws-db))]
                                                (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id]))))))
-
-                                ;; --- Assertion: describe-database stays in main ------
-                                ;; describe-database reads JDBC's TABLE_SCHEM into `:schema`. For MySQL
-                                ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
-                                ;; (the per-driver translation we already do for synced rows).
+                                  ;; --- Assertion: describe-database stays in main ------
+                                  ;; describe-database reads JDBC's TABLE_SCHEM into `:schema`. For MySQL
+                                  ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
+                                  ;; (the per-driver translation we already do for synced rows).
                                   (testing "describe-database returns only input-schema tables"
                                     (let [{described :tables} (driver/describe-database admin-driver ws-db)
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
@@ -507,11 +499,11 @@
                                                 described)
                                           "the input-schema source table is described")
                                       (if (= :mysql admin-driver)
-                                      ;; On MySQL describe-database only enumerates the connection's
-                                      ;; bound DB (`test-data`), so iso-DB tables can't appear here
-                                      ;; at all. The assertion is trivially true; we still want SOMETHING
-                                      ;; to confirm describe-database isn't returning iso-DB rows
-                                      ;; (e.g., via a cross-DB enumeration bug).
+                                        ;; On MySQL describe-database only enumerates the connection's
+                                        ;; bound DB (`test-data`), so iso-DB tables can't appear here
+                                        ;; at all. The assertion is trivially true; we still want SOMETHING
+                                        ;; to confirm describe-database isn't returning iso-DB rows
+                                        ;; (e.g., via a cross-DB enumeration bug).
                                         (let [iso-warehouse-tables (->> (jdbc/query admin-spec
                                                                                     ["SELECT table_name FROM information_schema.tables WHERE table_schema = ?"
                                                                                      isolation-schema])
@@ -521,10 +513,9 @@
                                               "no described table should physically live in the isolation DB"))
                                         (is (not-any? #(= iso-tbl-schema (:schema %)) described)
                                             "no isolation-schema table is described"))))
-
-                                ;; --- Assertion: a Card querying the canonical output table ----
-                                ;; reads the remapped (isolation-schema) data, not the canonical
-                                ;; main-schema table.
+                                  ;; --- Assertion: a Card querying the canonical output table ----
+                                  ;; reads the remapped (isolation-schema) data, not the canonical
+                                  ;; main-schema table.
                                   (testing "card query returns the remapped isolation-schema table, not the canonical main-schema table"
                                     (let [out-table (t2/select-one :model/Table
                                                                    :db_id  (:id ws-db)
@@ -535,10 +526,10 @@
                                                                                  :from_table_name output-table-name)]
                                       (is (some? out-table)
                                           "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
-                                    ;; Diagnostic: the Card MBQL query downstream needs Fields on
-                                    ;; out-table. If sync-table! after the transform run didn't
-                                    ;; populate them, the QP throws "Table X has no Fields"
-                                    ;; 100 lines into preprocess. Flag it here instead.
+                                      ;; Diagnostic: the Card MBQL query downstream needs Fields on
+                                      ;; out-table. If sync-table! after the transform run didn't
+                                      ;; populate them, the QP throws "Table X has no Fields"
+                                      ;; 100 lines into preprocess. Flag it here instead.
                                       (let [field-count (t2/count :model/Field :table_id (:id out-table) :active true)]
                                         (is (pos? field-count)
                                             (str "out-table Table id=" (:id out-table)
@@ -567,22 +558,22 @@
                                         (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                           (testing "querying the isolation table directly works like querying any other table"
                                             (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                                    ;; INTENTIONALLY DISABLED (GHY-3580): bare-table-name SQL.
-                                    ;;
-                                    ;; The two `mt/with-temp` blocks immediately above and below this one cover
-                                    ;; the qualified-name flows:
-                                    ;;   - above: `SELECT * FROM iso_schema.table` (workspace-side identifier)
-                                    ;;   - below: `SELECT * FROM main_schema.table` (canonical identifier;
-                                    ;;     Phase 2 rewrites it to iso)
-                                    ;; The skipped variant covers `SELECT * FROM table` -- bare, unqualified.
-                                    ;; That shape isn't supported yet because the Phase 2 SQLGlot rewriter keys
-                                    ;; on `(schema, table)` pairs, and an unqualified ref carries no schema slot
-                                    ;; for the lookup to match. Re-enabling needs the rewriter to attribute
-                                    ;; bare refs to the connection's default schema before lookup. See gist
-                                    ;; https://gist.github.com/escherize/721764240c300e995c54add2d71ff356 for the
-                                    ;; repro and proposed approach.
-                                    ;;
-                                    ;; Re-enable when GHY-3580 lands: delete the `#_`, run the test.
+                                      ;; INTENTIONALLY DISABLED (GHY-3580): bare-table-name SQL.
+                                      ;;
+                                      ;; The two `mt/with-temp` blocks immediately above and below this one cover
+                                      ;; the qualified-name flows:
+                                      ;;   - above: `SELECT * FROM iso_schema.table` (workspace-side identifier)
+                                      ;;   - below: `SELECT * FROM main_schema.table` (canonical identifier;
+                                      ;;     Phase 2 rewrites it to iso)
+                                      ;; The skipped variant covers `SELECT * FROM table` -- bare, unqualified.
+                                      ;; That shape isn't supported yet because the Phase 2 SQLGlot rewriter keys
+                                      ;; on `(schema, table)` pairs, and an unqualified ref carries no schema slot
+                                      ;; for the lookup to match. Re-enabling needs the rewriter to attribute
+                                      ;; bare refs to the connection's default schema before lookup. See gist
+                                      ;; https://gist.github.com/escherize/721764240c300e995c54add2d71ff356 for the
+                                      ;; repro and proposed approach.
+                                      ;;
+                                      ;; Re-enable when GHY-3580 lands: delete the `#_`, run the test.
                                       #_(mt/with-temp [:model/Card card
                                                        {:name          (str "ws-e2e-card-native-" run-id)
                                                         :database_id   (:id ws-db)
@@ -609,24 +600,22 @@
                                           (testing "native card query returns the transform output"
                                             (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                                 "native card returns the rows the transform wrote to the isolation schema"))))))
-
-                                ;; --- Assertion: canonical-table-protection invariant (GHY-3513 item 4) ----
-                                ;; Pre-seeded canonical `main_schema.output-table-name` with rows A *before* workspace
-                                ;; provisioning (see `create-output-table!` call at the top of the test). The
-                                ;; transform writes its output (rows B = src's [1,a],[2,b],[3,c]) to the
-                                ;; canonical target name, which the transform-hook redirects to iso.<derived>.
-                                ;; The card reads above already verified workspace queries see rows B (remap
-                                ;; engaged). What's load-bearing for *this* assertion: the workspace transform
-                                ;; must NOT have mutated the canonical warehouse table. Probe it directly via
-                                ;; `admin-spec` (bypasses the QP and workspace mode entirely).
+                                  ;; --- Assertion: canonical-table-protection invariant (GHY-3513 item 4) ----
+                                  ;; Pre-seeded canonical `main_schema.output-table-name` with rows A *before* workspace
+                                  ;; provisioning (see `create-output-table!` call at the top of the test). The
+                                  ;; transform writes its output (rows B = src's [1,a],[2,b],[3,c]) to the
+                                  ;; canonical target name, which the transform-hook redirects to iso.<derived>.
+                                  ;; The card reads above already verified workspace queries see rows B (remap
+                                  ;; engaged). What's load-bearing for *this* assertion: the workspace transform
+                                  ;; must NOT have mutated the canonical warehouse table. Probe it directly via
+                                  ;; `admin-spec` (bypasses the QP and workspace mode entirely).
                                   (testing "the workspace transform does not mutate the canonical warehouse table"
-                                  ;; Probe directly via admin perms (bypasses QP + workspace mode).
+                                    ;; Probe directly via admin perms (bypasses QP + workspace mode).
                                     (let [canonical-rows (read-canonical-rows admin-driver admin-spec admin-details
                                                                               main-schema output-table-name)]
                                       (is (= #{[99 "pre-existing"] [98 "still-pre-existing"]}
                                              canonical-rows)
                                           "canonical main_schema.output-table-name still has its pre-seeded rows; transform output went to iso.<derived> instead")))
-
                                   (testing "app db Table rows stay confined to the input schema after card run"
                                     (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
@@ -647,22 +636,22 @@
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                             "no app-db Table row points at the isolation schema")))))))))
                         (finally
-                        ;; Clear the in-process workspace atom (populated by `apply-workspace-section!`
-                        ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
-                        ;; `:databases` initializer rewrote the `Database.details` to the workspace
-                        ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
-                        ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
-                        ;; `delete-workspace!` then deprovisions any `:provisioned` databases (calls
-                        ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
-                        ;; provision succeeded fully or partially.
+                          ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
+                          ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
+                          ;; `:databases` initializer rewrote the `Database.details` to the workspace
+                          ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
+                          ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
+                          ;; `delete-workspace!` then deprovisions any `:provisioned` databases (calls
+                          ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
+                          ;; provision succeeded fully or partially.
                           (ws/clear-instance-workspace!)
                           (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                        ;; Cleanup tries [[ws/delete-workspace!]] first. If it throws (e.g. on
-                        ;; Redshift, [[destroy-workspace-isolation!]] rolls WSD status back to
-                        ;; `:provisioned` if any cleanup statement fails, and [[delete-workspace!]]
-                        ;; refuses with 409), fall back to force-clearing the WSD status so
-                        ;; `mt/with-temp Database` cleanup can complete. Real fix for the
-                        ;; Redshift destroy fragility is tracked separately.
+                          ;; Cleanup tries [[ws/delete-workspace!]] first. If it throws (e.g. on
+                          ;; Redshift, [[destroy-workspace-isolation!]] rolls WSD status back to
+                          ;; `:provisioned` if any cleanup statement fails, and [[delete-workspace!]]
+                          ;; refuses with 409), fall back to force-clearing the WSD status so
+                          ;; `mt/with-temp Database` cleanup can complete. Real fix for the
+                          ;; Redshift destroy fragility is tracked separately.
                           (let [delete-result (try (ws/delete-workspace! ws-id) ::deleted-ok
                                                    (catch Throwable t
                                                      (log/warn t "delete-workspace! failed; force-clearing WSD")
@@ -700,7 +689,7 @@
   ;; source table, so it inherits that failure mode. Investigation pending; unrelated
   ;; to the native-SQL-rewrite hook this test was written to cover.
   (mt/test-drivers #{:postgres :mysql}
-    (mt/with-premium-features #{:workspaces}
+    (mt/with-premium-features #{:workspaces :config-text-file}
       (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
         (let [admin-driver  driver/*driver*
               admin-db      (mt/db)
@@ -726,8 +715,7 @@
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]
-                    (binding [advanced-config.file/*config* reparsed]
-                      (advanced-config.file/initialize!))
+                    (advanced-config.file/initialize! reparsed)
                     (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                       (mt/with-db ws-db
                         (sync/sync-database! ws-db {:scan :schema})

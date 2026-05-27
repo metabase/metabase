@@ -48,6 +48,7 @@ import {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
@@ -94,7 +95,6 @@ import {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,
@@ -271,6 +271,7 @@ const mapDispatchToProps = {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 
@@ -306,7 +307,6 @@ const mapDispatchToProps = {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,

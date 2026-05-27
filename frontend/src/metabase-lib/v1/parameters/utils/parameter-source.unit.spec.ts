@@ -6,6 +6,7 @@ import { createMockField } from "metabase-types/api/mocks";
 import {
   canListParameterValues,
   canSearchParameterValues,
+  canUseCustomSource,
   getQueryType,
 } from "./parameter-source";
 
@@ -77,6 +78,62 @@ describe("getQueryType", () => {
     });
     expect(getQueryType(parameter)).toBe("list");
   });
+});
+
+describe("canUseCustomSource", () => {
+  it.each([
+    {
+      parameter: createMockUiParameter({
+        type: "string/=",
+        sectionId: "string",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "string/=",
+        sectionId: "location",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "category",
+        sectionId: "category",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "number/=",
+        sectionId: "number",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({ type: "id", sectionId: "id" }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "date/single",
+        sectionId: "date",
+      }),
+      expected: false,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "temporal-unit",
+        sectionId: "temporal-unit",
+      }),
+      expected: false,
+    },
+  ])(
+    "should return $expected for $parameter.type ($parameter.sectionId)",
+    ({ parameter, expected }) => {
+      expect(canUseCustomSource(parameter)).toBe(expected);
+    },
+  );
 });
 
 describe("canListParameterValues", () => {

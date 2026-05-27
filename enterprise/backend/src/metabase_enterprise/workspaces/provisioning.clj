@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.util.log :as log]
    [potemkin.types :as p]
@@ -28,14 +29,23 @@
     "Tear down isolated schema + user. Should be idempotent."))
 
 (def dispatching-provisioner
-  "Default Provisioner that dispatches to the driver multimethods."
+  "Default Provisioner that dispatches to the driver multimethods.
+
+   Each call is wrapped in [[driver.conn/with-admin-connection]] so the underlying
+   driver impls acquire connections via the database's `:admin-details` overlay
+   (when configured). Workspace DDL — `CREATE USER`, `CREATE SCHEMA`, `GRANT` —
+   typically needs higher-privilege credentials than the regular query user, and
+   the admin overlay is how operators provide them."
   (reify Provisioner
     (init! [_ driver database workspace]
-      (driver/init-workspace-isolation! driver database workspace))
+      (driver.conn/with-admin-connection
+        (driver/init-workspace-isolation! driver database workspace)))
     (grant! [_ driver database workspace schemas]
-      (driver/grant-workspace-read-access! driver database workspace schemas))
+      (driver.conn/with-admin-connection
+        (driver/grant-workspace-read-access! driver database workspace schemas)))
     (destroy! [_ driver database workspace]
-      (driver/destroy-workspace-isolation! driver database workspace))))
+      (driver.conn/with-admin-connection
+        (driver/destroy-workspace-isolation! driver database workspace)))))
 
 ;;; ---------------------------------------------- Implementation ----------------------------------------------------
 

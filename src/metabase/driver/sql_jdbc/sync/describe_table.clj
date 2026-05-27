@@ -131,7 +131,7 @@
                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
                  nil)
    (fn [^ResultSet rs]
-      ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
+     ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
      #(let [default            (.getString rs "COLUMN_DEF")
             no-default?        (contains? #{nil "NULL" "null"} default)
             ;; leave room for "", or other strings to be nil (unknown)
@@ -528,10 +528,10 @@
             (nil? token)
             (persistent! res)
 
-           ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
-           ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
-           ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
-           ;; entry (instead of doing `<=`).
+            ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
+            ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
+            ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
+            ;; entry (instead of doing `<=`).
             (< max-nested-field-columns (count res))
             (persistent! res)
 
@@ -547,7 +547,7 @@
               JsonToken/FIELD_NAME         (recur path (.getText p) res)
               JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
               JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
-                         ;; We put top-level array row type semantics on JSON roadmap but skip for now
+              ;; We put top-level array row type semantics on JSON roadmap but skip for now
               JsonToken/START_ARRAY        (do (.skipChildren p)
                                                (if field
                                                  (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
@@ -656,7 +656,7 @@
   (->> (for [[field-path field-type] (seq field-types)
              :when field-type]
          (let [curr-type (get field-type-map field-type :type/*)]
-           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+           {:name              (str/join " → " (map name field-path)) ;; right arrow
             :database-type     (db-type-map curr-type)
             :base-type         curr-type
             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
@@ -761,10 +761,10 @@
                                   nil
                                   (fn [^Connection conn]
                                     (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
-                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
-                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
-                                           ;; database [:details :db])` works for most drivers but not H2.
+                                          ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+                                          ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+                                          ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+                                          ;; database [:details :db])` works for most drivers but not H2.
                                           pks                (get-table-pks driver conn nil table)]
                                       [unfold-json-fields pks])))]
     (if (empty? unfold-json-fields)

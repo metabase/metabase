@@ -1,14 +1,19 @@
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getTokenFeature } from "metabase/setup/selectors";
 
-export const canManageWorkspaces = (state: State): boolean => {
+export function canManageWorkspaces(state: State): boolean {
   if (getUserIsAdmin(state)) {
     return true;
   }
   const user = getUser(state);
   return user?.permissions?.can_manage_workspaces ?? false;
-};
+}
 
-export const hasActiveWorkspace = (state: State): boolean =>
-  getSetting(state, "has-active-workspace") ?? false;
+export function canManageWorkspaceInstance(state: State): boolean {
+  return getUserIsAdmin(state);
+}
+
+export function getIsDevelopmentMode(state: State): boolean {
+  return getTokenFeature(state, "development_mode");
+}

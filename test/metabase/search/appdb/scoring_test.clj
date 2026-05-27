@@ -96,10 +96,10 @@
      {:model "card" :id 6 :name "ordering"}]
     (case (mdb/db-type)
       :postgres
-        ;; WARNING: this is likely to diverge between appdb types as we support more.
+      ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
-          ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
-          ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
+        ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
+        ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
         (is (= [["card" 1 "orders"]
                 ["card" 4 "order"]
                 ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
@@ -200,7 +200,7 @@
                 card-with-view  #(merge (mt/with-temp-defaults :model/Card)
                                         {:name       search-term
                                          :view_count %})
-               ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
+                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
                 ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
                 outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
                 _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
@@ -212,8 +212,8 @@
                                  [])
                 first-result-id (-> (search-results* search-term) first second)]
             (is (some? first-result-id))
-           ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-           ;; but we can solve this later if it actually becomes a flake
+            ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
+            ;; but we can solve this later if it actually becomes a flake
             (is (not= outlier-card-id first-result-id))))))))
 
 (deftest ^:parallel dashboard-count-test
@@ -249,7 +249,6 @@
             (is (= [["card" c2 "card crowberto loved"]
                     ["card" c1 "card normal"]]
                    (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Dashboard {d1 :id} {}
                    :model/Dashboard {d2 :id} {}]
       (testing "bookmarked dashboard"
@@ -261,7 +260,6 @@
             (is (= [["dashboard" d2 "dashboard crowberto loved"]
                     ["dashboard" d1 "dashboard normal"]]
                    (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-
     (mt/with-temp [:model/Collection {c1 :id} {}
                    :model/Collection {c2 :id} {}]
       (testing "bookmarked collection"

@@ -31,39 +31,34 @@
 ;; describes its own wire schema, and this layer patches the manifest to publish the MCP-visible
 ;; shape.
 
-;; Shared sub-shapes for the program-shaped tools (`construct_query`, `query`). Extracted so the two
-;; tools can't drift on what a program looks like to the LLM — both reuse the same `:source` map and
-;; the same flattened `:operations` (`[:sequential [:sequential :any]]`, no tuple-of-anys, no `:and`).
-;; The wire schemas under `agent_api` use the precise tuple/composite grammar; this layer publishes
-;; the permissive variant strict MCP clients (ChatGPT) accept.
+;; Shared sub-shapes for the representations-shaped tools (`construct_query`, `query`).
+;;
+;; The wire schemas under `agent-api` describe the body as `{:query <::lib.schema/external-query>}`,
+;; and `::external-query` references `::lib.schema/query`, which carries `:optional` keys (notably
+;; `:lib/metadata`) that are not `[:maybe ...]`. The new `assert-optional-fields-nullable!` lint in
+;; `tools-manifest` walks every reachable map and fails on those — which is the right behaviour for
+;; tool inputs but not for the lib-internal query map we never want strict MCP clients to populate.
+;;
+;; The override here publishes a permissive `:query` field (an opaque JSON object) and conveys the
+;; real grammar through the tool description + `metabase://docs/construct-query.md`. Strict MCP
+;; clients (ChatGPT) get a clean JSON Schema (no `prefixItems` / `allOf`); the agent learns the
+;; actual MBQL 5 shape from the prompt.
 
-(def ^:private program-source-malli
-  [:map
-   [:type {:tool/description "Entity kind."}
-    [:enum "table" "card" "dataset" "metric"]]
-   [:id ms/PositiveInt]])
-
-(def ^:private program-operations-malli
-  [:sequential
-   [:sequential
-    {:tool/description (str "First element is the operator string; remaining "
-                            "elements are operator-specific arguments (scalars, "
-                            "references, or nested arrays).")}
-    :any]])
-
-(def ^:private operations-description
-  (str "Array of operator tuples like [\"filter\", clause] or [\"aggregate\", agg-clause]. "
-       "See metabase://docs/construct-query.md for the full grammar."))
+(def ^:private external-query-mcp-malli
+  "MCP-visible shape for the `query` field of `construct_query` / `query`. Deliberately opaque:
+  publishing the full `::lib.schema/external-query` recursively would pull in `::query`'s optional
+  non-nullable `:lib/metadata` (which trips the manifest's strict-tool lint) and emit `prefixItems` /
+  `allOf` JSON Schema constructs that strict MCP clients (ChatGPT) reject."
+  [:map {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
+                                "`construct_notebook_query` tool for the format reference.")}])
 
 (def ^:private construct-query-mcp-input-malli
   "MCP-visible input for `construct_query`.
-  Deliberately flatter than the wire schema — the operator/ref grammar is conveyed through the tool
-  description and the construct-query.md MCP resource, not the schema."
+  Deliberately flatter than the wire schema — the MBQL 5 representations grammar is conveyed through
+  the tool description and the construct-query.md MCP resource, not the schema."
   [:map
-   [:source     {:tool/description "Database entity to query."}
-    program-source-malli]
-   [:operations {:tool/description operations-description}
-    program-operations-malli]
+   [:query  {:tool/description "Metabase MBQL 5 query."}
+    external-query-mcp-malli]
    ;; Length bounds + description go on the inner `:string` so they end up on the JSON Schema branch
    ;; (and not as an `:allOf`, which ChatGPT's strict validator rejects).
    [:prompt {:optional true}
@@ -73,22 +68,20 @@
                                               "Pass it as-is without summarizing or rewriting.")}]]]])
 
 (def ^:private query-mcp-input-malli
-  "MCP-visible input for `query`. The wire body is a `:multi` whose `:program` branch references
-  agent-lib tuple/composite schemas — those emit `prefixItems`/`allOf` JSON Schema constructs that
-  strict MCP clients (ChatGPT) reject. This override publishes the same flattened program shape used
-  by `construct_query`, plus the `:continuation_token` alternative for pagination."
+  "MCP-visible input for `query`. The wire body is a `:multi` whose `:fresh` branch references
+  `::lib.schema/external-query` — that pulls in `::query`'s `:optional` non-nullable
+  `:lib/metadata` (and emits `prefixItems` / `allOf` JSON Schema constructs that strict MCP
+  clients reject). This override publishes the same opaque-object `:query` field used by
+  `construct_query`, plus the `:continuation_token` alternative for pagination."
   [:map
-   [:source             {:optional true
-                         :tool/description (str "Database entity to query. Omit when paginating via "
-                                                "`continuation_token`.")}
-    [:maybe program-source-malli]]
-   [:operations         {:optional true
-                         :tool/description operations-description}
-    [:maybe program-operations-malli]]
+   [:query              {:optional true
+                         :tool/description (str "Metabase MBQL 5 query. "
+                                                "Omit when paginating via `continuation_token`.")}
+    [:maybe external-query-mcp-malli]]
    [:continuation_token {:optional true
                          :tool/description (str "Token returned by a previous `query` response — pass "
                                                 "it back to fetch the next page. Mutually exclusive "
-                                                "with `source`/`operations`.")}
+                                                "with `query`.")}
     [:maybe ms/NonBlankString]]])
 
 (def ^:private execute-query-mcp-input-malli
@@ -169,6 +162,29 @@
                 (map (fn [tool]
                        (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
           (concat tools (mcp.resources/list-ui-tools)))))
+
+(defn- pad-left
+  [^String s width]
+  (if (>= (count s) width)
+    s
+    (str (apply str (repeat (- width (count s)) \0)) s)))
+
+(defn tools-hash
+  "Return a stable hash of the tool list visible to `token-scopes`, formatted as
+   an 8-character unsigned hex string. Used by the SSE keepalive loop to detect
+   manifest changes and emit `notifications/tools/list_changed`. Hashes the JSON
+   encoding of `[name inputSchema outputSchema]` per tool, sorted by name, so the
+   result is determined purely by the wire-visible schema bytes — no reliance on
+   Clojure's `hash` of map values (which can be unstable for non-data leaves
+   like functions, and is order-sensitive for some collection types)."
+  [token-scopes]
+  (-> (->> (list-tools token-scopes)
+           (map (juxt :name :inputSchema :outputSchema))
+           (sort-by first)
+           json/encode
+           hash)
+      (Integer/toUnsignedString 16)
+      (pad-left 8)))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
@@ -277,7 +293,7 @@
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "visualize_query"})
+  #{"execute_query" "visualize_query" "create_question" "update_question"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -312,8 +328,8 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
-   For POST requests, `params` is sent as the request body.
-   For GET/DELETE requests, `params` is sent as parsed query params.
+   For POST/PUT/PATCH requests, `params` is sent as the request body.
+   For other methods (GET/DELETE), `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
   (agent-api/routes
@@ -321,8 +337,9 @@
             :uri              path
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
-     (and (seq params) (= :post method))    (assoc :body params)
-     (and (seq params) (not= :post method)) (assoc :query-params params))
+     ;; POST/PUT/PATCH carry params in the body; GET/DELETE carry them as query params.
+     (and (seq params) (#{:post :put :patch} method))    (assoc :body params)
+     (and (seq params) (not (#{:post :put :patch} method))) (assoc :query-params params))
    (fn [{resp-body :body :as response}]
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
@@ -336,7 +353,8 @@
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
-   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
+   For POST/PUT/PATCH, `params` becomes the request body; otherwise (GET/DELETE)
+   `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request.
@@ -384,8 +402,9 @@
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
-   and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
-   request body. For GET/DELETE requests, remaining args are sent as query params."
+   and calls `invoke-agent-api`. For POST/PUT/PATCH requests, remaining args are
+   sent as the request body. For other methods (GET/DELETE), remaining args are
+   sent as query params."
   [tool-def arguments token-scopes session-id]
   (let [{:keys [method path]} (:endpoint tool-def)
         tool-name             (:name tool-def)

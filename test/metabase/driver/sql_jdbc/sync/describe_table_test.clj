@@ -417,13 +417,11 @@
                      [{:field-name "array_col" :base-type :type/JSON}
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
-
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
                       (mt/db)
                       {:name "json_table" :id (mt/id "json_table")}))))
-
         (sync/sync-database! (mt/db))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
@@ -479,9 +477,9 @@
 
 (mt/defdataset long-json
   [["long_json_table"
-     ;; `short_json` and `long_json` have the same schema,
-     ;; in the first row, both have an "a" key.
-     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    ;; `short_json` and `long_json` have the same schema,
+    ;; in the first row, both have an "a" key.
+    ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/encode {:a "x"}) (json/encode {:a "x"})]
@@ -666,7 +664,6 @@
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
       (testing "for composite indexes, we only care about the 1st column"
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))

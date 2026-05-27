@@ -158,15 +158,17 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{agent-lib
-              api
+   :uses    #{api
               auth-identity
+              collections
               dashboards
               events
               lib
+              lib-be
               llm
               metabot
               queries
+              query-permissions
               query-processor
               request
               server
@@ -175,21 +177,25 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Table
                     :model/User}}
 
   agent-lib
   {:team "Metabot"
-   :api  #{metabase.agent-lib.core}
+   :api  #{metabase.agent-lib.representations
+           metabase.agent-lib.representations.repair
+           metabase.agent-lib.representations.resolve}
    :uses #{lib
+           models
            util}}
 
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
            metabase.analytics.core
+           metabase.analytics.event
            metabase.analytics.init
-           metabase.analytics.settings
-           metabase.analytics.snowplow}
+           metabase.analytics.settings}
    :uses #{analytics-interface
            api
            app-db
@@ -1279,8 +1285,10 @@
                     :model/Database
                     :model/Field
                     :model/Glossary
+                    :model/Measure
                     :model/ModerationReview
                     :model/QueryTable
+                    :model/Segment
                     :model/Table
                     :model/Transform
                     :model/User}}
@@ -1341,6 +1349,7 @@
            metabase.models.resolution
            metabase.models.serialization
            metabase.models.serialization.resolve
+           metabase.models.serialization.resolve.mp
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -1356,6 +1365,7 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Field
+                    :model/Measure
                     :model/NativeQuerySnippet
                     :model/Segment
                     :model/Table
@@ -2215,8 +2225,7 @@
            permissions
            premium-features
            search
-           util
-           workspaces}
+           util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -2677,7 +2686,8 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api.logs
+   :api  #{metabase-enterprise.advanced-config.api
+           metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -2688,6 +2698,7 @@
            lib
            permissions
            premium-features
+           sample-data
            settings
            setup
            sync
@@ -3201,7 +3212,8 @@
   enterprise/replacement
   {:team "Graphy"
    :api  #{metabase-enterprise.replacement.api}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            events
            lib
@@ -3513,6 +3525,7 @@
            permissions
            premium-features
            query-processor
+           sample-data
            server
            settings
            sql-tools

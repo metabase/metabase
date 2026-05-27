@@ -50,7 +50,7 @@
     (cron/schedule
      (cron/cron-schedule cron-schedule)
      (cron/in-time-zone (TimeZone/getTimeZone ^String (send-notification-timezone)))
-      ;; We want to fire the trigger once even if the previous triggers  missed
+     ;; We want to fire the trigger once even if the previous triggers  missed
      (cron/with-misfire-handling-instruction-fire-and-proceed)))
    ;; higher than sync
    (triggers/with-priority 6)))
@@ -64,7 +64,7 @@
   [{:keys [id type cron_schedule] :as notification-subscription}]
   (let [existing-trigger (first (task/existing-triggers send-notification-job-key (send-notification-trigger-key id)))]
     (cond
-     ;; delete trigger if type changes
+      ;; delete trigger if type changes
       (and
        (not= type :notification-subscription/cron)
        existing-trigger)
@@ -72,11 +72,11 @@
         (log/infof "Deleting trigger for subscription %d because of type changes" id)
         (task/delete-trigger! (-> existing-trigger :key triggers/key)))
 
-     ;; do nothing if type is not cron
+      ;; do nothing if type is not cron
       (not= type :notification-subscription/cron)
       nil
 
-     ;; create new if there is no existing trigger
+      ;; create new if there is no existing trigger
       (not existing-trigger)
       (do
         (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
@@ -105,7 +105,6 @@
         notification    (t2/select-one :model/Notification notification-id)]
     (log/with-context {:subscription-id subscription-id
                        :notification-id notification-id}
-
       (cond
         (:active notification)
         (tracing/with-span :tasks "task.notification.send" {:notification/subscription-id subscription-id

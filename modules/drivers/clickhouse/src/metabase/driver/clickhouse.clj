@@ -421,7 +421,10 @@
                       (conj (format "GRANT SHOW DATABASES ON `%s`.* TO `%s`"
                                     canonical-db (:user read-user))))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
     {:schema           db-name
      :database_details read-user}))
 

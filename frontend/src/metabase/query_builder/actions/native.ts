@@ -3,7 +3,6 @@ import { createAction } from "redux-actions";
 import { cardApi } from "metabase/api";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { createThunkAction } from "metabase/redux";
-import { setUIControls } from "metabase/redux/query-builder";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -90,25 +89,6 @@ export const setIsShowingSnippetSidebar = (
   type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
   isShowingSnippetSidebar,
 });
-
-export const SET_IS_NATIVE_EDITOR_OPEN =
-  "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
-export const setIsNativeEditorOpen = createThunkAction(
-  SET_IS_NATIVE_EDITOR_OPEN,
-  (isNativeEditorOpen: boolean, toggleDataReference?: boolean) =>
-    (dispatch) => {
-      if (toggleDataReference) {
-        dispatch(
-          setUIControls({
-            isNativeEditorOpen,
-            isShowingDataReference: isNativeEditorOpen,
-          }),
-        );
-      } else {
-        dispatch(setUIControls({ isNativeEditorOpen }));
-      }
-    },
-);
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";

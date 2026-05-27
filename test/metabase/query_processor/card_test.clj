@@ -90,7 +90,6 @@
           :display-name "#1234"
           :type         :card
           :card-id      1234}
-
          "xyz"
          {:id           "xyz"
           :name         "snippet: My Snippet"
