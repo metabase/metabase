@@ -610,13 +610,20 @@
                                             :is_stub true})))))))
 
 (deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub in the request body"
+  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
       (is (re-find #"is_stub"
                    (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                          {:is_stub true})))
       (testing "the row is unchanged"
-        (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id)))))))
+        (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+  (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
+    ;; Real callers often PUT the full database row (which includes :is_stub false) and the API
+    ;; must not reject that.
+    (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+      (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                            {:is_stub false :name "still-fine"})
+      (is (= "still-fine" (t2/select-one-fn :name :model/Database :id db-id))))))
 
 (deftest clear-is-stub-on-successful-main-connection-update-test
   (testing "PUT /api/database/:id with new :details clears :is_stub when the main connection test succeeds"

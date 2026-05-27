@@ -856,7 +856,7 @@
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
        [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
-  (when (contains? body :is_stub)
+  (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
   (when cache_ttl
@@ -1028,7 +1028,7 @@
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
        [:settings           {:optional true} [:maybe ms/Map]]]]
-  (when (contains? body :is_stub)
+  (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
