@@ -1,9 +1,8 @@
 import type { TreemapSeriesOption } from "echarts/charts";
-import type { EChartsCoreOption } from "echarts/core";
 
 import type { TreemapNode, TreemapTree } from "../model/types";
 
-interface TreemapSeriesNode {
+export interface TreemapSeriesNode {
   name: string;
   value: number;
   rawName: TreemapNode["rawName"];
@@ -11,8 +10,15 @@ interface TreemapSeriesNode {
   children?: TreemapSeriesNode[];
 }
 
-export function getTreemapChartOption(tree: TreemapTree): EChartsCoreOption {
-  const series: TreemapSeriesOption = {
+type TreemapChartSeriesOption = TreemapSeriesOption & {
+  type: "treemap";
+  data: TreemapSeriesNode[];
+};
+
+export function getTreemapChartOption(tree: TreemapTree): {
+  series: TreemapChartSeriesOption;
+} {
+  const series: TreemapChartSeriesOption = {
     type: "treemap",
     data: toSeriesData(tree),
   };

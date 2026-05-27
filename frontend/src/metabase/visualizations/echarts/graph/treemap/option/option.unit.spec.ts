@@ -21,7 +21,6 @@ describe("getTreemapChartOption (1-level)", () => {
     ];
 
     const option = getTreemapChartOption(tree);
-    // @ts-expect-error -- echarts series union narrowing not worth fighting in tests
     const data = option.series.data;
 
     expect(data).toHaveLength(3);
@@ -37,7 +36,6 @@ describe("getTreemapChartOption (1-level)", () => {
     ];
 
     const option = getTreemapChartOption(tree);
-    // @ts-expect-error -- see above
     const data = option.series.data;
 
     expect(data[0]).toMatchObject({
@@ -52,7 +50,6 @@ describe("getTreemapChartOption (1-level)", () => {
 
   it("returns an empty data array for an empty tree", () => {
     const option = getTreemapChartOption([]);
-    // @ts-expect-error -- see above
     expect(option.series.data).toEqual([]);
   });
 });
