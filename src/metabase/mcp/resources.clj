@@ -79,4 +79,4 @@
                     "vocabularies, worked examples, and common pitfalls (stage boundaries, "
                     "ref shapes, joins, metric/date handling).")
   :mimeType    "text/markdown"
-  :render-fn   (classpath-text-resource "metabase/agent_api/construct_query.md")})
+  :render-fn   (classpath-text-resource "metabot/prompts/tools/construct_notebook_query.md")})

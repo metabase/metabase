@@ -518,10 +518,10 @@
   :- (streaming-response/streaming-response-schema ::query-response)
   "Execute a structured program and stream the results, with continuation-token pagination.
 
-  Accepts either a program (same shape as /v2/construct-query) or a
-  `continuation_token` from a previous response. Returns results with column
-  metadata and an optional `continuation_token` for fetching the next page."
-  {:scope "agent:query"
+  Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
+  from a previous response. Returns results with column metadata and an optional
+  `continuation_token` for fetching the next page."
+  {:scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a structured program and return results with column metadata. "
