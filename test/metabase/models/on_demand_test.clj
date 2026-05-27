@@ -15,8 +15,8 @@
   of Fields that should have been updated. Returns the set of updated Field names."
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                     (swap! updated-field-names conj (:name field)))]
+    (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values! (fn [field]
+                                                                                   (swap! updated-field-names conj (:name field)))]
       (f updated-field-names)
       @updated-field-names)))
 
@@ -62,7 +62,6 @@
     (testing "in On-Demand DB should get updated FieldValues"
       (is (true?
            (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
-
     (testing "in non-On-Demand DB should *not* get updated FieldValues"
       (is (= false
              (field-values-were-updated-for-new-card?! {:db {:is_on_demand false}}))))))

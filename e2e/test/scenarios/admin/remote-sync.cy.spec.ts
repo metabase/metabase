@@ -509,7 +509,7 @@ describe("Remote Sync", () => {
       cy.visit("/admin/settings/remote-sync");
       cy.button("Set up remote sync").should("be.disabled");
 
-      cy.findByRole("switch", { name: "Auto-sync with git" }).click({
+      cy.findByRole("switch", { name: /Auto-sync with git/ }).click({
         force: true,
       });
 

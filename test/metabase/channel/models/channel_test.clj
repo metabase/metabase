@@ -26,7 +26,6 @@
       (is (pos? (t2/update! :model/Channel id {:name "New name"})))
       (is (zero? (t2/update! :model/Channel id {:active true})))
       (is (t2/exists? :model/PulseChannel pc-id)))
-
     (testing "deactivate channel"
       (t2/update! :model/Channel id {:active false})
       (testing "will delete pulse channels"
@@ -47,13 +46,11 @@
           (is (some? (insert! {:details {:type    "email/handlebars-text"
                                          :subject "Hello {{name}}"
                                          :body    "Welcome {{name}}"}}))))
-
         (testing "invalid template"
           (is (thrown? Exception
                        (insert! {:details {:type    "email/handlebars-text"
                                            :subject "Hello {{name}"
                                            :body    nil}})))))
-
       (testing "template is a resource path"
         (testing "success"
           (is (some? (insert! {:details {:type    "email/handlebars-resource"

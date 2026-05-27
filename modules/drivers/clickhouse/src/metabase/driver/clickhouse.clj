@@ -9,6 +9,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -70,6 +71,14 @@
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
+
+(defmethod driver/qualified-name-components :clickhouse
+  [_driver]
+  ;; ClickHouse emits 2-part `db.table`. Its "database" sits at the schema AST position
+  ;; (one level above the table) — same position SQLGlot stores in `Table.db`. Per
+  ;; [[driver/qualified-name-components]] this is `:schema`, NOT `:db` (which is reserved
+  ;; for catalog-level / 3-part identifiers like BigQuery's project).
+  [:schema])
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
@@ -398,37 +407,49 @@
 
 (defmethod driver/init-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user {:user     (driver.u/workspace-isolation-user-name workspace)
-                   :password (driver.u/random-workspace-password)}]
+  (let [db-name        (driver.u/workspace-isolation-namespace-name workspace)
+        canonical-db   (:db (driver.conn/effective-details database))
+        read-user      {:user     (driver.u/workspace-isolation-user-name workspace)
+                        :password (driver.u/random-workspace-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                     (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
-                             (:user read-user) (:password read-user))
-                     (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]]
+        (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                             (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
+                                     (:user read-user) (:password read-user))
+                             (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]
+                      (not (str/blank? canonical-db))
+                      (conj (format "GRANT SHOW DATABASES ON `%s`.* TO `%s`"
+                                    canonical-db (:user read-user))))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
     {:schema           db-name
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :clickhouse :field read-user-name)
-        sqls           (for [table tables]
-                         (format "GRANT SELECT ON %s.%s TO %s"
-                                 (sql.u/quote-name :clickhouse :schema (:schema table))
-                                 (sql.u/quote-name :clickhouse :table (:name table))
-                                 qu))]
+        qu             (sql.u/quote-name :clickhouse :field read-user-name)]
     (when-not read-user-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
+    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
+    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
+    (let [sqls (for [schema schemas
+                     :let [_ (when (str/blank? schema)
+                               (throw (ex-info (tru "ClickHouse workspace input schema is blank")
+                                               {:database-id (:id database) :step :grant})))]]
+                 (format "GRANT SELECT ON %s.* TO %s"
+                         (sql.u/quote-name :clickhouse :schema schema)
+                         qu))]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql sqls]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [_driver database workspace]

@@ -264,7 +264,6 @@
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
               ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
-
           (cond
             (and first-import? (not force?) (seq conflicts))
             (u/prog1 {:status :conflict
@@ -497,37 +496,43 @@
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
-  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, and a
-  sync-fn function that takes a task-id and performs the sync operation. Creates a new task (or errors if one is
-  already running), then executes the sync function in a virtual thread with a timeout.
+  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
+  sync-fn function that takes a task-id and performs the sync operation, and an optional :on-success callback
+  that receives [task-id result] after a successful sync. Creates a new task (or errors if one is already
+  running), then executes the sync function in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn]
+  [task-type branch sync-fn & {:keys [on-success]}]
   (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result!
-        (try
-          (sync-fn task-id)
-          (catch Exception e
-            (log/error e "Remote sync task failed")
-            {:status :error
-             :message (source-error-message e)}))
-        task-id branch)))
+       (let [result (try
+                      (sync-fn task-id)
+                      (catch Exception e
+                        (log/error e "Remote sync task failed")
+                        {:status :error
+                         :message (source-error-message e)}))]
+         (handle-task-result! result task-id branch)
+         (when (and on-success (= :success (:status result)))
+           (try
+             (on-success task-id result)
+             (catch Exception e
+               (log/error e "Remote sync task :on-success function failed")))))))
     task))
 
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
 
   Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
-  and an import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
+  and an import-args map of additional arguments to pass to the import function. Optionally accepts an :on-success
+  callback that receives [task-id result] after a successful import. Checks for dirty changes and throws an
   exception if force? is false and changes exist.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and force? is false."
-  [branch force? import-args]
+  [branch force? import-args & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch (settings/remote-sync-branch)
         source          (source/source-from-settings branch)
@@ -541,18 +546,20 @@
                   (import! (source.p/snapshot source) task-id
                            (assoc import-args
                                   :force?           force?
-                                  :pre-task-branch  pre-task-branch))))))
+                                  :pre-task-branch  pre-task-branch)))
+                :on-success on-success)))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
 
   Takes a branch name to export to, a force? boolean (if true, exports even if there are new changes in the remote
-  branch), and a commit message string. Checks if the remote branch has changed since the last sync and throws an
+  branch), and a commit message string. Optionally accepts an :on-success callback that receives [task-id result]
+  after a successful export. Checks if the remote branch has changed since the last sync and throws an
   exception if force? is false and changes exist.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are new remote changes and force? is false."
-  [branch force? message]
+  [branch force? message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
@@ -565,7 +572,9 @@
                        :conflicts true})))
     (run-async! "export" branch
                 (fn [task-id]
-                  (export! snapshot task-id message :pre-task-branch pre-task-branch)))))
+                  (export! snapshot task-id message
+                           :pre-task-branch pre-task-branch))
+                :on-success on-success)))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
@@ -580,11 +589,11 @@
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
-  [new-branch message]
+  [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
-    (async-export! new-branch false message)))
+    (async-export! new-branch false message :on-success on-success)))
 
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.

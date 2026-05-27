@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -52,7 +52,7 @@ jobs:
           echo "UNMODULED=$UNMODULED" >> $GITHUB_OUTPUT
           echo "VIOLATIONS=$VIOLATIONS" >> $GITHUB_OUTPUT
       - name: Upload stats
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           NAMED_MODULES: ${{ steps.get-stats.outputs.NAMED_MODULES }}
           ENFORCED_MODULES: ${{ steps.get-stats.outputs.ENFORCED_MODULES }}

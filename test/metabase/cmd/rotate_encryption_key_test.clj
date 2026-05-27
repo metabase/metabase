@@ -89,7 +89,6 @@
                                                                           :password     "nopassword"
                                                                           :is_active    true
                                                                           :is_superuser false}))]
-
                 (reset! user-id (u/the-id u)))
               (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (plaintext)"
                                                                                  :kind       "password"
@@ -104,7 +103,6 @@
                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
                                                                                    :creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
-
               (testing "rotating with the same key is a noop"
                 (encryption-test/with-secret-key k1
                   (rotate-encryption-key! k1)
@@ -118,11 +116,9 @@
                     (is (not= "encrypted with k1" (raw-value "k1crypted")))
                     (is (= "encrypted with k1" (t2/select-one-fn :value :model/Setting :key "k1crypted")))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))))
-
               (testing "settings-last-updated is updated AND plaintext"
                 (is (not= original-timestamp (raw-value "settings-last-updated")))
                 (is (not (encryption/possibly-encrypted-string? (raw-value "settings-last-updated")))))
-
               (testing "rotating with a new key is recoverable"
                 (encryption-test/with-secret-key k1 (rotate-encryption-key! k2))
                 (testing "with new key"
@@ -136,7 +132,6 @@
                     (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
                     (is (not (mt/secret-value-equals? secret-val
                                                       (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
-
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
                   (let [db (first (t2/insert-returning-instances! :model/Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
@@ -153,17 +148,15 @@
                 (encryption-test/with-secret-key k3
                   (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
-
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 (t2/update! :model/Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
-               ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
-               ;; should be decrypted
+                ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
+                ;; should be decrypted
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))
-
               (testing "short keys fail to rotate"
                 (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))

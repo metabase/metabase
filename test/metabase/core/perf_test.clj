@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
-   [metabase.core.perf :as perf])
+   [metabase.core.perf :as perf]
+   [metabase.test :as mt])
   (:import
    (java.nio.file Path)))
 
@@ -20,11 +21,11 @@
 
 (deftest save-rate-minutes-test
   (testing "returns custom value when env var is set"
-    (with-redefs [config/config-int (constantly 10)]
+    (mt/with-dynamic-fn-redefs [config/config-int (constantly 10)]
       (is (= 10 (#'perf/save-rate-minutes 5)))
       (is (= 10 (#'perf/save-rate-minutes 30)))))
   (testing "falls back to default when env var is nil"
-    (with-redefs [config/config-int (constantly nil)]
+    (mt/with-dynamic-fn-redefs [config/config-int (constantly nil)]
       (is (= 5 (#'perf/save-rate-minutes 5)))
       (is (= 30 (#'perf/save-rate-minutes 30))))))
 

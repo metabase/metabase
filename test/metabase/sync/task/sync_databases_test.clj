@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
@@ -172,6 +173,34 @@
   (from-job-data [this]
     (.getMergedJobDataMap this)))
 
+(deftest scheduled-jobs-respect-disable-auto-sync-test
+  (testing "When disable-auto-sync=true, scheduled job fns no-op even if a stale trigger fires"
+    (mt/with-temp [:model/Database {db-id :id} {:is_full_sync true}]
+      (testing "SyncAndAnalyzeDatabase: inner sync orchestrator is skipped when the flag is on"
+        (let [calls (atom 0)]
+          (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+            (testing "default (flag=false): job proceeds and calls the inner orchestrator"
+              (reset! calls 0)
+              (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
+              (is (= 1 @calls)))
+            (testing "flag=true: job returns early; the inner orchestrator is not called"
+              (reset! calls 0)
+              (mt/with-temporary-setting-values [disable-auto-sync true]
+                (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id})))
+              (is (zero? @calls))))))
+      (testing "UpdateFieldValues: field-values update is skipped when the flag is on"
+        (let [calls (atom 0)]
+          (with-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
+            (testing "default (flag=false): job proceeds and calls update-field-values!"
+              (reset! calls 0)
+              (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
+              (is (= 1 @calls)))
+            (testing "flag=true: job returns early; update-field-values! is not called"
+              (reset! calls 0)
+              (mt/with-temporary-setting-values [disable-auto-sync true]
+                (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id})))
+              (is (zero? @calls)))))))))
+
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup!
@@ -181,11 +210,9 @@
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
-
               (t2/delete! :model/Database :id db-id)
               (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
                 (sync-fn ctx))
-
               (is (= [(update sync-job :triggers empty)
                       (update fv-job :triggers empty)]
                      (current-tasks-for-db database))))))))))
@@ -224,7 +251,6 @@
                {:engine                      :postgres
                 :metadata_sync_schedule      "* * * * * ? *"
                 :cache_field_values_schedule (cron-schedule-for-next-year)}))))
-
     (testing "Make sure that a database that *isn't* marked full sync won't get analyzed"
       (is (= {:ran-sync? true, :ran-analyze? false, :ran-update-field-values? false}
              (check-if-sync-processes-ran-for-db
@@ -233,7 +259,6 @@
                :is_full_sync                false
                :metadata_sync_schedule      "* * * * * ? *"
                :cache_field_values_schedule (cron-schedule-for-next-year)}))))
-
     (testing "Make sure the update field values task calls `update-field-values!`"
       (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? true}
              (check-if-sync-processes-ran-for-db
@@ -242,7 +267,6 @@
                :is_full_sync                true
                :metadata_sync_schedule      (cron-schedule-for-next-year)
                :cache_field_values_schedule "* * * * * ? *"}))))
-
     (testing "...but if DB is not \"full sync\" it should not get updated FieldValues"
       (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? false}
              (check-if-sync-processes-ran-for-db

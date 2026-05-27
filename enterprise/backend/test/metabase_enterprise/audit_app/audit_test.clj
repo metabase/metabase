@@ -57,7 +57,6 @@
             "No cards created for Audit DB."))
       (t2/delete! :model/Database :is_audit true)
       (audit/last-analytics-checksum! 0))
-
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
       (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
@@ -65,7 +64,6 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
-
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
       (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
                                                :database_id audit/audit-db-id)
@@ -74,17 +72,16 @@
         (is (empty? audit-cards-no-metadata)
             (str "Cards without :result_metadata: "
                  (pr-str (mapv :name audit-cards-no-metadata))))))
-
     (testing "Audit DB starts with no permissions for all users"
       (is (= {:perms/manage-database       :no
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
               :perms/create-queries        :no
-              :perms/transforms            :no}
+              :perms/transforms            :no
+              :perms/workspaces            :no}
              (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
-
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
                                        (contains?
@@ -92,7 +89,6 @@
                                                   (task/job-info "metabase.task.sync-and-analyze.job")))
                                         db-id))]
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
-
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
@@ -137,7 +133,6 @@
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")
-
       (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -297,38 +292,30 @@
                    ;; Create another field that doesn't have a lowercase version
                    :model/Field {single-field-id :id} {:table_id single-table-id
                                                        :name "PRODUCT"}]
-
       ;; Call the function we're testing
       (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
-
       (testing "Database engine should be set to postgres"
         (is (= :postgres
                (t2/select-one-fn :engine :model/Database :id audit-db-id))))
-
       (testing "Tables with existing lowercase versions should not be modified"
         (is (= "USERS"
                (t2/select-one-fn :name :model/Table :id upper-table-id)))
         (is (= "users"
                (t2/select-one-fn :name :model/Table :id lower-table-id))))
-
       (testing "Tables without lowercase versions should be converted to lowercase"
         (is (= "orders"
                (t2/select-one-fn :name :model/Table :id single-table-id))))
-
       (testing "Tables with nil schemas should not be changed if a table with a schema exists"
         (is (= 2
                (t2/count :model/Table {:where [:= :name "accounts"]}))))
-
       (testing "Tables with nil schemas have their schema set to \"public\""
         (is (= "public"
                (t2/select-one-fn :schema :model/Table :id no-schema-table))))
-
       (testing "Fields with existing lowercase versions should not be modified"
         (is (= "EMAIL"
                (t2/select-one-fn :name :model/Field :id upper-field-id)))
         (is (= "email"
                (t2/select-one-fn :name :model/Field :id lower-field-id))))
-
       (testing "Fields without lowercase versions should be converted to lowercase"
         (is (= "product"
                (t2/select-one-fn :name :model/Field :id single-field-id)))))))

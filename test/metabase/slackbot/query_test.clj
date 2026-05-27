@@ -97,7 +97,7 @@
           (testing "returns parseable PNG"
             (is (some? image))))))))
 
-(deftest render-dimensions-test
+(deftest ^:parallel render-dimensions-test
   (testing "render-dimensions calculates width from display type aspect ratios"
     (testing "bar chart uses 2:1 ratio (12:6 default)"
       (is (= {:width 1280 :height 640}
@@ -111,7 +111,7 @@
 
 ;;; ------------------------------------------------ Table Blocks ----------------------------------------------------
 
-(deftest format-results-as-table-blocks-test
+(deftest ^:parallel format-results-as-table-blocks-test
   (testing "format-results-as-table-blocks creates valid Slack table block structure"
     (let [results {:data {:rows   [[1 "Alice" 100.50]
                                    [2 "Bob" 200.75]]
@@ -119,17 +119,14 @@
                                    {:name "name" :display_name "Name" :base_type :type/Text}
                                    {:name "amount" :display_name "Amount" :base_type :type/Float}]}}
           blocks  (slackbot.query/format-results-as-table-blocks results)]
-
       (testing "returns a vector of blocks"
         (is (vector? blocks))
         (is (pos? (count blocks))))
-
       (testing "first block is a table block"
         (let [table-block (first blocks)]
           (is (= "table" (:type table-block)))
           (is (contains? table-block :rows))
           (is (contains? table-block :column_settings))))
-
       (testing "table has header row plus data rows"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
@@ -139,32 +136,31 @@
               (is (= "ID" (get-in header-row [0 :text])))
               (is (= "Name" (get-in header-row [1 :text])))
               (is (= "Amount" (get-in header-row [2 :text])))))))
-
       (testing "column settings align numeric columns right"
         (let [table-block (first blocks)
               settings    (:column_settings table-block)]
           (is (= "right" (:align (nth settings 0)))) ; ID is integer
           (is (= "left" (:align (nth settings 1))))  ; Name is text
-          (is (= "right" (:align (nth settings 2)))))))) ; Amount is float
+          (is (= "right" (:align (nth settings 2))))))))) ; Amount is float
 
+(deftest ^:parallel format-results-as-table-blocks-test-2
   (testing "format-results-as-table-blocks truncates large results"
     (let [many-rows (vec (repeat 150 [1 "test"]))
           results   {:data {:rows many-rows
                             :cols [{:name "id"} {:name "name"}]}}
           blocks    (slackbot.query/format-results-as-table-blocks results)]
-
       (testing "table is truncated to 99 data rows plus header"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
           (is (= 100 (count rows)))))
-
       (testing "includes truncation message"
         (is (= 2 (count blocks)))
         (let [context-block (second blocks)]
           (is (= "context" (:type context-block)))
           (is (= "Showing 99 of 150 rows"
-                 (get-in context-block [:elements 0 :text])))))))
+                 (get-in context-block [:elements 0 :text]))))))))
 
+(deftest ^:parallel format-results-as-table-blocks-test-3
   (testing "format-results-as-table-blocks handles scalar (single-cell) results"
     (let [results {:data {:rows [[42]]
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
@@ -174,15 +170,17 @@
               rows        (:rows table-block)]
           (is (= 2 (count rows))) ; 1 header + 1 data row
           (is (= "Count" (get-in rows [0 0 :text])))
-          (is (= "42" (get-in rows [1 0 :text])))))))
+          (is (= "42" (get-in rows [1 0 :text]))))))))
 
+(deftest ^:parallel format-results-as-table-blocks-test-4
   (testing "format-results-as-table-blocks handles empty results"
     (let [results {:data {:rows []
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
           blocks  (slackbot.query/format-results-as-table-blocks results)]
       (testing "returns no-data block"
-        (is (= "No data" (get-in blocks [0 :rows 0 0 :text]))))))
+        (is (= "No data" (get-in blocks [0 :rows 0 0 :text])))))))
 
+(deftest ^:parallel format-results-as-table-blocks-test-5
   (testing "format-results-as-table-blocks truncates long cell values"
     (binding [slackbot.query/*slack-table-max-cell-length* 20]
       (let [long-text (apply str (repeat 50 "x"))
@@ -192,8 +190,9 @@
             blocks    (slackbot.query/format-results-as-table-blocks results)
             cell-text (get-in (first blocks) [:rows 1 1 :text])]
         (is (<= (count cell-text) 20))
-        (is (str/ends-with? cell-text "…")))))
+        (is (str/ends-with? cell-text "…"))))))
 
+(deftest ^:parallel format-results-as-table-blocks-test-6
   (testing "format-results-as-table-blocks truncates rows to fit character budget"
     (binding [slackbot.query/*slack-table-max-chars* 100]
       (let [results {:data {:rows (vec (repeat 20 ["abcdefghij"]))
@@ -208,8 +207,9 @@
         (testing "total cell text fits within character budget"
           (let [total-chars (transduce (comp cat (map (comp count :text)))
                                        + (:rows (first blocks)))]
-            (is (<= total-chars 100)))))))
+            (is (<= total-chars 100))))))))
 
+(deftest ^:parallel format-results-as-table-blocks-test-7
   (testing "format-results-as-table-blocks handles FK remapped columns"
     (let [;; Simulate FK remapping: USER_ID is remapped to show USER.NAME
           ;; The data has both USER_ID (raw FK) and NAME (human-readable value from FK target)
@@ -227,19 +227,16 @@
                                   :base_type    :type/Text
                                   :remapped_from "user_id"}]}}
           blocks  (slackbot.query/format-results-as-table-blocks results)]
-
       (testing "skips remapped_from column (the duplicate)"
         (let [table-block (first blocks)
               header-row  (first (:rows table-block))]
           ;; Should only have 2 columns: ID and User Name (not 3)
           (is (= 2 (count header-row)))))
-
       (testing "uses remapped column's display name in header"
         (let [table-block (first blocks)
               header-row  (first (:rows table-block))]
           (is (= "ID" (get-in header-row [0 :text])))
           (is (= "User Name" (get-in header-row [1 :text])))))
-
       (testing "substitutes remapped values in data rows"
         (let [table-block (first blocks)
               data-rows   (rest (:rows table-block))]
@@ -259,18 +256,15 @@
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))]
-
         (testing "bar chart renders as image"
           (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :bar)]
             (is (= :image type))
             (is (bytes? content))
             (is (some? (bytes->image content)))))
-
         (testing "line chart renders as image"
           (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :line)]
             (is (= :image type))
             (is (bytes? content))))
-
         (testing "pie chart renders as image"
           (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :pie)]
             (is (= :image type))
@@ -282,13 +276,11 @@
       (let [mp    (mt/metadata-provider)
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                       (lib/limit 5))]
-
         (testing "table display renders as table blocks"
           (let [{:keys [type content]} (slackbot.query/generate-adhoc-output query :display :table)]
             (is (= :table type))
             (is (vector? content))
             (is (= "table" (:type (first content))))))
-
         (testing "scalar display renders as table blocks"
           (let [scalar-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                  (lib/aggregate (lib/count)))
@@ -315,7 +307,6 @@
                                :rows [[1] [2]]}}]
       (mt/with-dynamic-fn-redefs
         [slackbot.query/pulse-card-query-results (constantly mock-results)]
-
         (testing "supported display types return :image"
           (doseq [display [:bar :line :pie :area :row :scatter :funnel
                            :waterfall :combo :progress :gauge
@@ -324,7 +315,6 @@
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
                 (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :image (:type result))))))))
-
         (testing "unsupported display types return :table"
           (doseq [display [:table :pin_map :state :country :map :pivot :scalar]]
             (testing (str "display type: " display)

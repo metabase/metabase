@@ -56,7 +56,6 @@
             ;; Add test data to both databases
             (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-data')")
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
-
             (with-embedding-enabled-and-new-secret-key!
               (testing "Guest embedding should successfully query the router database"
                 (let [token    (card-token card)

@@ -25,7 +25,6 @@
             (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
                     (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
                     (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
-
       (testing "schema-qualified table name"
         (let [result (driver/compile-transform driver/*driver*
                                                {:query {:query "SELECT * FROM products"}
@@ -62,7 +61,6 @@
             (is (re-find #"(?i)DROP\s+TABLE\s+IF\s+EXISTS" (first result))))
           (testing "includes table name"
             (is (re-find #"my_table" (first result))))))
-
       (testing "schema-qualified table name"
         (let [result (driver/compile-drop-table driver/*driver* :my_schema/my_table)]
           (testing "returns a vector"
@@ -91,7 +89,6 @@
           (is (vector? drop-result))
           (is (>= (count compile-result) 1))
           (is (>= (count drop-result) 1)))
-
         (testing "results can be assembled into a queries list"
           (let [queries [drop-result compile-result]]
             (is (every? vector? queries))
@@ -118,7 +115,6 @@
           (is (vector? result))
           (is (string? (first result)))
           (is (re-find #"my_table" (first result)))))
-
       (testing "schema-qualified table name"
         (let [result (sql.qp/format-honeysql driver/*driver* (keyword "schema/my_table"))]
           (is (vector? result))
@@ -142,7 +138,6 @@
             (is (re-find #"(?i)INSERT\s+INTO.*my_table" (first result))))
           (testing "includes SELECT statement"
             (is (re-find #"(?i)SELECT" (first result))))))
-
       (testing "schema-qualified table"
         (let [result (driver/compile-insert driver/*driver*
                                             {:query {:query "SELECT * FROM products"}

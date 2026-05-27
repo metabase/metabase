@@ -17,7 +17,7 @@ runs:
   steps:
     - name: Check if the cache entry exists
       id: cache-lookup
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ${{ inputs.path }}
         key: ${{ inputs.key }}
@@ -35,7 +35,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
       shell: bash
     - name: Save the new cache entry
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: ${{ inputs.path }}
         key: ${{ inputs.key }}

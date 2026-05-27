@@ -6,7 +6,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.construct :as construct]))
+   [metabase.metabot.tools.construct :as construct]
+   [metabase.test :as mt]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -23,14 +24,12 @@
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
       (is (= tool-vars
              (#'profiles/filter-by-capabilities tool-vars #{})))))
-
   (testing "filters out tools that require missing capabilities"
     (let [tool-vars [#'agent-tools/search-tool
                      #'agent-tools/navigate-user-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
-
   (testing "includes tools when capabilities are provided"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/navigate-user-tool #'agent-tools/create-chart-tool]
           capabilities #{:frontend-navigate-user-v1}
@@ -114,35 +113,34 @@
       (is (some? (:schema m))))))
 
 (deftest construct-notebook-query-tool-test
-  (testing "construct_notebook_query evaluates a program and creates a chart"
-    (let [program-captured (atom nil)
-          chart-called     (atom nil)]
-      (with-redefs [construct/execute-program (fn [_source-entity _referenced-entities program]
-                                                (reset! program-captured program)
-                                                {:structured-output {:query-id "q-1"
-                                                                     :query {:database 1}
-                                                                     :result-columns []}
-                                                 :instructions "Query created."})
-                    create-chart-tools/create-chart (fn [args]
-                                                      (reset! chart-called args)
-                                                      {:chart-id "c-1"
-                                                       :chart-type :table
-                                                       :chart-link "metabase://chart/c-1"
-                                                       :chart-content "<chart/>"
-                                                       :query-id (:query-id args)
-                                                       :reactions [{:type :metabot.reaction/redirect
-                                                                    :url "/question#hash"}]})]
-        (let [result (agent-tools/construct-notebook-query-tool
-                      {:reasoning "check seats"
-                       :source_entity {:type "table" :id 6}
-                       :program {:source     {:type "context" :ref "source"}
-                                 :operations [["filter" ["=" ["field" 301] "a"]]
-                                              ["with-fields" [["field" 301]]]
-                                              ["order-by" ["field" 301] "desc"]
-                                              ["limit" 10]]}
+  (testing "construct_notebook_query evaluates a representations query and creates a chart"
+    (let [query-captured (atom nil)
+          chart-called  (atom nil)]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [external-query]
+                                    (reset! query-captured external-query)
+                                    {:structured-output {:query-id "q-1"
+                                                         :query {:database 1}
+                                                         :result-columns []}
+                                     :instructions "Query created."})
+                                  create-chart-tools/create-chart (fn [args]
+                                                                    (reset! chart-called args)
+                                                                    {:chart-id "c-1"
+                                                                     :chart-type :table
+                                                                     :chart-link "metabase://chart/c-1"
+                                                                     :chart-content "<chart/>"
+                                                                     :query-id (:query-id args)
+                                                                     :reactions [{:type :metabot.reaction/redirect
+                                                                                  :url "/question#hash"}]})]
+        (let [query-input {:lib/type "mbql/query"
+                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                       :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                       :aggregation  [["count" {}]]}]}
+              result (agent-tools/construct-notebook-query-tool
+                      {:reasoning     "check seats"
+                       :query         query-input
                        :visualization {:chart_type "table"}})]
-          (is (= "context" (get-in @program-captured [:source :type])))
-          (is (= 4 (count (:operations @program-captured))))
+          (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))
@@ -182,7 +180,6 @@
       (is (contains? (get wrapped-tools "create_sql_query") :schema))
       ;; Non-state-dependent tool should also be a tool-def map
       (is (map? (get wrapped-tools "search")))))
-
   (testing "wrapped tools preserve original metadata"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})
           base-tools {"create_chart" #'agent-tools/create-chart-tool}
@@ -190,7 +187,6 @@
           wrapped-tool (get wrapped-tools "create_chart")]
       (is (= (:doc (meta #'agent-tools/create-chart-tool)) (:doc wrapped-tool)))
       (is (= (:schema (meta #'agent-tools/create-chart-tool)) (:schema wrapped-tool)))))
-
   (testing "wrapped function receives augmented args with state"
     (let [memory-atom (atom {:state {:queries {"test-query" {:db 1}}
                                      :charts {"test-chart" {:type :bar}}}})
@@ -198,7 +194,6 @@
           wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
       ;; Just verify the wrapped function is callable
       (is (fn? wrapped-fn))))
-
   (testing "non-state-dependent tools are also wrapped into tool-def maps"
     (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
           base-tools {"search" #'agent-tools/search-tool
@@ -215,25 +210,21 @@
     (let [{:keys [schema]} (meta #'agent-tools/create-chart-tool)
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :charts_state (first %)) (rest params)))))
-
   (testing "edit_chart schema does not expose state keys"
     (let [{:keys [schema]} (meta #'agent-tools/edit-chart-tool)
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))))
-
   (testing "create_sql_query schema does not expose state keys"
     (let [{:keys [schema]} (meta #'agent-tools/create-sql-query-tool)
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params)))
       (is (not-any? #(= :memory_atom (first %)) (rest params)))))
-
   (testing "edit_sql_query schema does not expose state keys"
     (let [{:keys [schema]} (meta #'agent-tools/edit-sql-query-tool)
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params)))))
-
   (testing "replace_sql_query schema does not expose state keys"
     (let [{:keys [schema]} (meta #'agent-tools/replace-sql-query-tool)
           [_:=> [_:cat params] _out] schema]

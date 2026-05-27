@@ -176,12 +176,13 @@
            (#'mongo.params/substitute {"id" (field-filter "id" :number [1 2 3])}
                                       ["[{$match: " (lib/parsed-param "id") "}]"])))))
 
-(deftest ^:parallel field-filter-test-3
-  (testing "single date"
-    (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
-                                      {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
-           (#'mongo.params/substitute {"date" (field-filter "date" :date/single "2019-12-08")}
-                                      ["[{$match: " (lib/parsed-param "date") "}]"])))))
+(deftest field-filter-test-3
+  (mt/with-temporary-setting-values [report-timezone "UTC"]
+    (testing "single date"
+      (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
+                                        {"date" {:$lt (ISODate "2019-12-09")}}]}}])
+             (#'mongo.params/substitute {"date" (field-filter "date" :date/single "2019-12-08")}
+                                        ["[{$match: " (lib/parsed-param "date") "}]"]))))))
 
 (deftest ^:parallel field-filter-test-4
   (testing "parameter not supplied"
@@ -282,28 +283,29 @@
                                                :content    (to-bson {"price" {:$gt 2}})}}
                                              ["[{$match: " (lib/parsed-param "snippet: high price") "}]"]))))))
 
-(deftest ^:parallel e2e-field-filter-test
+(deftest e2e-field-filter-test
   (mt/test-driver :mongo
-    (testing "date ranges"
-      (is (= [[295 "2014-03-01T00:00:00Z" 7 97]
-              [642 "2014-03-02T00:00:00Z" 8 9]
-              [775 "2014-03-01T00:00:00Z" 4 13]]
-             (mt/rows
-              (qp/process-query
-               (mt/query checkins
-                 {:type       :native
-                  :native     {:query         (json/encode
-                                               [{:$match (json/raw-json-generator "{{date}}")}
-                                                {:$sort {:_id 1}}])
-                               :collection    "checkins"
-                               :template-tags {"date" {:name         "date"
-                                                       :display-name "Date"
-                                                       :type         :dimension
-                                                       :widget-type  :date/all-options
-                                                       :dimension    $date}}}
-                  :parameters [{:type   :date/range
-                                :target [:dimension [:template-tag "date"]]
-                                :value  "2014-03-01~2014-03-02"}]}))))))))
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (testing "date ranges"
+        (is (= [[295 "2014-03-01T00:00:00Z" 7 97]
+                [642 "2014-03-02T00:00:00Z" 8 9]
+                [775 "2014-03-01T00:00:00Z" 4 13]]
+               (mt/rows
+                (qp/process-query
+                 (mt/query checkins
+                   {:type       :native
+                    :native     {:query         (json/encode
+                                                 [{:$match (json/raw-json-generator "{{date}}")}
+                                                  {:$sort {:_id 1}}])
+                                 :collection    "checkins"
+                                 :template-tags {"date" {:name         "date"
+                                                         :display-name "Date"
+                                                         :type         :dimension
+                                                         :widget-type  :date/all-options
+                                                         :dimension    $date}}}
+                    :parameters [{:type   :date/range
+                                  :target [:dimension [:template-tag "date"]]
+                                  :value  "2014-03-01~2014-03-02"}]})))))))))
 
 (deftest ^:parallel e2e-field-filter-test-2
   (mt/test-driver :mongo
@@ -327,24 +329,25 @@
                                 :target [:dimension [:template-tag "id"]]
                                 :value  "1,2,3"}]}))))))))
 
-(deftest ^:parallel e2e-field-filter-test-3
+(deftest e2e-field-filter-test-3
   (mt/test-driver :mongo
-    (testing "param not supplied"
-      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
-             (mt/rows
-              (qp/process-query
-               (mt/query checkins
-                 {:type   :native
-                  :native {:query         (json/encode
-                                           [{:$match (json/raw-json-generator "{{date}}")}
-                                            {:$sort {:_id 1}}
-                                            {:$limit 1}])
-                           :collection    "checkins"
-                           :template-tags {"date" {:name         "date"
-                                                   :display-name "Date"
-                                                   :type         :dimension
-                                                   :widget-type  :date/all-options
-                                                   :dimension    $date}}}}))))))))
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
+      (testing "param not supplied"
+        (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
+               (mt/rows
+                (qp/process-query
+                 (mt/query checkins
+                   {:type   :native
+                    :native {:query         (json/encode
+                                             [{:$match (json/raw-json-generator "{{date}}")}
+                                              {:$sort {:_id 1}}
+                                              {:$limit 1}])
+                             :collection    "checkins"
+                             :template-tags {"date" {:name         "date"
+                                                     :display-name "Date"
+                                                     :type         :dimension
+                                                     :widget-type  :date/all-options
+                                                     :dimension    $date}}}})))))))))
 
 (deftest ^:parallel e2e-field-filter-test-4
   (mt/test-driver :mongo

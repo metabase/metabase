@@ -28,7 +28,6 @@
 (deftest ^:parallel provider-hierarchy-test
   (testing "Slack Connect provider derives from OIDC provider"
     (is (isa? :provider/slack-connect :provider/oidc)))
-
   (testing "Slack Connect provider derives from create-user-if-not-exists"
     (is (isa? :provider/slack-connect ::provider/create-user-if-not-exists))))
 
@@ -46,7 +45,6 @@
         (is (= "https://slack.com" (:issuer-uri config)))
         (is (= ["openid" "profile" "email"] (:scopes config)))
         (is (= "https://metabase.example.com/auth/sso/slack-connect/callback" (:redirect-uri config))))))
-
   (testing "Returns nil when client ID is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
@@ -54,7 +52,6 @@
       (let [request {:redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
             config (#'metabase.sso.providers.slack-connect/build-slack-oidc-config request)]
         (is (nil? config)))))
-
   (testing "Returns nil when client secret is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
@@ -80,7 +77,6 @@
         (is (= "https://example.com/team.png" (get slack-attrs "slack-team-image")))
         (is (= "true" (get slack-attrs "slack-email-verified")))
         (is (= "en-US" (get slack-attrs "slack-locale"))))))
-
   (testing "Handles missing optional claims gracefully"
     (mt/with-temporary-setting-values
       [slack-connect-attribute-team-id "https://slack.com/team_id"]
@@ -136,20 +132,20 @@
        slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"
        slack-connect-authentication-mode "link-only"]
-      (with-redefs [oidc.discovery/discover-oidc-configuration
-                    (fn [_issuer] slack-discovery-doc)
-                    http/post
-                    (fn [_url _opts]
-                      {:status 200
-                       :body {:id_token "valid-token"
-                              :access_token "access-token-123"}})
-                    oidc.tokens/validate-id-token
-                    (fn [_token _config _nonce]
-                      {:valid? true
-                       :claims {:sub "U12345678"
-                                :iss "https://slack.com"
-                                :aud "test-client-id"
-                                :email "test@example.com"}})]
+      (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                  (fn [_issuer] slack-discovery-doc)
+                                  http/post
+                                  (fn [_url _opts]
+                                    {:status 200
+                                     :body {:id_token "valid-token"
+                                            :access_token "access-token-123"}})
+                                  oidc.tokens/validate-id-token
+                                  (fn [_token _config _nonce]
+                                    {:valid? true
+                                     :claims {:sub "U12345678"
+                                              :iss "https://slack.com"
+                                              :aud "test-client-id"
+                                              :email "test@example.com"}})]
         (let [request {:code "test-code"
                        :state "test-state"
                        :oidc-nonce "test-nonce"
@@ -167,22 +163,22 @@
        slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"
        slack-connect-attribute-team-id "https://slack.com/team_id"]
-      (with-redefs [oidc.discovery/discover-oidc-configuration
-                    (fn [_issuer] slack-discovery-doc)
-                    http/post
-                    (fn [_url _opts]
-                      {:status 200
-                       :body {:id_token "valid-token"
-                              :access_token "access-token-123"}})
-                    oidc.tokens/validate-id-token
-                    (fn [_token _config _nonce]
-                      {:valid? true
-                       :claims {:sub "U12345678"
-                                :iss "https://slack.com"
-                                :aud "test-client-id"
-                                :email "test@example.com"
-                                "https://slack.com/team_id" "T12345678"
-                                :email_verified true}})]
+      (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                  (fn [_issuer] slack-discovery-doc)
+                                  http/post
+                                  (fn [_url _opts]
+                                    {:status 200
+                                     :body {:id_token "valid-token"
+                                            :access_token "access-token-123"}})
+                                  oidc.tokens/validate-id-token
+                                  (fn [_token _config _nonce]
+                                    {:valid? true
+                                     :claims {:sub "U12345678"
+                                              :iss "https://slack.com"
+                                              :aud "test-client-id"
+                                              :email "test@example.com"
+                                              "https://slack.com/team_id" "T12345678"
+                                              :email_verified true}})]
         (let [request {:code "test-code"
                        :state "test-state"
                        :oidc-nonce "test-nonce"
@@ -205,25 +201,25 @@
        slack-connect-authentication-mode "link-only"
        slack-connect-user-provisioning-enabled false]
       (mt/with-temp [:model/User user {:email "link-only-no-session@example.com"}]
-        (with-redefs [oidc.discovery/discover-oidc-configuration
-                      (fn [_issuer] slack-discovery-doc)
-                      oidc.state/validate-oidc-callback
-                      (fn [_request _state _provider & _opts]
-                        {:valid? true
-                         :nonce "test-nonce"
-                         :redirect "/"})
-                      http/post
-                      (fn [_url _opts]
-                        {:status 200
-                         :body {:id_token "valid-token"
-                                :access_token "access-token-123"}})
-                      oidc.tokens/validate-id-token
-                      (fn [_token _config _nonce]
-                        {:valid? true
-                         :claims {:sub "U12345678"
-                                  :iss "https://slack.com"
-                                  :aud "test-client-id"
-                                  :email "link-only-no-session@example.com"}})]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer] slack-discovery-doc)
+                                    oidc.state/validate-oidc-callback
+                                    (fn [_request _state _provider & _opts]
+                                      {:valid? true
+                                       :nonce "test-nonce"
+                                       :redirect "/"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body {:id_token "valid-token"
+                                              :access_token "access-token-123"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub "U12345678"
+                                                :iss "https://slack.com"
+                                                :aud "test-client-id"
+                                                :email "link-only-no-session@example.com"}})]
           (let [initial-session-count (t2/count :model/Session :user_id (:id user))
                 request {:code "test-code"
                          :state "test-state"
@@ -251,27 +247,27 @@
             slack-user-id "U_NEW_12345"]
         ;; Ensure user doesn't exist
         (t2/delete! :model/User :email test-email)
-        (with-redefs [oidc.discovery/discover-oidc-configuration
-                      (fn [_issuer] slack-discovery-doc)
-                      oidc.state/validate-oidc-callback
-                      (fn [_request _state _provider & _opts]
-                        {:valid? true
-                         :nonce "test-nonce"
-                         :redirect "/"})
-                      http/post
-                      (fn [_url _opts]
-                        {:status 200
-                         :body {:id_token "valid-token"
-                                :access_token "access-token-123"}})
-                      oidc.tokens/validate-id-token
-                      (fn [_token _config _nonce]
-                        {:valid? true
-                         :claims {:sub slack-user-id
-                                  :iss "https://slack.com"
-                                  :aud "test-client-id"
-                                  :email test-email
-                                  :given_name "New"
-                                  :family_name "User"}})]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer] slack-discovery-doc)
+                                    oidc.state/validate-oidc-callback
+                                    (fn [_request _state _provider & _opts]
+                                      {:valid? true
+                                       :nonce "test-nonce"
+                                       :redirect "/"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body {:id_token "valid-token"
+                                              :access_token "access-token-123"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub slack-user-id
+                                                :iss "https://slack.com"
+                                                :aud "test-client-id"
+                                                :email test-email
+                                                :given_name "New"
+                                                :family_name "User"}})]
           (try
             (let [request {:code "test-code"
                            :state "test-state"
@@ -305,25 +301,25 @@
                                          :last_name "User"}]
           ;; Ensure no AuthIdentity exists for this user
           (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
-          (with-redefs [oidc.discovery/discover-oidc-configuration
-                        (fn [_issuer] slack-discovery-doc)
-                        oidc.state/validate-oidc-callback
-                        (fn [_request _state _provider & _opts]
-                          {:valid? true
-                           :nonce "test-nonce"
-                           :redirect "/"})
-                        http/post
-                        (fn [_url _opts]
-                          {:status 200
-                           :body {:id_token "valid-token"
-                                  :access_token "access-token-123"}})
-                        oidc.tokens/validate-id-token
-                        (fn [_token _config _nonce]
-                          {:valid? true
-                           :claims {:sub slack-user-id
-                                    :iss "https://slack.com"
-                                    :aud "test-client-id"
-                                    :email "existing-slack@example.com"}})]
+          (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                      (fn [_issuer] slack-discovery-doc)
+                                      oidc.state/validate-oidc-callback
+                                      (fn [_request _state _provider & _opts]
+                                        {:valid? true
+                                         :nonce "test-nonce"
+                                         :redirect "/"})
+                                      http/post
+                                      (fn [_url _opts]
+                                        {:status 200
+                                         :body {:id_token "valid-token"
+                                                :access_token "access-token-123"}})
+                                      oidc.tokens/validate-id-token
+                                      (fn [_token _config _nonce]
+                                        {:valid? true
+                                         :claims {:sub slack-user-id
+                                                  :iss "https://slack.com"
+                                                  :aud "test-client-id"
+                                                  :email "existing-slack@example.com"}})]
             (let [request {:code "test-code"
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
@@ -351,25 +347,25 @@
                                          :last_name "User"}]
           ;; Ensure no AuthIdentity exists for this user
           (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
-          (with-redefs [oidc.discovery/discover-oidc-configuration
-                        (fn [_issuer] slack-discovery-doc)
-                        oidc.state/validate-oidc-callback
-                        (fn [_request _state _provider & _opts]
-                          {:valid? true
-                           :nonce "test-nonce"
-                           :redirect "/"})
-                        http/post
-                        (fn [_url _opts]
-                          {:status 200
-                           :body {:id_token "valid-token"
-                                  :access_token "access-token-123"}})
-                        oidc.tokens/validate-id-token
-                        (fn [_token _config _nonce]
-                          {:valid? true
-                           :claims {:sub slack-user-id
-                                    :iss "https://slack.com"
-                                    :aud "test-client-id"
-                                    :email "linkuser@example.com"}})]
+          (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                      (fn [_issuer] slack-discovery-doc)
+                                      oidc.state/validate-oidc-callback
+                                      (fn [_request _state _provider & _opts]
+                                        {:valid? true
+                                         :nonce "test-nonce"
+                                         :redirect "/"})
+                                      http/post
+                                      (fn [_url _opts]
+                                        {:status 200
+                                         :body {:id_token "valid-token"
+                                                :access_token "access-token-123"}})
+                                      oidc.tokens/validate-id-token
+                                      (fn [_token _config _nonce]
+                                        {:valid? true
+                                         :claims {:sub slack-user-id
+                                                  :iss "https://slack.com"
+                                                  :aud "test-client-id"
+                                                  :email "linkuser@example.com"}})]
             (let [initial-session-count (t2/count :model/Session :user_id (:id user))
                   request {:code "test-code"
                            :state "test-state"
@@ -398,13 +394,11 @@
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"]
       (is (true? (sso-settings/slack-connect-configured)))))
-
   (testing "Returns false when client ID is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
        slack-connect-client-secret "test-secret"]
       (is (false? (sso-settings/slack-connect-configured)))))
-
   (testing "Returns false when client secret is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
@@ -418,14 +412,12 @@
        slack-connect-client-secret "test-secret"
        slack-connect-enabled true]
       (is (true? (sso-settings/slack-connect-enabled)))))
-
   (testing "Returns false when configured but not enabled"
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"
        slack-connect-enabled false]
       (is (false? (sso-settings/slack-connect-enabled)))))
-
   (testing "Returns false when not configured even if enabled is true"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
@@ -441,7 +433,6 @@
       (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
       (sso-settings/slack-connect-authentication-mode! "link-only")
       (is (= "link-only" (sso-settings/slack-connect-authentication-mode)))))
-
   (testing "Rejects invalid authentication modes"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

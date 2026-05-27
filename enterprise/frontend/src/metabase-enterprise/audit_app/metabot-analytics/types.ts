@@ -35,10 +35,16 @@ export type ConversationSummary = {
   user: MetabotUserInfo | null;
 };
 
-export type ConversationSortColumn =
-  | "created_at"
-  | "message_count"
-  | "total_tokens";
+export const CONVERSATION_SORT_COLUMNS = [
+  "created_at",
+  "message_count",
+  "total_tokens",
+  "user",
+  "profile_id",
+  "ip_address",
+] as const;
+
+export type ConversationSortColumn = (typeof CONVERSATION_SORT_COLUMNS)[number];
 
 export type ConversationsRequest = {
   limit?: number;
@@ -99,35 +105,64 @@ export type ConversationDetail = {
   feedback: ConversationFeedback[];
 };
 
-export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityComponentId =
-  | "entity_count"
+export const DATA_COMPLEXITY_CATALOG_IDS = [
+  "library",
+  "universe",
+  "metabot",
+] as const;
+
+export const DATA_COMPLEXITY_GROUP_IDS = ["size", "ambiguity"] as const;
+
+export type DataComplexityRating = "low" | "medium" | "high";
+export type DataComplexityCatalogId =
+  (typeof DATA_COMPLEXITY_CATALOG_IDS)[number];
+export type DataComplexityGroupId = (typeof DATA_COMPLEXITY_GROUP_IDS)[number];
+
+export type DataComplexitySizeComponentId = "entity_count" | "field_count";
+export type DataComplexityAmbiguityComponentId =
   | "name_collisions"
   | "synonym_pairs"
-  | "field_count"
   | "repeated_measures";
+export type DataComplexityComponentId =
+  | DataComplexitySizeComponentId
+  | DataComplexityAmbiguityComponentId;
+type DataComplexityGroupComponents = {
+  size: DataComplexitySizeComponentId;
+  ambiguity: DataComplexityAmbiguityComponentId;
+};
 
-export type DataComplexitySubScore =
-  | {
-      measurement: null;
-      score: null;
-      error: string;
-    }
-  | {
-      measurement: number;
-      score: number;
-    };
+export type DataComplexityFailure = { error: string };
+export type ScoreAndRating = {
+  score: number;
+  rating: DataComplexityRating | null;
+  rating_label: string | null;
+};
 
-export type DataComplexityCatalog = {
-  total: number | null;
+export type ScoreAndRatingError = {
+  [K in keyof ScoreAndRating]: null;
+};
+
+export type DataComplexityLeaf = {
+  measurement: number;
+} & ScoreAndRating;
+
+export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
+
+export type DataComplexityCatalog = (ScoreAndRating | ScoreAndRatingError) & {
   components: {
-    [K in DataComplexityComponentId]: DataComplexitySubScore;
+    [G in DataComplexityGroupId]: (ScoreAndRating | ScoreAndRatingError) & {
+      components: Record<
+        DataComplexityGroupComponents[G],
+        DataComplexitySubScore
+      >;
+    };
   };
 };
 
 export type DataComplexityScoresResponse = {
   meta: {
     formula_version: number;
+    format_version: number;
     synonym_threshold: number;
     calculated_at?: string;
     embedding_model?: {

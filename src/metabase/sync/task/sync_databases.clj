@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (org.quartz
@@ -107,7 +108,11 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (= audit/audit-db-id database-id)
+    (cond
+      (warehouses/disable-auto-sync)
+      (log/debugf "Skipping scheduled sync for Database %d: disable-auto-sync is on." database-id)
+
+      (= audit/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -115,6 +120,8 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
+
+      :else
       (sync-and-analyze-database*! database-id))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -126,14 +133,17 @@
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (log/infof "Update Field values task triggered for Database %d." database-id)
-    (when-let [database (or (t2/select-one :model/Database :id database-id)
-                            (do
-                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
-                              (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
-      (if (:is_full_sync database)
-        (sync.field-values/update-field-values! database)
-        (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
+    (if (warehouses/disable-auto-sync)
+      (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
+      (do
+        (log/infof "Update Field values task triggered for Database %d." database-id)
+        (when-let [database (or (t2/select-one :model/Database :id database-id)
+                                (do
+                                  (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
+                                  (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
+          (if (:is_full_sync database)
+            (sync.field-values/update-field-values! database)
+            (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
@@ -260,10 +270,10 @@
      (triggers/with-schedule
       (cron/schedule
        (cron/cron-schedule task-schedule)
-        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-        ;; Just wait until the next sync cycle.
-        ;;
-        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+       ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+       ;; Just wait until the next sync cycle.
+       ;;
+       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
        (cron/with-misfire-handling-instruction-do-nothing))))))
 
 (defn- update-db-trigger-if-needed!
@@ -280,8 +290,8 @@
                                                          %)
                                                       (:triggers job))))]
     (cond
-     ;; no new schedule
-     ;; delete the existing trigger
+      ;; no new schedule
+      ;; delete the existing trigger
       (nil? new-trigger)
       (do
         (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
@@ -289,7 +299,7 @@
                    (:name database))
         (delete-trigger! database task-info))
 
-     ;; need to recreate the new trigger
+      ;; need to recreate the new trigger
       (and (some? new-trigger)
            (nil? existing-trigger-with-same-schedule))
       (do
@@ -304,7 +314,7 @@
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
-     ;; don't need to do anything as the existing trigger matches the new schedule
+      ;; don't need to do anything as the existing trigger matches the new schedule
       :else
       nil)))
 

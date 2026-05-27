@@ -71,11 +71,16 @@
   (some-> user (select-keys [:id :email :first_name :last_name :tenant_id])))
 
 (def ^:private sort-columns
-  "Allow-list of API sort keys → HoneySQL column refs, to keep user input out
-   of the `:order-by` clause."
-  {"created_at"    :c.created_at
-   "message_count" :message_count
-   "total_tokens"  :total_tokens})
+  "Allow-list of API sort keys → vectors of HoneySQL ORDER BY expressions (sans
+   direction). A vector lets a single sort key emit multiple ORDER BY terms that
+   share the same direction (e.g. user sort orders by first_name then last_name)."
+  {"created_at"    [:c.created_at]
+   "message_count" [:message_count]
+   "total_tokens"  [:total_tokens]
+   "user"          [[:lower [:min :u.first_name]]
+                    [:lower [:min :u.last_name]]]
+   "profile_id"    [:profile_id]
+   "ip_address"    [:c.ip_address]})
 
 (def ^:private list-query
   "HoneySQL query that selects one row per conversation with the aggregate
@@ -102,7 +107,8 @@
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:and
                                       [:= :m.conversation_id :c.id]
-                                      [:= :m.deleted_at nil]]]
+                                      [:= :m.deleted_at nil]]
+               [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
 (defn- row->summary
@@ -154,23 +160,25 @@
    and a serialized `date` parameter string, plus sorting by an allow-listed
    `sort-by` column in either direction (defaults to newest-first)."
   [{:keys [limit offset user-id group-id tenant-id date sort-by sort-dir]}]
-  (let [limit     (or limit default-limit)
-        offset    (or offset default-offset)
-        where     (list-where-clause {:user-id   user-id
-                                      :group-id  group-id
-                                      :tenant-id tenant-id
-                                      :date      date})
-        sort-col  (get sort-columns sort-by :c.created_at)
-        direction (if (= sort-dir "asc") :asc :desc)
-        total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
-                                                 :from   [[:metabot_conversation :c]]}
-                                          where (assoc :where where))))
-        rows      (t2/select :model/MetabotConversation
-                             (cond-> (assoc list-query
-                                            :order-by [[sort-col direction] [:c.id :asc]]
-                                            :limit    limit
-                                            :offset   offset)
-                               where (assoc :where where)))]
+  (let [limit      (or limit default-limit)
+        offset     (or offset default-offset)
+        where      (list-where-clause {:user-id   user-id
+                                       :group-id  group-id
+                                       :tenant-id tenant-id
+                                       :date      date})
+        sort-exprs (get sort-columns sort-by [:c.created_at])
+        direction  (if (= sort-dir "asc") :asc :desc)
+        order-by   (conj (mapv #(vector % direction) sort-exprs)
+                         [:c.id :asc])
+        total      (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
+                                                  :from   [[:metabot_conversation :c]]}
+                                           where (assoc :where where))))
+        rows       (t2/select :model/MetabotConversation
+                              (cond-> (assoc list-query
+                                             :order-by order-by
+                                             :limit    limit
+                                             :offset   offset)
+                                where (assoc :where where)))]
     {:data   (->> (t2/hydrate rows :user)
                   hydrate-tool-counts
                   (map row->summary))
