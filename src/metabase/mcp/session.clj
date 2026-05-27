@@ -129,12 +129,13 @@
       nil)
 
     :else
-    (when-let [decoded-payload (decode-session-payload payload)]
+    (if-let [decoded-payload (decode-session-payload payload)]
       (when (and (map? decoded-payload)
                  (= session-payload-version (:v decoded-payload))
                  (boolean? (:ui decoded-payload)))
         {:extended true
-         :payload  decoded-payload}))))
+         :payload  decoded-payload})
+      (log/warn "MCP session id contains an undecodable capability payload"))))
 
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
