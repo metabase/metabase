@@ -509,7 +509,6 @@
       (mt/with-temp [:model/Database db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
         (is (false? (t2/exists? :model/Database :id (u/the-id db))))))
-
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp [:model/Database db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
@@ -676,7 +675,6 @@
                (:settings (mt/user-http-request :crowberto :put 200
                                                 (format "database/%s" db-id)
                                                 {:settings {:database-enable-actions true}}))))))
-
     (testing "should not validate settings where the value hasn't changed"
       ;; Same setup, but we set the same value as before - should skip validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -685,7 +683,6 @@
                (:settings (mt/user-http-request :crowberto :put 200
                                                 (format "database/%s" db-id)
                                                 {:settings {:api-test-disabled-for-database true}}))))))
-
     (testing "should still validate settings that are actually being changed to a new value"
       ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -694,7 +691,6 @@
                (:message (mt/user-http-request :crowberto :put 400
                                                (format "database/%s" db-id)
                                                {:settings {:api-test-disabled-for-database true}}))))))
-
     (testing "should not validate settings being reset to nil (default)"
       ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -703,7 +699,6 @@
                (:settings (mt/user-http-request :crowberto :put 200
                                                 (format "database/%s" db-id)
                                                 {:settings {:api-test-disabled-for-database nil}}))))))
-
     (testing "should not validate settings being reset to default value (literally)"
       ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -1412,7 +1407,6 @@
                       (:metadata_sync_schedule db)))
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                       (:cache_field_values_schedule db)))))
-
         (testing "update db setting with a custom trigger should reschedule scan field values"
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
@@ -1427,7 +1421,6 @@
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                    (:cache_field_values_schedule db)))))
-
         (testing "update db setting to never scan should remove scan field values trigger"
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
@@ -1441,7 +1434,6 @@
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))
-
         (testing "turn back to default settings should recreate all tasks with randomized schedule"
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling false}
@@ -1627,16 +1619,13 @@
                    :model/Field       field-2  {:table_id (u/the-id table-2)}
                    :model/FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
                    :model/FieldValues values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]
-
       (snowplow-test/with-fake-snowplow-collector
         (is (= {:status "ok"}
                (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
-
         (testing "triggers snowplow event"
           (is (=?
                {"event" "database_discard_field_values", "target_id" (u/the-id db)}
                (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
-
       (testing "values-1 still exists?"
         (is (= false
                (t2/exists? :model/FieldValues :id (u/the-id values-1)))))
@@ -1721,27 +1710,21 @@
           (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))
-
         (reset! call-count 0)
         (reset! ssl-values [])
-
         (testing "with SSL disabled, try twice (once with, once without SSL)"
           (#'warehouses.util/test-connection-details "postgres" {:ssl false})
           (is (= 2 @call-count))
           (is (= [true false] @ssl-values)))
-
         (reset! call-count 0)
         (reset! ssl-values [])
-
         (testing "with SSL unspecified, try twice (once with, once without SSL)"
           (#'warehouses.util/test-connection-details "postgres" {})
           (is (= 2 @call-count))
           (is (= [true nil] @ssl-values)))
-
         (reset! call-count 0)
         (reset! ssl-values [])
         (reset! valid? true)
-
         (testing "with SSL disabled, but working try once (since SSL work we don't try without SSL)"
           (is (= {:ssl true}
                  (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
@@ -1762,11 +1745,9 @@
          :model/Table    _           {:db_id db-id :schema "schema1"}]
         (is (= ["schema1" "schema2" "schema3"]
                (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
-
     (testing "Looking for a database that doesn't exist should return a 404"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))
-
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
                      :model/Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
@@ -1841,7 +1822,6 @@
         (is (= ["schema1"]
                (mt/with-full-data-perms-for-all-users!
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
-
       (testing "...or just table read perms..."
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
@@ -1849,12 +1829,10 @@
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :query-builder)
           (is (= ["schema1"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
-
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
-
       (testing "returns empty list when user has no create-queries perms for any schema"
         (mt/with-full-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
@@ -1863,7 +1841,6 @@
           ;; User can access the endpoint but sees no schemas since they have no query perms
           (is (= []
                  (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" db-id)))))))
-
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
@@ -1949,7 +1926,6 @@
                    :type             "question"}]
                  (mt/user-http-request :lucky :get 200
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
-
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
@@ -1974,7 +1950,6 @@
                             :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "question"}))))
-
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
@@ -2020,7 +1995,6 @@
                     :schema       "My Collection"}]
                   (mt/user-http-request :lucky :get 200
                                         (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
-
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
@@ -2044,7 +2018,6 @@
                             :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "model"}))))
-
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
@@ -2123,14 +2096,12 @@
         (mt/with-full-data-perms-for-all-users!
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
-
       (testing "if we have query perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
-
       (testing "if we have query perms for one table in the schema, and legacy-no-self-service data perms for another"
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/view-data :legacy-no-self-service)
@@ -2574,7 +2545,6 @@
                                {:key     "custom/three"
                                 :type    "error"
                                 :message "Never"}]}}
-
                    (select-keys settings [:unaggregated-query-row-limit
                                           :api-test-missing-premium-feature
                                           :api-test-missing-driver-feature
@@ -2603,7 +2573,6 @@
       (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
       ;; Grant only view-data to db-2 (not queryable)
       (data-perms/set-database-permission! pg db-2-id :perms/view-data :unrestricted)
-
       (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-query true)
                           :data
                           (filter #(#{db-1-id db-2-id} (:id %))))]
@@ -2620,7 +2589,6 @@
         (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
         ;; Grant create-queries only to t1 (queryable)
         (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
-
         (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
           (is (= ["queryable_schema"] response)))))))
 
@@ -2634,7 +2602,6 @@
         (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
         ;; Grant create-queries only to t1 (queryable)
         (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
-
         (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
           (is (= 1 (count response)))
           (is (= "queryable_table" (-> response first :name))))))))

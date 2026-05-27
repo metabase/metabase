@@ -408,7 +408,6 @@
                         (catch InterruptedException _
                           (log/warn "Interrupted while waiting for notification executor to terminate")
                           (.shutdownNow ^ThreadPoolExecutor executor))))]
-
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))

@@ -86,7 +86,6 @@
                (-> (t2/select-one-fn :last_viewed_at :model/Document (:id document))
                    t/offset-date-time
                    (.withNano 0))))))
-
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
       (mt/with-temp [:model/Collection collection {}
                      :model/User user {}
@@ -147,10 +146,8 @@
                                :user_id (:id user)
                                :model "document"
                                :model_id (:id document))))
-
         ;; Publish document read event
         (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-
         ;; Verify recent view was created
         (let [recent-view (t2/select-one :model/RecentViews
                                          :user_id (:id user)

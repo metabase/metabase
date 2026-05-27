@@ -2706,14 +2706,12 @@
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (testing "both tables returned with unused_only=false"
             (is (= #{table-1-id table-2-id}
                    (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
                         (filter #(= (:db_id %) db-id))
                         (map :id)
                         set))))
-
           (mt/with-temp [:model/Card card {:database_id   db-id
                                            :table_id      table-1-id
                                            :dataset_query {:database db-id

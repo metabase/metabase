@@ -22,7 +22,6 @@
                              ;; don't recurse into joins. But should we update conditions tho.
                              {:lib/type :mbql/join}
                              (update &match :conditions update-fields)
-
                              [:field (opts :guard (not (:join-alias opts))) (id :guard pos-int?)]
                              (or (when-let [col (lib.metadata/field query id)]
                                    (when-not (= (:table-id col) source-table)

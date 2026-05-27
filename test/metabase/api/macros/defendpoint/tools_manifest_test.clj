@@ -224,7 +224,6 @@
               :annotations    {:readOnlyHint   true
                                :idempotentHint true}}
              result))))
-
   (testing "Scope is included when metadata has :scope"
     (let [form   {:method          :get
                   :route           {:path "/v1/table/:id"}
@@ -236,7 +235,6 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= "agent:table:read" (:scope result)))))
-
   (testing "Scope is omitted when metadata has no :scope"
     (let [form   {:method          :get
                   :route           {:path "/v1/test"}

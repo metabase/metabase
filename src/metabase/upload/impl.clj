@@ -627,7 +627,6 @@
                                @api/*current-user*)
             upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
-
         (events/publish-event! :event/upload-create
                                {:user-id  (:id @api/*current-user*)
                                 :model-id (:id table)
@@ -637,7 +636,6 @@
                                            :table-name  table-name
                                            :model-id    (:id card)
                                            :stats       stats}})
-
         (analytics/track-event! :snowplow/csvupload
                                 (assoc stats
                                        :event    :csv-upload-successful
@@ -647,7 +645,6 @@
         (analytics/inc! :metabase-csv-upload/failed)
         (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
-
         (throw e)))))
 
 ;;; +-----------------------------
@@ -832,21 +829,16 @@
               (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
               (catch Throwable e
                 (throw (ex-info (ex-message e) {:status-code 422}))))
-
             (when create-auto-pk?
               (add-columns! driver database table
                             {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
                             :primary-key [auto-pk-column-keyword]))
-
             (scan-and-sync-table! database table)
             (set-display-names! (:id table) (zipmap column-names display-names))
-
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-
             (invalidate-cached-models! table)
-
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
                                      :event/upload-append)
@@ -857,9 +849,7 @@
                                                :schema-name (:schema table)
                                                :table-name  (:name table)
                                                :stats       stats}})
-
             (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
-
             {:row-count row-count})))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
@@ -922,23 +912,19 @@
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete table database)
-
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
     ;; visible to administrators, and the operation is easy to retry again later.
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
-
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
     (t2/update! :model/Table :id (:id table) {:active false})
-
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
     ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
     ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
     #_(future (sync/retire-table! (assoc table :active false)))
-
     ;; Archive the related cards if the customer opted in.
     ;;
     ;; For now, this only covers instances where the card has this as its "primary table", i.e.
@@ -949,7 +935,6 @@
       (t2/update-returning-pks! :model/Card
                                 {:table_id (:id table) :archived false}
                                 {:archived true}))
-
     :done))
 
 (def update-action-schema

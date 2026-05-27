@@ -56,7 +56,6 @@
                                :snippet-id   1
                                :id           string?}}
               (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}")))))
-
   (testing "renaming a variable"
     (let [old-tag {:type         :text
                    :name         "foo"
@@ -76,7 +75,6 @@
                         :id           (:id old-tag)}}
                 (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
-
       (testing "works with other variables present, if they don't change"
         (let [other {:type         :text
                      :name         "other"
@@ -90,7 +88,6 @@
                   (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
                                                      "other" other})))))))
-
   (testing "general case, add and remove"
     (let [mktag (fn [base]
                   (merge {:type         :text
@@ -607,7 +604,6 @@
                 :name "mytag"
                 :display-name "My Tag"
                 :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))
-
   (testing "invalid template tags should return the correct errors"
     (mu/disable-enforcement
       (are

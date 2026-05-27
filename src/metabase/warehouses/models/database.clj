@@ -183,14 +183,12 @@
      database
      (sync.schedules/schedule-map->cron-strings
       (sync.schedules/default-randomized-schedule)))
-
     ;; "Regularly on a schedule"
     ;; -> sync both steps, schedule should be provided
     [true true false]
     (do
       (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
       database)
-
     ;; "Only when adding a new filter" or "Never, I'll do it myself"
     ;; -> Sync metadata only
     [true false _]

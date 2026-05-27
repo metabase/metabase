@@ -29,7 +29,6 @@
                         (TarArchiveOutputStream. 512 "UTF-8"))]
       (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
       (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
-
       (doseq [^File f (file-seq src)
               :let    [path-in-tar (subs (.getPath f) (count prefix))
                        entry (TarArchiveEntry. f path-in-tar)]]

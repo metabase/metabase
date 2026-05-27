@@ -174,7 +174,6 @@
           venues-category-id-metadata (meta/field-metadata :venues :category-id)
           categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
                                                     (lib/visible-columns q2))]
-
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
                  :lib/options {:lib/uuid string?}
@@ -1944,7 +1943,6 @@
   (testing "DO propagate temporal unit if it is included in join :fields"
     (let [query (lib/query
                  meta/metadata-provider
-
                  (lib.tu.macros/mbql-query people
                    {:source-query {:source-table $$people
                                    :breakout     [!month.created-at]

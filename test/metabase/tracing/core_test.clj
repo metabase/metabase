@@ -205,7 +205,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "outermost with-span still clears MDC when no parent values exist"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -232,7 +231,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "with-span skips pyroscope for nested spans (parent MDC already set)"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -245,7 +243,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "rapid root span cycles don't throw or leak pyroscope state"
     (try
       (tracing/init-enabled-groups! "all" "INFO")

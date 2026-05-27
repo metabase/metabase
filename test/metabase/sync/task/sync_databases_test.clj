@@ -181,11 +181,9 @@
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
-
               (t2/delete! :model/Database :id db-id)
               (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
                 (sync-fn ctx))
-
               (is (= [(update sync-job :triggers empty)
                       (update fv-job :triggers empty)]
                      (current-tasks-for-db database))))))))))
@@ -224,7 +222,6 @@
                {:engine                      :postgres
                 :metadata_sync_schedule      "* * * * * ? *"
                 :cache_field_values_schedule (cron-schedule-for-next-year)}))))
-
     (testing "Make sure that a database that *isn't* marked full sync won't get analyzed"
       (is (= {:ran-sync? true, :ran-analyze? false, :ran-update-field-values? false}
              (check-if-sync-processes-ran-for-db
@@ -233,7 +230,6 @@
                :is_full_sync                false
                :metadata_sync_schedule      "* * * * * ? *"
                :cache_field_values_schedule (cron-schedule-for-next-year)}))))
-
     (testing "Make sure the update field values task calls `update-field-values!`"
       (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? true}
              (check-if-sync-processes-ran-for-db
@@ -242,7 +238,6 @@
                :is_full_sync                true
                :metadata_sync_schedule      (cron-schedule-for-next-year)
                :cache_field_values_schedule "* * * * * ? *"}))))
-
     (testing "...but if DB is not \"full sync\" it should not get updated FieldValues"
       (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? false}
              (check-if-sync-processes-ran-for-db

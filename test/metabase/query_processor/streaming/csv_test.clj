@@ -134,7 +134,6 @@
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
-
   (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
       (is (= ["[\"2021-03-30\"]"] row)))))

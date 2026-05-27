@@ -46,7 +46,6 @@
           response    (client/client :get 200 "agent/v1/ping"
                                      {:request-options {:headers {"x-metabase-session" session-key}}})]
       (is (= {:message "pong"} response))))
-
   (testing "Invalid session token returns 401"
     (let [fake-session-key (str (random-uuid))
           response         (client/client :get 401 "agent/v1/ping"
@@ -98,11 +97,9 @@
                :fields         sequential?
                :related_tables sequential?}
               (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404 "agent/v1/table/999999"))))
-
   (testing "Respects query parameters"
     (let [table-id (mt/id :orders)]
       (is (=? {:type   "table"
@@ -110,12 +107,10 @@
                :fields empty?}
               (mt/user-http-request :rasta :get 200
                                     (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
-
   (testing "Field values are excluded by default"
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))]
       (is (every? #(nil? (:field_values %)) (:fields table)))))
-
   (testing "Field values are included when explicitly requested"
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
@@ -162,14 +157,12 @@
                :name                 "Test Metric"
                :queryable_dimensions sequential?}
               (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
-
     (testing "Respects query parameters"
       (is (=? {:type "metric"
                :id   (:id metric)}
               (mt/user-http-request :rasta :get 200
                                     (str "agent/v1/metric/" (:id metric)
                                          "?with-queryable-dimensions=false&with-field-values=false")))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999"))))))
@@ -196,7 +189,6 @@
 (deftest get-table-field-values-test
   ;; Ensure field values exist for the field we'll test
   (ensure-fresh-field-values! (mt/id :people :state))
-
   (testing "Returns field statistics and values with default limit of 30"
     (let [table-id (mt/id :people)
           field-id (visible-field-id table-id "State")]
@@ -207,18 +199,15 @@
                                   :field_values sequential?}}
                 result))
         (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
-
   (testing "Respects explicit limit parameter"
     (let [table-id (mt/id :people)
           field-id (visible-field-id table-id "State")]
       (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
               (mt/user-http-request :crowberto :get 200
                                     (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
-
   (testing "Returns 400 for invalid field-id format"
     (let [table-id (mt/id :people)]
       (is (= "Invalid field_id format: not-a-valid-id"
@@ -265,14 +254,12 @@
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
-
   (testing "Applies default limit of 200 when no limit is specified"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
                                          {:table_id table-id})
           decoded  (decode-query response)]
       (is (= 200 (lib/current-limit decoded)))))
-
   (testing "Respects explicit limit"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
@@ -280,7 +267,6 @@
                                           :limit    10})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
-
   (testing "Returns 404 for non-existent table"
     (is (= "No table found with table_id 999999"
            (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
@@ -303,7 +289,6 @@
                                         (every? :base_type cols)))
                            :rows (fn [rows] (= 5 (count rows)))}}
               execute-resp))))
-
   (testing "Enforces agent query row limit even when query specifies a higher limit"
     (let [table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
@@ -329,11 +314,9 @@
                                     :field_values sequential?}}
                   (mt/user-http-request :rasta :get 200
                                         (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
-
     (testing "Returns 400 for field-id from wrong entity type"
       ;; Using a table field-id (t-prefix) when querying a metric should fail
       (is (re-find #"does not match expected prefix"
@@ -351,7 +334,6 @@
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
           (is (= (mt/id) (lib/database-id decoded))))))
-
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
              (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
@@ -367,7 +349,6 @@
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded)))))))
-
   (testing "Count aggregation with field_id still works"
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
@@ -405,7 +386,6 @@
       (testing "with-measures=false (default) does not include measures"
         (let [table (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
           (is (nil? (:measures table)))))
-
       (testing "with-measures=true includes measures for the table"
         (let [table (mt/user-http-request :rasta :get 200
                                           (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
@@ -428,7 +408,6 @@
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
-
   (testing "Continuation token returns next page of results when the total limit exceeds the page size"
     (let [table-id   (mt/id :orders)
           field-id   (visible-field-id table-id "ID")
@@ -451,14 +430,12 @@
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
           "Pages should return different rows")))
-
   (testing "No continuation_token when all rows are returned"
     (is (=? {:status             "completed"
              :continuation_token nil?}
             (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                   {:table_id     (mt/id :orders)
                                    :aggregations [{:function "count"}]}))))
-
   (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}

@@ -139,7 +139,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -149,7 +148,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"

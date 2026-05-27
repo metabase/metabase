@@ -206,7 +206,6 @@
            max-next-ms        100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
-
     (let [executor (cp/threadpool pool-size {:name (str "queue-" listener-name)})]
       (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
       (dotimes [_ pool-size]
@@ -215,7 +214,6 @@
                                                            :err-handler        err-handler
                                                            :max-batch-messages max-batch-messages
                                                            :max-next-ms        max-next-ms})))
-
       (swap! listeners assoc listener-name executor))))
 
 (mu/defn stop-listening!
@@ -228,7 +226,6 @@
       (cp/shutdown! executor)
       ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
       (.awaitTermination executor 10 TimeUnit/SECONDS)
-
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
     (log/infof "No running listener named %s" listener-name)))

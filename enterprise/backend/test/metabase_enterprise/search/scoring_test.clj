@@ -141,15 +141,12 @@
         (is (= #{}
                (set/intersection #{"official collection score" "verified"}
                                  (score-result-names))))))
-
     (testing "includes official collection score if :official-collections is enabled"
       (mt/with-premium-features #{:official-collections}
         (is (set/subset? #{"official collection score"} (score-result-names)))))
-
     (testing "includes verified if :content-verification is enabled"
       (mt/with-premium-features #{:content-verification}
         (is (set/subset? #{"verified"} (score-result-names)))))
-
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))

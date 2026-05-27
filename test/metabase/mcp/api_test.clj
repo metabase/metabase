@@ -257,7 +257,6 @@
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
           (is (contains? search-data :total_count))))))
-
   (testing "search accepts a singleton string as a one-element query list"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
@@ -270,7 +269,6 @@
         (is (nil? (:isError result)))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))))))
-
   (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
@@ -299,7 +297,6 @@
       (is (string? (:body response)))
       (is (str/includes? (:body response) "event: message"))
       (is (str/includes? (:body response) "data: "))))
-
   (testing "POST without Accept: text/event-stream returns JSON (backward-compatible)"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "ping")
@@ -364,7 +361,6 @@
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
       (is (some? (get-in list-response [:body :result :tools])))))
-
   (testing "notifications/initialized remains accepted for compatibility"
     (let [response   (mcp-request (jsonrpc-request "initialize"))
           session-id (get-in response [:headers "Mcp-Session-Id"])]
@@ -402,7 +398,6 @@
           result (get-in response [:body :result])]
       (is (= 200 (:status response)))
       (is (true? (:isError result)))))
-
   (testing "tools/call with missing path params returns an error"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
@@ -491,7 +486,6 @@
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
       (is (= 8 (count tools)))))
-
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
           tool-names (set (map :name tools))]
@@ -500,15 +494,12 @@
       ;; Should NOT include tools with other scopes
       (is (not (contains? tool-names "get_table")))
       (is (not (contains? tool-names "construct_query")))))
-
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
       (is (= 8 (count tools)))))
-
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
       (is (= 8 (count tools)))))
-
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
       (is (zero? (count tools))

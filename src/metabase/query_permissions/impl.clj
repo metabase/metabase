@@ -132,18 +132,15 @@
                           (when-not parent-source-card-id
                             {:card-ids #{id}})
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
-
               (:and m {:query-permissions/sandboxed-table (id :guard identity)})
               (merge-with merge-source-ids
                           {:table-ids #{id}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{id}})
                           (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
-
               {:native &truthy}
               (when-not parent-source-card-id
                 {:native? true})
-
               (:and m {:source-table (id :guard pos-int?)})
               (merge-with merge-source-ids
                           {:table-ids #{id}}
@@ -378,12 +375,10 @@
     (when-let [paths (:paths required-perms)]
       (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
           (throw (perms-exception paths))))
-
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
-
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -396,11 +391,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))

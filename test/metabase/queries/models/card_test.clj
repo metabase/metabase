@@ -499,7 +499,6 @@
       (testing (format "target = %s" (pr-str target))
         (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
                                                                         :target target}]}]
-
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
                  (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))))
@@ -561,7 +560,6 @@
                   :parameterized_object_id   card-id
                   :parameter_id              "_CATEGORY_NAME_"}]
                 (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
-
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! :model/Card card-id {:parameters [(merge default-params
                                                                {:values_source_type    "card"
@@ -571,7 +569,6 @@
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
                   (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
-
         (testing "delete the card will delete ParameterCard"
           (t2/delete! :model/Card :id card-id)
           (is (= []
@@ -653,20 +650,17 @@
                     (mt/card-with-source-metadata-for-query
                      (mt/mbql-query products {:fields [(mt/$ids $products.title)]
                                               :limit 5})))
-
         (testing "ParameterCard for dashboard is removed"
           (is (=? [{:card_id                   source-card-id
                     :parameter_id              "param_1"
                     :parameterized_object_type :card
                     :parameterized_object_id   (:id card)}]
                   (t2/select :model/ParameterCard :card_id source-card-id))))
-
         (testing "update the dashboard parameter and remove values_config of dashboard"
           (is (=? [{:id   "param_2"
                     :name "Param 2"
                     :type :category}]
                   (t2/select-one-fn :parameters :model/Dashboard :id (:id dashboard))))
-
           (testing "but no changes with parameter on card"
             (is (=? [{:name                 "Param 1"
                       :id                   "param_1"
@@ -675,13 +669,10 @@
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
-
       (testing "on archive card"
         (t2/update! :model/Card source-card-id {:archived true})
-
         (testing "ParameterCard for card is removed"
           (is (=? [] (t2/select :model/ParameterCard :card_id source-card-id))))
-
         (testing "update the dashboard parameter and remove values_config of card"
           (is (=? [{:id   "param_1"
                     :name "Param 1"
@@ -827,10 +818,8 @@
   (testing "Newly created Card should know a Metabase version used to create it"
     (mt/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
-
       (with-redefs [config/mb-version-string "blablabla"]
         (t2/update! :model/Card :id (:id card) {:description "test"}))
-
       ;; we store version of metabase which created the card
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
@@ -854,7 +843,6 @@
       (let [card-with-dashboard-count (t2/hydrate (t2/select-one :model/Card :id card-id) :dashboard_count)]
         (testing "dashboard_count is equal to 2"
           (is (= 2 (:dashboard_count card-with-dashboard-count)))))))
-
   (testing "cards with no associated dashboard"
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [card-with-dashboard-count (t2/hydrate (t2/select-one :model/Card :id card-id) :dashboard_count)]
@@ -875,7 +863,6 @@
       (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
         (testing "parameter_usage_count is equal to 2"
           (is (= 2 (:parameter_usage_count card-with-usage-count)))))))
-
   (testing "cards not used as parameter sources"
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
@@ -972,7 +959,6 @@
           (mt/with-test-user :rasta
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card))))
-
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
@@ -1246,7 +1232,6 @@
                :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})
                :collection_id remote-synced-coll-id}
               {:id (mt/user->id :rasta)}))))
-
       (testing "Card without dependencies can be created in remote-synced collection"
         (let [card (card/create-card!
                     {:name "Card without dependencies"
@@ -1275,7 +1260,6 @@
               {:card-before-update card
                :card-updates {:collection_id remote-synced-coll-id}
                :actor {:id (mt/user->id :rasta)}}))))
-
       (testing "Card with remote-synced dependencies can be moved to remote-synced collection"
         (mt/with-temp [:model/Collection {another-remote-synced-coll-id :id} {:is_remote_synced true :location (str "/" remote-synced-coll-id "/")}
                        :model/Card {remote-synced-source-card-id :id} {:collection_id another-remote-synced-coll-id
@@ -1326,7 +1310,6 @@
               {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
                :actor {:id (mt/user->id :rasta)}}))))
-
       (testing "Can move remote-synced card when no remote-synced dependents exist"
         (t2/delete! :model/Card :id dependent-card-id)
         (let [updated-card (card/update-card!
@@ -1434,7 +1417,6 @@
           (testing "native-query field contains only the SQL text"
             (is (= (-> (dummy-dataset-query (mt/id)) :native :query)
                    (:native_query doc))))))))
-
   (testing "non-native queries should have nil native-query field"
     (mt/with-temp [:model/Card {card-id :id} {:name "Test MBQL Card"
                                               :dataset_query (mt/mbql-query venues)}]
