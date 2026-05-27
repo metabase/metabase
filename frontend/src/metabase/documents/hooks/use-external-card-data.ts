@@ -1,5 +1,4 @@
-import { useMemo, useRef } from "react";
-import { useAsync } from "react-use";
+import { useEffect, useMemo, useState } from "react";
 
 import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import { useSelector } from "metabase/redux";
@@ -31,40 +30,42 @@ export function useExternalCardDataLoader(
   const documentUuid = context?.documentUuid;
   const loadCardQuery = context?.loadCardQuery;
 
-  // The regular hook gets dedup/caching for free from RTK Query. The public
-  // path uses a raw promise factory, so we cache the result here to keep
-  // scrolling a card out of and back into the viewport from re-issuing the
-  // request.
-  const cacheRef = useRef<{ cardId: number; dataset: Dataset } | undefined>(
-    undefined,
-  );
-  const cachedDataset =
-    cacheRef.current?.cardId === cardId ? cacheRef.current.dataset : undefined;
+  // Fetch once and cache. Unlike the regular hook, which gets dedup/caching
+  // for free from RTK Query, the public path uses a raw promise factory —
+  // so without this, scrolling a card out of and back into the viewport
+  // would re-issue the request every time.
+  const [dataset, setDataset] = useState<Dataset | undefined>(undefined);
+  const [datasetError, setDatasetError] = useState<unknown>(undefined);
+  const [isLoadingDataset, setIsLoadingDataset] = useState(false);
 
-  const {
-    value,
-    loading: rawIsLoading,
-    error: datasetError,
-  } = useAsync(async () => {
-    if (cacheRef.current?.cardId === cardId) {
-      return cacheRef.current.dataset;
+  useEffect(() => {
+    if (dataset || skip || !loadCardQuery || !card || !documentUuid) {
+      return;
     }
-    if (!loadCardQuery || !cardId || !documentUuid || !card || skip) {
-      return undefined;
-    }
-
-    try {
-      const result = await loadCardQuery(cardId);
-      cacheRef.current = { cardId, dataset: result };
-      return result;
-    } catch (error) {
-      console.error("Failed to load external document card data:", error);
-      throw error;
-    }
-  }, [cardId, documentUuid, card, skip]);
-
-  const dataset = value ?? cachedDataset;
-  const isLoadingDataset = !dataset && rawIsLoading;
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingDataset(true);
+      try {
+        const result = await loadCardQuery(cardId);
+        if (!cancelled) {
+          setDataset(result);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load external document card data:", error);
+          setDatasetError(error);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingDataset(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [dataset, skip, loadCardQuery, cardId, card, documentUuid]);
 
   const question = useMemo(
     () => (card ? new Question(card, metadata) : undefined),
