@@ -1,4 +1,5 @@
 import _userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -35,10 +36,18 @@ const prevPage = async () =>
 const nextPage = async () =>
   userEvent.click(await screen.findByLabelText("chevronright icon"));
 
+const clickRegenerate = async () =>
+  userEvent.click(
+    await screen.findByRole("button", {
+      name: /Regenerate suggested prompts/,
+    }),
+  );
+
 type SetupOpts = {
   metabotId?: number;
   pageSize?: number;
   mockInitialPage?: boolean;
+  regenerateBody?: RegenerateSuggestedMetabotPromptsResponse;
 };
 
 const setup = async (opts?: SetupOpts) => {
@@ -46,6 +55,7 @@ const setup = async (opts?: SetupOpts) => {
     metabotId = FIXED_METABOT_IDS.DEFAULT,
     pageSize = 3,
     mockInitialPage = true,
+    regenerateBody,
   } = opts ?? {};
 
   const paginationContext = {
@@ -61,6 +71,19 @@ const setup = async (opts?: SetupOpts) => {
         paginationContext,
       })
     : paginationContext;
+
+  if (regenerateBody) {
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId,
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext,
+    });
+    setupRegenerateMetabotPromptSuggestionsEndpoint(
+      metabotId,
+      undefined,
+      regenerateBody,
+    );
+  }
 
   const TestComponent = () => (
     <>
@@ -263,63 +286,39 @@ describe("suggested prompts", () => {
   });
 
   describe("regenerate empty-state toasts", () => {
-    const clickRegenerate = async () =>
-      userEvent.click(
-        await screen.findByRole("button", {
-          name: /Regenerate suggested prompts/,
-        }),
-      );
-
-    const setupForRegenerate = async (
-      body: RegenerateSuggestedMetabotPromptsResponse,
-    ) => {
-      const { metabotId } = await setup();
-      setupMetabotPromptSuggestionsEndpoint({
-        metabotId,
-        prompts: defaultMetabotMockedPrompts,
-        paginationContext: {
-          offset: 0,
-          limit: 3,
-          total: defaultMetabotMockedPrompts.length,
-        },
-      });
-      setupRegenerateMetabotPromptSuggestionsEndpoint(
-        metabotId,
-        undefined,
-        body,
-      );
-    };
-
     it("shows the no-library-content toast", async () => {
-      await setupForRegenerate({ status: "no-library-content" });
+      await setup({ regenerateBody: { status: "no-library-content" } });
       await clickRegenerate();
       expect(
-        await screen.findByText(/No models or metrics to summarize/),
+        await screen.findByText(/Add some models or metrics/),
       ).toBeInTheDocument();
     });
 
     it("shows the ai-produced-no-prompts toast", async () => {
-      await setupForRegenerate({ status: "ai-produced-no-prompts" });
+      await setup({ regenerateBody: { status: "ai-produced-no-prompts" } });
       await clickRegenerate();
       expect(
-        await screen.findByText(/AI didn't generate any prompts/),
+        await screen.findByText(/Metabot couldn't come up with any prompts/),
       ).toBeInTheDocument();
     });
 
     it("does not show a toast on the happy path", async () => {
-      await setupForRegenerate({ status: "generated", prompt_count: 3 });
+      await setup({
+        regenerateBody: { status: "generated", prompt_count: 3 },
+      });
       await clickRegenerate();
-      // Anchor on the mutation actually settling — the button's loading text ("Regenerating ...")
-      // is replaced by the idle text only after `isRegenerating` flips back to false, which is
-      // the same render where any empty-state toast would have appeared if the switch was wrong.
-      await screen.findByRole("button", {
-        name: "Regenerate suggested prompts",
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions/regenerate`,
+          ),
+        ).toBe(true);
       });
       expect(
-        screen.queryByText(/No models or metrics to summarize/),
+        screen.queryByText(/Add some models or metrics/),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText(/AI didn't generate any prompts/),
+        screen.queryByText(/Metabot couldn't come up with any prompts/),
       ).not.toBeInTheDocument();
     });
   });

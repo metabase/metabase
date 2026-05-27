@@ -84,17 +84,13 @@ export const MetabotPromptSuggestionPane = ({
       .with({ status: "generated" }, () => undefined)
       .with({ status: "no-library-content" }, () => {
         sendToast({
-          // translators: shown when an admin clicks "Regenerate suggested prompts"
-          // but the Metabot has no models or metrics for the AI to summarize.
-          message: t`No models or metrics to summarize — add some to this Metabot's collection first.`,
+          message: t`Add some models or metrics to this Metabot's collection to generate prompts.`,
           icon: "info",
         });
       })
       .with({ status: "ai-produced-no-prompts" }, () => {
         sendToast({
-          // translators: shown when an admin clicks "Regenerate suggested prompts"
-          // and the AI ran successfully but returned no suggested prompts.
-          message: t`The AI didn't generate any prompts this time. Try again in a moment.`,
+          message: t`Metabot couldn't come up with any prompts. Try again in a moment.`,
           icon: "info",
         });
       })
