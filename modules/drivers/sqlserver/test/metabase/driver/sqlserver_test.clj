@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
@@ -947,3 +948,23 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(deftest ^:synchronized assert-can-grant-select-on-schema!-test
+  (testing "throws 412 with copy-pasteable SQL when principal lacks SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql]]
+                               (cond
+                                 (str/includes? sql "HAS_PERMS_BY_NAME") [{:can_grant 0}]
+                                 (str/includes? sql "CURRENT_USER")      [{:u "stats_admin"}]))]
+      (try
+        (sqlserver/assert-can-grant-select-on-schema! ::stub-conn "dbt_models")
+        (is false "expected assert-can-grant-select-on-schema! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "dbt_models" (:schema (ex-data e))))
+          (is (= "stats_admin" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT SELECT ON SCHEMA::[dbt_models] TO [stats_admin] WITH GRANT OPTION"))))))
+  (testing "no-op when principal holds SELECT WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql]]
+                               (when (str/includes? sql "HAS_PERMS_BY_NAME")
+                                 [{:can_grant 1}]))]
+      (is (nil? (sqlserver/assert-can-grant-select-on-schema! ::stub-conn "dbt_models"))))))

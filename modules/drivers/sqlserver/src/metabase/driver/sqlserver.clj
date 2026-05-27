@@ -1192,6 +1192,51 @@
                          username username)]]
       (jdbc/execute! conn-spec [sql]))))
 
+(defn- sqlserver-can-grant-select-on-schema?
+  "Does the current SQL Server principal hold SELECT WITH GRANT OPTION on
+   `schema-name`? SQL Server exposes this via `HAS_PERMS_BY_NAME` with the
+   secondary-securable parameter set to a string permission name; passing
+   `'WITH GRANT OPTION'` as the optional flag returns 1 when the caller can
+   redelegate."
+  [conn-spec schema-name]
+  (-> (jdbc/query conn-spec
+                  [(format (str "SELECT HAS_PERMS_BY_NAME(QUOTENAME('%s'), 'SCHEMA', 'SELECT', "
+                                "'WITH GRANT OPTION') AS can_grant")
+                           schema-name)])
+      first
+      :can_grant
+      (= 1)))
+
+(defn assert-can-grant-select-on-schema!
+  "Throws when the current admin principal cannot grant SELECT on `schema-name`.
+   SQL Server has schema ownership, but the practical check is whether the
+   principal holds SELECT WITH GRANT OPTION on the schema (which an owner
+   implicitly does). We surface a clear remediation instead of a generic
+   `permission denied` mid-batch."
+  [conn-spec schema-name]
+  (when-not (sqlserver-can-grant-select-on-schema? conn-spec schema-name)
+    (let [current-user (-> (jdbc/query conn-spec ["SELECT CURRENT_USER AS u"]) first :u)]
+      (throw (ex-info (format (str "Workspace admin %s cannot grant SELECT on schema [%s]. "
+                                   "SQL Server requires the granting principal to hold SELECT "
+                                   "WITH GRANT OPTION on the schema (or own it). Run as a "
+                                   "member of db_owner / sysadmin or as the schema owner:\n\n"
+                                   "    GRANT SELECT ON SCHEMA::[%s] TO [%s] WITH GRANT OPTION;\n\n"
+                                   "then retry workspace provisioning.")
+                              current-user schema-name
+                              schema-name current-user)
+                      {:status-code 412
+                       :schema      schema-name
+                       :admin-user  current-user})))))
+
+(defmethod driver/check-can-grant-workspace-access! :sqlserver
+  [_driver database schemas]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [schema (set schemas)]
+      (when (str/blank? schema)
+        (throw (ex-info (tru "SQL Server workspace input schema is blank")
+                        {:database-id (:id database) :step :grant})))
+      (assert-can-grant-select-on-schema! conn-spec schema))))
+
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [_driver database workspace schemas]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
