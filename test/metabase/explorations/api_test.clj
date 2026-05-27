@@ -1325,6 +1325,20 @@
       (is (= "Rev by D1" (:name leaf))
           "even when base isn't first in the input, its name wins for the leaf"))))
 
+(deftest auto-groups-prefers-contextual-over-heuristic-test
+  (testing "Sort uses contextual_interestingness_score when present, else interestingness_score"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "High heuristic low contextual"
+                    :interestingness_score 0.95 :contextual_interestingness_score 0.2}
+                   {:id 2 :card_id 10 :dimension_id "d2" :segment_id nil :name "Low heuristic high contextual"
+                    :interestingness_score 0.1 :contextual_interestingness_score 0.85}]
+                  {10 "Revenue"})
+          leaves (->> groups
+                      (filter #(= "auto:metric:10" (:parent_group_id %)))
+                      (mapv :name))]
+      (is (= ["Low heuristic high contextual" "High heuristic low contextual"] leaves)
+          "effective 0.85 (contextual) sorts above 0.2 (contextual), not 0.95 (heuristic ignored)"))))
+
 (deftest auto-groups-sort-order-test
   (testing "Groups are ordered by max interestingness desc, applied independently at each level; nil-score groups sort last"
     (let [groups (explorations.groups/auto-groups

@@ -199,35 +199,13 @@ export function getExplorationQueryGroupStatus(
   return "done";
 }
 
-/**
- * Highest `interestingness_score` across the queries in a group, with `null`
- * scores ignored. Returns `null` when no query has a score yet.
- */
 export function getExplorationQueryGroupInterestingness(
   queries: ExplorationQuery[],
 ): number | null {
   let max: number | null = null;
   for (const q of queries) {
-    const score = q.interestingness_score;
-    if (score != null && (max == null || score > max)) {
-      max = score;
-    }
-  }
-  return max;
-}
-
-/**
- * Highest `contextual_interestingness_score` across the queries in a group —
- * the prompt-relative relevance score the BE computes when the exploration was
- * created with LLM context. `null`/`undefined` scores are ignored; returns
- * `null` when no query carries a contextual score (i.e. no prompt context).
- */
-export function getExplorationQueryGroupContextualInterestingness(
-  queries: ExplorationQuery[],
-): number | null {
-  let max: number | null = null;
-  for (const q of queries) {
-    const score = q.contextual_interestingness_score;
+    const score =
+      q.contextual_interestingness_score ?? q.interestingness_score ?? null;
     if (score != null && (max == null || score > max)) {
       max = score;
     }

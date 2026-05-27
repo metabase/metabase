@@ -40,10 +40,16 @@
   (let [base (some #(when (nil? (:segment_id %)) %) queries)]
     (or (:name base) (:name (first queries)))))
 
+(defn- effective-score
+  "Per-query score for ordering and markers: contextual when present, else heuristic."
+  [query]
+  (or (:contextual_interestingness_score query)
+      (:interestingness_score query)))
+
 (defn- max-score
-  "Max `:interestingness_score` across `queries`, or `nil` if none scored."
+  "Max [[effective-score]] across `queries`, or `nil` if none scored."
   [queries]
-  (let [scores (keep :interestingness_score queries)]
+  (let [scores (keep effective-score queries)]
     (when (seq scores) (apply max scores))))
 
 (defn- sort-key
