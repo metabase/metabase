@@ -59,10 +59,10 @@
    (query-and-viz-link query chart-type nil))
   ([query chart-type title]
    (pseudo-card->link
-    (cond-> {:dataset_query query
-             :displayIsLocked true
-             :display (keyword chart-type)}
-      (seq title) (assoc :name title)))))
+     (cond-> {:dataset_query   query
+              :displayIsLocked true
+              :display         (if (string? chart-type) chart-type (keyword chart-type))}
+       (seq title) (assoc :name title)))))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."

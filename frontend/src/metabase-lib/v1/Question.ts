@@ -264,6 +264,10 @@ class Question {
     sensibleDisplays: string[],
     previousSensibleDisplays: string[] | undefined,
   ): Question {
+    if (this.displayIsLocked() && this.display()?.startsWith("custom:")) {
+      return this;
+    }
+
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());

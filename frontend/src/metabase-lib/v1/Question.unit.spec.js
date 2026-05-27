@@ -476,6 +476,16 @@ describe("Question", () => {
         expect(question.display()).toBe("funnel");
       });
 
+      it("should keep a locked custom display before previous sensible displays exist", () => {
+        const question = base_question
+          .setDisplay("custom:monthly-order-star-rating")
+          .lockDisplay()
+          .maybeResetDisplay(multipleRowsData, ["table"]);
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("custom:monthly-order-star-rating");
+      });
+
       it("should use default display when nonsense display is used and was not locked", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question

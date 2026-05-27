@@ -90,9 +90,13 @@ export function useSettingsWidgets({
   isDashboard?: boolean;
   extra?: SettingsExtra;
 }): Widget[] {
-  const display = series?.[0]?.card?.display;
+  const card = series?.[0]?.card;
+  const display = card?.display;
+  const embeddedPlugin = PLUGIN_CUSTOM_VIZ.getCustomVizPluginFromSettings(
+    card?.visualization_settings,
+  );
   const { loading: customVizLoading } =
-    PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+    PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display, embeddedPlugin);
 
   const widgets = useMemo(
     () =>

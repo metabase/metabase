@@ -7,6 +7,7 @@ import { CustomVizDevPage } from "./components/CustomVizDevPage";
 import { CustomVizPage } from "./components/CustomVizPage";
 import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
+  getCustomVizPluginFromSettings,
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
@@ -22,6 +23,7 @@ export function initializePlugin() {
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,
+      getCustomVizPluginFromSettings,
       getPluginAssetUrl,
       useCustomVizPluginsIcon,
       isCustomVizDisplay,

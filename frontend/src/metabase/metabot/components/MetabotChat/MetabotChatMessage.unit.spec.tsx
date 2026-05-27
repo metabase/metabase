@@ -21,7 +21,9 @@ import { routeDataPointMention } from "./data-point-router";
 
 const mockSetPrompt = jest.fn();
 const mockFocusPromptInput = jest.fn();
+const mockSubmitInput = jest.fn();
 let mockPrompt = "";
+let mockQuestionDisplay = "bar";
 let mockChatContextProvider: (() => Promise<unknown>) | undefined;
 const mockQueryVisualizationRender = jest.fn();
 
@@ -37,6 +39,8 @@ jest.mock("metabase/metabot/hooks", () => ({
     prompt: mockPrompt,
     setPrompt: mockSetPrompt,
     focusPromptInput: mockFocusPromptInput,
+    submitInput: mockSubmitInput,
+    isDoingScience: false,
   }),
 }));
 
@@ -48,6 +52,10 @@ jest.mock("metabase/metabot/state", () => {
   return {
     ...actual,
     getPrompt: () => mockPrompt,
+    submitInput: (payload: unknown) => {
+      mockSubmitInput(payload);
+      return { type: "test/submitInput", payload };
+    },
     setPrompt: ({ prompt }: { prompt: string }) => {
       mockSetPrompt(prompt);
       return { type: "test/setPrompt", payload: { prompt } };
@@ -63,7 +71,11 @@ const mockQuestion = {
   displayName: () => "Revenue by month",
   description: () => null,
   datasetQuery: () => ({ type: "query", database: 1, query: {} }),
-  display: () => "bar",
+  display: () => mockQuestionDisplay,
+  card: () => ({
+    display: mockQuestionDisplay,
+    visualization_settings: {},
+  }),
 };
 
 jest.mock("metabase/common/components/AdHocQuestionLoader", () => ({
@@ -114,10 +126,12 @@ jest.mock("metabase/querying/components/QueryVisualization", () => ({
     clicked,
     clickedViaMention,
     handleVisualizationClick,
+    onVisualizationRenderError,
   }: any) => {
     mockQueryVisualizationRender();
 
     return (
+      <>
       <button
         data-testid="embedded-question"
         data-clicked={clicked ? "true" : "false"}
@@ -158,6 +172,16 @@ jest.mock("metabase/querying/components/QueryVisualization", () => ({
           })
         }
       />
+      <button
+        data-testid="embedded-question-error"
+        onClick={() =>
+          onVisualizationRenderError?.(
+            new Error("[plugin 4] blocked createElement: input"),
+            { phase: "render", display: "custom:broken-viz" },
+          )
+        }
+      />
+    </>
     );
   },
 }));
@@ -183,9 +207,11 @@ const setup = (
 describe("AgentMessage", () => {
   beforeEach(() => {
     mockPrompt = "";
+    mockQuestionDisplay = "bar";
     mockSetPrompt.mockClear();
     mockFocusPromptInput.mockClear();
     mockQueryVisualizationRender.mockClear();
+    mockSubmitInput.mockClear();
     mockChatContextProvider = undefined;
     jest
       .spyOn(crypto, "randomUUID")
@@ -592,6 +618,50 @@ describe("AgentMessage", () => {
       "data-clicked",
       "false",
     );
+  });
+
+  it("submits hidden repair feedback when an embedded custom visualization fails", async () => {
+    mockQuestionDisplay = "custom:broken-viz";
+    const cardHash = serializeCardForUrl({
+      name: "Revenue by month",
+      display: "custom:broken-viz",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {},
+      },
+    } as any);
+
+    setup({
+      id: "msg",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "adhoc_viz",
+        version: 1,
+        value: {
+          query: { type: "query", database: 1, query: {} },
+          link: `/question#${cardHash}`,
+          display: "custom:broken-viz",
+        },
+      },
+    });
+
+    await userEvent.click(screen.getByTestId("embedded-question-error"));
+
+    await waitFor(() => {
+      expect(mockSubmitInput).toHaveBeenCalledTimes(1);
+    });
+    const [payload] = mockSubmitInput.mock.calls[0];
+    expect(payload.message).toContain(
+      "Custom visualization render feedback: failed.",
+    );
+    expect(payload.message).toContain("[plugin 4] blocked createElement: input");
+    expect(payload).toMatchObject({
+      type: "text",
+      hidden: true,
+      suppressNavigateTo: true,
+    });
   });
 
   it("hides the action bar on the last agent message while processing", () => {

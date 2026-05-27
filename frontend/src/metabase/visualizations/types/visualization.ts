@@ -145,6 +145,11 @@ export interface StaticVisualizationProps {
   hasDevWatermark?: boolean;
 }
 
+export type VisualizationRenderErrorContext = {
+  phase?: "load" | "check" | "render";
+  display?: string;
+};
+
 export interface VisualizationProps {
   series: Series;
   dashboard?: Dashboard;
@@ -206,7 +211,11 @@ export interface VisualizationProps {
     yAxisSplit?: number[][];
     warnings?: string[];
   }) => void;
-  onRenderError: (error?: string) => void;
+  onRenderError: (error?: string | Error) => void;
+  onVisualizationRenderError?: (
+    error: unknown,
+    context?: VisualizationRenderErrorContext,
+  ) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onBrush?: ((range: { start: number; end: number }) => void) | null;

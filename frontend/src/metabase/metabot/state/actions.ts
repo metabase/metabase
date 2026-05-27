@@ -281,12 +281,14 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
+    suppressNavigateTo?: boolean;
+    hidden?: boolean;
   }
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, profile, ...data } = payload;
+    const { agentId, message: rawPrompt, profile, hidden, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -329,14 +331,16 @@ export const submitInput = createAsyncThunk<
       const agentMetadata = getAgentRequestMetadata(getState(), agentId);
       const messageId = createMessageId();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
-      dispatch(
-        addUserMessage({
-          id: messageId,
-          ..._.omit(data, ["context", "metabot_id"]),
-          message: prompt,
-          agentId,
-        }),
-      );
+      if (!hidden) {
+        dispatch(
+          addUserMessage({
+            id: messageId,
+            ..._.omit(data, ["context", "metabot_id", "suppressNavigateTo"]),
+            message: prompt,
+            agentId,
+          }),
+        );
+      }
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
@@ -416,6 +420,7 @@ export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & {
     agentId: MetabotAgentId;
+    suppressNavigateTo?: boolean;
   },
   { rejectValue: SendAgentRequestError }
 >(
@@ -424,7 +429,8 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { agentId, ...request } = payload;
+    const { agentId } = payload;
+    const request = _.omit(payload, ["agentId", "suppressNavigateTo"]);
 
     let state = {};
     let response: ProcessedChatResponse | undefined;

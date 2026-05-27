@@ -10,19 +10,34 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import {
+  useMetabotContext,
+  useRegisterMetabotContextProvider,
+} from "metabase/metabot";
 import {
   type MetabotAgentDataPartMessage,
   type MetabotAgentId,
   focusPromptInput as focusPromptInputAction,
+  getIsProcessing,
+  getMetabotRequestId,
   getPrompt,
   rememberDataPointTarget,
   setPrompt as setPromptAction,
+  submitInput as submitInputAction,
 } from "metabase/metabot/state";
+import {
+  getCustomVizRenderFeedbackAttemptKey,
+  getCustomVizRenderFeedbackKey,
+  getCustomVizRenderFeedbackPrompt,
+} from "metabase/metabot/utils/custom-viz-render-feedback";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { useDispatch, useStore } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
-import type { TableSelectionMention } from "metabase/visualizations/types";
+import type {
+  TableSelectionMention,
+  VisualizationRenderErrorContext,
+} from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -62,6 +77,10 @@ import {
   registerDataPointCard,
   setDataPointOnDemandHandler,
 } from "./data-point-router";
+
+const MAX_CUSTOM_VIZ_RENDER_FEEDBACK_ATTEMPTS = 3;
+const submittedCustomVizRenderFeedbackKeys = new Set<string>();
+const customVizRenderFeedbackAttemptCounts = new Map<string, number>();
 
 type AgentDataPartMessageProps = {
   agentId: MetabotAgentId;
@@ -162,7 +181,8 @@ const MemoizedQueryVisualization = memo(
     prev.clickedViaMention === next.clickedViaMention &&
     prev.clickedViaMentionGroup === next.clickedViaMentionGroup &&
     prev.handleVisualizationClick === next.handleVisualizationClick &&
-    prev.onTableSelectionMention === next.onTableSelectionMention,
+    prev.onTableSelectionMention === next.onTableSelectionMention &&
+    prev.onVisualizationRenderError === next.onVisualizationRenderError,
 );
 
 const EmbeddedQuestionCard = ({
@@ -183,6 +203,11 @@ const EmbeddedQuestionCard = ({
 }) => {
   const dispatch = useDispatch();
   const store = useStore();
+  const { getChatContext } = useMetabotContext();
+  const metabotRequestId = useSelector((state) =>
+    getMetabotRequestId(state, agentId),
+  );
+  const isDoingScience = useSelector((state) => getIsProcessing(state, agentId));
   // Read the latest targets from a ref so the click handlers can stay stable
   // (depending on the prop would re-create them and re-render the chart).
   const dataPointTargetsRef = useRef(dataPointTargets);
@@ -202,6 +227,9 @@ const EmbeddedQuestionCard = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const questionRef = useRef<Question | null>(null);
   const resultRef = useRef<Dataset | null>(null);
+  const [pendingRenderFeedback, setPendingRenderFeedback] = useState<
+    string | null
+  >(null);
   const [selectedContext, setSelectedContext] =
     useState<MetabotAdhocQueryInfo | null>(null);
   const [selectedClicked, setSelectedClicked] = useState<ClickObject | null>(
@@ -419,6 +447,81 @@ const EmbeddedQuestionCard = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (!pendingRenderFeedback || isDoingScience) {
+      return;
+    }
+
+    const feedback = pendingRenderFeedback;
+    setPendingRenderFeedback(null);
+    void (async () => {
+      dispatch(
+        submitInputAction({
+          type: "text",
+          message: feedback,
+          context: await getChatContext(),
+          agentId,
+          metabot_id: metabotRequestId,
+          hidden: true,
+          suppressNavigateTo: true,
+        }),
+      );
+    })();
+  }, [
+    agentId,
+    dispatch,
+    getChatContext,
+    isDoingScience,
+    metabotRequestId,
+    pendingRenderFeedback,
+  ]);
+
+  const handleVisualizationRenderError = useCallback(
+    ({
+      question,
+      error,
+      context,
+    }: {
+      question: Question;
+      error: unknown;
+      context?: VisualizationRenderErrorContext;
+    }) => {
+      const display = question.display();
+      if (!PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+        return;
+      }
+
+      const plugin = PLUGIN_CUSTOM_VIZ.getCustomVizPluginFromSettings(
+        question.card().visualization_settings,
+      );
+      const details = {
+        agentId,
+        display,
+        questionName: question.displayName() ?? questionName,
+        path,
+        plugin,
+        error,
+        context,
+      };
+      const feedbackKey = getCustomVizRenderFeedbackKey(details);
+      if (submittedCustomVizRenderFeedbackKeys.has(feedbackKey)) {
+        return;
+      }
+
+      const attemptKey = getCustomVizRenderFeedbackAttemptKey(details);
+      const attemptCount =
+        customVizRenderFeedbackAttemptCounts.get(attemptKey) ?? 0;
+      if (attemptCount >= MAX_CUSTOM_VIZ_RENDER_FEEDBACK_ATTEMPTS) {
+        return;
+      }
+
+      submittedCustomVizRenderFeedbackKeys.add(feedbackKey);
+      customVizRenderFeedbackAttemptCounts.set(attemptKey, attemptCount + 1);
+      setPendingRenderFeedback(getCustomVizRenderFeedbackPrompt(details));
+    },
+    [agentId, path, questionName],
+  );
+
   const handleVisualizationClick = useCallback(
     (clicked: ClickObject | null) => {
       const question = questionRef.current;
@@ -603,6 +706,16 @@ const EmbeddedQuestionCard = ({
                           clickedViaMentionGroup={selectedClickedGroup}
                           handleVisualizationClick={handleVisualizationClick}
                           onTableSelectionMention={handleTableSelectionMention}
+                          onVisualizationRenderError={(
+                            error: unknown,
+                            context?: VisualizationRenderErrorContext,
+                          ) =>
+                            handleVisualizationRenderError({
+                              question,
+                              error,
+                              context,
+                            })
+                          }
                         />
                       )}
                     </Box>

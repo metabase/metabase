@@ -8,7 +8,7 @@ import type {
   HoverObject as CustomVizHoverObject,
   Widgets,
 } from "custom-viz";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -32,6 +32,7 @@ import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
@@ -54,6 +55,52 @@ const failedPluginHashes = new Map<
   CustomVizPluginRuntime["bundle_hash"]
 >();
 
+const failedPluginLoadErrors = new Map<
+  CustomVizPluginId,
+  {
+    hash: CustomVizPluginRuntime["bundle_hash"];
+    error: Error;
+  }
+>();
+
+const EMBEDDED_PLUGIN_SETTING_KEY = "custom_viz.plugin";
+
+export function getCustomVizPluginFromSettings(
+  settings: VisualizationSettings | undefined,
+): CustomVizPluginRuntime | undefined {
+  const value = settings?.[EMBEDDED_PLUGIN_SETTING_KEY];
+  if (!isObject(value)) {
+    return undefined;
+  }
+
+  const id = Number(value.id);
+  const identifier =
+    typeof value.identifier === "string" ? value.identifier : undefined;
+  const displayName =
+    typeof value.display_name === "string" ? value.display_name : undefined;
+  const bundleUrl =
+    typeof value.bundle_url === "string" ? value.bundle_url : undefined;
+
+  if (!Number.isFinite(id) || !identifier || !displayName || !bundleUrl) {
+    return undefined;
+  }
+
+  return {
+    id,
+    identifier,
+    display_name: displayName,
+    icon: typeof value.icon === "string" ? value.icon : null,
+    bundle_url: bundleUrl,
+    bundle_hash:
+      typeof value.bundle_hash === "string" ? value.bundle_hash : null,
+    dev_bundle_url:
+      typeof value.dev_bundle_url === "string"
+        ? value.dev_bundle_url
+        : undefined,
+    manifest: isObject(value.manifest) ? value.manifest : null,
+  };
+}
+
 /**
  * Hook that fetches the list of active custom visualization plugins.
  */
@@ -63,11 +110,22 @@ export function useCustomVizPlugins({
   const { token, uuid } = useEmbeddingEntityContext();
   const isPublicOrStaticEmbed = Boolean(token || uuid);
   const shouldLoad = enabled && !isPublicOrStaticEmbed;
-  const { data: plugins, isLoading } = useListCustomVizPluginsQuery(undefined, {
+  const {
+    data: plugins,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useListCustomVizPluginsQuery(undefined, {
     skip: !shouldLoad,
   });
 
-  return { plugins, isLoading, disabled: isPublicOrStaticEmbed };
+  return {
+    plugins,
+    isFetching,
+    isLoading,
+    refetch,
+    disabled: isPublicOrStaticEmbed,
+  };
 }
 
 /**
@@ -133,13 +191,35 @@ function useCustomVizDevReload(
  * For plugins with `dev_bundle_url` set, polls the bundle endpoint via HEAD
  * every 2s and reloads when the ETag changes.
  */
-export function useAutoLoadCustomVizPlugin(display: string | undefined): {
+export function useAutoLoadCustomVizPlugin(
+  display: string | undefined,
+  embeddedPlugin?: CustomVizPluginRuntime,
+): {
   loading: boolean;
+  error?: Error;
 } {
-  const { plugins, disabled } = useCustomVizPlugins();
+  const { plugins, isFetching, refetch, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
+  const refetchedMissingDisplaysRef = useRef(new Set<string>());
+  const needsCustomViz = isCustomVizDisplay(display);
+  const matchedPlugin = needsCustomViz
+    ? (plugins?.find((p) => getCustomPluginIdentifier(p) === display) ??
+      (embeddedPlugin && getCustomPluginIdentifier(embeddedPlugin) === display
+        ? embeddedPlugin
+        : undefined))
+    : undefined;
+  const pluginsForDevReload = useMemo(() => {
+    if (!embeddedPlugin) {
+      return plugins;
+    }
+
+    return [
+      ...(plugins?.filter((plugin) => plugin.id !== embeddedPlugin.id) ?? []),
+      embeddedPlugin,
+    ];
+  }, [embeddedPlugin, plugins]);
 
   const onInfo = useCallback(
     (message: string) => {
@@ -175,28 +255,37 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   );
 
   useEffect(() => {
-    if (!isCustomVizDisplay(display) || !plugins) {
+    if (!needsCustomViz || !matchedPlugin) {
       return;
     }
 
-    const identifier = display.slice("custom:".length);
-    const plugin = plugins.find((p) => p.identifier === identifier);
-    if (!plugin) {
-      return;
-    }
     trackCustomVizSelected();
-    load(plugin);
-  }, [display, plugins, load]);
+    load(matchedPlugin);
+  }, [needsCustomViz, matchedPlugin, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, onInfo);
+  useEffect(() => {
+    if (
+      disabled ||
+      !needsCustomViz ||
+      !plugins ||
+      matchedPlugin ||
+      !display ||
+      refetchedMissingDisplaysRef.current.has(display)
+    ) {
+      return;
+    }
+
+    refetchedMissingDisplaysRef.current.add(display);
+    void refetch();
+  }, [disabled, display, matchedPlugin, needsCustomViz, plugins, refetch]);
+
+  useCustomVizDevReload(display, pluginsForDevReload, setLoading, onInfo);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
   if (loading) {
     return { loading: true };
   }
-
-  const needsCustomViz = isCustomVizDisplay(display);
 
   /**
    * Short-circuit if custom-viz plugins are disabled (e.g., public or embedded questions/dashboards).
@@ -209,26 +298,26 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   // disabled or removed. Drop the cached registration so questions using this
   // display fall back to the default visualization on subsequent
   // renders, even within the same SPA session.
-  if (
-    needsCustomViz &&
-    plugins &&
-    !plugins.find((p) => `custom:${p.identifier}` === display)
-  ) {
+  if (needsCustomViz && plugins && !matchedPlugin) {
+    if (
+      display &&
+      (!refetchedMissingDisplaysRef.current.has(display) || isFetching)
+    ) {
+      return { loading: true };
+    }
+
     if (visualizations.has(display)) {
       visualizations.delete(display);
       for (const [id, entry] of loadedPlugins) {
         if (entry.identifier === display) {
           loadedPlugins.delete(id);
           failedPluginHashes.delete(id);
+          failedPluginLoadErrors.delete(id);
         }
       }
     }
     return { loading: false };
   }
-
-  const matchedPlugin = needsCustomViz
-    ? plugins?.find((p) => getCustomPluginIdentifier(p) === display)
-    : undefined;
 
   // A plugin is "ready" when we've either loaded its bundle or recorded a
   // failure for the current bundle hash. Failed plugins resolve to
@@ -247,7 +336,13 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     return currentHash === loadedHash || currentHash === failedHash;
   })();
 
-  return { loading: needsCustomViz && !isReady };
+  const failedLoad = matchedPlugin
+    ? failedPluginLoadErrors.get(matchedPlugin.id)
+    : undefined;
+  const currentHash = matchedPlugin?.bundle_hash ?? null;
+  const error = failedLoad?.hash === currentHash ? failedLoad.error : undefined;
+
+  return { loading: needsCustomViz && !isReady, error };
 }
 
 export type LoadCustomVizPluginOptions = {
@@ -362,9 +457,12 @@ export async function loadCustomVizPlugin(
       hash: currentHash,
     });
     failedPluginHashes.delete(plugin.id);
+    failedPluginLoadErrors.delete(plugin.id);
 
     return identifier;
   } catch (error) {
+    const loadError = error instanceof Error ? error : new Error(String(error));
+
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
@@ -372,6 +470,10 @@ export async function loadCustomVizPlugin(
       );
     }
     failedPluginHashes.set(plugin.id, currentHash);
+    failedPluginLoadErrors.set(plugin.id, {
+      hash: currentHash,
+      error: loadError,
+    });
     return null;
   }
 }
@@ -455,6 +557,7 @@ function createCustomVizWrapper(
     settings,
     onVisualizationClick,
     onHoverChange,
+    onRenderError,
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -478,16 +581,32 @@ function createCustomVizWrapper(
       if (!containerRef.current) {
         return;
       }
-      if (!handleRef.current) {
-        handleRef.current = mount(containerRef.current, pluginProps);
-      } else {
-        handleRef.current.update(pluginProps);
+      try {
+        if (!handleRef.current) {
+          handleRef.current = mount(containerRef.current, pluginProps);
+        } else {
+          handleRef.current.update(pluginProps);
+        }
+      } catch (error) {
+        const renderError =
+          error instanceof Error ? error : new Error(String(error));
+        try {
+          handleRef.current?.unmount();
+        } catch {
+          // The original render/update error is more useful to report.
+        }
+        containerRef.current.innerHTML = "";
+        handleRef.current = null;
+        onRenderError(renderError);
       }
     });
 
     useUnmount(() => {
-      handleRef.current?.unmount();
-      handleRef.current = null;
+      try {
+        handleRef.current?.unmount();
+      } finally {
+        handleRef.current = null;
+      }
     });
 
     return (

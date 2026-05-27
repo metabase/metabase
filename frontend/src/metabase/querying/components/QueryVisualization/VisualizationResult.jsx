@@ -201,6 +201,7 @@ class VisualizationResultInner extends Component {
               this.props.onUpdateVisualizationSettings
             }
             onVisualizationRendered={this.props.onVisualizationRendered}
+            onVisualizationRenderError={this.props.onVisualizationRenderError}
             {...vizSpecificProps}
           />
         </>

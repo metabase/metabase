@@ -51,6 +51,7 @@
     (is (contains? tools "search"))
     (is (contains? tools "edit_chart"))
     (is (contains? tools "create_chart"))
+    (is (contains? tools "create_custom_visualization"))
     (is (contains? tools "create_dashboard_subscription"))))
 
 (deftest ^:parallel get-tools-for-transforms-codegen-profile-test
@@ -74,7 +75,8 @@
     (is (contains? tools "search"))
     (is (contains? tools "construct_notebook_query"))
     (is (contains? tools "execute_notebook_query_silently"))
-    (is (contains? tools "create_chart"))))
+    (is (contains? tools "create_chart"))
+    (is (contains? tools "create_custom_visualization"))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]
@@ -202,6 +204,7 @@
     (is (contains? @#'agent-tools/state-dependent-tools "document_construct_model_chart"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
+    (is (contains? @#'agent-tools/state-dependent-tools "create_custom_visualization"))
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))))
 
 (deftest wrap-tools-with-state-test
