@@ -175,6 +175,7 @@ export const createMockSettings = (
   "airgap-enabled": false,
   "custom-viz-enabled": false,
   "custom-viz-plugin-dev-mode-enabled": false,
+  "data-app-demo-dev-bundle-url": null,
   "allowed-iframe-hosts": "*",
   "csp-img-allowed-hosts": "",
   "csp-img-enabled": false,
