@@ -220,7 +220,7 @@
                                 semantic.settings/ee-embedding-service-api-key (constantly "key")]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Embedding service and ai service base URLs and not configured"
+           #"Embedding service and ai service base URLs are not configured"
            (embedding/get-embedding {:provider "ai-service"
                                      :model-name "test-model"
                                      :vector-dimensions 4}
