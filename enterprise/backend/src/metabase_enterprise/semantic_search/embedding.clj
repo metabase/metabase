@@ -270,7 +270,8 @@
 (defn- trim-trailing-slashes
   [s]
   (cond-> s
-    (string? s) (str/replace #"/+$" "")))
+    (string? s) (-> (str/trim)
+                    (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
   "Returns [endpoint api-key]. When api key is not set or when service url is not set but

@@ -232,7 +232,6 @@
                                        :model-name "test-model"
                                        :vector-dimensions 4}
                                       "test text")))))
-
     (testing "ai-service falls back to ai-service-base-url when ee-embedding-service-base-url is not set"
       (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
                                   llm.settings/ai-service-base-url                    (constantly "http://mock-ai-service")
@@ -253,9 +252,7 @@
               (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
               (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
               (is (nil? (get-in @captured [:headers "Authorization"]))))
-
             (reset! captured nil)
-
             (testing "get-embeddings-batch uses ai-service URL with instance-token auth"
               (is (= [mock-embedding]
                      (mapv vec (embedding/get-embeddings-batch {:provider          "ai-service"
@@ -266,7 +263,6 @@
               (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
               (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
               (is (nil? (get-in @captured [:headers "Authorization"]))))))))
-
     (testing "ee-embedding-service-base-url wins when both are configured"
       (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
                                          ee-embedding-service-api-key  "embedding-api-key"]
