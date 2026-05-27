@@ -248,7 +248,7 @@
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
               (deps.test/synchronously-run-backfill!)
-              (let [original-swap! replacement.source-swap/swap-source!]
+              (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
                 (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!
                                             (fn [entity object old-source new-source]
                                               (if (= (second entity) child-1-id)

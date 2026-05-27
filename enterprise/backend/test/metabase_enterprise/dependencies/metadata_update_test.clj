@@ -391,7 +391,7 @@
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
               db-deps-checked       (atom [])
-              original-deps-check   @#'deps.events/synced-db->direct-dependents-of-changed-tables
+              original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
