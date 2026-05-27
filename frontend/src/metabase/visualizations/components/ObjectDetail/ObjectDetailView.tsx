@@ -13,6 +13,7 @@ import { runQuestionQuery } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
+import { slugify } from "metabase/visualizations/lib/formatting/url";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -125,9 +126,9 @@ export function ObjectDetailView({
   );
 
   const pkColumnName =
-    pkIndex != null
-      ? passedData?.cols[pkIndex]?.name?.toLowerCase()
-      : undefined;
+    pkIndex != null ? passedData?.cols[pkIndex]?.name : undefined;
+  const pkParameterId =
+    pkColumnName != null ? slugify(pkColumnName) : undefined;
 
   const zoomedRow = useMemo(() => {
     const zoomedRowIDNumber =
@@ -292,14 +293,14 @@ export function ObjectDetailView({
     return ActionsApi.prefetchValues({
       id: actionId,
       parameters: JSON.stringify({
-        [pkColumnName ?? "id"]: String(zoomedRowID),
+        [pkParameterId ?? "id"]: String(zoomedRowID),
       }),
     });
-  }, [actionId, pkColumnName, zoomedRowID]);
+  }, [actionId, pkParameterId, zoomedRowID]);
 
   const initialValues = useMemo(
-    () => ({ [pkColumnName ?? "id"]: zoomedRowID ?? null }),
-    [pkColumnName, zoomedRowID],
+    () => ({ [pkParameterId ?? "id"]: zoomedRowID ?? null }),
+    [pkParameterId, zoomedRowID],
   );
 
   const handleActionSuccess = useCallback(() => {
@@ -387,7 +388,7 @@ export function ObjectDetailView({
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={zoomedRowID}
-          pkColumnName={pkColumnName}
+          pkParameterId={pkParameterId}
           onClose={handleDeleteModalClose}
           onSuccess={handleDeleteSuccess}
         />

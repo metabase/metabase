@@ -13,7 +13,7 @@ import type { ObjectId } from "./types";
 interface Props {
   actionId: WritebackActionId | undefined;
   objectId: ObjectId | undefined;
-  pkColumnName?: string;
+  pkParameterId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -21,7 +21,7 @@ interface Props {
 export const DeleteObjectModal: FunctionComponent<Props> = ({
   actionId,
   objectId,
-  pkColumnName,
+  pkParameterId,
   onClose,
   onSuccess,
 }) => {
@@ -32,8 +32,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       await ActionsApi.execute({
         id: actionId,
         parameters: {
-          [pkColumnName ?? "id"]:
-            typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
+          [pkParameterId ?? "id"]: objectId,
         },
       });
 

@@ -37,6 +37,7 @@ import {
 } from "metabase/ui";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
+import { slugify } from "metabase/visualizations/lib/formatting/url";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -107,10 +108,10 @@ export function DetailViewSidesheet({
   const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
-  const pkColumnName = useMemo(
-    () => columns.find(isPK)?.name?.toLowerCase(),
-    [columns],
-  );
+  const pkParameterId = useMemo(() => {
+    const pkColumnName = columns.find(isPK)?.name;
+    return pkColumnName != null ? slugify(pkColumnName) : undefined;
+  }, [columns]);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
@@ -118,8 +119,8 @@ export function DetailViewSidesheet({
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
   const initialValues = useMemo(
-    () => ({ [pkColumnName ?? "id"]: rowId ?? null }),
-    [pkColumnName, rowId],
+    () => ({ [pkParameterId ?? "id"]: rowId ?? null }),
+    [pkParameterId, rowId],
   );
 
   const { data: actions } = useListActionsQuery(
@@ -161,9 +162,9 @@ export function DetailViewSidesheet({
 
     return ActionsApi.prefetchValues({
       id: actionId,
-      parameters: JSON.stringify({ [pkColumnName ?? "id"]: String(rowId) }),
+      parameters: JSON.stringify({ [pkParameterId ?? "id"]: String(rowId) }),
     });
-  }, [actionId, pkColumnName, rowId]);
+  }, [actionId, pkParameterId, rowId]);
 
   const handleActionSuccess = useCallback(() => {
     onActionSuccess?.();
@@ -397,7 +398,7 @@ export function DetailViewSidesheet({
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}
-          pkColumnName={pkColumnName}
+          pkParameterId={pkParameterId}
           onClose={handleDeleteModalClose}
           onSuccess={handleDeleteSuccess}
         />

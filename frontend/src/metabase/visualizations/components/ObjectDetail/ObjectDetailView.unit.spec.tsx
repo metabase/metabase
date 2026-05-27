@@ -236,13 +236,23 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
   database_id: databaseWithActionsDisabled.id,
 }));
 
+const TEXT_PK_VALUE = "SKU-001";
+
 const testDatasetWithCustomPk: DatasetData = createMockDatasetData({
   cols: testDataset.cols.map((col) =>
     col.semantic_type === "type/PK"
-      ? { ...col, name: "contract_number", display_name: "Contract Number" }
+      ? {
+          ...col,
+          name: "SKU Code",
+          display_name: "SKU Code",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+        }
       : col,
   ),
-  rows: testDataset.rows,
+  rows: testDataset.rows.map((row, index) =>
+    index === 0 ? [TEXT_PK_VALUE, ...row.slice(1)] : row,
+  ),
 });
 
 function setupPrefetch() {
@@ -527,7 +537,7 @@ describe("ObjectDetailView", () => {
     );
   });
 
-  it("should use actual PK column name when prefetching update action values", async () => {
+  it("should use the slugified PK parameter id when prefetching update action values", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     const prefetchSpy = jest
@@ -537,7 +547,7 @@ describe("ObjectDetailView", () => {
       question: mockDataset,
       data: testDatasetWithCustomPk,
       zoomedRow: testDatasetWithCustomPk.rows[0],
-      zoomedRowID: 0,
+      zoomedRowID: TEXT_PK_VALUE,
     });
 
     const action = await findActionInActionMenu(implicitUpdateAction);
@@ -546,21 +556,15 @@ describe("ObjectDetailView", () => {
     await waitFor(() => {
       expect(prefetchSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining("contract_number"),
+          parameters: JSON.stringify({ sku_code: TEXT_PK_VALUE }),
         }),
       );
     });
 
-    expect(prefetchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        parameters: expect.not.stringContaining('"id"'),
-      }),
-    );
-
     prefetchSpy.mockRestore();
   });
 
-  it("should pass PK column name to delete modal for non-id PK", async () => {
+  it("should execute delete action with unchanged text PK value", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     const executeSpy = jest.spyOn(ActionsApi, "execute").mockResolvedValue({});
@@ -568,7 +572,7 @@ describe("ObjectDetailView", () => {
       question: mockDataset,
       data: testDatasetWithCustomPk,
       zoomedRow: testDatasetWithCustomPk.rows[0],
-      zoomedRowID: 0,
+      zoomedRowID: TEXT_PK_VALUE,
     });
 
     const action = await findActionInActionMenu(implicitDeleteAction);
@@ -584,16 +588,10 @@ describe("ObjectDetailView", () => {
     await waitFor(() => {
       expect(executeSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.objectContaining({ contract_number: 0 }),
+          parameters: { sku_code: TEXT_PK_VALUE },
         }),
       );
     });
-
-    expect(executeSpy).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        parameters: expect.objectContaining({ id: expect.anything() }),
-      }),
-    );
 
     executeSpy.mockRestore();
   });
