@@ -10,6 +10,8 @@ import type { MetricCachingModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 import type { CacheStrategy, CacheableModel } from "metabase-types/api";
 
+import S from "./MetricCachingModal.module.css";
+
 const QUESTION_MODELS: CacheableModel[] = ["question"];
 
 export function MetricCachingModal({
@@ -59,19 +61,7 @@ export function MetricCachingModal({
       title={t`Caching`}
       size="lg"
       padding="xl"
-      styles={{
-        content: {
-          height: "min(38rem, 85vh)",
-          display: "flex",
-          flexDirection: "column",
-        },
-        body: {
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          minHeight: 0,
-        },
-      }}
+      classNames={{ content: S.content, body: S.body }}
     >
       <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
         <StrategyForm

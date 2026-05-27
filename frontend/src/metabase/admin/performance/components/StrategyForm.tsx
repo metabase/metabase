@@ -1,13 +1,7 @@
 import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useId as useReactId,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -55,8 +49,8 @@ import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
 import { getDefaultValueForField, getLabelString } from "../utils";
 
-import Styles from "./PerformanceApp.module.css";
-import StrategyFormStyles from "./StrategyForm.module.css";
+import PerformanceAppStyles from "./PerformanceApp.module.css";
+import S from "./StrategyForm.module.css";
 
 interface ButtonLabels {
   save: string;
@@ -240,8 +234,8 @@ const StrategyFormBody = ({
         )}
         <Box
           className={cx({
-            [Styles.FormBox]: layout !== "modal",
-            [Styles.FormBoxSidebar]: layout === "sidebar",
+            [PerformanceAppStyles.FormBox]: layout !== "modal",
+            [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
           })}
           style={
             layout === "modal"
@@ -409,9 +403,7 @@ const FormButtons = ({
           />
         )}
         <Group gap="md" wrap="nowrap">
-          <Button type="button" onClick={onDiscard}>
-            {buttonLabels.discard}
-          </Button>
+          <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
           <FormSubmitButton
             h="2.5rem"
             label={buttonLabels.save}
@@ -506,9 +498,7 @@ const SaveAndDiscardButtons = ({
     <>
       {layout === "sidebar" ? (
         // Sidebar Cancel closes the sidesheet; consumer wraps the dirty-confirm.
-        <Button type="button" onClick={onDiscard}>
-          {buttonLabels.discard}
-        </Button>
+        <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
       ) : (
         <Button disabled={!dirty || isFormPending} type="reset">
           {buttonLabels.discard}
@@ -556,42 +546,19 @@ const StrategyOption = ({
   title?: string;
   description?: string;
   autoFocus?: boolean;
-}) => {
-  const reactId = useReactId();
-  const inputId = `strategy-radio-${reactId}-${value}`;
-  const titleId = `${inputId}-title`;
-  // Render description as a second `<label htmlFor>` (valid HTML, an input
-  // can have multiple labels) so clicks on it fire the radio.
-  // `aria-labelledby` pins the accessible name to the title alone.
-  return (
-    <Stack gap="xs">
-      <Radio
-        id={inputId}
-        value={value}
-        className={StrategyFormStyles.strategyOption}
-        label={
-          <Text component="strong" id={titleId} fw="bold">
-            {title}
-          </Text>
-        }
-        autoFocus={autoFocus}
-        role="radio"
-        aria-labelledby={titleId}
-      />
-      {description && (
-        <Text
-          component="label"
-          htmlFor={inputId}
-          size="sm"
-          c="text-secondary"
-          className={StrategyFormStyles.descriptionLabel}
-        >
-          {description}
-        </Text>
-      )}
-    </Stack>
-  );
-};
+}) => (
+  <Radio
+    value={value}
+    className={S.strategyOption}
+    label={
+      <Text component="strong" fw="bold">
+        {title}
+      </Text>
+    }
+    description={description}
+    autoFocus={autoFocus}
+  />
+);
 
 const StrategySelector = ({
   targetId,
