@@ -111,7 +111,7 @@
         "immer": "^10.1.1",
         "inflection": "^1.7.1",
         "inquirer-toggle": "^1.0.1",
-        "js-cookie": "^2.1.2",
+        "js-cookie": "^3.0.7",
         "js-yaml": "^4.1.1",
         "json5": "^2.2.2",
         "jspdf": "^4.2.1",
@@ -434,6 +434,7 @@
     "dompurify": "^3.4.0",
     "elliptic": "^6.6.1",
     "follow-redirects": "^1.16.0",
+    "js-cookie": "^3.0.7",
     "lodash": "^4.18.1",
     "lodash-es": "^4.18.1",
     "markdown-it": "^14.1.1",
@@ -3682,7 +3683,7 @@
 
     "jpeg-js": ["jpeg-js@0.4.4", "", {}, "sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg=="],
 
-    "js-cookie": ["js-cookie@2.2.1", "", {}, "sha512-HvdH2LzI/EAZcUwA8+0nKNtWHqS+ZmijLA30RwZA0bo7ToCckjK5MkGhjED9KoRcXO6BaGI3I9UIzSA1FKFPOQ=="],
+    "js-cookie": ["js-cookie@3.0.7", "", {}, "sha512-z/wZZgDrkNV1eA0ULjM/F9/50Ya8fbzgKneSpoPsXSGd0KnpdtHfOZWK+GcwLk+EZbS4F9RBhU+K2RgzuDaItw=="],
 
     "js-levenshtein": ["js-levenshtein@1.1.6", "", {}, "sha512-X2BB11YZtrRqY4EnQcLX5Rh373zbK4alC1FW7D7MBhL2gtcC17cTnr6DmfHZeS0s2rTHjUTMMHfG7gO8SSdw+g=="],
 
