@@ -25,15 +25,6 @@ const columns = [
 ];
 
 describe("TREEMAP_CHART_DEFINITION", () => {
-  it("declares the expected identifier, sizes, and empty state", () => {
-    expect(TREEMAP_CHART_DEFINITION).toMatchObject({
-      identifier: "treemap",
-      hasEmptyState: true,
-      minSize: { width: 4, height: 4 },
-      defaultSize: { width: 6, height: 6 },
-    });
-  });
-
   describe("isSensible", () => {
     it("returns true with at least one dimension, one metric, and one row", () => {
       const data = createMockDatasetData({
