@@ -25,6 +25,39 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
+    getDefault: ([{ data }]) => {
+      const firstDimension = data.cols.find(
+        (col) => isDimension(col) && !isMetric(col),
+      );
+      return firstDimension?.name;
+    },
+  }),
+  ...dimensionSetting("treemap.sub_grouping", {
+    getSection: () => t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Sub-grouping`,
+    showColumnSetting: true,
+    dashboard: false,
+    autoOpenWhenUnset: false,
+    getDefault: ([{ data }], vizSettings) => {
+      const grouping = vizSettings["treemap.grouping"];
+      const value = vizSettings["treemap.value"];
+      const secondDimension = data.cols.find(
+        (col) =>
+          isDimension(col) && col.name !== grouping && col.name !== value,
+      );
+      return secondDimension?.name;
+    },
+    getProps: ([{ data }], vizSettings, onChange) => ({
+      options: data.cols
+        .filter(isDimension)
+        .map((col) => ({ name: col.display_name, value: col.name })),
+      columns: data.cols,
+      onRemove: vizSettings["treemap.sub_grouping"]
+        ? () => onChange(null as never)
+        : null,
+    }),
+    readDependencies: ["treemap.grouping", "treemap.value"],
   }),
   ...metricSetting("treemap.value", {
     getSection: () => t`Data`,
@@ -34,6 +67,14 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
+    getDefault: ([{ data }], vizSettings) => {
+      const grouping = vizSettings["treemap.grouping"];
+      const firstMetric = data.cols.find(
+        (col) => isMetric(col) && col.name !== grouping,
+      );
+      return firstMetric?.name;
+    },
+    readDependencies: ["treemap.grouping"],
   }),
 };
 

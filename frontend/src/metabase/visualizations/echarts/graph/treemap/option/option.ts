@@ -15,12 +15,24 @@ type TreemapChartSeriesOption = TreemapSeriesOption & {
   data: TreemapSeriesNode[];
 };
 
+const TWO_LEVEL_LEVELS: TreemapSeriesOption["levels"] = [
+  {
+    itemStyle: { borderWidth: 0, gapWidth: 2 },
+  },
+  {
+    itemStyle: { borderWidth: 1, gapWidth: 1 },
+  },
+];
+
 export function getTreemapChartOption(tree: TreemapTree): {
   series: TreemapChartSeriesOption;
 } {
+  const hasChildren = tree.some((node) => node.children != null);
+
   const series: TreemapChartSeriesOption = {
     type: "treemap",
     data: toSeriesData(tree),
+    ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
   };
 
   return { series };

@@ -1,3 +1,4 @@
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -9,7 +10,7 @@ export function getTreemapChartColumns<TColumn extends DatasetColumn>(
   columns: TColumn[],
   settings: Pick<
     ComputedVisualizationSettings,
-    "treemap.grouping" | "treemap.value"
+    "treemap.grouping" | "treemap.sub_grouping" | "treemap.value"
   >,
 ): TreemapChartColumns | null {
   if (
@@ -29,6 +30,14 @@ export function getTreemapChartColumns<TColumn extends DatasetColumn>(
     return null;
   }
 
+  const subGroupingSetting = settings["treemap.sub_grouping"];
+  if (subGroupingSetting != null) {
+    const subGrouping = getColumnDescriptors([subGroupingSetting], columns)[0];
+    if (subGrouping?.column) {
+      return { grouping, subGrouping, value };
+    }
+  }
+
   return { grouping, value };
 }
 
@@ -41,27 +50,76 @@ export function getTreemapData(
       data: { rows },
     },
   ] = rawSeries;
-  const { grouping, value } = treemapColumns;
+  const { grouping, subGrouping, value } = treemapColumns;
 
-  const nodeByKey = new Map<RowValue, TreemapNode>();
+  const rootByKey = new Map<RowValue, TreemapNode>();
+  const leafMapByRoot = new Map<TreemapNode, Map<RowValue, TreemapNode>>();
 
   rows.forEach((row, rowIndex) => {
     const groupingValue = row[grouping.index];
     const metricValue = row[value.index];
 
-    const existing = nodeByKey.get(groupingValue);
-    if (existing) {
-      existing.value = sumMetric(existing.value, metricValue) ?? existing.value;
-      existing.rowIndices.push(rowIndex);
-    } else {
-      nodeByKey.set(groupingValue, {
-        rawName: groupingValue,
-        displayName: String(groupingValue ?? ""),
-        value: sumMetric(0, metricValue) ?? 0,
-        rowIndices: [rowIndex],
-      });
+    const { node: rootNode } = getOrCreateNode(
+      rootByKey,
+      groupingValue,
+      String(groupingValue ?? ""),
+      subGrouping != null,
+    );
+    addRowMetric(rootNode, metricValue, rowIndex);
+
+    if (subGrouping == null) {
+      return;
+    }
+
+    const subGroupingValue = row[subGrouping.index];
+    let leafMap = leafMapByRoot.get(rootNode);
+    if (leafMap == null) {
+      leafMap = new Map();
+      leafMapByRoot.set(rootNode, leafMap);
+    }
+    const { node: leaf, wasCreated } = getOrCreateNode(
+      leafMap,
+      subGroupingValue,
+      subGroupingValue == null
+        ? NULL_DISPLAY_VALUE
+        : String(subGroupingValue),
+      false,
+    );
+    addRowMetric(leaf, metricValue, rowIndex);
+    if (wasCreated) {
+      rootNode.children?.push(leaf);
     }
   });
 
-  return Array.from(nodeByKey.values());
+  return Array.from(rootByKey.values());
+}
+
+function getOrCreateNode(
+  map: Map<RowValue, TreemapNode>,
+  rawName: RowValue,
+  displayName: string,
+  withChildren: boolean,
+): { node: TreemapNode; wasCreated: boolean } {
+  const existing = map.get(rawName);
+  if (existing != null) {
+    return { node: existing, wasCreated: false };
+  }
+  const node: TreemapNode = {
+    rawName,
+    displayName,
+    value: 0,
+    rowIndices: [],
+    ...(withChildren ? { children: [] } : {}),
+  };
+  map.set(rawName, node);
+  return { node, wasCreated: true };
+}
+
+function addRowMetric(
+  node: TreemapNode,
+  metricValue: RowValue,
+  rowIndex: number,
+): void {
+  node.value = sumMetric(node.value, metricValue) ?? node.value;
+  node.rowIndices.push(rowIndex);
 }
