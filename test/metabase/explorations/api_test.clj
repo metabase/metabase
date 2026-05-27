@@ -1,6 +1,7 @@
 (ns metabase.explorations.api-test
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.config.core :as config]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
@@ -84,6 +85,15 @@
         (t2/update! :model/ExplorationQuery (:id q)
                     {:dataset_query dq})))))
 
+(defn- vectorize-clauses
+  "`mt/user-http-request` decodes JSON arrays as lists, but MBQL normalization (and
+  the stricter query schema) only coerces vector-form clauses — a list-form order-by
+  collapses to nil. Recursively turn seqs into vectors so callers can `lib/query` the
+  response's `:dataset_query`, mirroring how a real FE request body decodes (arrays →
+  vectors)."
+  [x]
+  (walk/postwalk (fn [v] (if (seq? v) (vec v) v)) x))
+
 (defn- create-exploration!
   "POST a new exploration as `user`, then synchronously run the query planner for
   each created thread (production does this in an async worker that doesn't run in
@@ -96,7 +106,7 @@
       (query-plan/generate-query-plan! (:id thread)))
     (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
       (finalize-queries! (mapcat :queries (:threads hydrated)))
-      (mt/user-http-request user :get 200 (str "exploration/" (:id resp))))))
+      (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
