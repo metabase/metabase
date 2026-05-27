@@ -113,8 +113,10 @@
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; PoC for data-app bundle hosting. Superuser-only inside the handler; no
-   ;; premium-feature gate yet (no production feature flag exists).
-   "/data-app-demo"                metabase-enterprise.data-app-demo.api/routes
+   ;; premium-feature gate yet (no production feature flag exists). The FE
+   ;; route lives at `/data-app/:name`; we can't use `/app/...` because
+   ;; the server reserves that prefix for static asset serving.
+   "/data-app"                     metabase-enterprise.data-app-demo.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/data-complexity-score"        metabase-enterprise.data-complexity-score.api/routes
