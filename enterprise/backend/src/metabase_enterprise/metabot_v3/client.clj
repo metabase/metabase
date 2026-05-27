@@ -186,8 +186,9 @@
   "`pr-str` a body for error surfacing without first allocating an unbounded string.
   Walks the body and slices every string leaf to `limit` before printing — so a parsed
   JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
-  only for the caller to truncate it back down. Collections also render under
-  `*print-length*`/`*print-level*` to bound element count and nesting depth."
+  only for the caller to truncate it back down. `*print-length*`/`*print-level*` bound
+  `pr-str`'s output, not the `postwalk`: the walk's breadth and depth are bounded upstream
+  by the slurp cap ([[max-body-slurp-chars]]) and the JSON parser's own nesting limit."
   [body limit]
   (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
     (binding [*print-length* 100
@@ -224,8 +225,8 @@
         ;; the full body, so we don't warn again here.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        ;; body is a collection here, so bounded-pr-str's limit arg is a no-op
-                        ;; (it only slices string bodies); truncate-to-preview-limit caps the result.
+                        ;; bounded-pr-str slices each nested string leaf to max-body-preview-chars;
+                        ;; truncate-to-preview-limit then caps the assembled multi-element result.
                         (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
 
