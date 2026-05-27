@@ -237,7 +237,7 @@ export async function setMilestoneForCommits({
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
-  const openMilestones = await getMilestones({ github, owner, repo });
+  const openMilestones = await getMilestones({ github, owner, repo, state: 'open' });
   const nextMilestone = getNextMilestone({ openMilestones, majorVersion });
 
   if (!nextMilestone) {
