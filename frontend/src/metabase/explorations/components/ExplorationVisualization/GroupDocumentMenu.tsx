@@ -7,7 +7,8 @@ import {
   useCreateExplorationDocumentMutation,
 } from "metabase/api/exploration";
 import { useToast } from "metabase/common/hooks";
-import { ActionIcon, Anchor, Icon, Menu, Text } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Anchor, Box, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DocumentId, ExplorationThread } from "metabase-types/api";
 
@@ -136,18 +137,20 @@ export function GroupDocumentMenu({
         {selectedChart == null ? (
           <>
             <Menu.Label>{t`Pick a chart`}</Menu.Label>
-            {charts.map((chart, index) => (
-              <Menu.Item
-                // Multiple charts on the page may share a label fallback
-                // (e.g. all default to "Chart"); use the joined queryIds
-                // as the stable key.
-                key={chart.queryIds.join(",") || index}
-                leftSection={<Icon name="line" c="icon-primary" />}
-                onClick={() => setSelectedChart(chart)}
-              >
-                {chart.label}
-              </Menu.Item>
-            ))}
+            <Box className={CS.overflowYAuto} mah="50vh">
+              {charts.map((chart, index) => (
+                <Menu.Item
+                  // Multiple charts on the page may share a label fallback
+                  // (e.g. all default to "Chart"); use the joined queryIds
+                  // as the stable key.
+                  key={chart.queryIds.join(",") || index}
+                  leftSection={<Icon name="line" c="icon-primary" />}
+                  onClick={() => setSelectedChart(chart)}
+                >
+                  {chart.label}
+                </Menu.Item>
+              ))}
+            </Box>
           </>
         ) : (
           <>
