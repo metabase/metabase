@@ -39,17 +39,18 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
-  getExplorationSidebarTree,
 } from "./utils";
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
+  tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
 }
 
 export function ExplorationSidebar({
   exploration,
+  tree,
   selectedEntityId,
   setSelectedEntityId,
 }: ExplorationSidebarProps) {
@@ -71,11 +72,6 @@ export function ExplorationSidebar({
       }
     },
     [updateExploration, sendToast, exploration.id],
-  );
-
-  const tree = useMemo(
-    () => getExplorationSidebarTree(exploration),
-    [exploration],
   );
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);

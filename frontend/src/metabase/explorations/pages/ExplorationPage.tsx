@@ -32,6 +32,10 @@ import {
 } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import {
+  getExplorationSidebarTree,
+  pickInitialSidebarEntity,
+} from "../components/ExplorationSidebar/utils";
+import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
@@ -79,21 +83,6 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
       thread.queries?.some((q) => !isSettledExplorationQueryStatus(q.status)) ||
       (thread.started_at != null && thread.completed_at == null),
   );
-}
-
-function pickInitialSidebarEntity(
-  threads: ExplorationThread[] | undefined,
-): SelectedEntityId | null {
-  if (!threads) {
-    return null;
-  }
-  const firstGroupWithQueries = threads[0]?.groups?.find(
-    (g) => g.query_ids.length > 0,
-  );
-  if (firstGroupWithQueries) {
-    return { type: "group", id: firstGroupWithQueries.id };
-  }
-  return null;
 }
 
 interface SelectedDocumentId {
@@ -160,6 +149,13 @@ export function ExplorationPage({
     return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
   }, [allTimelines]);
 
+  const tree = useMemo(() => {
+    if (!exploration) {
+      return [];
+    }
+    return getExplorationSidebarTree(exploration);
+  }, [exploration]);
+
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
   // the first query so the sidebar highlight, the scroll anchor, and
@@ -194,8 +190,8 @@ export function ExplorationPage({
       }
       return { type: params.entityType, id: Number(params.entityId) };
     }
-    return pickInitialSidebarEntity(exploration?.threads);
-  }, [params.entityType, params.entityId, exploration]);
+    return pickInitialSidebarEntity(tree);
+  }, [params.entityType, params.entityId, tree]);
 
   // AI Summary generates its document asynchronously: the FE shows a
   // placeholder "Analysis underway…" Document while the worker runs, and
@@ -403,6 +399,7 @@ export function ExplorationPage({
     >
       <ExplorationSidebar
         exploration={exploration}
+        tree={tree}
         selectedEntityId={selectedEntityId}
         setSelectedEntityId={setSelectedEntityId}
       />

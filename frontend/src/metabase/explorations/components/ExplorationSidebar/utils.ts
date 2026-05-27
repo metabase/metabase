@@ -16,6 +16,8 @@ import {
   getExplorationQueryGroupStatus,
 } from "metabase-types/api";
 
+import type { SelectedEntityId } from "../../pages/ExplorationPage";
+
 export interface ExplorationTreeHeading {
   type: "heading";
 }
@@ -28,6 +30,12 @@ export interface ExplorationTreeQueryGroup {
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
   parent_id: ExplorationQueryGroupId | null;
+}
+
+function isExplorationTreeQueryGroup(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): node is ITreeNodeItem<ExplorationTreeQueryGroup> {
+  return node.data?.type === "group";
 }
 
 export interface ExplorationTreeDocument {
@@ -119,6 +127,7 @@ function getExplorationQueryTree(
         .filter((q) => q != null);
       if (groupQueries.length > 0) {
         const dimensionName = groupQueries[0].dimension_name;
+        const status = getExplorationQueryGroupStatus(groupQueries);
         heading.children.push({
           id: group.id,
           name: c("${0} indicates the chart's dimension")
@@ -129,9 +138,11 @@ function getExplorationQueryTree(
             group_id: group.id,
             query_ids: group.query_ids,
             queries: groupQueries,
-            status: getExplorationQueryGroupStatus(groupQueries),
+            status,
             interestingness_score:
-              getExplorationQueryGroupInterestingness(groupQueries),
+              status === "done"
+                ? getExplorationQueryGroupInterestingness(groupQueries)
+                : null,
             parent_id: group.parent_group_id,
           },
         });
@@ -139,7 +150,63 @@ function getExplorationQueryTree(
     }
   }
 
-  return headings.filter((heading) => (heading.children ?? []).length > 0);
+  return headings
+    .filter((heading) => (heading.children ?? []).length > 0)
+    .map((heading) => ({
+      ...heading,
+      children: heading.children?.toSorted(compareExplorationTreeQueryGroups),
+    }))
+    .toSorted(compareExplorationTreeHeadings);
+}
+
+function compareExplorationTreeQueryGroups(
+  a: ITreeNodeItem<ExplorationTreeNode>,
+  b: ITreeNodeItem<ExplorationTreeNode>,
+) {
+  if (
+    !a.data ||
+    !b.data ||
+    !isExplorationTreeQueryGroup(a) ||
+    !isExplorationTreeQueryGroup(b)
+  ) {
+    return 0;
+  }
+  const getScore = (group: ExplorationTreeQueryGroup) => {
+    if (group.status === "error") {
+      return -2;
+    }
+    if (group.status === "running") {
+      return -1;
+    }
+    return group.interestingness_score ?? 0;
+  };
+  const diff = getScore(b.data) - getScore(a.data);
+  if (diff === 0) {
+    // sort by id as a fallback to keep sort stable
+    return String(a.id).localeCompare(String(b.id));
+  }
+  return diff;
+}
+
+function compareExplorationTreeHeadings(
+  a: ITreeNodeItem<ExplorationTreeNode>,
+  b: ITreeNodeItem<ExplorationTreeNode>,
+) {
+  const getScore = (heading: ITreeNodeItem<ExplorationTreeNode>) => {
+    let max = 0;
+    for (const child of heading.children ?? []) {
+      if (isExplorationTreeQueryGroup(child)) {
+        max = Math.max(max, child.data?.interestingness_score ?? 0);
+      }
+    }
+    return max;
+  };
+  const diff = getScore(b) - getScore(a);
+  if (diff === 0) {
+    // sort by id as a fallback to keep sort stable
+    return String(a.id).localeCompare(String(b.id));
+  }
+  return diff;
 }
 
 function getExplorationDocumentTree(
@@ -204,4 +271,21 @@ export function flattenTree(
     (node): node is ITreeNodeItem<ExplorationTreeItem> =>
       node.data?.type === "document" || node.data?.type === "group",
   );
+}
+
+export function pickInitialSidebarEntity(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+): SelectedEntityId | null {
+  for (const node of nodes) {
+    if (node.data?.type === "group") {
+      return { type: "group", id: node.data.group_id };
+    }
+    if (node.children?.length) {
+      const result = pickInitialSidebarEntity(node.children);
+      if (result != null) {
+        return result;
+      }
+    }
+  }
+  return null;
 }
