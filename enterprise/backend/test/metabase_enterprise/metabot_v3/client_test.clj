@@ -230,7 +230,20 @@
         (is (str/includes? out "...") "the *print-length* elision marker is present")))
     (testing "a small recognised body is left untouched by the bounds"
       (is (= (pr-str {:error {:message "nope"}})
-             (body-for-log {:error {:message "nope"}}))))))
+             (body-for-log {:error {:message "nope"}}))))
+    (testing "a huge string leaf inside a collection is sliced before pr-str renders the parent"
+      ;; Regression: previously `bounded-pr-str` only pre-sliced *top-level* strings.
+      ;; A map with a near-cap string leaf (e.g. parsed JSON `{:detail "<1MB>"}`)
+      ;; would allocate the whole leaf inside pr-str and rely on the outer truncate-to
+      ;; to cap the result — wasteful on the error path. Now nested string leaves
+      ;; get sliced too.
+      (let [body {:detail (apply str (repeat 1000000 \x))}
+            out  (bounded-pr-str body max-log)]
+        ;; Whole printed shape is at or under the cap-plus-overhead, despite the 1M-char leaf.
+        (is (<= (count out) (+ max-log 100))
+            "bounded-pr-str should not render the full huge string leaf")
+        (is (str/includes? out ":detail")
+            "the map structure should still survive past the slicing")))))
 
 (deftest check-response!-test
   (let [check! #'metabot-v3.client/check-response!]

@@ -7,6 +7,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -183,16 +184,15 @@
 
 (defn- bounded-pr-str
   "`pr-str` a body for error surfacing without first allocating an unbounded string.
-  String bodies are sliced to `limit` before printing. Collections render under
-  `*print-length*`/`*print-level*`, which bound element count and nesting depth but *not* the
-  size of an individual scalar leaf — a map whose value is a near-cap string is still printed
-  in full, so callers must [[truncate-to]] the printed result to cap that case. The transient
-  allocation stays bounded by the upstream slurp cap ([[max-body-slurp-chars]]) regardless."
+  Walks the body and slices every string leaf to `limit` before printing — so a parsed
+  JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
+  only for the caller to truncate it back down. Collections also render under
+  `*print-length*`/`*print-level*` to bound element count and nesting depth."
   [body limit]
-  (binding [*print-length* 100
-            *print-level*  10]
-    (pr-str (cond-> body
-              (string? body) (truncate-to limit)))))
+  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
+    (binding [*print-length* 100
+              *print-level*  10]
+      (pr-str (walk/postwalk slice body)))))
 
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
@@ -206,7 +206,7 @@
 
 (defn- body-preview
   "Short snippet of an already-coerced response body for the user-facing exception message.
-  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn.
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str`.
   Nil/empty bodies return nil."
   [body]
   (let [extracted (cond
@@ -219,15 +219,14 @@
                                            (string? head) head
                                            :else          nil))
                     :else              nil)
-        ;; Surface *some* context to the user even for unrecognised shapes — the warn
-        ;; signals operators to add the new envelope shape to [[extract-error-message]].
+        ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
+        ;; beats a bare "HTTP 500" with no clue what the upstream said. check-response! logs
+        ;; the full body, so we don't warn again here.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
                         ;; body is a collection here, so bounded-pr-str's limit arg is a no-op
                         ;; (it only slices string bodies); truncate-to-preview-limit caps the result.
-                        (let [capped (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))]
-                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
-                          capped)))]
+                        (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
 
 (defn- check-response!
