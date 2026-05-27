@@ -1,9 +1,13 @@
 import { PLUGIN_DATA_APP_DEMO } from "metabase/plugins";
 
-import { DataAppDemo } from "./DataAppDemo";
+import { AppView } from "./AppView";
+import { DataAppFormPage } from "./DataAppFormPage";
+import { ManageDataAppsPage } from "./ManageDataAppsPage";
 
 export function initializePlugin() {
   Object.assign(PLUGIN_DATA_APP_DEMO, {
-    DataAppDemo,
+    AppView,
+    ManageDataAppsPage,
+    DataAppFormPage,
   });
 }
