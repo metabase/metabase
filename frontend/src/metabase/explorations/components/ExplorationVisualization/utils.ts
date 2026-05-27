@@ -134,6 +134,12 @@ export function buildSeriesGroups({
     }
   }
 
+  if (layoutStrategy === "default" && seriesGroups.length === 1) {
+    seriesGroups[0].series = removeAxisTitlesFromAllSeries(
+      seriesGroups[0].series,
+    );
+  }
+
   return { seriesGroups, layoutStrategy };
 }
 
