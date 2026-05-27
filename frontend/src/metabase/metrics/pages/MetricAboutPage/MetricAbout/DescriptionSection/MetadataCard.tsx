@@ -4,6 +4,8 @@ import { Link } from "metabase/common/components/Link/Link";
 import { Center, Group, Icon, Paper, Stack, Text, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
+import S from "./MetadataCard.module.css";
+
 interface MetadataCardProps {
   children: ReactNode;
 }
@@ -11,7 +13,9 @@ interface MetadataCardProps {
 export function MetadataCard({ children }: MetadataCardProps) {
   return (
     <Paper bg="background-tertiary" radius={rem(16)} p="md">
-      <Stack gap="sm">{children}</Stack>
+      <Stack gap="md" className={S.rows}>
+        {children}
+      </Stack>
     </Paper>
   );
 }
@@ -29,6 +33,7 @@ export function MetadataRow({ icon, to, children }: MetadataRowProps) {
         bg="background-primary"
         w={rem(28)}
         h={rem(28)}
+        className={S.iconCircle}
         style={{ borderRadius: "100%", flexShrink: 0 }}
       >
         <Icon name={icon} c={to ? "text-primary" : "text-secondary"} />

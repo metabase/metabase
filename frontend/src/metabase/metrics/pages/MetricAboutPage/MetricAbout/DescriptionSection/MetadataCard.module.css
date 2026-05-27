@@ -1,0 +1,20 @@
+.rows {
+  position: relative;
+}
+
+/* Vertical line running through the icon column, connecting circles.
+   Sits behind the icon circles, which cover it on their own footprint. */
+.rows::before {
+  content: "";
+  position: absolute;
+  left: 0.875rem; /* center of 28px (1.75rem) icon circle */
+  top: 0.875rem;
+  bottom: 0.875rem;
+  width: 1px;
+  background: var(--mb-color-border);
+  pointer-events: none;
+}
+
+.iconCircle {
+  position: relative;
+}

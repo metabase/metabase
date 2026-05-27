@@ -69,7 +69,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   return (
     <Stack
       p="md"
-      gap="md"
+      gap="xl"
       align="stretch"
       data-testid="metric-description-sidebar"
     >
@@ -119,7 +119,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         <MetricSubSection title={t`Relationships`}>
           <MetadataCard>
             {dependenciesCount > 0 ? (
-              <MetadataRow icon="link" to={dependenciesUrl}>
+              <MetadataRow icon="dependencies" to={dependenciesUrl}>
                 {ngettext(
                   msgid`${dependenciesCount} dependency`,
                   `${dependenciesCount} dependencies`,
@@ -127,10 +127,10 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
                 )}
               </MetadataRow>
             ) : (
-              <MetadataRow icon="link">{t`No dependencies`}</MetadataRow>
+              <MetadataRow icon="dependencies">{t`No dependencies`}</MetadataRow>
             )}
             {dependentsCount > 0 ? (
-              <MetadataRow icon="lineandbar" to={dependenciesUrl}>
+              <MetadataRow icon="dependencies" to={dependenciesUrl}>
                 {jt`${(
                   <Text key="count" component="span" fw={600} c="brand">
                     {ngettext(
@@ -150,7 +150,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
                 )}`}
               </MetadataRow>
             ) : (
-              <MetadataRow icon="lineandbar">
+              <MetadataRow icon="dependencies">
                 {t`No charts use this metric`}
               </MetadataRow>
             )}
