@@ -50,8 +50,16 @@ export function ConversationsTable({
     <table className={cx(AdminS.ContentTable, S.table)}>
       <thead>
         <tr>
-          <th>{t`User`}</th>
-          <th>{t`Profile`}</th>
+          <SortableColumnHeader
+            name="user"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`User`}</SortableColumnHeader>
+          <SortableColumnHeader
+            name="profile_id"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`Profile`}</SortableColumnHeader>
           <SortableColumnHeader
             name="created_at"
             sortingOptions={sortingOptions}
@@ -70,7 +78,11 @@ export function ConversationsTable({
           >{t`Tokens`}</SortableColumnHeader>
           <th>{t`Queries`}</th>
           <th>{t`Searches`}</th>
-          <th>{t`IP`}</th>
+          <SortableColumnHeader
+            name="ip_address"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`IP`}</SortableColumnHeader>
         </tr>
       </thead>
       <tbody>

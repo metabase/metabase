@@ -379,6 +379,7 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -550,6 +551,8 @@ interface PublicSettings {
   "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
+  "metaplow-tracking-enabled": boolean;
+  "metaplow-url": string | null;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;

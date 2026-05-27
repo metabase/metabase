@@ -15,27 +15,22 @@
         (let [result (navigate/navigate {:destination {:page "notebook_editor"}
                                          :memory-atom memory-atom})]
           (is (= "/question/notebook" (get-in result [:structured-output :path])))))
-
       (testing "metrics_browser"
         (let [result (navigate/navigate {:destination {:page "metrics_browser"}
                                          :memory-atom memory-atom})]
           (is (= "/browse/metrics" (get-in result [:structured-output :path])))))
-
       (testing "model_browser"
         (let [result (navigate/navigate {:destination {:page "model_browser"}
                                          :memory-atom memory-atom})]
           (is (= "/browse/models" (get-in result [:structured-output :path])))))
-
       (testing "database_browser"
         (let [result (navigate/navigate {:destination {:page "database_browser"}
                                          :memory-atom memory-atom})]
           (is (= "/browse/databases" (get-in result [:structured-output :path])))))
-
       (testing "home"
         (let [result (navigate/navigate {:destination {:page "home"}
                                          :memory-atom memory-atom})]
           (is (= "/" (get-in result [:structured-output :path])))))
-
       (testing "sql_editor with database_id"
         (let [result (navigate/navigate {:destination {:page "sql_editor" :database_id 123}
                                          :memory-atom memory-atom})]
@@ -49,32 +44,26 @@
         (let [result (navigate/navigate {:destination {:entity_type "table" :entity_id 42}
                                          :memory-atom memory-atom})]
           (is (= "/table/42" (get-in result [:structured-output :path])))))
-
       (testing "model navigation"
         (let [result (navigate/navigate {:destination {:entity_type "model" :entity_id 100}
                                          :memory-atom memory-atom})]
           (is (= "/model/100" (get-in result [:structured-output :path])))))
-
       (testing "question navigation"
         (let [result (navigate/navigate {:destination {:entity_type "question" :entity_id 55}
                                          :memory-atom memory-atom})]
           (is (= "/question/55" (get-in result [:structured-output :path])))))
-
       (testing "metric navigation"
         (let [result (navigate/navigate {:destination {:entity_type "metric" :entity_id 77}
                                          :memory-atom memory-atom})]
           (is (= "/metric/77" (get-in result [:structured-output :path])))))
-
       (testing "dashboard navigation"
         (let [result (navigate/navigate {:destination {:entity_type "dashboard" :entity_id 88}
                                          :memory-atom memory-atom})]
           (is (= "/dashboard/88" (get-in result [:structured-output :path])))))
-
       (testing "database navigation"
         (let [result (navigate/navigate {:destination {:entity_type "database" :entity_id 99}
                                          :memory-atom memory-atom})]
           (is (= "/browse/databases/99" (get-in result [:structured-output :path])))))
-
       (testing "collection navigation"
         (let [result (navigate/navigate {:destination {:entity_type "collection" :entity_id 111}
                                          :memory-atom memory-atom})]
@@ -91,7 +80,6 @@
       (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
               (navigate/navigate {:destination {:query_id "test-query-id"}
                                   :memory-atom memory-atom})))))
-
   (testing "query navigation fails for missing query"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (is (thrown-with-msg?
@@ -109,7 +97,6 @@
       (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
               (navigate/navigate {:destination {:chart_id "chart1"}
                                   :memory-atom memory-atom})))))
-
   (testing "chart navigation falls back to query lookup if chart not found"
     (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"chart1" query}
@@ -117,7 +104,6 @@
       (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
               (navigate/navigate {:destination {:chart_id "chart1"}
                                   :memory-atom memory-atom})))))
-
   (testing "chart navigation fails for missing chart and query"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (is (thrown-with-msg?
@@ -144,7 +130,6 @@
         (let [result (navigate/navigate {:destination {:page "home"}
                                          :memory-atom memory-atom})]
           (is (string? (get-in result [:structured-output :message])))))
-
       (testing "entity navigation message"
         (let [result (navigate/navigate {:destination {:entity_type "model" :entity_id 1}
                                          :memory-atom memory-atom})]
@@ -188,7 +173,6 @@
         (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
         (is (= [{:type "model" :id 42}] (:input eu)))
         (is (= [] (:output eu))))))
-
   (testing "page destination produces empty :input"
     (binding [shared/*memory-atom* (atom {:state {:queries {} :charts {}}})]
       (let [result (navigate/navigate-user-tool
@@ -196,7 +180,6 @@
             eu     (get-in result [:structured-output :entity-usage])]
         (is (= [] (:input eu)))
         (is (= [] (:output eu))))))
-
   (testing "query_id destination (memory-only) produces empty :input"
     (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"q1" query} :charts {}}})]

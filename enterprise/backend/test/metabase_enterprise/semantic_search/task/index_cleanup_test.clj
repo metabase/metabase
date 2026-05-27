@@ -99,7 +99,6 @@
               (is (semantic.tu/table-exists-in-db? orphaned-table))
               (is (semantic.tu/table-exists-in-db? recent-table))
               (is (semantic.tu/table-exists-in-db? active-table))
-
               ;; Run cleanup function and ensure only the stale & orphaned tables is dropped
               (with-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
                             semantic.env/get-index-metadata (constantly index-metadata)]
@@ -109,13 +108,11 @@
               (is (not (semantic.tu/table-exists-in-db? orphaned-table)))
               (is (semantic.tu/table-exists-in-db? recent-table))
               (is (semantic.tu/table-exists-in-db? active-table))
-
               (finally
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " recent-table)])
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " stale-table)])
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " orphaned-table)])
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " active-table)])))))
-
         (testing "handles non-existent tables gracefully"
           (let [nonexistent-table "nonexistent_table"]
             (insert-metadata-with-timestamps! pgvector index-metadata
@@ -160,7 +157,6 @@
                                   :document_hash nil}])
                                (sql/format :quoted true)))
             (cleanup-old-tombstones! pgvector index-metadata)
-
             ;; Verify no records were deleted since indexer hasn't run recently
             (let [remaining-records (jdbc/execute! pgvector
                                                    (-> (sql.helpers/select [:*])
@@ -170,7 +166,6 @@
                                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                   remaining-ids (map :id remaining-records)]
               (is (contains? (set remaining-ids) "old-tombstone-1"))))
-
           (testing "when indexer has run recently, cleans up old tombstone records and preserves recent ones and non-tombstones"
             ;; Update metadata for active index to have recent indexer_last_poll time
             (let [active-index-metadata (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
@@ -215,7 +210,6 @@
                                     :document_hash "hash123"}])
                                  (sql/format :quoted true)))
               (cleanup-old-tombstones! pgvector index-metadata)
-
               ;; Verify only old tombstones were deleted after cleanup task runs
               (let [remaining-records (jdbc/execute! pgvector
                                                      (-> (sql.helpers/select [:*])
@@ -238,7 +232,6 @@
               parsed-time (#'sut/parse-repair-table-timestamp repair-table-name)]
           (is (= (t/truncate-to old-time :millis)
                  parsed-time))))
-
       (testing "orphan repair table detection and cleanup"
         (let [old-repair-table-name (with-redefs [t/instant (constantly old-time)]
                                       (#'repair/repair-table-name))
@@ -249,14 +242,11 @@
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" old-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" recent-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" non-repair-table-name)])
-
             (with-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
               (let [orphan-tables (#'sut/orphan-repair-tables pgvector)]
                 (is (= #{old-repair-table-name} (set orphan-tables))
                     "Only old repair table should be detected as orphan"))
-
               (#'sut/cleanup-orphan-repair-tables! pgvector)
-
               (is (not (semantic.tu/table-exists-in-db? old-repair-table-name))
                   "Old repair table should be dropped")
               (is (semantic.tu/table-exists-in-db? recent-repair-table-name)

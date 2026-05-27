@@ -28,7 +28,9 @@
             (metabot.u/aisdk->messages "assistant"
                                        (-> (io/resource "metabase/metabot/aisdkstream1.txt")
                                            io/reader
-                                           line-seq)))))
+                                           line-seq))))))
+
+(deftest ^:parallel aisdk-line-parse-test-2
   (testing "We should be able to parse AI SDK streaming format to ai-service format 2"
     (is (=? [{:role       "assistant"
               :_type      :TOOL_CALL
@@ -65,7 +67,9 @@
             (metabot.u/aisdk->messages "assistant"
                                        (-> (io/resource "metabase/metabot/aisdkstream2.txt")
                                            io/reader
-                                           line-seq)))))
+                                           line-seq))))))
+
+(deftest ^:parallel aisdk-line-parse-test-3
   (testing "We should be able to parse AI SDK streaming format with error messages 3"
     (is (=? [{:role    "assistant"
               :_type   :ERROR
@@ -76,7 +80,9 @@
             (metabot.u/aisdk->messages "assistant"
                                        (-> (io/resource "metabase/metabot/aisdkstream3.txt")
                                            io/reader
-                                           line-seq)))))
+                                           line-seq))))))
+
+(deftest ^:parallel aisdk-line-parse-test-4
   (testing "We should be able to parse AI SDK streaming format with error messages 4"
     (is (=? [{:role    "assistant"
               :_type   :TEXT

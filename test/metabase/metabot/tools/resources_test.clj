@@ -8,7 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.resources :as read-resource]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -22,7 +22,6 @@
            (#'read-resource/parse-uri "metabase://databases")))
     (is (= {:segments ["collections"] :query-params nil}
            (#'read-resource/parse-uri "metabase://collections"))))
-
   (testing "parses entity URIs into [type id] segments"
     (is (= {:segments ["table" "123"] :query-params nil}
            (#'read-resource/parse-uri "metabase://table/123")))
@@ -30,7 +29,6 @@
            (#'read-resource/parse-uri "metabase://model/456")))
     (is (= {:segments ["question" "456"] :query-params nil}
            (#'read-resource/parse-uri "metabase://question/456"))))
-
   (testing "parses entity sub-resources"
     (is (= {:segments ["table" "123" "fields"] :query-params nil}
            (#'read-resource/parse-uri "metabase://table/123/fields")))
@@ -38,40 +36,33 @@
            (#'read-resource/parse-uri "metabase://table/123/fields/456")))
     (is (= {:segments ["metric" "789" "dimensions"] :query-params nil}
            (#'read-resource/parse-uri "metabase://metric/789/dimensions"))))
-
   (testing "parses field IDs that contain slashes (e.g. c75/17)"
     (is (= {:segments ["table" "123" "fields" "c75" "17"] :query-params nil}
            (#'read-resource/parse-uri "metabase://table/123/fields/c75/17"))))
-
   (testing "parses deep paths"
     (is (= {:segments ["database" "1" "schemas" "PUBLIC" "tables"] :query-params nil}
            (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
-
   (testing "parses query strings into :query-params"
     (is (= {:tree "true"}
            (:query-params (#'read-resource/parse-uri "metabase://collections?tree=true"))))
     (is (= {:tree "true" :foo "bar"}
            (:query-params (#'read-resource/parse-uri "metabase://collections?tree=true&foo=bar")))))
-
   (testing "parses user URIs"
     (is (= {:segments ["user" "recent-items"] :query-params nil}
            (#'read-resource/parse-uri "metabase://user/recent-items"))))
-
   (testing "rejects invalid scheme"
     (is (thrown? Exception
                  (#'read-resource/parse-uri "https://example.com"))))
-
   (testing "rejects empty path"
     (is (thrown? Exception
                  (#'read-resource/parse-uri "metabase://"))))
-
   (testing "URL-decodes path segments — schema names containing '/' round-trip"
     ;; An encoded URI like /schemas/weird%2Fname/tables splits into 5 segments,
     ;; with the schema segment decoded back to its literal form (containing '/').
     (let [parsed (#'read-resource/parse-uri "metabase://database/1/schemas/weird%2Fname/tables")]
       (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed))))
     (testing "round-trips through metabase-uri"
-      (let [uri    (llm-rep/metabase-uri :database 1 "schemas" "weird/name" "tables")
+      (let [uri    (llm-shape/metabase-uri :database 1 "schemas" "weird/name" "tables")
             parsed (#'read-resource/parse-uri uri)]
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
         (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
@@ -94,7 +85,6 @@
    ["metabase://collections?tree=true"                     :collections-list           [{:tree "true"}]]
    ["metabase://collections?tree=true&foo=bar"             :collections-list           [{:tree "true" :foo "bar"}]]
    ["metabase://user/recent-items"                         :user-recents               []]
-
    ;; ----- Database drill-down -----
    ["metabase://database/1"                                :database                   ["1"]]
    ["metabase://database/1/tables"                         :database-tables            ["1"]]
@@ -102,42 +92,35 @@
    ["metabase://database/1/schemas"                        :database-schemas           ["1"]]
    ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC"]]
    ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case"]]
-
    ;; ----- Collection drill-down -----
    ["metabase://collection/2"                              :collection                 ["2"]]
    ["metabase://collection/2/items"                        :collection-items           ["2"]]
    ["metabase://collection/2/subcollections"               :collection-subcollections  ["2"]]
-
    ;; ----- Table -----
    ["metabase://table/3"                                   :table                      ["3"]]
    ["metabase://table/3/fields"                            :table-fields               ["3"]]
    ["metabase://table/3/fields/42"                         :table-field                ["3" "42"]]
    ["metabase://table/3/fields/c75/17"                     :table-field                ["3" "c75/17"]]
    ["metabase://table/3/derived"                           :table-derived              ["3"]]
-
    ;; ----- Model (a card type) -----
    ["metabase://model/4"                                   :card                       ["model" "4"]]
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
    ["metabase://model/4/fields/99"                         :card-field                 ["model" "4" "99"]]
    ["metabase://model/4/fields/c75/17"                     :card-field                 ["model" "4" "c75/17"]]
    ["metabase://model/4/sources"                           :card-sources               ["4"]]
-
    ;; ----- Question (a card type) -----
    ["metabase://question/5"                                :card                       ["question" "5"]]
    ["metabase://question/5/fields"                         :card-fields                ["question" "5"]]
    ["metabase://question/5/fields/99"                      :card-field                 ["question" "5" "99"]]
    ["metabase://question/5/sources"                        :card-sources               ["5"]]
-
    ;; ----- Metric -----
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
    ["metabase://metric/6/dimensions/dim-1"                 :metric-dimension           ["6" "dim-1"]]
-
    ;; ----- Transform -----
    ["metabase://transform/7"                               :transform                  ["7"]]
    ["metabase://transform/7/sources"                       :transform-sources          ["7"]]
    ["metabase://transform/7/target"                        :transform-target           ["7"]]
-
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
    ["metabase://dashboard/8/items"                         :dashboard-items            ["8"]]])
@@ -213,19 +196,16 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)]}))))
-
         (testing "fetches table with fields"
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id "/fields")]}))))
-
         (testing "handles multiple URIs"
           (is (=? {:resources [{:content {:structured-output map?}}
                                {:content {:structured-output map?}}]}
                   (read-resource/read-resource
                    {:uris [(str "metabase://table/" table-id)
                            (str "metabase://table/" table-id "/fields")]}))))
-
         (testing "returns errors for invalid URIs"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource
@@ -240,11 +220,9 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
-
       (testing "rejects sub-resources"
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
-
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
@@ -262,11 +240,9 @@
             (is (=? {:resources [{:content {:structured-output map?}}]}
                     result))
             (is (str/includes? (:output result) transform-name))))
-
         (testing "rejects sub-resources"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id "/fields")]}))))
-
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
@@ -463,7 +439,6 @@
                               :source_database_id db-id
                               :target_db_id       db-id
                               :table              target-table}]
-
           (testing "when user CAN read the target, it appears in the output"
             (with-redefs [transforms.core/get-transform (constantly stub-transform)]
               (let [{:keys [output]} (read-resource/read-resource
@@ -472,7 +447,6 @@
                     "target table name should appear when user has read perms")
                 (is (str/includes? output (str "uri=\"metabase://table/" target-id "\""))
                     "target table URI should appear when user has read perms"))))
-
           (testing "when user CANNOT read the target, it's filtered out"
             (with-redefs [transforms.core/get-transform (constantly stub-transform)
                           mi/can-read? (constantly false)]
@@ -512,7 +486,6 @@
       (testing "metabase://collections lists root collections (excluding trash)"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
-
       (testing "metabase://collection/{id}/items lists members with drill-in URIs"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
           (is (str/includes? output "Sales report"))
@@ -629,7 +602,6 @@
       (is (str/includes? formatted "Table details here"))
       (is (str/includes? formatted "</resource>"))
       (is (str/includes? formatted "</resources>"))))
-
   (testing "formats resources with errors"
     (let [resources [{:uri "metabase://table/123"
                       :error "Table not found"}]
@@ -691,7 +663,7 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {weird-id :id} {:db_id db-id :schema "weird/name" :name "WEIRD-TABLE" :active true}
                      :model/Table _              {:db_id db-id :schema "other"      :name "OTHER-TABLE" :active true}]
-        (let [emitted-uri (llm-rep/metabase-uri :database db-id "schemas" "weird/name" "tables")]
+        (let [emitted-uri (llm-shape/metabase-uri :database db-id "schemas" "weird/name" "tables")]
           (testing "the URI builder emits an encoded segment"
             (is (str/includes? emitted-uri "weird%2Fname")))
           (testing "the encoded URI dispatches and filters to the right schema"
@@ -764,7 +736,6 @@
         metadata (-> query
                      qp/process-query
                      :data :results_metadata :columns)]
-
     (mt/with-temp
       [:model/Card {question-id :id} {:name "My fav card"
                                       :dataset_query query
@@ -775,8 +746,7 @@
               output (:output read-result)
               structured (get-in read-result [:resources 0 :content :structured-output])]
           (testing "Output references expected fields"
-            (is (re-find #"display_name\S+Count" output))
-            (is (re-find #"display_name\S+Category" output)))
+            (is (re-find #"<name>\S*My fav card" output)))
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
@@ -794,19 +764,16 @@
     (is (= [] (vec (#'read-resource/uri-input-refs ["collections"] "metabase://collections"))))
     (is (= [] (vec (#'read-resource/uri-input-refs ["user" "recent-items"]
                                                    "metabase://user/recent-items")))))
-
   (testing "single-entity URIs input the addressed entity with its URI in metadata"
     (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3"}}]
            (#'read-resource/uri-input-refs ["table" "3"] "metabase://table/3")))
     (is (= [{:type "database" :id 7 :metadata {:uri "metabase://database/7"}}]
            (#'read-resource/uri-input-refs ["database" "7"] "metabase://database/7"))))
-
   (testing "sub-resource URIs input the parent entity (no leaf)"
     (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/derived"}}]
            (#'read-resource/uri-input-refs ["table" "3" "derived"] "metabase://table/3/derived")))
     (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields"}}]
            (#'read-resource/uri-input-refs ["table" "3" "fields"] "metabase://table/3/fields"))))
-
   (testing "leaf field URIs input both the parent and the field"
     (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields/42"}}
             {:type "field" :id 42}]
@@ -816,7 +783,6 @@
             {:type "field" :id 77}]
            (#'read-resource/uri-input-refs ["metric" "6" "dimensions" "77"]
                                            "metabase://metric/6/dimensions/77"))))
-
   (testing "composite (non-numeric) leaf ids skip the field ref but keep the parent"
     (is (= [{:type "table" :id 3 :metadata {:uri "metabase://table/3/fields/c75/17"}}]
            (#'read-resource/uri-input-refs ["table" "3" "fields" "c75" "17"]
@@ -826,7 +792,6 @@
            (#'read-resource/uri-input-refs ["metric" "6" "dimensions" "dim-1"]
                                            "metabase://metric/6/dimensions/dim-1"))
         "non-parse-able dimension id is dropped"))
-
   (testing "schema names in path do not become entity refs"
     (is (= [{:type "database" :id 1
              :metadata {:uri "metabase://database/1/schemas/PUBLIC/tables"}}]
@@ -851,7 +816,6 @@
     (is (= [{:type "database" :id 1 :metadata {:uri "metabase://database/1"}}]
            (#'read-resource/output-refs-from-entity
             {:type "database" :id 1 :uri "metabase://database/1"}))))
-
   (testing "get-table-details (:entity, keyword :type) projects table + related + fields"
     (is (= [{:type "table" :id 3}
             {:type "table" :id 9}
@@ -864,7 +828,6 @@
                               {:field_id "expr_alias"} ;; non-int — dropped
                               {:field_id 101}]
              :related_tables [{:id 9 :name "joined"}]}))))
-
   (testing "get-metric-details projects metric + queryable-dimensions as fields"
     (is (= [{:type "metric" :id 6}
             {:type "field"  :id 200}
@@ -873,7 +836,6 @@
             {:type :metric
              :id   6
              :queryable-dimensions [{:field_id 200} {:field_id 201}]}))))
-
   (testing "entity whose :type is not in the closed enum yields no head ref"
     (is (= []
            (#'read-resource/output-refs-from-entity
@@ -903,7 +865,6 @@
             {:structured-output {:result-type :metabot-list
                                  :list-type   :database-tables
                                  :items       [{:type "table" :id 5 :uri "metabase://table/5"}]}}))))
-
   (testing "field-metadata result — input has parent + leaf; output has surfaced field"
     (is (= {:input  [{:type "table" :id 3
                       :metadata {:uri "metabase://table/3/fields/42"}}
@@ -915,7 +876,6 @@
             {:structured-output {:result-type :field-metadata
                                  :field_id    "42"
                                  :value_metadata {}}}))))
-
   (testing "error path — content nil; still emit URI input with empty output"
     (is (= {:input  [{:type "table" :id 99
                       :metadata {:uri "metabase://table/99"}}]
@@ -938,7 +898,6 @@
                        {:type "table" :id 1 :metadata {:uri "metabase://table/1/derived"}}]
               :output [{:type "field" :id 10}      ;; duplicate — dropped
                        {:type "field" :id 11}]}]))))
-
   (testing "empty per-URI list yields empty channels"
     (is (= {:input [] :output []} (#'read-resource/merge-entity-usage [])))))
 
@@ -958,7 +917,6 @@
                  (:input eu)))
           (is (some #(and (= "table" (:type %)) (= t-id (:id %))) (:output eu))
               "the table-row appears in the surfaced outputs")))
-
       (testing "single entity URI — input AND output include the table"
         (let [eu (-> (read-resource/read-resource
                       {:uris [(str "metabase://table/" t-id)]})
@@ -968,7 +926,6 @@
                    :metadata {:uri (str "metabase://table/" t-id)}}]
                  (:input eu)))
           (is (some #(and (= "table" (:type %)) (= t-id (:id %))) (:output eu)))))
-
       (testing "multi-URI call merges per-URI entity-usage (deduped)"
         (let [eu (-> (read-resource/read-resource
                       {:uris [(str "metabase://database/" db-id)

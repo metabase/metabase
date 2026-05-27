@@ -55,6 +55,6 @@
                  (triggers/with-identity session-cleanup-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                    ;; run once a day
+                  ;; run once a day
                   (cron/cron-schedule "0 0 2 * * ? *")))]
     (task/schedule-task! job trigger)))

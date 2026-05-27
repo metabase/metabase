@@ -46,7 +46,6 @@
          f
          venues-category-id-metadata
          categories-id-metadata)))
-
     (testing "between"
       (test-clause
        [:between
@@ -61,7 +60,6 @@
        venues-category-id-metadata
        42
        categories-id-metadata))
-
     (testing "inside"
       (test-clause
        [:inside
@@ -73,7 +71,6 @@
        venues-latitude-metadata
        venues-longitude-metadata
        42.7 13 4 27.3))
-
     (testing "emptiness"
       (doseq [[op f] [[:is-null   lib/is-null]
                       [:not-null  lib/not-null]
@@ -85,7 +82,6 @@
           [:field {:lib/uuid string?} (meta/id :venues :name)]]
          f
          venues-name-metadata)))
-
     (testing "string tests"
       (doseq [[op f] [[:starts-with      lib/starts-with]
                       [:ends-with        lib/ends-with]
@@ -99,7 +95,6 @@
          f
          venues-name-metadata
          "part")))
-
     (testing "time-interval"
       (test-clause
        [:time-interval
@@ -111,7 +106,6 @@
        checkins-date-metadata
        3
        :day))
-
     (testing "segment"
       (let [id 7]
         (test-clause
@@ -137,7 +131,6 @@
                    :filters [original-filter]}]}]
     (testing "no filter"
       (is (nil? (lib/filters q2))))
-
     (testing "setting a simple filter via the helper function"
       (let [result-query
             (lib/filter q1 (lib/between venues-category-id-metadata 42 100))
@@ -147,7 +140,6 @@
         (testing "and getting the current filter"
           (is (=? [result-filter]
                   (lib/filters result-query))))))
-
     (testing "setting a simple filter expression"
       (is (=? simple-filtered-query
               (-> q1
@@ -354,7 +346,6 @@
        :name "Created At excludes 3 hour of day selections"}
       {:clause [:not-in (lib/get-hour created-at) 0 1 2]
        :name "Created At excludes 3 hour of day selections"}
-
       {:clause [:= (created-at-with :day-of-week) "2023-10-02"]
        :name "Created At: Day of week is Monday"}
       {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1]
@@ -373,7 +364,6 @@
        :name "Created At excludes 3 day of week selections"}
       {:clause [:not-in (lib.expression/get-day-of-week created-at :iso) 1 2 3]
        :name "Created At excludes 3 day of week selections"}
-
       {:clause [:= (created-at-with :month-of-year) "2023-01-01"]
        :name "Created At: Month of year is on Jan"}
       {:clause [:= (lib/get-month created-at) 1]
@@ -392,7 +382,6 @@
        :name "Created At excludes 3 month of year selections"}
       {:clause [:not-in (lib/get-month created-at) 1 2 3]
        :name "Created At excludes 3 month of year selections"}
-
       {:clause [:= (created-at-with :quarter-of-year) "2023-01-03"]
        :name "Created At: Quarter of year is on Q1"}
       {:clause [:= (lib/get-quarter created-at) 1]
@@ -411,7 +400,6 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
-
       {:clause [:= (lib/get-year created-at) 2001]
        :name "Created At is in 2001"}
       {:clause [:= (lib/get-year created-at) 2001 2002 2003]
@@ -422,7 +410,6 @@
        :name "Created At excludes 3 year of era selections"}
       {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
        :name "Created At excludes 3 year of era selections"}
-
       {:clause [:is-null created-at]
        :name "Created At is empty"}
       {:clause [:not-null created-at]

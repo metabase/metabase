@@ -6,6 +6,7 @@
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -54,10 +55,19 @@
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
   (let [work-fn  (fn [progress]
-                   (replacement.runner/run-swap-source!
-                    [source_entity_type source_entity_id]
-                    [target_entity_type target_entity_id]
-                    progress))
+                   (analytics/track-event! :snowplow/simple_event
+                                           {:event "replace_data_source_started"})
+                   (try
+                     (replacement.runner/run-swap-source!
+                      [source_entity_type source_entity_id]
+                      [target_entity_type target_entity_id]
+                      progress)
+                     (analytics/track-event! :snowplow/simple_event
+                                             {:event "replace_data_source_succeeded"})
+                     (catch Throwable e
+                       (analytics/track-event! :snowplow/simple_event
+                                               {:event "replace_data_source_failed"})
+                       (throw e))))
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id api/*current-user-id*)
@@ -106,7 +116,20 @@
                    user-id)
         progress  (replacement-run/run-row->progress job-row)
         work-fn   (fn [progress]
-                    (replacement.runner/run-swap-model-with-transform! card_id (:id transform) progress :user-id user-id))]
+                    (analytics/track-event! :snowplow/simple_event
+                                            {:event     "model_to_transforms_migration_started"
+                                             :target_id card_id})
+                    (try
+                      (replacement.runner/run-swap-model-with-transform!
+                       card_id (:id transform) progress :user-id user-id)
+                      (analytics/track-event! :snowplow/simple_event
+                                              {:event     "model_to_transforms_migration_success"
+                                               :target_id card_id})
+                      (catch Throwable e
+                        (analytics/track-event! :snowplow/simple_event
+                                                {:event     "model_to_transforms_migration_failure"
+                                                 :target_id card_id})
+                        (throw e))))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))

@@ -235,17 +235,17 @@
                             (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
                           (set add-pc-ids))]
     (cond
-     ;; no op when new-pc-ids doesn't change
+      ;; no op when new-pc-ids doesn't change
       (= new-pc-ids existing-pc-ids) nil
 
-     ;; delete if no new pc-ids and there is an existing trigger
+      ;; delete if no new pc-ids and there is an existing trigger
       (and (empty? new-pc-ids)
            (some? existing-pc-ids))
       (do
         (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
         (task/delete-trigger! trigger-key))
 
-     ;; delete then create if pc ids changes
+      ;; delete then create if pc ids changes
       (and (seq new-pc-ids)
            (not= new-pc-ids existing-pc-ids))
       (do

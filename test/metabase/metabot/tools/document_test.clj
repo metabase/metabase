@@ -28,13 +28,11 @@
                 :entity-usage {:input  [{:type "database" :id 1}]
                                :output []}}
                (:structured-output result))))))
-
   (testing "returns missing-database message when no database references are present"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {}})]
       (let [result (document-tools/document-schema-collect-tool {})]
         (is (= "You must `@` mention a database to use when not querying an existing model"
                (:output result))))))
-
   (testing "returns multiple-database message when more than one database is referenced"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test DB 1"
                                                                             "database:2" "Test DB 2"}})]
@@ -74,8 +72,9 @@
                 :type "native"
                 :native {:query "SELECT * FROM test"
                          :template-tags {}}}
-               (:dataset_query structured))))))
+               (:dataset_query structured)))))))
 
+(deftest document-construct-sql-chart-tool-test-2
   (testing "returns instructions when SQL validation fails"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]
@@ -96,8 +95,9 @@
         (testing "error branch still carries :entity-usage on :structured-output"
           (is (= {:entity-usage {:input  [{:type "database" :id 1}]
                                  :output []}}
-                 (:structured-output result)))))))
+                 (:structured-output result))))))))
 
+(deftest document-construct-sql-chart-tool-test-3
   (testing "returns instructions when query processor rejects generated SQL"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]
@@ -133,11 +133,12 @@
                                   {:structured-output {:query-id "3"
                                                        :query {:database 1
                                                                :type "query"}}})]
+      ;; `construct-notebook-query-tool` is stubbed above, so the YAML string is an opaque
+      ;; placeholder — it only needs to be a string.
       (let [result (document-tools/document-construct-model-chart-tool
                     {:name "Test Name"
                      :description "Test Desc"
-                     :source_entity {:type "model" :id 4}
-                     :program {:source {:type "context" :ref "source"} :operations []}
+                     :query ""
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
         (is (true? (:final-response? result)))
@@ -182,7 +183,25 @@
         (is (= [] (:output eu)))))))
 
 (deftest document-construct-model-chart-entity-usage-test
-  (testing "document_construct_model_chart success path emits :entity-usage with source_entity + program refs"
+  (testing "success path forwards :entity-usage from the underlying construct_notebook_query"
+    (let [forwarded-eu {:input  [{:type "database" :id 1}
+                                 {:type "card"     :id 42}]
+                        :output []}]
+      (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
+                                  (fn [_]
+                                    {:structured-output {:query-id     "3"
+                                                         :query        {:database 1 :type "query"}
+                                                         :entity-usage forwarded-eu}})]
+        (let [result (document-tools/document-construct-model-chart-tool
+                      {:name "N"
+                       :description "D"
+                       :query ""
+                       :viz_settings {:chart_type "bar"}})
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= forwarded-eu eu)
+              "entity-usage from the inner construct_notebook_query call should pass through unchanged")))))
+  (testing "falls back to empty entity-usage when the inner tool didn't attach one"
     (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
                                 (fn [_]
                                   {:structured-output {:query-id "3"
@@ -190,14 +209,11 @@
       (let [result (document-tools/document-construct-model-chart-tool
                     {:name "N"
                      :description "D"
-                     :source_entity {:type "model" :id 4}
-                     :program {:source {:type "dataset" :id 4} :operations []}
+                     :query ""
                      :viz_settings {:chart_type "bar"}})
             eu     (get-in result [:structured-output :entity-usage])]
         (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
-        (is (= [] (:output eu)))
-        (is (= [{:type "model" :id 4 :metadata {:arg_slot "source_entity"}}]
-               (:input eu)))))))
+        (is (= {:input [] :output []} eu))))))
 
 (deftest document-schema-collect-entity-usage-test
   (testing "single-database success path emits database input"

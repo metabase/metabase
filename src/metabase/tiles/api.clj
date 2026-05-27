@@ -208,7 +208,7 @@
      :headers {"Content-Type" "image/png"}
      :body    (tile->byte-array (create-tile zoom points))}
     (throw (ex-info (tru "Query failed")
-                      ;; `result` might be a `core.async` channel or something we're not expecting
+                    ;; `result` might be a `core.async` channel or something we're not expecting
                     (assoc (when (map? result) result) :status-code 400)))))
 
 (mr/def ::query
