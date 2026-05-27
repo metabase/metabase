@@ -1,5 +1,4 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
@@ -21,11 +20,10 @@ import type {
   AdminNotification,
   NotificationChannelType,
   NotificationId,
-  NotificationRunSummary,
 } from "metabase-types/api";
 
+import { NotificationSummary } from "../NotificationSummary";
 import {
-  formatRelativeDate,
   getChannelIconName,
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
@@ -63,24 +61,6 @@ const summarizeChannels = (
     channel,
     count,
   }));
-};
-
-const TimestampCell = ({ run }: { run: NotificationRunSummary | null }) => {
-  if (!run) {
-    return formatRelativeDate(null);
-  }
-  return (
-    <Flex gap="sm" align="center">
-      <Tooltip label={dayjs(run.at).fromNow()}>
-        <span>{formatRelativeDate(run.at)}</span>
-      </Tooltip>
-      {run.status === "failing" && (
-        <Tooltip label={run.error} disabled={!run.error}>
-          <Icon name="warning_round" c="error" size={14} />
-        </Tooltip>
-      )}
-    </Flex>
-  );
 };
 
 export const NotificationsTable = ({
@@ -223,7 +203,9 @@ export const NotificationsTable = ({
         enableSorting: true,
         sortDescFirst: true,
         accessorFn: (notification) => notification.last_check?.at ?? "",
-        cell: ({ row }) => <TimestampCell run={row.original.last_check} />,
+        cell: ({ row }) => (
+          <NotificationSummary run={row.original.last_check} isCompact={true} />
+        ),
       },
       {
         id: "last_send",
@@ -232,7 +214,9 @@ export const NotificationsTable = ({
         enableSorting: true,
         sortDescFirst: true,
         accessorFn: (notification) => notification.last_send?.at ?? "",
-        cell: ({ row }) => <TimestampCell run={row.original.last_send} />,
+        cell: ({ row }) => (
+          <NotificationSummary run={row.original.last_send} isCompact={true} />
+        ),
       },
     ],
     [],
