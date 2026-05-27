@@ -289,4 +289,21 @@ describe("reportFailedTestsToConductor", () => {
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("500"));
     (console.error as jest.Mock).mockRestore();
   });
+
+  it("never throws even when fetch throws synchronously", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockFetch.mockImplementation(() => {
+      throw new Error("synchronous boom");
+    });
+
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+    });
+
+    await expect(
+      reportFailedTestsToConductor(oneTest),
+    ).resolves.toBeUndefined();
+    expect(console.error).toHaveBeenCalled();
+    (console.error as jest.Mock).mockRestore();
+  });
 });

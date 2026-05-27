@@ -117,22 +117,24 @@ export async function reportFailedTestsToConductor(
     return;
   }
 
-  const body = {
-    repo_id: toNumber(REPO_ID),
-    run_id: toNumber(GITHUB_RUN_ID),
-    job_id: getJobId(),
-    tests,
-  };
-
-  if (isDryRun) {
-    console.log(
-      `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
-      JSON.stringify(body),
-    );
-    return;
-  }
-
+  // Everything below is wrapped so the reporter can never throw into the test
+  // run, regardless of payload contents or network behavior.
   try {
+    const body = {
+      repo_id: toNumber(REPO_ID),
+      run_id: toNumber(GITHUB_RUN_ID),
+      job_id: getJobId(),
+      tests,
+    };
+
+    if (isDryRun) {
+      console.log(
+        `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
+        JSON.stringify(body),
+      );
+      return;
+    }
+
     const response = await fetch(CI_CONDUCTOR_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

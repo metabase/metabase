@@ -185,7 +185,14 @@ const defaultConfig = {
     on("after:spec", async (spec, results) => {
       // Report failures to ci-conductor mid-run (no-ops unless configured).
       if (isCI) {
-        await reportFailedTestsToConductor(extractFailedTests(spec, results));
+        // Reporting to ci-conductor must NEVER break the test run, so this is
+        // a hard backstop around everything — extraction, payload build, and
+        // the request. The reporter also handles its own errors internally.
+        try {
+          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+        } catch (error) {
+          console.error("[ci-conductor] reporting failed (ignored)", error);
+        }
       }
 
       // this is an official workaround to keep recordings of the failed specs only
