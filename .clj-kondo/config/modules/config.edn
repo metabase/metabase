@@ -3521,6 +3521,7 @@
            permissions
            premium-features
            query-processor
+           sample-data
            server
            settings
            sql-tools
