@@ -5,11 +5,13 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.attempted-murders-metadata-provider :as lib.tu.attempted-murders-metadata-provider]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
@@ -642,3 +644,17 @@
                     [:field (meta/id :products :created-at) {:base-type :type/DateTime, :temporal-unit :day}]]]
         (is (= clause
                (optimize-filter clause)))))))
+
+(deftest ^:parallel optimize-temporal-expressions-test
+  (mt/test-drivers (mt/normal-driver-select)
+    (let [mp (mt/metadata-provider)
+          orders (lib.metadata/table mp (mt/id :orders))
+          created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          id (lib.metadata/field mp (mt/id :orders :id))
+          query (-> (lib/query mp orders)
+                    (lib/expression "created_at_between" (lib/between created-at "2019-02-10" "2019-02-11"))
+                    (lib/limit 2)
+                    (as-> q (lib/with-fields q [id created-at (lib/expression-ref q "created_at_between")])))]
+      (is (= [[1 "2019-02-11T18:40:27.892-03:00" true]
+              [2 "2018-05-15T05:04:04.58-03:00" false]]
+             (mt/rows (qp/process-query query)))))))

@@ -5,6 +5,7 @@
   (:require
    [better-cond.core :as b]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -341,3 +342,23 @@
                      ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
                      (lib/simplify-filters filters'))))]
          (update stage :filters update-filters))))))
+
+(mu/defn optimize-temporal-expressions :- ::lib.schema/query
+  "Middleware that applies the same temporal optimizations as [[optimize-temporal-filters]] but to `:expressions`
+  (custom columns). For example, `between([timestamp_col], \"2026-05-10\", \"2026-05-13\")` as a custom column
+  expression needs its upper bound adjusted to be truly inclusive. See metabase#74860."
+  [query :- ::lib.schema/query]
+  (lib.walk/walk-stages
+   query
+   (fn [query path stage]
+     (when (seq (:expressions stage))
+       (letfn [(optimize-expression [[_ opts & _rest :as expr]]
+                 (let [expr' (lib.walk/walk-clause expr #(optimize-temporal-filters* query path %))]
+                   (if (= expr' expr)
+                     expr
+                     (let [expr-name (:lib/expression-name opts)]
+                       (cond-> expr'
+                         expr-name (lib.options/update-options assoc :lib/expression-name expr-name))))))
+               (update-expressions [expressions]
+                 (mapv optimize-expression expressions))]
+         (update stage :expressions update-expressions))))))

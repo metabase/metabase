@@ -102,6 +102,7 @@
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-filters/optimize-temporal-filters
+   #'optimize-temporal-filters/optimize-temporal-expressions
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'qp.middleware.enterprise/apply-workspace-remapping
