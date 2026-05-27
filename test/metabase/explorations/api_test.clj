@@ -369,12 +369,15 @@
                       :dimensions [{:dimension_id "d1"}
                                    {:dimension_id "d2"}]}
             resp     (create-exploration! u body)
-            queries  (-> resp :threads first :queries)]
-        (is (= 4 (count queries)) "2 metrics × 2 dimensions = 4 queries")
+            all-queries (-> resp :threads first :queries)
+            ;; dims — which depends on app-db-assigned field ids). The metric×dimension
+            ;; matrix is the set of base "default" queries.
+            queries  (filter #(= "default" (:query_type %)) all-queries)]
+        (is (= 4 (count queries)) "2 metrics × 2 dimensions = 4 default queries")
         (is (= #{[(:id m1) "d1"] [(:id m1) "d2"]
                  [(:id m2) "d1"] [(:id m2) "d2"]}
                (set (map (juxt :card_id :dimension_id) queries))))
-        (is (every? #(= "pending" (:status %)) queries))))))
+        (is (every? #(= "pending" (:status %)) all-queries))))))
 
 (defn- venues-metric-card [user-id]
   {:type          :metric
@@ -640,14 +643,17 @@
                                                   {:dimension_id "channel" :table_id 1 :target ["field" {} 3]}]}]
                   :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
             resp     (create-exploration! u body)
-            queries  (-> resp :threads first :queries)]
+            all-queries (-> resp :threads first :queries)
+            ;; ignore extra planner variants (e.g. top-n-other); the matrix is the base
+            ;; "default" queries
+            queries  (filter #(= "default" (:query_type %)) all-queries)]
         (is (= 3 (count queries))
             "revenue×plan, signups×plan, signups×channel — revenue×channel is dropped")
         (is (= #{[(:id revenue) "plan"]
                  [(:id signups) "plan"]
                  [(:id signups) "channel"]}
                (set (map (juxt :card_id :dimension_id) queries))))
-        (is (= [0 1 2] (sort (map :position queries)))
+        (is (= (range (count all-queries)) (sort (map :position all-queries)))
             "positions are sequential with no gaps from filtered pairs")))))
 
 (deftest exploration-create-names-queries-by-metric-and-dimension-test
@@ -661,7 +667,9 @@
                   :dimensions [{:dimension_id "country" :display_name "Country"}
                                {:dimension_id "no-name"}]}
             resp     (create-exploration! u body)
-            queries  (-> resp :threads first :queries)
+            ;; base "default" query carries the plain '{metric} by {dimension}' name;
+            ;; variants like top-n-other add suffixes, so look only at the default queries
+            queries  (filter #(= "default" (:query_type %)) (-> resp :threads first :queries))
             by-dim   (into {} (map (juxt :dimension_id :name) queries))]
         (is (= "Revenue by Country" (get by-dim "country"))
             "uses the metric Card name and the dimension's display_name")
@@ -1316,6 +1324,20 @@
       (is (= "Revenue"   (:name metric)) "metric name comes from the card-names map")
       (is (= "Rev by D1" (:name leaf))
           "even when base isn't first in the input, its name wins for the leaf"))))
+
+(deftest auto-groups-prefers-contextual-over-heuristic-test
+  (testing "Sort uses contextual_interestingness_score when present, else interestingness_score"
+    (let [groups (explorations.groups/auto-groups
+                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "High heuristic low contextual"
+                    :interestingness_score 0.95 :contextual_interestingness_score 0.2}
+                   {:id 2 :card_id 10 :dimension_id "d2" :segment_id nil :name "Low heuristic high contextual"
+                    :interestingness_score 0.1 :contextual_interestingness_score 0.85}]
+                  {10 "Revenue"})
+          leaves (->> groups
+                      (filter #(= "auto:metric:10" (:parent_group_id %)))
+                      (mapv :name))]
+      (is (= ["Low heuristic high contextual" "High heuristic low contextual"] leaves)
+          "effective 0.85 (contextual) sorts above 0.2 (contextual), not 0.95 (heuristic ignored)"))))
 
 (deftest auto-groups-sort-order-test
   (testing "Groups are ordered by max interestingness desc, applied independently at each level; nil-score groups sort last"

@@ -475,6 +475,7 @@
    [:table.name :table_name]
    [:table.description :table_description]
    [:table.collection_id :collection_id]
+   [:table.is_published :is_published]
    [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
      [:inline "Our analytics"]
      :else
