@@ -27,9 +27,9 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.self :as metabot.self]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (clojure.lang ExceptionInfo)
@@ -166,36 +166,6 @@
                           " (" (format-pct change-pct) ")")))
                  ", peak " (fmt-num pv) " at " px
                  (when (not= pv tv) (str ", trough " (fmt-num tv))))))))))
-
-(defn- column-detail
-  "A compact human-readable identifier for a single QP-result column. Includes
-  the display name plus any temporal-bucket / binning so that the same logical
-  column at different granularities (e.g. `Created At: Month` vs `Created At:
-  Quarter`) is distinguishable in prompt text. Falls back to the raw column
-  name when no display name is present."
-  [col]
-  (when (map? col)
-    (let [name-or-display (or (:display_name col) (:name col) "(unknown column)")
-          unit (or (:unit col)
-                   (when (vector? (:field_ref col))
-                     (let [opts (some #(when (map? %) %) (:field_ref col))]
-                       (or (:temporal-unit opts) (get opts "temporal-unit")))))
-          binning (when (vector? (:field_ref col))
-                    (let [opts (some #(when (map? %) %) (:field_ref col))]
-                      (or (:binning opts) (get opts "binning"))))
-          joined? (or (:source_alias col)
-                      (:fk_field_id col))
-          unit-name (some-> unit name)
-          unit-redundant? (and unit-name
-                               (str/includes? (u/lower-case-en name-or-display)
-                                              (u/lower-case-en unit-name)))]
-      (cond-> name-or-display
-        (and unit (not unit-redundant?)) (str ": " unit-name)
-        binning (str " (binned)")
-        (and joined?
-             (not (str/includes? name-or-display "→"))
-             (not (str/includes? name-or-display ":")))
-        (str " [joined]")))))
 
 (defn chart-rank-score
   "Numeric display hint for a hydrated query: prefer the LLM-judged contextual
@@ -369,20 +339,18 @@
   (try
     (when (and result-data chart-stats)
       (let [qp-result (deserialize-result result-data)
-            cols      (get-in qp-result [:data :cols])
-            cfg       (explorations.interestingness/qp-result->chart-config query qp-result)]
+            lib-cols  (explorations.interestingness/exploration-query->lib-cols query)
+            rows      (get-in qp-result [:data :rows])
+            cfg       (explorations.interestingness/chart-config query lib-cols rows)]
         (when cfg
-          (let [metric-idx (first (keep-indexed (fn [i c]
-                                                  (when (some-> (or (:effective_type c) (:base_type c))
-                                                                keyword (isa? :type/Number))
-                                                    i))
-                                                cols))
+          (let [metric-idx (first (keep-indexed (fn [i c] (when (lib.types.isa/numeric? c) i))
+                                                lib-cols))
                 ;; safe-chart-config (in the runner) only succeeds for exactly-2-column
                 ;; results, so the dim column is the other index — `(- 1 metric-idx)`
                 ;; flips 0↔1.
                 dim-idx    (when metric-idx (- 1 metric-idx))
-                dim-col    (when dim-idx (nth cols dim-idx nil))
-                metric-col (when metric-idx (nth cols metric-idx nil))]
+                dim-col    (when dim-idx (nth lib-cols dim-idx nil))
+                metric-col (when metric-idx (nth lib-cols metric-idx nil))]
             {:exploration-query-id (:id query)
              :stored-result-id     stored-result-id
              :name                 (:name query)
@@ -398,8 +366,8 @@
              :cfg                  cfg
              :stats                chart-stats
              :summary-line         (chart-summary-line cfg chart-stats)
-             :dim-detail           (column-detail dim-col)
-             :metric-detail        (column-detail metric-col)
+             :dim-detail           (explorations.interestingness/lib-col->detail dim-col)
+             :metric-detail        (explorations.interestingness/lib-col->detail metric-col)
              :metric-description   (some-> metric-description str/trim not-empty)
              :chart-description    (some-> chart-description str/trim not-empty)}))))
     (catch Throwable e

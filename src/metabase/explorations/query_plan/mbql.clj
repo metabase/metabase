@@ -20,16 +20,20 @@
            (:target %))
         dimension-mappings))
 
+(defn- dim->lib-col
+  "Adapt a snapshotted dimension map (snake_case keys per [[metrics.transforms/normalize-dimension]]'s
+  contract — types are already keywords) to the kebab-case Lib `:metadata/column` shape
+  `lib.types.isa` predicates expect."
+  [dim]
+  {:lib/type       :metadata/column
+   :effective-type (:effective_type dim)
+   :base-type      (:base_type dim)
+   :semantic-type  (:semantic_type dim)})
+
 (defn dim-type-isa?
-  "True if the dim's snapshot effective_type or semantic_type derives from `parent`.
-  Snapshot columns arrive as strings (e.g. `\"type/DateTime\"`), so coerce to
-  keywords before `isa?`."
+  "True if the dim's snapshot effective_type / base_type / semantic_type derives from `parent`."
   [dim parent]
-  (boolean
-   (some (fn [t]
-           (when (some? t)
-             (isa? (keyword t) parent)))
-         [(:effective_type dim) (:semantic_type dim)])))
+  (lib.types.isa/isa? (dim->lib-col dim) parent))
 
 (defn default-bucket-for-dim
   "Pick a default temporal bucket or numeric binning for a dimension based on its

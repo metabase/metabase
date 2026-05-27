@@ -3,7 +3,9 @@
    used by both Card and Measure models."
   (:require
    [clojure.set :as set]
-   [metabase.models.interface :as mi]))
+   [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]))
 
 (def ^:private dimension-key-renames
   "Rename legacy kebab-case keys (carried over from older JSON rows) to the
@@ -21,19 +23,23 @@
   {:dimension-id :dimension_id
    :table-id     :table_id})
 
-(defn normalize-dimension
-  "Normalize a dimension after JSON parsing: rename any legacy kebab-case keys
-   to their canonical snake_case form and convert string values to keywords."
-  [dim]
+(mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
+  "Normalize a dimension after JSON parsing. This is the single boundary at which the canonical
+   shape consumed downstream is enforced — keys are snake_case and type values (`:effective_type`,
+   `:semantic_type`, `:has_field_values`, `:status`, `:sources[].type`) are keywords, and the
+   output conforms to [[lib-metric.schema/persisted-dimension]] (validated by `mu/defn`).
+   Downstream readers should trust the shape and skip defensive kw/str coercion."
+  [dim :- :map]
   (let [dim (set/rename-keys dim dimension-key-renames)
         dim (cond-> dim
               (:group dim) (update :group set/rename-keys
                                    dimension-group-key-renames))]
     (cond-> dim
-      (:status dim)         (update :status keyword)
-      (:effective_type dim) (update :effective_type keyword)
-      (:semantic_type dim)  (update :semantic_type keyword)
-      (:sources dim)        (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
+      (:status dim)           (update :status keyword)
+      (:effective_type dim)   (update :effective_type keyword)
+      (:semantic_type dim)    (update :semantic_type keyword)
+      (:has_field_values dim) (update :has_field_values keyword)
+      (:sources dim)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
 
 (defn normalize-target-ref
   "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."

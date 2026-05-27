@@ -30,24 +30,21 @@
    (when-let [q (t2/select-one [:model/ExplorationQuery :exploration_thread_id] :id pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :interestingness_score]
-  [_model k queries]
+(defn- hydrate-score-from-result [score-key queries]
   (mi/instances-with-hydrated-data
-   queries k
-   #(into {} (map (juxt :exploration_query_id :interestingness_score))
-          (t2/select [:model/ExplorationQueryResult :exploration_query_id :interestingness_score]
+   queries score-key
+   #(into {} (map (juxt :exploration_query_id score-key))
+          (t2/select [:model/ExplorationQueryResult :exploration_query_id score-key]
                      :exploration_query_id [:in (map :id queries)]))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :interestingness_score]
+  [_model k queries]
+  (hydrate-score-from-result k queries))
+
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :contextual_interestingness_score]
   [_model k queries]
-  (mi/instances-with-hydrated-data
-   queries k
-   #(into {} (map (juxt :exploration_query_id :contextual_interestingness_score))
-          (t2/select [:model/ExplorationQueryResult
-                      :exploration_query_id :contextual_interestingness_score]
-                     :exploration_query_id [:in (map :id queries)]))
-   :id))
+  (hydrate-score-from-result k queries))
 
 (defn- ->timeline-score [row]
   (select-keys row [:timeline_id :interestingness_score]))

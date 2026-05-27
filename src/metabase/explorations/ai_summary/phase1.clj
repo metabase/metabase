@@ -178,10 +178,10 @@
   "Repair message for Phase 1: re-state the validation errors and ask for a
   corrected curation, preserving the original intent where possible."
   [previous-curation errors]
-  (let [echo (pr-str previous-curation)
-        echo (if (<= (count echo) repair-echo-cap)
-               echo
-               (str (subs echo 0 repair-echo-cap) "\n... (truncated)"))]
+  (let [raw  (pr-str previous-curation)
+        echo (if (<= (count raw) repair-echo-cap)
+               raw
+               (str (subs raw 0 repair-echo-cap) "\n... (truncated)"))]
     (prompts/render
      "phase1_repair.selmer"
      {:no_tool_call  (nil? previous-curation)

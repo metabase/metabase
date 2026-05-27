@@ -7,6 +7,10 @@
   line chart. This namespace normalizes either shape into the `chart-config` consumed by
   `metabase.interestingness.chart/chart-interestingness`."
   (:require
+   [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n])
@@ -20,14 +24,18 @@
   #{:day-of-week :hour-of-day :month-of-year :quarter-of-year
     :day-of-month :day-of-year :week-of-year :minute-of-hour})
 
+(defn exploration-query->lib-cols
+  "Lib columns from the exploration query"
+  [exploration-query]
+  (let [dq (:dataset_query exploration-query)
+        mp (lib-be/application-database-metadata-provider (:database dq))]
+    (lib/returned-columns (lib/query mp dq))))
+
 (defn- col-extraction-unit
-  "The extraction temporal-unit on `col`'s field_ref (e.g. :day-of-week), or nil."
-  [col]
-  (let [fr (:field_ref col)
-        u  (when (sequential? fr)
-             (some #(when (map? %) (or (:temporal-unit %) (get % "temporal-unit"))) fr))]
-    (when-let [k (some-> u keyword)]
-      (extraction-units k))))
+  "The extraction temporal-unit on a Lib column (e.g. `:day-of-week`), or nil for truncation
+  buckets and untyped columns."
+  [lib-col]
+  (extraction-units (lib/raw-temporal-bucket lib-col)))
 
 (defn- start-of-week-day ^DayOfWeek []
   (-> ((requiring-resolve 'metabase.settings.core/get) :start-of-week)
@@ -55,25 +63,30 @@
     (catch Throwable _ (str v))))
 
 (defn- col->chart-type
-  [col]
-  (let [t (or (some-> (:effective_type col) keyword)
-              (some-> (:base_type col) keyword))]
-    (cond
-      (nil? t)                "string"
-      (isa? t :type/DateTime) "datetime"
-      (isa? t :type/Date)     "date"
-      (isa? t :type/Time)     "time"
-      (isa? t :type/Boolean)  "boolean"
-      (isa? t :type/Number)   "number"
-      :else                   "string")))
+  "Coarse chart-axis type for a Lib column, in the vocabulary the chart-config schema expects."
+  [lib-col]
+  (cond
+    (lib.types.isa/date-with-time? lib-col)    "datetime"
+    (lib.types.isa/date-without-time? lib-col) "date"
+    (lib.types.isa/time? lib-col)              "time"
+    (lib.types.isa/temporal? lib-col)          "datetime"
+    (lib.types.isa/boolean? lib-col)           "boolean"
+    (lib.types.isa/numeric? lib-col)           "number"
+    :else                                      "string"))
 
-(defn- numeric-col?
-  [col]
-  (some-> (or (:effective_type col) (:base_type col)) keyword (isa? :type/Number)))
-
-(defn- temporal-col?
-  [col]
-  (some-> (or (:effective_type col) (:base_type col)) keyword (isa? :type/Temporal)))
+(defn- pick-3-col-indices
+  "Resolve `{:dim-idx :metric-idx :series-idx}` for a 3-col faceted result, given the already-picked
+  `metric-idx`. Returns nil when no temporal column exists for the dim axis."
+  [lib-cols metric-idx]
+  (let [temporal-idx (first (keep-indexed
+                             (fn [i c]
+                               (when (and (not= i metric-idx) (lib.types.isa/temporal? c)) i))
+                             lib-cols))
+        series-idx   (first (filter #(and (not= % metric-idx)
+                                          (not= % temporal-idx))
+                                    (range (count lib-cols))))]
+    (when (and temporal-idx series-idx)
+      {:dim-idx temporal-idx :metric-idx metric-idx :series-idx series-idx})))
 
 (defn- pick-indices
   "Pick column roles given 2 or 3 result columns.
@@ -82,27 +95,18 @@
     - 3 cols → `{:dim-idx <temporal-idx> :metric-idx <numeric-idx> :series-idx <remaining-idx>}`
 
   Returns nil when no numeric column exists, or — for 3 cols — when no temporal column exists."
-  [cols]
-  (let [n          (count cols)
-        metric-idx (first (keep-indexed (fn [i c] (when (numeric-col? c) i)) cols))]
+  [lib-cols]
+  (let [metric-idx (first (keep-indexed (fn [i c] (when (lib.types.isa/numeric? c) i)) lib-cols))]
     (when metric-idx
-      (case n
+      (case (count lib-cols)
         ;; An extraction-unit column (day-of-week, hour-of-day, …) is an integer position, so
         ;; it's numeric too — pin it as the dimension so the real measure stays the metric and
         ;; the axes don't swap. Otherwise the lone numeric column is the metric.
-        2 (let [extr-idx (first (keep-indexed (fn [i c] (when (col-extraction-unit c) i)) cols))]
-            (if (and extr-idx (numeric-col? (nth cols (- 1 extr-idx))))
+        2 (let [extr-idx (first (keep-indexed (fn [i c] (when (col-extraction-unit c) i)) lib-cols))]
+            (if (and extr-idx (lib.types.isa/numeric? (nth lib-cols (- 1 extr-idx))))
               {:dim-idx extr-idx :metric-idx (- 1 extr-idx)}
               {:dim-idx (- 1 metric-idx) :metric-idx metric-idx}))
-        3 (let [temporal-idx (first (keep-indexed
-                                     (fn [i c]
-                                       (when (and (not= i metric-idx) (temporal-col? c)) i))
-                                     cols))
-                series-idx   (first (filter #(and (not= % metric-idx)
-                                                  (not= % temporal-idx))
-                                            (range n)))]
-            (when (and temporal-idx series-idx)
-              {:dim-idx temporal-idx :metric-idx metric-idx :series-idx series-idx}))
+        3 (pick-3-col-indices lib-cols metric-idx)
         nil))))
 
 (defn- pair-filter
@@ -124,20 +128,26 @@
     (if (#{"datetime" "date" "time"} dim-chart-type) "line" "bar")
     display))
 
+(defn- col-name
+  "Human-facing name for a Lib column — display-name when present, otherwise the raw name,
+  otherwise a literal fallback."
+  [lib-col]
+  (or (:display-name lib-col) (:name lib-col) "value"))
+
 (defn- two-col-chart-config
-  [exploration-query cols rows dim-idx metric-idx]
-  (let [dim-col             (nth cols dim-idx)
-        metric-col          (nth cols metric-idx)
-        extr                (col-extraction-unit dim-col)
-        dim-chart-type      (if extr "string" (col->chart-type dim-col))
+  [exploration-query lib-cols rows dim-idx metric-idx]
+  (let [dim-col              (nth lib-cols dim-idx)
+        metric-col           (nth lib-cols metric-idx)
+        extr                 (col-extraction-unit dim-col)
+        dim-chart-type       (if extr "string" (col->chart-type dim-col))
         [x-values0 y-values] (pair-filter rows dim-idx metric-idx)
-        x-values            (if extr (mapv #(extraction-label extr %) x-values0) x-values0)]
+        x-values             (if extr (mapv #(extraction-label extr %) x-values0) x-values0)]
     (when (seq y-values)
-      (let [series-name (or (:display_name metric-col) (:name metric-col) "value")]
+      (let [series-name (col-name metric-col)]
         {:display_type (effective-display-type (:display exploration-query) dim-chart-type)
          :title        (:name exploration-query)
          :series       {series-name
-                        {:x            {:name (or (:display_name dim-col) (:name dim-col))
+                        {:x            {:name (col-name dim-col)
                                         :type dim-chart-type}
                          :y            {:name series-name
                                         :type "number"}
@@ -149,13 +159,12 @@
   "Build a multi-series line chart-config: one series per distinct categorical value, x = temporal
   breakout, y = metric. Categorical nulls collapse to `\"(empty)\"`; non-string values are
   stringified to satisfy the `:map-of :string ::series-config` schema."
-  [exploration-query cols rows dim-idx metric-idx series-idx]
-  (let [dim-col        (nth cols dim-idx)
-        metric-col     (nth cols metric-idx)
+  [exploration-query lib-cols rows dim-idx metric-idx series-idx]
+  (let [dim-col        (nth lib-cols dim-idx)
+        metric-col     (nth lib-cols metric-idx)
         dim-chart-type (col->chart-type dim-col)
-        metric-name    (or (:display_name metric-col) (:name metric-col) "value")
-        x-meta         {:name (or (:display_name dim-col) (:name dim-col))
-                        :type dim-chart-type}
+        metric-name    (col-name metric-col)
+        x-meta         {:name (col-name dim-col) :type dim-chart-type}
         y-meta         {:name metric-name :type "number"}
         grouped        (->> rows
                             (keep (fn [r]
@@ -179,15 +188,51 @@
                                     :display_name series-key}]))
                            grouped)})))
 
+(defn chart-config
+  "Build a `metabase.interestingness.chart.types/chart-config` from an exploration-query (for
+  display + title), its Lib columns, and the QP-result rows. Returns nil when the result can't
+  be scored: fewer than two cols, no numeric column, or — for the 3-col faceted shape — no
+  temporal column.
+
+  `lib-cols` should be authentic Lib columns produced via [[exploration-query->lib-cols]] in
+  production. The pure shape lets tests exercise the column-role / chart-type branching directly
+  without round-tripping through the metadata provider."
+  [exploration-query lib-cols rows]
+  (when (and (#{2 3} (count lib-cols)) (seq rows))
+    (when-let [{:keys [dim-idx metric-idx series-idx]} (pick-indices lib-cols)]
+      (case (count lib-cols)
+        2 (two-col-chart-config exploration-query lib-cols rows dim-idx metric-idx)
+        3 (three-col-chart-config exploration-query lib-cols rows dim-idx metric-idx series-idx)))))
+
 (defn qp-result->chart-config
-  "Build a `metabase.interestingness.chart.types/chart-config` from an `:model/ExplorationQuery`
-  row and its in-memory QP result. Returns nil when the result can't be scored: no rows, no
-  numeric column, fewer than two cols, or — for the 3-col faceted shape — no temporal column."
+  "Convenience: build a `chart-config` from an `:model/ExplorationQuery` row and its in-memory QP
+  result. Derives Lib columns from the query's `:dataset_query` via
+  [[exploration-query->lib-cols]]; takes rows from the QP result. Returns nil when the result
+  can't be scored."
   [exploration-query qp-result]
-  (let [cols (get-in qp-result [:data :cols])
-        rows (get-in qp-result [:data :rows])]
-    (when (and (#{2 3} (count cols)) (seq rows))
-      (when-let [{:keys [dim-idx metric-idx series-idx]} (pick-indices cols)]
-        (case (count cols)
-          2 (two-col-chart-config exploration-query cols rows dim-idx metric-idx)
-          3 (three-col-chart-config exploration-query cols rows dim-idx metric-idx series-idx))))))
+  (chart-config exploration-query
+                (exploration-query->lib-cols exploration-query)
+                (get-in qp-result [:data :rows])))
+
+(defn lib-col->detail
+  "A compact human-readable identifier for a single Lib column. Includes the display name plus any
+  temporal-bucket / binning so that the same logical column at different granularities
+  (e.g. `Created At: Month` vs `Created At: Quarter`) is distinguishable in prompt text. Falls back
+  to the raw column name when no display name is present."
+  [lib-col]
+  (when (map? lib-col)
+    (let [name-or-display (col-name lib-col)
+          unit            (lib/raw-temporal-bucket lib-col)
+          binning         (lib/binning lib-col)
+          joined?         (#{:source/joins :source/implicitly-joinable} (:lib/source lib-col))
+          unit-name       (some-> unit name)
+          unit-redundant? (and unit-name
+                               (str/includes? (u/lower-case-en name-or-display)
+                                              (u/lower-case-en unit-name)))]
+      (cond-> name-or-display
+        (and unit (not unit-redundant?)) (str ": " unit-name)
+        binning                          (str " (binned)")
+        (and joined?
+             (not (str/includes? name-or-display "→"))
+             (not (str/includes? name-or-display ":")))
+        (str " [joined]")))))

@@ -17,14 +17,14 @@
   ([dim-id]                (text-dim dim-id nil))
   ([dim-id distinct-count] {:dimension_id   dim-id
                             :display_name   dim-id
-                            :effective_type "type/Text"
-                            :semantic_type  "type/Category"
+                            :effective_type :type/Text
+                            :semantic_type  :type/Category
                             :fingerprint    (when distinct-count
                                               {:global {:distinct-count distinct-count}})}))
 
-(defn- date-dim     [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/Date"})
-(defn- datetime-dim [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/DateTime"})
-(defn- numeric-dim  [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type "type/Float"})
+(defn- date-dim     [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Date})
+(defn- datetime-dim [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/DateTime})
+(defn- numeric-dim  [dim-id] {:dimension_id dim-id :display_name dim-id :effective_type :type/Float})
 
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`
@@ -63,23 +63,18 @@
     (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 10)}))]
       (is (= :ok (:outcome r)))
       (is (contains? (set (map :variant (:plan r))) "default"))))
-
   (testing "default emitted for a text dim with known mid cardinality (21-100)"
     (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 50)}))]
       (is (contains? (set (map :variant (:plan r))) "default"))))
-
   (testing "default skipped for a text dim with known high cardinality (>100)"
     (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a" 500)}))]
       (is (not (contains? (set (map :variant (:plan r))) "default")))))
-
   (testing "default skipped for a text dim with unknown cardinality"
     (let [r (plan! (metric-with-dims 1 {"a" (text-dim "a")}))]
       (is (not (contains? (set (map :variant (:plan r))) "default")))))
-
   (testing "default always emitted for a temporal dim (cardinality irrelevant)"
     (let [r (plan! (metric-with-dims 1 {"d" (datetime-dim "d")}))]
       (is (contains? (set (map :variant (:plan r))) "default"))))
-
   (testing "default always emitted for an auto-binned numeric dim"
     (let [r (plan! (metric-with-dims 1 {"n" (numeric-dim "n")}))]
       (is (contains? (set (map :variant (:plan r))) "default")))))
