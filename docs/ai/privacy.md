@@ -18,7 +18,7 @@ What we send:
 - Your prompts.
 - Metadata (like table and field names), so Metabot knows what to query.
 - A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- For chart analysis, AI might see the timeseries data used to draw certain visualizations, depending on the chart type.
+- For chart analysis, AI won't see the raw timeseries data, but it does see some metrics derived from that data (like slopes, series correlations, etc). AI may also see some categorical values. For example, if a question breaks out orders over time by a product category, the AI could see the category values ("Gadgets", "Widgets", etc).
 
 We, Metabase the company, also collect some of this metadata to gauge usage and improve the AI integration.
 
