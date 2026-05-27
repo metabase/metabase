@@ -14,6 +14,8 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -210,16 +212,74 @@
                 (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
 
 (deftest test-embedding-service-validation
-  (testing "ai-service throws when base URL not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
-                                       ee-embedding-service-api-key  "some-key"]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service base URL not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
-                                    "test text"))))))
+  (let [mock-embedding [1.0 2.0 3.0 4.0]
+        mock-response  {:data  [{:object    "embedding"
+                                 :embedding (encode-floats-to-base64 mock-embedding)
+                                 :index     0}]
+                        :model "test-model"
+                        :usage {:prompt_tokens 1
+                                :total_tokens  1}}]
+    (testing "ai-service throws when both base URLs are not configured"
+      (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url                    (constantly nil)
+                                  semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  semantic.settings/ee-embedding-service-api-key  (constantly "key")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Embedding service and ai service base URLs are not configured"
+             (embedding/get-embedding {:provider "ai-service"
+                                       :model-name "test-model"
+                                       :vector-dimensions 4}
+                                      "test text")))))
+    (testing "ai-service falls back to ai-service-base-url when ee-embedding-service-base-url is not set"
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  llm.settings/ai-service-base-url                    (constantly "http://mock-ai-service")
+                                  premium-features/premium-embedding-token         (constantly "mock-token")]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                  (reset! captured {:url url :headers (:headers opts)})
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
+            (testing "get-embedding uses ai-service URL with instance-token auth"
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))
+            (reset! captured nil)
+            (testing "get-embeddings-batch uses ai-service URL with instance-token auth"
+              (is (= [mock-embedding]
+                     (mapv vec (embedding/get-embeddings-batch {:provider          "ai-service"
+                                                                :model-name        "test-model"
+                                                                :vector-dimensions 4}
+                                                               ["test text"]
+                                                               {:record-tokens? false}))))
+              (is (= "http://mock-ai-service/v1/embeddings" (:url @captured)))
+              (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))
+              (is (nil? (get-in @captured [:headers "Authorization"]))))))))
+    (testing "ee-embedding-service-base-url wins when both are configured"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"]
+        (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "http://mock-ai-service")]
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                    (reset! captured {:url url :headers (:headers opts)})
+                                                    {:status  200
+                                                     :headers {"Content-Type" "application/json"}
+                                                     :body    (json/encode mock-response)})]
+              (is (= mock-embedding
+                     (vec (embedding/get-embedding {:provider          "ai-service"
+                                                    :model-name        "test-model"
+                                                    :vector-dimensions 4}
+                                                   "test text"
+                                                   {:record-tokens? false}))))
+              (is (= "http://mock-embedding-service/v1/embeddings" (:url @captured)))
+              (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
+              (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
