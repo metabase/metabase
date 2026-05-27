@@ -331,7 +331,7 @@
   {:type     type
    :id       id
    :metadata (cond-> {:rank rank
-                      :uri  (llm-rep/metabase-uri type id)}
+                      :uri  (llm-shape/metabase-uri type id)}
                (some? verified)    (assoc :verified verified)
                (some? database_id) (assoc :database_id database_id))})
 
