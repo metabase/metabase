@@ -29,8 +29,6 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private embed-mcp-template-path "frontend_client/embed-mcp.html")
-(def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
-(def ^:private frontend-dev-origin (str "http://localhost:" frontend-dev-port))
 
 ;; The built template is emitted by HtmlWebpackPlugin into resources/frontend_client/
 ;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
@@ -118,7 +116,7 @@
 (defn- resource-domains
   [url]
   (cond-> [url]
-    config/is-dev? (conj frontend-dev-origin)))
+    config/is-dev? (conj (str "http://localhost:" (or (env/env :mb-frontend-dev-port) "8080")))))
 
 (defn- ui-meta
   "MCP `_meta.ui` block returned alongside UI resources.
@@ -141,7 +139,7 @@
    it out narrows the CSP for security review."
   [resource]
   (let [url (site-origin)]
-    {:ui (cond-> {:csp {:baseUriDomains [url]
+    {:ui (cond-> {:csp {:baseUriDomains  [url]
                         :connectDomains  [url]
                         :resourceDomains (resource-domains url)}}
            (contains? resource :prefersBorder)
