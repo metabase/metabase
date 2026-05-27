@@ -355,6 +355,10 @@ export type VisualizationSettings = {
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
+  // Treemap settings
+  "treemap.grouping"?: string;
+  "treemap.value"?: string;
+
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;
   "boxplot.points_mode"?: BoxPlotPointsMode;

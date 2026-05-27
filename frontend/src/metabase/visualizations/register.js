@@ -22,6 +22,7 @@ import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import { Table } from "./visualizations/Table/Table";
+import { TreemapChart } from "./visualizations/TreemapChart";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -45,6 +46,7 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
+  registerVisualization(TreemapChart);
 
   registerVisualization(ListViz);
 
