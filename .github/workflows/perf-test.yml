@@ -110,7 +110,7 @@ jobs:
         id: split
         run: echo "fragment=${SHA:5}" >> $GITHUB_OUTPUT
       - name: Render Deployment YAML
-        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./perf-test-pr.yml.tmpl
           output: ./perf-test-pr.yml

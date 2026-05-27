@@ -136,7 +136,7 @@ jobs:
         run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
       - name: Render Deployment YAML
         if: ${{ !inputs.self_hosting }}
-        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./metabase.yml.tmpl
           output: ./metabase.yml
@@ -155,7 +155,7 @@ jobs:
         run: aws s3 cp s3://metabase-pr-env/values.yaml.tmpl ./values.yaml.tmpl
       - name: Render Helm values (self-hosting)
         if: ${{ inputs.self_hosting }}
-        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
         with:
           input: ./values.yaml.tmpl
           output: ./values.yaml
