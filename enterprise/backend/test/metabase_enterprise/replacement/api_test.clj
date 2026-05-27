@@ -6,6 +6,7 @@
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -30,6 +31,13 @@
           run
           (do (Thread/sleep (long interval-ms))
               (recur)))))))
+
+(defn- tracked-event-names!
+  "Drain the fake Snowplow collector and return the set of `simple_event` names tracked during the run."
+  []
+  (into #{}
+        (keep #(get (:data %) "event"))
+        (snowplow-test/pop-event-data-and-user-id!)))
 
 ;;; ------------------------------------------------ POST /check-replace-source ------------------------------------------------
 
@@ -259,21 +267,24 @@
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-backfill!)
-          (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
-                                                {:source_entity_id   old-id
-                                                 :source_entity_type :card
-                                                 :target_entity_id   new-id
-                                                 :target_entity_type :card})
-                run-id    (:run_id response)
-                final-run (poll-run run-id)]
-            (is (= "succeeded" (:status final-run))
-                "Run should reach 'succeeded' status")
-            (is (= 1.0 (:progress final-run))
-                "Progress should be 1.0 when done")
-            (is (nil? (:is_active final-run))
-                "is_active should be nil when run is complete")
-            (is (some? (:end_time final-run))
-                "end_time should be set")))))))
+          (snowplow-test/with-fake-snowplow-collector
+            (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                                  {:source_entity_id   old-id
+                                                   :source_entity_type :card
+                                                   :target_entity_id   new-id
+                                                   :target_entity_type :card})
+                  run-id    (:run_id response)
+                  final-run (poll-run run-id)]
+              (is (= "succeeded" (:status final-run))
+                  "Run should reach 'succeeded' status")
+              (is (= 1.0 (:progress final-run))
+                  "Progress should be 1.0 when done")
+              (is (nil? (:is_active final-run))
+                  "is_active should be nil when run is complete")
+              (is (some? (:end_time final-run))
+                  "end_time should be set")
+              (testing "tracks the replace_data_source_succeeded analytics event after the run completes"
+                (is (contains? (tracked-event-names!) "replace_data_source_succeeded"))))))))))
 
 (deftest get-run-not-found-test
   (testing "GET /runs/:id — returns 404 for non-existent run"
@@ -369,28 +380,33 @@
                 (doseq [card [model-card question-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
                 (deps.test/synchronously-run-backfill!)
-                (let [response (mt/user-http-request :crowberto :post 202
-                                                     "ee/replacement/replace-model-with-transform"
-                                                     {:card_id              model-id
-                                                      :transform_name       "Orders Transform"
-                                                      :transform_target     {:type     "table"
-                                                                             :schema   schema
-                                                                             :name     (:name target)
-                                                                             :database (mt/id)}
-                                                      :target_collection_id nil})
-                      run-id   (:run_id response)
-                      final    (poll-run run-id :timeout-ms 30000)]
-                  (is (= "succeeded" (:status final)))
-                  (testing "model is converted to a saved question"
-                    (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
-                  (testing "dependent question now references the output table"
-                    (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
-                          transform      (t2/select-one :model/Transform :name "Orders Transform")
-                          output-table   (transforms/output-table transform)]
-                      (is (some? output-table)
-                          "transforms/output-table should return the output table")
-                      (is (= (:id output-table)
-                             (lib/primary-source-table-id question-query))))))))))))))
+                (snowplow-test/with-fake-snowplow-collector
+                  (let [response (mt/user-http-request :crowberto :post 202
+                                                       "ee/replacement/replace-model-with-transform"
+                                                       {:card_id              model-id
+                                                        :transform_name       "Orders Transform"
+                                                        :transform_target     {:type     "table"
+                                                                               :schema   schema
+                                                                               :name     (:name target)
+                                                                               :database (mt/id)}
+                                                        :target_collection_id nil})
+                        run-id   (:run_id response)
+                        final    (poll-run run-id :timeout-ms 30000)]
+                    (is (= "succeeded" (:status final)))
+                    (testing "model is converted to a saved question"
+                      (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
+                    (testing "dependent question now references the output table"
+                      (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
+                            transform      (t2/select-one :model/Transform :name "Orders Transform")
+                            output-table   (transforms/output-table transform)]
+                        (is (some? output-table)
+                            "transforms/output-table should return the output table")
+                        (is (= (:id output-table)
+                               (lib/primary-source-table-id question-query)))))
+                    (testing "tracks the migration started and success analytics events"
+                      (let [events (tracked-event-names!)]
+                        (is (contains? events "model_to_transforms_migration_started"))
+                        (is (contains? events "model_to_transforms_migration_success"))))))))))))))
 
 (deftest replace-model-with-transform-failure-test
   (testing "POST /replace-model-with-transform — transform execution failure leaves model unchanged"
@@ -403,22 +419,28 @@
                         :name          "Model"}]
           (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
             (with-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
-              (let [response (mt/user-http-request :crowberto :post 202
-                                                   "ee/replacement/replace-model-with-transform"
-                                                   {:card_id          model-id
-                                                    :transform_name   "Failing Transform"
-                                                    :transform_target {:type     "table"
-                                                                       :schema   "PUBLIC"
-                                                                       :name     "fail_transform"
-                                                                       :database (mt/id)}})
-                    run-id   (:run_id response)
-                    final    (poll-run run-id)]
-                (testing "run reaches failed status"
-                  (is (= "failed" (:status final))))
-                (testing "error message is captured"
-                  (is (some? (:message final))))
-                (testing "model is NOT converted to a question"
-                  (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))))))))))
+              (snowplow-test/with-fake-snowplow-collector
+                (let [response (mt/user-http-request :crowberto :post 202
+                                                     "ee/replacement/replace-model-with-transform"
+                                                     {:card_id          model-id
+                                                      :transform_name   "Failing Transform"
+                                                      :transform_target {:type     "table"
+                                                                         :schema   "PUBLIC"
+                                                                         :name     "fail_transform"
+                                                                         :database (mt/id)}})
+                      run-id   (:run_id response)
+                      final    (poll-run run-id)]
+                  (testing "run reaches failed status"
+                    (is (= "failed" (:status final))))
+                  (testing "error message is captured"
+                    (is (some? (:message final))))
+                  (testing "model is NOT converted to a question"
+                    (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))
+                  (testing "tracks the migration started and failure analytics events, not success"
+                    (let [events (tracked-event-names!)]
+                      (is (contains? events "model_to_transforms_migration_started"))
+                      (is (contains? events "model_to_transforms_migration_failure"))
+                      (is (not (contains? events "model_to_transforms_migration_success"))))))))))))))
 
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"

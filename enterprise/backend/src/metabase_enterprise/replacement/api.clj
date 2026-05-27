@@ -6,6 +6,7 @@
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -57,7 +58,9 @@
                    (replacement.runner/run-swap-source!
                     [source_entity_type source_entity_id]
                     [target_entity_type target_entity_id]
-                    progress))
+                    progress)
+                   (analytics/track-event! :snowplow/simple_event
+                                           {:event "replace_data_source_succeeded"}))
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id api/*current-user-id*)
