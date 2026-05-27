@@ -138,7 +138,8 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("be.visible");
 
     cy.log("Pick the Sample Database from the picker");
-    cy.findByRole("button", { name: "Sample Database" }).click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("PUBLIC").click();
 
     cy.log("Single-schema DB auto-navigates into PUBLIC and fetches ERD");
     cy.wait("@erd")
@@ -163,9 +164,11 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.log("Side info panel opens with the table breadcrumb and field list");
     infoPanel()
       .should("be.visible")
-      .and("contain", "Orders")
+      .and("contain", "ORDERS")
+      .and("contain", "Sample Database")
+      .and("contain", "PUBLIC")
       .and("contain", "User ID")
-      .and("contain", "Product ID");
+      .and("contain", "PEOPLE");
 
     cy.log("Read-only adapter: no 'Find and replace' / 'Replace' button");
     infoPanel()
@@ -173,7 +176,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("not.exist");
 
     cy.log("Click panel title — camera re-zooms to the selected Orders node");
-    infoPanel().findByRole("heading", { name: "Orders" }).click();
+    infoPanel().findByRole("heading", { name: "ORDERS" }).click();
     assertViewportZoom((z) =>
       expect(z, "title click should zoom correctly").to.be.at.least(
         MIN_ZOOM_FOR_TARGET,
@@ -189,7 +192,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .click();
     assertNodeInViewport(PRODUCTS_ID);
     cy.log("Selection stays on Orders after FK link click");
-    infoPanel().findByRole("heading", { name: "Orders" }).should("be.visible");
+    infoPanel().findByRole("heading", { name: "ORDERS" }).should("be.visible");
 
     cy.log("Auto-layout fits the entire canvas — every table is on screen");
     cy.contains("button", "Auto-layout").should("be.visible").click();
@@ -227,8 +230,8 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.contains("button", "Focus node").should("not.be.disabled");
 
     cy.log("Selection moved from Orders to Reviews — prior selection cleared");
-    infoPanel().findByRole("heading", { name: "Reviews" }).should("be.visible");
-    infoPanel().findByRole("heading", { name: "Orders" }).should("not.exist");
+    infoPanel().findByRole("heading", { name: "REVIEWS" }).should("be.visible");
+    infoPanel().findByRole("heading", { name: "ORDERS" }).should("not.exist");
 
     cy.log("Closing the info panel clears node selection");
     infoPanel().findByLabelText("Close").click({ force: true });
@@ -317,15 +320,11 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       "Open the picker — drills directly into the schema list of the current DB",
     );
     schemaPickerTrigger().click();
-    cy.findByLabelText("Back to databases").should("be.visible");
-
-    cy.log("Back button returns to the database list");
-    cy.findByLabelText("Back to databases").click();
-    cy.findByLabelText("Sample Database").should("be.visible");
+    H.miniPicker().findByText("Sample Database").should("be.visible");
 
     cy.log("Click outside the popover closes it");
     cy.get("body").click(0, 0);
-    cy.findByLabelText("Sample Database").should("not.exist");
+    H.miniPicker().should("not.exist");
   });
 });
 
@@ -376,17 +375,16 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
 
     cy.log("Bare URL — picker auto-opens with both databases listed");
     cy.visit(BASE_URL);
-    cy.findByLabelText("Sample Database").should("be.visible");
-    cy.findByLabelText("Writable Postgres12").should("be.visible");
+    H.miniPicker().findByText("Sample Database").should("be.visible");
+    H.miniPicker().findByText("Writable Postgres12").should("be.visible");
 
     cy.log("Multi-schema DB drills into the schema list (no auto-nav)");
-    cy.findByLabelText("Writable Postgres12").click();
-    cy.findByLabelText("Back to databases").should("be.visible");
-    cy.findByLabelText(SV_SCHEMA).should("be.visible");
-    cy.findByLabelText(SV_EXTRA_SCHEMA).should("be.visible");
+    H.miniPicker().findByText("Writable Postgres12").click();
+    H.miniPicker().findByText(SV_SCHEMA).should("be.visible");
+    H.miniPicker().findByText(SV_EXTRA_SCHEMA).should("be.visible");
 
     cy.log(`Click ${SV_SCHEMA} → navigates and ERD loads`);
-    cy.findByLabelText(SV_SCHEMA).click();
+    H.miniPicker().findByText(SV_SCHEMA).click();
     cy.wait("@erd");
     cy.url()
       .should("include", `database-id=${WRITABLE_DB_ID}`)
@@ -540,8 +538,8 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     }).as("slowErd");
     H.DataStudio.nav().findByLabelText("Library").click();
     H.DataStudio.nav().findByLabelText("Schema viewer").click();
-    schemaPickerTrigger().click();
-    cy.findByRole("button", { name: "Sample Database" }).click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("PUBLIC").click();
     cy.findByTestId("schema-viewer-loader").should("be.visible");
     cy.wait("@slowErd");
     cy.findByTestId("schema-viewer-loader").should("not.exist");
@@ -585,6 +583,6 @@ describe("scenarios > schema-viewer (permissions)", () => {
 
     cy.log("Selection still works for the non-admin user");
     tableNode(ORDERS_ID).findByText("ORDERS").click();
-    infoPanel().should("be.visible").and("contain", "Orders");
+    infoPanel().should("be.visible").and("contain", "ORDERS");
   });
 });
