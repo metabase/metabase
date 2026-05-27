@@ -189,10 +189,10 @@
       ;; we can't guarantee. Re-fetch via :id is the safe play: query with order
       ;; matching `ids`, then map by position.
       (let [extract  (fn [] (into {}
-                                   (map (fn [m]
-                                          (let [eid (some-> m :serdes/meta last :id)]
-                                            [eid m])))
-                                   (serdes/extract-all model {:where [:in :id ids]})))
+                                  (map (fn [m]
+                                         (let [eid (some-> m :serdes/meta last :id)]
+                                           [eid m])))
+                                  (serdes/extract-all model {:where [:in :id ids]})))
             extracted-by-id (if (= model "Database")
                               (binding [warehouses.database/*include-h2-in-extract?* true]
                                 (extract))

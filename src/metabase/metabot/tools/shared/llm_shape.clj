@@ -703,4 +703,3 @@
     (do
       (log/warn "Unknown entity type" {:type (:type entity)})
       (pr-str entity))))
-
