@@ -25,6 +25,7 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
+  isDisabled?: boolean;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -35,6 +36,7 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
+  isDisabled,
   onSwap,
   onRemove,
   onSetBreakout,
@@ -145,12 +147,20 @@ export function MetricPill({
               ) : (
                 <>
                   <SourceColorIndicator
-                    colors={colors}
+                    colors={isDisabled ? undefined : colors}
+                    fallbackColor={
+                      isDisabled ? "var(--mb-color-icon-disabled)" : undefined
+                    }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"
                     }
                   />
-                  <span>{metric.name}</span>
+                  <span
+                    className={S.metricPillText}
+                    data-disabled={isDisabled ? true : undefined}
+                  >
+                    {metric.name}
+                  </span>
                 </>
               )}
             </Flex>

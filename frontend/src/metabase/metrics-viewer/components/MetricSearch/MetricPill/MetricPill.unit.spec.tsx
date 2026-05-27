@@ -19,20 +19,27 @@ import { MetricPill } from "./MetricPill";
 function setup({
   metric,
   definitionEntry,
+  isDisabled,
+  onRemove = jest.fn(),
 }: {
   metric: SelectedMetric;
   definitionEntry?: MetricsViewerDefinitionEntry;
+  isDisabled?: boolean;
+  onRemove?: jest.Mock;
 }) {
   setupSearchEndpoints([]);
   renderWithProviders(
     <MetricPill
       metric={metric}
       definitionEntry={definitionEntry ?? { id: "measure:1", definition: null }}
+      isDisabled={isDisabled}
       onSwap={jest.fn()}
-      onRemove={jest.fn()}
+      onRemove={onRemove}
       onSetBreakout={jest.fn()}
     />,
   );
+
+  return { onRemove };
 }
 
 async function openMenu() {
@@ -92,5 +99,21 @@ describe("MetricPill action menu", () => {
     await userEvent.click(screen.getByText("Replace"));
 
     expect(await screen.findByText("Browse all")).toBeInTheDocument();
+  });
+
+  it("should keep menu and remove actions available when visually disabled", async () => {
+    const onRemove = jest.fn();
+    setup({
+      metric: { id: 1, name: "Revenue", sourceType: "metric" },
+      isDisabled: true,
+      onRemove,
+    });
+
+    await openMenu();
+
+    expect(screen.getByText("Replace")).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Remove Revenue"));
+
+    expect(onRemove).toHaveBeenCalledWith(1, "metric");
   });
 });

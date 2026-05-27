@@ -9,6 +9,7 @@ import type {
   MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
@@ -32,12 +33,18 @@ jest.mock("metabase/metrics-viewer/utils/definition-builder", () => ({
 jest.mock("../MetricPill", () => ({
   MetricPill: ({
     metric,
+    isDisabled,
     onRemove,
   }: {
     metric: SelectedMetric;
+    isDisabled?: boolean;
     onRemove: (id: number, sourceType: "metric" | "measure") => void;
   }) => (
-    <div data-testid="metric-pill" data-metric-name={metric.name}>
+    <div
+      data-testid="metric-pill"
+      data-metric-name={metric.name}
+      data-disabled={isDisabled ? true : undefined}
+    >
       <span>{metric.name}</span>
       <button onClick={() => onRemove(metric.id, metric.sourceType)}>
         remove
@@ -146,6 +153,7 @@ function buildFormulaEntities(
 type SetupOptions = {
   /** Mixed array of metric and expression entries (old-style convenience) */
   entries?: (MetricDefinitionEntry | ExpressionDefinitionEntry)[];
+  activeDimensionBreakout?: MetricsViewerDimensionBreakoutState | null;
   selectedMetrics?: SelectedMetric[];
   metricColors?: SourceColorMap;
   onFormulaEntitiesChange?: jest.Mock;
@@ -161,6 +169,7 @@ function setup(options: SetupOptions = {}) {
 
   const {
     selectedMetrics = [revenue, costs],
+    activeDimensionBreakout = null,
     metricColors = {},
     entries = selectedMetrics.map(makeMetricEntry),
     onFormulaEntitiesChange = jest.fn(),
@@ -181,6 +190,7 @@ function setup(options: SetupOptions = {}) {
     <MetricSearchInput
       definitions={definitions}
       formulaEntities={formulaEntities}
+      activeDimensionBreakout={activeDimensionBreakout}
       onFormulaEntitiesChange={onFormulaEntitiesChange}
       selectedMetrics={selectedMetrics}
       metricColors={metricColors}
@@ -266,6 +276,24 @@ describe("collapsed view (definitions present, not focused)", () => {
     expect(pills).toHaveLength(2);
     expect(pills[0]).toHaveAttribute("data-metric-name", "Revenue");
     expect(pills[1]).toHaveAttribute("data-metric-name", "Costs");
+  });
+
+  it("visually disables a metric without a dimension for the active breakout", () => {
+    setup({
+      entries: [revenueEntry, costsEntry],
+      activeDimensionBreakout: {
+        id: "time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: { 0: "dim-created-at" },
+        projectionConfig: {},
+      },
+    });
+
+    const pills = screen.getAllByTestId("metric-pill");
+    expect(pills[0]).not.toHaveAttribute("data-disabled");
+    expect(pills[1]).toHaveAttribute("data-disabled", "true");
   });
 
   it("does not render a text input when collapsed", () => {

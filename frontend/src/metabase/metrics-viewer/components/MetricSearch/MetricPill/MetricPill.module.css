@@ -10,6 +10,10 @@
   background-color: var(--mb-color-background-secondary);
 }
 
+.metricPillText[data-disabled="true"] {
+  color: var(--mb-color-text-tertiary);
+}
+
 .menuTarget {
   pointer-events: none;
 }
