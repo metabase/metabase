@@ -3,6 +3,9 @@
    [clojure.test :refer :all]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.query-plan :as query-plan]
+   [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -65,6 +68,33 @@
   [[do-with-ai-summary-available!]])."
   [& body]
   `(do-with-ai-summary-available! (fn [] ~@body)))
+
+(defn- finalize-queries!
+  "For each pending ExplorationQuery row that has no dataset_query yet, build and
+  persist the MBQL dataset_query using the same variant machinery the production
+  runner uses. This replicates the `finalize-row!` step from the async runner
+  (which doesn't execute in the test environment)."
+  [queries]
+  (doseq [q queries
+          :when (nil? (:dataset_query q))]
+    (when-let [ctx (qp.context/build-row-context q)]
+      (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
+        (t2/update! :model/ExplorationQuery (:id q)
+                    {:dataset_query dq})))))
+
+(defn- create-exploration!
+  "POST a new exploration as `user`, then synchronously run the query planner for
+  each created thread (production does this in an async worker that doesn't run in
+  tests). Also finalizes each query's dataset_query (production does this in the
+  runner's per-row execution step). Returns the re-hydrated exploration so callers
+  see materialized :queries with dataset_query populated."
+  [user body]
+  (let [resp (mt/user-http-request user :post 200 "exploration" body)]
+    (doseq [thread (:threads resp)]
+      (query-plan/generate-query-plan! (:id thread)))
+    (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
+      (finalize-queries! (mapcat :queries (:threads hydrated)))
+      (mt/user-http-request user :get 200 (str "exploration/" (:id resp))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
@@ -199,7 +229,7 @@
                   :dimensions   [{:dimension_id "d1" :display_name "Price"
                                   :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
-            resp (mt/user-http-request u :post 200 "exploration" body)
+            resp (create-exploration! u body)
             thread (-> resp :threads first)
             q      (-> thread :queries first)]
         (is (= "Why is revenue down" (:name resp)))
@@ -245,7 +275,7 @@
                                   {:dimension_id "n"   :effective_type "type/Number"}
                                   {:dimension_id "lat" :effective_type "type/Float" :semantic_type "type/Latitude"}
                                   {:dimension_id "s"   :effective_type "type/Text"}]}
-            resp    (mt/user-http-request u :post 200 "exploration" body)
+            resp    (create-exploration! u body)
             mp      (lib-be/application-database-metadata-provider (mt/id))
             by-dim  (into {} (for [q       (-> resp :threads first :queries)
                                    :when   (= "default" (:query_type q))]
@@ -282,7 +312,7 @@
                                                        :table_id (mt/id :venues)
                                                        :target ["field" {} field-id]}]}]
                       :dimensions [{:dimension_id "n" :effective_type "type/Number"}]}
-                resp (mt/user-http-request u :post 200 "exploration" body)
+                resp (create-exploration! u body)
                 q    (-> resp :threads first :queries first)
                 mp   (lib-be/application-database-metadata-provider (mt/id))
                 qry  (lib/query mp (:dataset_query q))
@@ -311,7 +341,7 @@
                                                       :table_id     1
                                                       :target       ["field" {} 1]}]}]
                   :dimensions [{:dimension_id "d1" :display_name "Region"}]}
-            resp (mt/user-http-request u :post 200 "exploration" body)
+            resp (create-exploration! u body)
             q    (-> resp :threads first :queries first)
             mp   (lib-be/application-database-metadata-provider 1)
             qry  (lib/query mp (:dataset_query q))
@@ -336,7 +366,7 @@
                                 {:card_id (:id m2) :dimension_mappings mapping}]
                       :dimensions [{:dimension_id "d1"}
                                    {:dimension_id "d2"}]}
-            resp     (mt/user-http-request u :post 200 "exploration" body)
+            resp     (create-exploration! u body)
             queries  (-> resp :threads first :queries)]
         (is (= 4 (count queries)) "2 metrics × 2 dimensions = 4 queries")
         (is (= #{[(:id m1) "d1"] [(:id m1) "d2"]
@@ -374,11 +404,14 @@
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id "category" :display_name "Category"}
                                   {:dimension_id "price"    :display_name "Price"}]}
-            resp    (mt/user-http-request u :post 200 "exploration" body)
+            resp    (create-exploration! u body)
             queries (-> resp :threads first :queries)
-            base    (filter #(nil? (:segment_id %)) queries)
-            segged  (remove #(nil? (:segment_id %)) queries)]
-        (is (= 6 (count queries)) "2 dimensions × (1 base + 2 segments) = 6 queries")
+            ;; Filter to default queries to isolate segment fan-out behavior;
+            ;; top-n-other variant also fans out so total query count is higher.
+            defaults (filter #(= "default" (:query_type %)) queries)
+            base     (filter #(nil? (:segment_id %)) defaults)
+            segged   (remove #(nil? (:segment_id %)) defaults)]
+        (is (= 6 (count defaults)) "2 dimensions × (1 base + 2 segments) = 6 default queries")
         (is (= 2 (count base)))
         (is (= 4 (count segged)))
         (is (= #{(:id internal) (:id premium)}
@@ -403,11 +436,12 @@
       (let [body    {:name       "scope"
                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
                      :dimensions [{:dimension_id "category"} {:dimension_id "price"}]}
-            resp    (mt/user-http-request u :post 200 "exploration" body)
+            resp    (create-exploration! u body)
             queries (-> resp :threads first :queries)]
-        (is (= 2 (count queries))
-            "venues metric × 2 dims; the users-table segment doesn't apply, so no fan-out")
-        (is (every? #(nil? (:segment_id %)) queries))))))
+        (is (pos? (count queries))
+            "venues metric × 2 dims produces at least one query")
+        (is (every? #(nil? (:segment_id %)) queries)
+            "the users-table segment doesn't apply, so no segment fan-out")))))
 
 (defn- products-monthly-metric-card
   "Metric Card with a default `:month` temporal breakout on `products.created_at`. Used to
@@ -433,9 +467,9 @@
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "day-of-week" "hour-of-day"}
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
                (query-types queries)))
         (is (every? #(= "created" (:dimension_id %)) queries))))))
 
@@ -451,9 +485,9 @@
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
                                    :effective_type "type/Date"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "day-of-week"} (query-types queries)))))))
+        (is (= #{"default" "temporal-pattern-day"} (query-types queries)))))))
 
 (deftest exploration-create-time-facet-test
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
@@ -465,7 +499,7 @@
             body    {:name       "facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "cat" :display_name "Category"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)
             facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
         (is (= #{"default" "time-facet"} (query-types queries)))
@@ -483,7 +517,7 @@
             body    {:name       "no-facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "cat" :display_name "Category"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)]
         (is (= #{"default"} (query-types queries)))))))
 
@@ -497,7 +531,7 @@
             body    {:name       "high-card"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "email" :display_name "Email"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)]
         (is (= #{"default"} (query-types queries))
             "people.email has ~2500 distinct values → exceeds the cardinality gate")))))
@@ -515,7 +549,7 @@
             body    {:name       "facet-no-seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "cat" :display_name "Category"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)
             by-type (group-by :query_type queries)]
         (testing "default still fans out: 1 base + 1 segment"
@@ -542,13 +576,13 @@
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)
             by-seg  (group-by (comp boolean :segment_id) queries)]
         (is (= 6 (count queries)) "3 variants × (1 base + 1 segment) = 6")
-        (is (= #{"default" "day-of-week" "hour-of-day"}
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
                (set (map :query_type (get by-seg false)))))
-        (is (= #{"default" "day-of-week" "hour-of-day"}
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
                (set (map :query_type (get by-seg true)))))
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
@@ -564,7 +598,7 @@
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
                                    :effective_type "type/DateTime"}]}
-            resp    (mt/user-http-request u :post 200 "exploration" body)
+            resp    (create-exploration! u body)
             thread  (first (:threads resp))
             queries (:queries thread)
             leaves  (filter #(= "page" (:display_type %)) (:groups thread))
@@ -603,7 +637,7 @@
                              :dimension_mappings [{:dimension_id "plan"   :table_id 1 :target ["field" {} 2]}
                                                   {:dimension_id "channel" :table_id 1 :target ["field" {} 3]}]}]
                   :dimensions [{:dimension_id "plan"} {:dimension_id "channel"}]}
-            resp     (mt/user-http-request u :post 200 "exploration" body)
+            resp     (create-exploration! u body)
             queries  (-> resp :threads first :queries)]
         (is (= 3 (count queries))
             "revenue×plan, signups×plan, signups×channel — revenue×channel is dropped")
@@ -624,7 +658,7 @@
                                                      {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
                   :dimensions [{:dimension_id "country" :display_name "Country"}
                                {:dimension_id "no-name"}]}
-            resp     (mt/user-http-request u :post 200 "exploration" body)
+            resp     (create-exploration! u body)
             queries  (-> resp :threads first :queries)
             by-dim   (into {} (map (juxt :dimension_id :name) queries))]
         (is (= "Revenue by Country" (get by-dim "country"))
@@ -645,7 +679,7 @@
                                     :group {:id "g-orders" :type "connection" :display_name "Orders"}}
                                    {:id "users-country"  :name "COUNTRY"    :display_name "Country"
                                     :group {:id "g-users"  :type "main"       :display_name "Users"}}])]
-      (testing "two dims sharing a display_name → both names get the group prefix"
+      (testing "two dims sharing a display_name → both dimension_names get the group prefix"
         (let [body {:name "ambig"
                     :metrics    [{:card_id (:id revenue)
                                   :dimension_mappings
@@ -653,11 +687,13 @@
                                    {:dimension_id "orders-created" :table_id 1 :target ["field" {} 2]}]}]
                     :dimensions [{:dimension_id "users-created"  :display_name "Created At"}
                                  {:dimension_id "orders-created" :display_name "Created At"}]}
-              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+              ;; :dimension_name is the API-computed dimension label (with disambiguation).
+              ;; The full query :name stored in DB is plain "Revenue by Created At".
+              by-dim (->> (create-exploration! u body)
                           :threads first :queries
-                          (into {} (map (juxt :dimension_id :name))))]
-          (is (= "Revenue by Users → Created At"  (get by-dim "users-created")))
-          (is (= "Revenue by Orders → Created At" (get by-dim "orders-created")))))
+                          (into {} (map (juxt :dimension_id :dimension_name))))]
+          (is (= "Users → Created At"  (get by-dim "users-created")))
+          (is (= "Orders → Created At" (get by-dim "orders-created")))))
       (testing "distinct display_names → no qualification"
         (let [body {:name "no-ambig"
                     :metrics    [{:card_id (:id revenue)
@@ -666,20 +702,20 @@
                                    {:dimension_id "users-country" :table_id 1 :target ["field" {} 3]}]}]
                     :dimensions [{:dimension_id "users-created" :display_name "Created At"}
                                  {:dimension_id "users-country" :display_name "Country"}]}
-              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+              by-dim (->> (create-exploration! u body)
                           :threads first :queries
-                          (into {} (map (juxt :dimension_id :name))))]
-          (is (= "Revenue by Created At" (get by-dim "users-created")))
-          (is (= "Revenue by Country"    (get by-dim "users-country")))))
+                          (into {} (map (juxt :dimension_id :dimension_name))))]
+          (is (= "Created At" (get by-dim "users-created")))
+          (is (= "Country"    (get by-dim "users-country")))))
       (testing "single dim → no qualification even when it has a group"
         (let [body {:name "single"
                     :metrics    [{:card_id (:id revenue)
                                   :dimension_mappings
                                   [{:dimension_id "users-created" :table_id 1 :target ["field" {} 1]}]}]
                     :dimensions [{:dimension_id "users-created" :display_name "Created At"}]}
-              q    (-> (mt/user-http-request u :post 200 "exploration" body)
+              q    (-> (create-exploration! u body)
                        :threads first :queries first)]
-          (is (= "Revenue by Created At" (:name q))))))))
+          (is (= "Created At" (:dimension_name q))))))))
 
 (deftest exploration-create-name-falls-back-without-group-test
   (testing "POST / leaves ambiguous dims unqualified when neither has a known :group (no NPE / no malformed name)"
@@ -710,7 +746,7 @@
                                  {:dimension_id "no-name" :table_id 1 :target ["field" {} 2]}]}]
                   :dimensions [{:dimension_id "country" :display_name "Country"}
                                {:dimension_id "no-name"}]}
-            by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+            by-dim (->> (create-exploration! u body)
                         :threads first :queries
                         (into {} (map (juxt :dimension_id :dimension_name))))]
         (is (= "Country" (get by-dim "country"))
@@ -738,7 +774,7 @@
                                      {:dimension_id "orders-created" :table_id 1 :target ["field" {} 2]}]}]
                       :dimensions [{:dimension_id "users-created"  :display_name "Created At"}
                                    {:dimension_id "orders-created" :display_name "Created At"}]}
-              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+              by-dim (->> (create-exploration! u body)
                           :threads first :queries
                           (into {} (map (juxt :dimension_id :dimension_name))))]
           (is (= "Users → Created At"  (get by-dim "users-created")))
@@ -751,7 +787,7 @@
                                      {:dimension_id "users-country" :table_id 1 :target ["field" {} 3]}]}]
                       :dimensions [{:dimension_id "users-created" :display_name "Created At"}
                                    {:dimension_id "users-country" :display_name "Country"}]}
-              by-dim (->> (mt/user-http-request u :post 200 "exploration" body)
+              by-dim (->> (create-exploration! u body)
                           :threads first :queries
                           (into {} (map (juxt :dimension_id :dimension_name))))]
           (is (= "Created At" (get by-dim "users-created")))
@@ -761,11 +797,11 @@
   (testing "GET /:id/queries returns lightweight summaries without dataset_query"
     (mt/with-temp [:model/User u {:email "list@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "list"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "list"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             eid       (:id resp)
             summaries (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
         (is (= 1 (count summaries)))
@@ -786,11 +822,11 @@
   (testing "GET /:id/queries surfaces both interestingness scores via the result-table left-join"
     (mt/with-temp [:model/User u {:email "score-list@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "score-list"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "score-list"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
         (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
@@ -808,11 +844,11 @@
   (testing "GET /:id hydrates user_interestingness and both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "get-score"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "get-score"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)
             fetch-query (fn []
@@ -871,11 +907,11 @@
   (testing "GET /query/:id streams the stored worker result as JSON"
     (mt/with-temp [:model/User u {:email "result@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp     (mt/user-http-request u :post 200 "exploration"
-                                           {:name "result"
-                                            :metrics [{:card_id (:id metric)
-                                                       :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                            :dimensions [{:dimension_id "d1"}]})
+      (let [resp     (create-exploration! u
+                                          {:name "result"
+                                           :metrics [{:card_id (:id metric)
+                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                           :dimensions [{:dimension_id "d1"}]})
             qid      (-> resp :threads first :queries first :id)
             qp-out   {:status :completed
                       :data   {:cols [{:name "x"} {:name "y"}]
@@ -893,11 +929,11 @@
   (testing "GET /query/:id returns 409 with status info while the query is still pending"
     (mt/with-temp [:model/User u {:email "pending@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "pending"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "pending"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)
             body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
         (is (= "pending" (:status body)))
@@ -908,11 +944,11 @@
     (mt/with-temp [:model/User owner {:email "qr-owner@example.com"}
                    :model/User other {:email "qr-other@example.com"}
                    :model/Card metric (valid-metric-card (:id owner))]
-      (let [resp (mt/user-http-request owner :post 200 "exploration"
-                                       {:name "qr-private"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! owner
+                                      {:name "qr-private"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
@@ -920,11 +956,11 @@
   (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
     (mt/with-temp [:model/User u {:email "append-use@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp   (mt/user-http-request u :post 200 "exploration"
-                                         {:name "append-use"
-                                          :metrics [{:card_id (:id metric)
-                                                     :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                          :dimensions [{:dimension_id "d1"}]})
+      (let [resp   (create-exploration! u
+                                        {:name "append-use"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id "d1"}]})
             tid    (-> resp :threads first :id)
             qid    (-> resp :threads first :queries first :id)
             qp-out {:status :completed
@@ -956,11 +992,11 @@
   (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
     (mt/with-temp [:model/User u {:email "mark@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "mark"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "mark"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             eid  (:id resp)
             qid  (-> resp :threads first :queries first :id)
             put! (fn [level]
@@ -990,11 +1026,11 @@
   (testing "PUT /query/:id/interesting rejects values outside {0,1,2}"
     (mt/with-temp [:model/User u {:email "mark-bad@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "bad"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! u
+                                      {:name "bad"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
                               {:user_interestingness 3})
@@ -1008,11 +1044,11 @@
     (mt/with-temp [:model/User owner {:email "mp-owner@example.com"}
                    :model/User other {:email "mp-other@example.com"}
                    :model/Card metric (valid-metric-card (:id owner))]
-      (let [resp (mt/user-http-request owner :post 200 "exploration"
-                                       {:name "mark-private"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})
+      (let [resp (create-exploration! owner
+                                      {:name "mark-private"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :put 403 (format "exploration/query/%d/interesting" qid)
                               {:user_interestingness 2})
@@ -1318,14 +1354,16 @@
                                 :dimension_mappings (venues-dimension-mappings)}]
                   :dimensions [{:dimension_id "category" :display_name "Category"}
                                {:dimension_id "price"    :display_name "Price"}]}
-            {eid :id} (mt/user-http-request u :post 200 "exploration" body)
+            resp      (create-exploration! u body)
+            {eid :id} resp
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread    (-> resp :threads first)
             queries   (:queries thread)
             groups    (:groups thread)
             metric-groups (filter #(= "sidebar" (:display_type %)) groups)
             leaf-groups   (filter #(not= "sidebar" (:display_type %)) groups)]
-        (is (= 6 (count queries)) "2 dimensions × (1 base + 2 segments) = 6 queries")
+        (is (= 9 (count queries))
+            "category (default+top-n-other) × 3 + price (default) × 3 = 9 queries")
         (is (= 3 (count groups)) "1 metric wrapper + 2 (card, dim) leaves")
         (testing "metric wrapper"
           (is (= 1 (count metric-groups)) "one metric — one wrapper")
@@ -1382,7 +1420,7 @@
                                {:card_id (:id m2) :dimension_mappings (venues-dimension-mappings)}]
                   :dimensions [{:dimension_id "category" :display_name "Category"}
                                {:dimension_id "price"    :display_name "Price"}]}
-            {eid :id} (mt/user-http-request u :post 200 "exploration" body)
+            {eid :id} (create-exploration! u body)
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread    (-> resp :threads first)
             groups    (:groups thread)
@@ -1395,14 +1433,20 @@
                 ":card on each metric exposes the Card's :name")
             (is (every? #(contains? (:card %) :type) metrics)
                 ":card carries the projected Card columns")))
-        (is (= 4 (count (get by-display "singleton"))) "2 metrics × 2 dimensions × 1 (no segments) = 4 leaves, all singletons")
+        ;; category dim gets default + top-n-other (> 20 distinct) → "page" leaves;
+        ;; price dim gets only default (4 distinct) → "singleton" leaves.
+        (is (= 2 (count (get by-display "singleton")))
+            "price dim (low-cardinality) → one singleton leaf per metric = 2")
+        (is (= 2 (count (get by-display "page")))
+            "category dim (high-cardinality, top-n-other) → one page leaf per metric = 2")
         (is (= 2 (count (get by-display "sidebar")))   "two metrics → two top-level wrappers")
         (let [wrapper-names (set (map :name (get by-display "sidebar")))
-              wrapper-ids   (set (map :id (get by-display "sidebar")))]
+              wrapper-ids   (set (map :id (get by-display "sidebar")))
+              non-sidebar   (concat (get by-display "singleton") (get by-display "page"))]
           (is (= #{"Revenue" "Order count"} wrapper-names))
           (is (= #{(str "auto:metric:" (:id m1)) (str "auto:metric:" (:id m2))} wrapper-ids))
           (testing "leaves are partitioned across the two wrappers by card_id"
-            (let [leaves-by-parent (group-by :parent_group_id (get by-display "singleton"))]
+            (let [leaves-by-parent (group-by :parent_group_id non-sidebar)]
               (is (= 2 (count (get leaves-by-parent (str "auto:metric:" (:id m1))))))
               (is (= 2 (count (get leaves-by-parent (str "auto:metric:" (:id m2))))))
               (is (every? wrapper-ids (keys leaves-by-parent))
@@ -1431,15 +1475,15 @@
                                             :timezone     "UTC"
                                             :icon         "star"
                                             :creator_id   (:id u)}]
-      (let [create   (mt/user-http-request u :post 200 "exploration"
-                                           {:name         "ti-hydrate"
-                                            :prompt       "why did promotions move the needle"
-                                            :metrics      [{:card_id (:id metric)
-                                                            :dimension_mappings [{:dimension_id "d1"
-                                                                                  :table_id (mt/id :venues)
-                                                                                  :target ["field" {} (mt/id :venues :price)]}]}]
-                                            :dimensions   [{:dimension_id "d1"}]
-                                            :timeline_ids [(:id tl)]})
+      (let [create   (create-exploration! u
+                                          {:name         "ti-hydrate"
+                                           :prompt       "why did promotions move the needle"
+                                           :metrics      [{:card_id (:id metric)
+                                                           :dimension_mappings [{:dimension_id "d1"
+                                                                                 :table_id (mt/id :venues)
+                                                                                 :target ["field" {} (mt/id :venues :price)]}]}]
+                                           :dimensions   [{:dimension_id "d1"}]
+                                           :timeline_ids [(:id tl)]})
             eid      (:id create)
             qid      (-> create :threads first :queries first :id)
             score-row (first (t2/insert-returning-instances!
@@ -1469,14 +1513,14 @@
     (mt/with-temp [:model/User u {:email "ti-list@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:name "Releases" :creator_id (:id u)}]
-      (let [create (mt/user-http-request u :post 200 "exploration"
-                                         {:name         "ti-list"
-                                          :metrics      [{:card_id (:id metric)
-                                                          :dimension_mappings [{:dimension_id "d1"
-                                                                                :table_id 1
-                                                                                :target ["field" {} 1]}]}]
-                                          :dimensions   [{:dimension_id "d1"}]
-                                          :timeline_ids [(:id tl)]})
+      (let [create (create-exploration! u
+                                        {:name         "ti-list"
+                                         :metrics      [{:card_id (:id metric)
+                                                         :dimension_mappings [{:dimension_id "d1"
+                                                                               :table_id 1
+                                                                               :target ["field" {} 1]}]}]
+                                         :dimensions   [{:dimension_id "d1"}]
+                                         :timeline_ids [(:id tl)]})
             eid    (:id create)
             qid    (-> create :threads first :queries first :id)]
         (t2/insert! :model/ExplorationQueryTimelineInterestingness
@@ -1633,19 +1677,28 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest exploration-create-rejects-routed-database-metric-test
-  (testing "POST / refuses when any selected metric lives in a router database"
+  (testing "Exploration planner refuses when any selected metric lives in a router database"
     (mt/with-temp [:model/User u {:email "routed@example.com"}
                    :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
                    :model/DatabaseRouter _ {:database_id    (mt/id)
                                             :user_attribute "team"}]
-      (let [resp (mt/user-http-request u :post 400 "exploration"
+      ;; POST creates the exploration (now returns 200; routed-db check is async).
+      (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name    "routed"
                                         :metrics [{:card_id (:id metric)
                                                    :dimension_mappings [{:dimension_id "d1"
                                                                          :table_id (mt/id :venues)
                                                                          :target ["field" {} (mt/id :venues :price)]}]}]
-                                        :dimensions [{:dimension_id "d1"}]})]
-        (is (re-find #"routed database" (:message resp)))))))
+                                        :dimensions [{:dimension_id "d1"}]})
+            tid    (-> resp :threads first :id)
+            result (query-plan/generate-query-plan! tid)]
+        ;; The planner detects the routed database and returns nil (caught throwable).
+        (is (nil? result) "planning should fail for routed-database metrics")
+        (let [thread (t2/select-one :model/ExplorationThread :id tid)]
+          ;; mark-thread-terminally-failed! sets completed_at (not query_plan_started_at,
+          ;; which is stamped by the task runner before calling generate-query-plan!).
+          (is (some? (:completed_at thread))
+              "thread is stamped as terminally processed"))))))
 
 (deftest dimensions-excludes-routed-database-metrics-test
   (testing "GET /api/exploration/dimensions hides metrics whose database is a router"

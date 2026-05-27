@@ -44,17 +44,17 @@
         (doseq [pair pairs]
           (is (contains? pair :dimension))
           (is (contains? pair :mapping))))
-      (testing "dimensions have :has-field-values populated"
-        (let [dims-with-hfv (filter #(get-in % [:dimension :has-field-values]) pairs)]
+      (testing "dimensions have :has_field_values populated"
+        (let [dims-with-hfv (filter #(get-in % [:dimension :has_field_values]) pairs)]
           (is (seq dims-with-hfv)
-              "at least some dimensions should have :has-field-values")
+              "at least some dimensions should have :has_field_values")
           (doseq [pair dims-with-hfv]
-            (is (#{:list :search :none} (get-in pair [:dimension :has-field-values]))
+            (is (#{:list :search :none} (get-in pair [:dimension :has_field_values]))
                 (str "dimension " (get-in pair [:dimension :name])
-                     " should have a valid :has-field-values value"))))))))
+                     " should have a valid :has_field_values value"))))))))
 
 (deftest compute-dimension-pairs-has-field-values-for-category-columns-test
-  (testing "CATEGORY_ID dimension has :has-field-values populated"
+  (testing "CATEGORY_ID dimension has :has_field_values populated"
     (let [mp     (lib-metric.metadata.jvm/metadata-provider)
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
           query  (-> (lib/query (mt/metadata-provider) table)
@@ -62,5 +62,5 @@
           pairs  (dimension.jvm/compute-dimension-pairs mp query)
           cat-dim (first (filter #(= "CATEGORY_ID" (get-in % [:dimension :name])) pairs))]
       (is (some? cat-dim) "CATEGORY_ID dimension should exist")
-      (is (some? (get-in cat-dim [:dimension :has-field-values]))
-          "CATEGORY_ID should have :has-field-values"))))
+      (is (some? (get-in cat-dim [:dimension :has_field_values]))
+          "CATEGORY_ID should have :has_field_values"))))

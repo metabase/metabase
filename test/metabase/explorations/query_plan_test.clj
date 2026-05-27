@@ -19,23 +19,19 @@
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
         (is (identical? qp.llm/planner (query-plan/pick-planner!)))
         (is (= :llm (planner/planner-name (query-plan/pick-planner!)))))))
-
   (testing ":auto + LLM unconfigured → mechanical planner (no skip)"
     (mt/with-temporary-setting-values [explorations-query-planner :auto]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
         (is (identical? qp.mech/planner (query-plan/pick-planner!)))
         (is (= :mechanical (planner/planner-name (query-plan/pick-planner!)))))))
-
   (testing ":llm + LLM configured → LLM planner"
     (mt/with-temporary-setting-values [explorations-query-planner :llm]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
         (is (identical? qp.llm/planner (query-plan/pick-planner!))))))
-
   (testing ":llm + LLM unconfigured → skip-no-llm"
     (mt/with-temporary-setting-values [explorations-query-planner :llm]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
         (is (= {:skip :skip-no-llm} (query-plan/pick-planner!))))))
-
   (testing ":mechanical always picks mechanical, regardless of LLM availability"
     (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
@@ -47,7 +43,6 @@
   (testing "Every planner singleton satisfies the QueryPlanner protocol"
     (is (satisfies? planner/QueryPlanner qp.llm/planner))
     (is (satisfies? planner/QueryPlanner qp.mech/planner)))
-
   (testing "Each planner names itself"
     (is (= :llm        (planner/planner-name qp.llm/planner)))
     (is (= :mechanical (planner/planner-name qp.mech/planner)))))

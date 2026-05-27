@@ -3627,7 +3627,6 @@
           (is (some? item))
           (is (= (mt/user->id :crowberto)
                  (-> item :last-edit-info :id))))))
-
     (testing "no Exploration or Document revisions -> last-edit-info absent"
       (mt/with-temp [:model/Collection  coll {}
                      :model/Exploration e    {:name          "Bare"
@@ -3638,7 +3637,6 @@
                                      (:id e))]
           (is (some? item))
           (is (nil? (:last-edit-info item))))))
-
     (testing "Document attached to an exploration thread bumps the exploration's last-edit-info"
       (mt/with-temp [:model/Collection        coll   {}
                      :model/Exploration       e      {:name          "DocBumped"

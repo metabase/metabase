@@ -57,8 +57,17 @@
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/Exploration
+    :model/ExplorationBookmark
+    :model/ExplorationQuery
     :model/ExplorationQueryResult
     :model/ExplorationQueryTimelineInterestingness
+    :model/ExplorationThread
+    :model/ExplorationThreadDimension
+    :model/ExplorationThreadMetric
+    :model/ExplorationThreadTimeline
+    :model/StoredResult
+    :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory

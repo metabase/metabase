@@ -658,8 +658,12 @@
           (queries/assert-can-view-cached-result! sr))
         (stream-stored-result format (:result_data sr)))
 
-      {:status 409
-       :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
+      (do
+        (queries/assert-can-view-cached-result! {:id            (:id q)
+                                                 :database_id   (:database (:dataset_query q))
+                                                 :dataset_query (:dataset_query q)})
+        {:status 409
+         :body   (select-keys q [:id :status :error_message :started_at :finished_at])}))))
 
 (api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
   "Set the owner's interestingness rating on an exploration query.

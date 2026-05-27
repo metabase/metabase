@@ -71,7 +71,6 @@
                         :else errs)))
                   errors
                   (vec marks))))
-
              (validate-children [node path expected errors]
                (let [content (get-key node "content")]
                  (cond
@@ -90,7 +89,6 @@
                       (validate-node child (str path ".content[" i "]") expected errs))
                     errors
                     (vec content)))))
-
              (validate-node [node path expected errors]
                (cond
                  (not (map? node))

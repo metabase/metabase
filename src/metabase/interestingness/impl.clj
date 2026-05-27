@@ -155,7 +155,7 @@
                      (some? kurtosis)  (conj (kurtosis-score kurtosis)))]
     ;; worst-of-N: any single strong boringness signal dominates
     (when (seq sub-scores)
-      (reduce min sub-scores))))
+      (apply min sub-scores))))
 
 ;;; -------------------------------------------------- Composition --------------------------------------------------
 

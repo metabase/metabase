@@ -52,23 +52,19 @@
                 {(constant-scorer 1.0) 0.75
                  (constant-scorer 0.0) 0.25}
                 {}))))
-
   (testing "empty scorer map returns 0.5 (neutral default)"
     (is (= 0.5 (impl/score-only {} {}))))
-
   (testing "nil-scoring scorers are excluded from both numerator and denominator"
     ;; only the real scorer participates: 1.0 * 0.30 / 0.30 = 1.0
     (is (= 1.0 (impl/score-only
                 {(constant-scorer 1.0) 0.30
                  (constant-scorer nil) 0.70}
                 {}))))
-
   (testing "all-nil scorers fall back to 0.5 neutral"
     ;; two distinct scorer instances so the map literal doesn't collapse to one key
     (let [s1 (constant-scorer nil)
           s2 (constant-scorer nil)]
       (is (= 0.5 (impl/score-only {s1 0.5 s2 0.5} {})))))
-
   (testing "nil score does not trip the hard-zero gate (would force 0.0)"
     (is (= 1.0 (impl/score-only
                 {(constant-scorer 1.0) 0.5

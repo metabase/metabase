@@ -426,7 +426,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Document}}
+                    :model/Document
+                    :model/Exploration}}
 
   bug-reporting
   {:team "UX West"
@@ -584,6 +585,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Document
+                    :model/Exploration
                     :model/NativeQuerySnippet
                     :model/Permissions
                     :model/Pulse
@@ -618,6 +620,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Document
+                    :model/Exploration
                     :model/NativeQuerySnippet
                     :model/Pulse
                     :model/Table
@@ -800,7 +803,6 @@
            collections
            events
            models
-           permissions
            public-sharing
            queries
            query-permissions
@@ -996,7 +998,6 @@
            metabot
            metrics
            models
-           permissions
            queries
            query-permissions
            query-processor
@@ -1007,18 +1008,14 @@
            timeline
            types
            util}
-   :model-exports #{:model/Exploration
-                    :model/ExplorationQuery
-                    :model/ExplorationQueryResult
-                    :model/ExplorationQueryTimelineInterestingness
-                    :model/ExplorationThread
-                    :model/ExplorationThreadDimension
-                    :model/ExplorationThreadMetric
-                    :model/ExplorationThreadTimeline}
+   :model-exports #{:model/Exploration}
    :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Document
+                    :model/Segment
                     :model/StoredResult
+                    :model/StoredResultUse
                     :model/Timeline
-                    :model/TimelineEvent
                     :model/User}}
 
   formatter
@@ -1349,7 +1346,6 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
-           collections
            lib
            lib-be
            lib-metric
@@ -1739,7 +1735,8 @@
                     :model/Query
                     :model/QueryExecution
                     :model/QueryTable
-                    :model/StoredResult}
+                    :model/StoredResult
+                    :model/StoredResultUse}
    :model-imports #{:model/Action
                     :model/CardBookmark
                     :model/Collection
@@ -2316,8 +2313,7 @@
            events
            models
            util}
-   :model-exports #{:model/Timeline
-                    :model/TimelineEvent}
+   :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
 
   tracing
