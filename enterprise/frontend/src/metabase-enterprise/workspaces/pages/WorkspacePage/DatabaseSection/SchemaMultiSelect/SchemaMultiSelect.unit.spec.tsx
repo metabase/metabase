@@ -38,9 +38,7 @@ describe("SchemaMultiSelect", () => {
   it("can select the first schema", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(
-      await screen.findByLabelText("Schemas to include"),
-    );
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
@@ -51,9 +49,7 @@ describe("SchemaMultiSelect", () => {
   it("can select the second schema", async () => {
     const { onChange } = setup({ value: ["public"] });
 
-    await userEvent.click(
-      await screen.findByLabelText("Schemas to include"),
-    );
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "analytics" }),
     );

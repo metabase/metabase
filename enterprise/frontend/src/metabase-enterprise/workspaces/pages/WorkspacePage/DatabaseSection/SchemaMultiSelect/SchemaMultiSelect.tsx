@@ -32,11 +32,7 @@ export function SchemaMultiSelect({
       <Group justify="space-between" align="center">
         <Input.Label htmlFor={inputId}>{t`Schemas to include`}</Input.Label>
         {schemas.length > 0 && (
-          <Button
-            variant="subtle"
-            size="compact-xs" 
-            onClick={handleToggleAll}
-          >
+          <Button variant="subtle" size="compact-xs" onClick={handleToggleAll}>
             {isAll ? t`Select none` : t`Select all`}
           </Button>
         )}

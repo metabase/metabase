@@ -79,9 +79,7 @@ describe("NewDatabaseModal", () => {
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
-    await userEvent.click(
-      await screen.findByLabelText("Schemas to include"),
-    );
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
