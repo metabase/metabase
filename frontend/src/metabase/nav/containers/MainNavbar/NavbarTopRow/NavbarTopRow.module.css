@@ -3,8 +3,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--mantine-spacing-xs);
-  padding: 0.25rem var(--mantine-spacing-md) var(--mantine-spacing-sm)
-    var(--mantine-spacing-xl);
+  padding: 0.25rem 6px var(--mantine-spacing-sm) var(--mantine-spacing-xl);
 }
 
 .left {
