@@ -168,7 +168,6 @@
   (transforms.core/check-database-feature body)
   (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
-
   (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -306,7 +305,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/write-check :model/Transform id)))
+  (run-transform! (api/read-check :model/Transform id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

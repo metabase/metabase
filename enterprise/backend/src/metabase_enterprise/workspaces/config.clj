@@ -1,8 +1,10 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -52,14 +54,50 @@
                    (:database_details wsd)
                    (schema-filter-entries db wsd))})
 
+(defn- expand-output
+  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
+   namespace map QP middleware, transform_hooks, and table_remapping consume.
+
+   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
+   `Database.details`. For 2-slot drivers the namespace string lands in the
+   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
+
+   `output_namespace` blank → `:schema` is `nil`: the workspace database isn't
+   provisioned yet and QP/transform consumers treat it as having no output
+   mapping."
+  [db output-namespace]
+  (let [components (set (driver/qualified-name-components (:engine db)))
+        positions  (ws/engine-namespace-positions db)
+        schema     (when-not (str/blank? output-namespace) output-namespace)]
+    (cond-> {}
+      (:db components)     (assoc :db (:db positions))
+      (:schema components) (assoc :schema schema)
+      (and (:db components) (not (:schema components)))
+      (assoc :db schema))))
+
 (defn- workspace-database-entry [wsd db]
-  ;; Emit the wire shape: `:output_namespace` is a driver-opaque string. The
-  ;; loader (`advanced-config.file.workspace/expand-output`) expands it into the
-  ;; `{:db ?, :schema ?}` runtime map at boot. Emitting the already-expanded
-  ;; shape here makes the round-trip `build -> yaml -> initialize!` fail the
-  ;; `::workspace-database-config` spec assertion.
-  [(:name db) {:input_schemas    (vec (:input_schemas wsd))
-               :output_namespace (:output_namespace wsd)}])
+  [(:name db) {:input_schemas (vec (:input_schemas wsd))
+               :output        (expand-output db (:output_namespace wsd))}])
+
+(defn- stub-database-entry [db]
+  {:name    (:name db)
+   :engine  (:engine db)
+   :details {}
+   :is_stub true})
+
+(defn- stub-databases
+  "Databases that exist in the instance but are not provisioned for this workspace.
+   Excludes the sample DB (handled by GHY-3687), the audit DB, and routing-target
+   databases (destinations with `:router_database_id` set)."
+  [workspace-db-ids]
+  (t2/select :model/Database
+             {:where [:and
+                      [:= :is_sample false]
+                      [:= :is_audit  false]
+                      [:= :router_database_id nil]
+                      (if (seq workspace-db-ids)
+                        [:not-in :id workspace-db-ids]
+                        true)]}))
 
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
@@ -67,18 +105,16 @@
     {:version 1
      :config  {:databases [...]
                :workspace {:name      <ws-name>
-                           :databases {<db-name> {:input_schemas    [<schema-name> ...]
-                                                  :output_namespace <ns-string>}}}}}
+                           :databases {<db-name> {:input_schemas [<schema-name> ...]
+                                                  :output        {:db ? :schema ?}}}}}
 
   Each database entry merges the underlying `metabase_database.details` with the
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
-  derived from `:input_schemas`. Per-database workspace entries carry plain
-  schema-name strings for `:input_schemas` (the 3-slot driver catalog is read
-  from `Database.details` at use time, not duplicated on each row), and a
-  driver-opaque string for `:output_namespace` (the loader expands it into the
-  `{:db ?, :schema ?}` runtime map at boot). Returns nil when the workspace
-  does not exist. Throws a 409 `ex-info` if any of the workspace's databases
-  is not `:provisioned`."
+  derived from `:input_schemas`. Per-database workspace entries carry the
+  expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
+  `instance-workspace` setting stores. Returns nil when the workspace does not
+  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
+  `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -86,15 +122,18 @@
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
                          :workspace_id workspace-id})))
-      (let [dbs-by-id (if-let [ids (seq (map :database_id wsds))]
-                        (into {} (map (juxt :id identity))
-                              (t2/select :model/Database :id [:in ids]))
-                        {})
-            pairs     (for [wsd wsds
-                            :let [db (get dbs-by-id (:database_id wsd))]]
-                        [wsd db])]
+      (let [workspace-db-ids (mapv :database_id wsds)
+            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                               (into {} (map (juxt :id identity))
+                                     (t2/select :model/Database :id [:in ids]))
+                               {})
+            pairs            (for [wsd wsds
+                                   :let [db (get dbs-by-id (:database_id wsd))]]
+                               [wsd db])
+            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))]
         {:version 1
-         :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+         :config  {:databases (into ws-entries stub-entries)
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 

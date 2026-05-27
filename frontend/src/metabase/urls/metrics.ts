@@ -75,10 +75,6 @@ export function metricDependencies(cardId: CardId): string {
   return `/metric/${cardId}/dependencies`;
 }
 
-export function metricCaching(cardId: CardId): string {
-  return `/metric/${cardId}/caching`;
-}
-
 export function metricHistory(cardId: CardId): string {
   return `/metric/${cardId}/history`;
 }

@@ -25,4 +25,6 @@ config:
       test-data (bigquery):
         input_schemas:
         - core
-        output_namespace: ws_alice
+        output:
+          db: metabase-prod
+          schema: ws_alice

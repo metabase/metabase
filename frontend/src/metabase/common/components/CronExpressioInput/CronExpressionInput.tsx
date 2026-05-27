@@ -57,8 +57,7 @@ export function CronExpressionInput({
   };
 
   return (
-    <Flex direction="column" {...flexProps}>
-      <CustomScheduleInputHint />
+    <Flex direction="column" gap="xs" {...flexProps}>
       <TextInput
         placeholder="For example 5   0   *   Aug   ?"
         size="md"
@@ -79,6 +78,8 @@ export function CronExpressionInput({
           getExplainMessage={getExplainMessage}
         />
       )}
+
+      <CustomScheduleInputHint />
     </Flex>
   );
 }
@@ -101,7 +102,7 @@ function CustomScheduleInputHint() {
     >{t`quartz cron syntax`}</ExternalLink>
   );
   return (
-    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields, starting from minutes, separated by spaces`}</Text>
+    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields, starting from minutes, separated by spaces.`}</Text>
   );
 }
 

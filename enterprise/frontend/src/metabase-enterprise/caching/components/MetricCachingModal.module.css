@@ -1,0 +1,12 @@
+.content {
+  height: min(38rem, 85vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
