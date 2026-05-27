@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.llm.settings :as llm]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -567,15 +568,30 @@
     s
     (str (subs s 0 limit) "…")))
 
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  Walks the body and slices every string leaf to `limit` before printing — so a parsed
+  JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
+  only for the caller to truncate it back down. Collections also render under
+  `*print-length*`/`*print-level*` to bound element count and nesting depth."
+  [body limit]
+  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
+    (binding [*print-length* 100
+              *print-level*  10]
+      (pr-str (walk/postwalk slice body)))))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
   (truncate-to s max-body-preview-chars))
 
-(defn- body-for-log
-  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+(defn body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]].
+  Public so the agent loop's error logging bounds the body the same way.
+  Assumes a bounded input (a decoded ≤[[max-body-slurp-chars]] body) — the walk bounds rendered
+  output, not traversal, so a large unbounded collection would still be fully walked."
   [body]
-  (truncate-to (pr-str body) max-body-log-chars))
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
@@ -592,15 +608,12 @@
                                            (string? head) head
                                            :else          nil))
                     :else              nil)
-        ;; Surface *some* context to the user even for unrecognised shapes — the warn
-        ;; signals operators to add the new envelope shape to [[extract-error-message]].
-        ;; Truncate once: the warn line shouldn't carry a multi-MB pr-str any more than
-        ;; the user-facing exception message should.
+        ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
+        ;; beats a bare "HTTP 500" with no clue what the upstream said. rethrow-api-error! logs
+        ;; the (bounded) body once already, so we don't warn again here.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [capped (truncate-to-preview-limit (pr-str body))]
-                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
-                          capped)))]
+                        (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
 
 (def ^:private auth-error-statuses
