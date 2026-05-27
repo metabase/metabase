@@ -605,11 +605,9 @@
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
   (let [resources (mapv fetch-single-uri uris)
         formatted (format-resources resources)]
-
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))
                                    :errors     (count (filter :error resources))})
-
     {:resources resources
      :output formatted}))
 

@@ -456,7 +456,6 @@
              (druid-query-returning-rows
                {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ 3 args: count + sum + count"
       (is (= [["1"  663.0]
               ["2" 2460.0]
@@ -468,7 +467,6 @@
                                [:sum $venue_price]
                                [:count $venue_price]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ a constant: count * 10"
       (is (= [["1" 2210.0]
               ["2" 6150.0]
@@ -477,7 +475,6 @@
              (druid-query-returning-rows
                {:aggregation [[:* [:count $id] 10]]
                 :breakout    [$venue_price]}))))
-
     (testing "nested post-aggregation math: count + (count * sum)"
       (is (= [["1"  49062.0]
               ["2" 757065.0]
@@ -488,7 +485,6 @@
                                [:count $id]
                                [:* [:count $id] [:sum $venue_price]]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post-aggregation math w/ avg: count + avg"
       (is (= [["1"  721.8506787330316]
               ["2" 1116.388617886179]
@@ -497,7 +493,6 @@
              (druid-query-returning-rows
                {:aggregation [[:+ [:count $id] [:avg $id]]]
                 :breakout    [$venue_price]}))))
-
     (testing "aggregation with math inside the aggregation :scream_cat:"
       (is (= [["1"  442.0]
               ["2" 1845.0]
@@ -506,7 +501,6 @@
              (druid-query-returning-rows
                {:aggregation [[:sum [:+ $venue_price 1]]]
                 :breakout    [$venue_price]}))))
-
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
       (is (= [["1" -998.0]
               ["2" -995.0]
@@ -606,7 +600,6 @@
                        (compiled query)))
                 (is (= [931 1 "Kinaree Thai Bistro"]
                        (mt/first-row (qp/process-query query))))))
-
             (testing "topN query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:count]]
@@ -617,7 +610,6 @@
                        (compiled query)))
                 (is (= ["1" 221]
                        (mt/first-row (qp/process-query query))))))
-
             (testing "groupBy query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
@@ -631,7 +623,6 @@
                          :count       ["Bar" "Felipinho Asklepios" 8]
                          :venue_price ["Mexican" "Conchúr Tihomir" 4])
                        (mt/first-row (qp/process-query query))))))
-
             (testing "timeseries query"
               (let [query (mt/mbql-query checkins
                             {:aggregation [[:count]]

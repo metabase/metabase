@@ -90,7 +90,6 @@
                            (let [current-tab (get id->current-tab (:id new-tab))]
                              (not= (select-keys current-tab update-ks)
                                    (select-keys new-tab update-ks))))
-
                          new-tabs)]
     (doseq [tab to-update-tabs]
       (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))

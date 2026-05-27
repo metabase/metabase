@@ -317,7 +317,6 @@
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
                      format-qp-result))]
-
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
      :result result

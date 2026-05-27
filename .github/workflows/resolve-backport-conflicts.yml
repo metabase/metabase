@@ -129,7 +129,7 @@ jobs:
       - name: Resolve conflicts with Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         id: claude
-        uses: anthropics/claude-code-base-action@beta
+        uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 # v0.0.63
         env:
           NODE_VERSION: "22"
         with:

@@ -48,16 +48,19 @@ function setup({
 }
 
 describe("DatabaseSection", () => {
-  it("can open the add modal and shows both databases as radio options", async () => {
+  it("can open the add modal and shows both databases as select options", async () => {
     setup();
 
     await userEvent.click(screen.getByRole("button", { name: /Add database/ }));
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "Database" }),
+    );
 
     expect(
-      await screen.findByRole("radio", { name: "Postgres" }),
+      await screen.findByRole("option", { name: "Postgres" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("radio", { name: "Snowflake" }),
+      screen.getByRole("option", { name: "Snowflake" }),
     ).toBeInTheDocument();
   });
 

@@ -88,13 +88,11 @@
       {:uris [(str "metabase://table/" (mt/id :orders))]})
     ;; Table is now MBR — carries serdes/meta with model="Table"
     #"\"model\":\"Table\""]
-
    ["read_resource: table with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
     ;; /fields still flows through the entity-details + XML path (field-stats).
     #"<table\b"]
-
    ["read_resource: table field values"
     #(let [table-id (mt/id :orders)
            field-id (find-field-id table-id "QUANTITY")]
@@ -109,7 +107,6 @@
       {:uris [(str "metabase://metric/" metric-id)]})
     ;; Metric is now MBR — Card extracted with type=metric.
     #"\"type\":\"metric\""]
-
    ["read_resource: metric with dimensions"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://metric/" metric-id "/dimensions")]})
@@ -122,7 +119,6 @@
       {:uris [(str "metabase://model/" model-id)]})
     ;; Card is now MBR — carries serdes/meta with model="Card" and type=model.
     #"\"type\":\"model\""]
-
    ["read_resource: model with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://model/" model-id "/fields")]})
@@ -146,7 +142,6 @@
                 (doseq [pattern edn-patterns]
                   (is (not (re-find pattern output)) (str "output contains EDN pattern " pattern))))
               (is (> 10000 (count output)) "Should be not too big"))))
-
         (let [metric-query (-> (lib/query (mt/metadata-provider)
                                           (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                                (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider)

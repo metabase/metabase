@@ -98,7 +98,6 @@
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
              (request.current/ip-address request))))
-
     (testing "request with forwarding"
       (let [mock-request (-> (ring.mock/request :get "api/session")
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
@@ -115,7 +114,6 @@
                                  (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
             (is (= "1.2.3.4"
                    (request.current/ip-address mock-request)))))))
-
     (testing "forwarding explicitly disabled via MB_NOT_BEHIND_PROXY=true"
       (mt/with-temp-env-var-value! [mb-not-behind-proxy "true"]
         (let [mock-request (-> (ring.mock/request :get "api/session")
