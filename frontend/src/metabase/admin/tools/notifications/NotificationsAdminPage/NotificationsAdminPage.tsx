@@ -202,6 +202,12 @@ export const NotificationsAdminPage = ({
           }),
         );
         clearSelected();
+        if (
+          notificationId !== undefined &&
+          notificationIds.includes(notificationId)
+        ) {
+          dispatch(push(Urls.adminToolsNotifications()));
+        }
       } catch {
         dispatch(
           addUndo({
@@ -211,7 +217,7 @@ export const NotificationsAdminPage = ({
         );
       }
     },
-    [bulkAction, clearSelected, dispatch],
+    [bulkAction, clearSelected, dispatch, notificationId],
   );
 
   const handleDeleteBulk = useCallback(() => {
