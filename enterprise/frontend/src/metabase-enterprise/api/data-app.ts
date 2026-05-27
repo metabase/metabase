@@ -1,0 +1,58 @@
+import type { CreateDataAppRequest, DataApp } from "metabase-types/api";
+
+import { EnterpriseApi } from "./api";
+import { idTag, invalidateTags, listTag } from "./tags";
+
+export const dataAppApi = EnterpriseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    listDataApps: builder.query<DataApp[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/data-app",
+      }),
+      providesTags: (apps = []) => [
+        listTag("data-app"),
+        ...apps.map((app) => idTag("data-app", app.name)),
+      ],
+    }),
+    getDataApp: builder.query<DataApp, string>({
+      query: (name) => ({
+        method: "GET",
+        url: `/api/ee/data-app/${encodeURIComponent(name)}`,
+      }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
+    }),
+    createDataApp: builder.mutation<DataApp, CreateDataAppRequest>({
+      query: ({ name, display_name, file }) => {
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("display_name", display_name);
+        formData.append("file", file);
+        return {
+          method: "POST",
+          url: "/api/ee/data-app",
+          body: { formData },
+          formData: true,
+          fetch: true,
+        };
+      },
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("data-app")]),
+    }),
+    deleteDataApp: builder.mutation<void, string>({
+      query: (name) => ({
+        method: "DELETE",
+        url: `/api/ee/data-app/${encodeURIComponent(name)}`,
+      }),
+      invalidatesTags: (_, error, name) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+    }),
+  }),
+});
+
+export const {
+  useListDataAppsQuery,
+  useGetDataAppQuery,
+  useCreateDataAppMutation,
+  useDeleteDataAppMutation,
+} = dataAppApi;
