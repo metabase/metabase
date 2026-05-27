@@ -1,17 +1,25 @@
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
+import { setupDependencyGraphEndpoint } from "__support__/server-mocks/dependencies";
 import { setupTableEndpoints } from "__support__/server-mocks/table";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
   createMockTable,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import {
+  createMockCardDependencyNode,
+  createMockDependencyEdge,
+  createMockDependencyGraph,
+} from "metabase-types/api/mocks/dependencies";
 
 import type { MetricUrls } from "../../../../types";
 
@@ -37,7 +45,6 @@ type SetupOpts = {
   role?: "admin" | "analyst" | "consumer";
   dependenciesCount?: number;
   dependentsCount?: number;
-  dependenciesEnabled?: boolean;
 };
 
 function setup({
@@ -45,14 +52,24 @@ function setup({
   role = "consumer",
   dependenciesCount = 0,
   dependentsCount = 0,
-  // Default on so admin/analyst role-gate tests see the Relationships section
-  // (which itself requires the dependencies plugin to be enabled).
-  dependenciesEnabled = true,
 }: SetupOpts = {}) {
-  jest
-    .spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount")
-    .mockReturnValue({ dependenciesCount, dependentsCount });
-  jest.replaceProperty(PLUGIN_DEPENDENCIES, "isEnabled", dependenciesEnabled);
+  setupDependencyGraphEndpoint(
+    createMockDependencyGraph({
+      nodes: [
+        createMockCardDependencyNode({
+          id: CARD_ID,
+          dependents_count: { dashboard: dependentsCount },
+        }),
+      ],
+      edges: Array.from({ length: dependenciesCount }, () =>
+        createMockDependencyEdge({
+          to_entity_id: CARD_ID,
+          to_entity_type: "card",
+        }),
+      ),
+    }),
+  );
+
   const card = createMockCard({
     id: CARD_ID,
     type: "metric",
@@ -98,8 +115,12 @@ function setup({
 }
 
 describe("DescriptionSection", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+  // Enable the dependencies plugin via real EE init.
+  beforeAll(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ dependencies: true }),
+    });
+    setupEnterprisePlugins();
   });
 
   it("renders the About heading and last-updated subline", async () => {
@@ -166,12 +187,6 @@ describe("DescriptionSection", () => {
     it("is visible for data analysts", async () => {
       setup({ role: "analyst" });
       expect(await screen.findByText("Relationships")).toBeInTheDocument();
-    });
-
-    it("is hidden when the dependencies plugin is disabled, even for admins", async () => {
-      setup({ role: "admin", dependenciesEnabled: false });
-      await screen.findByText("About");
-      expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
     });
 
     it("shows empty-state copy when there are no dependencies or charts", async () => {

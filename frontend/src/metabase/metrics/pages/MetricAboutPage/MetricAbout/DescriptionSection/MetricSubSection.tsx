@@ -14,8 +14,8 @@ export function MetricSubSection({
   mt,
 }: MetricSubSectionProps) {
   return (
-    <Stack gap={rem(8)} mt={mt}>
-      <Text fz={rem(12)} lh={rem(16)} fw={400} c="text-secondary">
+    <Stack gap="sm" mt={mt}>
+      <Text fz="sm" lh={rem(16)} fw={400} c="text-secondary">
         {title}
       </Text>
       {children}
