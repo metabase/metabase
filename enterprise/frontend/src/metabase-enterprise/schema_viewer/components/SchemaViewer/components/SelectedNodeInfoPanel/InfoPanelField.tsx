@@ -72,7 +72,7 @@ export function InfoPanelField({
             c="brand"
             onClick={() => onZoomToNode(targetNode.id)}
           >
-            <Group gap={4} wrap="nowrap" style={{ alignItems: "end" }} w="100%">
+            <Group align="end" gap={4} wrap="nowrap" w="100%">
               <FixedSizeIcon name="table" size={14} />
               <span className={S.targetName}>
                 {formatTargetTableName(selectedNode, targetNode)}

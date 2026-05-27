@@ -6,6 +6,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { TableId } from "metabase-types/api";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -78,22 +79,20 @@ function assertViewportZoom(matcher: (zoom: number) => void) {
   });
 }
 
-function assertNodeInViewport(tableId: number) {
-  // Use `should()` so the assertion retries until the camera animation
-  // settles — `then()` would run once and capture the mid-animation rect.
-  cy.get(".react-flow").should(($rf) => {
-    const v = $rf[0].getBoundingClientRect();
-    const $n = Cypress.$(`[data-id="table-${tableId}"]`);
+function assertNodeInViewport(tableId: TableId) {
+  cy.get(".react-flow").should(($reactFlowNode) => {
+    const viewportRect = $reactFlowNode[0].getBoundingClientRect();
+    const $tableNode = Cypress.$(`[data-id="table-${tableId}"]`);
     expect(
-      $n.length,
+      $tableNode.length,
       `table-${tableId} should be in the DOM`,
     ).to.be.greaterThan(0);
-    const n = $n[0].getBoundingClientRect();
+    const tableNodeRect = $tableNode[0].getBoundingClientRect();
     const overlaps =
-      n.right > v.left &&
-      n.left < v.right &&
-      n.bottom > v.top &&
-      n.top < v.bottom;
+      tableNodeRect.right > viewportRect.left &&
+      tableNodeRect.left < viewportRect.right &&
+      tableNodeRect.bottom > viewportRect.top &&
+      tableNodeRect.top < viewportRect.bottom;
     expect(
       overlaps,
       `table-${tableId} bounding rect should overlap the React Flow viewport`,

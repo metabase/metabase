@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
@@ -103,12 +104,15 @@ describe("SchemaViewerNodeSearch", () => {
     const productsOption = options.find((opt) =>
       within(opt).queryByText("PRODUCTS"),
     );
-    expect(ordersOption).toBeDefined();
-    expect(reviewsOption).toBeDefined();
-    expect(productsOption).toBeDefined();
-    expect(within(ordersOption!).getByText("1")).toBeInTheDocument();
-    expect(within(reviewsOption!).getByText("1")).toBeInTheDocument();
-    expect(within(productsOption!).getByText("0")).toBeInTheDocument();
+    expect(
+      within(checkNotNull(ordersOption)).getByText("1"),
+    ).toBeInTheDocument();
+    expect(
+      within(checkNotNull(reviewsOption)).getByText("1"),
+    ).toBeInTheDocument();
+    expect(
+      within(checkNotNull(productsOption)).getByText("0"),
+    ).toBeInTheDocument();
   });
 
   it("selecting an option calls zoomToNode and closes the dropdown", async () => {
@@ -128,7 +132,7 @@ describe("SchemaViewerNodeSearch", () => {
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
-  it("Cmd/Ctrl+F focuses the input and opens the dropdown", async () => {
+  it("'f' key focuses the input and opens the dropdown", async () => {
     setup();
     const input = screen.getByPlaceholderText(/Jump to table/i);
     expect(input).not.toHaveFocus();

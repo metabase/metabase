@@ -9,7 +9,6 @@ import type {
   ErdField,
   Field,
   TableDependencyNode,
-  TableDependencyNodeData,
 } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
@@ -25,15 +24,6 @@ type SelectedNodeInfoPanelProps = {
   onClose: () => void;
 };
 
-/**
- * Wraps the shared GraphInfoPanel so it can live inside ReactFlow and adapt
- * our ErdNode data into the DependencyNode shape that GraphInfoPanel expects.
- * Also handles:
- *  - onTitleClick: re-zoom onto the selected node
- *  - renderField: render each field with the standard column icon + name and
- *    append a clickable target-table link for FK fields; clicking pans the
- *    camera to the linked table without dropping the current selection
- */
 export function SelectedNodeInfoPanel({
   nodes,
   selectedNodeId,
@@ -172,41 +162,34 @@ function toTableDependencyNode(
   node: SchemaViewerFlowNode,
   db?: Database,
 ): TableDependencyNode {
-  const data: TableDependencyNodeData = {
-    name: node.data.name,
-    // Using name here, because we want to show SQL name in the title
-    display_name: node.data.name,
-    description: node.data.description,
-    // The owner payload from the ERD endpoint is either the full hydrated
-    // `TableOwner` shape, an email-only fallback (when the table only carries
-    // `owner_email`), or null. The downstream `getNodeOwner` / `getUserName`
-    // helpers in GraphInfoPanel only read the optional name/email fields, so
-    // the email-only shape is structurally compatible with `TableOwner`.
-    owner: node.data.owner as TableDependencyNodeData["owner"],
-    db_id: node.data.db_id,
-    schema: node.data.schema ?? "",
-    db,
-    // The cast to Field here is necessary, because GraphInfoPanel component
-    // is too coupled with TableDependencyNode type, and to avoid duplicating
-    // most of its internal code to create the same popup, it's easier
-    // to cast it to expected type here.
-    fields: node.data.fields.map(
-      (f): Field =>
-        ({
-          id: f.id,
-          name: f.name,
-          display_name: f.display_name,
-          database_type: f.database_type,
-          base_type: f.base_type ?? undefined,
-          effective_type: f.effective_type ?? undefined,
-          semantic_type: f.semantic_type ?? null,
-          fk_target_field_id: f.fk_target_field_id ?? null,
-        }) as Field,
-    ),
-  };
   return {
     id: node.data.table_id,
     type: "table",
-    data,
+    data: {
+      name: node.data.name,
+      display_name: node.data.name,
+      description: node.data.description,
+      owner: node.data.owner,
+      db_id: node.data.db_id,
+      schema: node.data.schema ?? "",
+      db,
+      // The cast to Field here is necessary, because GraphInfoPanel component
+      // is too coupled with TableDependencyNode type, and to avoid duplicating
+
+      // to cast it to expected type here.
+      fields: node.data.fields.map(
+        (f): Field =>
+          ({
+            id: f.id,
+            name: f.name,
+            display_name: f.display_name,
+            database_type: f.database_type,
+            base_type: f.base_type ?? undefined,
+            effective_type: f.effective_type ?? undefined,
+            semantic_type: f.semantic_type ?? null,
+            fk_target_field_id: f.fk_target_field_id ?? null,
+          }) as Field,
+      ),
+    },
   };
 }

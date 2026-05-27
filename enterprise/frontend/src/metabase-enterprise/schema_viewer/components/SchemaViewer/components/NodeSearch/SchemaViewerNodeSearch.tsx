@@ -50,7 +50,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
         },
       ],
     ],
-    ["INPUT"],
+    ["INPUT", "TEXTAREA", "SELECT"],
   );
 
   const allItems = useMemo<SearchItem[]>(
