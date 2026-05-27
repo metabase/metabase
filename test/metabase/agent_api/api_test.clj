@@ -596,7 +596,7 @@
 
 ;;; ----------------------------------------------- Update Question Tests ------------------------------------------
 
-(deftest update-question-test
+(deftest update-question-patch-fields-test
   (testing "Patches simple fields (name, description, archived)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Agent Update Q Original"
                                               :dataset_query (orders-count-query)
@@ -611,7 +611,9 @@
                 resp)))
       ;; verify persisted
       (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card :id card-id)))
-      (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id)))))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id))))))
+
+(deftest update-question-move-test
   (testing "Moving a card sets collection_id (subsumes move_card)"
     (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Move Dest"}
                    :model/Card       {card-id :id}      {:name          "Card To Move"
@@ -620,7 +622,9 @@
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                        {:collection_id dest-coll-id})]
         (is (= dest-coll-id (:collection_id resp))))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+
+(deftest update-question-archive-test
   (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Archive"
                                               :dataset_query (orders-count-query)
@@ -631,7 +635,9 @@
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+
+(deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
                                               :dataset_query (orders-count-query)
@@ -655,10 +661,14 @@
         (is (some? persisted))
         (is (= products-id source-table)
             (str "Expected persisted dataset_query :source-table to be the products table id "
-                 products-id ", got " source-table)))))
+                 products-id ", got " source-table))))))
+
+(deftest update-question-not-found-test
   (testing "Returns 404 when card does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/question/999999"
-                          {:name "doesn't matter"}))
+                          {:name "doesn't matter"})))
+
+(deftest update-question-write-perm-test
   (testing "Returns 403 when caller lacks write access on the card"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll"}
@@ -667,7 +677,9 @@
                                                              :display       :table
                                                              :collection_id locked-coll-id}]
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
-                              {:name "Forbidden Rename"}))))
+                              {:name "Forbidden Rename"})))))
+
+(deftest update-question-target-perm-test
   (testing "Returns 403 when caller can write source collection but not target"
     ;; Guard against an LLM moving a card into a collection the user can't normally write.
     ;; api/write-check on the card covers the source side; collection/check-allowed-to-change-
@@ -682,14 +694,18 @@
         (perms/grant-collection-readwrite-permissions!
          (perms-group/all-users) writable-id)
         (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
-                              {:collection_id locked-id}))))
+                              {:collection_id locked-id})))))
+
+(deftest update-question-display-validation-test
   (testing "Rejects unknown :display values with 400"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card Display Validation"
                                               :dataset_query (orders-count-query)
                                               :display       :table}]
       ;; The Malli enum on ::card-display should reject "potato" with a validation error.
       (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
-                            {:display "potato"})))
+                            {:display "potato"}))))
+
+(deftest update-question-cycle-rejection-test
   (testing "Returns 400 when swapping :query introduces a self-referencing cycle"
     ;; Mirror REST's `lib/check-card-overwrite` gate. A query whose source is the very
     ;; card being updated would persist a cyclic card otherwise (branch review A1).
@@ -705,7 +721,9 @@
       ;; Persisted query unchanged - source-table still the orders table id, not the card.
       (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
         (is (= (mt/id :orders) (some :source-table (:stages persisted)))
-            "dataset_query should not have been swapped to a card__ reference"))))
+            "dataset_query should not have been swapped to a card__ reference")))))
+
+(deftest update-question-query-perm-test
   (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
     ;; Guard against the gap retro identified in branch review:
     ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
@@ -795,7 +813,7 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:collection_id locked-id})))))
 
-(deftest update-dashboard-dashcards-test
+(deftest update-dashboard-dashcards-add-test
   (testing "Add a card to the dashboard (autoplaced)"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Add Target"}
                    :model/Card      {card-id :id} {:name          "Card to add"
@@ -809,7 +827,9 @@
           (is (= card-id (:card_id (first dashcards))))
           ;; Autoplaced - row and col are set even though we didn't provide them.
           (is (nat-int? (:row (first dashcards))))
-          (is (nat-int? (:col (first dashcards))))))))
+          (is (nat-int? (:col (first dashcards)))))))))
+
+(deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
                    :model/Card      {c1 :id}      {:name "C1" :dataset_query (orders-count-query) :display :table}
@@ -820,7 +840,9 @@
       (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
             positions (map (juxt :row :col) dashcards)]
         (is (= 2 (count dashcards)))
-        (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col"))))
+        (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col")))))
+
+(deftest update-dashboard-dashcards-remove-test
   (testing "Remove a dashcard"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}
                    :model/Card          {card-id :id} {:name "to remove" :dataset_query (orders-count-query) :display :table}
@@ -828,7 +850,9 @@
                                                            :row 0 :col 0 :size_x 12 :size_y 9}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id))))))
+      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest update-dashboard-dashcards-move-top-test
   (testing "Move a dashcard to the top"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move"}
                    :model/Card          {card-id :id} {:name "movable" :dataset_query (orders-count-query) :display :table}
@@ -838,7 +862,9 @@
                             {:dashcards [{:action "move" :dashcard_id dashcard-id :position "top"}]})
       (let [moved (t2/select-one :model/DashboardCard :id dashcard-id)]
         (is (= 0 (:row moved)))
-        (is (= 0 (:col moved))))))
+        (is (= 0 (:col moved)))))))
+
+(deftest update-dashboard-dashcards-move-top-reflow-test
   (testing "Move to top shifts other cards down by the moved card's :size_y - no overlap"
     ;; Regression for branch review #2: previously slammed the moved card at {:row 0 :col 0}
     ;; without reflowing the rest, leaving cards on top of each other.
@@ -858,7 +884,9 @@
         (is (= 6 (:row a)))
         ;; Bounding boxes don't intersect.
         (is (>= (:row a) (+ (:row b) (:size_y b)))
-            "A should sit entirely below B after the move-to-top reflow"))))
+            "A should sit entirely below B after the move-to-top reflow")))))
+
+(deftest update-dashboard-dashcards-mixed-test
   (testing "Mix add + remove + metadata patch in a single call"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Mix"}
                    :model/Card          {keep-card :id} {:name "keep" :dataset_query (orders-count-query) :display :table}
@@ -876,15 +904,21 @@
             card-ids  (set (map :card_id dashcards))]
         (is (= #{keep-card add-card} card-ids))
         (is (some #(= keep-dc (:id %)) dashcards) "Untouched dashcard survives")
-        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id))))))
+        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))))
+
+(deftest update-dashboard-dashcards-add-missing-card-test
   (testing "Returns 404 when add references a missing card"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Missing Card"}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
-                            {:dashcards [{:action "add" :card_id 999999}]})))
+                            {:dashcards [{:action "add" :card_id 999999}]}))))
+
+(deftest update-dashboard-dashcards-remove-missing-dashcard-test
   (testing "Returns 404 when remove references a dashcard not on this dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Wrong Dashcard"}]
       (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
-                            {:dashcards [{:action "remove" :dashcard_id 999999}]})))
+                            {:dashcards [{:action "remove" :dashcard_id 999999}]}))))
+
+(deftest update-dashboard-dashcards-move-validation-test
   (testing "Move requires :position - omitting it returns 400"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move Validation"}
                    :model/Card          {card-id :id} {:name "x" :dataset_query (orders-count-query) :display :table}

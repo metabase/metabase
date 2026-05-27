@@ -16,11 +16,10 @@
   agent-dashboard-create
   agent-dashboard-update
   agent-query
-  agent-question-create
-  agent-question-update
-  agent-query
   agent-query-construct
   agent-query-execute
+  agent-question-create
+  agent-question-update
   agent-resource-read
   agent-search
   agent-sql-execute]
