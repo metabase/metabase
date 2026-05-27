@@ -52,6 +52,7 @@
     Field$Mode
     FieldValue
     FieldValueList
+    Job
     JobInfo
     QueryJobConfiguration
     Schema
@@ -739,7 +740,12 @@
         result-promise   (promise)
         request          (build-bigquery-request sql parameters)
         _                (driver.conn/track-connection-acquisition! database-details)
-        job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
+        ;; in the UI. (#71558)
+        ^Job job         (try
+                           (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                           (catch Throwable t
+                             (handle-bigquery-exception t sql parameters)))
         job-id           (.getJobId job)
         query-future     (future
                            ;; ensure the classloader is available within the future.
