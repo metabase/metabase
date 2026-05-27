@@ -120,13 +120,7 @@ export function multiLevelPivot(data, settings) {
 }
 
 // This is the pivot function used in the normal table visualization.
-export function pivot(
-  data,
-  normalCol,
-  pivotCol,
-  cellCol,
-  dateFormattingOptions,
-) {
+export function pivot(data, normalCol, pivotCol, cellCol, settings) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
     pivotCol,
@@ -160,6 +154,13 @@ export function pivot(
     sourceRows[normalColIdx][pivotColIdx] = j;
   }
 
+  // Use the pivot column's full visualization settings (date_style, time_style, etc.)
+  // when formatting headers so units like hour-of-day render as just the hour.
+  const pivotColumn = data.cols[pivotCol];
+  const pivotColumnSettings = settings?.column?.(pivotColumn) ?? {
+    column: pivotColumn,
+  };
+
   // provide some column metadata to maintain consistency
   const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
@@ -170,15 +171,11 @@ export function pivot(
         ...data.cols[cellCol],
         // `name` must be the same for conditional formatting, but put the
         // formatted pivotted value in the `display_name`
-        display_name:
-          formatValue(value, {
-            column: data.cols[pivotCol],
-            ...dateFormattingOptions,
-          }) || "",
+        display_name: formatValue(value, pivotColumnSettings) || "",
         // for onVisualizationClick:
         _dimension: {
           value: value,
-          column: data.cols[pivotCol],
+          column: pivotColumn,
         },
       };
     }

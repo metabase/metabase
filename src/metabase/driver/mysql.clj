@@ -1322,7 +1322,10 @@
                        ;; Grant all privileges on the isolated database
                        (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [password escaped-password])))))))
     {:schema           db-name
      ;; Intentionally omit `:db` from `:database_details`: when the workspace
      ;; loader merges these over the canonical Database's `:details`, we must

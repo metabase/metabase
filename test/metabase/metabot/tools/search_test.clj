@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest reciprocal-rank-fusion-test
+(deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
                         {:id 2 :model "dashboard" :name "Dashboard 1"}
@@ -23,7 +23,9 @@
       (is (= 3 (count result)))
       (is (= 1 (-> result first :id)))
       (is (= 2 (-> result second :id)))
-      (is (= 3 (-> result last :id)))))
+      (is (= 3 (-> result last :id))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-2
   (testing "RRF with multiple lists - no overlap"
     (let [list1 [{:id 1 :model "card" :name "Card 1"}
                  {:id 2 :model "dashboard" :name "Dashboard 1"}]
@@ -31,7 +33,9 @@
                  {:id 4 :model "metric" :name "Metric 1"}]
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 4 (count result)))
-      (is (every? #(contains? #{1 2 3 4} (:id %)) result))))
+      (is (every? #(contains? #{1 2 3 4} (:id %)) result)))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-3
   (testing "RRF with overlapping results - should boost common items"
     (let [list1 [{:id 1 :model "card" :name "Revenue Report"}
                  {:id 2 :model "dashboard" :name "Sales Dashboard"}
@@ -44,7 +48,9 @@
       ;; Items appearing in both lists should rank higher
       (let [top-two-ids (set (map :id (take 2 result)))]
         (is (contains? top-two-ids 1))
-        (is (contains? top-two-ids 2)))))
+        (is (contains? top-two-ids 2))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-4
   (testing "RRF with identical items at different positions"
     (let [list1 [{:id 1 :model "card" :name "First"}
                  {:id 2 :model "dashboard" :name "Second"}
@@ -58,16 +64,22 @@
           result (#'search/reciprocal-rank-fusion [list1 list2 list3])]
       (is (= 3 (count result)))
       ;; Item 2 appears first in list3, second in list1 and list2, so should rank highest
-      (is (= 2 (-> result first :id)))))
+      (is (= 2 (-> result first :id))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-5
   (testing "RRF with empty lists"
     (let [list1 []
           list2 [{:id 1 :model "card" :name "Card 1"}]
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 1 (count result)))
-      (is (= 1 (-> result first :id)))))
+      (is (= 1 (-> result first :id))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-6
   (testing "RRF with all empty lists"
     (let [result (#'search/reciprocal-rank-fusion [[] [] []])]
-      (is (empty? result))))
+      (is (empty? result)))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-7
   (testing "RRF score calculation correctness"
     ;; Test that the RRF formula 1/(k+r) where k=60 is correctly applied
     (let [list1 [{:id 1 :model "card" :name "Rank 1"}]  ; rank=1, score=1/61
@@ -81,7 +93,9 @@
       ;; Item 2 appears only at rank 1 in list2 (score=1/61 ≈ 0.0164)
       ;; So item 1 should rank higher than item 2
       (is (= 1 (:id first-item)))
-      (is (= 2 (:id second-item)))))
+      (is (= 2 (:id second-item))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-8
   (testing "RRF preserves item data"
     (let [complex-item {:id 42
                         :model "dataset"
@@ -92,7 +106,9 @@
                         :extra_field "preserved"}
           result (#'search/reciprocal-rank-fusion [[complex-item]])]
       (is (= 1 (count result)))
-      (is (= complex-item (first result)))))
+      (is (= complex-item (first result))))))
+
+(deftest ^:parallel reciprocal-rank-fusion-test-9
   (testing "RRF with many lists"
     (let [lists (for [i (range 5)]
                   [{:id (inc i) :model "card" :name (str "Card " (inc i))}
@@ -102,7 +118,7 @@
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
 
-(deftest postprocess-search-result-test
+(deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
     (let [result {:model "table"
                   :id 1
@@ -122,7 +138,9 @@
                     :database_schema "public"
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
     (let [result {:model "dataset"
                   :id 2
@@ -142,7 +160,9 @@
                     :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-3
   (testing "transform result postprocessing"
     (let [result {:model "transform"
                   :id 3
@@ -158,7 +178,9 @@
                     :database_id 44
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-4
   (testing "dashboard result postprocessing"
     (let [result {:model "dashboard"
                   :id 3
@@ -176,7 +198,9 @@
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-5
   (testing "question (card) result postprocessing with moderated_status"
     (let [result {:model "card"
                   :id 4
@@ -195,7 +219,9 @@
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-6
   (testing "metric result postprocessing"
     (let [result {:model "metric"
                   :id 5
@@ -213,7 +239,9 @@
                     :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-test-7
   (testing "database result postprocessing"
     (let [result {:model "database"
                   :id 6

@@ -615,7 +615,7 @@
   Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
-  {:scope "agent:query"
+  {:scope metabot/agent-query
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "

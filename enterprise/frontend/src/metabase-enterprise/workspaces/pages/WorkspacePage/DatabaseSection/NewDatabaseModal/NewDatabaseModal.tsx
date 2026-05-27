@@ -23,6 +23,7 @@ import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
 
+import { trackWorkspaceDatabaseAdded } from "../../../../analytics";
 import { supportsWorkspaces } from "../../../../utils";
 import { SchemaMultiSelect } from "../SchemaMultiSelect";
 
@@ -119,6 +120,7 @@ function NewDatabaseForm({
       database_id: values.database_id,
       input_schemas: values.input_schemas,
     }).unwrap();
+    trackWorkspaceDatabaseAdded({ workspaceId: workspace.id });
     onCreate(updated);
   };
 

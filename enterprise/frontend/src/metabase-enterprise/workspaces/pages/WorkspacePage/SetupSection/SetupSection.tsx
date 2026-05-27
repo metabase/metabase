@@ -4,6 +4,8 @@ import { TitleSection } from "metabase/data-studio/common/components/TitleSectio
 import { Button, Code, FixedSizeIcon, Group, Text, Tooltip } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
+import { trackWorkspaceConfigDownloaded } from "../../../analytics";
+
 const CONFIG_FILENAME = "config.yml";
 
 export type SetupSectionProps = {
@@ -35,6 +37,9 @@ export function SetupSection({ workspace }: SetupSectionProps) {
             component="a"
             href={`/api/ee/workspace-manager/${workspace.id}/config`}
             download={CONFIG_FILENAME}
+            onClick={() =>
+              trackWorkspaceConfigDownloaded({ workspaceId: workspace.id })
+            }
             leftSection={<FixedSizeIcon name="download" aria-hidden />}
           >
             {t`Download ${CONFIG_FILENAME}`}
