@@ -650,11 +650,11 @@
     (let [mp (mt/metadata-provider)
           orders (lib.metadata/table mp (mt/id :orders))
           created-at (lib.metadata/field mp (mt/id :orders :created_at))
-          id (lib.metadata/field mp (mt/id :orders :id))
           query (-> (lib/query mp orders)
                     (lib/expression "created_at_between" (lib/between created-at "2019-02-10" "2019-02-11"))
+                    (lib/filter (lib/between created-at "2019-02-10" "2019-02-11"))
                     (lib/limit 2)
-                    (as-> q (lib/with-fields q [id created-at (lib/expression-ref q "created_at_between")])))]
-      (is (= [[1 "2019-02-11T18:40:27.892-03:00" true]
-              [2 "2018-05-15T05:04:04.58-03:00" false]]
+                    (as-> q (lib/with-fields q [created-at (lib/expression-ref q "created_at_between")])))]
+      (is (= [["2019-02-11T18:40:27.892-03:00" true]
+              ["2019-02-10T14:24:11.007-03:00" true]]
              (mt/rows (qp/process-query query)))))))
