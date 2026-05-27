@@ -18,7 +18,7 @@ import type { Card as CardApiType, CardType } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../../types";
 
-import { MetadataLinkCard, type MetadataRow } from "./MetadataLinkCard";
+import { MetadataCard, MetadataRow } from "./MetadataCard";
 import { MetricSubSection } from "./MetricSubSection";
 
 interface DescriptionSectionProps {
@@ -63,65 +63,8 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
     }
   };
 
-  const sourceRows: MetadataRow[] = [];
-  if (database) {
-    sourceRows.push({
-      icon: "database",
-      content: database.name,
-      to: urls.database?.(database.id),
-    });
-  }
-  if (table && card.database_id != null) {
-    sourceRows.push({
-      icon: "table",
-      content: table.display_name || table.name,
-      to: urls.table?.(card.database_id, table.id),
-    });
-  }
-
-  const relationshipRows: MetadataRow[] = [];
-  if (canSeeRelationships) {
-    const dependenciesUrl = urls.dependencies(card.id);
-
-    if (dependenciesCount > 0) {
-      relationshipRows.push({
-        icon: "link",
-        content: ngettext(
-          msgid`${dependenciesCount} dependency`,
-          `${dependenciesCount} dependencies`,
-          dependenciesCount,
-        ),
-        to: dependenciesUrl,
-      });
-    } else {
-      relationshipRows.push({ icon: "link", content: t`No dependencies` });
-    }
-
-    if (dependentsCount > 0) {
-      relationshipRows.push({
-        icon: "lineandbar",
-        content: jt`${(
-          <Text key="count" component="span" fw={600} c="brand">
-            {ngettext(
-              msgid`${dependentsCount} chart`,
-              `${dependentsCount} charts`,
-              dependentsCount,
-            )}
-          </Text>
-        )} ${ngettext(
-          msgid`uses this metric`,
-          `use this metric`,
-          dependentsCount,
-        )}`,
-        to: dependenciesUrl,
-      });
-    } else {
-      relationshipRows.push({
-        icon: "lineandbar",
-        content: t`No charts use this metric`,
-      });
-    }
-  }
+  const hasSource = Boolean(database || table);
+  const dependenciesUrl = urls.dependencies(card.id);
 
   return (
     <Stack
@@ -151,14 +94,63 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
           <Markdown>{card.description || t`No description`}</Markdown>
         )}
       </div>
-      {sourceRows.length > 0 && (
+
+      {hasSource && (
         <MetricSubSection title={t`Source`}>
-          <MetadataLinkCard rows={sourceRows} />
+          <MetadataCard>
+            {database && (
+              <MetadataRow icon="database" to={urls.database?.(database.id)}>
+                {database.name}
+              </MetadataRow>
+            )}
+            {table && card.database_id != null && (
+              <MetadataRow
+                icon="table"
+                to={urls.table?.(card.database_id, table.id)}
+              >
+                {table.display_name || table.name}
+              </MetadataRow>
+            )}
+          </MetadataCard>
         </MetricSubSection>
       )}
+
       {canSeeRelationships && (
         <MetricSubSection title={t`Relationships`}>
-          <MetadataLinkCard rows={relationshipRows} />
+          <MetadataCard>
+            {dependenciesCount > 0 ? (
+              <MetadataRow icon="link" to={dependenciesUrl}>
+                {ngettext(
+                  msgid`${dependenciesCount} dependency`,
+                  `${dependenciesCount} dependencies`,
+                  dependenciesCount,
+                )}
+              </MetadataRow>
+            ) : (
+              <MetadataRow icon="link">{t`No dependencies`}</MetadataRow>
+            )}
+            {dependentsCount > 0 ? (
+              <MetadataRow icon="lineandbar" to={dependenciesUrl}>
+                {jt`${(
+                  <Text key="count" component="span" fw={600} c="brand">
+                    {ngettext(
+                      msgid`${dependentsCount} chart`,
+                      `${dependentsCount} charts`,
+                      dependentsCount,
+                    )}
+                  </Text>
+                )} ${ngettext(
+                  msgid`uses this metric`,
+                  `use this metric`,
+                  dependentsCount,
+                )}`}
+              </MetadataRow>
+            ) : (
+              <MetadataRow icon="lineandbar">
+                {t`No charts use this metric`}
+              </MetadataRow>
+            )}
+          </MetadataCard>
         </MetricSubSection>
       )}
     </Stack>
