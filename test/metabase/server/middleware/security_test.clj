@@ -549,7 +549,7 @@
               "Cross-Origin-Embedder-Policy should be in the response"))))))
 
 (deftest csp-header-img-src-tests
-  (testing "img-src defaults to wildcard when csp-img-enabled is false (master-compatible behavior)"
+  (testing "img-src defaults to permissive wildcard, data, self when csp-img-enabled is false"
     (mt/with-temporary-setting-values [csp-img-enabled false
                                        csp-img-allowed-hosts "example.com"]
       (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
