@@ -86,8 +86,11 @@
               (messages)))))
   (testing "two-part session ids must match the supported capability hint shape"
     (is (false? (mcp.session/valid-id? (extended-session-id {:v 1}))))
-    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui "true"}))))
-    (is (false? (mcp.session/valid-id? (extended-session-id {:v 2 :ui true})))))
+    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui "true"})))))
+  (testing "unrecognized payload versions keep the session valid but disable UI capability"
+    (let [session-id (extended-session-id {:v 2 :ui true})]
+      (is (true? (mcp.session/valid-id? session-id)))
+      (is (false? (mcp.session/supports-mcp-ui? session-id)))))
   (testing "two-part session ids must fit the persisted query-handle session id column"
     (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui true :padding (apply str (repeat 300 "x"))}))))))
 

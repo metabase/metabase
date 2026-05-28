@@ -117,7 +117,9 @@
   "Parse the optional base64url JSON capability segment.
 
    Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
-   must include a supported payload shape so malformed capability hints do not silently fall back to legacy behavior."
+   with the current payload version must include a supported payload shape so malformed capability hints do not
+   silently fall back to legacy behavior. Future payload versions remain valid but default to no UI capability, so
+   rolling deploy version skew does not invalidate the whole session."
   [payload]
   (cond
     (nil? payload)
@@ -130,11 +132,22 @@
 
     :else
     (if-let [decoded-payload (decode-session-payload payload)]
-      (when (and (map? decoded-payload)
-                 (= session-payload-version (:v decoded-payload))
-                 (boolean? (:ui decoded-payload)))
-        {:extended true
-         :payload  decoded-payload})
+      (let [payload-map?         (map? decoded-payload)
+            payload-version      (when payload-map? (:v decoded-payload))
+            has-payload-version? (and payload-map? (contains? decoded-payload :v))]
+        (cond
+          (and payload-map?
+               (= session-payload-version payload-version)
+               (boolean? (:ui decoded-payload)))
+          {:extended true
+           :payload  decoded-payload}
+
+          ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
+          ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
+          (and has-payload-version?
+               (not= session-payload-version payload-version))
+          {:extended true
+           :payload  {:ui false}}))
       (log/warn "MCP session id contains an undecodable capability payload"))))
 
 (defn- session-parts
