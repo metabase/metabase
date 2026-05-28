@@ -42,7 +42,7 @@
 
 (mr/def ::source-entity-type
   "The type of the source entity causing an error."
-  [:enum :table :card])
+  [:enum :table :card :transform])
 
 (mr/def ::source-entity
   "Optional source entity tracking fields for dependency analysis."

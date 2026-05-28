@@ -368,7 +368,14 @@
                                                        :analyzed_entity_type :transform
                                                        :analyzed_entity_id transform-id)]
              (is (false? stale))
-             (is (false? result)))))))))
+             (is (false? result)))
+           (testing "an analysis_finding_error row points the transform at itself so the diagnostics page (`/graph/breaking`) surfaces it"
+             (is (=? {:source_entity_type :transform
+                      :source_entity_id   transform-id
+                      :error_type         :validation-exception-error}
+                     (t2/select-one :model/AnalysisFindingError
+                                    :analyzed_entity_type :transform
+                                    :analyzed_entity_id transform-id))))))))))
 
 (deftest ^:sequential transform-run-updates-dependencies-test
   (testing "transform run events trigger dependency calculations"
