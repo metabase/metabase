@@ -59,7 +59,6 @@
       (with-temp-sample-database-db [db]
         (let [db-path (get-in db [:details :db])]
           (is (re-matches extracted-db-path-regex db-path))))))
-
   ;; POC NOTE: removed the JAR-direct fallback test. SQLite-JDBC requires a
   ;; real file on disk; we can no longer fall back to reading from inside the
   ;; JAR. Subsequent startups with a writable plugins dir still extract OK.
