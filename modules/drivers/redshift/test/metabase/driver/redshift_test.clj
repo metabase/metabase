@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -723,3 +724,114 @@
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defn- try-execute!
+  "Run `sql` against `spec`, swallowing exceptions. For cleanup paths where the
+   object may not exist."
+  [spec sql]
+  (try (jdbc/execute! spec [sql]) (catch Throwable _ nil)))
+
+(deftest ^:synchronized workspace-precondition-alter-default-privileges-test
+  ;; Redshift mirror of `metabase.driver.postgres-test/workspace-precondition-alter-default-privileges-test`,
+  ;; covering GHY-3709. We simulate the prod failure mode by:
+  ;;   - creating a non-superuser "tenant" role,
+  ;;   - seeding a schema with a table whose owner is a different role,
+  ;;   - connecting as the tenant role and running the pre-flight assert.
+  ;;
+  ;; The assert must throw with status 412, since the tenant role can neither
+  ;; impersonate the foreign owner nor flip to superuser at runtime. Once admin
+  ;; reassigns the table to the tenant role, the assert must pass.
+  ;;
+  ;; Note: Redshift's impersonation graph collapses to "current_user == owner
+  ;; OR current_user is superuser" -- there is no working `pg_has_role(...)`
+  ;; on RA3 clusters. The PG mirror grants role membership instead; here we
+  ;; ALTER OWNER to dodge the missing-overload problem.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_adp_tenant_" suffix)
+          owner      (str "ws_pre_adp_owner_" suffix)
+          schema     (str "ws_pre_adp_schema_" suffix)
+          table      (str "ws_pre_adp_t_" suffix)
+          password   "Pwd_ws_pre_adp_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  owner password)
+                   (format "CREATE SCHEMA \"%s\";%n"                   schema)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)
+                   (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);%n" schema table)
+                   ;; Reassign the table to a different role so tenant doesn't own it.
+                   (format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\";%n" schema table owner)))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when a relation in the input schema is owned by an unmemberable role"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"ALTER DEFAULT PRIVILEGES"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema))))
+          (testing "passes once the foreign-owned object is reassigned to the tenant"
+            (jdbc/execute! admin-spec
+                           [(format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\""
+                                    schema table tenant)])
+            (is (nil? (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           owner)))))))
+
+(deftest ^:synchronized workspace-precondition-foreign-default-acl-grantor-test
+  ;; The other half of GHY-3709: a `pg_default_acl` row owned by a role the
+  ;; tenant cannot impersonate must be caught at grant time. If we let
+  ;; provisioning through, destroy-time REVOKE has no way to drop that row
+  ;; and `DROP USER` fails -- which is exactly the production error reported
+  ;; on workspace 69.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_facl_tenant_" suffix)
+          grantor    (str "ws_pre_facl_grantor_" suffix)
+          schema     (str "ws_pre_facl_schema_" suffix)
+          dummy      (str "ws_pre_facl_dummy_" suffix)
+          password   "Pwd_ws_pre_facl_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  dummy password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n" schema grantor)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)))
+        ;; Connect as the foreign grantor to seed a pg_default_acl row owned by them.
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                         :user grantor
+                                         :password password)]]
+          (jdbc/execute! grantor-spec
+                         [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                  schema dummy)]))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when the schema carries a pre-existing default-priv row from a foreign grantor"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"ALTER DEFAULT PRIVILEGES"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          ;; Revoke the seeded default-priv as the grantor (only they can).
+          (sql-jdbc.conn/with-connection-spec-for-testing-connection
+           [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                           :user grantor
+                                           :password password)]]
+            (try-execute! grantor-spec
+                          (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                  schema dummy)))
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           dummy)))))))

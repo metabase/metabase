@@ -811,7 +811,7 @@
                     schema-name])
        (keep :owner)))
 
-(defn- assert-can-alter-default-privileges!
+(defn assert-can-alter-default-privileges!
   "Throws when `schema-name` has relation-owners or pre-existing default-priv
    grantors that `current_user` cannot impersonate via `FOR USER`. On Redshift
    the impersonation graph collapses to: `owner == current_user`, or

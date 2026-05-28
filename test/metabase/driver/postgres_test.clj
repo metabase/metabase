@@ -2467,3 +2467,54 @@
                     (jdbc/execute! admin-spec
                                    [(str "GRANT \"" owner "\" TO \"" role "\"")])
                     (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema)))))))))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; PostgreSQL counterpart to Redshift's GHY-3709 destroy fix. The Redshift
+  ;; driver had to grow explicit `pg_default_acl` discovery + per-grantor
+  ;; REVOKEs because Redshift's `DROP OWNED BY` semantics differ from PG. PG's
+  ;; destroy issues `DROP OWNED BY <iso-user>` which removes default-priv ACL
+  ;; entries where the iso-user appears as a grantee, regardless of who granted
+  ;; them. This test pins that contract: seed a foreign-grantor default-priv
+  ;; row targeting the iso-user and confirm `destroy-workspace-isolation!`
+  ;; still cleans up without raising "user cannot be dropped because some
+  ;; objects depend on it".
+  (mt/test-driver :postgres
+    (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              grantor    "ws_destroy_foreign_grantor"
+              schema     "ws_destroy_foreign_schema"
+              workspace  {:id 0xdeadbeef
+                          :name "wsd-foreign-destroy"}]
+          (with-drop-role! admin-spec grantor
+            (with-drop-schema! admin-spec schema
+              (jdbc/execute! admin-spec
+                             [(str "CREATE ROLE \"" grantor "\" WITH LOGIN PASSWORD 'pwd'; "
+                                   "GRANT \"" grantor "\" TO CURRENT_USER; "
+                                   "CREATE SCHEMA \"" schema "\" AUTHORIZATION \"" grantor "\";")])
+              (let [init-result   (driver/init-workspace-isolation! :postgres (mt/db) workspace)
+                    iso-user      (-> init-result :database_details :user)
+                    workspace+det (merge workspace init-result)]
+                (try
+                  ;; Seed the foreign-grantor default-priv: set the grantor role and
+                  ;; issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+                  ;; row is owned by the grantor, not by current_user.
+                  (jdbc/execute! admin-spec
+                                 [(str "SET ROLE \"" grantor "\"; "
+                                       "ALTER DEFAULT PRIVILEGES IN SCHEMA \"" schema "\" "
+                                       "GRANT SELECT ON TABLES TO \"" iso-user "\"; "
+                                       "RESET ROLE;")])
+                  (testing "destroy completes without error"
+                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                  (testing "the iso-user has been dropped"
+                    (is (empty? (jdbc/query admin-spec
+                                            ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
+                  (finally
+                    ;; If destroy raised, the iso-user may still exist -- clean up so the
+                    ;; with-drop-role!/with-drop-schema! frames don't fail on the schema.
+                    (try (jdbc/execute! admin-spec
+                                        [(str "DROP OWNED BY \"" iso-user "\" CASCADE")])
+                         (catch Throwable _ nil))
+                    (try (jdbc/execute! admin-spec
+                                        [(str "DROP USER IF EXISTS \"" iso-user "\"")])
+                         (catch Throwable _ nil))))))))))))
