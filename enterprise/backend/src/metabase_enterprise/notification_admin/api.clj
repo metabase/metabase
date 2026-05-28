@@ -36,7 +36,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -416,11 +417,9 @@
   (some-> status keyword))
 
 (defn- error-by-run-id
-  "Given a set of failed/abandoned run IDs (from the page's `lc.id`s), return a map
-  run_id → error message. The latest failed/abandoned task_history row per run wins, selected in
-  SQL via `ROW_NUMBER() OVER (PARTITION BY run_id ORDER BY ended_at DESC)` filtered to rank 1.
-  Avoids cross-dialect JSON SQL by letting toucan deserialize `task_details` and reading
-  `:message` in Clojure."
+  "Given a set of failed/abandoned run IDs, return a map run_id → error message. When a run has
+  multiple failed task_history rows, prefer the outer `notification-send` then fall back to the
+  latest by `ended_at`."
   [run-ids]
   (when (seq run-ids)
     (->> (t2/select :model/TaskHistory
@@ -428,7 +427,10 @@
                      :from   [[{:select [:run_id :task_details
                                          [[:over [[:row_number]
                                                   {:partition-by [:run_id]
-                                                   :order-by     [[:ended_at :desc]]}]]
+                                                   :order-by     [[[:case
+                                                                    [:= :task task-notification-send] 0
+                                                                    :else                             1] :asc]
+                                                                  [:ended_at :desc]]}]]
                                           :rn]]
                                 :from   [:task_history]
                                 :where  [:and
@@ -550,54 +552,55 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- task-history-rows-for-card
-  "Shared base query used by both `check-history-for-notification` and
-  `send-history-for-notification`. Returns up to `row-cap` task_history rows for `card-id`
-  within the lookback window, joined to task_run for tick metadata.
+  "Reducible source of `task-name` task_history rows for `card-id`, joined to task_run for tick
+  metadata, newest first. Bounded at `:fetch-limit` rows as a safety upper bound — callers should
+  combine with `(take …)` in the transducer so the JDBC cursor short-circuits once the
+  in-memory `notification_id` filter has yielded enough matches."
+  [card-id task-name & {:keys [fetch-limit extra-where] :or {fetch-limit 500}}]
+  (t2/reducible-select :model/TaskHistory
+                       {:select    [:th.run_id :th.task_details :th.status
+                                    [:tr.id         :task_run_id]
+                                    [:tr.status     :run_status]
+                                    [:tr.started_at :run_started_at]]
+                        :from      [[:task_history :th]]
+                        :join      [[:task_run :tr] [:= :tr.id :th.run_id]]
+                        :where     (cond-> [:and
+                                            [:= :tr.run_type    run-type-alert]
+                                            [:= :tr.entity_type entity-type-card]
+                                            [:= :tr.entity_id   card-id]
+                                            [:= :th.task        task-name]
+                                            [:> :tr.started_at  (lookback-cutoff)]]
+                                     extra-where (conj extra-where))
+                        :order-by  [[:tr.started_at :desc]]
+                        :limit     fetch-limit}))
 
-  `task-name`    — `:task` value to filter on (task-notification-send or task-channel-send).
-  `extra-select` — additional HoneySQL select columns beyond the shared base set.
-  `extra-where`  — optional additional HoneySQL WHERE clause (e.g. terminal-status filter)."
-  [card-id task-name extra-select
-   & {:keys [row-cap extra-where] :or {row-cap 500}}]
-  (t2/select :model/TaskHistory
-             {:select    (into [:th.run_id :th.task_details
-                                [:tr.id         :task_run_id]
-                                [:tr.status     :run_status]
-                                [:tr.started_at :run_started_at]]
-                               extra-select)
-              :from      [[:task_history :th]]
-              :join      [[:task_run :tr] [:= :tr.id :th.run_id]]
-              :where     (cond-> [:and
-                                  [:= :tr.run_type    run-type-alert]
-                                  [:= :tr.entity_type entity-type-card]
-                                  [:= :tr.entity_id   card-id]
-                                  [:= :th.task        task-name]
-                                  [:> :tr.started_at  (lookback-cutoff)]]
-                           extra-where (conj extra-where))
-              :order-by  [[:tr.started_at :desc]]
-              :limit     row-cap}))
+(defn- task-details-key
+  "Look up `k` in `task_details`, checking top level then `:original-info` (where
+  `with-task-history` nests the caller's payload on failure)."
+  [task_details k]
+  (or (get task_details k)
+      (get-in task_details [:original-info k])))
+
+(defn- matches-notification?
+  "Row predicate: true when `task_details.notification_id` matches `notification-id`."
+  [notification-id]
+  (fn [{:keys [task_details]}]
+    (= notification-id (task-details-key task_details :notification_id))))
 
 (defn- check-history-for-notification
-  "Up to 10 most-recent terminal alert-type TaskRuns for `notification-id`, newest first.
-  Filtered per-notification: we JOIN task_run → task_history (task=notification-send) with a
-  row cap of 500 applied at the DB level, then in Clojure we keep only rows whose notification_id
-  matches.  Returns a vector of `::run-summary` maps.
-
-  Row-cap skew caveat: the 500-row cap is applied before the Clojure-side notification_id filter.
-  For a card with many notifications and many ticks this cap ensures the query stays bounded, but
-  it means very old ticks may be excluded.  In practice notifications don't accumulate tens of
-  thousands of rows within the 90-day window."
-  [card-id notification-id & {:keys [row-cap result-limit] :or {row-cap 500 result-limit 10}}]
-  (let [rows      (task-history-rows-for-card card-id task-notification-send
-                                              [:th.status]
-                                              :row-cap    row-cap
-                                              :extra-where [:in :tr.status terminal-statuses])
-        matching  (into []
-                        (comp
-                         (filter (fn [{:keys [task_details]}]
-                                   (= notification-id (:notification_id task_details))))
-                         (take result-limit))
-                        rows)
+  "Up to `:result-limit` most-recent terminal TaskRuns for `notification-id`, newest first, as
+  `::run-summary` maps."
+  [card-id notification-id & {:keys [fetch-limit result-limit] :or {fetch-limit 500 result-limit 10}}]
+  (let [matching   (into []
+                         ;; `realize` each matched row before exiting the reduction — the
+                         ;; reducible-select rows are transient views over the JDBC cursor and
+                         ;; become unreadable once `take` closes the reducible.
+                         (comp (filter (matches-notification? notification-id))
+                               (take result-limit)
+                               (map t2.realize/realize))
+                         (task-history-rows-for-card card-id task-notification-send
+                                                     :fetch-limit fetch-limit
+                                                     :extra-where [:in :tr.status terminal-statuses]))
         failed-ids (into #{} (keep #(when (#{"failed" "abandoned"} (:run_status %)) (:task_run_id %)) matching))
         errors     (error-by-run-id failed-ids)]
     (mapv (fn [{:keys [task_run_id run_status run_started_at]}]
@@ -611,66 +614,39 @@
   [{:keys [status task_details]}]
   (let [status-kw    (coerce-status status)
         run-status   (coerce-run-status (or status-kw :failed))
-        channel-type (some-> task_details :channel_type keyword)]
+        channel-type (some-> (task-details-key task_details :channel_type) keyword)]
     {:channel_type (or channel-type :channel/unknown)
      :status       run-status
      :error        (when (= run-status :failing)
                      (:message task_details))}))
 
 (defn- send-history-for-notification
-  "Per-tick send history for `notification-id`, newest tick first, up to `result-limit` ticks.
-
-  Strategy (per-notification, per-tick):
-    1. Pull up to `row-cap` channel-send rows for `card-id` within the lookback window,
-       joined to task_run for the tick timestamp.  The card-level prefilter keeps the query
-       bounded on the DB side.
-    2. In Clojure: keep rows where notification_id matches.
-    3. Rows are sorted by run started_at DESC, so all rows of one tick are adjacent —
-       group with partition-by :run_id, take result-limit groups.
-    4. Per group build one `::tick-send-entry`:
-       - :at      — task_run.started_at for that tick
-       - :status  — :successful iff every channel row succeeded; :failing if any failed
-       - :error   — first error message from the failing channels, or nil
-       - :channels — vector of ::channel-entry (one per channel-send row in the group)
-
-  Goal-not-met ticks (no channel-send rows) are absent — they appear in check_history only."
-  [card-id notification-id & {:keys [row-cap result-limit] :or {row-cap 500 result-limit 10}}]
-  (let [rows     (task-history-rows-for-card card-id task-channel-send
-                                             [:th.status]
-                                             :row-cap row-cap)
-        matching (filterv (fn [{:keys [task_details]}]
-                            (= notification-id (:notification_id task_details)))
-                          rows)]
-    ;; Rows are sorted DESC by run_started_at; all rows of one tick are adjacent.
-    (->> (partition-by :run_id matching)
-         (take result-limit)
-         (mapv (fn [tick-rows]
-                 (let [at              (:run_started_at (first tick-rows))
-                       channel-entries (mapv ->channel-entry tick-rows)
-                       any-failing?    (some #(= :failing (:status %)) channel-entries)
-                       first-error     (some :error channel-entries)]
-                   {:at       at
-                    :status   (if any-failing? :failing :successful)
-                    :error    first-error
-                    :channels channel-entries}))))))
+  "Up to `:result-limit` most-recent send ticks for `notification-id`, newest first, each a
+  `::tick-send-entry` rolling up all channels in that tick. Ticks with no channel-send rows
+  (e.g. goal-not-met) only appear in check_history."
+  [card-id notification-id & {:keys [fetch-limit result-limit] :or {fetch-limit 500 result-limit 10}}]
+  ;; Stream channel-send rows newest-first, filter to this notification, partition into ticks
+  ;; (rows of one tick are adjacent in started_at-desc order), take `result-limit` ticks, build
+  ;; the tick-send entries. The transducer short-circuits once `result-limit` partitions are seen.
+  ;; `realize` each matched row before `partition-by` holds it — reducible-select rows are
+  ;; transient views over the JDBC cursor that go invalid once `take` closes the reducible.
+  (into []
+        (comp (filter (matches-notification? notification-id))
+              (map t2.realize/realize)
+              (partition-by :run_id)
+              (take result-limit)
+              (map (fn [tick-rows]
+                     (let [channel-entries (mapv ->channel-entry tick-rows)]
+                       {:at       (:run_started_at (first tick-rows))
+                        :status   (if (some #(= :failing (:status %)) channel-entries) :failing :successful)
+                        :error    (some :error channel-entries)
+                        :channels channel-entries}))))
+        (task-history-rows-for-card card-id task-channel-send :fetch-limit fetch-limit)))
 
 (defn- get-notification-detail
-  "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`,
-  and `:send_history`. Returns nil if the notification doesn't exist or isn't a card-type
-  notification.
-
-  `:check_history` — up to 10 most-recent terminal alert-type TaskRuns for THIS notification
-  (filtered by notification_id in task_details), newest first, each `::run-summary`.
-
-  `:send_history` — up to 10 most-recent send ticks for THIS notification, rolled up across
-  all channels per tick, newest tick first, each `::tick-send-entry`.
-
-  `last_check` and `last_send` on the detail response are derived from the first entries of
-  the computed histories so the detail page is internally consistent and per-notification
-  (not subject to card-level bleed from other notifications sharing the same card).
-
-  The window subquery joins (`lc`/`ls`) are skipped via `:skip-run-joins?` — the detail path
-  overwrites last_check/last_send from the per-notification histories anyway."
+  "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`, and
+  `:send_history` (each per-notification, not card-level). Returns nil for a missing or non-card
+  notification."
   [id]
   (when-let [row (t2/select-one :model/Notification
                                 (-> (base-list-query {:skip-run-joins? true})

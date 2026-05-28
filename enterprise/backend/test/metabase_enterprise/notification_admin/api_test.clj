@@ -499,7 +499,7 @@
                                                             :status      :failed
                                                             :started_at  (t/instant)
                                                             :ended_at    (t/instant)}
-                     :model/TaskHistory      _th           {:task         "send-notification"
+                     :model/TaskHistory      _th           {:task         "notification-send"
                                                             :run_id       run-id
                                                             :status       :failed
                                                             :started_at   (t/instant)
@@ -1164,6 +1164,132 @@
                                  :status       "successful"
                                  :error        nil}]}
                     (second send-history)))))))))
+
+(deftest detail-surfaces-history-when-task-details-failure-wrapped-test
+  (testing "GET /:id surfaces last_check/last_send/error for ticks whose task_details is wrapped by with-task-history's failure handler"
+    ;; Regression: `metabase.task_history/do-with-task-history` rewrites task_details on exception as
+    ;; `{:status :failed :message ... :original-info <caller-task_details>}`. The per-notification
+    ;; filter has to look in both the top level (success rows) and `:original-info` (failure rows),
+    ;; or failing ticks silently disappear from the detail histories and `last_check`/`last_send`
+    ;; come back nil — even though the list endpoint shows the notification as failing.
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     ;; notification-send: failure-wrapped (notification_id only under :original-info)
+                     :model/TaskHistory      _ns-th        {:task         "notification-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:status        :failed
+                                                                           :message       "Notification handler exploded"
+                                                                           :original-info {:notification_id nid}}}
+                     ;; channel-send: failure-wrapped (channel_type + notification_id only under :original-info)
+                     :model/TaskHistory      _cs-th        {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:status        :failed
+                                                                           :message       "Slack token invalid"
+                                                                           :original-info {:channel_type    "channel/slack"
+                                                                                           :notification_id nid}}}]
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
+          (testing "check_history surfaces the failed notification-send tick + its error"
+            (is (=? [{:status "failing" :error "Notification handler exploded"}]
+                    (:check_history resp))))
+          (testing "send_history surfaces the failed channel-send tick + its error and channel type"
+            (is (=? [{:status   "failing"
+                      :error    "Slack token invalid"
+                      :channels [{:channel_type "channel/slack"
+                                  :status       "failing"
+                                  :error        "Slack token invalid"}]}]
+                    (:send_history resp))))
+          (testing "last_check and last_send are derived from those histories"
+            (is (=? {:status "failing" :error "Notification handler exploded"}
+                    (:last_check resp)))
+            (is (=? {:status "failing" :error "Slack token invalid"}
+                    (:last_send resp)))))))))
+
+(deftest list-last-check-surfaces-channel-error-when-outer-send-succeeded-test
+  (testing "list endpoint last_check.error surfaces the channel-send error when the outer notification-send succeeded but a channel failed"
+    ;; Regression: `complete-task-run!` derives task_run.status as :failed when ANY child task is
+    ;; not :success — so a tick where notification-send succeeded but a channel-send failed has
+    ;; task_run.status = :failed. `error-by-run-id` must surface the channel-send's message in
+    ;; that case (no notification-send failure row exists). If it filtered to notification-send
+    ;; only, last_check would show status:failing error:nil for the Failing tab.
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     ;; Outer notification-send: succeeded
+                     :model/TaskHistory      _ns-th        {:task         "notification-send"
+                                                            :run_id       run-id
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:notification_id nid}}
+                     ;; Channel-send: failed (failure-wrapped task_details)
+                     :model/TaskHistory      _cs-th        {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:status        :failed
+                                                                           :message       "Slack token invalid"
+                                                                           :original-info {:channel_type    "channel/slack"
+                                                                                           :notification_id nid}}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (=? {:last_check {:status "failing" :error "Slack token invalid"}}
+                  (find-row-by-id data nid))))))))
+
+(deftest list-last-check-prefers-outer-notification-send-error-test
+  (testing "when both notification-send and channel-send failed in one run, last_check.error prefers the outer notification-send message"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     :model/TaskHistory      _ns-th        {:task         "notification-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:message "Payload generation failed"}}
+                     :model/TaskHistory      _cs-th        {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:message "Slack token invalid"}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (=? {:last_check {:status "failing" :error "Payload generation failed"}}
+                  (find-row-by-id data nid))
+              "outer notification-send error wins over inner channel-send error"))))))
 
 (deftest detail-send-history-multi-channel-tick-test
   (testing "GET /:id: one tick with email+slack both succeeding → ONE send entry, status successful"
