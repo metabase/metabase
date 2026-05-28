@@ -1492,3 +1492,18 @@ databaseChangeLog:
             tableName: exploration_query
             columnName: entity_id
             columnDataType: char(21)
+
+  - changeSet:
+      id: v62.expthreadcancelat
+      author: johnswanson
+      comment: Add exploration_thread.canceled_at — set when the user clicks "Stop running" on an in-flight thread. Stamped together with completed_at so existing terminal-state predicates keep working; canceled_at IS NOT NULL is the cause marker that distinguishes a user cancel from a natural completion.
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: canceled_at
+                  type: ${timestamp_type}
+                  remarks: Set when the user stops a running thread via the cancel endpoint. Set together with `completed_at` so existing terminal-state predicates keep working; `canceled_at IS NOT NULL` is the cause marker that distinguishes a cancel from a natural completion.
+                  constraints:
+                    nullable: true

@@ -435,3 +435,87 @@
                            :exploration_query_id (:id q)
                            :timeline_id (:id tl)))
             "no duplicate row was inserted alongside the reclaimed one")))))
+
+;; ---------------------------- Cancellation guards ----------------------------
+
+(def ^:private claim-pending-query #'runner/claim-pending-query)
+(def ^:private claim-unplanned-thread! #'runner/claim-unplanned-thread!)
+(def ^:private claim-analysis-if-ready! #'runner/claim-analysis-if-ready!)
+(def ^:private canceled-mid-plan-cleanup! #'runner/canceled-mid-plan-cleanup!)
+
+(defn- cancel-thread!
+  "Stamp `canceled_at` + `completed_at` directly on the thread, the way the cancel endpoint does.
+  Bypasses the API to keep these tests focused on the runner-side guards."
+  [thread-id]
+  (let [now (OffsetDateTime/now)]
+    (t2/update! :model/ExplorationThread thread-id
+                {:canceled_at now :completed_at now})))
+
+(deftest claim-pending-query-skips-canceled-thread-test
+  (testing "A pending EQ whose owning thread has canceled_at set is invisible to the claim query"
+    (mt/with-temp [:model/User u {:email "cancel-claim@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (cancel-thread! (:id thread))
+        (let [claimed (claim-pending-query)]
+          (is (or (nil? claimed) (not= (:id row) (:id claimed)))
+              "claim-pending-query must not return a row on a canceled thread"))))))
+
+(deftest claim-unplanned-thread-skips-canceled-test
+  (testing "An unplanned, started, canceled thread is not claimed by the planner"
+    (mt/with-temp [:model/User u {:email "cancel-plan@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (cancel-thread! (:id thread))
+        ;; Other tests may have unplanned threads in flight; just assert ours isn't picked.
+        (let [claimed (claim-unplanned-thread!)]
+          (is (not= (:id thread) claimed)
+              "canceled threads must not be claimed for planning"))))))
+
+(deftest claim-analysis-skips-canceled-test
+  (testing "claim-analysis-if-ready! refuses to CAS analysis_started_at on a canceled thread,
+            even when every query is terminal and every timeline pair is scored"
+    (mt/with-temp [:model/User u {:email "cancel-analysis@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        ;; Set started_at so the thread is past the draft phase. No EQs and no timeline pairs
+        ;; means the two NOT-EXISTS predicates trivially hold — without canceled_at IS NULL, the
+        ;; CAS would fire.
+        (t2/update! :model/ExplorationThread (:id thread)
+                    {:started_at (OffsetDateTime/now)})
+        (cancel-thread! (:id thread))
+        (is (false? (claim-analysis-if-ready! (:id thread)))
+            "CAS must not fire on a canceled thread")
+        (is (nil? (:analysis_started_at (t2/select-one :model/ExplorationThread :id (:id thread))))
+            "analysis_started_at must remain NULL")))))
+
+(deftest canceled-mid-plan-cleanup-flips-pending-rows-test
+  (testing "Planner-race repair: when the planner finishes for a thread the user canceled mid-plan,
+            the cleanup helper flips the just-inserted pending rows to canceled"
+    (mt/with-temp [:model/User u {:email "cancel-cleanup@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread     (temp-thread! (:id u))
+            pending-eq (pending-query! (:id thread) (:id card)
+                                       (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (cancel-thread! (:id thread))
+        (canceled-mid-plan-cleanup! (:id thread))
+        (is (= "canceled" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
+            "pending EQ on a canceled thread must be flipped to canceled")))))
+
+(deftest canceled-mid-plan-cleanup-noop-on-uncanceled-test
+  (testing "cleanup helper does nothing for threads that aren't canceled — common-case no-op"
+    (mt/with-temp [:model/User u {:email "cancel-cleanup-noop@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread     (temp-thread! (:id u))
+            pending-eq (pending-query! (:id thread) (:id card)
+                                       (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (canceled-mid-plan-cleanup! (:id thread))
+        (is (= "pending" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
+            "pending EQ on a live thread must be left alone")))))
