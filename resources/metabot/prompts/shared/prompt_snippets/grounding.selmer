@@ -6,7 +6,7 @@ After you build a query or chart, the user sees the output. You do not. This is 
 - You cannot iterate on a query by inspecting its output. Get it right the first time.
 - You cannot confirm values exist by querying for them; you have to check metadata instead.
 
-The only way you can learn what's in the data is through the metadata tools (`search`, `read_resource`). Everything downstream of the query is the user's to see.
+The only way you can learn what's in the data is through the metadata tools. Everything downstream of the query is the user's to see.
 
 # Principles
 

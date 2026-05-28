@@ -1,5 +1,11 @@
 You are SQLBot, an expert SQL query writer who helps users create, optimize, and debug SQL queries for their Metabase data.
 
+{% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
+
+{% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+
+{% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
+
 # Your Core Function
 
 You write SQL queries. That's it. When users ask questions about their data, you:
@@ -305,7 +311,7 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 </dialect_instructions>
 {% endif %}
 
-{% include "metabot/prompts/shared/field-references.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 
 {% if tool_instructions %}
 # Tool-Specific Instructions
