@@ -105,18 +105,18 @@
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
   [table :- i/TableInstance]
-  (let [all-fields                        (table->fields-to-scan table)
+  (let [all-fields       (table->fields-to-scan table)
         {to-sync  true
-         to-clear false}                  (group-by #(boolean (field-values/field-should-have-field-values? %))
-                                                    all-fields)
-        clear-counts                      (reduce (fn [counts field]
-                                                    (let [result (sync-util/with-error-handling
-                                                                  (format "Error clearing field values for %s"
-                                                                          (sync-util/name-for-logging field))
-                                                                   (clear-field-values-for-field! field))]
-                                                      (update-field-value-stats-count counts result)))
-                                                  empty-counts
-                                                  to-clear)]
+         to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %))
+                                   all-fields)
+        clear-counts     (reduce (fn [counts field]
+                                   (let [result (sync-util/with-error-handling
+                                                    (format "Error clearing field values for %s"
+                                                            (sync-util/name-for-logging field))
+                                                  (clear-field-values-for-field! field))]
+                                     (update-field-value-stats-count counts result)))
+                                 empty-counts
+                                 to-clear)]
     (if (empty? to-sync)
       clear-counts
       (let [fvs-map        (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
