@@ -34,7 +34,6 @@
         (testing "should be allowed if you have native perms for at least one DB"
           (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
             (test-perms* true)))))
-
     (testing "if EE perms are enabled: "
       (mt/with-premium-features #{:snippet-collections}
         (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]

@@ -417,13 +417,11 @@
                      [{:field-name "array_col" :base-type :type/JSON}
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
-
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
                       (mt/db)
                       {:name "json_table" :id (mt/id "json_table")}))))
-
         (sync/sync-database! (mt/db))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
@@ -666,7 +664,6 @@
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
       (testing "for composite indexes, we only care about the 1st column"
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))

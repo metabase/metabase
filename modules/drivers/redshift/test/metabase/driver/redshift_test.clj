@@ -552,7 +552,6 @@
                                          ["time" nil]
                                          ["timestamp" :type/DateTime]
                                          ["timestamptz" :type/DateTimeWithTZ]
-
                                          ;; MySQL federated table enum types
                                          ["enum('A','B')" :type/Text]
                                          ["enum('open','closed')" :type/Text]
@@ -653,7 +652,6 @@
         (testing "returns one entry per table"
           (is (= 2 (count rows)))
           (is (= ["users" "organizations"] (mapv :table-name rows))))
-
         (testing "table rows have correct structure"
           (let [users-table (:table-row (first rows))]
             (is (= 123 (:db_id users-table)))
@@ -662,7 +660,6 @@
             (is (= "Users" (:display_name users-table)))
             (is (= "User accounts" (:description users-table)))
             (is (= "complete" (:initial_sync_status users-table)))))
-
         (testing "auto PK field is injected at position 0"
           (let [users-fields (:field-rows (first rows))
                 pk-field     (first users-fields)]
@@ -670,7 +667,6 @@
             (is (= "id" (:name pk-field)))
             (is (= :type/PK (:semantic_type pk-field)))
             (is (= 0 (:position pk-field)))))
-
         (testing "user-defined fields have correct positions and types"
           (let [users-fields (:field-rows (first rows))
                 name-field   (second users-fields)
@@ -680,15 +676,12 @@
             (is (= 1 (:position name-field)))
             (is (= :type/Text (:base_type name-field)))
             (is (= "User name" (:description name-field)))
-
             (is (= "age" (:name age-field)))
             (is (= 2 (:position age-field)))
             (is (= :type/Integer (:base_type age-field)))
-
             (is (= "org_id" (:name fk-field)))
             (is (= 3 (:position fk-field)))
             (is (= :type/FK (:semantic_type fk-field)) "FK fields get :type/FK semantic type"))))))
-
   (testing "native type maps are handled correctly"
     (let [dbdef {:database-name "native-types"
                  :table-definitions
@@ -708,7 +701,6 @@
           (is (= :type/Text (:effective_type raw-field)))
           ;; When effective-type is provided, base_type uses it; otherwise would be :type/*
           (is (= :type/Text (:base_type raw-field)))))
-
       (testing "{:natives ...} form picks driver-specific type"
         (let [multi-field (nth fields 2)]
           (is (= "SUPER" (:database_type multi-field)))

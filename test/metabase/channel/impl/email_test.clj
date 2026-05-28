@@ -38,12 +38,10 @@
                                   :include_xls true}
             result (mt/with-dynamic-fn-redefs [render.util/is-visualizer-dashcard? (constantly true)]
                      (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
-
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting from matching part config")
         (is (true? (-> result first :card :include_xls))
             "Should include XLS attachment setting from matching part config")))
-
     (testing "falls back to matching on card_id only when no perfect visualizer match is found"
       (let [regular-dashcard {:id 200}
             regular-part {:card {:id 2 :name "Regular Card"}
@@ -53,7 +51,6 @@
                                   :include_csv true
                                   :format_rows true}
             result (#'email.impl/assoc-attachment-booleans [matching-part-config] [regular-part])]
-
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting using the fallback match")
         (is (true? (-> result first :card :format_rows))
@@ -87,7 +84,6 @@
         (binding [urls/*dashcard-parameters* dashboard-params]
           (let [result (channel/render-notification :channel/email notification {:recipients recipients})
                 rendered-content (-> result first :message first :content)]
-
             (testing "Dashboard parameters are bound during rendering"
               (is (some? result))
               (is (= 1 (count result)))
@@ -129,7 +125,6 @@
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
                                     {:template-type :email/handlebars-text
                                      :channel-type  :channel/email}))))))
-
   (testing "rendering a resource template also increments the counter with the correct label"
     (mt/with-prometheus-system! [_ system]
       (let [template {:details {:type :email/handlebars-resource

@@ -1,11 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { dashboardApi } from "metabase/api";
+import { cardApi, dashboardApi } from "metabase/api";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
-import { Questions } from "metabase/entities/questions";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -59,7 +58,7 @@ export const setArchivedDashboard = createThunkAction(
       try {
         await Promise.all(
           _.uniq(dashboardQuestionIds).map((id) =>
-            dispatch(Questions.actions.fetch({ id }, { reload: true })),
+            entityCompatibleQuery({ id }, dispatch, cardApi.endpoints.getCard),
           ),
         );
       } catch (err) {

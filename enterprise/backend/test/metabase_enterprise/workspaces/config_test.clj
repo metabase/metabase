@@ -31,8 +31,9 @@
           (is (= 1 (:version cfg)))
           (is (= #{:databases :workspace} (set (keys (:config cfg))))))
         (testing "databases entry"
-          (is (= 1 (count (-> cfg :config :databases))))
-          (let [db (first (-> cfg :config :databases))]
+          (let [own-dbs (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases))
+                db      (first own-dbs)]
+            (is (= 1 (count own-dbs)))
             (is (= "Analytics Data Warehouse" (:name db)))
             (is (= :postgres (:engine db)))
             (testing "original details are preserved, workspace overrides win, schema-filters appended"
@@ -44,11 +45,11 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "workspace entry uses flat input_schemas + opaque output_namespace string"
+        (testing "workspace entry uses flat input_schemas + expanded :output map"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
-                  {:input_schemas    ["raw_github"]
-                   :output_namespace "mb_isolation_github"}}
+                  {:input_schemas ["raw_github"]
+                   :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
@@ -69,8 +70,8 @@
                       :status           :provisioned}]
         (let [cfg (config/build-workspace-config ws-id)]
           (is (= {"MSSQL DW"
-                  {:input_schemas    ["dbo"]
-                   :output_namespace "ws_alice"}}
+                  {:input_schemas ["dbo"]
+                   :output        {:db "AnalyticsDB" :schema "ws_alice"}}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
@@ -141,10 +142,75 @@
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= 1 (:version cfg)))
         (is (= "Empty" (-> cfg :config :workspace :name)))
-        (is (= [] (-> cfg :config :databases)))
+        (is (empty? (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases)))
+            "no non-stub, non-sample databases since the workspace has none of its own")
         (is (= {} (-> cfg :config :workspace :databases)))))))
+
+(deftest build-workspace-config-injects-stubs-for-non-workspace-dbs-test
+  (testing "Databases that exist in the instance but are not provisioned for the workspace appear
+            in :config.databases as stub entries with :is_stub true and empty :details.
+            Sample, audit, and routing-target DBs are excluded."
+    (mt/with-temp [:model/Database router       {:name "stub-test-router" :engine :postgres :details {}}
+                   :model/Database _other       {:name "stub-test-other"  :engine :postgres :details {:host "x"}}
+                   :model/Database _sample      {:name "stub-test-sample" :engine :postgres :details {} :is_sample true}
+                   :model/Database _audit       {:name "stub-test-audit"  :engine :postgres :details {} :is_audit  true}
+                   :model/Database _target      {:name "stub-test-target" :engine :postgres :details {} :router_database_id (:id router)}
+                   :model/Database ws-db        {:name "stub-test-ws-db"  :engine :postgres :details {:host "y"}}
+                   :model/Workspace {ws-id :id} {:name       "stub-test-ws"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _   {:workspace_id     ws-id
+                                                 :database_id      (:id ws-db)
+                                                 :database_details {}
+                                                 :output_namespace ""
+                                                 :input_schemas    ["public"]
+                                                 :status           :provisioned}]
+      (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
+            by-name (into {} (map (juxt :name identity)) cfg-dbs)]
+        (testing "workspace's own database is present and is NOT a stub"
+          (is (contains? by-name "stub-test-ws-db"))
+          (is (not (:is_stub (get by-name "stub-test-ws-db")))))
+        (testing "non-workspace plain DB appears as a stub with empty :details"
+          (is (= {:name    "stub-test-other"
+                  :engine  :postgres
+                  :details {}
+                  :is_stub true}
+                 (get by-name "stub-test-other"))))
+        (testing "router DB (not a routing target) also appears as a stub"
+          (is (= {:name    "stub-test-router"
+                  :engine  :postgres
+                  :details {}
+                  :is_stub true}
+                 (get by-name "stub-test-router"))))
+        (testing "sample, audit, and routing-target DBs are excluded"
+          (is (not (contains? by-name "stub-test-sample")))
+          (is (not (contains? by-name "stub-test-audit")))
+          (is (not (contains? by-name "stub-test-target"))))))))
 
 (deftest build-workspace-config-missing-workspace-returns-nil-test
   (testing "A missing workspace returns nil"
     (mt/with-model-cleanup [:model/Workspace]
       (is (nil? (config/build-workspace-config Integer/MAX_VALUE))))))
+
+(deftest build-workspace-config-emits-sample-database-test
+  (testing "When a Sample Database exists in the instance, /config emits an entry with
+            standardized name/engine, empty :details, and :is_sample true. The entry is
+            distinct from stub entries and does not depend on the sample DB's actual
+            stored name/engine."
+    (mt/with-temp [:model/Database _sample      {:name      "Some Renamed Sample"
+                                                 :engine    :h2
+                                                 :details   {:db "real-sample-details"}
+                                                 :is_sample true}
+                   :model/Workspace {ws-id :id} {:name       "sample-emit-ws"
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (let [cfg-dbs (-> (config/build-workspace-config ws-id) :config :databases)
+            samples (filter :is_sample cfg-dbs)]
+        (testing "exactly one sample entry is emitted"
+          (is (= 1 (count samples))))
+        (testing "sample entry uses standardized name/engine with empty :details"
+          (is (= {:name      "Sample Database"
+                  :engine    "h2"
+                  :details   {}
+                  :is_sample true}
+                 (first samples))))
+        (testing "sample entry is NOT also marked as a stub"
+          (is (not (:is_stub (first samples)))))))))

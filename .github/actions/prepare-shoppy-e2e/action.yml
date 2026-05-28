@@ -95,7 +95,7 @@ runs:
 
     - name: Configure AWS credentials
       if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
-      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d8854
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885
       with:
         role-to-assume: ${{ inputs.shoppy-iam-role }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC

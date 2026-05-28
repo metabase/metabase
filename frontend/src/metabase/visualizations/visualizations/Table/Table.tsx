@@ -492,7 +492,13 @@ export class Table extends Component<TableProps, TableState> {
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
       this.setState({
-        data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
+        data: DataGrid.pivot(
+          data,
+          normalIndex,
+          pivotIndex,
+          cellIndex,
+          settings,
+        ),
         question,
       });
     } else {

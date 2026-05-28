@@ -3,7 +3,6 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
@@ -48,13 +47,19 @@ export const PLUGIN_APP_INIT_FUNCTIONS = getDefaultAppInitFunctions();
 
 const getDefaultLandingPage = () => ({
   getLandingPage: () => "/",
-  LandingPageWidget: PluginPlaceholder,
 });
 
 export const PLUGIN_LANDING_PAGE: {
   getLandingPage: () => string | null | undefined;
-  LandingPageWidget: ComponentType;
 } = getDefaultLandingPage();
+
+const getDefaultHomepageSetting = () => ({
+  CustomUrlOption: null,
+});
+
+export const PLUGIN_HOMEPAGE_SETTING: {
+  CustomUrlOption: { label: string; Control: ComponentType } | null;
+} = getDefaultHomepageSetting();
 
 const getDefaultReduxMiddlewares = (): Middleware[] => [];
 
@@ -155,6 +160,7 @@ export function reinitialize() {
   PLUGIN_APP_INIT_FUNCTIONS.push(...getDefaultAppInitFunctions());
 
   Object.assign(PLUGIN_LANDING_PAGE, getDefaultLandingPage());
+  Object.assign(PLUGIN_HOMEPAGE_SETTING, getDefaultHomepageSetting());
 
   PLUGIN_REDUX_MIDDLEWARES.length = 0;
   PLUGIN_REDUX_MIDDLEWARES.push(...getDefaultReduxMiddlewares());

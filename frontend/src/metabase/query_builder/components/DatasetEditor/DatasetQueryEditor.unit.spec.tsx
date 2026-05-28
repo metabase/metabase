@@ -85,11 +85,8 @@ const setup = async ({
     />,
   );
 
-  // The native query editor fires database/snippet/permission queries on
-  // mount; wait for the editor content to settle so their async state
-  // updates stay wrapped in act instead of leaking after the test finishes.
+  // required for preventing memory leak
   await waitForLoaderToBeRemoved();
-  await screen.findByTestId("native-query-editor-container");
 
   return { query, question, rerender };
 };
