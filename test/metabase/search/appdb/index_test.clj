@@ -1,4 +1,5 @@
 (ns metabase.search.appdb.index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.appdb.index-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -76,14 +77,13 @@
   (let [fulltext? (= :postgres (mdb/db-type))]
     (with-index
       (testing "The index is updated when models change"
-       ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
-
-       ;; Delete hooks are remove for now, over performance concerns.
+        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
         #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
@@ -107,16 +107,14 @@
   (with-index
     (with-fulltext-filtering
       (testing "It does not match partial words"
-      ;; does not include revenue
+        ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
-
-    ;; no longer works without using the english dictionary
+      ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
           (is (= (search.index/search a)
                  (search.index/search b)))))
-
       (testing "Or we match a completion of the final word"
         (is (seq (search.index/search "sat")))
         (is (seq (search.index/search "satisf")))
@@ -133,7 +131,7 @@
         (is (<= 1 (index-hits "user"))))
       (testing "But stop words are skipped"
         (is (= 0 (index-hits "or")))
-      ;; stop words depend on a dictionary
+        ;; stop words depend on a dictionary
         (is (= #_0 3 (index-hits "its the satisfaction of it"))))
       (testing "We can combine the individual results"
         (is (= (+ (index-hits "satisfaction")
@@ -234,7 +232,6 @@
                       :last_editor_id           nil
                       :verified                 nil})
                     (ingest-then-fetch! model-type card-name))))))
-
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
               yesterday    (t/- (now) (t/days 1))
@@ -417,7 +414,6 @@
                                                          :timestamp   two-days-ago
                                                          :most_recent true
                                                          :object      {}}]
-
         (is (=? (index-entity
                  {:model            "dashboard"
                   :model_id         (str dashboard-id)
@@ -601,7 +597,6 @@
               pending-old  (search.index/gen-table-name)
               pending-new  (search.index/gen-table-name)
               version      (search.spec/index-version-hash)]
-
           ;; Set up old pending table (more than a day old)
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
@@ -609,18 +604,14 @@
                       {:index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
           (#'search.index/sync-tracking-atoms!)
-
           (testing "Active table is returned"
             (is (= active-table (search.index/active-table))))
-
           (testing "Old pending table is ignored (more than a day old)"
             (is (nil? (#'search.index/pending-table))))
-
           ;; Create new pending table (less than a day old)
           (search.index/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
           (#'search.index/sync-tracking-atoms!)
-
           (testing "New pending table is included (less than a day old)"
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
@@ -688,16 +679,41 @@
           (is (false? (.contains json-str ^CharSequence NUL)) "encoded JSON has no raw NUL")
           (is (false? (.contains json-str ^CharSequence FF))  "encoded JSON has no raw form feed"))))))
 
+(deftest reindex-survives-duplicate-most-recent-revisions-test
+  ;; Two `revision` rows with `most_recent = true` for the same card cause the spec's LEFT
+  ;; JOIN to produce two rows per card. Before this fix, the resulting duplicate (model, model_id)
+  ;; pair in one upsert batch tripped a unique constraint, failing the batch (and the whole reindex).
+  (when (search/supports-index?)
+    (with-index
+      (let [card-id (t2/select-one-pk :model/Card :name "Customer Satisfaction")
+            insert-rev! (fn []
+                          ;; Raw SQL to bypass the before/after-insert hooks that would normally
+                          ;; demote older revisions to most_recent=false.
+                          (t2/query {:insert-into [(t2/table-name :model/Revision)]
+                                     :values [{:model "Card"
+                                               :model_id card-id
+                                               :user_id (mt/user->id :rasta)
+                                               :object "{}"
+                                               :is_creation false
+                                               :is_reversion false
+                                               :most_recent true
+                                               :timestamp :%now}]}))]
+        (insert-rev!)
+        (insert-rev!)
+        (testing "two revision rows with most_recent=true exist for the card"
+          (is (= 2 (t2/count :model/Revision :model "Card" :model_id card-id :most_recent true))))
+        (testing "reindex completes and writes a single row for the card"
+          (search.engine/reindex! :search.engine/appdb {:in-place? true})
+          (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
+
 (deftest when-index-created
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
       (try
         (let [table-name (search.index/gen-table-name)
               version (search.spec/index-version-hash)]
-
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))
-
           (testing "Returns age of active table"
             (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
               (search.index/create-table! table-name)
@@ -706,7 +722,6 @@
               (t2/update! :model/SearchIndexMetadata
                           :index_name  (name table-name)
                           {:created_at  update-time})
-
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")

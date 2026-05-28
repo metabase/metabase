@@ -233,9 +233,11 @@
           (let [info           {:request       request
                                 :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn
-                                :log-context   {:metabase-user-id api/*current-user-id*}}
+                                :diag-info-fn  diag-info-fn}
                 response->info (fn [response]
-                                 (assoc info :response response))
+                                 (assoc info
+                                        :response response
+                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                            api/*current-user-id*)}))
                 respond        (comp respond logged-response response->info)]
             (handler request respond raise)))))))

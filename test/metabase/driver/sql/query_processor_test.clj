@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
@@ -1398,7 +1400,7 @@
         (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
           (is (= uuid
                  (sql.qp/->honeysql driver
-                                    [:value uuid {:base_type :type/UUID :effective_type :type/UUID}]))))))))
+                                    (sql.qp/mbql-clause-with-opts driver :value {:base_type :type/UUID :effective_type :type/UUID} uuid)))))))))
 
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"

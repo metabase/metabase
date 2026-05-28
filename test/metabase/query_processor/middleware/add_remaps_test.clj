@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -233,7 +234,6 @@
                                       {"apple"  "Appletini"
                                        "banana" "Bananasplit"
                                        "kiwi"   "Kiwi-flavored Thing"})
-
       (is (=? {:status    :completed
                :row_count 3
                :data      {:rows [[1 "apple"   4 3 "Appletini"]

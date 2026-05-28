@@ -71,7 +71,6 @@
 
 (deftest smtp-override-enabled
   (mt/with-premium-features [:cloud-custom-smtp]
-
     (testing "cannot enable cloud-smtp without hostname set"
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override nil]
@@ -86,7 +85,7 @@
   (let [channels [{:display-name "#general"   :name "general"   :id "C001"}
                   {:display-name "#data-team" :name "data-team" :id "C002"}
                   {:display-name "@alice"     :name "alice"     :id "U001"}]]
-    (with-redefs [channel.settings/slack-cached-channels-and-usernames (constantly {:channels channels})]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-cached-channels-and-usernames (constantly {:channels channels})]
       (testing "finds by name"
         (is (= {:display-name "#general" :name "general" :id "C001"}
                (channel.settings/find-cached-slack-channel-or-username "general"))))

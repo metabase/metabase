@@ -21,7 +21,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, DashboardId } from "metabase-types/api";
+import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -91,6 +91,11 @@ type SdkQuestionConfig = {
    * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
    */
   targetCollection?: SdkCollectionId;
+
+  /**
+   * The collection to preselect in the save modal's collection picker. Unlike `targetCollection`, the picker remains visible and the user can choose a different collection. Ignored when `targetCollection` is set.
+   */
+  initialCollection?: SdkCollectionId;
 
   /**
    * Additional mapper function to override or add drill-down menu
@@ -169,6 +174,21 @@ export type SdkQuestionProviderProps = PropsWithChildren<
        * @internal
        */
       navigateToNewCard?: Nullable<LoadQuestionHookResult["navigateToNewCard"]>;
+
+      /**
+       * Called when a drill-through action is about to navigate to a new card.
+       * Receives the navigation params and a `defaultNavigate` callback.
+       * Call `defaultNavigate()` to allow normal navigation, or omit it to intercept.
+       *
+       * @internal
+       */
+      onDrillThrough?: (
+        params: {
+          drillName: string | undefined;
+          nextCard: Card;
+        },
+        defaultNavigate: () => Promise<void>,
+      ) => Promise<void>;
     }
 >;
 
@@ -182,6 +202,7 @@ export type SdkQuestionContextType = Omit<
     | "onNavigateBack"
     | "isSaveEnabled"
     | "targetCollection"
+    | "initialCollection"
     | "withDownloads"
     | "withAlerts"
     | "backToDashboard"

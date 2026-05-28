@@ -44,7 +44,7 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
- ;; collection write events
+;; collection write events
 
 (mr/def ::collection
   [:map {:closed true}

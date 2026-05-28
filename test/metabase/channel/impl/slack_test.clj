@@ -1,5 +1,6 @@
 (ns metabase.channel.impl.slack-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
@@ -32,7 +33,7 @@
 
 (deftest slack-post-receives-at-most-50-blocks-test
   (let [block-inputs (atom [])]
-    (with-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]
+    (mt/with-dynamic-fn-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]
       (channel/send!
        {:type    :channel/slack}
        {:channel "#not-a-channel"
@@ -48,8 +49,8 @@
                {:type :card
                 :card {:id   1
                        :name "> click <https://c.com|here>"}}]
-        processed   (with-redefs [slack/upload-file! (fn [_ _]
-                                                       {:id "uploaded"})]
+        processed   (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _]
+                                                                     {:id "uploaded"})]
                       (mt/with-temporary-setting-values [site-url "a.com"]
                         (mapv #'channel.slack/part->sections! parts)))]
     (is (= [[{:type "section", :text {:type "mrkdwn", :text "<http://a.com/question/1|&amp;amp;a>", :verbatim true}}
@@ -125,7 +126,7 @@
                                     :creator      {:common_name "Test User"}}
                       recipient    {:type    :notification-recipient/raw-value
                                     :details {:value "#foo"}}
-                      processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
+                      processed    (mt/with-dynamic-fn-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
                                      (channel/render-notification :channel/slack notification {:recipients [recipient]}))]
                   (->> processed first :blocks last :fields (map :text))))))]
     (when config/ee-available?
@@ -154,10 +155,35 @@
                       :creator      {:common_name "Test User"}}
         recipient {:type    :notification-recipient/raw-value
                    :details {:value "#test-channel"}}]
-    (with-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
+    (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
       (mt/with-temporary-setting-values [site-url "http://example.com"]
         (let [processed (channel/render-notification :channel/slack notification {:recipients [recipient]})
               card-section (-> processed first :blocks (nth 3))]
           (is (= "section" (:type card-section)))
           (is (= "<http://example.com/dashboard/42?state=CA&state=NY&state=NJ#scrollTo=456|Test Card>"
                  (-> card-section :text :text))))))))
+
+(deftest dashboard-subscription-part-error-isolation-test
+  (testing "One card failing to render does not break the whole Slack dashboard subscription; the
+            failed card degrades to an error placeholder block and the rest still render (#74007)"
+    (let [orig         @#'channel.slack/part->sections!
+          notification {:payload_type :notification/dashboard
+                        :payload {:dashboard       {:id 1 :name "Test Dashboard"}
+                                  :parameters      []
+                                  :dashboard_parts [{:type :card :card {:id 1 :name "Good Card"} :dashcard {:id 10 :dashboard_id 1}}
+                                                    {:type :card :card {:id 2 :name "Bad Card"}  :dashcard {:id 20 :dashboard_id 1}}]}
+                        :creator {:common_name "Test User"}}
+          recipient    {:type :notification-recipient/raw-value :details {:value "#test-channel"}}]
+      (mt/with-dynamic-fn-redefs [slack/upload-file!             (fn [_ _] {:id "uploaded-file-id"})
+                                  channel.slack/part->sections! (fn [params part]
+                                                                  (if (= 2 (-> part :card :id))
+                                                                    (throw (ex-info "boom rendering part" {}))
+                                                                    (orig params part)))]
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (let [blocks   (-> (channel/render-notification :channel/slack notification {:recipients [recipient]})
+                             first :blocks)
+                all-text (str/join " " (keep #(-> % :text :text) blocks))]
+            (testing "the failed card degrades to the error placeholder block"
+              (is (str/includes? all-text "An error occurred while displaying this card.")))
+            (testing "the healthy card still produced its block (delivery not aborted)"
+              (is (str/includes? all-text "Good Card")))))))))

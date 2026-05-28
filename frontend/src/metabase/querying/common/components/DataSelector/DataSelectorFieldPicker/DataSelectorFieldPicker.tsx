@@ -7,10 +7,10 @@ import {
   TableColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
 import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
+import type { IconName } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
@@ -89,6 +89,8 @@ export const DataSelectorFieldPicker = ({
           maxHeight={Infinity}
           width="100%"
           searchable={hasFiltering}
+          // keep the search box + "no results" state visible when a search matches no fields
+          globalSearch={hasFiltering}
           onChange={(item: { field: Field }) => onChangeField(item.field)}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={(item: FieldWithName) => Boolean(item.field)}

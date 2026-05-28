@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -38,13 +38,13 @@ describe("StrategyEditorForDatabases", () => {
     expect(await screen.findAllByRole("radio")).toHaveLength(4);
   });
 
-  it("shows five policy options for a database (adds 'Use default')", async () => {
+  it("shows five policy options for a database (adds 'Default')", async () => {
     await userEvent.click(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     );
     expect(await screen.findAllByRole("radio")).toHaveLength(5);
     expect(
-      screen.getByRole("radio", { name: /Use default/i }),
+      screen.getByRole("radio", { name: /^Default$/i }),
     ).toBeInTheDocument();
   });
 
@@ -91,7 +91,7 @@ describe("StrategyEditorForDatabases", () => {
     ).not.toBeInTheDocument();
 
     const durationStrategyRadioButton = await screen.findByRole("radio", {
-      name: /keep the cache for a number of hours/i,
+      name: /^Duration$/i,
     });
     expect(durationStrategyRadioButton).toBeChecked();
 
@@ -120,9 +120,11 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    expect(
-      await screen.findByTestId("strategy-form-submit-button"),
-    ).toHaveTextContent(/Saved/i);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("strategy-form-submit-button"),
+      ).toHaveTextContent(/Saved/i),
+    );
 
     expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
       "aria-label",
@@ -150,7 +152,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change policy for Database 1 from 'Adaptive' to 'Duration' to 'Don't cache to 'Use default'", async () => {
+  it("lets user change policy for Database 1 from 'Adaptive' to 'Duration' to 'Don't cache to 'Default'", async () => {
     const editButton = await screen.findByLabelText(
       `Edit policy for database 'Database 1' (currently: Adaptive)`,
     );
@@ -178,7 +180,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
 
     const durationStrategyRadioButton = await screen.findByRole("radio", {
-      name: /keep the cache for a number of hours/i,
+      name: /^Duration$/i,
     });
     await userEvent.click(durationStrategyRadioButton);
 
@@ -189,9 +191,11 @@ describe("StrategyEditorForDatabases", () => {
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
     );
-    expect(
-      await screen.findByTestId("strategy-form-submit-button"),
-    ).toHaveTextContent(/Saved/i);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("strategy-form-submit-button"),
+      ).toHaveTextContent(/Saved/i),
+    );
 
     expect(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),

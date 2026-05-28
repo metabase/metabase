@@ -133,6 +133,42 @@ describe("data_grid", () => {
       expect(pivotedData.cols[1].display_name).toEqual(expect.any(String));
     });
 
+    it("should format hour-of-day pivot column headers without the date (metabase#74525)", () => {
+      const Dhour = {
+        name: "Dhour",
+        display_name: "Created At: Hour of day",
+        base_type: TYPE.DateTime,
+        unit: "hour-of-day",
+        source: "breakout",
+      };
+      const data = {
+        rows: [
+          ["a", "2020-01-01T00:00:00", 1],
+          ["a", "2020-01-01T06:00:00", 2],
+          ["b", "2020-01-01T00:00:00", 3],
+          ["b", "2020-01-01T06:00:00", 4],
+        ],
+        cols: [D1, Dhour, M],
+      };
+      const settings = {
+        column: (col) =>
+          col === Dhour
+            ? {
+                column: col,
+                date_style: "",
+                time_style: "h:mm A",
+                time_enabled: "minutes",
+              }
+            : { column: col },
+      };
+      const pivotedData = pivot(data, 0, 1, 2, settings);
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
+        "Dimension 1",
+        "12:00 AM",
+        "6:00 AM",
+      ]);
+    });
+
     it("should infer sort order of sparse data correctly", () => {
       const data = makeData([
         ["a", "x", 1],

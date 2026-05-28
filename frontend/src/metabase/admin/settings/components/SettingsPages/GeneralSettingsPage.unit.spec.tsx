@@ -91,7 +91,7 @@ describe("GeneralSettingsPage", () => {
       "Site name",
       "Site url",
       "Redirect to HTTPS",
-      "Custom homepage",
+      "Homepage",
       "Email address for help requests",
       "Send anonymous tracking data to Metabase",
       "Collect user data to display in usage analytics",
@@ -198,5 +198,31 @@ describe("GeneralSettingsPage", () => {
     expect(
       screen.queryByText("Collect user data to display in usage analytics"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Usage tracking section visibility", () => {
+    it("should hide the Usage tracking section on Starter Cloud (hosting without audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: false });
+
+      expect(screen.queryByText("Usage tracking")).not.toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on Pro Cloud (hosting with audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted OSS (no hosting, no audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: false });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted EE (no hosting, audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
   });
 });

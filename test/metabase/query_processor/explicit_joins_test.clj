@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.explicit-joins-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.explicit-joins-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.explicit-joins-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

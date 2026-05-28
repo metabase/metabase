@@ -37,7 +37,7 @@
   [response]
   (if (and (map? response) (contains? response :body))
     response
-    {:body response, :status 200}))
+    (with-meta {:body response, :status 200} (meta response))))
 
 (defn clear-session-cookie
   "Add a header to `response` to clear the current Metabase session cookie."

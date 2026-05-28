@@ -119,7 +119,6 @@ export const EmbeddingHub = () => {
       <EmbeddingHubXrayPickerModal
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
-        fromEmbeddingSetupGuide
       />
       {openedModal?.type === "user-strategy" && (
         <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />

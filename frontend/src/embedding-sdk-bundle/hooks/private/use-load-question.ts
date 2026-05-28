@@ -142,6 +142,7 @@ export function useLoadQuestion({
         originalQuestion: questionState.originalQuestion,
         parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
+        dispatch,
       });
 
       mergeQuestionState(results);
@@ -199,6 +200,7 @@ export function useLoadQuestion({
       originalQuestion,
       parameterValues,
       cancelDeferred: deferred(),
+      dispatch,
     });
 
     mergeQuestionState(state);

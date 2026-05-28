@@ -1,4 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -236,7 +237,6 @@
                    #"You do not have permissions to run this query"
                    (mt/with-current-user user-id
                      (#'qp.perms/check-block-permissions query)))))
-
             (testing "unrestricted overrides block perms for a table even if other tables have legacy-no-self-service"
               (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
               (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :legacy-no-self-service)
@@ -322,7 +322,6 @@
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query"
                        (mt/rows (process-query-for-card child-card)))))
-
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
                     (is (mi/can-read? parent-card))
@@ -333,7 +332,6 @@
                        #"You do not have permissions to run this query"
                        (mt/rows (process-query-for-card child-card)))
                       "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))
-
                 (testing "view-data = unrestricted is required to allow running the query"
                   (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues)  :perms/view-data :unrestricted)
                   (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
@@ -628,20 +626,17 @@
                                 (is (= expected
                                        (mt/rows
                                         (qp/process-query (:dataset_query card-1)))))))
-
                             (testing "Should not be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                               (binding [qp.perms/*card-id* (u/the-id card-2)]
                                 (is (thrown-with-msg?
                                      clojure.lang.ExceptionInfo
                                      #"You do not have permissions to run this query"
                                      (qp/process-query (:dataset_query card-2))))))
-
                             (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (mt/mbql-query nil
                                                           {:source-table (format "card__%d" card-1-id)}))))))
-
                             (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                               (is (thrown-with-msg?
                                    clojure.lang.ExceptionInfo
@@ -683,21 +678,18 @@
                                    clojure.lang.ExceptionInfo
                                    #"You do not have permissions to run this query"
                                    (qp/process-query (:dataset_query card-1))))))
-
                           (testing "Should not be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                             (binding [qp.perms/*card-id* (u/the-id card-2)]
                               (is (thrown-with-msg?
                                    clojure.lang.ExceptionInfo
                                    #"You do not have permissions to run this query"
                                    (qp/process-query (:dataset_query card-2))))))
-
                           (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                             (is (thrown-with-msg?
                                  clojure.lang.ExceptionInfo
                                  #"You do not have permissions to run this query"
                                  (qp/process-query (mt/mbql-query nil
                                                      {:source-table (format "card__%d" card-1-id)})))))
-
                           (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                             (is (thrown-with-msg?
                                  clojure.lang.ExceptionInfo

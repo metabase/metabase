@@ -50,10 +50,10 @@
   ([instance]
    ;; Dashboards in audit collection should be read only
    (and (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+              ;; We want to make sure there's an existing audit collection before doing the equality check below.
+              ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+              ;; Is a direct descendant of audit collection
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -98,7 +98,6 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -120,9 +119,9 @@
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) :none))
-     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
-     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
-     ;; (metabase#34657)
+    ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+    ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+    ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list
@@ -168,7 +167,6 @@
                                        ;; show it if:
                                        ;; - the card isn't archived
                                        [:= :card.archived false]
-
                                        ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
                                        [:and
                                         [:not= :card.dashboard_id nil]
@@ -211,6 +209,30 @@
       (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
+
+(defn cascade-card-state-from-dashboard-update!
+  "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
+   - Archiving the dashboard archives its (non-`archived_directly`) cards. Un-archiving restores them.
+   - Moving the dashboard into a new collection moves its cards into the same collection.
+
+   Shared between the REST `update-dashboard!` and the MCP `update_dashboard` tool so they
+   don't drift. Call inside the same transaction as the dashboard update itself."
+  [current-dash updates]
+  (let [id (:id current-dash)]
+    (when (api/column-will-change? :archived current-dash updates)
+      (if (:archived updates)
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived false
+                    {:archived true :archived_directly false})
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived true
+                    :archived_directly false
+                    {:archived false})))
+    (when (api/column-will-change? :collection_id current-dash updates)
+      (t2/update! :model/Card :dashboard_id id
+                  {:collection_id (:collection_id updates)}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -304,7 +326,7 @@
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                            ;; Xrays populate this in their transient cards
+                           ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
@@ -482,14 +504,16 @@
                   :verified       [:= "verified" :mr.status]
                   :view-count     true
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :collection-type :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   :moderated-status           :mr.status}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and

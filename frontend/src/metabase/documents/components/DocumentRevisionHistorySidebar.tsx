@@ -67,7 +67,7 @@ export function DocumentRevisionHistorySidebar({
                 entity: "document",
                 id: document.id,
                 revision_id: revision.id,
-              })
+              }).unwrap()
             }
             canWrite={canWrite}
             entity="document"

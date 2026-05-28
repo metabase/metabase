@@ -228,7 +228,7 @@ be-tests-postgres-latest-ee:
         POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:

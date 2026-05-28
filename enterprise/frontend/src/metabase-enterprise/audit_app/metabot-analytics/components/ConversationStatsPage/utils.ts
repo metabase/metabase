@@ -1,11 +1,8 @@
-import { t } from "ttag";
-
 import {
   type QueryParam,
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 
 import {
@@ -15,13 +12,6 @@ import {
 } from "../ConversationFilters/url-state";
 
 import type { UsageStatsMetric } from "./query-utils";
-
-export function getDateLabel(value: string | null): string {
-  const parsed = value ? deserializeDateParameterValue(value) : undefined;
-  return parsed
-    ? getDateFilterDisplayName(parsed, { withPrefix: false })
-    : t`Date`;
-}
 
 export function getFilterDays(dateValue: string): number {
   const parsed = deserializeDateParameterValue(dateValue);

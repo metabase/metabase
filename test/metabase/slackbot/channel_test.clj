@@ -3,13 +3,17 @@
    [clojure.test :refer :all]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.channel :as slackbot.channel]
-   [metabase.slackbot.client :as slackbot.client]))
+   [metabase.slackbot.client :as slackbot.client]
+   [metabase.test :as mt]))
 
 (deftest channel-response-passes-slack-metadata-for-deep-linking-test
-  (let [request-opts (atom nil)]
-    (with-redefs [slackbot.client/set-status (constantly {:ok true})
-                  slackbot.client/post-thread-reply (constantly {:ok true :ts "1700000000.000002"})
-                  metabot.persistence/set-response-slack-msg-id! (constantly nil)]
+  (let [request-opts  (atom nil)
+        backfill-args (atom nil)]
+    (mt/with-dynamic-fn-redefs [slackbot.client/set-status (constantly {:ok true})
+                                slackbot.client/post-thread-reply (constantly {:ok true :ts "1700000000.000002"})
+                                metabot.persistence/set-response-slack-msg-id!
+                                (fn [msg-id slack-msg-id]
+                                  (reset! backfill-args {:msg-id msg-id :slack-msg-id slack-msg-id}))]
       (slackbot.channel/send-channel-response
        {}
        {:ts "1700000000.000001"}
@@ -26,7 +30,8 @@
        {:tool-name->friendly        {}
         :make-streaming-ai-request  (fn [& args]
                                       (reset! request-opts (last args))
-                                      "message-external-id")
+                                      {:msg-id      42
+                                       :external-id "message-external-id"})
         :collect-viz-blocks         (constantly {:blocks [] :errors []})
         :feedback-blocks            (constantly [])
         :post-viz-error!            (constantly nil)
@@ -36,4 +41,5 @@
             :thread-ts        "1700000000.000001"
             :req-slack-msg-id "1700000000.000001"}
            (select-keys @request-opts [:team-id :thread-ts :req-slack-msg-id])))
-    (is (some? (:stored-msg-id @request-opts)))))
+    (is (= {:msg-id 42 :slack-msg-id "1700000000.000002"}
+           @backfill-args))))

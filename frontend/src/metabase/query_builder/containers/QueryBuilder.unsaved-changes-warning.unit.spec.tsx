@@ -15,6 +15,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import registerVisualizations from "metabase/visualizations/register";
 import {
@@ -23,7 +24,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  TEST_COLLECTION,
   TEST_DB,
   TEST_MODEL_CARD,
   TEST_MODEL_CARD_SLUG,
@@ -48,19 +48,15 @@ registerVisualizations();
 
 describe("QueryBuilder - unsaved changes warning", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeEach(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
-    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
   });
 
   afterEach(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
     setupJestCanvasMock();
@@ -554,7 +550,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           within(saveQuestionModal).getByLabelText(
             /Where do you want to save this/,
           ),
-        ).toHaveTextContent(TEST_COLLECTION.name);
+        ).toHaveTextContent("Our analytics");
       });
       await userEvent.click(within(saveQuestionModal).getByText("Save"));
 

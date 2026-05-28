@@ -14,6 +14,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import {
+  getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
 } from "metabase/common/utils/source-location";
@@ -24,7 +25,6 @@ import {
   Collapse,
   Flex,
   Icon,
-  type IconName,
   Skeleton,
   Text,
   Tooltip,
@@ -35,6 +35,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
+  IconName,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
@@ -153,7 +154,7 @@ const SourceItem = ({
         to={to}
         href={to}
       >
-        <Flex direction="column" gap="0.25rem" miw={0} maw="100%">
+        <Flex direction="column" miw={0} maw="100%">
           <Flex gap="sm" align="center" miw={0} maw="100%">
             <Icon
               name={iconName}
@@ -170,7 +171,7 @@ const SourceItem = ({
                 overflow: "hidden",
                 fontSize: "0.75rem",
                 fontWeight: 700,
-                lineHeight: 1,
+                lineHeight: 1.5,
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}
@@ -203,9 +204,9 @@ const SourceItem = ({
                     miw={0}
                     c="text-secondary"
                     style={{
-                      overflowX: "hidden",
+                      overflow: "hidden",
                       fontSize: "0.75rem",
-                      lineHeight: 1,
+                      lineHeight: 1.5,
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                     }}
@@ -406,7 +407,7 @@ const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
       iconName={iconName}
       label={card?.name}
       location={{
-        parts: getCollectionLocationParts(card.collection?.name),
+        parts: [getCollectionLocationLabel(card.collection?.name)],
       }}
       messageId={messageId}
       source={{

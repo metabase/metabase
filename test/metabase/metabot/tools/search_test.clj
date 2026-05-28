@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest reciprocal-rank-fusion-test
+(deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
                         {:id 2 :model "dashboard" :name "Dashboard 1"}
@@ -23,8 +23,9 @@
       (is (= 3 (count result)))
       (is (= 1 (-> result first :id)))
       (is (= 2 (-> result second :id)))
-      (is (= 3 (-> result last :id)))))
+      (is (= 3 (-> result last :id))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-2
   (testing "RRF with multiple lists - no overlap"
     (let [list1 [{:id 1 :model "card" :name "Card 1"}
                  {:id 2 :model "dashboard" :name "Dashboard 1"}]
@@ -32,8 +33,9 @@
                  {:id 4 :model "metric" :name "Metric 1"}]
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 4 (count result)))
-      (is (every? #(contains? #{1 2 3 4} (:id %)) result))))
+      (is (every? #(contains? #{1 2 3 4} (:id %)) result)))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-3
   (testing "RRF with overlapping results - should boost common items"
     (let [list1 [{:id 1 :model "card" :name "Revenue Report"}
                  {:id 2 :model "dashboard" :name "Sales Dashboard"}
@@ -46,8 +48,9 @@
       ;; Items appearing in both lists should rank higher
       (let [top-two-ids (set (map :id (take 2 result)))]
         (is (contains? top-two-ids 1))
-        (is (contains? top-two-ids 2)))))
+        (is (contains? top-two-ids 2))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-4
   (testing "RRF with identical items at different positions"
     (let [list1 [{:id 1 :model "card" :name "First"}
                  {:id 2 :model "dashboard" :name "Second"}
@@ -61,19 +64,22 @@
           result (#'search/reciprocal-rank-fusion [list1 list2 list3])]
       (is (= 3 (count result)))
       ;; Item 2 appears first in list3, second in list1 and list2, so should rank highest
-      (is (= 2 (-> result first :id)))))
+      (is (= 2 (-> result first :id))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-5
   (testing "RRF with empty lists"
     (let [list1 []
           list2 [{:id 1 :model "card" :name "Card 1"}]
           result (#'search/reciprocal-rank-fusion [list1 list2])]
       (is (= 1 (count result)))
-      (is (= 1 (-> result first :id)))))
+      (is (= 1 (-> result first :id))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-6
   (testing "RRF with all empty lists"
     (let [result (#'search/reciprocal-rank-fusion [[] [] []])]
-      (is (empty? result))))
+      (is (empty? result)))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-7
   (testing "RRF score calculation correctness"
     ;; Test that the RRF formula 1/(k+r) where k=60 is correctly applied
     (let [list1 [{:id 1 :model "card" :name "Rank 1"}]  ; rank=1, score=1/61
@@ -87,8 +93,9 @@
       ;; Item 2 appears only at rank 1 in list2 (score=1/61 ≈ 0.0164)
       ;; So item 1 should rank higher than item 2
       (is (= 1 (:id first-item)))
-      (is (= 2 (:id second-item)))))
+      (is (= 2 (:id second-item))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-8
   (testing "RRF preserves item data"
     (let [complex-item {:id 42
                         :model "dataset"
@@ -99,8 +106,9 @@
                         :extra_field "preserved"}
           result (#'search/reciprocal-rank-fusion [[complex-item]])]
       (is (= 1 (count result)))
-      (is (= complex-item (first result)))))
+      (is (= complex-item (first result))))))
 
+(deftest ^:parallel reciprocal-rank-fusion-test-9
   (testing "RRF with many lists"
     (let [lists (for [i (range 5)]
                   [{:id (inc i) :model "card" :name (str "Card " (inc i))}
@@ -110,7 +118,7 @@
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
 
-(deftest postprocess-search-result-test
+(deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
     (let [result {:model "table"
                   :id 1
@@ -130,8 +138,9 @@
                     :database_schema "public"
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
     (let [result {:model "dataset"
                   :id 2
@@ -151,8 +160,9 @@
                     :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-3
   (testing "transform result postprocessing"
     (let [result {:model "transform"
                   :id 3
@@ -168,8 +178,9 @@
                     :database_id 44
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-4
   (testing "dashboard result postprocessing"
     (let [result {:model "dashboard"
                   :id 3
@@ -187,8 +198,9 @@
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-5
   (testing "question (card) result postprocessing with moderated_status"
     (let [result {:model "card"
                   :id 4
@@ -207,8 +219,9 @@
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-6
   (testing "metric result postprocessing"
     (let [result {:model "metric"
                   :id 5
@@ -226,8 +239,9 @@
                     :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
-      (is (= expected (#'search/postprocess-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-test-7
   (testing "database result postprocessing"
     (let [result {:model "database"
                   :id 6
@@ -249,17 +263,16 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (with-redefs [search-core/search (fn [context]
-                                           (is (true? (:search-native-query context)))
-                                           {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                         (is (true? (:search-native-query context)))
+                                                         {:data []})]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
-
       (testing ":search-native-query is not included in context when nil or false"
-        (with-redefs [search-core/search (fn [context]
-                                           (is (not (contains? context :search-native-query)))
-                                           {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                         (is (not (contains? context :search-native-query)))
+                                                         {:data []})]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
@@ -283,7 +296,6 @@
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
-
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -291,7 +303,6 @@
                                                              {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
-
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -313,7 +324,6 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
-
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -321,11 +331,9 @@
                                                              {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
-
         (testing "limit above 50 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 75}))))
-
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
@@ -374,11 +382,77 @@
                       analytics-dash (u/seek #(= dash-2-id (:id %)) test-results)]
                   (is (= "Finance team collection" (get-in finance-dash [:collection :description])))
                   (is (= "Analytics collection" (get-in analytics-dash [:collection :description])))))
-
               (testing "handles nil collection descriptions"
                 (let [no-desc-dash (u/seek #(= dash-3-id (:id %)) test-results)]
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
+
+(deftest enrich-with-portable-entity-ids-test
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
+                                                                :type :question
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)
+                                                                                           :aggregation  [[:count]]}}}
+                       :model/Card {m-id :id m-eid :entity_id} {:name "PortableEID Sample Model"
+                                                                :type :model
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)}}}
+                       :model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
+          (let [results      (search/search {:term-queries ["PortableEID Sample"]})
+                by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
+                question-res (get by-id [q-id "question"])
+                model-res    (get by-id [m-id "model"])
+                dash-res     (get by-id [dash-id "dashboard"])]
+            (testing "question results carry :portable_entity_id copied from the card's entity_id"
+              (is (some? question-res) "expected the question to appear in search results")
+              (is (= q-eid (:portable_entity_id question-res))))
+            (testing "model results carry :portable_entity_id too"
+              (is (some? model-res) "expected the model to appear in search results")
+              (is (= m-eid (:portable_entity_id model-res))))
+            (testing "dashboard results do NOT get :portable_entity_id (source-card only accepts cards)"
+              (is (some? dash-res) "expected the dashboard to appear in search results")
+              (is (not (contains? dash-res :portable_entity_id))))))))))
+
+(deftest enrich-with-metric-base-tables-test
+  (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
+                "`source-table:` without a separate entity_details call. We look up\n"
+                "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
+                "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
+                "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"
+                "hallucinated the base table (`[<db>, public, customers]`).")
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {metric-id :id} {:name        "BaseTable Sample Metric"
+                                                    :type        :metric
+                                                    :database_id (mt/id)
+                                                    :table_id    (mt/id :orders)
+                                                    :dataset_query
+                                                    {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :orders)
+                                                                :aggregation  [[:count]]}}}]
+          (let [results   (search/search {:term-queries ["BaseTable Sample Metric"]})
+                by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
+                metric-res (get by-id [metric-id "metric"])
+                db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-t  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (some? metric-res) "metric should appear in search results")
+            (testing "base_table_* fields are populated"
+              (is (= (mt/id :orders) (:base_table_id metric-res)))
+              (is (= (:name orders-t) (:base_table_name metric-res)))
+              (is (= (:schema orders-t) (:base_table_schema metric-res))))
+            (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
+              (is (= [db-name (:schema orders-t) (:name orders-t)]
+                     (:base_table_portable_fk metric-res))))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"

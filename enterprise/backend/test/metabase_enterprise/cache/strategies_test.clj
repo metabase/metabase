@@ -1,4 +1,5 @@
 (ns metabase-enterprise.cache.strategies-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.cache.strategies-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -44,7 +45,6 @@
                 (mt/with-clock #t "2024-02-13T10:00:06Z"
                   (is (=? (mkres nil)
                           (-> (qp/process-query query) (dissoc :data)))))))))
-
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = duration"
             (let [query (assoc query :cache-strategy {:type            :duration
@@ -63,7 +63,6 @@
                 (mt/with-clock #t "2024-02-13T10:01:01Z"
                   (is (=? (mkres nil)
                           (-> (qp/process-query query) (dissoc :data)))))))))
-
         (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
           (testing "strategy = schedule"
             (let [query (assoc query :cache-strategy {:type           :schedule
@@ -142,7 +141,6 @@
                         (mt/with-clock (t 101) ;; avg execution time 1s * multiplier 100 + 1
                           (is (=? (mkres nil)
                                   (-> (qp/process-query q) (dissoc :data))))))))))
-
               (testing "strategy = duration"
                 (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                   (mt/with-clock (t 0)
@@ -158,7 +156,6 @@
                         (mt/with-clock (t 61)
                           (is (=? (mkres nil)
                                   (-> (qp/process-query q) (dissoc :data))))))))))
-
               (testing "strategy = schedule"
                 (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                   (mt/with-clock (t 0)
@@ -177,7 +174,6 @@
                       (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                         (is (=? (mkres nil)
                                 (-> (qp/process-query q) (dissoc :data)))))))))
-
               (testing "default strategy = ttl"
                 (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
                   (is (=? {:type :ttl :multiplier 200}

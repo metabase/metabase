@@ -82,6 +82,7 @@ const configs = [
       "e2e/embedding-sdk-host-apps/**",
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+      "**/custom-viz/fixtures/example_custom_viz_plugin/**",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -584,7 +585,16 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/redux/hooks.ts"],
+    // MCP UI app is a standalone SDK consumer — allow embedding-sdk-package imports
+    // and raw hex color literals (used for MCP host theme fallback values).
+    files: ["frontend/src/metabase/embedding/mcp/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+      "metabase/no-color-literals": "off",
+    },
+  },
+  {
+    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },

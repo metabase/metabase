@@ -1,10 +1,8 @@
-import type { Location } from "history";
 import { useMemo } from "react";
-import { withRouter } from "react-router";
-import _ from "underscore";
+import { type WithRouterProps, withRouter } from "react-router";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { Databases } from "metabase/entities/databases";
+import { useListDatabasesQuery } from "metabase/api";
 import { connect } from "metabase/redux";
 import type { AdminPath, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -15,11 +13,9 @@ import { AdminNavbar } from "../components/AdminNavbar";
 
 import MainNavbar from "./MainNavbar";
 
-type NavbarProps = {
+type NavbarProps = WithRouterProps & {
   isOpen: boolean;
-  user: User;
-  location: Location;
-  params: Record<string, unknown>;
+  user: User | null;
   adminPaths: AdminPath[];
 };
 
@@ -30,6 +26,7 @@ const mapStateToProps = (state: State) => ({
 });
 
 function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
+  useListDatabasesQuery();
   const isAdminApp = useMemo(
     () => location.pathname.startsWith("/admin/"),
     [location.pathname],
@@ -47,10 +44,4 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  withRouter,
-  connect(mapStateToProps),
-)(Navbar);
+export default withRouter(connect(mapStateToProps)(Navbar));

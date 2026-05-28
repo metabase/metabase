@@ -310,7 +310,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
           ...UI_CONTROLS_SIDEBAR_DEFAULTS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           isShowingQuestionInfoSidebar: true,
-          queryBuilderMode: "view",
         }),
       )
       .addCase(CLOSE_QUESTION_INFO, (state) => ({
@@ -321,7 +320,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         setUIControls(state, {
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
-          queryBuilderMode: "view",
         } as Partial<QueryBuilderUIControls>),
       )
       .addCase(CLOSE_QUESTION_SETTINGS, (state) => ({

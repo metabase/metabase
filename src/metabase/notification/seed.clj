@@ -64,7 +64,6 @@
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
-
           ;; alert new confirmation
           {:internal_id   "system-event/alert-new-confirmation"
            :active        true
@@ -82,7 +81,6 @@
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
-
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"
            :active        true
@@ -102,7 +100,6 @@
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
                                             :permissions_group_id (:id (perms/admin-group))}]}]}
-
           ;; new comment appeared
           {:internal_id   "system-event/comment-created"
            :active        true
@@ -120,7 +117,6 @@
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.email}}"}}]}]}
-
           ;; support access grant created
           {:internal_id "system-event/support-access-grant-created"
            :active true
@@ -138,7 +134,6 @@
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
-
           ;; transform job failed
           {:internal_id "system-event/transform-failed"
            :active true
@@ -198,7 +193,6 @@
   [{:keys [internal_id] :as row}]
   (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
                                       models.notification/hydrate-notification)]
-
     (u/prog1 (action existing-notification row)
       (case <>
         :create

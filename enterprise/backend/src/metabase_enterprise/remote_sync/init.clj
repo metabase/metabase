@@ -46,10 +46,9 @@
           (when (str/blank? branch)
             (throw (ex-info "Remote sync is enabled with read-only type, but no branch is set." {})))
           (when (remote-sync.object/dirty?)
-            (if (str/includes? (settings/remote-sync-allow) "overwrite-unpublished")
+            (if (some-> (settings/remote-sync-allow) (str/includes? "overwrite-unpublished"))
               (impl/async-import! branch true {})
               (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
-
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")

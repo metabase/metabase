@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -17,7 +18,6 @@
 
 (p/import-vars
  [source]
-
  [source.p
   ->ingestable])
 
@@ -91,6 +91,7 @@
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
   [collection-states :- [:map-of pos-int? :boolean]]
+  (guards/ensure-no-active-task!)
   (let [{:keys [sync-on sync-off]} (-> (reduce-kv (fn [sync-states collection-id sync-state]
                                                     (if sync-state
                                                       (update sync-states :sync-on conj collection-id)
@@ -111,13 +112,22 @@
                                  (for [collection sync-on]
                                    [:like :location (str (collections/location-path collection) "%")]))]}))
       (when (seq sync-off)
-        (t2/query {:update (t2/table-name :model/Collection)
-                   :set {:is_remote_synced false}
-                   :where [:and
-                           [:= :is_remote_synced true]
-                           (into [:or [:in :id (map :id sync-off)]]
-                                 (for [collection sync-off]
-                                   [:like :location (str (collections/location-path collection) "%")]))]}))
+        (let [affected-collection-ids
+              (t2/select-pks-set :model/Collection
+                                 {:where [:and
+                                          [:= :is_remote_synced true]
+                                          (into [:or [:in :id (map :id sync-off)]]
+                                                (for [collection sync-off]
+                                                  [:like :location (str (collections/location-path collection) "%")]))]})]
+          (when (seq affected-collection-ids)
+            (t2/query {:update (t2/table-name :model/Collection)
+                       :set {:is_remote_synced false}
+                       :where [:in :id affected-collection-ids]})
+            (t2/delete! :model/RemoteSyncObject
+                        :model_type "Collection"
+                        :model_id [:in affected-collection-ids])
+            (t2/delete! :model/RemoteSyncObject
+                        :model_collection_id [:in affected-collection-ids]))))
       (doseq [collection sync-on]
         (collections/check-non-remote-synced-dependencies collection))
       (doseq [collection sync-off]

@@ -20,6 +20,7 @@ import {
   getMajorVersion,
   getVersionFromReleaseBranch,
   ignorePatches,
+  isPatchVersion,
   versionSort,
 } from "./version-helpers";
 
@@ -237,7 +238,7 @@ export async function setMilestoneForCommits({
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
-  const openMilestones = await getMilestones({ github, owner, repo });
+  const openMilestones = await getMilestones({ github, owner, repo, state: 'open' });
   const nextMilestone = getNextMilestone({ openMilestones, majorVersion });
 
   if (!nextMilestone) {
@@ -253,7 +254,10 @@ export async function setMilestoneForCommits({
       .filter(isNotNull)
   );
   if (!PRsToCheck.length) {
-    throw new Error('No PRs found in commit messages');
+    // Not every commit on a release branch is a squash-merged PR (e.g. the
+    // version-bump commit from cutting the branch). Nothing to backfill here.
+    console.log('No PRs found in commit messages, skipping milestone backfill');
+    return;
   }
 
   console.log(`Checking ${PRsToCheck.length} PRs for issues to tag`);
@@ -297,6 +301,13 @@ export async function checkMilestoneForRelease({
   version,
   commitHash,
 }: GithubProps & { version: string, commitHash: string }) {
+  // Patches don't have their own milestones — they share the parent minor's.
+  // There's nothing to check pre-release; skip cleanly.
+  if (isPatchVersion(version)) {
+    console.log(`Skipping milestone check for patch version ${version}`);
+    return;
+  }
+
   const releaseMilestone = await findMilestone({ github, owner, repo, version });
 
   if (!releaseMilestone) {

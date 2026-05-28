@@ -1,4 +1,5 @@
 (ns metabase.transforms.search-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.transforms.search-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -75,7 +76,6 @@
                       :model_created_at now
                       :model_updated_at now})
                     ingested-transform))))))
-
     (testing "A simple MBQL transform gets properly ingested & indexed for search"
       (let [now (t/truncate-to (t/offset-date-time) :millis)]
         (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test MBQL transform"
@@ -109,7 +109,6 @@
           (is (string? vector-value))
           (is (re-find #"select" vector-value))
           (is (re-find #"sql" vector-value))))
-
       (mt/when-ee-evailable
        (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
                                           :source {:type "python"
@@ -121,7 +120,6 @@
            (is (string? vector-value))
            (is (re-find #"import" vector-value))
            (is (re-find #"panda" vector-value)))))
-
       (testing "MBQL queries are not indexed in with_native_query_vector"
         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
                                                     :table "test_mbql_table"}

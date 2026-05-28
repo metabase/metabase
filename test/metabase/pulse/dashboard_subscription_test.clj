@@ -1,4 +1,5 @@
 (ns metabase.pulse.dashboard-subscription-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.dashboard-subscription-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -624,23 +625,18 @@
                                                      #"https://testmb\.com/collection/\d+"
                                                      #"Linked collection name"
                                                      #"Linked collection desc"
-
                                                      #"https://testmb\.com/browse/\d+"
                                                      #"Linked database name"
                                                      #"Linked database desc"
-
                                                      #"https://testmb\.com/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked card name"
                                                      #"Linked card desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked model name"
                                                      #"Linked model desc"
-
                                                      #"https://testmb\.com/dashboard/\d+"
                                                      #"Linked Dashboard name"
                                                      #"Linked Dashboard desc")
@@ -835,7 +831,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -886,7 +881,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -913,7 +907,6 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
-
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1213,7 +1206,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/csv-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "xlsx"
    {:pulse-card {:include_xls true}
     :assert
@@ -1223,7 +1215,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "no result should not include csv"
    {:card {:dataset_query (mt/mbql-query venues {:filter [:= $id -1]})}
     :pulse-card {:include_csv true}
@@ -1365,7 +1356,6 @@
                        (mt/summarize-multipart-single-email
                         (first (:channel/email pulse-results))
                         #"Aviary KPIs")))
-
                 (is (=? {:channel "#general",
                          :blocks (default-slack-blocks dashboard-id [card-id])}
                         (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))))))))))))

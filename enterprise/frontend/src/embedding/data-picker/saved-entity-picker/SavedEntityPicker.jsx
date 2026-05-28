@@ -1,20 +1,21 @@
 import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import {
+  buildCollectionTree,
   currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import CS from "metabase/css/core/index.css";
-import {
-  Collections,
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree,
-} from "metabase/entities/collections";
-import { connect } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
@@ -26,12 +27,9 @@ const propTypes = {
   type: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
-  collections: PropTypes.array.isRequired,
-  currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
   collectionId: PropTypes.number,
-  rootCollection: PropTypes.object,
 };
 
 const getOurAnalyticsCollection = (collectionEntity) => {
@@ -56,18 +54,30 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
  * @property {DataSourceSelectorProps['selectedDatabaseId']} databaseId
  * @property {(cardId: string) => void} onSelect
  * @property {() => void} onBack
- *
- * @typedef {object} SavedEntityPickerComposedProps
- * @property {import("metabase-types/api").User} currentUser
- * @property {import("metabase-types/api").Collection[]} collections
- * @property {import("metabase-types/api").Collection} rootCollection
  */
 
 /**
- *
- * @param {SavedEntityPickerOwnProps & SavedEntityPickerComposedProps} props
- * @returns {JSX.Element}
+ * @param {SavedEntityPickerOwnProps} props
+ * @returns {JSX.Element | null}
  */
+export function SavedEntityPicker(props) {
+  const { data: collections } = useListCollectionsTreeQuery({
+    "exclude-archived": true,
+    namespaces: ["", "shared-tenant-collection", "tenant-specific"],
+  });
+  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  if (!collections) {
+    return null;
+  }
+  return (
+    <InnerSavedEntityPicker
+      {...props}
+      collections={collections}
+      rootCollection={rootCollection}
+    />
+  );
+}
+
 function InnerSavedEntityPicker({
   collectionId,
   type,
@@ -75,11 +85,11 @@ function InnerSavedEntityPicker({
   databaseId,
   onSelect,
   onBack,
-
-  currentUser,
   collections,
   rootCollection,
 }) {
+  const currentUser = useSelector(getUser);
+
   const collectionTree = useMemo(() => {
     const modelFilter = (model) => CARD_INFO[type].model === model;
 
@@ -162,23 +172,9 @@ function InnerSavedEntityPicker({
   );
 }
 
-InnerSavedEntityPicker.propTypes = propTypes;
-
-const mapStateToProps = ({ currentUser }) => ({ currentUser });
-
-/** @type {React.FC<SavedEntityPickerOwnProps>} */
-export const SavedEntityPicker = _.compose(
-  Collections.load({
-    id: () => "root",
-    entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.loadList({
-    query: () => ({
-      tree: true,
-      "exclude-archived": true,
-      namespaces: ["", "shared-tenant-collection", "tenant-specific"],
-    }),
-  }),
-  connect(mapStateToProps),
-)(InnerSavedEntityPicker);
+SavedEntityPicker.propTypes = propTypes;
+InnerSavedEntityPicker.propTypes = {
+  ...propTypes,
+  collections: PropTypes.array.isRequired,
+  rootCollection: PropTypes.object,
+};

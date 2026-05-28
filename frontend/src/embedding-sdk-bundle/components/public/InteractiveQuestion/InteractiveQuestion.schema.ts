@@ -46,12 +46,15 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
+  initialCollection: Yup.mixed().optional(),
   targetDashboardId: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),
   withChartTypeSelector: Yup.mixed().optional(),
+  withEditorButton: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
+  onDrillThrough: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 

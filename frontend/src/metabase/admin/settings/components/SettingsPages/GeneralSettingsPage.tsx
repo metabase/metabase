@@ -8,11 +8,11 @@ import { CollectUserDataInput } from "metabase/admin/settings/components/widgets
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
-import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
+import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
 import { AnonymousTrackingInput } from "../widgets/UsageTracking/AnonymousTrackingInput";
@@ -42,9 +42,7 @@ export function GeneralSettingsPage() {
 
         <PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget />
 
-        <CustomHomepageDashboardSetting />
-
-        <PLUGIN_LANDING_PAGE.LandingPageWidget />
+        <HomepageSetting />
       </SettingsSection>
 
       <SettingsSection title={t`Email`}>
@@ -87,11 +85,14 @@ export function GeneralSettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title={t`Usage tracking`}>
-        {enableAnonymousTracking && <AnonymousTrackingInput />}
+      {/* On starter plan, both conditions are `false` */}
+      {(enableAnonymousTracking || hasAuditAppFeature) && (
+        <SettingsSection title={t`Usage tracking`}>
+          {enableAnonymousTracking && <AnonymousTrackingInput />}
 
-        {hasAuditAppFeature && <CollectUserDataInput />}
-      </SettingsSection>
+          {hasAuditAppFeature && <CollectUserDataInput />}
+        </SettingsSection>
+      )}
 
       <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>

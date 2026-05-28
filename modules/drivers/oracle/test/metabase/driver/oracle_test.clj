@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.oracle-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.oracle-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -177,6 +179,7 @@
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -628,16 +631,12 @@
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
       (doseq [[x y] (partition-all 2 ["1970-01-01 00:00:00"
                                       "to_date('1970-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.000"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.001"
                                       "timestamp '1970-01-01 10:09:08.001'"
-
                                       ;; Oracle can't resolve less than milliseconds, so cast to date since we don't lose anything
                                       "1970-01-01 10:09:08.0001"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"])]
@@ -761,3 +760,24 @@
                (mt/with-native-query-testing-context query
                  (is (= [[3 1]]
                         (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
+
+(deftest ^:parallel two-contains-filters-formatted-correct-test
+  (testing "a query with two contains filters should be formatted correctly (#74086)"
+    (mt/test-driver :oracle
+      (let [mp         (mt/metadata-provider)
+            id-field   (lib.metadata/field mp (mt/id :people :id))
+            name-field (lib.metadata/field mp (mt/id :people :name))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/filter (lib/and
+                                   (lib/contains name-field "Alice")
+                                   (lib/contains name-field "ice")))
+                      (lib/with-fields [id-field name-field]))
+            result (qp/process-query query)
+            native-sql (-> result :data :native_form :query)
+            prettified-sql (driver/prettify-native-form driver/*driver* native-sql)
+            native-query (lib/native-query mp prettified-sql)]
+        (is (= "SELECT\n  *\nFROM\n  (\n    SELECT\n      \"mb_test\".\"test_data_people\".\"id\" \"id\",\n      \"mb_test\".\"test_data_people\".\"name\" \"name\"\n    FROM\n      \"mb_test\".\"test_data_people\"\n    WHERE\n      (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%Alice%' ESCAPE CHR(92)\n      )\n      AND (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%ice%' ESCAPE CHR(92)\n      )\n  )\nWHERE\n  rownum <= 1048575"
+               prettified-sql))
+        (is (= [[1345 "Alice Connelly"]]
+               (mt/formatted-rows [int str] result)
+               (mt/formatted-rows [int str] (qp/process-query native-query))))))))

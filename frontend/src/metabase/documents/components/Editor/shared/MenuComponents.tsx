@@ -5,16 +5,9 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useMetabotName } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import {
-  Avatar,
-  Group,
-  Icon,
-  type IconName,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Avatar, Group, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import S from "./MenuItems.module.css";
 
