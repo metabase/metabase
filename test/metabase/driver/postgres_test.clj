@@ -2512,9 +2512,13 @@
                   (finally
                     ;; If destroy raised, the iso-user may still exist -- clean up so the
                     ;; with-drop-role!/with-drop-schema! frames don't fail on the schema.
+                    ;; Log instead of swallowing so CI surfaces orphan-role accumulation
+                    ;; rather than masking it behind a failed schema drop downstream.
                     (try (jdbc/execute! admin-spec
                                         [(str "DROP OWNED BY \"" iso-user "\" CASCADE")])
-                         (catch Throwable _ nil))
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP OWNED BY \"%s\" failed" iso-user)))
                     (try (jdbc/execute! admin-spec
                                         [(str "DROP USER IF EXISTS \"" iso-user "\"")])
-                         (catch Throwable _ nil))))))))))))
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP USER \"%s\" failed" iso-user)))))))))))))

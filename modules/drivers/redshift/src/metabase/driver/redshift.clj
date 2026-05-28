@@ -928,19 +928,20 @@
    `username` as a grantee. Returns a seq of `{:grantor :schema}` maps.
 
    Redshift exposes `pg_default_acl` but rejects `aclitem`->`varchar` casts and does not
-   provide `aclexplode`. We use `array_to_string(defaclacl, ',')` (allowed on aclitem[]) and
-   match the grantee with a delimited LIKE pattern (`,<name>=` or `{<name>=`) to avoid
-   false positives from username prefixes/substrings. LIKE metacharacters in `username` are
-   escaped with `ESCAPE '|'` so `_` and `%` match literally -- critical because the
-   iso-user generator always produces `_`-containing names. (Pipe over backslash because
-   Redshift's parser rejects a literal backslash escape clause as an unterminated string.)
+   provide `aclexplode`. We use `array_to_string(defaclacl, ',')` (allowed on aclitem[]).
+   Verified live: Redshift's `array_to_string` strips the enclosing braces of an `aclitem[]`,
+   so each entry is comma-separated text of the form `grantee=privs/grantor`. To make the
+   grantee match unambiguous, we prepend a `,` to the haystack and search for `,<name>=` --
+   that way a row with only one grantee (no preceding entries) still matches.
+
+   LIKE metacharacters in `username` are escaped with `ESCAPE '|'` so `_` and `%` match
+   literally -- critical because the iso-user generator always produces `_`-containing
+   names. Pipe over backslash because Redshift's parser rejects a literal backslash escape
+   clause as an unterminated string.
 
    Schema-less entries (`defaclnamespace = 0`, applies to any schema) are excluded -- our
    provisioning only ever issues `ALTER DEFAULT PRIVILEGES IN SCHEMA`, never the no-schema
-   form, so those entries do not originate here.
-
-   ACL aclitem text format: `grantee=privs/grantor`. The leading delimiter (`,` or `{`)
-   distinguishes the start-of-array case from the mid-array case."
+   form, so those entries do not originate here."
   [conn username]
   (let [esc (escape-like-pattern username)]
     (jdbc/query
@@ -951,10 +952,8 @@
            "JOIN   pg_catalog.pg_user      u ON u.usesysid = d.defacluser "
            "JOIN   pg_catalog.pg_namespace n ON n.oid      = d.defaclnamespace "
            "WHERE  d.defaclobjtype = 'r' "
-           "  AND (array_to_string(d.defaclacl, ',') LIKE ? ESCAPE '|' "
-           "       OR array_to_string(d.defaclacl, ',') LIKE ? ESCAPE '|')")
-      (str "%," esc "=%")
-      (str "{"  esc "=%")])))
+           "  AND (',' || array_to_string(d.defaclacl, ',')) LIKE ? ESCAPE '|'")
+      (str "%," esc "=%")])))
 
 (defmethod driver/destroy-workspace-isolation! :redshift
   [_driver database workspace]
