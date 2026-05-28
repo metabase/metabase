@@ -37,7 +37,7 @@ import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
 import { FIT_VIEW_OPTIONS, MAX_ZOOM, MIN_ZOOM } from "./constants";
 import { useCanvasLayout } from "./hooks/useCanvasLayout";
-import { useEdgeZoom } from "./hooks/useEdgeZoom";
+import { useEdgeHandlers } from "./hooks/useEdgeHandlers";
 import { useGraphSync } from "./hooks/useGraphSync";
 import { useSchemaViewerZoomMethods } from "./hooks/useSchemaViewerZoomMethods";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
@@ -61,15 +61,8 @@ type SchemaViewerProps = {
   data: ErdResponse | undefined;
   isFetching: boolean;
   error: unknown;
-  /** db__schema key for canvas cleanup */
   contextKey: string | null;
-  /**
-   * URL-supplied focal table for deep links: when the URL pins exactly one
-   * `table-ids` value and that table belongs to the current `schema`, the
-   * canvas zooms to it once it shows up instead of fitting the whole graph.
-   */
   focalTableId: ConcreteTableId | null;
-  /** Add a table to current selected schema (FK click expansion). */
   onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
 };
 
@@ -85,7 +78,6 @@ export function SchemaViewer({
 }: SchemaViewerProps) {
   const { colorScheme } = useColorScheme();
 
-  // ReactFlow node/edge state + instance
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     SchemaViewerFlowNode,
     SchemaViewerFlowEdge
@@ -100,9 +92,7 @@ export function SchemaViewer({
   const { zoomToNode, zoomToCanvas, cancelZoom } =
     useSchemaViewerZoomMethods(reactFlowInstance);
 
-  // Target table IDs whose FK-expansion fetch is still in flight. Field rows
-  // use this to swap the database-type text for a loader until the new table
-  // arrives in the graph (or the fetch errors out / the context changes).
+  // Target table IDs whose FK-expansion fetch is still in flight.
   const [expandingTableIds, setExpandingTableIds] = useState<
     Set<ConcreteTableId>
   >(() => new Set());
@@ -115,11 +105,9 @@ export function SchemaViewer({
     null,
   );
 
-  // Stable Set: returns the same reference until the *membership* changes.
   // Without this, dragging a node (which produces a new `nodes` array on
-  // every animation frame) would build a new Set each tick, rebuild the
-  // SchemaViewerContext value, and force every TableNode + FieldRow to
-  // re-render through `useContext` — which `memo` does NOT shield against.
+  // every animation frame) would force every TableNode + FieldRow to
+  // re-render through `useContext`.
   const visibleTableIdsRef = useRef<Set<ConcreteTableId>>(new Set());
   const visibleTableIds = useMemo(() => {
     const prev = visibleTableIdsRef.current;
@@ -210,8 +198,10 @@ export function SchemaViewer({
     zoomToCanvas,
   });
 
-  const { handleEdgeClick } = useEdgeZoom({
+  const { handleEdgeClick, clearEdgeSelection } = useEdgeHandlers({
     zoomToNode,
+    setNodes,
+    setEdges,
   });
 
   // FK click: persist the new focal table, mark its fetch as in-flight, and
@@ -254,12 +244,10 @@ export function SchemaViewer({
     (nodeId: string | null) => {
       setSelectedNodeId(nodeId);
       if (nodeId != null) {
-        setEdges((currentEdges) =>
-          currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
-        );
+        clearEdgeSelection();
       }
     },
-    [setEdges],
+    [clearEdgeSelection],
   );
 
   const handleSchemaChange = useCallback(() => {
@@ -304,6 +292,7 @@ export function SchemaViewer({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeClick={handleEdgeClick}
+        onPaneClick={clearEdgeSelection}
       >
         <Background />
         <SchemaViewerMinimap />

@@ -10,7 +10,7 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import * as Lib from "metabase-lib";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
@@ -39,19 +39,16 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
 
-  useHotkeys(
+  useHotkeys([
     [
-      [
-        "f",
-        () => {
-          inputRef.current?.focus();
-          inputRef.current?.select();
-          combobox.openDropdown();
-        },
-      ],
+      "f",
+      () => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        combobox.openDropdown();
+      },
     ],
-    ["INPUT", "TEXTAREA", "SELECT"],
-  );
+  ]);
 
   const allItems = useMemo<SearchItem[]>(
     () =>
@@ -59,7 +56,9 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
         const { name, display_name, fields } = node.data;
         const label = formatTableLabel(name, display_name);
         const text = formatTableLabelText(name, display_name);
-        const fkCount = fields.filter((f) => isTypeFK(f.semantic_type)).length;
+        const fkCount = fields.filter((f) =>
+          Lib.isForeignKey(Lib.legacyColumnTypeInfo(f)),
+        ).length;
         return {
           id: node.id,
           label,
@@ -116,8 +115,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
             combobox.updateSelectedOptionIndex();
           }}
           onFocus={() => {
-            // Clear the previously-chosen label so the dropdown shows the
-            // full list and the user can start typing from an empty state.
             setQuery("");
             combobox.openDropdown();
           }}

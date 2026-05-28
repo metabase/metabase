@@ -91,6 +91,7 @@ function toFlowNode(
       sourceFieldIds: roles.sourceFieldIds,
       targetFieldIds: roles.targetFieldIds,
       selfRefTargetFieldIds: roles.selfRefTargetFieldIds,
+      selectedFieldIds: new Set(),
     },
     style: {
       width: NODE_WIDTH_PX,

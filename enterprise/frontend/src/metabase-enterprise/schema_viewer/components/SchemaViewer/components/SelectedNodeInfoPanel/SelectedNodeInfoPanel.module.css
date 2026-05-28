@@ -26,10 +26,4 @@
       text-decoration: underline;
     }
   }
-
-  /* Fixed-height field rows so FK rows (with target-table link) and plain
-     rows occupy the same vertical space. */
-  .fieldRow {
-    /* height: 1rem; */
-  }
 }

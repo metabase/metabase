@@ -69,6 +69,7 @@ export function makeFlowNode({
       sourceFieldIds: new Set<number>(),
       targetFieldIds: new Set<number>(),
       selfRefTargetFieldIds: new Set<number>(),
+      selectedFieldIds: new Set<number>(),
     },
     style: { width, height: computedHeight, opacity },
   };

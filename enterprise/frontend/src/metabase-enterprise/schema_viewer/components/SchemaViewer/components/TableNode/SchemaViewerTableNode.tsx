@@ -1,4 +1,4 @@
-import { type NodeProps, useStore } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import cx from "classnames";
 import { memo, useCallback } from "react";
 
@@ -17,44 +17,11 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   data,
 }: SchemaViewerTableNodeProps) {
   const { selectedNodeId, selectNode, zoomToNode } = useSchemaViewerContext();
-  // Highlight this node when any edge that touches it is selected. Uses a
-  // React Flow store selector (rather than useEdges()) so the node only
-  // re-renders when its own connection-selected state actually flips, not
-  // on every edge change.
-  const isConnectedToSelectedEdge = useStore((state) => {
-    for (const e of state.edges) {
-      if (e.selected && (e.source === id || e.target === id)) {
-        return true;
-      }
-    }
-    return false;
-  });
-  // Field IDs belonging to this node that sit at either end of a currently
-  // selected edge — used to paint those rows in the brand color.
-  const selectedFieldIds = useStore(
-    (state) => {
-      const ids = new Set<number>();
-      for (const e of state.edges) {
-        if (!e.selected) {
-          continue;
-        }
-        if (e.source === id && e.sourceHandle) {
-          const m = /^field-(\d+)/.exec(e.sourceHandle);
-          if (m) {
-            ids.add(Number(m[1]));
-          }
-        }
-        if (e.target === id && e.targetHandle) {
-          const m = /^field-(\d+)/.exec(e.targetHandle);
-          if (m) {
-            ids.add(Number(m[1]));
-          }
-        }
-      }
-      return ids;
-    },
-    (a, b) => a.size === b.size && a.intersection(b).size === a.size,
-  );
+  // Any field on this node sitting at either end of the currently selected
+  // edge implies the node itself is connected to that edge — `useEdgeHandlers`
+  // already pre-computes the per-node set, so we don't need a React Flow
+  // store subscription here.
+  const isConnectedToSelectedEdge = data.selectedFieldIds.size > 0;
   const isUserSelected = selectedNodeId === id;
 
   const handleDoubleClick = useCallback(() => {
@@ -112,7 +79,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
             isSource={data.sourceFieldIds.has(field.id)}
             isTarget={data.targetFieldIds.has(field.id)}
             isSelfRefTarget={data.selfRefTargetFieldIds.has(field.id)}
-            isSelectedInEdge={selectedFieldIds.has(field.id)}
+            isSelectedInEdge={data.selectedFieldIds.has(field.id)}
           />
         ))}
       </Box>

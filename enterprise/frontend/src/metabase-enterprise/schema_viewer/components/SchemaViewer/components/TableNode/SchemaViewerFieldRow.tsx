@@ -4,7 +4,6 @@ import cx from "classnames";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { ErdField, IconName } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
@@ -30,7 +29,6 @@ type SchemaViewerFieldRowProps = {
   isSource: boolean;
   /** Field participates as the target side of at least one non-self-ref edge. */
   isTarget: boolean;
-  /** Field is the target of at least one self-referential edge. */
   isSelfRefTarget: boolean;
   isSelectedInEdge?: boolean;
 };
@@ -49,7 +47,7 @@ export function SchemaViewerFieldRow({
     SchemaViewerFlowEdge
   >();
 
-  const isFkField = isFK(field);
+  const isFkField = Lib.isForeignKey(Lib.legacyColumnTypeInfo(field));
 
   const icon: IconName = getFieldIcon(field);
 
