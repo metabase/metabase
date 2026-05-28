@@ -300,6 +300,9 @@ export class LegacyApi extends EventEmitter {
           retryCount < maxAttempts
         ) {
           await delay(retryDelays.pop() ?? 0, options.signal);
+          if (options.signal?.aborted) {
+            throw { isCancelled: true };
+          }
         } else {
           throw e;
         }
