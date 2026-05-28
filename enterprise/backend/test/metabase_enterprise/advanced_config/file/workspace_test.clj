@@ -61,19 +61,19 @@
               (is (= {:schema "mb__isolation_44490_1933"} (:output wsd))))))))))
 
 (deftest applying-settings-section-populates-setting-test
-  (testing "applying the :settings section stores the instance-workspace value in the setting (raw, name-keyed)"
+  (testing "applying the :settings section stores the instance-workspace value and ws/instance-workspace returns it id-keyed"
     (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (advanced-config.file/initialize!
          {:version 1
           :config {:settings {:instance-workspace (workspace-setting-value "ws-test-db")}}})
         (let [stored (ws/instance-workspace)]
           (is (= "New workspace" (:name stored)))
-          (testing "raw setting is keyed by db NAME (matches YAML)"
+          (testing "ws/instance-workspace resolves db names to integer ids"
             (is (= ["public"]
-                   (get-in stored [:databases "ws-test-db" :input_schemas])))
+                   (get-in stored [:databases db-id :input_schemas])))
             (is (= {:schema "mb__isolation_44490_1933"}
-                   (get-in stored [:databases "ws-test-db" :output])))))))))
+                   (get-in stored [:databases db-id :output])))))))))
 
 (deftest re-apply-replaces-setting-test
   (testing "re-applying replaces the prior setting value — config file is the truth"
@@ -88,10 +88,11 @@
           (is (= "New workspace" (:name (ws/instance-workspace))))
           (advanced-config.file/initialize! {:version 1 :config {:settings {:instance-workspace section-2}}})
           (is (= "Renamed Workspace" (:name (ws/instance-workspace))))
-          (is (= 1 (count (:databases (ws/instance-workspace)))))
-          (is (= {:schema "different_schema"}
-                 (->> (ws/instance-workspace) :databases vals first :output))
-              "setting reflects the new config, not the old one"))))))
+          (let [resolved (ws/instance-workspace)]
+            (is (= 1 (count (:databases resolved))))
+            (is (= {:schema "different_schema"}
+                   (->> resolved :databases vals first :output))
+                "setting reflects the new config, not the old one")))))))
 
 (deftest invalid-shape-throws-test
   (testing "the setter validates the incoming value against the schema"
@@ -130,8 +131,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
           (ws/set-instance-workspace!
            {:name "ws"
-            :databases {"mysql-prod" {:input_schemas ["prod_db"]
-                                      :output        {:db "ws_alice"}}}})
+            :databases {db-id {:input_schemas ["prod_db"]
+                               :output        {:db "ws_alice"}}}})
           (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 (deftest bigquery-3-slot-section-test
@@ -140,8 +141,8 @@
       (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
         (ws/set-instance-workspace!
          {:name "ws"
-          :databases {"bq-prod" {:input_schemas ["core"]
-                                 :output        {:db "metabase-prod" :schema "ws_alice"}}}})
+          :databases {db-id {:input_schemas ["core"]
+                             :output        {:db "metabase-prod" :schema "ws_alice"}}}})
         (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------

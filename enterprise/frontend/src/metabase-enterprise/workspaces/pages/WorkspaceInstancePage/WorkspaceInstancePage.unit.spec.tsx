@@ -3,6 +3,8 @@ import { Route } from "react-router";
 import {
   setupDatabasesEndpoints,
   setupListTableRemappingsEndpoint,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -10,6 +12,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockSettings,
   createMockTableRemapping,
   createMockWorkspaceInstance,
   createMockWorkspaceInstanceDatabase,
@@ -31,6 +34,10 @@ function setup({
     },
   }) as WorkspaceInstance | null,
 } = {}) {
+  setupPropertiesEndpoints(
+    createMockSettings({ "instance-workspace": workspace }),
+  );
+  setupSettingsEndpoints([]);
   setupDatabasesEndpoints([POSTGRES]);
   setupListTableRemappingsEndpoint(remappings);
 

@@ -74,12 +74,56 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
+(defn- ->db-name
+  "Normalize a `:databases` map key to the string form stored in
+   `Database.name`. YAML parses come back as keywords; raw JSON keeps strings."
+  [k]
+  (cond-> k (keyword? k) name))
+
+(defn- workspace-id-keyed->name-keyed
+  "Convert an id-keyed `::ws/workspace-instance-config` to the on-disk,
+   name-keyed shape stored in the setting. Unknown ids would corrupt the file —
+   throw early."
+  [config]
+  (let [db-ids   (keys (:databases config))
+        id->name (when (seq db-ids)
+                   (into {} (map (juxt :id :name))
+                         (t2/select [:model/Database :id :name] :id [:in db-ids])))]
+    (update config :databases
+            (fn [databases]
+              (into {} (map (fn [[db-id wsd]]
+                              (let [db-name (get id->name db-id)]
+                                (when-not db-name
+                                  (throw (ex-info "instance-workspace references unknown database id"
+                                                  {:database-id db-id})))
+                                [db-name wsd])))
+                    databases)))))
+
+(defn- workspace-name-keyed->id-keyed
+  "Convert the on-disk name-keyed setting value to the id-keyed
+   `::ws/workspace-instance-config` shape consumers expect. Names that don't
+   resolve to a row are dropped — a parent instance and a child instance can
+   share the same config.yml and only databases present in the app DB get
+   mapped."
+  [config]
+  (let [db-names (map ->db-name (keys (:databases config)))
+        name->id (when (seq db-names)
+                   (into {} (map (juxt :name :id))
+                         (t2/select [:model/Database :id :name] :name [:in db-names])))]
+    (update config :databases
+            (fn [databases]
+              (into {} (keep (fn [[db-name-key wsd]]
+                               (when-let [db-id (get name->id (->db-name db-name-key))]
+                                 [db-id wsd])))
+                    databases)))))
+
 (mu/defn set-instance-workspace! :- :any
-  "Store the workspace config in the `instance-workspace` setting. Replaces any
-   prior value. The shape is validated against `::ws/workspace-instance-config`
-   by the setting's setter."
+  "Store the workspace config in the `instance-workspace` setting. Accepts the
+   same id-keyed shape [[instance-workspace]] returns; ids are resolved to
+   `Database.name` for on-disk storage so the value is portable across instances
+   and matches the YAML wire format. Replaces any prior value."
   [config :- ::ws/workspace-instance-config]
-  (ws.settings/instance-workspace! config)
+  (ws.settings/instance-workspace! (workspace-id-keyed->name-keyed config))
   nil)
 
 (defn clear-instance-workspace!
@@ -94,31 +138,13 @@
   (t2/delete! :model/TableRemapping)
   nil)
 
-(defn- ->db-name
-  "Normalize a `:databases` map key to the string form stored in
-   `Database.name`. YAML parses come back as keywords; raw JSON keeps strings."
-  [k]
-  (cond-> k (keyword? k) name))
-
 (defn instance-workspace
   "Return the workspace loaded on this instance with `:databases` keys resolved
    from db names to integer database ids. Names that don't resolve to a row are
-   silently dropped — a parent instance and a child instance can share the same
-   config.yml, and only databases present in the app DB get mapped. Returns nil
-   when no workspace is loaded. The raw, name-keyed setting value lives in
-   [[ws.settings/instance-workspace]]."
+   silently dropped. Returns nil when no workspace is loaded. The raw,
+   name-keyed setting value lives in [[ws.settings/instance-workspace]]."
   []
-  (when-let [ws (ws.settings/instance-workspace)]
-    (let [db-names (map ->db-name (keys (:databases ws)))
-          name->id (when (seq db-names)
-                     (into {} (map (juxt :name :id))
-                           (t2/select [:model/Database :id :name] :name [:in db-names])))]
-      (update ws :databases
-              (fn [databases]
-                (into {} (keep (fn [[db-name-key wsd]]
-                                 (when-let [db-id (get name->id (->db-name db-name-key))]
-                                   [db-id wsd])))
-                      databases))))))
+  (some-> (ws.settings/instance-workspace) workspace-name-keyed->id-keyed))
 
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (the

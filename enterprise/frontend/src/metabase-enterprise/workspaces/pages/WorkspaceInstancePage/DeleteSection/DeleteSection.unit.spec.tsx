@@ -4,15 +4,20 @@ import { Route } from "react-router";
 
 import {
   setupDeleteTableRemappingsEndpoint,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { DeleteSection } from "./DeleteSection";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 function setup() {
+  setupPropertiesEndpoints(createMockSettings());
+  setupSettingsEndpoints([]);
   setupDeleteTableRemappingsEndpoint();
   setupUpdateSettingEndpoint();
 

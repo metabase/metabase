@@ -66,16 +66,15 @@
    [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
-  "The shape stored in the EE `instance-workspace` setting. The `:databases` map
-   is keyed by database NAME — the on-disk form matches the YAML directly so the
-   same value can be set via `MB_INSTANCE_WORKSPACE`, the config file's
-   `:settings` section, or the standard settings API. Keys may be strings or
-   keywords depending on the parser (YAML keywordizes, raw JSON keeps strings);
-   `metabase-enterprise.workspaces.core/instance-workspace` handles both at
-   read time, producing an id-keyed form."
+  "The canonical, id-keyed shape consumers see. `metabase-enterprise.workspaces.core/instance-workspace`
+   returns this form, and `set-instance-workspace!` accepts it. The on-disk
+   `instance-workspace` setting stores the same content keyed by db NAME (matches
+   YAML); the EE namespace resolves names ↔ ids at the storage boundary."
   [:map
    [:name      [:string {:min 1}]]
-   [:databases [:map-of [:or :string :keyword] ::workspace-database-config]]])
+   [:databases [:map-of
+                {:decode/json #(update-keys % (fn [k] (cond-> k (keyword? k) (-> name parse-long))))}
+                :int ::workspace-database-config]]])
 
 (defenterprise workspace-mode?
   "True if this instance is running in workspace mode — a `:workspace` section

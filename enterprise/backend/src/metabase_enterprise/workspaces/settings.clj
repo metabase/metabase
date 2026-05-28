@@ -3,16 +3,30 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.workspaces.core :as-alias ws.oss]))
+
+(mr/def ::raw-instance-workspace-config
+  "On-disk shape of the `instance-workspace` setting: `:databases` keyed by db NAME
+   (not id) so the same value is portable across instances and matches the YAML
+   wire format. Keys may be strings or keywords depending on the parser (YAML
+   keywordizes, raw JSON keeps strings). The id-keyed canonical form lives in
+   [[metabase.workspaces.core/workspace-instance-config]] —
+   `metabase-enterprise.workspaces.core/instance-workspace` resolves between them."
+  [:map
+   [:name      [:string {:min 1}]]
+   [:databases [:map-of
+                [:or :string :keyword]
+                ::ws.oss/workspace-database-config]]])
 
 (defn- validate-instance-workspace!
   "Reject malformed values before they hit the setting store. The setting accepts
-   the same shape the YAML config file uses — `:databases` keyed by db `:name` — and
-   the schema check ensures any caller (env var, settings API, config-from-file)
-   writes a usable value."
+   the YAML shape — `:databases` keyed by db `:name` — and the schema check
+   ensures any caller (env var, settings API, config-from-file) writes a usable
+   value."
   [config]
   (when (some? config)
-    (mu/validate-throw ::ws.oss/workspace-instance-config config))
+    (mu/validate-throw ::raw-instance-workspace-config config))
   config)
 
 (defsetting instance-workspace

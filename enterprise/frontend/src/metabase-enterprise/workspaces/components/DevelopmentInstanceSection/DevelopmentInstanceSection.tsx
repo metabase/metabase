@@ -41,14 +41,12 @@ export function DevelopmentInstanceSection() {
         <Stack>
           <Group justify="space-between" align="center">
             <Title order={4}>{t`Development instance`}</Title>
-            {!isLoading && (
-              <Switch
-                aria-label={t`Development instance`}
-                checked={isDevelopmentInstance}
-                disabled={isInWorkspace || isSetViaEnv}
-                onChange={handleChange}
-              />
-            )}
+            <Switch
+              aria-label={t`Development instance`}
+              checked={isDevelopmentInstance}
+              disabled={isLoading || isInWorkspace || isSetViaEnv}
+              onChange={handleChange}
+            />
           </Group>
           <Text c="text-secondary">
             {t`When enabled, this allows this ${applicationName} instance to enter a Workspace for testing transforms before syncing changes to your production instance. Only enable this if this instance is used for development.`}
