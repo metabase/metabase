@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
-   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase.util.log :as log]
@@ -91,31 +90,28 @@
 
 (defn- library-root-type-by-collection-id
   "Map `collection-id → root-collection-type` for every collection currently in a Library tree.
-  Library content rules (`metabase-enterprise.library.validation`) constrain every collection
-  inside a library tree to itself carry a library `:type`, so one appdb query covers the whole
-  forest — the root of each subtree is just the first id parsed out of `:location` (or the row
-  itself when `:location` is `\"/\"`).
+  Picks up the library-typed root collections (`:type` in `library-types`, `:location \"/\"`)
+  and then sweeps each root's descendants via materialized-path `LIKE` — every collection in
+  that subtree carries the root's `:type` as its `root_collection_type`.
 
   Returns `{}` and logs a warning if the appdb is unreachable / unmigrated (only expected in
   test setups that exercise pgvector before the appdb schema is up); production semantic-search
   init always runs after the appdb is migrated."
   [library-types]
-  (let [colls (try
-                (t2/select [:model/Collection :id :type :location]
-                           :type [:in library-types])
-                (catch Exception e
-                  (log/warn e "Skipping Library subcollection backfill — appdb lookup failed")
-                  nil))
-        type-by-id (into {} (map (juxt :id :type)) colls)]
-    (into {}
-          (map (fn [{:keys [id type location]}]
-                 (let [root-id (some-> location
-                                       (str/split #"/")
-                                       (->> (remove str/blank?))
-                                       first
-                                       parse-long)]
-                   [id (or (type-by-id root-id) type)])))
-          colls)))
+  (try
+    (let [roots (t2/select [:model/Collection :id :type]
+                           :type     [:in library-types]
+                           :location "/")]
+      (into {}
+            (mapcat (fn [{root-id :id root-type :type}]
+                      (cons [root-id root-type]
+                            (for [desc-id (t2/select-pks-set :model/Collection
+                                                             :location [:like (str "/" root-id "/%")])]
+                              [desc-id root-type])))
+                    roots)))
+    (catch Exception e
+      (log/warn e "Skipping Library subcollection backfill — appdb lookup failed")
+      {})))
 
 (defn- add-root-collection-type-column!
   "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can
