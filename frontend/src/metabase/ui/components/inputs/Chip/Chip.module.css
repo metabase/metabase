@@ -19,11 +19,7 @@
 /* `data-variant` lives on the root (Mantine renders it on the wrapping Box), so
    these are scoped through `.ChipRoot`. The descendant combinator also gives the
    rules enough specificity to win over Mantine's built-in variant styles, which
-   paint the label background at `.m_*:not([data-disabled])` specificity.
-
-   `[data-force-hover]` / `[data-force-active]` on the root render the hover /
-   pressed appearance without real interaction — set them via the `mod` prop to
-   showcase those states (e.g. in Storybook) or in visual-regression tests. */
+   paint the label background at `.m_*:not([data-disabled])` specificity. */
 
 /* Unchecked — shared by the light and filled variants. */
 .ChipRoot .ChipLabel:not([data-disabled]) {
@@ -32,13 +28,11 @@
   color: var(--mb-color-text-primary);
 }
 
-.ChipRoot .ChipLabel:not([data-disabled]):hover,
-.ChipRoot[data-force-hover] .ChipLabel:not([data-disabled]) {
+.ChipRoot .ChipLabel:not([data-disabled]):hover {
   background-color: var(--mb-color-background-hover);
 }
 
-.ChipRoot .ChipLabel:not([data-disabled]):active,
-.ChipRoot[data-force-active] .ChipLabel:not([data-disabled]) {
+.ChipRoot .ChipLabel:not([data-disabled]):active {
   background-color: var(--mb-color-background-selected);
 }
 
@@ -51,11 +45,7 @@
 .ChipRoot[data-variant="light"]
   .ChipLabel[data-checked]:not([data-disabled]):hover,
 .ChipRoot[data-variant="light"]
-  .ChipLabel[data-checked]:not([data-disabled]):active,
-.ChipRoot[data-variant="light"][data-force-hover]
-  .ChipLabel[data-checked]:not([data-disabled]),
-.ChipRoot[data-variant="light"][data-force-active]
-  .ChipLabel[data-checked]:not([data-disabled]) {
+  .ChipLabel[data-checked]:not([data-disabled]):active {
   background-color: var(--mb-color-background-hover);
   color: var(--mb-color-text-hover);
 }
@@ -69,11 +59,7 @@
 .ChipRoot[data-variant="filled"]
   .ChipLabel[data-checked]:not([data-disabled]):hover,
 .ChipRoot[data-variant="filled"]
-  .ChipLabel[data-checked]:not([data-disabled]):active,
-.ChipRoot[data-variant="filled"][data-force-hover]
-  .ChipLabel[data-checked]:not([data-disabled]),
-.ChipRoot[data-variant="filled"][data-force-active]
-  .ChipLabel[data-checked]:not([data-disabled]) {
+  .ChipLabel[data-checked]:not([data-disabled]):active {
   background-color: var(--mb-color-brand-hover);
 }
 
