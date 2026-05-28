@@ -37,8 +37,7 @@
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -94,14 +93,12 @@
   "Store the workspace config in the `instance-workspace` setting. Replaces any
    prior value. The shape is validated against `::ws/workspace-instance-config`."
   [config :- ::ws/workspace-instance-config]
-  (premium-features/assert-has-feature :workspaces (tru "Workspaces"))
   (ws.settings/instance-workspace! config)
   nil)
 
 (defn clear-instance-workspace!
   "Clear the `instance-workspace` setting."
   []
-  (premium-features/assert-has-feature :workspaces (tru "Workspaces"))
   (ws.settings/instance-workspace! nil)
   nil)
 

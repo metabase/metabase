@@ -163,24 +163,3 @@
                                        :to_table_name   "orders"})
     (let [remappings (ws/list-remappings)]
       (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
-;;; ---------------------------- Instance-workspace setter / clearer gating ----------------------------
-
-(deftest set-instance-workspace!-requires-workspaces-feature-test
-  (testing "set-instance-workspace! throws when :workspaces is absent"
-    (mt/with-temp [:model/Database {db-id :id} {:name "set-iw-test-db" :engine :postgres}]
-      (mt/with-premium-features #{}
-        (is (thrown-with-msg?
-             ExceptionInfo
-             #"Workspaces is a paid feature"
-             (ws/set-instance-workspace! {:name "X"
-                                          :databases {db-id {:input_schemas ["public"]
-                                                             :output {:schema "x"}}}})))))))
-
-(deftest clear-instance-workspace!-requires-workspaces-feature-test
-  (testing "clear-instance-workspace! throws when :workspaces is absent"
-    (mt/with-premium-features #{}
-      (is (thrown-with-msg?
-           ExceptionInfo
-           #"Workspaces is a paid feature"
-           (ws/clear-instance-workspace!))))))
