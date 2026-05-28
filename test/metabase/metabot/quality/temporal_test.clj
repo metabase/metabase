@@ -61,24 +61,6 @@
    :data      {:reason (name reason)}})
 
 ;;; ---------------------------------------------------------------------------
-;;; String similarity
-;;; ---------------------------------------------------------------------------
-
-(deftest similarity-edge-cases-test
-  (testing "identical strings → 1.0"
-    (is (= 1.0 (temporal/similarity "orders" "orders"))))
-
-  (testing "two empty strings collapse to identical (no divide-by-zero)"
-    (is (= 1.0 (temporal/similarity "" ""))))
-
-  (testing "nil and empty string behave the same"
-    (is (= 1.0 (temporal/similarity nil nil)))
-    (is (= 1.0 (temporal/similarity nil ""))))
-
-  (testing "completely different strings have similarity below threshold"
-    (is (< (temporal/similarity "orders" "products") 0.5))))
-
-;;; ---------------------------------------------------------------------------
 ;;; t-first-used population
 ;;; ---------------------------------------------------------------------------
 
@@ -142,183 +124,6 @@
                              (input-part "c2" "search" {})
                              (output-part "c2" "search" {:input [] :output []})])]))]
       (is (= 2 (get-in enriched [:temporal :iterations]))))))
-
-;;; ---------------------------------------------------------------------------
-;;; :thrash-events
-;;; ---------------------------------------------------------------------------
-
-(deftest derive-thrash-events-counts-adjacent-same-function-similar-args-test
-  (testing "two adjacent identical search calls register as one thrash pair"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "go")
-             (assistant-row 2
-                            [(input-part "c1" "search" {:keyword_queries ["orders"]})
-                             (output-part "c1" "search" {:input [] :output []})
-                             (text-part "let me try again")
-                             (input-part "c2" "search" {:keyword_queries ["orders"]})
-                             (output-part "c2" "search" {:input [] :output []})])]))]
-      (is (= 1 (get-in enriched [:temporal :thrash-events])))))
-
-  (testing "two adjacent calls of different functions don't thrash"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "go")
-             (assistant-row 2
-                            [(input-part "c1" "search" {:keyword_queries ["x"]})
-                             (output-part "c1" "search" {:input [] :output []})
-                             (input-part "c2" "list_available_fields" {:table_id 10})
-                             (output-part "c2" "list_available_fields"
-                                          {:input [{:type "table" :id 10}] :output []})])]))]
-      (is (= 0 (get-in enriched [:temporal :thrash-events])))))
-
-  (testing "two adjacent same-function calls with very different args don't thrash"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "go")
-             (assistant-row 2
-                            [(input-part "c1" "search" {:keyword_queries ["orders"]})
-                             (output-part "c1" "search" {:input [] :output []})
-                             (input-part "c2" "search" {:keyword_queries ["customer-lifetime-value-cohort-analysis"]})
-                             (output-part "c2" "search" {:input [] :output []})])]))]
-      (is (= 0 (get-in enriched [:temporal :thrash-events]))))))
-
-;;; ---------------------------------------------------------------------------
-;;; :rediscovery-r
-;;; ---------------------------------------------------------------------------
-
-(deftest derive-rediscovery-r-zero-on-single-search-test
-  (let [enriched (temporal/derive
-                  (extract/normalize
-                   [(user-row 1 "go")
-                    (assistant-row 2
-                                   [(input-part "c1" "search" {:keyword_queries ["x"]})
-                                    (output-part "c1" "search" {:input [] :output []})])]))]
-    (is (= 0 (get-in enriched [:temporal :rediscovery-r]))
-        "one search call = no possibility of re-discovery")))
-
-(deftest derive-rediscovery-r-counts-duplicates-test
-  (testing "five identical search calls → r = 4 (one cluster covering all five)"
-    (let [searches (mapcat (fn [i]
-                             [(input-part (str "c" i) "search" {:keyword_queries ["orders"]})
-                              (output-part (str "c" i) "search" {:input [] :output []})])
-                           (range 5))
-          enriched (temporal/derive
-                    (extract/normalize
-                     [(user-row 1 "go")
-                      (assistant-row 2 searches)]))]
-      (is (= 4 (get-in enriched [:temporal :rediscovery-r])))))
-
-  (testing "three distinct queries (no two pairwise-similar) → r = 0"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "go")
-             (assistant-row 2
-                            [(input-part "c1" "search" {:keyword_queries ["orders"]})
-                             (output-part "c1" "search" {:input [] :output []})
-                             (input-part "c2" "search" {:keyword_queries ["customer-lifetime-cohorts"]})
-                             (output-part "c2" "search" {:input [] :output []})
-                             (input-part "c3" "search" {:keyword_queries ["marketing-attribution"]})
-                             (output-part "c3" "search" {:input [] :output []})])]))]
-      (is (= 0 (get-in enriched [:temporal :rediscovery-r]))))))
-
-(deftest derive-rediscovery-r-transitive-clustering-test
-  (testing "clustering is transitive — three near-identical queries land in one cluster"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "go")
-             (assistant-row 2
-                            [(input-part "c1" "search" {:keyword_queries ["orders"]})
-                             (output-part "c1" "search" {:input [] :output []})
-                             (input-part "c2" "search" {:keyword_queries ["orders"]})
-                             (output-part "c2" "search" {:input [] :output []})
-                             (input-part "c3" "search" {:keyword_queries ["orders"]})
-                             (output-part "c3" "search" {:input [] :output []})])]))]
-      (is (= 2 (get-in enriched [:temporal :rediscovery-r]))
-          "3 searches, 1 cluster → r = 2"))))
-
-;;; ---------------------------------------------------------------------------
-;;; :errors-resolved-rate
-;;; ---------------------------------------------------------------------------
-
-(deftest derive-errors-resolved-rate-nil-when-no-errors-test
-  (let [enriched (temporal/derive
-                  (extract/normalize
-                   [(user-row 1 "go")
-                    (assistant-row 2
-                                   [(input-part "c1" "search" {})
-                                    (output-part "c1" "search" {:input [] :output []})])]))]
-    (is (nil? (get-in enriched [:temporal :errors-resolved-rate]))
-        "no errored tool-events → no signal → nil")))
-
-(deftest derive-errors-resolved-rate-productive-test
-  (testing "errored edit followed by a successful edit → rate = 1.0"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "fix this")
-             (assistant-row 2
-                            [(input-part "c1" "edit_sql_query" {:query_id "q" :sql_query "..."})
-                             (output-part "c1" "edit_sql_query"
-                                          {:input [] :output []}
-                                          :error {:message "syntax err"})
-                             (text-part "trying again")
-                             (input-part "c2" "edit_sql_query" {:query_id "q" :sql_query "..."})
-                             (output-part "c2" "edit_sql_query" {:input [] :output []})])]))]
-      (is (= 1.0 (get-in enriched [:temporal :errors-resolved-rate]))))))
-
-(deftest derive-errors-resolved-rate-thrash-test
-  (testing "errored edit followed by another errored edit → rate = 0.0"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "fix this")
-             (assistant-row 2
-                            [(input-part "c1" "edit_sql_query" {:query_id "q" :sql_query "..."})
-                             (output-part "c1" "edit_sql_query"
-                                          {:input [] :output []}
-                                          :error {:message "syntax err 1"})
-                             (input-part "c2" "edit_sql_query" {:query_id "q" :sql_query "..."})
-                             (output-part "c2" "edit_sql_query"
-                                          {:input [] :output []}
-                                          :error {:message "syntax err 2"})])]))]
-      (is (= 0.0 (get-in enriched [:temporal :errors-resolved-rate]))))))
-
-(deftest derive-errors-resolved-rate-mixed-test
-  (testing "1 of 2 errors resolved → rate = 0.5"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "x")
-             (assistant-row 2
-                            [(input-part "c1" "edit_sql_query" {:query_id "q"})
-                             (output-part "c1" "edit_sql_query" {:input [] :output []}
-                                          :error {:message "e1"})
-                             (input-part "c2" "edit_sql_query" {:query_id "q"})
-                             (output-part "c2" "edit_sql_query" {:input [] :output []})
-                             (input-part "c3" "search" {})
-                             (output-part "c3" "search" {:input [] :output []}
-                                          :error {:message "e2"})])]))]
-      (is (= 0.5 (get-in enriched [:temporal :errors-resolved-rate]))
-          "c1's error resolved by c2; c3's error has no follow-up search → unresolved"))))
-
-(deftest derive-errors-resolved-rate-no-follow-up-test
-  (testing "errored call with no later same-function call → unresolved"
-    (let [enriched
-          (temporal/derive
-           (extract/normalize
-            [(user-row 1 "x")
-             (assistant-row 2
-                            [(input-part "c1" "edit_sql_query" {:query_id "q"})
-                             (output-part "c1" "edit_sql_query"
-                                          {:input [] :output []}
-                                          :error {:message "boom"})])]))]
-      (is (= 0.0 (get-in enriched [:temporal :errors-resolved-rate]))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; :terminal-state — priority chain
@@ -404,7 +209,7 @@
                     (extract/normalize
                      [(user-row 1 "x")
                       (assistant-row 2 [(text-part "hi")])]))]
-      (is (= #{:iterations :thrash-events :rediscovery-r :errors-resolved-rate :terminal-state}
+      (is (= #{:iterations :terminal-state}
              (set (keys (:temporal enriched))))))))
 
 (deftest derive-end-to-end-realistic-conversation-test
@@ -437,10 +242,6 @@
                              (terminal-state-data-part :final_response)])]))
           temporal-block (:temporal enriched)]
       (is (= 3                  (:iterations temporal-block)))
-      (is (= 1.0                (:errors-resolved-rate temporal-block))
-          "the errored create_sql_query was followed by a successful one")
-      (is (= 0                  (:rediscovery-r temporal-block))
-          "one search call only — no rediscovery")
       (is (= :final_response    (:terminal-state temporal-block)))
       (is (= 1 (get-in enriched [:sets :Q ["table" "100"] :t-first-used]))
           "first authoring touch on table 100 was iteration 1"))))

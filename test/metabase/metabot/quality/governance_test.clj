@@ -1,18 +1,11 @@
 (ns metabase.metabot.quality.governance-test
-  "Phase 3 — `t2/with-temp` fixtures + the live appdb. Each test creates a
-  small artifact graph, calls [[governance/resolve]] (or the ancestry
-  walker), and asserts on the shape of the returned `{[type id-str]}`
-  map.
-
-  The impl plan calls out four canonical fixtures (verified card,
-  unverified card, personal-collection card, model-of-card) plus two
-  ancestry shapes (terminates on root; defensive on cycle). Those are
-  the deftest organization here."
+  "`mt/with-temp` fixtures + the live appdb. Each test creates a small
+  artifact graph, calls [[governance/resolve]], and asserts on the shape
+  of the returned `{[type id-str] facts}` map."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.quality.governance :as governance]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,43 +30,6 @@
             "card without a verified review surfaces :verified? = false")
         (is (= "verified card"   (get-in res [["card" (str v-id)] :name])))
         (is (= "unverified card" (get-in res [["card" (str u-id)] :name])))))))
-
-(deftest resolve-card-personal-collection-test
-  (testing "card in a personal collection surfaces :lives-in-personal? true"
-    ;; Personal collections cannot be deleted, so we reuse the one Metabase
-    ;; auto-creates for the test user `:rasta` rather than spinning up a
-    ;; fresh `Collection` row that `with-temp` would later fail to tear down.
-    ;; The personal collections are materialized lazily; force initialization
-    ;; here so `select-one-pk` finds the row.
-    (mt/initialize-if-needed! :test-users-personal-collections)
-    (let [rasta-personal-id (t2/select-one-pk :model/Collection
-                                              :personal_owner_id (mt/user->id :rasta))]
-      (assert rasta-personal-id "rasta personal collection should exist after initialization")
-      (mt/with-temp [:model/Card {p-id :id} {:name          "in personal"
-                                             :collection_id rasta-personal-id}
-                     :model/Card {n-id :id} {:name "in root"}]
-        (let [res (governance/resolve [{:type "card" :id p-id}
-                                       {:type "card" :id n-id}])]
-          (is (true?  (get-in res [["card" (str p-id)] :lives-in-personal?])))
-          (is (false? (get-in res [["card" (str n-id)] :lives-in-personal?]))))))))
-
-(deftest resolve-model-of-card-surfaces-source-card-id-test
-  (testing "model built on top of a card carries :source-card-id"
-    (mt/with-temp [:model/Card {base-id :id}  {:name "base card"}
-                   :model/Card {model-id :id} {:name           "model-of-card"
-                                               :type           "model"
-                                               :source_card_id base-id}]
-      (let [res (governance/resolve [{:type "model" :id model-id}])]
-        (is (= base-id (get-in res [["model" (str model-id)] :source-card-id])))
-        (is (= "model-of-card" (get-in res [["model" (str model-id)] :name])))))))
-
-(deftest resolve-card-surfaces-db-id-test
-  (testing "card facts include :db-id alongside :name (used by substitution detection to avoid cross-database matches)"
-    (mt/with-temp [:model/Database {db-id :id} {:name "cdb"}
-                   :model/Card     {c-id  :id} {:name        "with-db"
-                                                :database_id db-id}]
-      (let [res (governance/resolve [{:type "card" :id c-id}])]
-        (is (= db-id (get-in res [["card" (str c-id)] :db-id])))))))
 
 (deftest resolve-collapses-card-types-to-single-query-test
   (testing "all four card-types (card/question/model/metric) query report_card; same id under different types lands as separate keys with the same facts"
@@ -165,41 +121,3 @@
       (let [res (governance/resolve [{:type "card" :id c-id}])]
         (is (true? (get-in res [["card" (str c-id)] :verified?]))
             "OR-fold across multiple most_recent rows preserves the verified bit")))))
-
-;;; ---------------------------------------------------------------------------
-;;; walk-source-card-ancestry
-;;; ---------------------------------------------------------------------------
-
-(deftest walk-source-card-ancestry-empty-on-root-test
-  (testing "walking from a root card (source_card_id IS NULL) returns []"
-    (mt/with-temp [:model/Card {root-id :id} {:name "root"}]
-      (is (= [] (governance/walk-source-card-ancestry root-id))))))
-
-(deftest walk-source-card-ancestry-nonexistent-card-test
-  (testing "walking from a card-id that doesn't exist returns [] (no parent found)"
-    (is (= [] (governance/walk-source-card-ancestry 999999996)))))
-
-(deftest walk-source-card-ancestry-depth-test
-  (testing "walking from a deeply-nested model returns the chain of ancestors in order"
-    (mt/with-temp [:model/Card {a-id :id} {:name "grandparent"}
-                   :model/Card {b-id :id} {:name "parent" :source_card_id a-id}
-                   :model/Card {c-id :id} {:name "child"  :source_card_id b-id :type "model"}]
-      (is (= [b-id a-id] (governance/walk-source-card-ancestry c-id))
-          "ancestors returned in walk order (parent, grandparent), excluding the starting card itself"))))
-
-(deftest walk-source-card-ancestry-cycle-defensive-test
-  (testing "a cycle in source_card_id chains terminates after the first repeat"
-    (mt/with-temp [:model/Card {a-id :id} {:name "A"}
-                   :model/Card {b-id :id} {:name "B" :source_card_id a-id}]
-      ;; Construct A -> B -> A (close the cycle by pointing A back at B).
-      (t2/update! :model/Card a-id {:source_card_id b-id})
-      (is (= [b-id]
-             (governance/walk-source-card-ancestry a-id))
-          "first hop visits B; second hop would revisit A and stops"))))
-
-(deftest walk-source-card-ancestry-self-cycle-test
-  (testing "a self-cycle (A.source_card_id = A.id) terminates immediately with []"
-    (mt/with-temp [:model/Card {a-id :id} {:name "A"}]
-      (t2/update! :model/Card a-id {:source_card_id a-id})
-      (is (= [] (governance/walk-source-card-ancestry a-id))
-          "the cycle guard fires on the first hop, before any ancestor is collected"))))

@@ -1,33 +1,14 @@
 (ns metabase.metabot.quality.governance
-  "Layer 0 of the conversation-quality pipeline: batched governance lookup
-  for the entity-refs that appear across CONV_P/D/Q/I/H.
+  "Batched governance lookup for the entity-refs that appear across the
+  conversation's entity sets.
 
-  See `notes/bot-1569/quality-score-impl.md` §C for the contract. Two
-  things to keep in mind when reading this namespace:
-
-  - **Sparse return map.** [[resolve]] returns `{[type id-str] facts}`
-    where each facts map carries only the keys that are populated for
-    that entity type. Cards get `:verified? :lives-in-personal? :name
-    :source-card-id :db-id`; tables get `:schema :db-id :name`;
-    dashboards / databases / transforms get `:name` only. An entity
-    that the appdb can't find is absent from the map — downstream
-    readers must tolerate `nil`.
-
-    Card `:db-id` is consumed by Phase 5's substitution detection to
-    prevent spurious cross-database matches (e.g. an Orders card in
-    postgres cannot substitute for an Orders card in mysql). It mirrors
-    the table-level `:db-id` so cards and tables share the same
-    governance shape for the substitution-match predicate.
-
-  - **Memoization is the caller's job.** [[walk-source-card-ancestry]]
-    issues one query per chain hop; per the impl plan, the
-    `compute-conversation-score` entry point wraps it in a local
-    `memoize` so a deeply-nested model lineage shared across multiple
-    starting cards costs one query per *distinct* ancestor across the
-    whole scoring invocation, not one per walk."
+  [[resolve]] returns `{[type id-str] facts}` where each facts map carries
+  only the keys populated for that entity type. An entity the appdb can't
+  find is absent from the map — downstream readers must tolerate a missing
+  key. At most one small `IN` query runs per entity-type bucket, so the
+  appdb cost stays bounded regardless of conversation shape."
   (:refer-clojure :exclude [resolve])
   (:require
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -228,44 +209,6 @@
      (-> (name-only-rows :transform        transform)  (index-name-only "transform")))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Source-card ancestry
-;;; ---------------------------------------------------------------------------
-
-(defn- source-card-id-of
-  "Single-row lookup for `report_card.source_card_id`. Returns `nil` for a
-  root card or for a card-id that doesn't exist."
-  [card-id]
-  (t2/select-one-fn :source_card_id :model/Card :id card-id))
-
-(defn walk-source-card-ancestry
-  "Walk `report_card.source_card_id` upward from `card-id` and return the
-  ordered seq of ancestor card-ids (excluding `card-id` itself). Stops
-  at a root card (`source_card_id IS NULL`) or on cycle detection (id
-  already visited along the chain). The chain is at most the depth of
-  the model lineage, so cycle detection just guards against pathological
-  appdb states — not expected in production.
-
-  N+1 queries per call by design; per the impl plan,
-  `compute-conversation-score` wraps this in `memoize` so a shared
-  lineage costs one query per *distinct* ancestor across the whole
-  scoring invocation."
-  [card-id]
-  (loop [current   card-id
-         visited   #{card-id}
-         ancestors []]
-    (let [parent (source-card-id-of current)]
-      (cond
-        (nil? parent)
-        ancestors
-
-        (contains? visited parent)
-        (do (log/warnf "source-card ancestry cycle detected at card-id %d (parent %d)" current parent)
-            ancestors)
-
-        :else
-        (recur parent (conj visited parent) (conj ancestors parent))))))
-
-;;; ---------------------------------------------------------------------------
 ;;; REPL helpers
 ;;; ---------------------------------------------------------------------------
 
@@ -273,15 +216,4 @@
   ;; Sample resolve against a small ref list — verify shape locally.
   (resolve [{:type "card"  :id 1}
             {:type "model" :id 2}
-            {:type "table" :id 3}])
-
-  ;; Walk ancestry of a model id.
-  (walk-source-card-ancestry 99)
-
-  ;; Quick check: do any card-ids in the appdb actually carry source_card_id?
-  (->> (t2/query {:select [:id :source_card_id]
-                  :from   [:report_card]
-                  :where  [:not= :source_card_id nil]
-                  :limit  5})
-       (map (juxt :id :source_card_id))
-       sort))
+            {:type "table" :id 3}]))
