@@ -93,7 +93,8 @@ function WorkspaceInstancePageBody({
             remappings={remappings}
           />
         ))}
-        {workspace.can_write && <DeleteSection />}
+        {/* TODO: restore `workspace.can_write && ` gate once the backend exposes it */}
+        <DeleteSection />
       </Stack>
     </PageContainer>
   );

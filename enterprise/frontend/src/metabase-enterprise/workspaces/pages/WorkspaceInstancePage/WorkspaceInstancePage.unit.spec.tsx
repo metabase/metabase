@@ -78,31 +78,12 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the delete section when the workspace is writable", async () => {
-    setup({
-      workspace: createMockWorkspaceInstance({
-        name: "Dev workspace",
-        can_write: true,
-      }),
-    });
+  it("renders the delete section", async () => {
+    setup();
 
     expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
     expect(
       await screen.findByTestId("workspace-instance-delete-section"),
     ).toBeInTheDocument();
-  });
-
-  it("does not render the delete section when the workspace is read-only", async () => {
-    setup({
-      workspace: createMockWorkspaceInstance({
-        name: "Dev workspace",
-        can_write: false,
-      }),
-    });
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("workspace-instance-delete-section"),
-    ).not.toBeInTheDocument();
   });
 });
