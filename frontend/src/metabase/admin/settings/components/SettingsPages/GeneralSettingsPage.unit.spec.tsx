@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   findRequests,
@@ -87,10 +88,16 @@ const setup = async ({
   });
 
   renderWithProviders(
-    <>
-      <GeneralSettingsPage />
-      <UndoListing />
-    </>,
+    <Route
+      path="*"
+      component={() => (
+        <>
+          <GeneralSettingsPage />
+          <UndoListing />
+        </>
+      )}
+    />,
+    { withRouter: true, initialRoute: "/admin/settings/general" },
   );
 
   await screen.findByText("Site name");

@@ -8,8 +8,10 @@ import { CollectUserDataInput } from "metabase/admin/settings/components/widgets
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -97,7 +99,11 @@ export function GeneralSettingsPage() {
           title={t`Restrict image domains`}
           description={
             customVizEnabled
-              ? t`Required by Custom Visualizations. Turn off Custom Visualizations before disabling this setting.`
+              ? jt`Required by Custom Visualizations. Turn off ${(
+                  <Link key="custom-viz" to={Urls.customViz()} variant="brand">
+                    {t`Custom Visualizations`}
+                  </Link>
+                )} before disabling this setting.`
               : jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
           }
           inputType="boolean"
