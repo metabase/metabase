@@ -1327,8 +1327,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields`,
       );
       H.main().within(() => {
+        // Each field renders its display name and its raw column name, so a
+        // visible column like ID appears more than once — use findAllByText.
         PEOPLE_VISIBLE_COLS.forEach((name) =>
-          cy.findByText(name).should("exist"),
+          cy.findAllByText(name).should("exist"),
         );
         ["ADDRESS", "BIRTH_DATE", "LATITUDE", "PASSWORD"].forEach((name) =>
           cy.findByText(name).should("not.exist"),

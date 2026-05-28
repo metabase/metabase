@@ -39,7 +39,9 @@
 (deftest database-metadata-without-restricted-columns-test
   (testing "If a GTAP card exposes ALL columns of the sandboxed table, every column is returned (no over-filtering).
            Pins the no-restriction code path inside batch-filter-sandboxed-fields."
-    (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
+    (met/with-gtaps! {:gtaps      {:venues {:query      {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :venues)}}
                                             :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                       :attributes {:cat 50}}
       (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))]
