@@ -20,11 +20,15 @@ import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
 export function DevelopmentInstanceSection() {
   const applicationName = useSelector(getApplicationName);
-  const { value, updateSetting, isLoading, settingDetails } = useAdminSetting(
-    "development-instance",
-  );
-  const { data: workspace } = useGetCurrentWorkspaceQuery();
-
+  const {
+    value,
+    updateSetting,
+    isLoading: isLoadingSetting,
+    settingDetails,
+  } = useAdminSetting("development-instance");
+  const { data: workspace, isLoading: isLoadingWorkspace } =
+    useGetCurrentWorkspaceQuery();
+  const isLoading = isLoadingSetting || isLoadingWorkspace;
   const isInWorkspace = workspace != null;
   const isSetViaEnv = settingDetails != null && settingDetails.is_env_setting;
   const isDevelopmentInstance = value ?? false;
@@ -54,7 +58,7 @@ export function DevelopmentInstanceSection() {
           <Text c="text-secondary">
             {t`When enabled, this allows this ${applicationName} instance to enter a Workspace for testing transforms before syncing changes to your production instance. Only enable this if this instance is used for development.`}
           </Text>
-          {isInWorkspace && (
+          {isInWorkspace ? (
             <NoticeBox>
               {jt`This setting can't be disabled while this instance is in a ${(
                 <Anchor
@@ -66,12 +70,11 @@ export function DevelopmentInstanceSection() {
                 </Anchor>
               )}.`}
             </NoticeBox>
-          )}
-          {!isInWorkspace && isSetViaEnv && (
+          ) : isSetViaEnv ? (
             <NoticeBox>
               {t`This setting can't be changed because it is set via the ${settingDetails?.env_name} environment variable.`}
             </NoticeBox>
-          )}
+          ) : null}
         </Stack>
       </Card>
     </Stack>

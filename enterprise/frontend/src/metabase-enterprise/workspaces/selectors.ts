@@ -13,11 +13,3 @@ export function canManageWorkspaces(state: State): boolean {
   const user = getUser(state);
   return user?.permissions?.can_manage_workspaces ?? false;
 }
-
-export function canManageWorkspaceInstance(state: State): boolean {
-  return getUserIsAdmin(state);
-}
-
-export function canAccessDevelopmentInstanceSettings(state: State): boolean {
-  return getUserIsAdmin(state);
-}

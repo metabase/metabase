@@ -7,7 +7,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { canAccessDataStudioSettings } from "metabase/data-studio/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -16,6 +15,7 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -98,7 +98,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const isDevelopmentInstance = useSelector(
     PLUGIN_WORKSPACES.getIsDevelopmentInstance,
   );
-  const canAccessSettings = useSelector(canAccessDataStudioSettings);
+  const isAdmin = useSelector(getUserIsAdmin);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -236,7 +236,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {canAccessSettings && (
+          {isAdmin && (
             <DataStudioTab
               label={t`Settings`}
               icon="gear"

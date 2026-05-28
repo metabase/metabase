@@ -6,18 +6,14 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
-
-import { canAccessDataStudioSettings } from "../../../selectors";
 
 export function SettingsPage() {
   usePageTitle(t`Settings`);
-  const canAccessSettings = useSelector(canAccessDataStudioSettings);
-  const canAccessDevelopmentInstanceSettings = useSelector(
-    PLUGIN_WORKSPACES.canAccessDevelopmentInstanceSettings,
-  );
+  const isAdmin = useSelector(getUserIsAdmin);
 
-  if (!canAccessSettings) {
+  if (!isAdmin) {
     return null;
   }
 
@@ -30,9 +26,7 @@ export function SettingsPage() {
         py={0}
       />
       <Stack maw="40rem" mx="auto" w="100%" gap="lg">
-        {canAccessDevelopmentInstanceSettings && (
-          <PLUGIN_WORKSPACES.DevelopmentInstanceSection />
-        )}
+        <PLUGIN_WORKSPACES.DevelopmentInstanceSection />
       </Stack>
     </PageContainer>
   );

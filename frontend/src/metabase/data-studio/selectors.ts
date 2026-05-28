@@ -1,4 +1,4 @@
-import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
@@ -9,10 +9,6 @@ export function canAccessDataStudio(state: State) {
     return false;
   }
   return getUserIsAdmin(state) || getUserIsAnalyst(state);
-}
-
-export function canAccessDataStudioSettings(state: State): boolean {
-  return PLUGIN_WORKSPACES.canAccessDevelopmentInstanceSettings(state);
 }
 
 export const getUserCanWriteSegments = (
