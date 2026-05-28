@@ -154,13 +154,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-          <DataStudioTab
             label={t`Dependency graph`}
             icon="dependencies"
             to={Urls.dependencyGraph()}
@@ -192,6 +185,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (

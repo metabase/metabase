@@ -10,10 +10,7 @@ import { usePalette } from "metabase/common/hooks/use-palette";
 
 import type { SchemaViewerEdgeData, SchemaViewerFlowEdge } from "../../types";
 
-// Crow's foot (many-to-one symbol) geometry constants
-const GAP = 4;
-const W = 8;
-const H = 6;
+import { EdgeSymbol, type SymbolType } from "./EdgeSymbol";
 
 /**
  * Build an SVG path that loops from a source handle on the right side of a
@@ -48,93 +45,6 @@ export function getSelfRefEdgePath({
   ].join(" ");
 }
 
-type SymbolType = "one" | "many";
-
-type SymbolProps = {
-  x: number;
-  y: number;
-  stroke: string;
-  strokeWidth: number;
-};
-
-function OneSourceSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
-  return (
-    <line
-      data-testid="schema-viewer-edge-symbol-line"
-      x1={x + GAP}
-      y1={y - H}
-      x2={x + GAP}
-      y2={y + H}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-    />
-  );
-}
-
-function ManySourceSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
-  return (
-    <>
-      <line
-        data-testid="schema-viewer-edge-symbol-line"
-        x1={x + GAP + W}
-        y1={y}
-        x2={x + GAP}
-        y2={y - H}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-      />
-      <line
-        data-testid="schema-viewer-edge-symbol-line"
-        x1={x + GAP + W}
-        y1={y}
-        x2={x + GAP}
-        y2={y + H}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-      />
-    </>
-  );
-}
-
-function OneTargetSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
-  return (
-    <line
-      data-testid="schema-viewer-edge-symbol-line"
-      x1={x - GAP}
-      y1={y - H}
-      x2={x - GAP}
-      y2={y + H}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-    />
-  );
-}
-
-function ManyTargetSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
-  return (
-    <>
-      <line
-        data-testid="schema-viewer-edge-symbol-line"
-        x1={x - GAP - W}
-        y1={y}
-        x2={x - GAP}
-        y2={y - H}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-      />
-      <line
-        data-testid="schema-viewer-edge-symbol-line"
-        x1={x - GAP - W}
-        y1={y}
-        x2={x - GAP}
-        y2={y + H}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-      />
-    </>
-  );
-}
-
 function getSymbolTypes(relationship: SchemaViewerEdgeData["relationship"]): {
   source: SymbolType;
   target: SymbolType;
@@ -143,26 +53,6 @@ function getSymbolTypes(relationship: SchemaViewerEdgeData["relationship"]): {
     return { source: "one", target: "one" };
   }
   return { source: "many", target: "one" };
-}
-
-type SymbolWrapperProps = SymbolProps & {
-  type: SymbolType;
-};
-
-function SourceSymbol({ type, x, y, stroke, strokeWidth }: SymbolWrapperProps) {
-  return type === "many" ? (
-    <ManySourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
-  ) : (
-    <OneSourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
-  );
-}
-
-function TargetSymbol({ type, x, y, stroke, strokeWidth }: SymbolWrapperProps) {
-  return type === "many" ? (
-    <ManyTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
-  ) : (
-    <OneTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
-  );
 }
 
 export const SchemaViewerEdge = memo(function SchemaViewerEdge(
@@ -178,7 +68,7 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   const symbols = useMemo(() => getSymbolTypes(relationship), [relationship]);
   const stroke = selected
     ? (palette.brand ?? "var(--mb-color-brand)")
-    : (palette.border ?? "var(--mb-color-border)");
+    : (palette["border-strong"] ?? "var(--mb-color-border-strong)");
   const strokeWidth = selected ? 2 : 1;
 
   const style: CSSProperties = useMemo(
@@ -230,30 +120,22 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
       />
       {!isHidden && (
         <g data-testid="schema-viewer-edge-symbols">
-          <SourceSymbol
+          <EdgeSymbol
+            side="source"
             type={symbols.source}
             x={props.sourceX}
             y={props.sourceY}
             stroke={stroke}
             strokeWidth={strokeWidth}
           />
-          {isSelfRef ? (
-            <SourceSymbol
-              type={symbols.target}
-              x={props.targetX}
-              y={props.targetY}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-            />
-          ) : (
-            <TargetSymbol
-              type={symbols.target}
-              x={props.targetX}
-              y={props.targetY}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-            />
-          )}
+          <EdgeSymbol
+            side={isSelfRef ? "source" : "target"}
+            type={symbols.target}
+            x={props.targetX}
+            y={props.targetY}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+          />
         </g>
       )}
     </>

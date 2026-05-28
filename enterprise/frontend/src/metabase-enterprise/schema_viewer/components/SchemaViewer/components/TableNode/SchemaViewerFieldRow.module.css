@@ -11,8 +11,8 @@
     background-color: var(--mb-color-background-hover);
   }
 
-  &[data-clickable]:hover .icon,
-  &[data-clickable]:hover .clickableName {
+  &[data-clickable] .icon,
+  &[data-clickable] .clickableName {
     color: var(--mb-color-brand);
   }
 }
