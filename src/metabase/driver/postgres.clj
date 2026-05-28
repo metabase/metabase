@@ -1556,7 +1556,13 @@
    PostgreSQL user is *not* a member of. `ALTER DEFAULT PRIVILEGES` (without
    `FOR ROLE`) only affects future objects created by the connection user, so
    tables created by any of these owner roles won't receive the workspace
-   user's default SELECT — even if the statement runs without error."
+   user's default SELECT — even if the statement runs without error.
+
+   `pg_has_role` is called with the owner resolved by name (via
+   `pg_get_userbyid`) and the privilege literal explicitly cast to `text`.
+   PostgreSQL would accept the oid+unknown-literal form via implicit overload
+   resolution; Redshift's planner is stricter and rejects it with
+   `function pg_has_role(…, integer, \"unknown\") does not exist`."
   [conn schema-name]
   (jdbc/query
    conn
@@ -1565,7 +1571,7 @@
          "JOIN pg_namespace n ON n.oid = c.relnamespace "
          "WHERE n.nspname = ? "
          "  AND c.relkind IN ('r','p','v','m','f') "
-         "  AND NOT pg_has_role(current_user, c.relowner, 'MEMBER') "
+         "  AND NOT pg_has_role(current_user, pg_get_userbyid(c.relowner), CAST('MEMBER' AS text)) "
          "ORDER BY owner")
     schema-name]))
 
