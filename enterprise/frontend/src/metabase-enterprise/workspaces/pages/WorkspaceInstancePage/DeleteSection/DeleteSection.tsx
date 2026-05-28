@@ -1,10 +1,9 @@
 import { jt, t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils/settings";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
-import { Button, Code, Group, Text, Tooltip } from "metabase/ui";
-import { useDeleteTableRemappingsMutation } from "metabase-enterprise/api";
+import { Button, Code, Group, Text } from "metabase/ui";
+import { useDeleteWorkspaceInstanceMutation } from "metabase-enterprise/api";
 
 import { trackWorkspaceInstanceTeardown } from "../../../analytics";
 
@@ -12,10 +11,7 @@ const CONFIG_FILENAME = "config.yml";
 
 export function DeleteSection() {
   const { modalContent, show } = useConfirmation();
-  const [deleteTableRemappings] = useDeleteTableRemappingsMutation();
-  const { updateSetting, settingDetails } =
-    useAdminSetting("instance-workspace");
-  const isSetViaEnv = settingDetails != null && settingDetails.is_env_setting;
+  const [deleteInstance] = useDeleteWorkspaceInstanceMutation();
 
   const handleClick = () => {
     show({
@@ -26,8 +22,7 @@ export function DeleteSection() {
       confirmButtonText: t`Leave workspace`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
-        await deleteTableRemappings().unwrap();
-        await updateSetting({ key: "instance-workspace", value: null });
+        await deleteInstance().unwrap();
         trackWorkspaceInstanceTeardown();
       },
     });
@@ -43,19 +38,9 @@ export function DeleteSection() {
           <Text maw="40rem">
             {t`Stop remapping transform tables on this instance.`}
           </Text>
-          <Tooltip
-            label={t`This instance's workspace is set via the ${settingDetails?.env_name} environment variable.`}
-            disabled={!isSetViaEnv}
-          >
-            <Button
-              color="error"
-              variant="filled"
-              disabled={isSetViaEnv}
-              onClick={handleClick}
-            >
-              {t`Leave workspace`}
-            </Button>
-          </Tooltip>
+          <Button color="error" variant="filled" onClick={handleClick}>
+            {t`Leave workspace`}
+          </Button>
         </Group>
       </TitleSection>
       {modalContent}

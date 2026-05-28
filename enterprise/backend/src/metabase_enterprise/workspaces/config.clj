@@ -116,16 +116,17 @@
 
     {:version 1
      :config  {:databases [...]
-               :settings  {:instance-workspace
-                            {:name      <ws-name>
-                             :databases {<db-name> {:input_schemas [<schema-name> ...]
-                                                    :output        {:db ? :schema ?}}}}}}
+               :workspace {:name      <ws-name>
+                           :databases {<db-name> {:input_schemas [<schema-name> ...]
+                                                  :output        {:db ? :schema ?}}}}}
 
-  Database entries merge `metabase_database.details` with the workspace's
-  override credentials and add `schema-filters-*` derived from `:input_schemas`.
-  The `:instance-workspace` setting is keyed by db name so the same config is
-  portable across instances. Returns nil when the workspace doesn't exist;
-  throws 409 if any of its databases is not `:provisioned`."
+  Each database entry merges the underlying `metabase_database.details` with the
+  WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
+  derived from `:input_schemas`. Per-database workspace entries carry the
+  expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
+  `instance-workspace` setting stores. Returns nil when the workspace does not
+  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
+  `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -148,9 +149,8 @@
          :config  {:databases (-> ws-entries
                                   (into stub-entries)
                                   (into sample-entries))
-                   :settings  {:instance-workspace
-                               {:name      (:name ws)
-                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}}))))
+                   :workspace {:name      (:name ws)
+                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

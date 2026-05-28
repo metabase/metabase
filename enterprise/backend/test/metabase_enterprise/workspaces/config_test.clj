@@ -29,7 +29,7 @@
       (let [cfg (config/build-workspace-config ws-id)]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
-          (is (= #{:databases :settings} (set (keys (:config cfg))))))
+          (is (= #{:databases :workspace} (set (keys (:config cfg))))))
         (testing "databases entry"
           (let [own-dbs (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases))
                 db      (first own-dbs)]
@@ -45,12 +45,12 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "instance-workspace setting uses flat input_schemas + expanded :output map"
-          (is (= "github" (-> cfg :config :settings :instance-workspace :name)))
+        (testing "workspace entry uses flat input_schemas + expanded :output map"
+          (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
                   {:input_schemas ["raw_github"]
                    :output        {:schema "mb_isolation_github"}}}
-                 (-> cfg :config :settings :instance-workspace :databases))))))))
+                 (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
@@ -72,7 +72,7 @@
           (is (= {"MSSQL DW"
                   {:input_schemas ["dbo"]
                    :output        {:db "AnalyticsDB" :schema "ws_alice"}}}
-                 (-> cfg :config :settings :instance-workspace :databases))))))))
+                 (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
   (testing "Multiple input schemas are comma-joined in schema-filters-patterns"
@@ -141,10 +141,10 @@
                                                  :creator_id (mt/user->id :crowberto)}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= 1 (:version cfg)))
-        (is (= "Empty" (-> cfg :config :settings :instance-workspace :name)))
+        (is (= "Empty" (-> cfg :config :workspace :name)))
         (is (empty? (remove (some-fn :is_stub :is_sample) (-> cfg :config :databases)))
             "no non-stub, non-sample databases since the workspace has none of its own")
-        (is (= {} (-> cfg :config :settings :instance-workspace :databases)))))))
+        (is (= {} (-> cfg :config :workspace :databases)))))))
 
 (deftest build-workspace-config-injects-stubs-for-non-workspace-dbs-test
   (testing "Databases that exist in the instance but are not provisioned for the workspace appear

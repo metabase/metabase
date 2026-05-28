@@ -9,14 +9,15 @@
      [[remove-database!]], [[delete-workspace!]]. Provisioning operations are
      synchronous — the caller waits until the warehouse work completes.
 
-   - **Instance-side state.** The `instance-workspace` setting holds the
-     workspace loaded on this instance. It can be populated via env, the
-     `:settings` section of `config.yml`, or the standard settings API.
-     Workspace-aware code (transform target rewriting, table-remapping QP
-     middleware) reads from the setting via [[workspace-mode?]] and
-     [[db-workspace-namespace]]. The setting persists in the instance's own
-     app DB — child instances have their own, so the workspace survives
-     restarts and doesn't leak between parent and child.
+   - **Instance-side state.** When a Metabase boots in workspace mode, the
+     `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
+     parses `config.yml` and stores the resulting workspace map in the
+     `instance-workspace` setting. Workspace-aware code (transform target
+     rewriting, table-remapping QP middleware) reads from the setting via
+     [[workspace-mode?]] / [[db-workspace-namespace]]. The setting lives in the
+     instance's own application database — child instances have their own app DB,
+     so storing it there persists the workspace across restarts without leaking
+     between parent and child.
 
    Per-database lifecycle for the manager-side rows:
 
@@ -73,54 +74,26 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defn- ->db-name
-  "Normalize a `:databases` map key to a `Database.name` string. YAML parses
-   come back as keywords; raw JSON keeps strings."
+(defn- coerce-database-id-key
+  "JSON round-trips through the `instance-workspace` setting return integer
+   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
   [k]
-  (cond-> k (keyword? k) name))
+  (cond
+    (int? k)     k
+    (keyword? k) (parse-long (name k))
+    (string? k)  (parse-long k)))
 
-(defn- workspace-id-keyed->name-keyed
-  "Rewrite an id-keyed `::ws/workspace-instance-config` to the name-keyed shape
-   stored in the setting. Throws when an id has no matching row."
+(defn- normalize-database-keys
+  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
   [config]
-  (let [db-ids   (keys (:databases config))
-        id->name (when (seq db-ids)
-                   (into {} (map (juxt :id :name))
-                         (t2/select [:model/Database :id :name] :id [:in db-ids])))]
-    (update config :databases
-            (fn [databases]
-              (into {} (map (fn [[db-id wsd]]
-                              (let [db-name (get id->name db-id)]
-                                (when-not db-name
-                                  (throw (ex-info "instance-workspace references unknown database id"
-                                                  {:database-id db-id})))
-                                [db-name wsd])))
-                    databases)))))
-
-(defn- workspace-name-keyed->id-keyed
-  "Rewrite the name-keyed setting value to the id-keyed
-   `::ws/workspace-instance-config` consumers expect. Names that don't resolve
-   to a row in the app DB are dropped, so a config shared between parent and
-   child only maps what the local instance actually has."
-  [config]
-  (let [db-names (map ->db-name (keys (:databases config)))
-        name->id (when (seq db-names)
-                   (into {} (map (juxt :name :id))
-                         (t2/select [:model/Database :id :name] :name [:in db-names])))]
-    (update config :databases
-            (fn [databases]
-              (into {} (keep (fn [[db-name-key wsd]]
-                               (when-let [db-id (get name->id (->db-name db-name-key))]
-                                 [db-id wsd])))
-                    databases)))))
+  (some-> config
+          (update :databases #(update-keys % coerce-database-id-key))))
 
 (mu/defn set-instance-workspace! :- :any
-  "Set the `instance-workspace` setting. Accepts the id-keyed shape
-   [[instance-workspace]] returns; ids are resolved to `Database.name` for
-   storage so the value matches the YAML format and is portable across
-   instances."
+  "Store the workspace config in the `instance-workspace` setting. Replaces any
+   prior value. The shape is validated against `::ws/workspace-instance-config`."
   [config :- ::ws/workspace-instance-config]
-  (ws.settings/instance-workspace! (workspace-id-keyed->name-keyed config))
+  (ws.settings/instance-workspace! config)
   nil)
 
 (defn clear-instance-workspace!
@@ -136,25 +109,32 @@
   nil)
 
 (defn instance-workspace
-  "Return the workspace loaded on this instance, id-keyed. `nil` when no
-   workspace is loaded. The raw name-keyed setting value lives in
-   [[ws.settings/instance-workspace]]."
+  "Return the workspace loaded on this instance, or nil if none."
   []
-  (some-> (ws.settings/instance-workspace) workspace-name-keyed->id-keyed))
+  (normalize-database-keys (ws.settings/instance-workspace)))
 
 (defenterprise workspace-mode?
-  "EE impl: true iff the `instance-workspace` setting is populated. Single
-   source of truth for gating features incompatible with workspace remapping
-   (DB routing, impersonation, writeback, CSV upload, model persistence); use
-   [[db-workspace-namespace]] for per-database scoping."
-  :feature :workspaces
+  "EE impl: true iff this instance is running in workspace mode (the
+   `instance-workspace` setting is populated — either from a `:workspace` section
+   of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
+   source of truth for gating features that conflict with workspace remapping
+   (DB routing, impersonation, writeback, CSV upload, model persistence). Use
+   [[db-workspace-namespace]] when you need per-database scoping.
+
+   Deliberately ungated on premium features: a workspace child instance bootstraps
+   from `config.yml` *before* its token is installed; if the workspace map is
+   loaded, we refuse incompatible features regardless of token state."
+  :feature :none
   []
   (some? (ws.settings/instance-workspace)))
 
 (defn db-workspace-namespace
-  "Return the workspace-isolated `{:db ?, :schema ?}` output namespace for
-   `db-id`, or `nil` if no workspace is loaded or `db-id` isn't in it. Either
-   slot may be absent depending on the driver's `qualified-name-components`."
+  "Return the workspace-isolated output namespace map for `db-id` on this
+   instance, or `nil` when this instance is not running a workspace or the
+   workspace has no entry for `db-id`. The namespace map is
+   `{:db ?, :schema ?}` - either or both keys may be absent depending on
+   the driver's `qualified-name-components`. Reads from the `workspace-instance`
+   setting."
   [db-id]
   (get-in (instance-workspace) [:databases db-id :output]))
 

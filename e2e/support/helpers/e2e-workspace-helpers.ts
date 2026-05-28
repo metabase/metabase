@@ -148,7 +148,7 @@ export const WorkspaceSetupSection = {
 export const WorkspaceInstancePage = {
   get: () => cy.findByTestId("workspace-instance-page"),
   visit: () => {
-    cy.visit("/data-studio/workspaces/instance");
+    cy.visit("/data-studio/workspaces");
     WorkspaceInstancePage.get().should("be.visible");
   },
   database: (name: string) =>

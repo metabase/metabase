@@ -12,7 +12,11 @@ export type WorkspaceInstanceDatabase = {
 
 export type WorkspaceInstance = {
   name: string;
-  databases: Record<string, WorkspaceInstanceDatabase>;
+  databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
+};
+
+export type GetCurrentWorkspaceResponse = {
+  data: WorkspaceInstance | null;
 };
 
 export type TableRemappingId = number;

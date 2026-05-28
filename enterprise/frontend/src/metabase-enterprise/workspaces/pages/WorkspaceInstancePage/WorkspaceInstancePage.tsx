@@ -2,12 +2,15 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/redux";
 import { Stack, Title } from "metabase/ui";
-import { useListTableRemappingsQuery } from "metabase-enterprise/api";
+import {
+  useGetCurrentWorkspaceQuery,
+  useListTableRemappingsQuery,
+} from "metabase-enterprise/api";
 import type {
   Database,
   TableRemapping,
@@ -15,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { HelpMenu } from "../../components/HelpMenu";
+import { getIsDevelopmentMode } from "../../selectors";
 
 import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
@@ -22,7 +26,11 @@ import { WorkspaceInstanceEmptyState } from "./WorkspaceInstanceEmptyState";
 import { getDatabasesInfo } from "./utils";
 
 export function WorkspaceInstancePage() {
-  const workspace = useSetting("instance-workspace") ?? null;
+  const {
+    data: workspace,
+    isLoading: isLoadingWorkspace,
+    error: workspaceError,
+  } = useGetCurrentWorkspaceQuery();
   const {
     data: remappings,
     isLoading: isLoadingRemappings,
@@ -34,8 +42,9 @@ export function WorkspaceInstancePage() {
     error: databasesError,
   } = useListDatabasesQuery();
 
-  const isLoading = isLoadingRemappings || isLoadingDatabases;
-  const error = remappingsError ?? databasesError;
+  const isLoading =
+    isLoadingWorkspace || isLoadingRemappings || isLoadingDatabases;
+  const error = workspaceError ?? remappingsError ?? databasesError;
 
   if (
     isLoading ||
@@ -48,7 +57,7 @@ export function WorkspaceInstancePage() {
 
   return (
     <WorkspaceInstancePageBody
-      workspace={workspace}
+      workspace={workspace ?? null}
       remappings={remappings}
       databases={databasesResponse.data}
     />
@@ -68,6 +77,7 @@ function WorkspaceInstancePageBody({
 }: WorkspaceInstancePageBodyProps) {
   const databasesInfo =
     workspace != null ? getDatabasesInfo(workspace, databases, remappings) : [];
+  const isDevelopmentMode = useSelector(getIsDevelopmentMode);
 
   return (
     <PageContainer data-testid="workspace-instance-page">
@@ -92,7 +102,7 @@ function WorkspaceInstancePageBody({
               remappings={remappings}
             />
           ))}
-          <DeleteSection />
+          {isDevelopmentMode && <DeleteSection />}
         </Stack>
       )}
     </PageContainer>

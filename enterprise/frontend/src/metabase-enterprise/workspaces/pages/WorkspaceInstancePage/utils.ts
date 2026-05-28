@@ -15,8 +15,8 @@ export function getDatabasesInfo(
   databases: Database[],
   remappings: TableRemapping[],
 ): DatabaseInfo[] {
-  const databaseByName = new Map<string, Database>(
-    databases.map((database) => [database.name, database]),
+  const databaseById = new Map<DatabaseId, Database>(
+    databases.map((database) => [database.id, database]),
   );
 
   const remappingsByDatabaseId = new Map<DatabaseId, TableRemapping[]>();
@@ -27,14 +27,15 @@ export function getDatabasesInfo(
   }
 
   return Object.keys(workspace.databases).reduce<DatabaseInfo[]>(
-    (result, name) => {
-      const database = databaseByName.get(name);
+    (result, key) => {
+      const databaseId = Number(key);
+      const database = databaseById.get(databaseId);
       if (database == null) {
         return result;
       }
       result.push({
         database,
-        remappings: remappingsByDatabaseId.get(database.id) ?? [],
+        remappings: remappingsByDatabaseId.get(databaseId) ?? [],
       });
       return result;
     },

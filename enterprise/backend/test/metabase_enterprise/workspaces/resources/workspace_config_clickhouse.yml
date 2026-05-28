@@ -21,12 +21,11 @@ config:
     last_name: Admin
     email: workspace@workspace.local
     password: password1
-  settings:
-    instance-workspace:
-      name: New workspace
-      databases:
-        test-data (clickhouse):
-          input_schemas:
-          - prod_events
-          output:
-            schema: ws_alice
+  workspace:
+    name: New workspace
+    databases:
+      test-data (clickhouse):
+        input_schemas:
+        - prod_events
+        output:
+          schema: ws_alice

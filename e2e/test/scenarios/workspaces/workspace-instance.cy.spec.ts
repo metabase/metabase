@@ -35,14 +35,12 @@ const POSTGRES_CONFIG: AdvancedConfig = {
         },
       },
     ],
-    settings: {
-      "instance-workspace": {
-        name: WORKSPACE_NAME,
-        databases: {
-          [POSTGRES_DB_NAME]: {
-            input_schemas: [POSTGRES_INPUT_SCHEMA],
-            output: { schema: POSTGRES_OUTPUT_SCHEMA },
-          },
+    workspace: {
+      name: WORKSPACE_NAME,
+      databases: {
+        [POSTGRES_DB_NAME]: {
+          input_schemas: [POSTGRES_INPUT_SCHEMA],
+          output: { schema: POSTGRES_OUTPUT_SCHEMA },
         },
       },
     },
@@ -72,14 +70,12 @@ const MYSQL_CONFIG: AdvancedConfig = {
         },
       },
     ],
-    settings: {
-      "instance-workspace": {
-        name: WORKSPACE_NAME,
-        databases: {
-          [MYSQL_DB_NAME]: {
-            input_schemas: [],
-            output: { db: MYSQL_OUTPUT_DATABASE },
-          },
+    workspace: {
+      name: WORKSPACE_NAME,
+      databases: {
+        [MYSQL_DB_NAME]: {
+          input_schemas: [],
+          output: { db: MYSQL_OUTPUT_DATABASE },
         },
       },
     },
@@ -92,7 +88,7 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      enableDevelopmentInstance();
+      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.queryWritableDB(
         `CREATE SCHEMA IF NOT EXISTS ${POSTGRES_OUTPUT_SCHEMA}`,
@@ -174,7 +170,7 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      enableDevelopmentInstance();
+      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
       H.queryWritableDB(
         `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
@@ -249,8 +245,12 @@ describe("scenarios > workspaces > workspace instance", () => {
   });
 });
 
-function enableDevelopmentInstance() {
-  cy.request("PUT", "/api/setting/development-instance", { value: true });
+function stubDevelopmentModeTokenFeature() {
+  cy.intercept("/api/session/properties", (req) => {
+    req.continue((res) => {
+      res.body["token-features"].development_mode = true;
+    });
+  });
 }
 
 function createAndRunTransform({

@@ -18,8 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
-
 (defn- clean-db-fixture!
   "Run `f` with mappings cleared before and after so tests don't leak state."
   [db-id f]
