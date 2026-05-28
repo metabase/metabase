@@ -777,15 +777,15 @@
       (let [user-name (u/lower-case-en (mt/random-name))
             schema    (u/lower-case-en (mt/random-name))
             table     (u/lower-case-en (mt/random-name))
-            qsch.tbl  (sql.u/quote-name :postgres :table schema table)
+            qsch-tbl  (sql.u/quote-name :postgres :table schema table)
             password  (str (random-uuid))]
         (with-drop-user! user-name
           (with-drop-schema! schema
             (execute! "CREATE USER %s WITH PASSWORD '%s'" (qid user-name) password)
             (execute! "CREATE SCHEMA %s" (qid schema))
-            (execute! "CREATE TABLE %s (id INT)" qsch.tbl)
+            (execute! "CREATE TABLE %s (id INT)" qsch-tbl)
             (execute! "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION" (qid schema) (qid user-name))
-            (execute! "GRANT SELECT ON %s TO %s" qsch.tbl (qid user-name))
+            (execute! "GRANT SELECT ON %s TO %s" qsch-tbl (qid user-name))
             (sql-jdbc.conn/with-connection-spec-for-testing-connection
              [user-spec [:redshift (assoc (:details (mt/db)) :user user-name :password password)]]
               (testing "fails and names the offending table"
@@ -794,7 +794,7 @@
                      #"SELECT WITH GRANT OPTION"
                      (driver.postgres/assert-has-grant-option! user-spec schema))))
               (testing "passes once SELECT WITH GRANT OPTION is granted"
-                (execute! "GRANT SELECT ON %s TO %s WITH GRANT OPTION" qsch.tbl (qid user-name))
+                (execute! "GRANT SELECT ON %s TO %s WITH GRANT OPTION" qsch-tbl (qid user-name))
                 (is (nil? (driver.postgres/assert-has-grant-option! user-spec schema)))))))))))
 
 (deftest workspace-precondition-alter-default-privileges-test
@@ -804,7 +804,7 @@
             owner-name (u/lower-case-en (mt/random-name))
             schema     (u/lower-case-en (mt/random-name))
             table      (u/lower-case-en (mt/random-name))
-            qsch.tbl   (sql.u/quote-name :postgres :table schema table)
+            qsch-tbl   (sql.u/quote-name :postgres :table schema table)
             password   (str (random-uuid))]
         (with-drop-user! user-name
           (with-drop-user! owner-name
@@ -814,9 +814,9 @@
               (execute! "CREATE SCHEMA %s" (qid schema))
               ;; Pass the schema-USAGE precondition so this assert is what trips.
               (execute! "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION" (qid schema) (qid user-name))
-              (execute! "CREATE TABLE %s (id INT)" qsch.tbl)
+              (execute! "CREATE TABLE %s (id INT)" qsch-tbl)
               ;; Reassign ownership to a user the test user is *not* a member of.
-              (execute! "ALTER TABLE %s OWNER TO %s" qsch.tbl (qid owner-name))
+              (execute! "ALTER TABLE %s OWNER TO %s" qsch-tbl (qid owner-name))
               (sql-jdbc.conn/with-connection-spec-for-testing-connection
                [user-spec [:redshift (assoc (:details (mt/db)) :user user-name :password password)]]
                 (testing "fails and names the unmemberable owner"
