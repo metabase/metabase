@@ -1,7 +1,8 @@
 (ns metabase-enterprise.workspaces.remapping.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.workspaces.remapping.core :as ws.remapping]))
+   [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase.test :as mt]))
 
 (deftest map-store-enabled-for-db?-test
   (testing "returns false for DB without remappings"
@@ -122,14 +123,15 @@
   (testing "with-display-context binds *skip-remapping?* true so enabled-for-db? returns false
             even when remap rows exist; restores the binding on exit"
     (require 'metabase.workspaces.table-remapping)
-    (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
-                                              {1 {{:db "" :schema "public" :table "orders"}
-                                                  {:db "" :schema "mb_iso" :table "orders"}}})]
-      (is (true? (ws.remapping/enabled-for-db? 1))
-          "baseline: remapping is enabled outside the display context")
-      ((requiring-resolve 'metabase.workspaces.table-remapping/call-with-display-context)
-       (fn []
-         (is (false? (ws.remapping/enabled-for-db? 1))
-             "inside the display context, remapping is suppressed")))
-      (is (true? (ws.remapping/enabled-for-db? 1))
-          "binding restored after the display context exits"))))
+    (mt/with-premium-features #{:workspaces}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {1 {{:db "" :schema "public" :table "orders"}
+                                                    {:db "" :schema "mb_iso" :table "orders"}}})]
+        (is (true? (ws.remapping/enabled-for-db? 1))
+            "baseline: remapping is enabled outside the display context")
+        ((requiring-resolve 'metabase.workspaces.table-remapping/call-with-display-context)
+         (fn []
+           (is (false? (ws.remapping/enabled-for-db? 1))
+               "inside the display context, remapping is suppressed")))
+        (is (true? (ws.remapping/enabled-for-db? 1))
+            "binding restored after the display context exits")))))
