@@ -2,20 +2,13 @@ import { Panel } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { GraphInfoPanel } from "metabase-enterprise/shared/components/GraphInfoPanel";
-import type {
-  ConcreteTableId,
-  Database,
-  ErdField,
-  Field,
-  TableDependencyNode,
-} from "metabase-types/api";
+import { Card } from "metabase/ui";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
-import { getEdgeId } from "../../utils";
 
-import { InfoPanelField } from "./InfoPanelField";
+import { PanelBody } from "./PanelBody";
+import { PanelHeader } from "./PanelHeader";
 import S from "./SelectedNodeInfoPanel.module.css";
 
 type SelectedNodeInfoPanelProps = {
@@ -29,8 +22,7 @@ export function SelectedNodeInfoPanel({
   selectedNodeId,
   onClose,
 }: SelectedNodeInfoPanelProps) {
-  const { zoomToNode, expandToTable, expandingTableIds } =
-    useSchemaViewerContext();
+  const { zoomToNode } = useSchemaViewerContext();
 
   const { data: databasesResponse } = useListDatabasesQuery({
     include: "schemas",
@@ -44,23 +36,15 @@ export function SelectedNodeInfoPanel({
     [nodes, selectedNodeId],
   );
 
-  const nodesByTableId = useMemo(() => {
-    const map = new Map<ConcreteTableId, SchemaViewerFlowNode>();
-    for (const node of nodes) {
-      map.set(node.data.table_id, node);
-    }
-    return map;
-  }, [nodes]);
-
-  const dependencyNode = useMemo(() => {
-    if (selectedNode == null) {
-      return null;
-    }
-    const db = databasesResponse?.data?.find(
-      (database) => database.id === selectedNode.data.db_id,
-    );
-    return toTableDependencyNode(selectedNode, db);
-  }, [selectedNode, databasesResponse]);
+  const database = useMemo(
+    () =>
+      selectedNode != null
+        ? databasesResponse?.data?.find(
+            (db) => db.id === selectedNode.data.db_id,
+          )
+        : undefined,
+    [selectedNode, databasesResponse],
+  );
 
   const handleTitleClick = useCallback(() => {
     if (selectedNode != null) {
@@ -68,128 +52,21 @@ export function SelectedNodeInfoPanel({
     }
   }, [selectedNode, zoomToNode]);
 
-  const renderField = useCallback(
-    (field: Field) => {
-      const erdField =
-        selectedNode != null ? lookupErdField(selectedNode, field.id) : null;
-      const targetNode =
-        erdField?.fk_target_table_id != null
-          ? (nodesByTableId.get(erdField.fk_target_table_id) ?? null)
-          : null;
-
-      const isExternalFk =
-        erdField?.fk_target_table_id != null && targetNode == null;
-      const isExpanding =
-        isExternalFk &&
-        erdField?.fk_target_table_id != null &&
-        expandingTableIds.has(erdField.fk_target_table_id);
-
-      const handleFetchExternal = () => {
-        if (erdField?.fk_target_table_id == null) {
-          return;
-        }
-        const candidateEdgeIds =
-          erdField.fk_target_field_id != null
-            ? [
-                getEdgeId(erdField.id, erdField.fk_target_field_id),
-                getEdgeId(erdField.fk_target_field_id, erdField.id),
-              ]
-            : undefined;
-        expandToTable(erdField.fk_target_table_id, candidateEdgeIds);
-      };
-
-      return (
-        <InfoPanelField
-          field={field}
-          erdField={erdField}
-          targetNode={targetNode}
-          isExpanding={isExpanding}
-          selectedNode={selectedNode}
-          onFetchExternal={handleFetchExternal}
-          onZoomToNode={zoomToNode}
-        />
-      );
-    },
-    [
-      selectedNode,
-      nodesByTableId,
-      zoomToNode,
-      expandToTable,
-      expandingTableIds,
-    ],
-  );
-
-  if (dependencyNode == null) {
+  if (selectedNode == null) {
     return null;
   }
 
   return (
     <Panel className={S.infoPanel} position="top-right">
-      <GraphInfoPanel
-        node={dependencyNode}
-        getGraphUrl={emptyGraphUrl}
-        onClose={onClose}
-        withSourceReplacement={false}
-        onTitleClick={handleTitleClick}
-        renderField={renderField}
-      />
+      <Card className={S.card} withBorder data-testid="graph-info-panel">
+        <PanelHeader
+          node={selectedNode}
+          database={database}
+          onClose={onClose}
+          onTitleClick={handleTitleClick}
+        />
+        <PanelBody node={selectedNode} nodes={nodes} />
+      </Card>
     </Panel>
   );
-}
-
-function lookupErdField(
-  selectedNode: SchemaViewerFlowNode,
-  fieldId: Field["id"],
-): ErdField | null {
-  // Narrow to the numeric id form; ErdField only carries number ids, so a
-  // LocalFieldReference (array form) can never match.
-  if (typeof fieldId !== "number") {
-    return null;
-  }
-  return selectedNode.data.fields.find((f) => f.id === fieldId) ?? null;
-}
-
-function emptyGraphUrl(): string {
-  return "";
-}
-
-/**
- * Adapt a SchemaViewer ErdNode into the TableDependencyNode shape consumed
- * by GraphInfoPanel. When a matching Database is passed, populate `data.db`
- * so PanelHeader renders the database + schema breadcrumbs.
- */
-function toTableDependencyNode(
-  node: SchemaViewerFlowNode,
-  db?: Database,
-): TableDependencyNode {
-  return {
-    id: node.data.table_id,
-    type: "table",
-    data: {
-      name: node.data.name,
-      display_name: node.data.name,
-      description: node.data.description,
-      owner: node.data.owner,
-      db_id: node.data.db_id,
-      schema: node.data.schema ?? "",
-      db,
-      // The cast to Field here is necessary, because GraphInfoPanel component
-      // is too coupled with TableDependencyNode type, and to avoid duplicating
-
-      // to cast it to expected type here.
-      fields: node.data.fields.map(
-        (f): Field =>
-          ({
-            id: f.id,
-            name: f.name,
-            display_name: f.display_name,
-            database_type: f.database_type,
-            base_type: f.base_type ?? undefined,
-            effective_type: f.effective_type ?? undefined,
-            semantic_type: f.semantic_type ?? null,
-            fk_target_field_id: f.fk_target_field_id ?? null,
-          }) as Field,
-      ),
-    },
-  };
 }

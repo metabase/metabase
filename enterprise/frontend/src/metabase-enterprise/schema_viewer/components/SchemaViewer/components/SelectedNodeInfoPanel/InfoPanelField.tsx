@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import CS from "metabase/css/core/index.css";
 import {
   Box,
   FixedSizeIcon,
@@ -11,15 +13,14 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { ErdField, Field } from "metabase-types/api";
+import type { ErdField } from "metabase-types/api";
 
 import type { SchemaViewerFlowNode } from "../../types";
 
 import S from "./SelectedNodeInfoPanel.module.css";
 
 type InfoPanelFieldProps = {
-  field: Field;
-  erdField: ErdField | null;
+  field: ErdField;
   targetNode: SchemaViewerFlowNode | null;
   isExpanding: boolean;
   selectedNode: SchemaViewerFlowNode | null;
@@ -29,21 +30,25 @@ type InfoPanelFieldProps = {
 
 export function InfoPanelField({
   field,
-  erdField,
   targetNode,
   isExpanding,
   selectedNode,
   onFetchExternal,
   onZoomToNode,
 }: InfoPanelFieldProps) {
-  const fieldIcon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
-  const isExternalFk =
-    erdField?.fk_target_table_id != null && targetNode == null;
+  const fieldIcon = getColumnIcon(
+    Lib.legacyColumnTypeInfo({
+      base_type: field.base_type,
+      effective_type: field.effective_type ?? undefined,
+      semantic_type: field.semantic_type,
+    }),
+  );
+  const isExternalFk = field.fk_target_table_id != null && targetNode == null;
 
   const fieldName = <Box className={S.fieldName}>{field.display_name}</Box>;
 
   return (
-    <Group className={S.fieldRow} gap="sm" wrap="nowrap">
+    <Group className={cx(S.fieldRow, CS.textWrap)} gap="sm" wrap="nowrap">
       <FixedSizeIcon name={fieldIcon} c="text-secondary" />
       {isExternalFk ? (
         <Tooltip label={t`Fetch external table`} disabled={isExpanding}>

@@ -1,4 +1,3 @@
-import { Fragment, type ReactNode } from "react";
 import { t } from "ttag";
 
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
@@ -6,9 +5,9 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import { GraphBreadcrumbs } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphBreadcrumbs";
-import { GraphExternalLink } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphExternalLink";
-import { GraphLink } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphLink";
+import * as Lib from "metabase-lib";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+
 import {
   canNodeHaveOwner,
   getNodeCreatedAt,
@@ -19,52 +18,28 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
   getNodeOwner,
-} from "metabase-enterprise/dependencies/utils";
-import * as Lib from "metabase-lib";
-import type {
-  DependencyEntry,
-  DependencyNode,
-  Field,
-} from "metabase-types/api";
+} from "../../../../utils";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
+import { GraphLink } from "../../GraphLink";
 
+import S from "./PanelBody.module.css";
 import { getNodeTableInfo } from "./utils";
 
 type PanelBodyProps = {
   node: DependencyNode;
   getGraphUrl: (entry: DependencyEntry) => string;
-  /**
-   * Override how a single field row in the Fields section is rendered.
-   * Defaults to `renderDefaultField` which shows a column-icon and the
-   * field's display name. Consumers (e.g. SchemaViewer) can replace the
-   * rendering entirely to add things like clickable FK target links.
-   */
-  renderField?: (field: Field) => ReactNode;
 };
 
-export function PanelBody({
-  node,
-  getGraphUrl,
-  renderField = renderDefaultField,
-}: PanelBodyProps) {
+export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
   return (
-    <Stack flex="1 1 auto" mih={0} p="lg" gap="lg" style={{ overflow: "auto" }}>
+    <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
-      <FieldsSection node={node} renderField={renderField} />
+      <FieldsSection node={node} />
     </Stack>
-  );
-}
-
-function renderDefaultField(field: Field) {
-  const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
-  const fieldIcon = getColumnIcon(fieldTypeInfo);
-  return (
-    <Group className={CS.textWrap} gap="sm" wrap="nowrap">
-      <FixedSizeIcon name={fieldIcon} c="text-secondary" />
-      <Box flex="0 1 auto">{field.display_name}</Box>
-    </Group>
   );
 }
 
@@ -159,11 +134,7 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
   );
 }
 
-type FieldsSectionProps = SectionProps & {
-  renderField: (field: Field) => ReactNode;
-};
-
-function FieldsSection({ node, renderField }: FieldsSectionProps) {
+function FieldsSection({ node }: SectionProps) {
   const fields = getNodeFields(node);
   if (fields == null) {
     return null;
@@ -174,9 +145,22 @@ function FieldsSection({ node, renderField }: FieldsSectionProps) {
       <Title className={CS.textWrap} order={6}>
         {getNodeFieldsLabelWithCount(fields.length)}
       </Title>
-      {fields.map((field, fieldIndex) => (
-        <Fragment key={fieldIndex}>{renderField(field)}</Fragment>
-      ))}
+      {fields.map((field, fieldIndex) => {
+        const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
+        const fieldIcon = getColumnIcon(fieldTypeInfo);
+
+        return (
+          <Group
+            className={CS.textWrap}
+            key={fieldIndex}
+            gap="sm"
+            wrap="nowrap"
+          >
+            <FixedSizeIcon name={fieldIcon} c="text-secondary" />
+            {field.display_name}
+          </Group>
+        );
+      })}
     </Stack>
   );
 }
