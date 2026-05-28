@@ -18,7 +18,7 @@ const DEFAULT_STATE: NotificationsUrlState = {
   query: "",
   channel: [],
   last_send_status: null,
-  creatorless: null,
+  creator_active: null,
   recipient_email: "",
   tab: "all",
   sort_column: "last_send",
@@ -31,7 +31,7 @@ const POPULATED_STATE: NotificationsUrlState = {
   query: "sales",
   channel: ["channel/email", "channel/http"],
   last_send_status: "failing",
-  creatorless: true,
+  creator_active: false,
   recipient_email: "owner@example.com",
   tab: "failing",
   sort_column: "id",
@@ -100,14 +100,14 @@ describe("NotificationsAdminPage/utils", () => {
       ).toBeNull();
     });
 
-    it("parses the creatorless tri-state", () => {
-      expect(urlStateConfig.parse({ creatorless: "true" }).creatorless).toBe(
-        true,
-      );
-      expect(urlStateConfig.parse({ creatorless: "false" }).creatorless).toBe(
-        false,
-      );
-      expect(urlStateConfig.parse({}).creatorless).toBeNull();
+    it("parses the creator_active tri-state", () => {
+      expect(
+        urlStateConfig.parse({ creator_active: "true" }).creator_active,
+      ).toBe(true);
+      expect(
+        urlStateConfig.parse({ creator_active: "false" }).creator_active,
+      ).toBe(false);
+      expect(urlStateConfig.parse({}).creator_active).toBeNull();
     });
   });
 
@@ -119,7 +119,7 @@ describe("NotificationsAdminPage/utils", () => {
         query: undefined,
         channel: undefined,
         last_send_status: undefined,
-        creatorless: undefined,
+        creator_active: undefined,
         recipient_email: undefined,
         tab: undefined,
         sort_column: undefined,
@@ -134,7 +134,7 @@ describe("NotificationsAdminPage/utils", () => {
         query: "sales",
         channel: ["channel/email", "channel/http"],
         last_send_status: "failing",
-        creatorless: "true",
+        creator_active: "false",
         recipient_email: "owner@example.com",
         tab: "failing",
         sort_column: "id",
@@ -165,6 +165,7 @@ describe("NotificationsAdminPage/utils", () => {
         channel: undefined,
         last_send_status: undefined,
         creatorless: undefined,
+        creator_active: undefined,
         recipient_email: undefined,
         sort_column: "last_send",
         sort_direction: "desc",
@@ -191,12 +192,13 @@ describe("NotificationsAdminPage/utils", () => {
       expect(params.last_send_status).toBe("failing");
     });
 
-    it("lets the ownerless tab override creatorless", () => {
+    it("pins creatorless on the ownerless tab and suppresses creator_active", () => {
       const params = buildListParams(
-        { ...DEFAULT_STATE, tab: "ownerless", creatorless: false },
+        { ...DEFAULT_STATE, tab: "ownerless", creator_active: true },
         PAGE_SIZE,
       );
       expect(params.creatorless).toBe(true);
+      expect(params.creator_active).toBeUndefined();
     });
 
     it("passes filter values through on the all tab", () => {
@@ -204,7 +206,7 @@ describe("NotificationsAdminPage/utils", () => {
         {
           ...DEFAULT_STATE,
           last_send_status: "successful",
-          creatorless: false,
+          creator_active: false,
           channel: ["channel/slack"],
           query: "weekly",
           recipient_email: "a@b.com",
@@ -213,11 +215,12 @@ describe("NotificationsAdminPage/utils", () => {
       );
       expect(params).toMatchObject({
         last_send_status: "successful",
-        creatorless: false,
+        creator_active: false,
         channel: ["channel/slack"],
         query: "weekly",
         recipient_email: "a@b.com",
       });
+      expect(params.creatorless).toBeUndefined();
     });
   });
 

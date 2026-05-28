@@ -57,7 +57,7 @@ export const NotificationsTabs = ({
       value: "ownerless",
       icon: "ghost",
       label: t`Ownerless`,
-      patch: { tab: "ownerless", creatorless: null },
+      patch: { tab: "ownerless", creator_active: null },
     });
   }
 

@@ -120,7 +120,7 @@ export const NotificationsAdminPage = ({
     urlState.active,
     urlState.tab,
     urlState.last_send_status,
-    urlState.creatorless,
+    urlState.creator_active,
     urlState.query,
     urlState.channel,
     urlState.recipient_email,
