@@ -629,8 +629,10 @@
                           (-> %
                               (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
                               (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
+
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
                           (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
+
                           :else
                           %)]
     (->> (update query :fields #(mapv maybe-add-cast %))
