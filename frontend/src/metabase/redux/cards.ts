@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions-reducer";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/redux/entities/questions-reducer";
 import type { Dispatch } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
