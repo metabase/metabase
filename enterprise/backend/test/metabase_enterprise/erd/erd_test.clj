@@ -275,7 +275,7 @@
 
 (deftest erd-endpoint-excludes-hidden-and-sensitive-metadata-test
   (mt/with-premium-features #{:schema-viewer}
-    (testing "hidden tables and retired fields are omitted; hidden and sensitive fields are included"
+    (testing "hidden tables are omitted; all field visibility types are included"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {visible-table-id :id} {:db_id db-id :name "visible" :schema "PUBLIC"}
                      :model/Field _ {:table_id visible-table-id :name "visible_id"
@@ -297,7 +297,7 @@
               node-names  (set (map :name (:nodes response)))
               field-names (set (map :name (mapcat :fields (:nodes response))))]
           (is (= #{"visible"} node-names))
-          (is (= #{"visible_id" "hidden_field" "secret"} field-names)))))))
+          (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names)))))))
 
 (deftest erd-endpoint-does-not-leak-hidden-fk-targets-test
   (mt/with-premium-features #{:schema-viewer}

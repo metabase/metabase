@@ -89,14 +89,6 @@
      [:= :schema ""]]
     [:= :schema schema]))
 
-(defn- visible-field-clause []
-  ;; `hidden` and `sensitive` are user-facing visibility flags that suppress
-  ;; columns in the question builder; the schema view always shows the full
-  ;; column list. Only `retired` (deactivated) fields are filtered out.
-  [:or
-   [:= :visibility_type nil]
-   [:not= :visibility_type "retired"]])
-
 (defn- index-by-id [xs]
   (into {} (map (juxt :id identity)) xs))
 
@@ -125,25 +117,23 @@
 ;;; ---------------------------------------- Phase 2: Fetch ERD graph ----------------------------------------
 
 (defn- fetch-fields-for-tables
-  "Fetch all active, visible fields for the given table IDs.
+  "Fetch all active fields for the given table IDs.
    Returns a vector of field maps."
   [table-ids]
   (when (seq table-ids)
     (t2/select :model/Field
                {:where [:and
                         [:in :table_id table-ids]
-                        [:= :active true]
-                        (visible-field-clause)]})))
+                        [:= :active true]]})))
 
 (defn- fetch-fields-by-ids
-  "Fetch active, visible fields by ID."
+  "Fetch active fields by ID."
   [field-ids]
   (when (seq field-ids)
     (t2/select :model/Field
                {:where [:and
                         [:in :id field-ids]
-                        [:= :active true]
-                        (visible-field-clause)]})))
+                        [:= :active true]]})))
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables
