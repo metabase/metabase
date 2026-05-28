@@ -59,8 +59,8 @@
   (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column"
     (is (<= (count (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})) 254)))
   (testing "payload growth fails early in dev and tests"
-    (with-redefs [mcp.session/encode-session-payload (fn [_payload]
-                                                       (apply str (repeat 300 "x")))]
+    (mt/with-dynamic-fn-redefs [mcp.session/encode-session-payload (fn [_payload]
+                                                                     (apply str (repeat 300 "x")))]
       (is (thrown-with-msg? AssertionError
                             #"MCP session id is too long"
                             (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))))))
