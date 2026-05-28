@@ -54,10 +54,10 @@
       (mean healths))))
 
 (defn- execution-health
-  "Mean of the tool-call success rate (`1 −` the failure rate) and the
+  "Mean of the tool-call success rate (`1 -` the failure rate) and the
   termination health, so a clean run scores 1.0 and a fully failed,
   force-stopped run scores 0.0. Always applicable. Algebraically identical
-  to `1 − mean(failure-rate, 1 − termination-health)`."
+  to `1 - mean(failure-rate, 1 - termination-health)`."
   ^double [metrics]
   (mean [(- 1.0 (:tool-call-failure-rate metrics))
          (:termination-health metrics)]))

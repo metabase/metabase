@@ -448,7 +448,7 @@
    prompt-context-entries))
 
 (defn- derive-conv-H
-  "CONV_H = CONV_Q \\ (CONV_P ∪ CONV_D) by entity-key set arithmetic. The
+  "CONV_H = CONV_Q \\ (CONV_P U CONV_D) by entity-key set arithmetic. The
   H atoms inherit their provenance from the Q atoms — when a Q ref is
   later proven grounded (e.g. by free-form prompt-text extraction
   moving it into P), the same provenance carries forward."

@@ -27,7 +27,7 @@
 
 (defn- grounded-source-share
   "Fraction of authored entities that were actually surfaced to the agent —
-  `1 − |authored-but-never-seen| / |authored|`. The never-seen set is the
+  `1 - |authored-but-never-seen| / |authored|`. The never-seen set is the
   authored entities absent from both the prompt context and every tool
   result, so the ratio is in `[0, 1]`. `:na` when nothing was authored."
   [normalized]
@@ -112,7 +112,7 @@
   (into #{} (map (fn [r] [(:type r) (str (:id r))])) (:output search-event)))
 
 (defn- jaccard
-  "Jaccard similarity `|A ∩ B| / |A ∪ B|` of two sets. `0.0` when both are
+  "Jaccard similarity `|A ∩ B| / |A U B|` of two sets. `0.0` when both are
   empty — two searches that surfaced nothing share no rediscovered result."
   ^double [a b]
   (let [union (count (set/union a b))]
@@ -149,7 +149,7 @@
           search-evs)))
 
 (defn- search-efficiency
-  "Health in `[0, 1]` (1 = good): `1 −` the fraction of search calls that
+  "Health in `[0, 1]` (1 = good): `1 -` the fraction of search calls that
   rediscovered an earlier call's results. `:na` with fewer than two search
   calls — a single search can't rediscover anything."
   [normalized]

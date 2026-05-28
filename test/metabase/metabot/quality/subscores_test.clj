@@ -61,7 +61,7 @@
           "composite is the geometric mean over the lone applicable subscore"))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Execution Health — mean(1 − failure-rate, termination-health)
+;;; Execution Health — mean(1 - failure-rate, termination-health)
 ;;; ---------------------------------------------------------------------------
 
 (deftest execution-health-folds-failure-and-termination-test

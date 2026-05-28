@@ -67,8 +67,8 @@
       (is (= 0.0 (:grounded-source-share (metrics/compute (normalized :Q [a] :H [a]) {})))))))
 
 (deftest grounding-is-one-minus-ungrounded-fraction-test
-  (testing "grounding = 1 − |never-surfaced| / |authored|"
-    ;; 1 of 20 authored entities ungrounded → 1 − 1/20 = 0.95
+  (testing "grounding = 1 - |never-surfaced| / |authored|"
+    ;; 1 of 20 authored entities ungrounded → 1 - 1/20 = 0.95
     (let [qs (for [i (range 20)] (atom-rec "card" i))
           h  [(atom-rec "card" 0)]]
       (is (= 0.95 (:grounded-source-share (metrics/compute (normalized :Q qs :H h) {})))))))
@@ -81,7 +81,7 @@
 (deftest grounding-keeps-fields-in-denominator-test
   (testing "field-type authored entities count in the grounding denominator —
             an ungrounded authored field is a real signal"
-    ;; authored {field 1, card 2}; ungrounded {field 1} → 1 − 1/2 = 0.5
+    ;; authored {field 1, card 2}; ungrounded {field 1} → 1 - 1/2 = 0.5
     (let [f (atom-rec "field" 1)
           c (atom-rec "card" 2)]
       (is (= 0.5 (:grounded-source-share (metrics/compute (normalized :Q [f c] :H [f]) {})))))))
@@ -212,7 +212,7 @@
 (deftest search-efficiency-catches-non-adjacent-overlap-test
   (testing "rediscovery is compared against all prior calls, not just the
             previous one — A, B, A flags the third call"
-    ;; calls 1 and 3 identical, call 2 disjoint → 1 of 3 unproductive → 1 − 1/3
+    ;; calls 1 and 3 identical, call 2 disjoint → 1 of 3 unproductive → 1 - 1/3
     (let [health (:search-efficiency
                   (metrics/compute
                    (normalized :tool-events [(search-event ["card" 1] ["card" 2])
