@@ -2,10 +2,7 @@ import { Route } from "react-router";
 
 import { setupApplyAdvancedConfigEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
@@ -14,10 +11,10 @@ function setup({ isAdmin = false }: { isAdmin?: boolean } = {}) {
   setupApplyAdvancedConfigEndpoint();
   renderWithProviders(<Route path="*" component={WorkspaceEmptyState} />, {
     withRouter: true,
-    storeInitialState: createMockState({
+    storeInitialState: {
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState({ "show-metabase-links": true }),
-    }),
+    },
   });
 }
 
@@ -41,19 +38,19 @@ describe("WorkspaceEmptyState", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not show the set-up-this-instance button for non-admins", () => {
+  it("does not show the upload-workspace-config button for non-admins", () => {
     setup({ isAdmin: false });
 
     expect(
-      screen.queryByRole("button", { name: "set up this instance" }),
+      screen.queryByRole("button", { name: "upload a workspace config" }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows the set-up-this-instance button for admins", () => {
+  it("shows the upload-workspace-config button for admins", () => {
     setup({ isAdmin: true });
 
     expect(
-      screen.getByRole("button", { name: "set up this instance" }),
+      screen.getByRole("button", { name: "upload a workspace config" }),
     ).toBeInTheDocument();
   });
 });

@@ -16,7 +16,7 @@ export const WorkspaceListPage = {
     }),
   setupInstanceButton: () =>
     WorkspaceListPage.get().findByRole("button", {
-      name: "set up this instance",
+      name: "upload a workspace config",
     }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
