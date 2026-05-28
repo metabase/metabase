@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -81,6 +81,8 @@ const metadata = createMockMetadata({
 });
 
 const provider = createMetadataProvider({ metadata });
+
+const userEvent = _userEvent.setup();
 
 function getJoinedQuery() {
   return Lib.createTestQuery(provider, {

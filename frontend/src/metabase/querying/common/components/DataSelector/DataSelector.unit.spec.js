@@ -496,8 +496,6 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
-    // wait for the picker to settle (findBy* keeps componentDidMount's async
-    // state updates wrapped in act()) before asserting the absence
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
   });

@@ -1,7 +1,8 @@
 import _userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { waitForFloatingPosition } from "__support__/utils";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -59,13 +60,7 @@ async function setup({
     />,
   );
 
-  // Mantine's Select positions its Popover with floating-ui in an async
-  // effect. Under fake timers, findBy/waitFor don't flush that microtask, so
-  // flush it here to keep the position update inside act(...) — otherwise it
-  // leaks an act warning into a later test.
-  await act(async () => {
-    await Promise.resolve();
-  });
+  await waitForFloatingPosition();
 
   return { onChange, onSubmit };
 }
