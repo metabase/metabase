@@ -14,7 +14,6 @@
   (testing "filter-fields-by-card returns fields unchanged when card is nil"
     (let [fields [{:id 1 :name "A"} {:id 2 :name "B"}]]
       (is (= fields (col-filter/filter-fields-by-card nil fields)))))
-
   (testing "filter-fields-by-card returns fields unchanged when card has no dataset_query"
     (let [fields [{:id 1 :name "A"}]]
       (is (= fields (col-filter/filter-fields-by-card
@@ -113,13 +112,11 @@
                                  :where  [:= :pg.id (u/the-id &group)]})]
         ;; Forcibly clear result_metadata to simulate the async-not-yet-complete or failed-extraction state.
         (t2/update! :model/Card :id (:id card) {:result_metadata nil})
-
         (testing "sandboxed user sees zero fields (fail-closed)"
           (let [{:keys [fields]} (mt/user-http-request :rasta :get 200
                                                        (format "table/%d/query_metadata"
                                                                (mt/id :venues)))]
             (is (= [] fields))))
-
         (testing "admin still sees all fields (sandbox not enforced for admins)"
           (let [{:keys [fields]} (mt/user-http-request :crowberto :get 200
                                                        (format "table/%d/query_metadata"
@@ -141,4 +138,3 @@
           (is (not (contains? result (mt/id :categories)))))
         (testing "the returned card carries the dataset_query needed to determine native vs MBQL"
           (is (some? (:dataset_query (get result (mt/id :venues))))))))))
-

@@ -89,7 +89,6 @@
         (if metadata
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
           (card.metadata/save-metadata-async! metadata-future card)))
-
       (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))]
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (venues-field-names response)))))))
