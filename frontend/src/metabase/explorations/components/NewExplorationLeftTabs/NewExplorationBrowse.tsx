@@ -49,10 +49,10 @@ export function NewExplorationBrowse({
         <Tabs.Tab value="timelines">{t`Timelines`}</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="metrics" className={S.tabPanel}>
-        <BrowseMetricsPanel selection={selection} />
+        <BrowseMetricsPanel selection={selection} navigation={navigation} />
       </Tabs.Panel>
       <Tabs.Panel value="dimensions" className={S.tabPanel}>
-        <BrowseDimensionsPanel selection={selection} />
+        <BrowseDimensionsPanel selection={selection} navigation={navigation} />
       </Tabs.Panel>
       <Tabs.Panel value="timelines" className={S.tabPanel}>
         <BrowseTimelinesPanel selection={selection} />

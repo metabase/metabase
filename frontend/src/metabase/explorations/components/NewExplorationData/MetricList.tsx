@@ -1,8 +1,13 @@
+import { useDraggable } from "@dnd-kit/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import {
+  type ToggleMetricContext,
+  paletteMetricDragId,
+} from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 
@@ -15,12 +20,20 @@ interface MetricListProps {
   metrics: ExplorationMetric[];
   selectedIds: Set<ExplorationMetric["id"]>;
   onToggle: (metric: ExplorationMetric) => void;
+  /**
+   * Same context the panel passes to `selection.toggleMetric`. Threaded
+   * into each row's drag payload so that a drop on the Research plan's
+   * empty-state target can build a metric block with the metric's
+   * interesting dimensions hydrated — matching click-the-checkbox.
+   */
+  dragContext: ToggleMetricContext;
 }
 
 export function MetricList({
   metrics,
   selectedIds,
   onToggle,
+  dragContext,
 }: MetricListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -50,41 +63,90 @@ export function MetricList({
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const metric = metrics[virtualRow.index];
-          const isSelected = selectedIds.has(metric.id);
           return (
-            <UnstyledButton
+            <DraggableMetricRow
               key={virtualRow.key}
-              role="listitem"
-              aria-pressed={isSelected}
-              className={cx(S.metricItem, {
-                [S.metricItemSelected]: isSelected,
-              })}
-              style={{
-                height: virtualRow.size - METRIC_ITEM_GAP,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-              onClick={() => onToggle(metric)}
-            >
-              <Checkbox
-                checked={isSelected}
-                onChange={() => onToggle(metric)}
-                onClick={(event) => event.stopPropagation()}
-                aria-label={metric.name}
-              />
-              <Stack gap="xs" flex={1}>
-                <Text fw="bold" lh="1.25" lineClamp={1}>
-                  {metric.name}
-                </Text>
-                {metric.description && (
-                  <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
-                    {metric.description}
-                  </Text>
-                )}
-              </Stack>
-            </UnstyledButton>
+              metric={metric}
+              isSelected={selectedIds.has(metric.id)}
+              top={virtualRow.start}
+              height={virtualRow.size - METRIC_ITEM_GAP}
+              onToggle={onToggle}
+              dragContext={dragContext}
+            />
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+interface DraggableMetricRowProps {
+  metric: ExplorationMetric;
+  isSelected: boolean;
+  top: number;
+  height: number;
+  onToggle: (metric: ExplorationMetric) => void;
+  dragContext: ToggleMetricContext;
+}
+
+/**
+ * Per-row component so each list item can call `useDraggable` (hooks
+ * can't run inside a `.map` callback). The row stays in place visually
+ * — the `<DragOverlay>` rendered by the page-level `DndContext` shows
+ * the floating ghost — so we deliberately do *not* apply the dnd-kit
+ * `transform` to this node, only the virtualizer's `translateY`.
+ */
+function DraggableMetricRow({
+  metric,
+  isSelected,
+  top,
+  height,
+  onToggle,
+  dragContext,
+}: DraggableMetricRowProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: paletteMetricDragId(metric.id),
+    data: {
+      kind: "metric" as const,
+      payload: metric,
+      context: dragContext,
+    },
+  });
+
+  return (
+    <UnstyledButton
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      role="listitem"
+      aria-pressed={isSelected}
+      className={cx(S.metricItem, {
+        [S.metricItemSelected]: isSelected,
+        [S.metricItemDragging]: isDragging,
+      })}
+      style={{
+        height,
+        transform: `translateY(${top}px)`,
+      }}
+      onClick={() => onToggle(metric)}
+    >
+      <Checkbox
+        checked={isSelected}
+        onChange={() => onToggle(metric)}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        aria-label={metric.name}
+      />
+      <Stack gap="xs" flex={1}>
+        <Text fw="bold" lh="1.25" lineClamp={1}>
+          {metric.name}
+        </Text>
+        {metric.description && (
+          <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
+            {metric.description}
+          </Text>
+        )}
+      </Stack>
+    </UnstyledButton>
   );
 }

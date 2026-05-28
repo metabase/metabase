@@ -47,9 +47,11 @@ export interface CreateExplorationRequest {
   name: string;
   description?: string | null;
   prompt?: string | null;
-  metrics: ExplorationMetricSelection[];
-  dimensions: ExplorationDimensionSelection[];
-  timeline_ids?: TimelineId[];
+  groups: {
+    metrics: ExplorationMetricSelection[];
+    dimensions: ExplorationDimensionSelection[];
+    timeline_ids?: TimelineId[];
+  }[];
 }
 
 export interface UpdateExplorationRequest {

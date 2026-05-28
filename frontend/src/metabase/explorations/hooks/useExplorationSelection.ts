@@ -2,6 +2,7 @@ import {
   type Dispatch,
   type SetStateAction,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 
@@ -18,55 +19,75 @@ import type {
   Timeline,
 } from "metabase-types/api";
 
-import { removeMetricFromSelection } from "../components/NewExplorationData/utils";
-
 /**
- * Shared add-metric logic used by both `addMetric` and the add branch of
- * `toggleMetric`. Meant to be called inside a `setMetrics` updater so it
- * has a consistent view of `prevMetrics`. Returns the next metrics array.
+ * The "Research plan" column is now a stack of collapsible blocks, each
+ * organized around a single picked entity:
  *
- * Side-effects: enqueues a `setDimensions` update for the metric's
- * "interesting" dimensions (falling back to all referenced dimensions
- * when none are interesting so the user always gets a non-empty default).
+ * - A **metric block** ("Look at metric in depth") puts a metric in the
+ *   header and lists the dimensions the user wants to investigate it by
+ *   in the body.
+ *
+ * - A **dimension block** ("Break by dimension") puts a dimension (or a
+ *   dimension group, e.g., all `created_at` granularities) in the header
+ *   and lists the metrics that reference it as a secondary set in the
+ *   body.
+ *
+ * Blocks own their own dimension/metric sub-lists, so the same dimension
+ * may legitimately appear in two metric blocks (and in a standalone
+ * dimension block) without dedup — that matches the wireframe and the
+ * stated rule that "even though some these dimensions might be already
+ * listed in the first section" each block has its own copy.
  */
-function applyAddMetric(
-  metric: ExplorationMetric,
-  dimensionsById: Map<DimensionId, MetricDimension>,
-  prevMetrics: ExplorationMetric[],
-  setDimensions: Dispatch<SetStateAction<MetricDimension[]>>,
-): ExplorationMetric[] {
-  if (prevMetrics.some((m) => m.id === metric.id)) {
-    return prevMetrics;
-  }
+export interface MetricBlock {
+  kind: "metric";
+  /** Stable id used as React key + by `removeBlock`. Format: `metric:${metric.id}`. */
+  id: string;
+  metric: ExplorationMetric;
+  /** Dimensions the user wants to break this metric by. */
+  dimensions: MetricDimension[];
+}
 
-  const referencedDims = metric.dimension_ids
-    .map((id) => dimensionsById.get(id))
-    .filter((d): d is MetricDimension => d != null);
-  const hasInteresting = referencedDims.some(isInterestingDimension);
-  const additions = hasInteresting
-    ? referencedDims.filter(isInterestingDimension)
-    : referencedDims;
+export interface DimensionBlock {
+  kind: "dimension";
+  /** Format: `dim:${head.id}`. */
+  id: string;
+  /**
+   * The dimension that anchors this block. When the user toggled a group
+   * row in the Browse picker (e.g., "Orders → Created At" covering
+   * day/week/month/quarter), this is the group head; the full group
+   * lives in `groupDimensions` so we can flatten it when POSTing.
+   */
+  dimension: MetricDimension;
+  /** All dimensions covered by this picker row (group siblings + the head). */
+  groupDimensions: MetricDimension[];
+  /** Metrics that reference any of `groupDimensions`. Rendered as the block's body. */
+  metrics: ExplorationMetric[];
+}
 
-  setDimensions((prevDimensions) => {
-    const have = new Set(prevDimensions.map((d) => d.id));
-    const merged = [...prevDimensions];
-    for (const d of additions) {
-      if (!have.has(d.id)) {
-        merged.push(d);
-        have.add(d.id);
-      }
-    }
-    return merged.length === prevDimensions.length ? prevDimensions : merged;
-  });
+export type ExplorationBlock = MetricBlock | DimensionBlock;
 
-  return [...prevMetrics, metric];
+export function isMetricBlock(block: ExplorationBlock): block is MetricBlock {
+  return block.kind === "metric";
+}
+
+export function isDimensionBlock(
+  block: ExplorationBlock,
+): block is DimensionBlock {
+  return block.kind === "dimension";
+}
+
+/** Stable block id helpers — keep call sites symmetric with the union shape. */
+export function metricBlockId(metricId: ExplorationMetric["id"]): string {
+  return `metric:${metricId}`;
+}
+
+export function dimensionBlockId(dimensionId: DimensionId): string {
+  return `dim:${dimensionId}`;
 }
 
 /**
- * Context the `toggleMetric` helper needs to apply the auto-toggle rule
- * (selecting a metric auto-adds its "interesting" dimensions to the
- * exploration). Callers compute it from the currently visible
- * `/api/exploration/dimensions` response.
+ * Context the `toggleMetric` / `addMetric` helpers need to attach the
+ * metric's "interesting" dimensions when adding it.
  */
 export interface ToggleMetricContext {
   /** Flat map of every dimension across every group currently visible. */
@@ -74,13 +95,12 @@ export interface ToggleMetricContext {
 }
 
 /**
- * Context the `toggleDimension` helper needs to:
- *   - cascade selection across every dimension in the row's group, and
- *   - drop any metric that loses its last matching dimension on removal.
- *
- * The `group` matches what `groupByRowId.get(dimension.id)` returns in
- * the Browse Dimensions panel — the structural source of truth for
- * "which dimensions does this picker row stand in for".
+ * Context the `toggleDimension` helper needs to construct a dimension
+ * block:
+ *   - `group` carries the picker row's sibling dimensions (the
+ *     Browse Dimensions panel groups e.g., every `created_at`
+ *     granularity under one row),
+ *   - `metricsByDimension` lets us hydrate the block's metric list.
  */
 export interface ToggleDimensionContext {
   /** The group this dimension row represents. `null` if the row is a
@@ -91,62 +111,168 @@ export interface ToggleDimensionContext {
 }
 
 export interface ExplorationSelection {
+  /** Source of truth: ordered list of blocks rendered in the Research plan. */
+  blocks: ExplorationBlock[];
+
+  /** Set of metric ids that have their own primary block. Used by the
+   *  Browse Metrics picker to show the "selected" check. */
+  metricBlockIds: Set<ExplorationMetric["id"]>;
+  /** Set of dimension ids that have their own primary block (or are the
+   *  head dimension of a group-keyed block). Used by Browse Dimensions. */
+  dimensionBlockIds: Set<DimensionId>;
+
+  /**
+   * Flat, deduped union of every metric appearing in any block (primary
+   * or secondary). Used to build the POST body for `/api/exploration`.
+   */
   metrics: ExplorationMetric[];
+  /**
+   * Flat, deduped union of every dimension across blocks (including
+   * group siblings inside dimension blocks). Used to build the POST body.
+   */
   dimensions: MetricDimension[];
+
+  /** Timelines selected globally — applied to the whole exploration. */
   timelines: Timeline[];
   /** All timelines from the API (includes events). */
   allTimelines: Timeline[];
   timelinesLoading: boolean;
   timelinesError: unknown;
-  name: string;
 
+  name: string;
   setName: Dispatch<SetStateAction<string>>;
 
-  /** Direct state setters for cases that need full control over the array. */
-  setMetrics: Dispatch<SetStateAction<ExplorationMetric[]>>;
-  setDimensions: Dispatch<SetStateAction<MetricDimension[]>>;
+  /** Direct setter — used by tests to seed state. Prefer `addMetric` /
+   *  `toggleMetric` / `toggleDimension` in production code. */
+  setBlocks: Dispatch<SetStateAction<ExplorationBlock[]>>;
   setTimelines: Dispatch<SetStateAction<Timeline[]>>;
 
   /**
-   * Add a metric if not already selected. Auto-adds its "interesting"
-   * dimensions (falling back to all referenced dimensions when none are
-   * interesting). No-op when the metric is already in the selection.
+   * Idempotently ensure a metric block exists. Used by the chat tool
+   * to add metrics surfaced by the LLM without toggling them off if
+   * they were already present.
    */
   addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
 
   /**
-   * Toggle a metric. Adds the metric + its interesting dimensions if it
-   * was unselected; removes the metric + drops dimensions that become
-   * orphaned (no other selected metric still uses them). Idempotent.
+   * Toggle a metric **block**. Creates the block (with the metric's
+   * interesting dimensions pre-populated) if absent; removes it if
+   * present. Idempotent per click. Does **not** affect secondary
+   * appearances of this metric inside dimension blocks.
    */
   toggleMetric: (
     metric: ExplorationMetric,
     context: ToggleMetricContext,
   ) => void;
+
   /**
-   * Toggle a dimension picker row. Cascades selection across every
-   * dimension in the row's group, and drops any selected metric that
-   * loses its last matching dimension on removal.
+   * Toggle a dimension **block**. Creates the block (with every metric
+   * referencing the group's dimensions hydrated as secondaries) if
+   * absent; removes it if present.
    */
   toggleDimension: (
     dimension: MetricDimension,
     context: ToggleDimensionContext,
   ) => void;
+
   toggleTimeline: (timeline: Timeline) => void;
   /** Resolve ids against `allTimelines` and merge into the selection. Idempotent. */
   addTimelinesById: (timelineIds: number[]) => void;
+
+  /** Remove a block by id (metric or dimension). */
+  removeBlock: (blockId: string) => void;
+  /**
+   * Remove a dimension from a metric block's body. No-op if the block
+   * is not a metric block or the dimension isn't in it.
+   */
+  removeDimensionFromMetricBlock: (
+    blockId: string,
+    dimensionId: DimensionId,
+  ) => void;
+  /**
+   * Remove a metric from a dimension block's body. No-op if the block
+   * is not a dimension block or the metric isn't in it.
+   */
+  removeMetricFromDimensionBlock: (
+    blockId: string,
+    metricId: ExplorationMetric["id"],
+  ) => void;
+
+  /**
+   * Append a dimension to a metric block's body. Used by DnD drops
+   * from the Browse Dimensions list onto a metric block. Idempotent
+   * (no-op if the block already includes this dimension). Returns
+   * silently if the target isn't a metric block.
+   */
+  addDimensionToMetricBlock: (
+    blockId: string,
+    dimension: MetricDimension,
+  ) => void;
+  /**
+   * Append a metric to a dimension block's body. Used by DnD drops
+   * from the Browse Metrics list onto a dimension block. Idempotent
+   * (no-op if the block already includes this metric). Returns
+   * silently if the target isn't a dimension block.
+   */
+  addMetricToDimensionBlock: (
+    blockId: string,
+    metric: ExplorationMetric,
+  ) => void;
+}
+
+function buildMetricBlock(
+  metric: ExplorationMetric,
+  dimensionsById: Map<DimensionId, MetricDimension>,
+): MetricBlock {
+  const referencedDims = metric.dimension_ids
+    .map((id) => dimensionsById.get(id))
+    .filter((d): d is MetricDimension => d != null);
+  const hasInteresting = referencedDims.some(isInterestingDimension);
+  const dimensions = hasInteresting
+    ? referencedDims.filter(isInterestingDimension)
+    : referencedDims;
+  return {
+    kind: "metric",
+    id: metricBlockId(metric.id),
+    metric,
+    dimensions,
+  };
+}
+
+function buildDimensionBlock(
+  dimension: MetricDimension,
+  context: ToggleDimensionContext,
+): DimensionBlock {
+  const groupDimensions = context.group?.dimensions ?? [dimension];
+  const seenMetricIds = new Set<ExplorationMetric["id"]>();
+  const metrics: ExplorationMetric[] = [];
+  for (const groupDim of groupDimensions) {
+    for (const metric of context.metricsByDimension.get(groupDim.id) ?? []) {
+      if (!seenMetricIds.has(metric.id)) {
+        seenMetricIds.add(metric.id);
+        metrics.push(metric);
+      }
+    }
+  }
+  return {
+    kind: "dimension",
+    id: dimensionBlockId(dimension.id),
+    dimension,
+    groupDimensions,
+    metrics,
+  };
 }
 
 /**
  * Owns the lifted state for `/question/research`'s new-exploration page:
- * metrics, dimensions, timelines, and the exploration name. Returns
- * granular `toggle…` helpers that bake in the bidirectional metric ↔
- * dimension auto-toggle rules, so the Browse tab and the agent chat
- * share one source of truth and stay in sync.
+ * an ordered list of "Research plan" blocks (metric- or dimension-keyed),
+ * plus the global timeline selection and exploration name. Toggle
+ * helpers create/remove primary blocks; the Browse pickers, chat tool
+ * calls, and Research plan pill removals all funnel through the same
+ * block operations so the UI stays in sync.
  */
 export function useExplorationSelection(): ExplorationSelection {
-  const [metrics, setMetrics] = useState<ExplorationMetric[]>([]);
-  const [dimensions, setDimensions] = useState<MetricDimension[]>([]);
+  const [blocks, setBlocks] = useState<ExplorationBlock[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
   const [name, setName] = useState<string>(getDefaultExplorationName());
 
@@ -158,106 +284,39 @@ export function useExplorationSelection(): ExplorationSelection {
 
   const addMetric = useCallback(
     (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
-      setMetrics((prevMetrics) =>
-        applyAddMetric(metric, dimensionsById, prevMetrics, setDimensions),
-      );
+      setBlocks((prevBlocks) => {
+        if (
+          prevBlocks.some((b) => isMetricBlock(b) && b.metric.id === metric.id)
+        ) {
+          return prevBlocks;
+        }
+        return [...prevBlocks, buildMetricBlock(metric, dimensionsById)];
+      });
     },
     [],
   );
 
   const toggleMetric = useCallback(
     (metric: ExplorationMetric, { dimensionsById }: ToggleMetricContext) => {
-      setMetrics((prevMetrics) => {
-        if (prevMetrics.some((m) => m.id === metric.id)) {
-          setDimensions((prevDimensions) => {
-            const { dimensions: nextDimensions } = removeMetricFromSelection(
-              prevMetrics,
-              prevDimensions,
-              metric.id,
-            );
-            return nextDimensions;
-          });
-          return prevMetrics.filter((m) => m.id !== metric.id);
+      const id = metricBlockId(metric.id);
+      setBlocks((prevBlocks) => {
+        if (prevBlocks.some((b) => b.id === id)) {
+          return prevBlocks.filter((b) => b.id !== id);
         }
-        return applyAddMetric(
-          metric,
-          dimensionsById,
-          prevMetrics,
-          setDimensions,
-        );
+        return [...prevBlocks, buildMetricBlock(metric, dimensionsById)];
       });
     },
     [],
   );
 
   const toggleDimension = useCallback(
-    (
-      dimension: MetricDimension,
-      { group, metricsByDimension }: ToggleDimensionContext,
-    ) => {
-      const groupDims = group?.dimensions ?? [dimension];
-      const groupIds = new Set(groupDims.map((d) => d.id));
-      const connectedMetrics = groupDims.flatMap(
-        (d) => metricsByDimension.get(d.id) ?? [],
-      );
-
-      setDimensions((prevDimensions) => {
-        const isAnySelected = groupDims.some((d) =>
-          prevDimensions.some((sel) => sel.id === d.id),
-        );
-
-        if (isAnySelected) {
-          // Removing: drop every dimension in the group, then remove any
-          // selected metric that loses its last matching dimension.
-          const nextDimensions = prevDimensions.filter(
-            (d) => !groupIds.has(d.id),
-          );
-          const remainingDimIds = new Set(nextDimensions.map((d) => d.id));
-          const orphanedIds = new Set(
-            connectedMetrics
-              .filter(
-                (m) => !m.dimension_ids.some((id) => remainingDimIds.has(id)),
-              )
-              .map((m) => m.id),
-          );
-          if (orphanedIds.size > 0) {
-            setMetrics((prevMetrics) =>
-              prevMetrics.filter((m) => !orphanedIds.has(m.id)),
-            );
-          }
-          return nextDimensions;
+    (dimension: MetricDimension, context: ToggleDimensionContext) => {
+      const id = dimensionBlockId(dimension.id);
+      setBlocks((prevBlocks) => {
+        if (prevBlocks.some((b) => b.id === id)) {
+          return prevBlocks.filter((b) => b.id !== id);
         }
-
-        // Adding: merge in every dimension in the group, then ensure any
-        // metric that references one of those dimensions is also
-        // selected (so the picker can't end up with a dangling
-        // dimension that has no matching metric).
-        const have = new Set(prevDimensions.map((d) => d.id));
-        const mergedDims = [...prevDimensions];
-        for (const d of groupDims) {
-          if (!have.has(d.id)) {
-            mergedDims.push(d);
-            have.add(d.id);
-          }
-        }
-        if (connectedMetrics.length > 0) {
-          setMetrics((prevMetrics) => {
-            const haveMetrics = new Set(prevMetrics.map((m) => m.id));
-            const mergedMetrics = [...prevMetrics];
-            for (const metric of connectedMetrics) {
-              if (!haveMetrics.has(metric.id)) {
-                mergedMetrics.push(metric);
-                haveMetrics.add(metric.id);
-              }
-            }
-            return mergedMetrics.length === prevMetrics.length
-              ? prevMetrics
-              : mergedMetrics;
-          });
-        }
-        return mergedDims.length === prevDimensions.length
-          ? prevDimensions
-          : mergedDims;
+        return [...prevBlocks, buildDimensionBlock(dimension, context)];
       });
     },
     [],
@@ -291,7 +350,152 @@ export function useExplorationSelection(): ExplorationSelection {
     [allTimelines],
   );
 
+  const removeBlock = useCallback((blockId: string) => {
+    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+  }, []);
+
+  const removeDimensionFromMetricBlock = useCallback(
+    (blockId: string, dimensionId: DimensionId) => {
+      setBlocks((prev) =>
+        prev.map((block) => {
+          if (block.id !== blockId || !isMetricBlock(block)) {
+            return block;
+          }
+          const nextDims = block.dimensions.filter((d) => d.id !== dimensionId);
+          return nextDims.length === block.dimensions.length
+            ? block
+            : { ...block, dimensions: nextDims };
+        }),
+      );
+    },
+    [],
+  );
+
+  const removeMetricFromDimensionBlock = useCallback(
+    (blockId: string, metricId: ExplorationMetric["id"]) => {
+      setBlocks((prev) =>
+        prev.map((block) => {
+          if (block.id !== blockId || !isDimensionBlock(block)) {
+            return block;
+          }
+          const nextMetrics = block.metrics.filter((m) => m.id !== metricId);
+          return nextMetrics.length === block.metrics.length
+            ? block
+            : { ...block, metrics: nextMetrics };
+        }),
+      );
+    },
+    [],
+  );
+
+  const addDimensionToMetricBlock = useCallback(
+    (blockId: string, dimension: MetricDimension) => {
+      setBlocks((prev) => {
+        let changed = false;
+        const next = prev.map((block) => {
+          if (block.id !== blockId || !isMetricBlock(block)) {
+            return block;
+          }
+          if (block.dimensions.some((d) => d.id === dimension.id)) {
+            return block;
+          }
+          changed = true;
+          return { ...block, dimensions: [...block.dimensions, dimension] };
+        });
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
+
+  const addMetricToDimensionBlock = useCallback(
+    (blockId: string, metric: ExplorationMetric) => {
+      setBlocks((prev) => {
+        let changed = false;
+        const next = prev.map((block) => {
+          if (block.id !== blockId || !isDimensionBlock(block)) {
+            return block;
+          }
+          if (block.metrics.some((m) => m.id === metric.id)) {
+            return block;
+          }
+          changed = true;
+          return { ...block, metrics: [...block.metrics, metric] };
+        });
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
+
+  // Derived aggregations: flat metrics / dimensions across blocks.
+  const metricBlockIds = useMemo(() => {
+    const ids = new Set<ExplorationMetric["id"]>();
+    for (const block of blocks) {
+      if (isMetricBlock(block)) {
+        ids.add(block.metric.id);
+      }
+    }
+    return ids;
+  }, [blocks]);
+
+  const dimensionBlockIds = useMemo(() => {
+    const ids = new Set<DimensionId>();
+    for (const block of blocks) {
+      if (isDimensionBlock(block)) {
+        // Treat every dimension covered by the group row as "selected"
+        // in the Browse picker — otherwise the picker would show the
+        // group row unchecked even though a dim block exists for it.
+        for (const d of block.groupDimensions) {
+          ids.add(d.id);
+        }
+      }
+    }
+    return ids;
+  }, [blocks]);
+
+  const metrics = useMemo(() => {
+    const seen = new Set<ExplorationMetric["id"]>();
+    const out: ExplorationMetric[] = [];
+    for (const block of blocks) {
+      if (isMetricBlock(block)) {
+        if (!seen.has(block.metric.id)) {
+          seen.add(block.metric.id);
+          out.push(block.metric);
+        }
+      } else {
+        for (const metric of block.metrics) {
+          if (!seen.has(metric.id)) {
+            seen.add(metric.id);
+            out.push(metric);
+          }
+        }
+      }
+    }
+    return out;
+  }, [blocks]);
+
+  const dimensions = useMemo(() => {
+    const seen = new Set<DimensionId>();
+    const out: MetricDimension[] = [];
+    for (const block of blocks) {
+      const fromBlock = isMetricBlock(block)
+        ? block.dimensions
+        : block.groupDimensions;
+      for (const d of fromBlock) {
+        if (!seen.has(d.id)) {
+          seen.add(d.id);
+          out.push(d);
+        }
+      }
+    }
+    return out;
+  }, [blocks]);
+
   return {
+    blocks,
+    metricBlockIds,
+    dimensionBlockIds,
     metrics,
     dimensions,
     timelines,
@@ -300,13 +504,17 @@ export function useExplorationSelection(): ExplorationSelection {
     timelinesError,
     name,
     setName,
-    setMetrics,
-    setDimensions,
+    setBlocks,
     setTimelines,
     addMetric,
     toggleMetric,
     toggleDimension,
     toggleTimeline,
     addTimelinesById,
+    removeBlock,
+    removeDimensionFromMetricBlock,
+    removeMetricFromDimensionBlock,
+    addDimensionToMetricBlock,
+    addMetricToDimensionBlock,
   };
 }

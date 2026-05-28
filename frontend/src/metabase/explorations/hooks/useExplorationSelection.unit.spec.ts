@@ -217,4 +217,130 @@ describe("useExplorationSelection", () => {
       expect(result.current.timelines).toBe(timelinesAfterFirst);
     });
   });
+
+  describe("addDimensionToMetricBlock", () => {
+    it("appends a dimension to the metric block's body", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const dimB = makeDim("dim-b", 0.9);
+      const metric = makeMetric(1, ["dim-a"]);
+      const dimensionsById = makeDimensionsById([dimA, dimB]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      const blockBefore = result.current.blocks[0];
+      expect(blockBefore.kind).toBe("metric");
+      if (blockBefore.kind !== "metric") {
+        throw new Error("expected metric block");
+      }
+      expect(blockBefore.dimensions.map((d) => d.id)).toEqual(["dim-a"]);
+
+      act(() => {
+        result.current.addDimensionToMetricBlock(blockBefore.id, dimB);
+      });
+
+      const blockAfter = result.current.blocks[0];
+      if (blockAfter.kind !== "metric") {
+        throw new Error("expected metric block");
+      }
+      expect(blockAfter.dimensions.map((d) => d.id)).toEqual([
+        "dim-a",
+        "dim-b",
+      ]);
+    });
+
+    it("is a no-op when the dimension is already in the block", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric = makeMetric(1, ["dim-a"]);
+      const dimensionsById = makeDimensionsById([dimA]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+      const blocksBefore = result.current.blocks;
+
+      act(() => {
+        result.current.addDimensionToMetricBlock("metric:1", dimA);
+      });
+
+      // Same array reference — no React state churn.
+      expect(result.current.blocks).toBe(blocksBefore);
+    });
+
+    it("is a no-op when target id isn't a metric block", () => {
+      const dimA = makeDim("dim-a", 0.9);
+
+      const { result } = renderSelection();
+
+      // No blocks at all → mutator finds nothing to update.
+      act(() => {
+        result.current.addDimensionToMetricBlock("metric:999", dimA);
+      });
+
+      expect(result.current.blocks).toEqual([]);
+    });
+  });
+
+  describe("addMetricToDimensionBlock", () => {
+    it("appends a metric to the dimension block's body", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+
+      const { result } = renderSelection();
+
+      // Manually seed a dimension block via setBlocks.
+      act(() => {
+        result.current.setBlocks([
+          {
+            kind: "dimension",
+            id: "dim:dim-a",
+            dimension: dimA,
+            groupDimensions: [dimA],
+            metrics: [metric1],
+          },
+        ]);
+      });
+
+      act(() => {
+        result.current.addMetricToDimensionBlock("dim:dim-a", metric2);
+      });
+
+      const block = result.current.blocks[0];
+      if (block.kind !== "dimension") {
+        throw new Error("expected dimension block");
+      }
+      expect(block.metrics.map((m) => m.id)).toEqual([1, 2]);
+    });
+
+    it("is a no-op when the metric is already in the block", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric1 = makeMetric(1, ["dim-a"]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.setBlocks([
+          {
+            kind: "dimension",
+            id: "dim:dim-a",
+            dimension: dimA,
+            groupDimensions: [dimA],
+            metrics: [metric1],
+          },
+        ]);
+      });
+      const blocksBefore = result.current.blocks;
+
+      act(() => {
+        result.current.addMetricToDimensionBlock("dim:dim-a", metric1);
+      });
+
+      expect(result.current.blocks).toBe(blocksBefore);
+    });
+  });
 });

@@ -1,8 +1,13 @@
+import { useDraggable } from "@dnd-kit/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import {
+  type ToggleDimensionContext,
+  paletteDimensionDragId,
+} from "metabase/explorations/hooks";
 import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { DimensionId, MetricDimension } from "metabase-types/api";
 
@@ -16,6 +21,14 @@ interface DimensionListProps {
   dimensions: MetricDimension[];
   isSelected: (dimensionId: DimensionId) => boolean;
   onToggle: (dimension: MetricDimension) => void;
+  /**
+   * Resolves the toggle context for a given dimension row. Threaded
+   * into each row's drag payload so a drop on the Research plan's
+   * empty-state target can build a dimension block with its group
+   * siblings + referencing metrics hydrated — matching the
+   * `selection.toggleDimension` checkbox path exactly.
+   */
+  getDragContext: (dimension: MetricDimension) => ToggleDimensionContext;
 }
 
 /**
@@ -27,6 +40,7 @@ export function DimensionList({
   dimensions,
   isSelected,
   onToggle,
+  getDragContext,
 }: DimensionListProps) {
   const rows = useMemo(
     () => groupDimensionsBySemanticType(dimensions),
@@ -94,47 +108,97 @@ export function DimensionList({
           }
 
           const dimension = row.dimension;
-          const selected = isSelected(dimension.id);
-          const sourceName = dimension.group?.display_name;
-
           return (
-            <UnstyledButton
+            <DraggableDimensionRow
               key={virtualRow.key}
-              ref={virtualizer.measureElement}
-              role="listitem"
-              data-index={virtualRow.index}
-              aria-pressed={selected}
-              data-interestingness={
-                dimension.dimension_interestingness || "null"
-              }
-              className={cx(S.metricItem, {
-                [S.metricItemSelected]: selected,
-              })}
-              style={{
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-              onClick={() => onToggle(dimension)}
-            >
-              <Checkbox
-                checked={selected}
-                onChange={() => onToggle(dimension)}
-                onClick={(event) => event.stopPropagation()}
-                aria-label={dimension.display_name}
-              />
-              <Stack gap="xs" flex={1}>
-                <Text fw="bold" lh="1.25" lineClamp={1}>
-                  {dimension.display_name}
-                </Text>
-                {sourceName && (
-                  <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
-                    {sourceName}
-                  </Text>
-                )}
-              </Stack>
-            </UnstyledButton>
+              dimension={dimension}
+              isSelected={isSelected(dimension.id)}
+              top={virtualRow.start}
+              measureRef={virtualizer.measureElement}
+              dataIndex={virtualRow.index}
+              onToggle={onToggle}
+              dragContext={getDragContext(dimension)}
+            />
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+interface DraggableDimensionRowProps {
+  dimension: MetricDimension;
+  isSelected: boolean;
+  top: number;
+  measureRef: (el: Element | null) => void;
+  dataIndex: number;
+  onToggle: (dimension: MetricDimension) => void;
+  dragContext: ToggleDimensionContext;
+}
+
+function DraggableDimensionRow({
+  dimension,
+  isSelected,
+  top,
+  measureRef,
+  dataIndex,
+  onToggle,
+  dragContext,
+}: DraggableDimensionRowProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: paletteDimensionDragId(dimension.id),
+    data: {
+      kind: "dimension" as const,
+      payload: dimension,
+      context: dragContext,
+    },
+  });
+
+  const composedRef = useCallback(
+    (el: HTMLButtonElement | null) => {
+      setNodeRef(el);
+      measureRef(el);
+    },
+    [setNodeRef, measureRef],
+  );
+
+  const sourceName = dimension.group?.display_name;
+
+  return (
+    <UnstyledButton
+      ref={composedRef}
+      {...attributes}
+      {...listeners}
+      role="listitem"
+      data-index={dataIndex}
+      aria-pressed={isSelected}
+      data-interestingness={dimension.dimension_interestingness || "null"}
+      className={cx(S.metricItem, {
+        [S.metricItemSelected]: isSelected,
+        [S.metricItemDragging]: isDragging,
+      })}
+      style={{
+        transform: `translateY(${top}px)`,
+      }}
+      onClick={() => onToggle(dimension)}
+    >
+      <Checkbox
+        checked={isSelected}
+        onChange={() => onToggle(dimension)}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        aria-label={dimension.display_name}
+      />
+      <Stack gap="xs" flex={1}>
+        <Text fw="bold" lh="1.25" lineClamp={1}>
+          {dimension.display_name}
+        </Text>
+        {sourceName && (
+          <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
+            {sourceName}
+          </Text>
+        )}
+      </Stack>
+    </UnstyledButton>
   );
 }

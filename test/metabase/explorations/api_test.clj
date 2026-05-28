@@ -266,6 +266,43 @@
           (is (= :default (:strategy (lib/binning brk)))
               "numeric dim with a usable fingerprint picks up default auto-binning"))))))
 
+(deftest exploration-create-accepts-groups-payload-test
+  (testing "POST / accepts the per-area :groups body, flattens + dedupes across groups, and persists the same way as the legacy flat shape"
+    (mt/with-temp [:model/User u {:email "groups@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))
+                   :model/Timeline tl {:creator_id (:id u)}]
+      (let [mapping [{:dimension_id "d1"
+                      :table_id (mt/id :venues)
+                      :target ["field" {} (mt/id :venues :price)]}]
+            ;; Two groups: metric block (metric + d1) and a dimension
+            ;; block (the same metric appears again as a secondary,
+            ;; with d2). Expect dedup to keep one metric row + two
+            ;; dimension rows, plus the global timeline attached to
+            ;; the first group only.
+            body {:name   "Grouped create"
+                  :prompt "via groups"
+                  :groups [{:metrics      [{:card_id (:id metric)
+                                            :dimension_mappings mapping}]
+                            :dimensions   [{:dimension_id "d1"
+                                            :display_name "Price"
+                                            :effective_type "type/Number"}]
+                            :timeline_ids [(:id tl)]}
+                           {:metrics    [{:card_id (:id metric)
+                                          :dimension_mappings mapping}]
+                            :dimensions [{:dimension_id "d2"
+                                          :display_name "Category"
+                                          :effective_type "type/Text"}]}]}
+            resp (create-exploration! u body)
+            thread (-> resp :threads first)]
+        (is (= "Grouped create" (:name resp)))
+        (is (= "via groups" (:prompt thread)))
+        (is (= 1 (count (:metrics thread)))
+            "duplicate metric across groups is deduped by card_id")
+        (is (= 2 (count (:dimensions thread)))
+            "d1 + d2 from across the two groups")
+        (is (= 1 (count (:timelines thread)))
+            "timeline carried on the first group is persisted")))))
+
 (deftest exploration-create-applies-default-binning-test
   (testing "POST / picks a sensible default temporal bucket / numeric binning per dim type"
     (mt/with-temp [:model/User u {:email "binning@example.com"}

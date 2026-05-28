@@ -1,12 +1,31 @@
 export {
   useExplorationSelection,
+  isMetricBlock,
+  isDimensionBlock,
+  metricBlockId,
+  dimensionBlockId,
   type ExplorationSelection,
+  type ExplorationBlock,
+  type MetricBlock,
+  type DimensionBlock,
   type ToggleMetricContext,
   type ToggleDimensionContext,
 } from "./useExplorationSelection";
 export {
   useExplorationNavigation,
   type ExplorationNavigation,
-  type LeftTab,
   type BrowseTab,
 } from "./useExplorationNavigation";
+export {
+  useExplorationDnd,
+  isExplorationDropAccepted,
+  isNewBlockDroppableId,
+  paletteMetricDragId,
+  paletteDimensionDragId,
+  RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
+  RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
+  type ExplorationDragData,
+  type ExplorationDragKind,
+  type MetricDragData,
+  type DimensionDragData,
+} from "./useExplorationDnd";

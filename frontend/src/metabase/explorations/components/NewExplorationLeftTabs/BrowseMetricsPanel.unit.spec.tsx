@@ -12,6 +12,10 @@ import {
 } from "__support__/ui";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { useExplorationSelection } from "metabase/explorations/hooks";
+import {
+  makeMockNavigation,
+  mockMetricBlock,
+} from "metabase/explorations/test-utils";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import type { MetricDimension } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -109,16 +113,31 @@ function Harness({
     }
     seededRef.current = true;
     if (initialMetrics.length > 0) {
-      selection.setMetrics(initialMetrics);
-    }
-    if (initialDimensions.length > 0) {
-      selection.setDimensions(initialDimensions);
+      // Seed one metric block per initial metric, scoping the initial
+      // dimensions array down to those the metric references. Matches
+      // the legacy flat-state semantics: union of per-block dimensions
+      // == original `initialDimensions`.
+      const dimIds = new Set(initialDimensions.map((d) => d.id));
+      const blocks = initialMetrics.map((metric) =>
+        mockMetricBlock(
+          metric,
+          initialDimensions.filter(
+            (d) => metric.dimension_ids.includes(d.id) && dimIds.has(d.id),
+          ),
+        ),
+      );
+      selection.setBlocks(blocks);
     }
   }, [initialMetrics, initialDimensions, selection]);
 
   useImperativeHandle(selectionRef, () => selection, [selection]);
 
-  return <BrowseMetricsPanel selection={selection} />;
+  return (
+    <BrowseMetricsPanel
+      selection={selection}
+      navigation={makeMockNavigation()}
+    />
+  );
 }
 
 function setup({

@@ -15,16 +15,6 @@
   display: none;
 }
 
-.topTabList {
-  padding: 0;
-  border-bottom: 1px solid var(--mb-color-border);
-
-  [data-orientation="horizontal"] {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
 .tabPanel {
   flex: 1;
   min-height: 0;

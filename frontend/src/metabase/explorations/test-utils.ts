@@ -9,43 +9,141 @@ import type {
   Timeline,
 } from "metabase-types/api";
 
-import type { ExplorationNavigation, ExplorationSelection } from "./hooks";
+import type {
+  DimensionBlock,
+  ExplorationBlock,
+  ExplorationNavigation,
+  ExplorationSelection,
+  MetricBlock,
+} from "./hooks";
+import {
+  dimensionBlockId,
+  metricBlockId,
+} from "./hooks/useExplorationSelection";
 import type { ExplorationMetric } from "./types";
 
 export const METRIC_HEADING_ID = "metric:1";
 
-export function makeMockSelection(opts: {
-  metrics?: ExplorationMetric[];
-  dimensions?: MetricDimension[];
+export interface MockSelectionOpts {
+  blocks?: ExplorationBlock[];
   timelines?: Timeline[];
-}): ExplorationSelection {
+}
+
+/**
+ * Convenience constructor — pass an `ExplorationMetric` and the
+ * dimensions you want listed in its block's body and we'll synthesize
+ * the `MetricBlock` for you. Useful in tests that don't care about the
+ * block's id beyond uniqueness.
+ */
+export function mockMetricBlock(
+  metric: ExplorationMetric,
+  dimensions: MetricDimension[] = [],
+): MetricBlock {
   return {
-    metrics: opts.metrics ?? [],
-    dimensions: opts.dimensions ?? [],
-    timelines: opts.timelines ?? [],
+    kind: "metric",
+    id: metricBlockId(metric.id),
+    metric,
+    dimensions,
+  };
+}
+
+export function mockDimensionBlock(
+  dimension: MetricDimension,
+  metrics: ExplorationMetric[] = [],
+  groupDimensions?: MetricDimension[],
+): DimensionBlock {
+  return {
+    kind: "dimension",
+    id: dimensionBlockId(dimension.id),
+    dimension,
+    groupDimensions: groupDimensions ?? [dimension],
+    metrics,
+  };
+}
+
+export function makeMockSelection(
+  opts: MockSelectionOpts = {},
+): ExplorationSelection {
+  const blocks = opts.blocks ?? [];
+  const timelines = opts.timelines ?? [];
+
+  // Derive the read-only aggregates from blocks so tests can assert on
+  // them without re-running the production memoizers.
+  const metricBlockIds = new Set<ExplorationMetric["id"]>();
+  const dimensionBlockIds = new Set<MetricDimension["id"]>();
+  const metricSeen = new Set<ExplorationMetric["id"]>();
+  const metrics: ExplorationMetric[] = [];
+  const dimensionSeen = new Set<MetricDimension["id"]>();
+  const dimensions: MetricDimension[] = [];
+
+  for (const block of blocks) {
+    if (block.kind === "metric") {
+      metricBlockIds.add(block.metric.id);
+      if (!metricSeen.has(block.metric.id)) {
+        metricSeen.add(block.metric.id);
+        metrics.push(block.metric);
+      }
+      for (const d of block.dimensions) {
+        if (!dimensionSeen.has(d.id)) {
+          dimensionSeen.add(d.id);
+          dimensions.push(d);
+        }
+      }
+    } else {
+      for (const d of block.groupDimensions) {
+        dimensionBlockIds.add(d.id);
+        if (!dimensionSeen.has(d.id)) {
+          dimensionSeen.add(d.id);
+          dimensions.push(d);
+        }
+      }
+      for (const m of block.metrics) {
+        if (!metricSeen.has(m.id)) {
+          metricSeen.add(m.id);
+          metrics.push(m);
+        }
+      }
+    }
+  }
+
+  return {
+    blocks,
+    metricBlockIds,
+    dimensionBlockIds,
+    metrics,
+    dimensions,
+    timelines,
+    allTimelines: [],
+    timelinesLoading: false,
+    timelinesError: null,
     name: "",
     setName: jest.fn(),
-    setMetrics: jest.fn(),
-    setDimensions: jest.fn(),
+    setBlocks: jest.fn(),
     setTimelines: jest.fn(),
     addMetric: jest.fn(),
     toggleMetric: jest.fn(),
     toggleDimension: jest.fn(),
     toggleTimeline: jest.fn(),
     addTimelinesById: jest.fn(),
-    allTimelines: [],
-    timelinesLoading: false,
-    timelinesError: null,
+    removeBlock: jest.fn(),
+    removeDimensionFromMetricBlock: jest.fn(),
+    removeMetricFromDimensionBlock: jest.fn(),
+    addDimensionToMetricBlock: jest.fn(),
+    addMetricToDimensionBlock: jest.fn(),
   };
 }
 
-export function makeMockNavigation(): ExplorationNavigation {
+export function makeMockNavigation(
+  overrides: Partial<ExplorationNavigation> = {},
+): ExplorationNavigation {
   return {
-    leftTab: "chat",
-    setLeftTab: jest.fn(),
     browseTab: "metrics",
     setBrowseTab: jest.fn(),
     openBrowse: jest.fn(),
+    activeBlockId: null,
+    selectBlock: jest.fn(),
+    clearActiveBlock: jest.fn(),
+    ...overrides,
   };
 }
 

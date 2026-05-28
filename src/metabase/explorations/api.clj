@@ -172,6 +172,40 @@
                 (positional-rows thread-id
                                  (map (fn [tl-id] {:timeline_id tl-id}) timeline-ids)))))
 
+(defn- flatten-create-payload
+  "Reduce a `POST /api/exploration` body into the three flat lists the per-thread tables
+   currently store: metrics, dimensions, timeline_ids. Each list is deduped by its identity key
+   (`:card_id` for metrics, `:dimension_id` for dimensions, the id itself for timelines) while
+   preserving first-seen order across groups.
+
+   Group structure isn't reified on the BE yet — this is the seam where it could be — so we
+   collapse before insertion. If the body sends legacy top-level `:metrics`/`:dimensions`/
+   `:timeline_ids` instead of `:groups`, we treat that as a single implicit group."
+  [{:keys [groups metrics dimensions timeline_ids]}]
+  (let [effective-groups (cond
+                           (seq groups)                                       groups
+                           (or (seq metrics) (seq dimensions) (seq timeline_ids))
+                           [{:metrics      metrics
+                             :dimensions   dimensions
+                             :timeline_ids timeline_ids}]
+                           :else                                              [])
+        dedupe-by         (fn [k coll]
+                            (->> coll
+                                 (reduce (fn [{:keys [seen out]} item]
+                                           (let [key-val (get item k)]
+                                             (if (contains? seen key-val)
+                                               {:seen seen :out out}
+                                               {:seen (conj seen key-val)
+                                                :out  (conj out item)})))
+                                         {:seen #{} :out []})
+                                 :out))]
+    {:metrics      (dedupe-by :card_id (mapcat :metrics effective-groups))
+     :dimensions   (dedupe-by :dimension_id (mapcat :dimensions effective-groups))
+     :timeline_ids (->> effective-groups
+                        (mapcat :timeline_ids)
+                        distinct
+                        vec)}))
+
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
@@ -185,6 +219,16 @@
    [:display_name   {:optional true} [:maybe :string]]
    [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type  {:optional true} [:maybe :string]]])
+
+(def ^:private GroupSelection
+  "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
+   or a dimension area (the dimension's group + referencing metrics). The BE flattens these
+   across `groups` (dedup by id) before persisting to the existing per-thread metric/dimension/timeline
+   tables; group structure isn't reified on the BE yet."
+  [:map
+   [:metrics      {:optional true} [:maybe [:sequential MetricSelection]]]
+   [:dimensions   {:optional true} [:maybe [:sequential DimensionSelection]]]
+   [:timeline_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mr/def ::ExplorationQuerySummary
   "Schema for a query row in API responses. The result blob and `dataset_query` aren't
@@ -300,10 +344,17 @@
    [:updated_at    {:optional true} [:maybe :any]]])
 
 (def ^:private CreateExploration
+  "Body schema for `POST /api/exploration`.
+
+   The FE now sends entries grouped by Research-plan area (`:groups` — one per metric/dimension
+   block). The legacy flat shape (`:metrics` / `:dimensions` / `:timeline_ids` at the top level)
+   is still accepted so existing API consumers + the existing test suite keep working. When
+   both shapes are supplied, `:groups` wins."
   [:map
    [:name         expl.model/ExplorationName]
    [:description  {:optional true} [:maybe :string]]
    [:prompt       {:optional true} [:maybe :string]]
+   [:groups       {:optional true} [:maybe [:sequential GroupSelection]]]
    [:metrics      {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions   {:optional true} [:maybe [:sequential DimensionSelection]]]
    [:timeline_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
@@ -359,33 +410,38 @@
   and timelines, and stamp the thread as started. The background planning worker (see
   `metabase.explorations.query-plan`) picks the thread up, calls an LLM to decide which charts
   to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
-  with an empty queries list; clients should poll `GET /:id/queries` until rows appear."
+  with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
+
+  Accepts either the per-area `:groups` payload (preferred — one entry per Research-plan block)
+  or the legacy flat `:metrics`/`:dimensions`/`:timeline_ids` lists. See `flatten-create-payload`
+  for the merge semantics."
   [_route-params
    _query-params
-   {:keys [name description prompt metrics dimensions timeline_ids]} :- CreateExploration]
-  (t2/with-transaction [_]
-    (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                             {:name        name
-                                                              :description description
-                                                              :creator_id  api/*current-user-id*}))
-          coll-id     (:collection_id exploration)
-          thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                             {:exploration_id (:id exploration)
-                                                              :prompt         prompt
-                                                              :position       0}))
-          tid         (:id thread)]
-      (insert-thread-default-documents! tid coll-id)
-      (insert-thread-metrics! tid metrics)
-      (insert-thread-dimensions! tid dimensions)
-      (insert-thread-timelines! tid timeline_ids)
-      ;; Setting `started_at` is the signal to the background planning worker that this
-      ;; thread is ready to plan + execute. The worker's claim predicate matches threads
-      ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
-      (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
-      (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
-        (events/publish-event! :event/exploration-create
-                               {:object persisted :user-id api/*current-user-id*})
-        (hydrate-exploration persisted)))))
+   {:keys [name description prompt] :as body} :- CreateExploration]
+  (let [{:keys [metrics dimensions timeline_ids]} (flatten-create-payload body)]
+    (t2/with-transaction [_]
+      (let [exploration (first (t2/insert-returning-instances! :model/Exploration
+                                                               {:name        name
+                                                                :description description
+                                                                :creator_id  api/*current-user-id*}))
+            coll-id     (:collection_id exploration)
+            thread      (first (t2/insert-returning-instances! :model/ExplorationThread
+                                                               {:exploration_id (:id exploration)
+                                                                :prompt         prompt
+                                                                :position       0}))
+            tid         (:id thread)]
+        (insert-thread-default-documents! tid coll-id)
+        (insert-thread-metrics! tid metrics)
+        (insert-thread-dimensions! tid dimensions)
+        (insert-thread-timelines! tid timeline_ids)
+        ;; Setting `started_at` is the signal to the background planning worker that this
+        ;; thread is ready to plan + execute. The worker's claim predicate matches threads
+        ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
+        (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+        (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
+          (events/publish-event! :event/exploration-create
+                                 {:object persisted :user-id api/*current-user-id*})
+          (hydrate-exploration persisted))))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
   "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.

@@ -11,6 +11,10 @@ import {
 } from "__support__/ui";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { useExplorationSelection } from "metabase/explorations/hooks";
+import {
+  makeMockNavigation,
+  mockMetricBlock,
+} from "metabase/explorations/test-utils";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import type { MetricDimension } from "metabase-types/api";
 import {
@@ -86,16 +90,27 @@ function Harness({
     }
     seededRef.current = true;
     if (initialMetrics.length > 0) {
-      selection.setMetrics(initialMetrics);
-    }
-    if (initialDimensions.length > 0) {
-      selection.setDimensions(initialDimensions);
+      const dimIds = new Set(initialDimensions.map((d) => d.id));
+      const blocks = initialMetrics.map((metric) =>
+        mockMetricBlock(
+          metric,
+          initialDimensions.filter(
+            (d) => metric.dimension_ids.includes(d.id) && dimIds.has(d.id),
+          ),
+        ),
+      );
+      selection.setBlocks(blocks);
     }
   }, [initialMetrics, initialDimensions, selection]);
 
   useImperativeHandle(selectionRef, () => selection, [selection]);
 
-  return <BrowseDimensionsPanel selection={selection} />;
+  return (
+    <BrowseDimensionsPanel
+      selection={selection}
+      navigation={makeMockNavigation()}
+    />
+  );
 }
 
 function setup({
@@ -145,12 +160,29 @@ describe("BrowseDimensionsPanel", () => {
     expect(screen.getByText("Country")).toBeInTheDocument();
   });
 
-  it("clicking a dimension commits it + every metric connected to it", async () => {
+  it("clicking a dimension creates a dimension block hydrated with every metric that references it", async () => {
     const { getSelection } = setup();
 
     const checkbox = await screen.findByRole("checkbox", { name: "Country" });
     await userEvent.click(checkbox);
 
+    // One dimension block lives in `blocks`; its body lists every
+    // metric that references the dimension as a secondary item.
+    const blocks = getSelection().blocks;
+    expect(blocks).toHaveLength(1);
+    const dimBlock = blocks[0];
+    if (dimBlock.kind !== "dimension") {
+      throw new Error(
+        `Expected the toggled block to be a dimension block, got "${dimBlock.kind}"`,
+      );
+    }
+    expect(dimBlock.dimension.id).toBe(dimShared.id);
+    expect(dimBlock.metrics.map((m) => m.id).sort()).toEqual(
+      [metricRevenue.id, metricChurn.id].sort(),
+    );
+
+    // The derived flat aggregates surface everything across blocks for
+    // the BE POST body.
     expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimShared.id]);
     expect(
       getSelection()
@@ -159,30 +191,43 @@ describe("BrowseDimensionsPanel", () => {
     ).toEqual([metricRevenue.id, metricChurn.id].sort());
   });
 
-  it("deselecting a shared dimension orphans every metric that loses its last matching dimension", async () => {
+  it("clicking a dimension twice toggles its block on and then off", async () => {
+    const { getSelection } = setup();
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Country" });
+    await userEvent.click(checkbox);
+    expect(getSelection().blocks).toHaveLength(1);
+
+    await userEvent.click(checkbox);
+    expect(getSelection().blocks).toEqual([]);
+    expect(getSelection().dimensions).toEqual([]);
+    expect(getSelection().metrics).toEqual([]);
+  });
+
+  it("a dimension is shown selected only when its own block exists, not when it merely sits inside a metric block", async () => {
     const { getSelection } = setup({
       initialMetrics: [revenueAsMetric, churnAsMetric],
       initialDimensions: [dimShared],
     });
 
+    // Initially `dimShared` is inside both metric blocks but no
+    // dimension block — the picker shows it as **unchecked**.
     const checkbox = await screen.findByRole("checkbox", { name: "Country" });
+    expect(checkbox).not.toBeChecked();
+
+    // Toggling on creates a dedicated dimension block. The picker
+    // then shows it as checked. The metric blocks are untouched.
     await userEvent.click(checkbox);
-
-    expect(getSelection().metrics).toEqual([]);
-    expect(getSelection().dimensions).toEqual([]);
-  });
-
-  it("deselecting a dimension keeps a metric whose other dimension is still selected", async () => {
-    const { getSelection } = setup({
-      initialMetrics: [revenueAsMetric, churnAsMetric],
-      initialDimensions: [dimRevenue, dimShared],
-    });
-
-    const checkbox = await screen.findByRole("checkbox", { name: "Country" });
-    await userEvent.click(checkbox);
-
-    expect(getSelection().dimensions.map((d) => d.id)).toEqual([dimRevenue.id]);
-    expect(getSelection().metrics.map((m) => m.id)).toEqual([metricRevenue.id]);
+    expect(checkbox).toBeChecked();
+    expect(
+      getSelection()
+        .blocks.filter((b) => b.kind === "metric")
+        .map((b) => (b as { metric: { id: number } }).metric.id)
+        .sort(),
+    ).toEqual([metricRevenue.id, metricChurn.id].sort());
+    expect(getSelection().blocks.some((b) => b.kind === "dimension")).toBe(
+      true,
+    );
   });
 
   it("filters the dimension list down to the matching metric's dimensions", async () => {

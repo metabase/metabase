@@ -26,6 +26,13 @@
   border-color: var(--mb-color-brand);
 }
 
+/* While the row is the active drag source, dim it in place. The
+   floating ghost is rendered by the page-level <DragOverlay>. */
+.metricItemDragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
 .dimensionGroupHeader {
   padding-top: 1rem;
 
