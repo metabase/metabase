@@ -657,7 +657,6 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
-
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."
