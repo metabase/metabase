@@ -8,6 +8,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
+  Alert,
   Button,
   Card,
   Group,
@@ -114,9 +115,9 @@ function CustomVizEmptyState() {
                 {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and upload them here as packaged bundles (.tgz).`}
               </Text>
               {cspImgEnabled && (
-                <Text fw="bold" lh="1.25rem">
+                <Alert title={t`Security risk`} icon={<Icon name="warning" />}>
                   {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
-                </Text>
+                </Alert>
               )}
 
               {!cspImgEnabled && (
