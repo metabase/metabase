@@ -13,3 +13,14 @@ databaseChangeLog:
             columnName: mcp_session_id
             newDataType: varchar(254)
       rollback: []
+
+  - changeSet:
+      id: v62.2026-05-26T00:00:01
+      author: phoomparin
+      comment: Preserve NOT NULL on mcp_query_handle.mcp_session_id after widening
+      changes:
+        - addNotNullConstraint:
+            tableName: mcp_query_handle
+            columnName: mcp_session_id
+            columnDataType: varchar(254)
+      rollback: []
