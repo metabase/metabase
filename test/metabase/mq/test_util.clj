@@ -170,7 +170,7 @@
     :appdb  {:backend  :appdb
              :queue-be (q.appdb/make-backend)}
     :redis  {:backend  :redis
-             :queue-be ((requiring-resolve 'metabase.mq.queue.redis/make-backend))}))
+             :queue-be ((requiring-resolve 'metabase-enterprise.mq.queue.redis/make-backend))}))
 
 ;; A defrecord (not reify) so it exposes a `:poll-context` field — the transport reads
 ;; `(:poll-context backend)` to wake the poll loop, and that must resolve to the inner backend's

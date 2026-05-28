@@ -31,7 +31,7 @@
   Computed once per JVM so each test in this ns doesn't reopen a TCP socket."
   (delay
     (try
-      (boolean ((requiring-resolve 'metabase.mq.queue.redis/broker-available?)))
+      (boolean ((requiring-resolve 'metabase-enterprise.mq.queue.redis/broker-available?)))
       (catch Throwable _ false))))
 
 (def ^:private backend-kinds
@@ -66,7 +66,7 @@
   "Deletes the Redis stream for `channel` so successive parity runs don't accumulate streams."
   [channel]
   (try
-    ((requiring-resolve 'metabase.mq.queue.redis/delete-stream!) channel)
+    ((requiring-resolve 'metabase-enterprise.mq.queue.redis/delete-stream!) channel)
     (catch Throwable _)))
 
 (defn- unique-channel [transport-ns suffix]

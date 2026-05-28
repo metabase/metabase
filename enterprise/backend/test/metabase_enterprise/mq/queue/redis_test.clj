@@ -1,4 +1,4 @@
-(ns metabase.mq.queue.redis-test
+(ns metabase-enterprise.mq.queue.redis-test
   "Tests specific to the Redis backend that go beyond cross-backend parity: retry-count
   propagation via the entry's `retries` field, stream/group creation, and exclusive-queue
   delivery.
@@ -7,11 +7,11 @@
   `mq-redis-uri` setting (`MB_MQ_REDIS_URI`)."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.mq.queue.redis :as redis]
+   [metabase-enterprise.mq.settings :as ee.mq.settings]
    [metabase.mq.core :as mq]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.redis :as redis]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.mq.settings :as mq.settings]
    [metabase.mq.test-util :as mq.tu]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.log :as log])
@@ -25,16 +25,16 @@
 (defmacro ^:private when-server [& body]
   `(if (redis/broker-available?)
      (do ~@body)
-     (log/infof "Skipping redis test — no server reachable at %s" (mq.settings/mq-redis-uri))))
+     (log/infof "Skipping redis test — no server reachable at %s" (ee.mq.settings/mq-redis-uri))))
 
 (defn- unique-channel [suffix]
   (keyword "queue" (str suffix "-" (random-uuid))))
 
 (deftest namespace-loads-test
   (testing "The redis namespace compiles and key helpers exist"
-    (is (some? (resolve 'metabase.mq.queue.redis/make-backend)))
-    (is (some? (resolve 'metabase.mq.queue.redis/delete-stream!)))
-    (is (some? (resolve 'metabase.mq.queue.redis/broker-available?)))))
+    (is (some? (resolve 'metabase-enterprise.mq.queue.redis/make-backend)))
+    (is (some? (resolve 'metabase-enterprise.mq.queue.redis/delete-stream!)))
+    (is (some? (resolve 'metabase-enterprise.mq.queue.redis/broker-available?)))))
 
 (deftest broker-available-probe-test
   (testing "broker-available? returns true for a reachable server and false for a bogus port"

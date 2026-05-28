@@ -1,4 +1,4 @@
-(ns metabase.mq.queue.redis
+(ns metabase-enterprise.mq.queue.redis
   "Redis-backed queue. Optional — only loaded when the `queue-backend` setting is `redis`.
 
   Each `:queue/foo` channel maps to a Redis Stream `metabase:queue:foo` consumed by a single
@@ -14,11 +14,9 @@
   would race across nodes."
   (:require
    [clojure.string :as str]
-   [metabase.mq.listener :as listener]
-   [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.polling :as q.polling]
-   [metabase.mq.queue.registry :as q.registry]
-   [metabase.mq.settings :as mq.settings]
+   [metabase-enterprise.mq.settings :as ee.mq.settings]
+   [metabase.mq.core-backend :as mq.backend]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [taoensso.carmine :as car :refer [wcar]])
   (:import
@@ -86,7 +84,7 @@
   listened to, so it always exists here."
   [conn consumer queue]
   (let [stream (stream-name queue)
-        reply  (if (q.registry/exclusive? queue)
+        reply  (if (mq.backend/exclusive? queue)
                  (wcar conn (car/eval exclusive-read-script 1 stream group-name consumer))
                  (wcar conn (car/xreadgroup "GROUP" group-name consumer "COUNT" 1 "STREAMS" stream ">")))]
     (some-> (first-entry reply) parse-entry)))
@@ -136,8 +134,8 @@
 (defn- watch-key [consumer]
   [::ensure-group consumer])
 
-(defrecord RedisQueueBackend [conn watched-listeners poll-context]
-  q.backend/QueueBackend
+(defrecord RedisQueueBackend [conn poll-context]
+  mq.backend/QueueBackend
 
   (backend-id [_this] backend-id)
 
@@ -165,7 +163,7 @@
                           pending (first (wcar conn (car/xpending stream group-name)))]
                       [{:channel channel :status "total" :count len}
                        {:channel channel :status "pending" :count pending}])))
-          (listener/queue-names)))
+          (mq.backend/queue-names)))
 
   ;; The batch-id is the stream entry id; the queue gives the stream — so ack+delete directly.
   (batch-successful! [_this queue batch-id]
@@ -197,13 +195,13 @@
                       {:channel   (name queue)
                        :recovered (count (filter #{:recovered} outcomes))
                        :failed    (count (filter #{:failed} outcomes))}))))
-          (listener/queue-names)))
+          (mq.backend/queue-names)))
 
   ;; Refreshes the idle time of our in-flight entries (read from the group's pending list) so
   ;; reclaim doesn't steal a slow-but-alive batch.
   (run-heartbeats! [_this]
     (let [consumer (:id poll-context)]
-      (doseq [queue (listener/queue-names)]
+      (doseq [queue (mq.backend/queue-names)]
         (let [stream (stream-name queue)]
           (doseq [[entry-id] (wcar conn (car/xpending stream group-name "-" "+" 1000 consumer))]
             (try
@@ -213,46 +211,45 @@
 
   (start! [this]
     ;; A consumer must have the group before it can XREADGROUP. Create one for every queue we
-    ;; already listen to, and watch `*listeners*` so queues whose listeners register later (test
-    ;; fixtures, plugins) get their group the moment the listener appears.
-    (let [latom listener/*listeners*]
-      (reset! watched-listeners latom)
-      (doseq [queue (listener/queue-names)]
-        (ensure-group! conn (stream-name queue)))
-      (add-watch latom (watch-key (:id poll-context))
-                 (fn [_ _ old new]
-                   (doseq [k (keys new)
-                           :when (and (= "queue" (namespace k)) (not (contains? old k)))]
-                     (ensure-group! conn (stream-name k))))))
-    (q.polling/start! this poll-context "Redis Queue" 5000))
+    ;; already listen to, then watch for queues whose listeners register later (test fixtures,
+    ;; plugins) so they get their group the moment the listener appears.
+    (doseq [queue (mq.backend/queue-names)]
+      (ensure-group! conn (stream-name queue)))
+    (mq.backend/watch-new-queues! (watch-key (:id poll-context))
+                                  (fn [queue] (ensure-group! conn (stream-name queue))))
+    (mq.backend/start-poll-loop! this poll-context "Redis Queue" 5000))
 
   (shutdown! [_this]
-    (when-let [latom @watched-listeners]
-      (remove-watch latom (watch-key (:id poll-context)))
-      (reset! watched-listeners nil))
-    (q.polling/stop! poll-context "Redis Queue")))
+    (mq.backend/unwatch-new-queues! (watch-key (:id poll-context)))
+    (mq.backend/stop-poll-loop! poll-context "Redis Queue")))
 
 (defn make-backend
   "Constructs a `RedisQueueBackend`. With no args, reads connection details from the `mq-redis-*`
   settings. The 1-arg form takes an explicit URI (still honoring the username/password settings
   via the 3-arg form's caller); the 3-arg form is fully explicit and bypasses settings (tests)."
-  ([] (make-backend (mq.settings/mq-redis-uri)
-                    (mq.settings/mq-redis-username)
-                    (mq.settings/mq-redis-password)))
+  ([] (make-backend (ee.mq.settings/mq-redis-uri)
+                    (ee.mq.settings/mq-redis-username)
+                    (ee.mq.settings/mq-redis-password)))
   ([uri] (make-backend uri nil nil))
   ([uri username password]
    (->RedisQueueBackend (conn-opts uri username password)
-                        (atom nil)
-                        (q.polling/make-poll-context))))
+                        (mq.backend/make-poll-context))))
+
+(defenterprise make-redis-backend
+  "Enterprise implementation of the boundary fn declared in [[metabase.mq.init]]. Constructs the
+  Redis queue backend from the `mq-redis-*` settings; used when `queue-backend=redis`."
+  :feature :none
+  []
+  (make-backend))
 
 ;;; ------------------------------------------- Test helpers -------------------------------------------
 
 (defn delete-stream!
   "Deletes the Redis Stream backing `queue` (and its consumer group). Intended for test cleanup
   so streams don't accumulate between runs."
-  ([queue] (delete-stream! (mq.settings/mq-redis-uri)
-                           (mq.settings/mq-redis-username)
-                           (mq.settings/mq-redis-password)
+  ([queue] (delete-stream! (ee.mq.settings/mq-redis-uri)
+                           (ee.mq.settings/mq-redis-username)
+                           (ee.mq.settings/mq-redis-password)
                            queue))
   ([uri username password queue]
    (wcar (conn-opts uri username password) (car/del (stream-name queue)))))
@@ -260,7 +257,7 @@
 (defn broker-available?
   "Quick TCP probe of the configured Redis URI. Returns true if the server accepts a socket
   connection within `timeout-ms` (default 500). Use to skip redis tests when none is running."
-  ([] (broker-available? (mq.settings/mq-redis-uri) 500))
+  ([] (broker-available? (ee.mq.settings/mq-redis-uri) 500))
   ([^String uri timeout-ms]
    (try
      (let [u             (URI. uri)

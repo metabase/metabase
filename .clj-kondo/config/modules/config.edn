@@ -1357,10 +1357,12 @@
 
   mq
   {:team "UX West"
-   :api  #{metabase.mq.init}
+   :api  #{metabase.mq.core-backend
+           metabase.mq.init}
    :uses #{analytics-interface
            app-db
            models
+           premium-features
            settings
            startup
            util}}
@@ -3127,6 +3129,14 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
+
+  enterprise/mq
+  {:team "UX West"
+   :api  #{}
+   :uses #{mq
+           premium-features
+           settings
+           util}}
 
   enterprise/permission-debug
   {:team "UX West"

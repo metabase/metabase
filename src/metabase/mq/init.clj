@@ -9,31 +9,34 @@
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.startup.core :as startup]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
 (def ^:private queue-backends
   {q.appdb/backend-id  q.appdb/backend
    q.memory/backend-id q.memory/backend})
 
-;; The redis backend is lazy-loaded (see [[redis-backend]]), so its `backend-id` keyword is
-;; referenced as a literal here rather than requiring the namespace eagerly.
 (def ^:private valid-queue-backends
-  "Includes optional backends that are lazy-loaded in [[resolve-backend]]."
+  "Includes optional backends that are loaded on demand in [[resolve-backend]]."
   (conj (set (keys queue-backends)) :queue.backend/redis))
 
-(defn- redis-backend
-  "Lazy-construct the Redis backend. Loading is deferred so the Carmine/Redis client is only
-  touched when this backend is selected via the `queue-backend` setting."
+(defenterprise make-redis-backend
+  "Construct the Redis queue backend. The Redis implementation lives in enterprise code, so this
+  OSS fallback throws — selecting `queue-backend=redis` is only supported in Metabase Enterprise
+  Edition. `defenterprise` loads the enterprise namespace (and thus the Carmine client) lazily on
+  first call, so it's only touched when redis is actually the selected backend."
+  metabase-enterprise.mq.queue.redis
   []
-  (require 'metabase.mq.queue.redis)
-  ((requiring-resolve 'metabase.mq.queue.redis/make-backend)))
+  (throw (ex-info (tru "The Redis queue backend is only available in Metabase Enterprise Edition.")
+                  {:backend :queue.backend/redis})))
 
 (defn- resolve-backend [label table kw-or-instance]
   (if (keyword? kw-or-instance)
     (or (get table kw-or-instance)
         (when (= kw-or-instance :queue.backend/redis)
-          (redis-backend))
+          (make-redis-backend))
         (throw (ex-info (str "Unknown " label " backend: " kw-or-instance)
                         {:backend kw-or-instance :valid (set (keys table))})))
     kw-or-instance))

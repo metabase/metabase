@@ -17,6 +17,28 @@
   "channel → {:listener fn} for all channels."
   (atom {}))
 
+(defn watch-new-queues!
+  "Registers `f` to be called with each queue channel that *newly* starts being listened to, so a
+  backend can do per-queue setup (e.g. create a broker-side consumer group) for queues whose
+  listeners register after it started. Installed under `watch-key` so [[unwatch-new-queues!]] can
+  remove it. Does not fire for queues already listened to — handle those before calling this.
+
+  Encapsulates the registry watch so callers outside this namespace never touch `*listeners*`
+  directly: the watch is installed on whatever atom is bound at call time (tests rebind it for
+  isolation)."
+  [watch-key f]
+  (add-watch *listeners* watch-key
+             (fn [_ref _key old new]
+               (doseq [k (keys new)
+                       :when (and (= "queue" (namespace k)) (not (contains? old k)))]
+                 (f k)))))
+
+(defn unwatch-new-queues!
+  "Removes a watch installed by [[watch-new-queues!]] under `watch-key`. A no-op if none is
+  installed, so backends can call it unconditionally on shutdown."
+  [watch-key]
+  (remove-watch *listeners* watch-key))
+
 (defn queue-names
   "Returns the seq of queue channel names currently registered in `*listeners*`."
   []
