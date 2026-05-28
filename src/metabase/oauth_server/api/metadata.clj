@@ -38,6 +38,19 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
+(defn- request-base-url
+  "Derive the base URL from the request's Host header, falling back to the
+   configured site-url."
+  [request]
+  (let [host (get-in request [:headers "host"])]
+    (if host
+      (let [proto (or (get-in request [:headers "x-forwarded-proto"])
+                      (when-let [su (system/site-url)]
+                        (re-find #"^https?" su))
+                      "https")]
+        (str proto "://" host))
+      (system/site-url))))
+
 (api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- [:map
       [:status [:= 200]]
@@ -47,11 +60,12 @@
               [:scopes_supported [:sequential :string]]
               [:bearer_methods_supported [:sequential :string]]]]]
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  []
-  (let [site-url (system/site-url)]
+  [_route-params _query-params _body
+   request]
+  (let [base-url (request-base-url request)]
     {:status  200
      :headers {"Content-Type" "application/json"}
-     :body    {:resource                  (str site-url "/api/mcp")
-               :authorization_servers     [site-url]
+     :body    {:resource                  (str base-url "/api/mcp")
+               :authorization_servers     [base-url]
                :scopes_supported          (vec (oauth-server/all-agent-scopes))
                :bearer_methods_supported  ["header"]}}))
