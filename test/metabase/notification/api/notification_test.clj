@@ -405,6 +405,26 @@
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
 
+(deftest put-creator-id-permissions-test
+  (testing "PUT /api/notification/:id and creator_id"
+    (notification.tu/with-card-notification
+      [notification {:notification {:creator_id (mt/user->id :rasta)}}]
+      (let [notification-id (:id notification)
+            put!            (fn [user expected-status body]
+                              (mt/user-http-request user :put expected-status
+                                                    (format "notification/%d" notification-id)
+                                                    (merge notification body)))]
+        (testing "superuser can reassign owner"
+          (put! :crowberto 200 {:creator_id (mt/user->id :lucky)})
+          (is (= (mt/user->id :lucky)
+                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+        (testing "non-superuser cannot reassign owner — even the current owner (403 from mi/can-update?)"
+          (put! :lucky 403 {:creator_id (mt/user->id :rasta)})
+          (is (= (mt/user->id :lucky)
+                 (t2/select-one-fn :creator_id :model/Notification notification-id))))
+        (testing "echoing back the unchanged creator_id is fine for non-superusers"
+          (put! :lucky 200 {:creator_id (mt/user->id :lucky)}))))))
+
 (deftest send-notification-by-id-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"

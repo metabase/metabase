@@ -245,23 +245,16 @@
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification.
 
-  `creator_id` (owner) cannot be changed here by anyone — reassign owners (single or bulk) via
-  `POST /api/ee/notifications/bulk`. A change attempt gets a 400 rather than being silently
-  dropped; echoing back the unchanged value (e.g. PUTing the whole notification) is fine. The
-  model's `before-update` hook is the backstop."
+  `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
+  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
-    ;; Reject an actual ownership change (echoing back the unchanged value is fine — clients PUT
-    ;; the whole notification map). Reassignment goes through the admin bulk endpoint only.
-    (when (and (contains? body :creator_id)
-               (not= (:creator_id body) (:creator_id existing-notification)))
-      (throw (ex-info "Changing a notification's creator_id is only allowed via the admin reassignment endpoint."
-                      {:status-code 400})))
     (api/update-check existing-notification body)
-    (models.notification/update-notification! existing-notification (dissoc body :creator_id))
+    (models.notification/update-notification! existing-notification body)
     (u/prog1 (get-notification id)
       (publish-notification-update! <> existing-notification))))
 

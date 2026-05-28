@@ -720,21 +720,20 @@
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    ;; This admin endpoint is the blessed owner-reassignment path, so it permits the `creator_id`
-    ;; change the model's before-update otherwise rejects. (Harmless for the archive action, whose
-    ;; update-map never touches creator_id.)
-    (models.notification/reassigning-creator
-     (t2/with-transaction [_conn]
-       (let [before (-> (t2/select :model/Notification
-                                   :id           [:in ids]
-                                   :payload_type :notification/card)
-                        models.notification/hydrate-notification
-                        vec)]
-         (t2/update! :model/Notification
-                     :id           [:in ids]
-                     :payload_type :notification/card
-                     update-map)
-         before)))))
+    ;; The endpoint is superuser-gated (`api/check-superuser`), which is what the model's
+    ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
+    ;; archive action, whose update-map never touches creator_id.)
+    (t2/with-transaction [_conn]
+      (let [before (-> (t2/select :model/Notification
+                                  :id           [:in ids]
+                                  :payload_type :notification/card)
+                       models.notification/hydrate-notification
+                       vec)]
+        (t2/update! :model/Notification
+                    :id           [:in ids]
+                    :payload_type :notification/card
+                    update-map)
+        before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes

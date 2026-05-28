@@ -1287,24 +1287,27 @@
 ;; F. creator_id (owner) cannot be reassigned via the public PUT endpoint — only via POST /bulk
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest put-cannot-change-creator-id-test
-  (testing "PUT /api/notification/:id rejects creator_id changes (owner stays unchanged); reassignment is admin-only"
+(deftest put-creator-id-superuser-only-test
+  (testing "PUT /api/notification/:id: superusers can reassign owner; non-superusers get a 400"
     (mt/with-temp [:model/Card             {card-id :id} {}
                    :model/NotificationCard {nc :id}      {:card_id card-id}
                    :model/Notification     {nid :id}     {:payload_type :notification/card
                                                           :payload_id   nc
                                                           :creator_id   (mt/user->id :rasta)}]
-      (doseq [actor [:rasta :crowberto]]
-        (testing (format "as %s: changing creator_id is a 400, not a silent strip" actor)
-          (let [notification (mt/user-http-request actor :get 200 (format "notification/%d" nid))]
-            (mt/user-http-request actor :put 400 (format "notification/%d" nid)
-                                  (assoc notification :creator_id (mt/user->id :lucky)))
-            (testing "echoing back the unchanged creator_id is allowed (clients PUT the whole notification)"
-              (mt/user-http-request actor :put 200 (format "notification/%d" nid)
-                                    (assoc notification :creator_id (mt/user->id :rasta)))))))
-      (is (= (mt/user->id :rasta)
-             (t2/select-one-fn :creator_id :model/Notification nid))
-          "creator_id is unchanged"))))
+      (testing "non-superuser (the current owner) is forbidden from reassigning (403 from mi/can-update?)"
+        (let [notification (mt/user-http-request :rasta :get 200 (format "notification/%d" nid))]
+          (mt/user-http-request :rasta :put 403 (format "notification/%d" nid)
+                                (assoc notification :creator_id (mt/user->id :lucky)))
+          (is (= (mt/user->id :rasta)
+                 (t2/select-one-fn :creator_id :model/Notification nid))
+              "owner unchanged after non-superuser attempt")))
+      (testing "superuser can reassign owner"
+        (let [notification (mt/user-http-request :crowberto :get 200 (format "notification/%d" nid))]
+          (mt/user-http-request :crowberto :put 200 (format "notification/%d" nid)
+                                (assoc notification :creator_id (mt/user->id :lucky)))
+          (is (= (mt/user->id :lucky)
+                 (t2/select-one-fn :creator_id :model/Notification nid))
+              "owner reassigned after superuser PUT"))))))
 
 ;; ---------------------------------------------------------------------------------------------
 ;; Per-notification isolation — two notifications on the same card

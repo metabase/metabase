@@ -130,21 +130,6 @@
   [& args]
   (apply (requiring-resolve 'metabase.notification.task.send/delete-trigger-for-subscription!) args))
 
-(def ^:dynamic *allow-creator-id-change?*
-  "Should a notification's `creator_id` (owner) be allowed to change? `false` by default; only the
-  blessed owner-reassignment path (the admin `POST /api/ee/notifications/bulk` endpoint) binds it
-  to `true`. Every other path — including the public `PUT /api/notification/:id` — leaves
-  ownership untouched."
-  false)
-
-(defmacro reassigning-creator
-  "Permit `creator_id` (owner) changes within `body`. Used by the blessed owner-reassignment path;
-  all other callers leave ownership untouched and a `creator_id` change throws."
-  {:style/indent 0}
-  [& body]
-  `(binding [*allow-creator-id-change?* true]
-     ~@body))
-
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
@@ -153,12 +138,11 @@
       (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                       {:status-code 400
                        :changes     changes})))
-    ;; Ownership may only change through the blessed reassignment path (see
-    ;; `*allow-creator-id-change?*`). Everything else — the public PUT, unauthenticated/system
-    ;; writes — is rejected here regardless of who the current user is.
+    ;; Only superusers can reassign ownership. Unauthenticated/system writes have no current
+    ;; user, so `(mi/superuser?)` is false and they're rejected too.
     (when (and (contains? changes :creator_id)
-               (not *allow-creator-id-change?*))
-      (throw (ex-info "Update creator_id is not allowed."
+               (not (mi/superuser?)))
+      (throw (ex-info "Only superusers can change a notification's creator_id."
                       {:status-code 400
                        :changes     changes}))))
   (when (contains? (t2/changes instance) :active)
@@ -606,7 +590,9 @@
 (models.u.spec-update/define-spec notification-update-spec
   "Spec for updating a notification."
   {:model        :model/Notification
-   :compare-cols [:active]
+   ;; `:creator_id` is here so PUT can flow ownership reassignment through the same spec write as
+   ;; the rest of the row. Authorization lives in the model's `before-update` hook (superuser-only).
+   :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs {:payload       {:model        :model/NotificationCard
                                   :compare-cols [:send_condition :send_once]
