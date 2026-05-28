@@ -409,11 +409,11 @@
   (remove #(= :sensitive (:visibility_type %)) fields))
 
 (defn- apply-sandbox-column-filter
-  "For each table in `tables`, remove fields that the current user's column-restricting sandbox source card
-  doesn't expose. No-op for OSS instances and for users with no sandbox on a given table."
+  "Remove from each table in `tables` the fields that the current user's column-restricting sandbox hides.
+  No-op for OSS and for users with no sandbox on a given table."
   [tables]
   (let [fields-by-table (into {} (map (juxt :id :fields)) tables)
-        filtered        (schema.table/batch-filter-sandboxed-fields api/*current-user-id* fields-by-table)]
+        filtered        (schema.table/batch-filter-sandboxed-fields fields-by-table)]
     (mapv (fn [t] (assoc t :fields (get filtered (:id t) (:fields t)))) tables)))
 
 (defn- get-database-hydrate-include

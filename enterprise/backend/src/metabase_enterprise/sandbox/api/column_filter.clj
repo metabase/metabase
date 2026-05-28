@@ -24,6 +24,7 @@
   — which is what we want, given the alternative is leaking every column."
   (:require
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -31,25 +32,23 @@
    [toucan2.core :as t2]))
 
 (mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt :map]
-  "For the given `user-id` and `table-ids`, return `{table-id => sandbox-source-card}` for
-  tables that have an MBQL/native sandbox sourced from a Card for that user. Tables
-  without a sandbox, or with attribute-only sandboxes (no card_id), are absent from the
-  map."
-  [user-id   :- [:maybe ms/PositiveInt]
-   table-ids :- [:set ms/PositiveInt]]
-  (if (and user-id (seq table-ids))
-    (let [rows (t2/select :model/Card
-                          {:select [:c.id :c.dataset_query :c.result_metadata :c.card_schema
-                                    [:sandboxes.table_id :_sandbox_table_id]]
-                           :from   [[:sandboxes]]
-                           :join   [[:permissions_group_membership :pgm]
-                                    [:= :sandboxes.group_id :pgm.group_id]
-                                    [:report_card :c] [:= :c.id :sandboxes.card_id]]
-                           :where  [:and
-                                    [:in :sandboxes.table_id table-ids]
-                                    [:= :pgm.user_id user-id]]})]
-      (into {} (map (juxt :_sandbox_table_id #(dissoc % :_sandbox_table_id))) rows))
-    {}))
+  "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user.
+  Tables with no sandbox, or with attribute-only sandboxes (no `card_id`), are absent. Reads `perms/sandboxes-for-user`,
+  the per-request cache, so returns `{}` outside a request (background tasks, REPL) even when sandboxes are configured."
+  [table-ids :- [:set ms/PositiveInt]]
+  (let [sandboxes (filter #(contains? table-ids (:table_id %)) (perms/sandboxes-for-user))
+        card-ids  (into #{} (keep :card_id) sandboxes)]
+    (if (seq card-ids)
+      (let [cards-by-id (into {}
+                              (map (juxt :id identity))
+                              (t2/select [:model/Card :id :dataset_query :result_metadata :card_schema]
+                                         :id [:in card-ids]))]
+        (into {}
+              (keep (fn [{:keys [table_id card_id]}]
+                      (when-let [card (get cards-by-id card_id)]
+                        [table_id card])))
+              sandboxes))
+      {})))
 
 (defn- allowed-id-set [{result-metadata :result_metadata}]
   (into #{} (keep u/id) result-metadata))
@@ -58,10 +57,8 @@
   (into #{} (map :name) result-metadata))
 
 (mu/defn filter-fields-by-card
-  "Filter `fields` to those exposed by `card`.
-
-  Uses field id for MBQL sandboxes and field name for native sandboxes. Returns `fields`
-  unchanged if `card` is nil or has no `:dataset_query`. Returns an empty seq if `card`'s
+  "Filter `fields` to those exposed by `card`, by field id for MBQL sandboxes and by name for native ones.
+  Returns `fields` unchanged when `card` is nil or has no `:dataset_query`, and an empty seq when its
   `:result_metadata` is nil/empty (fail-closed; see ns docstring)."
   [card   :- [:maybe :map]
    fields :- [:sequential :map]]
@@ -77,23 +74,19 @@
         (filter #(contains? allowed (:id %)) fields)))))
 
 (mu/defn filter-fields-for-table
-  "Given a `table-id`, a `user-id`, and a collection of field maps for that table, return
-  only the fields visible to the user under their sandbox configuration. Non-sandboxed
-  tables and superusers receive `fields` unchanged."
+  "Return the `fields` for `table-id` that are visible to the current user under their sandbox configuration.
+  Non-sandboxed tables and superusers receive `fields` unchanged."
   [table-id :- ms/PositiveInt
-   user-id  :- [:maybe ms/PositiveInt]
    fields   :- [:sequential :map]]
-  (if-let [card (get (find-sandbox-source-cards user-id #{table-id}) table-id)]
+  (if-let [card (get (find-sandbox-source-cards #{table-id}) table-id)]
     (filter-fields-by-card card fields)
     fields))
 
 (mu/defn batch-filter-fields-by-table
-  "Given a `user-id` and a map of `{table-id => fields}`, return the same map with each
-  table's fields filtered to those visible under the user's sandbox configuration.
-  Performs a single DB query for all sandbox source cards."
-  [user-id         :- [:maybe ms/PositiveInt]
-   fields-by-table :- [:map-of ms/PositiveInt [:sequential :map]]]
-  (let [card-by-table (find-sandbox-source-cards user-id (set (keys fields-by-table)))]
+  "Return the `{table-id => fields}` map with each table's fields filtered to those visible to the current user.
+  Filters per the user's sandbox configuration, using a single DB query for all sandbox source cards."
+  [fields-by-table :- [:map-of ms/PositiveInt [:sequential :map]]]
+  (let [card-by-table (find-sandbox-source-cards (set (keys fields-by-table)))]
     (into {}
           (map (fn [[table-id fields]]
                  [table-id (if-let [card (get card-by-table table-id)]
@@ -108,15 +101,15 @@
 ;;; replaces the implementation with the real filtering.
 
 (defenterprise filter-sandboxed-fields
-  "Filter `fields` to those visible to the user under their column-restricting sandbox
-  on `table-id`. No-op for OSS / non-sandboxed users."
+  "Filter `fields` to those visible to the current user under their column-restricting sandbox on `table-id`.
+  No-op for OSS / non-sandboxed users."
   :feature :sandboxes
-  [table-id user-id fields]
-  (filter-fields-for-table table-id user-id fields))
+  [table-id fields]
+  (filter-fields-for-table table-id fields))
 
 (defenterprise batch-filter-sandboxed-fields
-  "Filter the `{table-id => fields}` map per the user's sandbox configuration. No-op
-  for OSS / non-sandboxed users."
+  "Filter the `{table-id => fields}` map per the current user's sandbox configuration.
+  No-op for OSS / non-sandboxed users."
   :feature :sandboxes
-  [user-id fields-by-table]
-  (batch-filter-fields-by-table user-id fields-by-table))
+  [fields-by-table]
+  (batch-filter-fields-by-table fields-by-table))

@@ -101,18 +101,17 @@
   (batch-fetch-query-metadatas* ids opts))
 
 (defenterprise filter-sandboxed-fields
-  "Filter `fields` to those visible to the user under their column-restricting sandbox on `table-id`. OSS no-op.
-  Enterprise implementation lives in `metabase-enterprise.sandbox.api.column-filter` and consults the sandbox source
-  card's `:result_metadata` to remove fields the user shouldn't see."
+  "Filter `fields` to those visible to the current user under their column-restricting sandbox on `table-id`.
+  OSS no-op; the real implementation lives in `metabase-enterprise.sandbox.api.column-filter`."
   metabase-enterprise.sandbox.api.column-filter
-  [_table-id _user-id fields]
+  [_table-id fields]
   fields)
 
 (defenterprise batch-filter-sandboxed-fields
-  "Filter the `{table-id => fields}` map per the user's sandbox configuration. OSS no-op. Enterprise implementation
-  in `metabase-enterprise.sandbox.api.column-filter`."
+  "Filter the `{table-id => fields}` map per the current user's sandbox configuration.
+  OSS no-op; the real implementation lives in `metabase-enterprise.sandbox.api.column-filter`."
   metabase-enterprise.sandbox.api.column-filter
-  [_user-id fields-by-table]
+  [fields-by-table]
   fields-by-table)
 
 (defn- card-result-metadata->virtual-fields

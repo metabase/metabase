@@ -22,7 +22,7 @@
   ;; Filter the fields list through the centralized column-filter helper. For tables sandboxed via user attribute
   ;; only (no card_id) the helper is a pass-through, preserving the original behavior.
   (update query-metadata-response :fields
-          #(col-filter/filter-fields-for-table (u/the-id table) api/*current-user-id* %)))
+          #(col-filter/filter-fields-for-table (u/the-id table) %)))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,

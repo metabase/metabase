@@ -69,8 +69,7 @@
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
       (let [all-fields (t2/select :model/Field :table_id (mt/id :venues))
-            filtered   (col-filter/filter-fields-for-table
-                        (mt/id :venues) (mt/user->id :rasta) all-fields)]
+            filtered   (col-filter/filter-fields-for-table (mt/id :venues) all-fields)]
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (set (map (comp u/upper-case-en :name) filtered))))))))
 
@@ -78,8 +77,7 @@
   (testing "filter-fields-for-table returns fields unchanged when no sandbox exists for the user+table"
     (mt/with-current-user (mt/user->id :rasta)
       (let [all-fields (vec (t2/select :model/Field :table_id (mt/id :venues)))
-            filtered   (col-filter/filter-fields-for-table
-                        (mt/id :venues) (mt/user->id :rasta) all-fields)]
+            filtered   (col-filter/filter-fields-for-table (mt/id :venues) all-fields)]
         (is (= (count all-fields) (count filtered))
             "No sandbox configured for this user+table — should be a pass-through")))))
 
@@ -92,7 +90,6 @@
       (let [all-venues-fields   (vec (t2/select :model/Field :table_id (mt/id :venues)))
             all-checkins-fields (vec (t2/select :model/Field :table_id (mt/id :checkins)))
             result (col-filter/batch-filter-fields-by-table
-                    (mt/user->id :rasta)
                     {(mt/id :venues)   all-venues-fields
                      (mt/id :checkins) all-checkins-fields})]
         (testing "sandboxed table is filtered"
@@ -130,13 +127,12 @@
             (is (= 6 (count fields)))))))))
 
 (deftest find-sandbox-source-cards-batch-test
-  (testing "find-sandbox-source-cards returns a {table-id => card} map for the user's sandbox cards"
+  (testing "find-sandbox-source-cards returns a {table-id => card} map for the current user's sandbox cards"
     (met/with-gtaps! {:gtaps      {:venues
                                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
       (let [result (col-filter/find-sandbox-source-cards
-                    (mt/user->id :rasta)
                     #{(mt/id :venues) (mt/id :checkins) (mt/id :categories)})]
         (testing "returns an entry for the sandboxed table"
           (is (contains? result (mt/id :venues))))
