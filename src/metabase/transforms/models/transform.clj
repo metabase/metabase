@@ -104,7 +104,7 @@
   #{:transforms})
 
 (t2/define-before-insert :model/Transform
-  [{:keys [source collection_id] :as transform}]
+  [{:keys [source collection_id source_database_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
@@ -117,10 +117,10 @@
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
-         :source_database_id (transforms-base.i/source-db-id transform)))))
+         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
 
 (t2/define-before-update :model/Transform
-  [{:keys [source] :as transform}]
+  [{:keys [source source_database_id] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
@@ -134,7 +134,7 @@
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
-             :source_database_id (transforms-base.i/source-db-id transform))
+             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
 
       target-changed?
       (assoc :target_db_id target-db-id)
