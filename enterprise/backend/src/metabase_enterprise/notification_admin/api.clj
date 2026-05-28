@@ -422,8 +422,9 @@
 (defn- error-by-run-id
   "Map run_id → error message for the given failed/abandoned run IDs. When `task-name` is non-nil,
   restrict to that task type (used by `last_send`, which is specifically about channel-send). When
-  nil, use a tiebreaker that prefers `notification-send` then falls back to the latest by
-  `ended_at` (used by `last_check`, which wants the most-signal message for the whole run)."
+  nil, the ORDER BY tiebreaker prefers `notification-send` then falls back to the latest by
+  `ended_at` (used by `last_check`, which wants the most-signal message for the whole run). The
+  CASE is a no-op when `task-name` is supplied — all candidate rows share the same `:task`."
   [task-name run-ids]
   (when (seq run-ids)
     (->> (t2/select :model/TaskHistory
@@ -431,12 +432,10 @@
                      :from   [[{:select [:run_id :task_details
                                          [[:over [[:row_number]
                                                   {:partition-by [:run_id]
-                                                   :order-by     (if task-name
-                                                                   [[:ended_at :desc]]
-                                                                   [[[:case
-                                                                      [:= :task task-notification-send] 0
-                                                                      :else                             1] :asc]
-                                                                    [:ended_at :desc]])}]]
+                                                   :order-by     [[[:case
+                                                                    [:= :task task-notification-send] 0
+                                                                    :else                             1] :asc]
+                                                                  [:ended_at :desc]]}]]
                                           :rn]]
                                 :from   [:task_history]
                                 :where  (cond-> [:and
@@ -663,23 +662,19 @@
   (when-let [row (t2/select-one :model/Notification
                                 (-> (base-list-query {:skip-run-joins? true})
                                     (sql.helpers/where [:= :notification.id id])))]
-    (let [decorated      (-> [row]
-                             ;; decorate-runs produces nil last_check/last_send when lc_*/ls_*
-                             ;; columns are absent — that's fine; we overwrite them below.
-                             decorate-runs
-                             models.notification/hydrate-notification
-                             first
-                             splice-creator-active)
-          card-id        (get-in decorated [:payload :card_id])
-          check-history  (if card-id (check-history-for-notification card-id id) [])
-          send-history   (if card-id (send-history-for-notification card-id id) [])
-          ;; Derive last_check / last_send from the per-notification histories so the detail
-          ;; page is self-consistent and not influenced by other notifications on the same card.
-          last-check     (first check-history)
-          last-send      (some-> (first send-history) (select-keys [:at :status :error]))]
+    ;; `base-list-query` with `:skip-run-joins?` doesn't project lc_*/ls_* columns, so we go
+    ;; straight from hydration to splice and derive last_check / last_send from the
+    ;; per-notification histories (which are also internally consistent and not subject to
+    ;; card-level bleed from other notifications sharing the same card).
+    (let [decorated     (-> (models.notification/hydrate-notification [row])
+                            first
+                            splice-creator-active)
+          card-id       (get-in decorated [:payload :card_id])
+          check-history (if card-id (check-history-for-notification card-id id) [])
+          send-history  (if card-id (send-history-for-notification card-id id) [])]
       (assoc decorated
-             :last_check    last-check
-             :last_send     last-send
+             :last_check    (first check-history)
+             :last_send     (some-> (first send-history) (select-keys [:at :status :error]))
              :check_history check-history
              :send_history  send-history))))
 
