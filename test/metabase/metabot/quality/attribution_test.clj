@@ -152,6 +152,114 @@
                 obs)))))
 
 ;;; ---------------------------------------------------------------------------
+;;; canonical-bypass
+;;; ---------------------------------------------------------------------------
+
+(deftest canonical-bypass-fires-for-shown-canonical-never-used-test
+  (testing "a canonical surface shown but never inspected or authored against
+            fires canonical-bypass on the surfacing turn"
+    (let [messages   [(user-row {:id 1 :created-at 0})
+                      (assistant-row
+                       {:id         100
+                        :created-at 1
+                        :tool-calls [{:call-id "s1" :function "search"
+                                      :output [{:type "card" :id 10}]}]
+                        :terminal-state "final_response"})]
+          governance {["card" "10"] {:kind :card :moderation-status "verified"}}
+          out        (attribution-for messages :governance governance)
+          o          (first (filter #(= "canonical-bypass" (:kind %))
+                                    (observables-for-row out 100)))]
+      (is o)
+      (is (= "canonical-bypass-rate" (:concern_signal o)))
+      (is (= {:type "card" :id 10} (:entity o)))
+      (is (= "s1" (get-in o [:context :tool-call]))))))
+
+(deftest canonical-bypass-not-fired-when-surface-used-test
+  (testing "a canonical surface later authored against or inspected is not a bypass"
+    (doseq [follow-up [{:call-id "a1" :function "construct_notebook_query"
+                        :input [{:type "card" :id 10}]}
+                       {:call-id "i1" :function "get_field_values"
+                        :input [{:type "card" :id 10}]}]]
+      (let [messages   [(user-row {:id 1 :created-at 0})
+                        (assistant-row
+                         {:id         100
+                          :created-at 1
+                          :tool-calls [{:call-id "s1" :function "search"
+                                        :output [{:type "card" :id 10}]}
+                                       follow-up]
+                          :terminal-state "final_response"})]
+            governance {["card" "10"] {:kind :card :moderation-status "verified"}}
+            out        (attribution-for messages :governance governance)]
+        (is (empty? (filter #(= "canonical-bypass" (:kind %))
+                            (observables-for-row out 100))))))))
+
+(deftest canonical-bypass-not-fired-for-non-canonical-surface-test
+  (testing "a discovered surface that isn't canonical never bypasses"
+    (let [messages   [(user-row {:id 1 :created-at 0})
+                      (assistant-row
+                       {:id         100
+                        :created-at 1
+                        :tool-calls [{:call-id "s1" :function "search"
+                                      :output [{:type "card" :id 10}]}]
+                        :terminal-state "final_response"})]
+          governance {["card" "10"] {:kind :card :moderation-status "unverified"}}
+          out        (attribution-for messages :governance governance)]
+      (is (empty? (filter #(= "canonical-bypass" (:kind %))
+                          (observables-for-row out 100)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; unproductive-search
+;;; ---------------------------------------------------------------------------
+
+(deftest unproductive-search-fires-on-rediscovering-call-test
+  (testing "a search call that rediscovers a prior call's results fires
+            unproductive-search on its own turn, back-referencing the prior call"
+    (let [messages [(user-row {:id 1 :created-at 0})
+                    (assistant-row
+                     {:id         100
+                      :created-at 1
+                      :tool-calls [{:call-id "s1" :function "search"
+                                    :output [{:type "card" :id 10} {:type "card" :id 11}]}]
+                      :terminal-state "final_response"})
+                    (assistant-row
+                     {:id         200
+                      :created-at 2
+                      :tool-calls [{:call-id "s2" :function "search"
+                                    :output [{:type "card" :id 10} {:type "card" :id 11}]}]
+                      :terminal-state "final_response"})]
+          out      (attribution-for messages)
+          o        (first (filter #(= "unproductive-search" (:kind %))
+                                  (observables-for-row out 200)))]
+      (is o)
+      (is (= "unproductive-search-rate" (:concern_signal o)))
+      (is (= "s2" (get-in o [:context :tool-call])))
+      (is (= ["s1"] (get-in o [:context :overlapping-calls])))
+      (testing "the first call has no prior to overlap and never fires"
+        (is (empty? (filter #(= "unproductive-search" (:kind %))
+                            (observables-for-row out 100))))))))
+
+(deftest disjoint-searches-do-not-fire-unproductive-search-test
+  (testing "searches with no overlapping results fire no unproductive-search"
+    (let [messages [(user-row {:id 1 :created-at 0})
+                    (assistant-row
+                     {:id         100
+                      :created-at 1
+                      :tool-calls [{:call-id "s1" :function "search"
+                                    :output [{:type "card" :id 10}]}]
+                      :terminal-state "final_response"})
+                    (assistant-row
+                     {:id         200
+                      :created-at 2
+                      :tool-calls [{:call-id "s2" :function "search"
+                                    :output [{:type "card" :id 20}]}]
+                      :terminal-state "final_response"})]
+          out      (attribution-for messages)]
+      (is (empty? (mapcat (fn [row-id]
+                            (filter #(= "unproductive-search" (:kind %))
+                                    (observables-for-row out row-id)))
+                          [100 200]))))))
+
+;;; ---------------------------------------------------------------------------
 ;;; tool-error
 ;;; ---------------------------------------------------------------------------
 
@@ -187,7 +295,7 @@
           obs      (observables-for-row out 100)
           o        (first (filter #(= "iter-cap" (:kind %)) obs))]
       (is o)
-      (is (= "termination" (:concern_signal o)))
+      (is (= "execution-health" (:concern_signal o)))
       (is (= "iter_cap" (get-in o [:context :terminal-state]))))))
 
 (deftest error-termination-fires-on-error-test
@@ -198,6 +306,7 @@
           o        (first (filter #(= "error-termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
+      (is (= "execution-health" (:concern_signal o)))
       (is (= "error" (get-in o [:context :terminal-state]))))))
 
 (deftest aborted-collapses-to-error-termination-test
@@ -210,6 +319,7 @@
           o        (first (filter #(= "error-termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
+      (is (= "execution-health" (:concern_signal o)))
       (is (= "aborted" (get-in o [:context :terminal-state]))))))
 
 (deftest clean-termination-emits-no-termination-observable-test
@@ -241,9 +351,8 @@
                         :tool-calls [{:call-id "a1" :function "construct_notebook_query"
                                       :input  [{:type "table" :id 1}]}]
                         :terminal-state "final_response"})]
-          governance {["table" "1"]  {:name "orders" :db-id 1 :schema "public"}
-                      ["card"  "10"] {:verified? false :db-id 1
-                                      :name "orders dashboard" :lives-in-personal? false}}
+          governance {["table" "1"]  {:kind :table :name "orders" :data-authority :authoritative}
+                      ["card"  "10"] {:kind :card :name "orders model" :moderation-status "verified"}}
           normalized (normalize-and-derive messages)
           metrics    (metrics/compute normalized governance)
           conv-subs  (subscores/compose metrics)

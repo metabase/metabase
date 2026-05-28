@@ -20,6 +20,7 @@
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.extract :as extract]
+   [metabase.metabot.quality.governance :as governance]
    [metabase.metabot.quality.metrics :as metrics]
    [metabase.metabot.quality.subscores :as subscores]
    [metabase.metabot.quality.temporal :as temporal]))
@@ -95,6 +96,44 @@
 ;; `message-id` lookup fails (e.g. an orphan tool-event with no matching
 ;; tool-input part) are filtered out — attribution requires an anchor row.
 
+(defn- canonical-bypass-observables
+  "For each canonical surface the agent saw but neither inspected nor
+  authored against, emit `canonical-bypass` on the turn it was first
+  surfaced. A surface is bypassed purely because it was shown and then
+  ignored — no name or relationship matching."
+  [normalized governance call-id->msg]
+  (let [used (into (set (keys (get-in normalized [:sets :I])))
+                   (keys (get-in normalized [:sets :Q])))]
+    (for [[k x]   (get-in normalized [:sets :D])
+          :when   (and (governance/canonical? (get governance k))
+                       (not (contains? used k)))
+          :let    [d-prov (first-provenance-in-set x :D)
+                   msg-id (when d-prov (get call-id->msg (:call-id d-prov)))]
+          :when   msg-id]
+      [msg-id
+       (observable
+        "canonical-bypass-rate"
+        "canonical-bypass"
+        {:entity  (entity-ref-of x)
+         :context {:tool-call (:call-id d-prov)}})])))
+
+(defn- unproductive-search-observables
+  "For each search call that rediscovered an earlier call's results, emit
+  `unproductive-search` on that call's turn. Reuses the metric's per-call
+  determination and back-references the earlier call(s) it overlapped."
+  [normalized call-id->msg]
+  (for [{:keys [event overlapping]} (metrics/unproductive-search-marks
+                                     (metrics/search-events normalized))
+        :when   (seq overlapping)
+        :let    [msg-id (get call-id->msg (:call-id event))]
+        :when   msg-id]
+    [msg-id
+     (observable
+      "unproductive-search-rate"
+      "unproductive-search"
+      {:context {:tool-call         (:call-id event)
+                 :overlapping-calls (mapv :call-id overlapping)}})]))
+
 (defn- hallucinated-ref-observables
   "For each entity the agent authored against but never saw surfaced, emit
   `hallucinated-ref` on the turn where it entered the authored set. Such
@@ -134,19 +173,19 @@
   `:iter_cap` produces `iter-cap`; `:error` and `:aborted` both produce
   `error-termination`. Clean terminations (`:final_response`,
   `:model_signaled_done`) yield no observable — there's nothing to
-  attribute."
+  attribute. Both kinds trace to execution health."
   [normalized last-msg-id]
   (let [state (get-in normalized [:temporal :terminal-state])]
     (cond
       (nil? last-msg-id) []
       (= state :iter_cap)
-      [[last-msg-id (observable "termination" "iter-cap"
+      [[last-msg-id (observable "execution-health" "iter-cap"
                                 {:context {:terminal-state "iter_cap"}})]]
       (= state :error)
-      [[last-msg-id (observable "termination" "error-termination"
+      [[last-msg-id (observable "execution-health" "error-termination"
                                 {:context {:terminal-state "error"}})]]
       (= state :aborted)
-      [[last-msg-id (observable "termination" "error-termination"
+      [[last-msg-id (observable "execution-health" "error-termination"
                                 {:context {:terminal-state "aborted"}})]]
       :else [])))
 
@@ -209,9 +248,11 @@
         call-id->msg   (build-call-id->msg-id normalized)
         last-msg-id    (last-assistant-msg-id normalized)
         observable-seq (concat
-                        (hallucinated-ref-observables normalized call-id->msg)
-                        (tool-error-observables       normalized call-id->msg)
-                        (termination-observables      normalized last-msg-id))
+                        (canonical-bypass-observables    normalized governance call-id->msg)
+                        (unproductive-search-observables normalized call-id->msg)
+                        (hallucinated-ref-observables    normalized call-id->msg)
+                        (tool-error-observables          normalized call-id->msg)
+                        (termination-observables         normalized last-msg-id))
         by-msg         (group-by first observable-seq)]
     (into {}
           (for [row   (assistant-rows normalized)

@@ -96,9 +96,10 @@
       (- 1.0 (/ (double (count (remove used shown)))
                 (double (count shown)))))))
 
-(defn- search-events
+(defn search-events
   "Tool-events that came from a search tool, in call order. All search
-  variants register under the one `\"search\"` tool-name."
+  variants register under the one `\"search\"` tool-name. Public so the
+  per-turn attribution layer pairs it with [[unproductive-search-marks]]."
   [normalized]
   (filter #(= "search" (:function %)) (:tool-events normalized)))
 
