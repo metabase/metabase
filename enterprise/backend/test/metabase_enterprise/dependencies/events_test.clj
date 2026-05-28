@@ -356,10 +356,19 @@
                                        :analyzed_entity_id transform-id))
              "baseline: existing finding is fresh")
          (t2/delete! :model/Database db-id)
+         (is (nil? (t2/select-one :model/Database db-id))
+             "the Database row is actually gone")
          (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                       :analyzed_entity_type :transform
                                       :analyzed_entity_id transform-id))
-             "after db-delete the transform's finding is marked stale"))))))
+             "after db-delete the transform's finding is marked stale")
+         (testing "and re-running the entity-check job flips :result false so the transform shows on broken-diagnostics"
+           (#'task.entity-check/check-entities!)
+           (let [{:keys [stale result]} (t2/select-one :model/AnalysisFinding
+                                                       :analyzed_entity_type :transform
+                                                       :analyzed_entity_id transform-id)]
+             (is (false? stale))
+             (is (false? result)))))))))
 
 (deftest ^:sequential transform-run-updates-dependencies-test
   (testing "transform run events trigger dependency calculations"
