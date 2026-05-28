@@ -117,9 +117,9 @@
   "Parse the optional base64url JSON capability segment.
 
    Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
-   with the current payload version must include a supported payload shape so malformed capability hints do not
-   silently fall back to legacy behavior. Future payload versions remain valid but default to no UI capability, so
-   rolling deploy version skew does not invalidate the whole session."
+   with a known payload version must include a supported payload shape so malformed capability hints do not silently
+   fall back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling
+   deploy version skew does not invalidate the whole session."
   [payload]
   (cond
     (nil? payload)
@@ -134,10 +134,14 @@
     (if-let [decoded-payload (decode-session-payload payload)]
       (let [payload-map?         (map? decoded-payload)
             payload-version      (when payload-map? (:v decoded-payload))
-            has-payload-version? (and payload-map? (contains? decoded-payload :v))]
+            has-payload-version? (and payload-map? (contains? decoded-payload :v))
+            known-version?       (and (integer? payload-version)
+                                      (<= payload-version session-payload-version))
+            unknown-version?     (and (integer? payload-version)
+                                      (> payload-version session-payload-version))]
         (cond
           (and payload-map?
-               (= session-payload-version payload-version)
+               known-version?
                (boolean? (:ui decoded-payload)))
           {:extended true
            :payload  decoded-payload}
@@ -145,7 +149,7 @@
           ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
           ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
           (and has-payload-version?
-               (not= session-payload-version payload-version))
+               unknown-version?)
           {:extended true
            :payload  {:ui false}}))
       (log/warn "MCP session id contains an undecodable capability payload"))))
