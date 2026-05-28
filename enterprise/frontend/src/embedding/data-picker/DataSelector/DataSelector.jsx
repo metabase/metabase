@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  cardApi,
   databaseApi,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
@@ -14,7 +15,6 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Questions } from "metabase/entities/questions";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
@@ -957,9 +957,9 @@ const DataSelector = _.compose(
         }),
         hasDataAccess: canUserCreateQueries(state),
         hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-        selectedQuestion: Questions.selectors.getObject(state, {
-          entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-        }),
+        selectedQuestion: getMetadata(state).question(
+          getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        ),
       };
     },
     (dispatch) => ({
@@ -972,10 +972,10 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        dispatch(
-          Questions.actions.fetch({
-            id: getQuestionIdFromVirtualTableId(id),
-          }),
+        entityCompatibleQuery(
+          { id: getQuestionIdFromVirtualTableId(id) },
+          dispatch,
+          cardApi.endpoints.getCard,
         ),
     }),
   ),
