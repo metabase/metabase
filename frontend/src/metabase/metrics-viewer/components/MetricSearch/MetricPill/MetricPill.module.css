@@ -10,7 +10,11 @@
   background-color: var(--mb-color-background-secondary);
 }
 
-.metricPillText[data-disabled="true"] {
+.metricPillText {
+  color: inherit;
+}
+
+.disabled {
   color: var(--mb-color-text-tertiary);
 }
 

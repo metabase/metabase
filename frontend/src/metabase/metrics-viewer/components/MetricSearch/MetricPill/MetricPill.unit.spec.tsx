@@ -42,8 +42,8 @@ function setup({
   return { onRemove };
 }
 
-async function openMenu() {
-  const pill = screen.getByTestId("metrics-viewer-search-pill");
+async function openPillMenu() {
+  const pill = screen.getByTestId("metric-pill");
   await userEvent.click(pill);
 }
 
@@ -52,7 +52,7 @@ describe("MetricPill action menu", () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "measure" },
     });
-    await openMenu();
+    await openPillMenu();
 
     expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.queryByRole("separator")).not.toBeInTheDocument();
@@ -66,7 +66,7 @@ describe("MetricPill action menu", () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "metric" },
     });
-    await openMenu();
+    await openPillMenu();
 
     expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe("MetricPill action menu", () => {
       metric: { id: REVENUE_METRIC.id, name: "Revenue", sourceType: "metric" },
       definitionEntry: { id: "metric:1", definition },
     });
-    await openMenu();
+    await openPillMenu();
 
     expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.getByText("Break out")).toBeInTheDocument();
@@ -95,13 +95,13 @@ describe("MetricPill action menu", () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "metric" },
     });
-    await openMenu();
+    await openPillMenu();
     await userEvent.click(screen.getByText("Replace"));
 
     expect(await screen.findByText("Browse all")).toBeInTheDocument();
   });
 
-  it("should keep menu and remove actions available when visually disabled", async () => {
+  it("should keep pill actions available when visually disabled", async () => {
     const onRemove = jest.fn();
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "metric" },
@@ -109,7 +109,7 @@ describe("MetricPill action menu", () => {
       onRemove,
     });
 
-    await openMenu();
+    await openPillMenu();
 
     expect(screen.getByText("Replace")).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Remove Revenue"));

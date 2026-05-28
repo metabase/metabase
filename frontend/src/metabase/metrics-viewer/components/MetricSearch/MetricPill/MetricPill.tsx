@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -139,7 +140,7 @@ export function MetricPill({
                 ? t`Remove ${metric.name}`
                 : t`Remove metric`,
             }}
-            data-testid="metrics-viewer-search-pill"
+            data-testid="metric-pill"
           >
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
@@ -156,8 +157,7 @@ export function MetricPill({
                     }
                   />
                   <span
-                    className={S.metricPillText}
-                    data-disabled={isDisabled ? true : undefined}
+                    className={cx(S.metricPillText, isDisabled && S.disabled)}
                   >
                     {metric.name}
                   </span>
