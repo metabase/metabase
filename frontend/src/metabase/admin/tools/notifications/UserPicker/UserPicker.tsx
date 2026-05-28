@@ -36,6 +36,7 @@ export const UserPicker = ({
   const { data, isFetching } = useListUsersQuery({
     query,
     limit: 50,
+    status: "all",
   });
 
   const fetchedOptions = (data?.data ?? []).map((user) => ({
