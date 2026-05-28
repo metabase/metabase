@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
@@ -24,8 +25,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [empty? every? mapv not-empty select-keys some]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
