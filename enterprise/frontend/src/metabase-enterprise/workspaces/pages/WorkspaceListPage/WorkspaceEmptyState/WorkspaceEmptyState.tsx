@@ -62,7 +62,7 @@ export function WorkspaceEmptyState() {
       component="button"
       onClick={handleSetupClick}
     >
-      {t`set up this instance`}
+      {t`upload a workspace config`}
     </Anchor>
   );
 
@@ -77,12 +77,12 @@ export function WorkspaceEmptyState() {
           <Text c="text-secondary" mb="md">
             {t`Develop transforms and the semantic layer without touching production tables. Each workspace gets its own schema and database user in the warehouses you pick.`}
           </Text>
-          <Box pb="xl">
-            <Group gap="sm" align="center">
-              {createButton}
-              {canManageInstance && <Box>{jt`or ${setupButton} instead.`}</Box>}
-            </Group>
-          </Box>
+          <Stack gap="sm" pb="xl">
+            <Box>{createButton}</Box>
+            {canManageInstance && (
+              <Box>{jt`or ${setupButton} generated from your production instance to put this development instance into a workspace.`}</Box>
+            )}
+          </Stack>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
             <Group pt="md" gap="sm" align="stretch">
               {showFileBasedDevLink && (
