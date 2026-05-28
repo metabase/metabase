@@ -14,7 +14,6 @@ import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
-  NotificationCardSendCondition,
   NotificationChannel,
   NotificationHandlerEmail,
   NotificationHandlerHttp,
@@ -78,7 +77,7 @@ export const AlertListItem = ({
       onClick={handleEdit}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(alert.payload.send_condition)}
+        {formatTitle(alert)}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
         {subscription && (
@@ -143,8 +142,11 @@ export const AlertListItem = ({
   );
 };
 
-const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
-  switch (sendCondition) {
+const formatTitle = (alert: Notification): string => {
+  if (alert.payload_type === "notification/card-row-diff") {
+    return t`Alert when new rows appear`;
+  }
+  switch (alert.payload.send_condition) {
     case "has_result":
       return t`Alert when this has results`;
     case "goal_above":

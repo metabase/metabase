@@ -99,7 +99,7 @@
 (defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
-    (:notification/system-event :notification/testing :notification/card)
+    (:notification/system-event :notification/testing :notification/card :notification/card-row-diff)
     (cond-> notification-info
       (t2/instance? notification-info)
       models.notification/hydrate-notification)

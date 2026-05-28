@@ -24,18 +24,24 @@
 (methodical/defmethod t2/table-name :model/NotificationSubscription [_model] :notification_subscription)
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
-(methodical/defmethod t2/table-name :model/NotificationCard         [_model] :notification_card)
+(methodical/defmethod t2/table-name :model/NotificationCard             [_model] :notification_card)
+(methodical/defmethod t2/table-name :model/NotificationCardRowDiff     [_model] :notification_card_row_diff)
+(methodical/defmethod t2/table-name :model/NotificationRowDiffSnapshot  [_model] :notification_row_diff_snapshot)
+(methodical/defmethod t2/primary-keys :model/NotificationRowDiffSnapshot [_] [:notification_id])
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
                :model/NotificationHandler
                :model/NotificationRecipient
-               :model/NotificationCard]]
+               :model/NotificationCard
+               :model/NotificationCardRowDiff]]
   (doto model
     (derive :metabase/model)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))
+
+(derive :model/NotificationRowDiffSnapshot :metabase/model)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;
@@ -46,6 +52,7 @@
   #{:notification/system-event
     :notification/dashboard
     :notification/card
+    :notification/card-row-diff
     ;; for testing only
     :notification/testing})
 
@@ -82,6 +89,13 @@
                                                                      :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
+
+                                           :notification/card-row-diff
+                                           (let [row-diffs (t2/select :model/NotificationCardRowDiff
+                                                                      :id [:in payload-ids])]
+                                             (into {} (for [rd row-diffs]
+                                                        [[:notification/card-row-diff (:id rd)] rd])))
+
                                            {[payload-type nil] nil})))]
     (for [notification notifications]
       (assoc notification k
@@ -109,6 +123,10 @@
     [:notification/card
      [:map
       ;; optional during creation
+      [:payload_id {:optional true} int?]
+      [:creator_id {:optional true} int?]]]
+    [:notification/card-row-diff
+     [:map
       [:payload_id {:optional true} int?]
       [:creator_id {:optional true} int?]]]
     [:notification/testing :any]]])
@@ -156,7 +174,9 @@
   (when-let [payload-id (:payload_id instance)]
     (t2/delete! (case (:payload_type instance)
                   :notification/card
-                  :model/NotificationCard)
+                  :model/NotificationCard
+                  :notification/card-row-diff
+                  :model/NotificationCardRowDiff)
                 payload-id))
   instance)
 
@@ -415,6 +435,28 @@
          instance))
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                  :model/NotificationCardRowDiff                                 ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private row-diff-send-modes #{:per-row :digest})
+
+(t2/deftransforms :model/NotificationCardRowDiff
+  {:send_mode (mi/transform-validator mi/transform-keyword (partial mi/assert-enum row-diff-send-modes))})
+
+(mr/def ::NotificationCardRowDiff
+  "Schema for :model/NotificationCardRowDiff."
+  [:map
+   [:card_id                          ms/PositiveInt]
+   [:send_mode       {:optional true} (ms/enum-decode-keyword row-diff-send-modes)]
+   [:message_template {:optional true} [:maybe :string]]])
+
+(t2/define-before-insert :model/NotificationCardRowDiff
+  [instance]
+  (-> {:send_mode :per-row}
+      (merge instance)
+      (update :send_mode #(cond-> % (string? %) keyword))))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -438,6 +480,9 @@
   [notification]
   (case (:payload_type notification)
     :notification/card
+    (mi/can-read? :model/Card (-> notification :payload :card_id))
+
+    :notification/card-row-diff
     (mi/can-read? :model/Card (-> notification :payload :card_id))
 
     :notification/system-event
@@ -554,7 +599,11 @@
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
-                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))
+                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification))
+                            :notification/card-row-diff
+                            (t2/insert-returning-pk! :model/NotificationCardRowDiff
+                                                     (select-keys (:payload notification)
+                                                                  [:card_id :send_mode :message_template])))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))
