@@ -134,9 +134,6 @@ jobs:
           - name: Driver - SparkSQL
             file: modules/drivers/sparksql/pom.xml
             category: driver-sparksql
-          - name: Driver - SQLite
-            file: modules/drivers/sqlite/pom.xml
-            category: driver-sqlite
           - name: Driver - SQL Server
             file: modules/drivers/sqlserver/pom.xml
             category: driver-sqlserver

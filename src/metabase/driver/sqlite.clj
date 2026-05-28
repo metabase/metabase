@@ -9,6 +9,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -17,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -30,6 +32,22 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlite, :parent :sql-jdbc)
+
+(defmethod driver/display-name :sqlite
+  [_driver]
+  "SQLite")
+
+(defmethod driver/connection-properties :sqlite
+  [_driver]
+  (->>
+   [{:name         "db"
+     :display-name (tru "Filename")
+     :placeholder  "/path/to/toucan_sightings.sqlite"
+     :required     true}
+    driver.common/cloud-ip-address-info
+    driver.common/advanced-options-start
+    driver.common/default-advanced-options]
+   (into [] (mapcat u/one-or-many))))
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false

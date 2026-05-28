@@ -181,6 +181,7 @@
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
+  org.xerial/sqlite-jdbc                    {:mvn/version "3.50.3.0"}           ; SQLite driver -- ships in core because the bundled Sample Database runs on it
   potemkin/potemkin                         {:mvn/version "0.4.8"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
@@ -506,7 +507,6 @@
     "modules/drivers/redshift/test"
     "modules/drivers/snowflake/test"
     "modules/drivers/sparksql/test"
-    "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/test"
     "modules/drivers/vertica/test"]}
@@ -577,8 +577,6 @@
     "modules/drivers/snowflake/test"
     "modules/drivers/sparksql/src"
     "modules/drivers/sparksql/test"
-    "modules/drivers/sqlite/src"
-    "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/src"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/src"
@@ -609,7 +607,6 @@
                 "modules/drivers/redshift/src"
                 "modules/drivers/snowflake/src"
                 "modules/drivers/sparksql/src"
-                "modules/drivers/sqlite/src"
                 "modules/drivers/sqlserver/src"
                 "modules/drivers/starburst/src"
                 "modules/drivers/vertica/src"]
@@ -635,7 +632,6 @@
                                  "modules/drivers/redshift/src"
                                  "modules/drivers/snowflake/src"
                                  "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/starburst/src"
                                  "modules/drivers/vertica/src"]
