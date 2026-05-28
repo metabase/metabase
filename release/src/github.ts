@@ -263,12 +263,21 @@ export async function getLatestGreenCommit({
 
 /**
  * True if `ref` is not strictly newer than the most recent release for this
- * major — i.e. its code is already shipped. We compare the last release tag's
- * commit against `ref` and require GitHub's `status` to be `"ahead"`; anything
- * else (`"identical"`, `"behind"`, `"diverged"`) means `ref` is not strict new
- * work on top of what shipped. The previous SHA-equality check only caught the
- * case where `ref` was *the* last release tag's commit, and missed any older
- * commit further back in history — see DEV-2025.
+ * major — i.e. its code is already shipped. We compare the last release tag
+ * against the branch tip and check membership of `ref` in the returned commits
+ * (which are exactly the commits on the branch that are NOT in the last
+ * release's history). The previous SHA-equality check only caught the case
+ * where `ref` was *the* last release tag's commit, and missed any older commit
+ * further back in history — see DEV-2025.
+ *
+ * Known limitation: `compareCommitsWithBasehead` returns at most 250 commits
+ * in a single page (the `commits` array is truncated even though `total_commits`
+ * reflects the full count). If a release branch ever accumulates more than 250
+ * commits since its last release tag, a candidate beyond the 250th would be
+ * missing from `data.commits` and the gate would incorrectly say "already
+ * released" → skip. Today's release cadence keeps `ahead_by` in single digits,
+ * so this is theoretical, but worth knowing if cadence ever changes — the fix
+ * is `github.paginate(github.rest.repos.compareCommitsWithBasehead, …)`.
  */
 export async function hasCommitBeenReleased({
   github,
@@ -297,12 +306,14 @@ export async function hasCommitBeenReleased({
   const { data } = await github.rest.repos.compareCommitsWithBasehead({
     owner,
     repo,
-    basehead: `${lastTagSha}...${ref}`,
+    basehead: `${lastTagSha}...refs/heads/release-x.${majorVersion}.x`,
   });
 
-  console.log({ lastTag, lastTagSha, ref, status: data.status });
+  const isAheadOfLastRelease = data.commits.some(c => c.sha === ref);
 
-  return data.status !== "ahead";
+  console.log({ lastTag, lastTagSha, ref, isAheadOfLastRelease });
+
+  return !isAheadOfLastRelease;
 }
 
 export async function getOpenBackportPrs({
