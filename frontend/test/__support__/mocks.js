@@ -32,7 +32,18 @@ jest.mock("@uiw/react-codemirror", () => {
   const { forwardRef } = jest.requireActual("react");
 
   const MockEditor = forwardRef((props, ref) => {
-    const { indentWithTab, extensions, basicSetup, editable, ...rest } = props;
+    const {
+      indentWithTab,
+      extensions,
+      basicSetup,
+      editable,
+      // CodeMirror-specific callbacks that React would warn about if spread
+      // onto the underlying <textarea>.
+      onUpdate,
+      onCreateEditor,
+      onStatistics,
+      ...rest
+    } = props;
     return (
       // @ts-expect-error: some props types are different on CodeMirror
       <textarea

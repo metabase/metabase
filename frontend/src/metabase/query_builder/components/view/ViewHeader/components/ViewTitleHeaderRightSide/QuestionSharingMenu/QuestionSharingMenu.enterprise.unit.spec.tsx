@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { setupQuestionSharingMenu } from "./tests/setup";
@@ -31,12 +31,18 @@ describe("QuestionSharingMenu > Enterprise", () => {
 
         await userEvent.click(screen.getByTestId("sharing-menu-button"));
 
+        // popover content mounts asynchronously after the click
         expect(
-          screen.getByTestId("public-link-popover-content"),
+          await screen.findByTestId("public-link-popover-content"),
         ).toBeInTheDocument();
-        expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+        const input = screen.getByTestId("public-link-input");
+        expect(input).toHaveDisplayValue(
           "http://localhost:3000/public/question/1337bad801",
         );
+
+        // the input drops its loading placeholder once the link-loading
+        // effect resolves
+        await waitFor(() => expect(input).not.toHaveAttribute("placeholder"));
       });
 
       it("should show a 'ask your admin to create a public link' tooltip if public sharing is disabled", async () => {
