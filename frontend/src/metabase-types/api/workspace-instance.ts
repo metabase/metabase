@@ -13,6 +13,7 @@ export type WorkspaceInstanceDatabase = {
 export type WorkspaceInstance = {
   name: string;
   databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
+  can_write: boolean;
 };
 
 export type GetCurrentWorkspaceResponse = {

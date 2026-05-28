@@ -47,8 +47,8 @@ export function trackWorkspaceInstanceSetup() {
   });
 }
 
-export function trackWorkspaceInstanceTeardown() {
+export function trackWorkspaceInstanceLeave() {
   trackSimpleEvent({
-    event: "workspaces_instance_teardown",
+    event: "workspaces_instance_leave",
   });
 }
