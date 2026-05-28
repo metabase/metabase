@@ -158,9 +158,10 @@
   {:mcp-app-ui "MCP Apps UI"})
 
 (defn- supported-extensions
-  [{:keys [supported-extensions supports-mcp-ui?]}]
-  (cond-> (set supported-extensions)
-    supports-mcp-ui? (conj :mcp-app-ui)))
+  [{:keys [supports-mcp-ui?]}]
+  (if supports-mcp-ui?
+    #{:mcp-app-ui}
+    #{}))
 
 (defn- missing-required-extensions
   [tool supported-extensions]
