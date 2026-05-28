@@ -610,7 +610,7 @@
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
-(deftest ^:parallel unnormalized-snippet-test,mcxx,
+(deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
     (let [mp    (lib.tu/mock-metadata-provider
                  meta/metadata-provider
