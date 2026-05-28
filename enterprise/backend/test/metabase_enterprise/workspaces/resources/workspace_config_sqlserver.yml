@@ -26,4 +26,6 @@ config:
       test-data (sqlserver):
         input_schemas:
         - dbo
-        output_namespace: ws_alice
+        output:
+          db: AnalyticsDB
+          schema: ws_alice

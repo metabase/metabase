@@ -15,7 +15,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions-reducer";
 import { useDispatch } from "metabase/redux";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";

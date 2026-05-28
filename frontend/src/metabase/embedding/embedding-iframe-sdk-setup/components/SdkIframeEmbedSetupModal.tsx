@@ -7,9 +7,11 @@ import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
+import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { closeModal } from "metabase/redux/ui";
@@ -32,6 +34,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
+import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
   const dispatch = useDispatch();
@@ -76,6 +79,9 @@ export const SdkIframeEmbedSetupContent = () => {
 
   const isMissingResource =
     isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+
+  const siteUrl = useSetting("site-url");
+  const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
@@ -143,7 +149,11 @@ export const SdkIframeEmbedSetupContent = () => {
           <SdkIframeGuestEmbedStatusBar />
 
           {allowPreviewAndNavigation && !isMissingResource ? (
-            <SdkIframeEmbedPreview />
+            isSiteUrlMismatched ? (
+              <SdkIframeEmbedSiteUrlMismatchError siteUrl={siteUrl} />
+            ) : (
+              <SdkIframeEmbedPreview />
+            )
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">

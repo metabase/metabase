@@ -2,11 +2,13 @@ import cx from "classnames";
 import type { Location } from "history";
 import { Component } from "react";
 
+import { cardApi } from "metabase/api";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
-import { Questions } from "metabase/entities/questions";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import type { Dispatch } from "metabase/redux/store";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
 import type { User } from "metabase-types/api";
@@ -33,7 +35,8 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps = {
-  fetchQuestions: Questions.actions.fetchList,
+  fetchQuestions: () => (dispatch: Dispatch) =>
+    entityCompatibleQuery({}, dispatch, cardApi.endpoints.listCards),
   ...metadataActions,
   ...actions,
 };

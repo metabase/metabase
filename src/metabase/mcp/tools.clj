@@ -188,6 +188,29 @@
                         (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
            (concat tools (mcp.resources/list-ui-tools))))))
 
+(defn- pad-left
+  [^String s width]
+  (if (>= (count s) width)
+    s
+    (str (apply str (repeat (- width (count s)) \0)) s)))
+
+(defn tools-hash
+  "Return a stable hash of the tool list visible to `token-scopes`, formatted as
+   an 8-character unsigned hex string. Used by the SSE keepalive loop to detect
+   manifest changes and emit `notifications/tools/list_changed`. Hashes the JSON
+   encoding of `[name inputSchema outputSchema]` per tool, sorted by name, so the
+   result is determined purely by the wire-visible schema bytes — no reliance on
+   Clojure's `hash` of map values (which can be unstable for non-data leaves
+   like functions, and is order-sensitive for some collection types)."
+  [token-scopes]
+  (-> (->> (list-tools token-scopes)
+           (map (juxt :name :inputSchema :outputSchema))
+           (sort-by first)
+           json/encode
+           hash)
+      (Integer/toUnsignedString 16)
+      (pad-left 8)))
+
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
   [tools]
@@ -295,7 +318,7 @@
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "visualize_query"})
+  #{"execute_query" "visualize_query" "create_question" "update_question"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -330,8 +353,8 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
-   For POST requests, `params` is sent as the request body.
-   For GET/DELETE requests, `params` is sent as parsed query params.
+   For POST/PUT/PATCH requests, `params` is sent as the request body.
+   For other methods (GET/DELETE), `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
   (agent-api/routes
@@ -339,8 +362,9 @@
             :uri              path
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
-     (and (seq params) (= :post method))    (assoc :body params)
-     (and (seq params) (not= :post method)) (assoc :query-params params))
+     ;; POST/PUT/PATCH carry params in the body; GET/DELETE carry them as query params.
+     (and (seq params) (#{:post :put :patch} method))    (assoc :body params)
+     (and (seq params) (not (#{:post :put :patch} method))) (assoc :query-params params))
    (fn [{resp-body :body :as response}]
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
@@ -354,7 +378,8 @@
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
-   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
+   For POST/PUT/PATCH, `params` becomes the request body; otherwise (GET/DELETE)
+   `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request.
@@ -402,8 +427,9 @@
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
-   and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
-   request body. For GET/DELETE requests, remaining args are sent as query params."
+   and calls `invoke-agent-api`. For POST/PUT/PATCH requests, remaining args are
+   sent as the request body. For other methods (GET/DELETE), remaining args are
+   sent as query params."
   [tool-def arguments token-scopes session-id]
   (let [{:keys [method path]} (:endpoint tool-def)
         tool-name             (:name tool-def)

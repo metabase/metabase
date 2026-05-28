@@ -160,12 +160,15 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              collections
               dashboards
               events
               lib
+              lib-be
               llm
               metabot
               queries
+              query-permissions
               query-processor
               request
               server
@@ -2222,8 +2225,7 @@
            permissions
            premium-features
            search
-           util
-           workspaces}
+           util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -2684,7 +2686,8 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api.logs
+   :api  #{metabase-enterprise.advanced-config.api
+           metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -2695,6 +2698,7 @@
            lib
            permissions
            premium-features
+           sample-data
            settings
            setup
            sync
@@ -3208,7 +3212,8 @@
   enterprise/replacement
   {:team "Graphy"
    :api  #{metabase-enterprise.replacement.api}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            events
            lib
@@ -3520,6 +3525,7 @@
            permissions
            premium-features
            query-processor
+           sample-data
            server
            settings
            sql-tools

@@ -1,24 +1,42 @@
+import { skipToken, useListCardsQuery } from "metabase/api";
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/entity-framework/use-entity-list-query";
-import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
-import { Questions } from "metabase/entities/questions";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { ListCardsRequest } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-export const useQuestionListQuery = (
-  props: UseEntityListQueryProps<ListCardsRequest> = {},
-): UseEntityListQueryResult<Question> => {
-  return useEntityListQuery<Question, ListCardsRequest>(props, {
-    fetchList: Questions.actions.fetchList,
-    getList: Questions.selectors.getList,
-    getLoading: Questions.selectors.getLoading,
-    getLoaded: Questions.selectors.getLoaded,
-    getError: Questions.selectors.getError,
-    getListMetadata: Questions.selectors.getListMetadata,
+export const useQuestionListQuery = ({
+  query,
+  reload = false,
+  enabled = true,
+}: UseEntityListQueryProps<ListCardsRequest> = {}): UseEntityListQueryResult<Question> => {
+  const {
+    data: response,
+    isFetching,
+    isSuccess,
+    error,
+  } = useListCardsQuery(enabled ? (query ?? undefined) : skipToken, {
+    refetchOnMountOrArgChange: reload,
   });
+  const data = useSelector((state) => {
+    if (!response) {
+      return undefined;
+    }
+    const metadata = getMetadata(state);
+    return response
+      .map(({ id }) => metadata.question(id))
+      .filter((question): question is Question => question != null);
+  });
+  return {
+    data,
+    isLoading: isFetching,
+    isLoaded: isSuccess,
+    error,
+  };
 };

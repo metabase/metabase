@@ -108,7 +108,6 @@
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
                (data-perms.graph/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
-
         ;; A new group starts with the same perms as All Users
         (is (partial=
              {group-id
@@ -119,7 +118,6 @@
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
              (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))
-
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id table-id-1 :perms/download-results :no)
@@ -167,7 +165,6 @@
   ;; Manually activate Field values since they are not created during sync (#53387)
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
@@ -504,7 +501,6 @@
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
              (t2/update! :model/Table table-id {:data_source nil}))))))
-
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
@@ -518,7 +514,6 @@
       (testing "can also change it to nil"
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
-
   (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
     (testing "can set data_source to metabase-transform on an existing synced table"
       (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]

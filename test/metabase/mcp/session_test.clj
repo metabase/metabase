@@ -150,7 +150,6 @@
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :crowberto))))
       (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :rasta))))))
-
   (testing "returns true for the owning user, false for others"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
@@ -190,7 +189,6 @@
         (is (= "payload" (mcp.session/read-handle owner-session user-id handle))))
       (testing "different session, same user → still resolves (cross-session fallback)"
         (is (= "payload" (mcp.session/read-handle rotated-session user-id handle))))))
-
   (testing "read-handle refuses to resolve handles owned by a different user"
     (let [owner-id    (mt/user->id :crowberto)
           attacker-id (mt/user->id :rasta)
