@@ -436,9 +436,9 @@
           (is (=? {:last_send nil}
                   (by-id n-unsent))))))))
 
-(deftest last-send-failing-channel-send-surfaces-status-test
-  (testing ":last_send on the list shows :failing status when the latest send-tick had a channel failure;
-   error details are nil at the list level (they live on the detail page)"
+(deftest last-send-failing-channel-send-surfaces-status-and-error-test
+  (testing ":last_send on the list shows :failing status AND the channel-send error message
+   when the latest send-tick had a channel failure"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
@@ -456,13 +456,13 @@
                                                             :status       :failed
                                                             :started_at   (t/instant)
                                                             :ended_at     (t/instant)
-                                                            :task_details {:message      "SMTP connection refused"
-                                                                           :channel_type "channel/email"
+                                                            :task_details {:message         "SMTP connection refused"
+                                                                           :channel_type    "channel/email"
                                                                            :notification_id nid}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
           (is (=? {:last_send {:at     some?
                                :status "failing"
-                               :error  nil}}
+                               :error  "SMTP connection refused"}}
                   (find-row-by-id data nid))))))))
 
 (deftest last-check-shape-success-test
@@ -509,6 +509,42 @@
           (is (=? {:last_check {:at     some?
                                 :status "failing"
                                 :error  "SMTP host unreachable"}}
+                  (find-row-by-id data nid))))))))
+
+(deftest last-send-shape-failing-includes-error-test
+  (testing ":last_send on the list endpoint surfaces the channel-send error message (not just status=failing)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}  {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :failed
+                                                            :started_at  (t/instant)
+                                                            :ended_at    (t/instant)}
+                     ;; Outer notification-send succeeded; only the channel-send failed.
+                     :model/TaskHistory      _ns-th        {:task         "notification-send"
+                                                            :run_id       run-id
+                                                            :status       :success
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:notification_id nid}}
+                     :model/TaskHistory      _cs-th        {:task         "channel-send"
+                                                            :run_id       run-id
+                                                            :status       :failed
+                                                            :started_at   (t/instant)
+                                                            :ended_at     (t/instant)
+                                                            :task_details {:status        :failed
+                                                                           :message       "Slack token invalid"
+                                                                           :original-info {:channel_type    "channel/slack"
+                                                                                           :notification_id nid}}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (=? {:last_send {:at     some?
+                               :status "failing"
+                               :error  "Slack token invalid"}}
                   (find-row-by-id data nid))))))))
 
 (deftest last-check-abandoned-folds-into-failing-test

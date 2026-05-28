@@ -212,6 +212,7 @@
 
   Result columns:
     - `:entity_id`   — card ID (join key used by base-list-query)
+    - `:id`          — task_run.id of the latest send tick (for looking up channel-send error msg)
     - `:started_at`  — the tick's started_at (for sort + `:last_send.at`)
     - `:has_failure` — 1 if any channel-send in the tick failed, 0 otherwise
 
@@ -220,6 +221,7 @@
   []
   (let [lookback (lookback-cutoff)]
     {:select [:lr.entity_id
+              [:lr.run_id          :id]
               [:lr.tick_started_at :started_at]
               ;; Boolean CASE, read back in Clojure — same pattern as
               ;; `metabase.search.in-place.legacy/bookmark-col`. `has-failure?` runs it through
@@ -336,6 +338,7 @@
                       (into [[:lc.id                                            :lc_id]
                              [:lc.status                                        :lc_status]
                              [:lc.started_at                                    :lc_started_at]
+                             [:ls.id                                            :ls_id]
                              [:ls.started_at                                    :ls_started_at]
                              [:ls.has_failure                                   :ls_has_failure]]))
             :from   [:notification]
@@ -417,25 +420,29 @@
   (some-> status keyword))
 
 (defn- error-by-run-id
-  "Given a set of failed/abandoned run IDs, return a map run_id → error message. When a run has
-  multiple failed task_history rows, prefer the outer `notification-send` then fall back to the
-  latest by `ended_at`."
-  [run-ids]
+  "Map run_id → error message for the given failed/abandoned run IDs. When `task-name` is non-nil,
+  restrict to that task type (used by `last_send`, which is specifically about channel-send). When
+  nil, use a tiebreaker that prefers `notification-send` then falls back to the latest by
+  `ended_at` (used by `last_check`, which wants the most-signal message for the whole run)."
+  [task-name run-ids]
   (when (seq run-ids)
     (->> (t2/select :model/TaskHistory
                     {:select [:run_id :task_details]
                      :from   [[{:select [:run_id :task_details
                                          [[:over [[:row_number]
                                                   {:partition-by [:run_id]
-                                                   :order-by     [[[:case
-                                                                    [:= :task task-notification-send] 0
-                                                                    :else                             1] :asc]
-                                                                  [:ended_at :desc]]}]]
+                                                   :order-by     (if task-name
+                                                                   [[:ended_at :desc]]
+                                                                   [[[:case
+                                                                      [:= :task task-notification-send] 0
+                                                                      :else                             1] :asc]
+                                                                    [:ended_at :desc]])}]]
                                           :rn]]
                                 :from   [:task_history]
-                                :where  [:and
-                                         [:in :run_id run-ids]
-                                         [:in :status ["failed" "abandoned"]]]}
+                                :where  (cond-> [:and
+                                                 [:in :run_id run-ids]
+                                                 [:in :status ["failed" "abandoned"]]]
+                                          task-name (conj [:= :task task-name]))}
                                :sub]]
                      :where  [:= :sub.rn 1]})
          (into {} (map (juxt :run_id (comp :message :task_details)))))))
@@ -448,31 +455,36 @@
   (boolean (api/bit->boolean v)))
 
 (defn- decorate-runs
-  "Build :last_check / :last_send maps on each row from the joined run columns + a one-shot
-  task_history fetch for any failed/abandoned runs on the page (for last_check error messages).
+  "Build :last_check / :last_send maps on each row from the joined run columns + per-page
+  task_history lookups for the error messages on any failed runs.
 
-  :last_send is built from the per-tick rollup columns ls_started_at / ls_has_failure.
-  It carries no error string at the list level — error detail lives on the detail page.
+  :last_check error uses the tiebreaker (prefer the outer notification-send message; fall back to
+  the latest by ended_at). :last_send error is restricted to channel-send rows — `last_send` is
+  specifically about the send tick, and the outer notification-send may have succeeded.
   :last_send is nil when ls_started_at is nil (no send ever attempted for this card)."
   [rows]
-  (let [failed-run-ids (into #{} (keep (fn [{:keys [lc_id lc_status]}]
-                                         (when (#{"failed" "abandoned"} lc_status) lc_id)))
-                             rows)
-        run->error     (error-by-run-id failed-run-ids)]
+  (let [failed-lc-ids (into #{} (keep (fn [{:keys [lc_id lc_status]}]
+                                        (when (#{"failed" "abandoned"} lc_status) lc_id)))
+                            rows)
+        failed-ls-ids (into #{} (keep (fn [{:keys [ls_id ls_has_failure]}]
+                                        (when (and ls_id (has-failure? ls_has_failure)) ls_id)))
+                            rows)
+        lc->error     (error-by-run-id nil failed-lc-ids)
+        ls->error     (error-by-run-id task-channel-send failed-ls-ids)]
     (mapv (fn [{:keys [lc_id lc_status lc_started_at
-                       ls_started_at ls_has_failure] :as row}]
+                       ls_id ls_started_at ls_has_failure] :as row}]
             (-> row
                 (assoc :last_check (run->summary {:status (coerce-status lc_status)
                                                   :at     lc_started_at
-                                                  :error  (get run->error lc_id)}))
+                                                  :error  (get lc->error lc_id)}))
                 (assoc :last_send  (when ls_started_at
                                      {:at     ls_started_at
-                                      :error  nil
+                                      :error  (get ls->error ls_id)
                                       :status (if (has-failure? ls_has_failure)
                                                 :failing
                                                 :successful)}))
                 (dissoc :lc_id :lc_status :lc_started_at
-                        :ls_started_at :ls_has_failure)))
+                        :ls_id :ls_started_at :ls_has_failure)))
           rows)))
 
 (defn- splice-creator-active
@@ -602,7 +614,7 @@
                                                      :fetch-limit fetch-limit
                                                      :extra-where [:in :tr.status terminal-statuses]))
         failed-ids (into #{} (keep #(when (#{"failed" "abandoned"} (:run_status %)) (:task_run_id %)) matching))
-        errors     (error-by-run-id failed-ids)]
+        errors     (error-by-run-id nil failed-ids)]
     (mapv (fn [{:keys [task_run_id run_status run_started_at]}]
             (run->summary {:status (coerce-status run_status)
                            :at     run_started_at
