@@ -121,14 +121,11 @@
                              :databases {<db-name> {:input_schemas [<schema-name> ...]
                                                     :output        {:db ? :schema ?}}}}}}
 
-  Each database entry merges the underlying `metabase_database.details` with the
-  WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
-  derived from `:input_schemas`. The `:instance-workspace` setting value is
-  keyed by db NAME so the same config is portable across instances — the
-  EE code resolves names to local ids at read time via
-  `metabase-enterprise.workspaces.core/instance-workspace`. Returns nil when
-  the workspace does not exist. Throws a 409 `ex-info` if any of the
-  workspace's databases is not `:provisioned`."
+  Database entries merge `metabase_database.details` with the workspace's
+  override credentials and add `schema-filters-*` derived from `:input_schemas`.
+  The `:instance-workspace` setting is keyed by db name so the same config is
+  portable across instances. Returns nil when the workspace doesn't exist;
+  throws 409 if any of its databases is not `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]

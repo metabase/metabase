@@ -7,12 +7,10 @@
    [metabase.workspaces.core :as-alias ws.oss]))
 
 (mr/def ::raw-instance-workspace-config
-  "On-disk shape of the `instance-workspace` setting: `:databases` keyed by db NAME
-   (not id) so the same value is portable across instances and matches the YAML
-   wire format. Keys may be strings or keywords depending on the parser (YAML
-   keywordizes, raw JSON keeps strings). The id-keyed canonical form lives in
-   [[metabase.workspaces.core/workspace-instance-config]] —
-   `metabase-enterprise.workspaces.core/instance-workspace` resolves between them."
+  "On-disk shape of the `instance-workspace` setting: `:databases` keyed by db
+   name so the value matches YAML and is portable across instances. Keys may be
+   strings or keywords (YAML keywordizes, raw JSON keeps strings). The id-keyed
+   form consumers use is [[metabase.workspaces.core/workspace-instance-config]]."
   [:map
    [:name      [:string {:min 1}]]
    [:databases [:map-of
@@ -20,17 +18,15 @@
                 ::ws.oss/workspace-database-config]]])
 
 (defn- validate-instance-workspace!
-  "Reject malformed values before they hit the setting store. The setting accepts
-   the YAML shape — `:databases` keyed by db `:name` — and the schema check
-   ensures any caller (env var, settings API, config-from-file) writes a usable
-   value."
+  "Reject malformed setting values before they reach the store, so writes from
+   env, the config file, or the settings API all fail loudly on bad input."
   [config]
   (when (some? config)
     (mu/validate-throw ::raw-instance-workspace-config config))
   config)
 
 (defsetting instance-workspace
-  (deferred-tru "The workspace loaded on this instance. The on-disk value matches the YAML shape — `:databases` keyed by db `:name`. `nil` on parent and unconfigured instances.")
+  (deferred-tru "The workspace loaded on this instance, in its name-keyed YAML shape. `nil` on parent and unconfigured instances.")
   :type               :json
   :encryption         :no
   :feature            :workspaces

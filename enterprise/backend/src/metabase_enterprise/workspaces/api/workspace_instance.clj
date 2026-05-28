@@ -1,8 +1,7 @@
 (ns metabase-enterprise.workspaces.api.workspace-instance
-  "EE API endpoints scoped to this (child) instance's workspace state. The
-   workspace itself is exposed as the `instance-workspace` setting (read/write
-   via the standard settings API and env), so this namespace only carries the
-   side-state that doesn't fit in a setting — the TableRemapping rows."
+  "EE API for the table-remapping rows on a workspace child instance. The
+   workspace itself lives in the `instance-workspace` setting and is
+   read/written through the standard settings API."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]

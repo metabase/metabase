@@ -3,9 +3,10 @@
 
    ## Three related-but-distinct concepts
 
-   1. **Workspace mode** — an *instance-level boot state*. True iff the instance
-      loaded a `:workspace` section from `config.yml` at boot. Set once, doesn't
-      change. The `workspace-mode?` predicate.
+   1. **Workspace mode** — an *instance-level state*. True iff the
+      `instance-workspace` setting is populated (via env, the `:settings`
+      section of `config.yml`, or the standard settings API). The
+      `workspace-mode?` predicate.
 
    2. **Workspace-managed database** — a *database-scoped state*. True iff this
       instance is in workspace mode AND the workspace's `:databases` map includes
@@ -24,13 +25,8 @@
    check. Features blocked here (DB routing, impersonation, writeback, CSV
    upload, model persistence enable) are refused on a child instance entirely,
    not per-database. Rationale: workspace children boot with empty everything
-   except content; per Dan in proj-workspaces 2026-04-30, those features can't
-   already be configured. The instance-level gate is simpler and defensive —
-   no escape hatch.
-
-   If a future use case requires running a feature against a non-workspace-
-   managed database on a child, refine the call sites to per-database checks
-   using the EE `db-workspace-namespace` predicate.
+   except content; those features can't already be configured. The
+   instance-level gate is simpler and defensive — no escape hatch.
 
    ## OSS vs EE
 
@@ -66,10 +62,10 @@
    [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
-  "The canonical, id-keyed shape consumers see. `metabase-enterprise.workspaces.core/instance-workspace`
-   returns this form, and `set-instance-workspace!` accepts it. The on-disk
-   `instance-workspace` setting stores the same content keyed by db NAME (matches
-   YAML); the EE namespace resolves names ↔ ids at the storage boundary."
+  "The id-keyed shape consumers see — what `instance-workspace` returns and
+   `set-instance-workspace!` accepts. The on-disk setting stores the same data
+   keyed by db name; the EE namespace resolves between the two at the storage
+   boundary."
   [:map
    [:name      [:string {:min 1}]]
    [:databases [:map-of
@@ -77,15 +73,10 @@
                 :int ::workspace-database-config]]])
 
 (defenterprise workspace-mode?
-  "True if this instance is running in workspace mode — a `:workspace` section
-   was loaded from `config.yml` at boot. Instance-level state set once at boot.
-
-   For the per-database check, use the EE function
-   `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
-   workspace-isolated output namespace map if this instance is in workspace mode
-   AND the workspace's `:databases` map includes this database).
-
-   The OSS fallback returns false."
+  "True if this instance is running in workspace mode — i.e. the
+   `instance-workspace` setting is populated. For the per-database check, use
+   the EE `metabase-enterprise.workspaces.core/db-workspace-namespace`. The
+   OSS fallback returns false."
   metabase-enterprise.workspaces.core
   []
   false)
