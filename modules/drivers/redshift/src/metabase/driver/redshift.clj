@@ -760,7 +760,7 @@
   (when (public-create-grant? conn schema-name)
     (driver.postgres/raise-public-create-grant! schema-name)))
 
-(defn- current-user-superuser?
+(defn- current-user-usesuper?
   "True when `current_user` has `usesuper`. Superusers can ALTER DEFAULT
    PRIVILEGES FOR USER <anyone>, so they bypass the membership check below.
 
@@ -821,7 +821,7 @@
    foreign owners (silent data drift) nor REVOKE pre-existing default-priv
    entries at destroy time (DROP USER fails -> GHY-3709)."
   [conn schema-name]
-  (when-not (current-user-superuser? conn)
+  (when-not (current-user-usesuper? conn)
     (let [me      (:current_user (first (jdbc/query conn ["SELECT current_user"])))
           owners  (->> (concat (relation-owners-in-schema     conn schema-name)
                                (default-acl-grantors-in-schema conn schema-name))
