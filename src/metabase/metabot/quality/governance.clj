@@ -1,14 +1,19 @@
 (ns metabase.metabot.quality.governance
-  "Batched governance lookup for the entity-refs that appear across the
-  conversation's entity sets.
+  "Batched governance lookup plus the canonical-entity predicate.
 
-  [[resolve]] returns `{[type id-str] facts}` where each facts map carries
-  only the keys populated for that entity type. An entity the appdb can't
-  find is absent from the map — downstream readers must tolerate a missing
-  key. At most one small `IN` query runs per entity-type bucket, so the
-  appdb cost stays bounded regardless of conversation shape."
+  [[resolve]] returns `{[type id-str] facts}` for the entity-refs that
+  appear across a conversation's sets. Cards and tables carry the inputs
+  [[canonical?]] reads; dashboards, databases, and transforms carry only a
+  display name. An entity the appdb can't find is absent from the map, so
+  callers must tolerate a missing key.
+
+  [[canonical?]] is pure over one facts map: an entity is canonical when it
+  clears every hard negative and satisfies at least one positive axis —
+  declared by moderation/authority status, or placed in a curated Library
+  location."
   (:refer-clojure :exclude [resolve])
   (:require
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +44,7 @@
   coerce to Long. Returns `{type-group #{long-id ...}}` where
   `type-group` is the bucket name used inside this namespace
   (`:card`, `:table`, `:dashboard`, `:database`, `:transform`).
-  Types not consumed by Phase-3 governance (e.g. `field`, `collection`,
+  Types governance doesn't resolve (e.g. `field`, `collection`,
   `document`) bucket out and are silently ignored."
   [refs]
   (reduce
@@ -62,19 +67,23 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- card-rows
-  "Issue the batched card query. LEFT JOIN to `collection` (for
-  `personal_owner_id`) and `moderation_review` (filtered to
-  `most_recent = true`). Same card appears N times in the result iff N
-  `most_recent` rows exist for it — [[fold-card-rows]] folds those."
+  "Issue the batched card query. LEFT JOIN to `collection` (for the
+  authority level, personal-owner, and the path/type that resolve the
+  card's top-level collection) and `moderation_review` (filtered to
+  `most_recent = true`). A card appears N times iff N `most_recent` rows
+  exist for it — [[fold-card-rows]] folds those."
   [card-ids]
   (when (seq card-ids)
     (t2/query
      {:select    [[:c.id :card-id]
-                  [:c.type :card-type]
                   [:c.name :card-name]
-                  [:c.source_card_id :source-card-id]
-                  [:c.database_id :db-id]
+                  [:c.archived :archived]
+                  [:c.dashboard_id :dashboard-id]
+                  [:c.collection_id :collection-id]
                   [:col.personal_owner_id :personal-owner-id]
+                  [:col.authority_level :authority-level]
+                  [:col.location :collection-location]
+                  [:col.type :collection-type]
                   [:mr.status :review-status]]
       :from      [[:report_card :c]]
       :left-join [[:collection :col]
@@ -88,32 +97,44 @@
 
 (defn- fold-card-rows
   "Reduce the (possibly duplicated-per-card) card rows into one facts map
-  per card-id. `:verified?` is the disjunction across moderation rows so
-  a pathological multi-`most_recent` state still resolves cleanly. The
-  returned map is keyed by `card-id` (Long), not the public
-  `[type id-str]` — that re-keying happens in [[index-cards]]."
+  per card-id, stamped `:kind :card`. `:moderation-status` folds to
+  `\"verified\"` if any `most_recent` row is verified so a pathological
+  multi-row state still resolves cleanly. The returned map is keyed by
+  `card-id` (Long); the public `[type id-str]` re-keying happens in
+  [[index-cards]]."
   [rows]
   (reduce
-   (fn [acc {:keys [card-id card-name source-card-id db-id personal-owner-id review-status]}]
-     (let [existing (get acc card-id)
-           verified-here? (= "verified" review-status)]
+   (fn [acc {:keys [card-id card-name archived dashboard-id collection-id
+                    personal-owner-id authority-level collection-location
+                    collection-type review-status]}]
+     (let [existing          (get acc card-id)
+           moderation-status (if (or (= "verified" review-status)
+                                     (= "verified" (:moderation-status existing)))
+                               "verified"
+                               (or review-status (:moderation-status existing)))]
        (assoc acc card-id
-              {:name               card-name
-               :source-card-id     source-card-id
-               :db-id              db-id
-               :lives-in-personal? (some? personal-owner-id)
-               :verified?          (or verified-here? (:verified? existing false))})))
+              {:kind                 :card
+               :name                 card-name
+               :archived?            (boolean archived)
+               :dashboard-internal?  (some? dashboard-id)
+               :lives-in-personal?   (some? personal-owner-id)
+               :moderation-status    moderation-status
+               :authority-level      authority-level
+               :root-collection-type (collection/root-collection-type
+                                      {:collection_id       collection-id
+                                       :collection_location collection-location
+                                       :collection_type     collection-type})})))
    {}
    rows))
 
 (defn- index-cards
   "Re-key the per-card facts map to the public `[type id-str]` shape. A
   single card-id explodes into one key per requested type (e.g. if the
-  same card-id appears in CONV_Q as both `card` and `question`, both
-  keys land in the result with the same facts). The `report_card.type`
-  column is intentionally not part of the public key — extract.clj
-  records the type as it appeared in the entity-usage stream, and
-  governance keys must mirror that for join symmetry."
+  same card-id appears as both `card` and `question`, both keys land with
+  the same facts). The `report_card.type` column is intentionally not part
+  of the public key — extract.clj records the type as it appeared in the
+  entity-usage stream, and governance keys must mirror that for join
+  symmetry."
   [card-facts types-by-id]
   (reduce-kv
    (fn [acc card-id facts]
@@ -140,25 +161,44 @@
    refs))
 
 ;;; ---------------------------------------------------------------------------
-;;; Per-type single-key lookups
+;;; Table batch query
 ;;; ---------------------------------------------------------------------------
 
 (defn- table-rows
+  "Batched table lookup through `:model/Table` so the model transforms
+  apply — `data_authority` / `data_layer` come back as keywords with the
+  legacy medallion `data_layer` values already folded to their current
+  form. A raw query would skip that folding."
   [table-ids]
   (when (seq table-ids)
-    (t2/query
-     {:select [[:id :table-id] :name :schema :db_id]
-      :from   [:metabase_table]
-      :where  [:in :id table-ids]})))
+    (t2/select [:model/Table :id :name :archived_at :active :visibility_type
+                :is_published :collection_id :data_authority :data_layer]
+               :id [:in table-ids])))
 
 (defn- index-tables
-  [rows]
+  "Key table rows by `[\"table\" id-str]` and stamp `:kind :table`.
+  `:in-library?` is membership of the table's collection in `library-cids`
+  (the Library root + descendants)."
+  [rows library-cids]
   (reduce
-   (fn [acc {:keys [table-id name schema db_id]}]
-     (assoc acc ["table" (str table-id)]
-            {:name name :schema schema :db-id db_id}))
+   (fn [acc {:keys [id name archived_at active visibility_type is_published
+                    collection_id data_authority data_layer]}]
+     (assoc acc ["table" (str id)]
+            {:kind                 :table
+             :name                 name
+             :archived-at?         (some? archived_at)
+             :active?              (boolean active)
+             :visibility-type-set? (some? visibility_type)
+             :is-published?        (boolean is_published)
+             :in-library?          (contains? library-cids collection_id)
+             :data-authority       data_authority
+             :data-layer           data_layer}))
    {}
    rows))
+
+;;; ---------------------------------------------------------------------------
+;;; Name-only lookups (dashboard / database / transform)
+;;; ---------------------------------------------------------------------------
 
 (defn- name-only-rows
   "Generic `:name`-only lookup against `table-kw` keyed by integer `:id`.
@@ -175,27 +215,41 @@
   [rows public-type]
   (reduce
    (fn [acc {:keys [row-id name]}]
-     (assoc acc [public-type (str row-id)] {:name name}))
+     (assoc acc [public-type (str row-id)] {:kind :other :name name}))
    {}
    rows))
+
+;;; ---------------------------------------------------------------------------
+;;; Library collection ids
+;;; ---------------------------------------------------------------------------
+
+(defn library-collection-ids
+  "The set of collection ids that make up the Library — its root plus all
+  descendants — or nil when the instance has no Library. Computed once per
+  scoring run and threaded into [[resolve]] so the per-table
+  Library-membership check is a set lookup."
+  []
+  (when-let [root (collection/library-collection)]
+    (into #{(:id root)} (collection/descendant-ids root))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public surface — batched resolve
 ;;; ---------------------------------------------------------------------------
 
 (defn resolve
-  "Resolve governance facts for a seq of entity-refs across all sets.
-  Returns `{[type id-str] facts-map}` per the §Sparse return map note
-  in the ns docstring. Issues at most five small `IN` queries — one per
-  bucket — so the appdb cost stays bounded regardless of conversation
-  shape.
+  "Resolve governance facts for a seq of entity-refs across all sets, given
+  the Library collection-id set from [[library-collection-ids]]. Returns
+  `{[type id-str] facts-map}`.
 
-  Refs whose `:type` is outside the governance-consumed vocabulary
-  (today: card-types, table, dashboard, database, transform) are
-  silently ignored; their attribution displays without a governance
-  label. Refs with non-numeric `:id` (aggregation aliases, etc.) are
-  also dropped before any query runs."
-  [entity-refs]
+  Cards and tables carry the [[canonical?]] inputs; dashboards, databases,
+  and transforms carry `:kind :other` and a `:name`. An entity the appdb
+  can't find is absent from the map. Refs whose `:type` is outside the
+  resolved vocabulary, or whose `:id` is non-numeric, are dropped before
+  any query runs.
+
+  One batched query per entity-type bucket, plus memoized root-collection
+  lookups for cards nested inside other collections."
+  [entity-refs library-cids]
   (let [{:keys [card table dashboard database transform]} (partition-refs entity-refs)
         types-by-card-id                                  (requested-card-types-by-id entity-refs)]
     (merge
@@ -203,10 +257,45 @@
          fold-card-rows
          (index-cards types-by-card-id))
      (-> (table-rows table)
-         index-tables)
+         (index-tables library-cids))
      (-> (name-only-rows :report_dashboard dashboard) (index-name-only "dashboard"))
      (-> (name-only-rows :metabase_database database)  (index-name-only "database"))
      (-> (name-only-rows :transform        transform)  (index-name-only "transform")))))
+
+;;; ---------------------------------------------------------------------------
+;;; Canonical predicate
+;;; ---------------------------------------------------------------------------
+
+(defn- card-canonical?
+  [{:keys [archived? dashboard-internal? lives-in-personal?
+           moderation-status authority-level root-collection-type]}]
+  (and (not archived?)
+       (not dashboard-internal?)
+       (not lives-in-personal?)
+       (or (= "verified" moderation-status)
+           (= "official" authority-level)
+           (contains? collection/library-collection-types root-collection-type))))
+
+(defn- table-canonical?
+  [{:keys [archived-at? active? visibility-type-set?
+           is-published? in-library? data-authority data-layer]}]
+  (and (not archived-at?)
+       active?
+       (not visibility-type-set?)
+       (or (= :authoritative data-authority)
+           (and is-published? in-library?)
+           (= :final data-layer))))
+
+(defn canonical?
+  "True iff `facts` (one value from [[resolve]]) describes a canonical data
+  source. A card or table is canonical when it clears every hard negative
+  and satisfies at least one positive axis. Non-card/non-table entities are
+  never canonical, so a surfaced dashboard simply evaluates to false."
+  [facts]
+  (case (:kind facts)
+    :card  (card-canonical? facts)
+    :table (table-canonical? facts)
+    false))
 
 ;;; ---------------------------------------------------------------------------
 ;;; REPL helpers
@@ -216,4 +305,5 @@
   ;; Sample resolve against a small ref list — verify shape locally.
   (resolve [{:type "card"  :id 1}
             {:type "model" :id 2}
-            {:type "table" :id 3}]))
+            {:type "table" :id 3}]
+           (library-collection-ids)))

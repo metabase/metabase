@@ -129,7 +129,8 @@
   map carrying the conversation-level fields to persist plus a
   per-assistant-message `:quality_attribution` map keyed by message id."
   [normalized]
-  (let [governance  (governance/resolve (all-entity-refs normalized))
+  (let [library-cids (governance/library-collection-ids)
+        governance  (governance/resolve (all-entity-refs normalized) library-cids)
         normalized' (temporal/derive normalized)
         metrics     (metrics/compute normalized' governance)
         subs        (subscores/compose metrics)
