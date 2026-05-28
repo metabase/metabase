@@ -5,7 +5,7 @@ import { TitleSection } from "metabase/data-studio/common/components/TitleSectio
 import { Button, Code, Group, Text } from "metabase/ui";
 import { useDeleteWorkspaceInstanceMutation } from "metabase-enterprise/api";
 
-import { trackWorkspaceInstanceTeardown } from "../../../analytics";
+import { trackWorkspaceInstanceLeave } from "../../../analytics";
 
 const CONFIG_FILENAME = "config.yml";
 
@@ -23,7 +23,7 @@ export function DeleteSection() {
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
         await deleteInstance().unwrap();
-        trackWorkspaceInstanceTeardown();
+        trackWorkspaceInstanceLeave();
       },
     });
   };
