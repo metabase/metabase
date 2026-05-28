@@ -43,9 +43,8 @@ const buildInitialOwnerOption = (
   if (!creator || creator_id === null || creator_id === undefined) {
     return null;
   }
-  const label = getUserLabel(creator);
   return {
     id: creator_id,
-    label: !creator.is_active ? t`${label} (deactivated)` : label,
+    label: getUserLabel(creator),
   };
 };
