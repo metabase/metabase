@@ -1972,17 +1972,60 @@
                   (dec stage-idx) stage-idx)
       nil)))
 
+(defn- strip-surrounding-double-quotes
+  "If `s` is wrapped in a matched pair of leading/trailing double-quote characters, return the
+  inner string; otherwise return `s` unchanged.
+
+  LLMs sometimes quote a cross-stage / source-card column name the way they'd quote a SQL
+  identifier - e.g. `\"app_id\"` - but those quotes are not part of the column's actual name.
+  Left in place they make the name match no source column, so the [[maybe-fill-cross-stage-types]]
+  pass can't infer `base-type`, the resolver passes the typeless string-named ref through
+  unvalidated (production has Malli instrumentation off), and the FE later crashes computing
+  display info for it."
+  [s]
+  (or (when (string? s)
+        (second (re-matches #"\"(.*)\"" s)))
+      s))
+
+(defn- match-cross-stage-column
+  "Find the canonical column entry in `name->types` for `col-name`. Returns `[canonical-name
+  types]` or `nil` when no column matches.
+
+  Prefers an exact match. Falls back to the double-quote-stripped name, but only when stripping
+  actually resolves to a real column - so a column whose name legitimately contains surrounding
+  quotes (vanishingly rare) is never clobbered, and unmatched names are left for the resolver to
+  report with a better message."
+  [name->types col-name]
+  (cond
+    (contains? name->types col-name)
+    [col-name (get name->types col-name)]
+
+    :else
+    (let [stripped (strip-surrounding-double-quotes col-name)]
+      (when (and (not= stripped col-name)
+                 (contains? name->types stripped))
+        [stripped (get name->types stripped)]))))
+
 (defn- maybe-fill-cross-stage-types
-  "Given a cross-stage field clause and a name→types map, return the clause with `base-type`
-  / `effective-type` filled in (when missing and known)."
+  "Given a cross-stage field clause and a name→types map, return the clause with its column name
+  canonicalised (surrounding double-quotes stripped when that is what makes it match a real
+  column) and `base-type` / `effective-type` filled in (when missing and known).
+
+  Idempotent: once the name is canonical it matches exactly on the next pass (no rename), and
+  once `base-type` is present it is left alone."
   [clause name->types]
-  (let [opts (nth clause 1)
+  (let [opts     (nth clause 1)
         col-name (nth clause 2)]
-    (if (contains? opts "base-type")
-      clause
-      (if-let [types (get name->types col-name)]
-        (assoc clause 1 (merge opts types))
-        clause))))
+    (if-let [[canonical-name types] (match-cross-stage-column name->types col-name)]
+      (cond-> clause
+        ;; Canonicalise the name when quote-stripping was needed to match. A bare `base-type`
+        ;; stamp without this would leave the ref pointing at a non-existent column.
+        (not= canonical-name col-name)
+        (assoc 2 canonical-name)
+        ;; Stamp inferred types only when the LLM didn't author a `base-type` already.
+        (not (contains? opts "base-type"))
+        (assoc 1 (merge opts types)))
+      clause)))
 
 (defn- infer-cross-stage-field-types-in-stage
   "Walk one stage and stamp inferred types into every string-named field reference that lacks

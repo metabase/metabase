@@ -90,13 +90,11 @@
         (when-let [cf (:cascade-filter spec)]
           (is (map? cf)
               ":cascade-filter should be a map when present")))))
-
   (testing "children-specs derives the correct children for Table"
     (let [children (spec/children-specs :model/Table)]
       (is (= 1 (count children)))
       (is (= #{:model/Field}
              (into #{} (map :model-key) children)))))
-
   (testing "children-specs returns empty for models with no children"
     (is (empty? (spec/children-specs :model/Card)))))
 
@@ -160,7 +158,6 @@
         (is (contains? excluded "TransformTag"))
         (is (not (contains? excluded "Card")))
         (is (not (contains? excluded "Dashboard"))))))
-
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
@@ -172,11 +169,9 @@
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
     (is (true? (spec/spec-enabled? {:enabled? true}))))
-
   (testing "spec-enabled? with setting-based spec"
     (mt/with-temporary-setting-values [remote-sync-transforms false]
       (is (false? (spec/spec-enabled? {:enabled? :remote-sync-transforms}))))
-
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (is (true? (spec/spec-enabled? {:enabled? :remote-sync-transforms}))))))
 
@@ -188,7 +183,6 @@
         (is (contains? enabled :model/Dashboard))
         (is (not (contains? enabled :model/Transform)))
         (is (not (contains? enabled :model/TransformTag)))))
-
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [enabled (spec/enabled-specs)]
         (is (contains? enabled :model/Card))
@@ -201,15 +195,12 @@
   (testing "determine-status for create event"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "create" (spec/determine-status spec :event/card-create {:archived false})))))
-
   (testing "determine-status for update event"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "update" (spec/determine-status spec :event/card-update {:archived false})))))
-
   (testing "determine-status for delete event"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "delete" (spec/determine-status spec :event/card-delete {:archived false})))))
-
   (testing "determine-status for archived object returns delete"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "delete" (spec/determine-status spec :event/card-update {:archived true}))))))
@@ -232,7 +223,6 @@
           fields (spec/build-sync-object-fields spec details)]
       (is (= "My Dashboard" (:model_name fields)))
       (is (= 123 (:model_collection_id fields)))))
-
   (testing "build-sync-object-fields with transform function"
     (let [spec (spec/spec-for-model-key :model/Card)
           details {:name "My Card" :collection_id 456 :display :table}
@@ -240,7 +230,6 @@
       (is (= "My Card" (:model_name fields)))
       (is (= 456 (:model_collection_id fields)))
       (is (= "table" (:model_display fields)))))
-
   (testing "build-sync-object-fields with nil details returns nil"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (nil? (spec/build-sync-object-fields spec nil))))))
@@ -255,7 +244,6 @@
            (spec/fields-for-sync "Dashboard")))
     (is (= [:name :collection_id]
            (spec/fields-for-sync "NativeQuerySnippet"))))
-
   (testing "fields-for-sync returns default for unknown type"
     (is (= [:id :name :collection_id]
            (spec/fields-for-sync "UnknownModel")))))
@@ -274,13 +262,10 @@
 (deftest export-scope-required-for-certain-models-test
   (testing "Collection spec has :root-collections export-scope"
     (is (= :root-collections (:export-scope (spec/spec-for-model-key :model/Collection)))))
-
   (testing "Transform spec has :root-only export-scope"
     (is (= :root-only (:export-scope (spec/spec-for-model-key :model/Transform)))))
-
   (testing "TransformTag spec has :all export-scope"
     (is (= :all (:export-scope (spec/spec-for-model-key :model/TransformTag)))))
-
   (testing "Other collection-based models have no export-scope (defaults to :derived)"
     (is (nil? (:export-scope (spec/spec-for-model-key :model/Card))))
     (is (nil? (:export-scope (spec/spec-for-model-key :model/Dashboard))))))
@@ -291,7 +276,6 @@
   (testing "query-export-roots with :collection eligibility and :derived scope returns nil"
     (let [card-spec (spec/spec-for-model-key :model/Card)]
       (is (nil? (spec/query-export-roots card-spec)))))
-
   (testing "query-export-roots with :collection eligibility and :root-collections scope queries collections"
     ;; This test verifies the multimethod dispatches correctly - actual database queries
     ;; are tested in impl_test.clj integration tests
@@ -311,7 +295,6 @@
   (testing "query-export-roots with :published-table eligibility returns nil (derived)"
     (let [table-spec (spec/spec-for-model-key :model/Table)]
       (is (nil? (spec/query-export-roots table-spec)))))
-
   (testing "query-export-roots with :parent-table eligibility returns nil (derived)"
     (let [field-spec (spec/spec-for-model-key :model/Field)
           segment-spec (spec/spec-for-model-key :model/Segment)
@@ -343,7 +326,6 @@
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should NOT be editable when library is synced and mode is read-only"))))
-
     (testing "returns true when library is NOT synced even in read-only mode"
       (mt/with-temporary-setting-values [remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
@@ -357,7 +339,6 @@
                                          remote-sync-transforms true]
         (is (false? (spec/model-editable? :model/Transform {}))
             "Transforms should NOT be editable when transforms setting is enabled and mode is read-only")))
-
     (testing "returns true when setting is disabled even in read-only mode"
       (mt/with-temporary-setting-values [remote-sync-type :read-only
                                          remote-sync-transforms false]
@@ -371,7 +352,6 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced Collection" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in synced collections should NOT be editable in read-only mode"))))
-
     (testing "returns true when card is in non-synced collection even in read-only mode"
       (mt/with-temporary-setting-values [remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Normal Collection" :is_remote_synced false :location "/"}]
@@ -384,7 +364,6 @@
                                        remote-sync-transforms true]
       (is (false? (spec/model-editable? :model/Transform nil))
           "Transforms with nil instance should check setting-based eligibility"))
-
     (mt/with-temporary-setting-values [remote-sync-type :read-only]
       (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
         (is (false? (spec/model-editable? :model/NativeQuerySnippet nil))
@@ -396,12 +375,10 @@
   (testing "batch-check-eligibility with :library-synced eligibility"
     (let [spec (spec/spec-for-model-key :model/NativeQuerySnippet)
           instances [{:id 1} {:id 2} {:id 3}]]
-
       (testing "returns true for all when library is synced"
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (let [result (spec/batch-check-eligibility spec instances)]
             (is (= {1 true, 2 true, 3 true} result)))))
-
       (testing "returns false for all when library is not synced"
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
           (let [result (spec/batch-check-eligibility spec instances)]
@@ -445,7 +422,6 @@
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 false, 2 false, 3 false} result))))))
-
     (testing "returns true for all when library is not synced"
       (mt/with-temporary-setting-values [remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
@@ -460,11 +436,9 @@
     (is (= {:foo :bar}
            (spec/export-conditions {:export-conditions {:foo :bar}
                                     :conditions {:baz :qux}}))))
-
   (testing "export-conditions falls back to :conditions when :export-conditions absent"
     (is (= {:baz :qux}
            (spec/export-conditions {:conditions {:baz :qux}}))))
-
   (testing "export-conditions returns nil when neither key present"
     (is (nil? (spec/export-conditions {})))))
 
@@ -473,11 +447,9 @@
     (is (= {:foo :bar}
            (spec/removal-conditions {:removal-conditions {:foo :bar}
                                      :conditions {:baz :qux}}))))
-
   (testing "removal-conditions falls back to :conditions when :removal-conditions absent"
     (is (= {:baz :qux}
            (spec/removal-conditions {:conditions {:baz :qux}}))))
-
   (testing "removal-conditions returns nil when neither key present"
     (is (nil? (spec/removal-conditions {})))))
 
@@ -491,11 +463,9 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (:removal-conditions spec))
           "PythonLibrary should have :removal-conditions protecting builtin entity")))
-
   (testing "export-conditions returns nil for PythonLibrary (no export filtering)"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (nil? (spec/export-conditions spec)))))
-
   (testing "removal-conditions returns the builtin protection for PythonLibrary"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}

@@ -252,8 +252,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-         (with-open [file (io/writer <>)]
-           (.write ^java.io.Writer file ^String content))))
+    (with-open [file (io/writer <>)]
+      (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
@@ -439,7 +439,6 @@
                  (send-email {:to ["4@metabase.com"]})))
             (testing "still ok if there is no recipient"
               (is (some? (send-email {})))))
-
           (testing "with 1 small then 1 big event"
             (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
               (is (some? (send-email {:to ["1@metabase.com"]})))
@@ -449,7 +448,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["4@metabase.com"]})))))))
-
       (testing "if an email has # of recipients greater than the limit"
         (testing "we skip throttle check if we haven't reached the limit"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
@@ -462,7 +460,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["6@metabase.com"]}))))))
-
         (testing "still throttle if we already at limit"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
             ;; mx otu the limit
@@ -472,7 +469,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["4@metabase.com" "5@metabase.com" "6@metabase.com" "7@metabase.com"]})))))))
-
       (testing "keep retrying will eventually send the email"
         (with-redefs [email/email-throttler (throttle/make-throttler
                                              :email

@@ -263,21 +263,26 @@
      :lacking-created-at (vec lacking-created-at)
      :expired-isolation  (vec expired-isolation)}))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- orphan-isolation-users
-  "Iso users (`mb__isolation_*`) older than [[hours-before-expired-threshold]].
+  "Enumerate iso users (`mb__isolation_*`) from `pg_user` directly.
 
-   Derived from [[orphan-schemas]] -- iso schema names and iso user names are
-   identical strings by construction (`workspace-isolation-namespace-name` ==
-   `workspace-isolation-user-name`). Schema is always created BEFORE user in
-   `init-workspace-isolation! :redshift`, so an orphan user without a paired
-   schema is structurally impossible; we don't need a separate query.
+   Authoritative source: queries the cluster user catalog rather than deriving
+   from schema names. Catches users whose paired schema was already dropped in
+   a prior partial-cleanup run (DROP SCHEMA succeeded, DROP USER did not), which
+   the schema-derived enumeration misses forever.
 
-   REPL-only convenience -- production path consumes the schemas result map
-   directly via [[delete-old-schemas!]]. Kept here so devs can preview without
-   knowing the orphan-map shape."
+   No age filter: `pg_user` does not expose user creation time on Redshift
+   (`usecreatedate` absent, `last_ddl_timestamp` is per-DDL-touch). Caller
+   filters by pairing against live schemas instead -- `init-workspace-isolation!`
+   creates schema BEFORE user, so any iso user without a live schema is a
+   cleanup leak, not a mid-creation race."
   [^java.sql.Connection conn]
-  (:expired-isolation (orphan-schemas conn)))
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt "SELECT usename FROM pg_user WHERE usename LIKE 'mb__isolation_%'")]
+    (loop [out []]
+      (if (.next rs)
+        (recur (conj out (.getString rs 1)))
+        out))))
 
 ;;; --------------------------------- Destruction ----------------------------------
 
@@ -302,9 +307,10 @@
           (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
 
 (defn- drop-orphan-isolation-users!
-  "Drop iso users paired with expired iso schemas. The schema was dropped first
-   (see [[drop-orphan-schemas!]]), so its default-priv dependencies on the user
-   are already gone -- DROP USER should succeed without REVOKE chasing.
+  "Drop iso users whose paired schema is no longer live. Callers ([[delete-old-schemas!]])
+   compute the username list AFTER [[drop-orphan-schemas!]] has run, so default-priv
+   dependencies on the user are already gone -- DROP USER should succeed without
+   REVOKE chasing.
 
    Per-entry try/catch: a lingering grant from a NON-iso schema would block
    DROP USER, but `grant-workspace-read-access!` issues those against
@@ -327,13 +333,21 @@
   iso accounts), leading to clusters hitting the max-tables / max-users limits.
 
   Glue: thin wrapper that calls the enumerator + droppers in order. To preview
-  from a REPL, call [[orphan-schemas]] / [[orphan-isolation-users]] directly."
+  from a REPL, call [[orphan-schemas]] / [[orphan-isolation-users]] directly.
+
+  Two-phase: drop schemas first, then re-snapshot live schemas and drop any iso
+  user whose schema is no longer live. Re-snapshotting AFTER the schema drop
+  means expired-iso users (whose schemas just dropped) are included, while
+  mid-creation parallel users (whose schemas exist) are excluded. Single
+  invariant: iso user without live schema = drop."
   [^java.sql.Connection conn]
-  (let [orphans       (orphan-schemas conn)
-        iso-usernames (:expired-isolation orphans)]
+  (let [orphans   (orphan-schemas conn)
+        iso-users (orphan-isolation-users conn)]
     (with-open [stmt (.createStatement conn)]
-      (drop-orphan-schemas!         stmt orphans)
-      (drop-orphan-isolation-users! stmt iso-usernames))))
+      (drop-orphan-schemas! stmt orphans)
+      (let [live-schemas  (into #{} (fetch-schemas conn))
+            users-to-drop (remove live-schemas iso-users)]
+        (drop-orphan-isolation-users! stmt users-to-drop)))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

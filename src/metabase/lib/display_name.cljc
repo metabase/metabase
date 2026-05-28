@@ -174,9 +174,8 @@
    (parse-column-display-name-parts display-name aggregation-patterns filter-patterns nil))
   ([display-name aggregation-patterns filter-patterns conjunctions]
    (letfn [(parse-inner [string]
-                        ;; Recursively parse the inner part which may have more patterns
+             ;; Recursively parse the inner part which may have more patterns
              (parse-column-display-name-parts string aggregation-patterns filter-patterns conjunctions))
-
            (parse-join-alias [join-alias]
              ;; Parse join alias which may be an implicit join like "People - Product"
              (if-let [{:keys [table fk-field]} (try-parse-implicit-join-to-parts join-alias)]
@@ -186,7 +185,6 @@
                    (into (parse-inner fk-field)))
                ;; Simple join alias, just translate it
                (parse-inner join-alias)))]
-
      (or
       ;; First try compound filter (e.g. "X is empty or Y is empty")
       ;; Must be before individual filter matching so each clause is parsed independently.
@@ -197,14 +195,12 @@
                          [(static-part %1)]
                          (parse-inner %1))
                       segments (range))))
-
       ;; Then try aggregation patterns (most specific, wraps other patterns)
       (when-let [{:keys [prefix suffix inner]} (try-parse-aggregation-to-parts display-name aggregation-patterns)]
         (-> []
             (cond-> (seq prefix) (conj (static-part prefix)))
             (into (parse-inner inner))
             (cond-> (seq suffix) (conj (static-part suffix)))))
-
       ;; Then try filter patterns (column + operator + values)
       ;; Must be before join/colon parsing since filter text may contain ": " or " → "
       (when-let [{:keys [column prefix separator remainder]}
@@ -214,14 +210,12 @@
             (into (parse-inner column))
             (cond-> (seq separator) (conj (static-part separator)))
             (cond-> (seq remainder) (conj (static-part remainder)))))
-
       ;; Then try join pattern
       (when-let [{:keys [join-alias column]} (try-parse-join-to-parts display-name)]
         (-> []
             (into (parse-join-alias join-alias))
             (conj (static-part join-display-name-separator))
             (into (parse-inner column))))
-
       ;; Then try colon suffix (temporal bucket or binning)
       ;; The suffix is static because it's a unit name (Month, Day, etc.) or binning label
       (when-let [{:keys [column suffix]} (try-parse-colon-suffix-to-parts display-name)]
@@ -229,6 +223,5 @@
             (into (parse-inner column))
             (conj (static-part column-display-name-separator))
             (conj (static-part suffix))))
-
       ;; Otherwise it's a plain column name - translatable
       [(translatable-part display-name)]))))

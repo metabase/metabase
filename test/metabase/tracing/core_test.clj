@@ -108,7 +108,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k 1}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "duplicate against with-span attrs throws (different value)"
     (tracing.tu/with-span-exporter [_exporter]
       (try
@@ -119,7 +118,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k 2}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "duplicate across two add-span-attrs! calls throws"
     (tracing.tu/with-span-exporter [_exporter]
       (try
@@ -131,7 +129,6 @@
                                 (tracing/add-span-attrs! :tasks {:foo/k "second"}))))
         (finally
           (tracing/shutdown-groups!)))))
-
   (testing "distinct keys across with-span and add-span-attrs! are allowed"
     (tracing.tu/with-span-exporter [exporter]
       (try
@@ -302,7 +299,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "outermost with-span still clears MDC when no parent values exist"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -329,7 +325,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "with-span skips pyroscope for nested spans (parent MDC already set)"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -342,7 +337,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "rapid root span cycles don't throw or leak pyroscope state"
     (try
       (tracing/init-enabled-groups! "all" "INFO")

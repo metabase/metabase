@@ -56,6 +56,7 @@ cypress.env.json
 !/e2e/tmp/db_dumps
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
+/e2e/support/assets/example_custom_viz_plugin*.tgz
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -69,6 +70,8 @@ cypress.env.json
 /reset-password-artifacts
 /resources/frontend_client/app/**/*.br
 /resources/frontend_client/app/**/*.gz
+/resources/frontend_client/app/**/*.hot-update.js
+/resources/frontend_client/app/**/*.hot-update.json
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
@@ -182,6 +185,8 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.config/wt.toml
 .claude/worktrees
 .claude/scheduled_tasks.lock
 .playwright-mcp
+.ci_reports/

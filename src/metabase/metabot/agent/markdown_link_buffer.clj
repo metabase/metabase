@@ -152,7 +152,6 @@
                (vswap! charts assoc chart-id (get-structured-output (:result part)))))
            ;; Update state with new context
            (vswap! state with-context @queries @charts))
-
          ;; Process text parts through link buffer
          (if (= (:type part) :text)
            (let [[new-state processed-text] (step @state (:text part))]

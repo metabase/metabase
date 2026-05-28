@@ -177,9 +177,9 @@
                        (.getName replaced-key)
                        (.getName new-trigger-key)
                        (when (> (count triggers) 1)
-                           ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
-                           ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
-                           ;; The current behavior is especially confounding if replacing N triggers with M ones.
+                         ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
+                         ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
+                         ;; The current behavior is especially confounding if replacing N triggers with M ones.
                          (str " (chosen randomly from " (count triggers) " existing ones)"))))
           (.rescheduleJob scheduler replaced-key new-trigger))))
     (catch Throwable e
@@ -284,10 +284,8 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
-
    :timezone
    (.getID (.getTimeZone trigger))
-
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...
    (condp = (.getMisfireInstruction trigger)

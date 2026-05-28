@@ -308,7 +308,9 @@
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_1"
               :cycle     [t1]}
-             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
+             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+
+(deftest get-transform-cycle-test-2
   (testing "cycle is caught in 2 transforms referencing each other"
     (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public), :name "table_1"}
                    :model/Field _ {:table_id table1
@@ -330,7 +332,9 @@
                                                  (assoc :target_table_id table1))]
       (is (= {:cycle-str "transform_table_2 -> transform_table_1",
               :cycle     [t1 t2]}
-             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
+             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+
+(deftest get-transform-cycle-test-3
   (testing "cycle is detected in 3 transforms referencing each other"
     (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public)
                                               :name   "table_1"}

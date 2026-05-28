@@ -269,10 +269,9 @@
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
-
    (prometheus/histogram :metabase-remote-sync/export-duration-ms
                          {:description "Duration in milliseconds that remote-sync exports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/exports
                        {:description "Number of remote-sync export calls"})
@@ -280,7 +279,7 @@
                        {:description "Number of failed remote-sync export calls"})
    (prometheus/histogram :metabase-remote-sync/import-duration-ms
                          {:description "Duration in milliseconds that remote-sync imports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/imports
                        {:description "Number of remote-sync import calls"})
@@ -292,7 +291,6 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
-
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -311,13 +309,13 @@
                        {:description "Total number of ms updating the index"})
    (prometheus/histogram :metabase-search/index-update-duration-ms
                          {:description "Duration in milliseconds that index update jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-search/index-reindex-ms
                        {:description "Total number of ms reindexing the index"})
    (prometheus/histogram :metabase-search/index-reindex-duration-ms
                          {:description "Duration in milliseconds that index reindex jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Number of rows in the active appdb index table."})
@@ -405,7 +403,6 @@
                        {:description "Number of successful semantic search DLQ retries"})
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
-
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
@@ -415,8 +412,7 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
-
-;; notification metrics
+   ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})
@@ -486,7 +482,6 @@
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced
                        {:description "How many times the instance has manually sync'ed their Google Sheets connection."})
-
    ;; transform metrics
    (prometheus/counter :metabase-transforms/job-runs-total
                        {:description "Total number of transform job runs started."
@@ -647,7 +642,21 @@
    (prometheus/counter :metabase-metabot/turn-started
                        {:description "A metabot turn was started (user row + assistant placeholder inserted)"
                         :labels [:profile-id]})
-
+   (prometheus/counter :metabase-metabot/used-tables-extraction-total
+                       {:description "Number of used-tables extractions attempted."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-errors
+                       {:description "Number of used-tables extractions that threw an unhandled exception."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-warnings
+                       {:description "Number of used-table extraction failures caught and logged (may be >1 per invocation)."
+                        :labels [:reason]})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-dropped
+                       {:description "Number of used-tables extraction tasks dropped because the background executor's queue was full."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-timeouts
+                       {:description "Number of used-tables extractions abandoned because they exceeded the extraction timeout."})
+   (prometheus/histogram :metabase-metabot/used-tables-extraction-duration-ms
+                         {:description "Duration in milliseconds of used-tables extraction."
+                          ;; 1ms -> 30s
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."
@@ -662,7 +671,6 @@
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})
-
    ;; experiment metrics
    (prometheus/counter :experiment/runs-total
                        {:description "Number of experiment candidate runs."
@@ -691,7 +699,6 @@
    (prometheus/gauge :metabase-security-center/vulnerable-advisories
                      {:description "Number of advisories where this Metabase instance is potentially affected."
                       :labels [:severity :acknowledged]})
-
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."

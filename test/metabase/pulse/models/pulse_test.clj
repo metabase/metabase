@@ -391,18 +391,15 @@
                                                              pulse-channel-test/daily-at-6pm)]
       (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
              (pulse-channel-test/send-pulse-triggers pulse-id)))
-
       (testing "archived pulse will disable pulse channels and remove triggers"
         (t2/update! :model/Pulse pulse-id {:archived true})
         (is (false? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
-
       (testing "re-enabled pulse will re-enable pulse channels and add triggers"
         (t2/update! :model/Pulse pulse-id {:archived false})
         (is (true? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
         (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                (pulse-channel-test/send-pulse-triggers pulse-id))))
-
       (testing "delete pulse will remove pulse channels and triggers"
         (t2/delete! :model/Pulse pulse-id)
         (is (false? (t2/exists? :model/PulseChannel pc-id)))
@@ -443,7 +440,6 @@
                (t2/insert! :model/Pulse (assoc (mt/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! :model/Pulse :name pulse-name)))))
-
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
       (mt/with-temp [:model/Pulse {card-id :id}]
         (is (thrown-with-msg?
@@ -479,13 +475,11 @@
       (binding [api/*is-superuser?* true]
         (is (mi/can-read? subscription))
         (is (mi/can-write? subscription))))
-
     (mt/with-current-user (mt/user->id :rasta)
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (testing "A non-admin has read and write access to a subscription they created"
           (is (mi/can-read? subscription))
           (is (mi/can-write? subscription)))
-
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
           (mt/with-temp [:model/Pulse                subscription            {:collection_id (u/the-id collection)
@@ -496,7 +490,6 @@
                                                                               :user_id (mt/user->id :rasta)}]
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
-
         (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
           (mt/with-temp [:model/Pulse subscription {:collection_id (u/the-id collection)
                                                     :dashboard_id  (u/the-id dashboard)
@@ -524,26 +517,22 @@
           (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
           (perms/set-table-permission! group-id table-id :perms/download-results :no)
           (perms/set-table-permission! (perms/all-users-group) table-id :perms/download-results :no)
-
           (mt/with-current-user user-id
             (testing "should not be able to create a pulse with CSV attachment"
               (is (false? (mi/can-create? :model/Pulse
                                           {:cards         [(assoc card :include_csv true)]
                                            :dashboard_id  nil
                                            :collection_id nil}))))
-
             (testing "should not be able to create a pulse with XLS attachment"
               (is (false? (mi/can-create? :model/Pulse
                                           {:cards         [(assoc card :include_xls true)]
                                            :dashboard_id  nil
                                            :collection_id nil}))))
-
             (testing "should be able to create a pulse without attachments"
               (is (true? (mi/can-create? :model/Pulse
                                          {:cards         [card]
                                           :dashboard_id  nil
                                           :collection_id nil}))))))))
-
     (testing "A user with download permission should be able to create a pulse with attachments"
       (mt/with-temp [:model/User {user-id :id} {}
                      :model/Database {db-id :id} {:engine :h2}
@@ -561,14 +550,12 @@
           (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
           (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
           (perms/set-table-permission! group-id table-id :perms/download-results :one-million-rows)
-
           (mt/with-current-user user-id
             (testing "should be able to create a pulse with CSV attachment"
               (is (true? (mi/can-create? :model/Pulse
                                          {:cards         [(assoc card :include_csv true)]
                                           :dashboard_id  nil
                                           :collection_id nil}))))
-
             (testing "should be able to create a pulse with XLS attachment"
               (is (true? (mi/can-create? :model/Pulse
                                          {:cards         [(assoc card :include_xls true)]

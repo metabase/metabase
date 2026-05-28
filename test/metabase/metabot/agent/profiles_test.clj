@@ -23,7 +23,6 @@
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_chart"))
         (is (contains? (tool-names profile) "edit_chart"))))
-
     (testing "retrieves internal profile with default provider"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
@@ -32,12 +31,11 @@
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
-      ;; Should have more tools than embedding_next profile
+        ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))
         (is (contains? (tool-names profile) "create_chart"))))
-
     (testing "retrieves transforms_codegen profile"
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
@@ -48,7 +46,6 @@
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "list_available_fields"))))
-
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
@@ -59,7 +56,6 @@
                 profile))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))))
-
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
@@ -69,7 +65,6 @@
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
-
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
         (is (some? profile))
@@ -83,10 +78,8 @@
         (is (contains? (tool-names profile) "static_viz"))
         (is (contains? (tool-names profile) "create_alert"))
         (is (contains? (tool-names profile) "create_dashboard_subscription"))))
-
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
-
     (testing "all profiles have required keys"
       (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
@@ -139,7 +132,6 @@
               "edit_sql_query should NOT be available without permission:write_sql_queries")
           (is (not (contains? tools "replace_sql_query"))
               "replace_sql_query should NOT be available without permission:write_sql_queries")))
-
       (testing "full capabilities including SQL write permission should include SQL tools"
         (let [full-capabilities ["frontend:navigate_user_v1"
                                  "permission:save_questions"
@@ -155,7 +147,6 @@
               "edit_sql_query should be available with permission:write_sql_queries")
           (is (contains? tools "replace_sql_query")
               "replace_sql_query should be available with permission:write_sql_queries")))
-
       (testing "empty capabilities should exclude all capability-gated tools"
         (let [tools (profiles/get-tools-for-profile :internal [])]
           (is (contains? tools "search") "ungated tools should remain")

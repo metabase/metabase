@@ -68,9 +68,7 @@ describe("scenarios > metrics > metric page", () => {
     });
 
     cy.log("explore link");
-    H.MetricPage.header()
-      .findByText("Explore")
-      .closest("a")
+    H.MetricPage.exploreLink()
       .should("have.attr", "href")
       .and("include", "/explore");
 

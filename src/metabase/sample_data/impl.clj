@@ -14,8 +14,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String sample-database-name     "Sample Database")
-(def ^:private ^String sample-database-filename "sample-database.sqlite")
+(def ^String sample-database-name
+  "Canonical name of the bundled Sample Database. Shared with consumers that need to
+  identify or validate the sample DB (e.g. workspace-manager config import)."
+  "Sample Database")
+
+(def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
 (defn- sample-db-dir-from-env
   "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
