@@ -1558,11 +1558,8 @@
    tables created by any of these owner roles won't receive the workspace
    user's default SELECT — even if the statement runs without error.
 
-   `pg_has_role` arguments are explicitly cast to `text`: Redshift's
-   `current_user` returns `character`, `pg_get_userbyid` returns `name`, and an
-   unbound `'MEMBER'` literal is typed `unknown` — none of those triple-combos
-   match a Redshift `pg_has_role` overload. PostgreSQL is tolerant via implicit
-   coercion but happily accepts the all-`text` form too."
+   PostgreSQL-only: the query relies on `pg_has_role`'s implicit overload
+   resolution (`name, oid, text`), which Redshift's planner rejects."
   [conn schema-name]
   (jdbc/query
    conn
@@ -1571,10 +1568,7 @@
          "JOIN pg_namespace n ON n.oid = c.relnamespace "
          "WHERE n.nspname = ? "
          "  AND c.relkind IN ('r','p','v','m','f') "
-         "  AND NOT pg_has_role("
-         "          CAST(current_user AS text), "
-         "          CAST(pg_get_userbyid(c.relowner) AS text), "
-         "          CAST('MEMBER' AS text)) "
+         "  AND NOT pg_has_role(current_user, c.relowner, 'MEMBER') "
          "ORDER BY owner")
     schema-name]))
 

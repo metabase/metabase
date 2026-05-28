@@ -789,13 +789,13 @@
         qu             (sql.u/quote-name :postgres :field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Pre-flight checks (read-only) can run in its own transaction.
+    ;; Pre-flight check (read-only) can run in its own transaction. Only the
+    ;; PUBLIC-CREATE assert is needed on Redshift — its GRANT statements error
+    ;; loudly at execute time when grant authority is missing, so the silent-
+    ;; skip class of bug we catch on PostgreSQL doesn't reproduce.
     (jdbc/with-db-transaction [t-conn spec]
       (doseq [s source-schemas]
-        (assert-no-public-create-grant!                       t-conn s)
-        (driver.postgres/assert-has-usage-grant-option!       t-conn s)
-        (driver.postgres/assert-has-grant-option!             t-conn s)
-        (driver.postgres/assert-can-alter-default-privileges! t-conn s)))
+        (assert-no-public-create-grant! t-conn s)))
     ;; Grants run as auto-commit per statement so privileges are immediately
     ;; observable to a subsequent describe-database from a different connection.
     (doseq [s   source-schemas
