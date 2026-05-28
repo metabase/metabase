@@ -40,7 +40,7 @@
             data   (:data result)]
         (is (= "Current Test" (:name data)))
         (testing "can_write is true when the workspace is not locked by config"
-          (is (= true (:can_write data))))
+          (is (true? (:can_write data))))
         (testing "databases is a map keyed by database id with input_schemas + output"
           (is (= 1 (count (:databases data))))
           (let [databases (:databases data)
@@ -57,7 +57,7 @@
         (with-redefs [ws/instance-workspace (constantly {:name "Locked Test" :databases {}})]
           (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
             (is (= "Locked Test" (:name data)))
-            (is (= false (:can_write data)))))))))
+            (is (false? (:can_write data)))))))))
 
 (deftest current-with-workspace-locked-by-env-var-returns-can-write-false-test
   (testing "GET /ee/workspace-instance/current returns can_write false when MB_INSTANCE_WORKSPACE is set"
@@ -65,7 +65,7 @@
       (with-redefs [ws/instance-workspace (constantly {:name "Env Locked Test" :databases {}})]
         (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
           (is (= "Env Locked Test" (:name data)))
-          (is (= false (:can_write data))))))))
+          (is (false? (:can_write data))))))))
 
 (deftest post-current-superuser-only-test
   (testing "POST /ee/workspace-instance/current requires data analyst or superuser"
@@ -81,7 +81,7 @@
           posted  (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" payload)]
       (is (= "Installed via API" (:name posted)))
       (testing "the POST response reports can_write true while unlocked"
-        (is (= true (:can_write posted))))
+        (is (true? (:can_write posted))))
       (testing "GET reflects the workspace just installed"
         (let [fetched (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
           (is (= "Installed via API" (:name fetched)))
