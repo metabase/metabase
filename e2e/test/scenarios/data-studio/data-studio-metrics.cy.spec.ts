@@ -414,8 +414,11 @@ describe("scenarios > data studio > library > metrics", () => {
 
   describe("caching", () => {
     it("should allow changing metric caching settings", () => {
+      cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
+
       cy.log("Navigate to Data Studio Library");
       H.DataStudio.Library.visit();
+      cy.wait("@getCollectionItems");
 
       cy.log("Click on the metric from the collection view");
       H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
