@@ -93,7 +93,7 @@
   "Map `collection-id → root-collection-type` for every collection in a Library tree.
   Returns `{}` and logs a warning if the appdb lookup fails."
   [library-types]
-  ;; The catch covers test setups that exercise pgvector before the appdb schema is up —
+  ;; Catch covers test setups that exercise pgvector before the appdb schema is up;
   ;; production semantic-search init always runs after appdb migration.
   (try
     (u/for-map [{root-id :id root-type :type} (t2/select [:model/Collection :id :type]
@@ -103,19 +103,17 @@
                                                          :location [:like (str "/" root-id "/%")]))]
       [coll-id root-type])
     (catch Exception e
-      (log/warn e "Skipping Library subcollection backfill — appdb lookup failed")
+      (log/warn e "Skipping Library forest backfill — appdb lookup failed")
       {})))
 
 (defn- add-root-collection-type-column!
   "Migration 4: add `root_collection_type` to index tables, backfilling first from each row's
   gate document and then from an appdb sweep of the Library forest. Drives the `:library` scorer."
   [tx index-metadata]
-  ;; Library types are hardcoded rather than referenced from
-  ;; `metabase.collections.models.collection/library-collection-types`: migrations are frozen
-  ;; snapshots of intent, and the semantic-search module doesn't `:use` `collections`.
-  (let [gate-table     (:gate-table-name index-metadata)
-        library-types  ["library" "library-data" "library-metrics"]
-        ;; Resolve the library forest once up-front; the same map applies to every index table.
+  ;; Library types are hardcoded: migrations are frozen snapshots, and semantic-search doesn't `:use` `collections`.
+  (let [gate-table           (:gate-table-name index-metadata)
+        library-types        ["library" "library-data" "library-metrics"]
+        ;; Resolved once — the same map applies to every index table.
         root-type-by-coll-id (library-root-type-by-collection-id library-types)]
     (alter-index-tables!
      tx index-metadata 4
@@ -128,9 +126,8 @@
              gate-id            (keyword gate-table "id")
              gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
              composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
-         ;; 1. Add the column.
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
-         ;; 2. Backfill from gate document JSON via a set-based UPDATE..FROM join.
+         ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
                     :from   [kw-gate]
                     :set    {:root_collection_type gate-doc-root}
@@ -138,8 +135,7 @@
                              [:= gate-id composite-gate-id]
                              [:= tbl-root-coll-type nil]
                              [:!= gate-doc-root nil]]})
-         ;; 3. AppDB-driven fallback: one UPDATE per distinct root type, covering both library
-         ;; roots and any sub-collections beneath them.
+         ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
            (execute! {:update kw-tbl
                       :set    {:root_collection_type [:inline root-type]}
