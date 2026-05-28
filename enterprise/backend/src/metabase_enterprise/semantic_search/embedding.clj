@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -193,7 +194,8 @@
 
   `provider`   — label for analytics (e.g. \"ai-service\", \"openai\")
   `endpoint`   — full URL including /v1/embeddings
-  `api-key`    — Bearer token
+  `api-key`    — Bearer token. If empty ai service proxying is assumed and premium-embedding-token is
+                 used for authentication
   `model-name` — model identifier sent in the request body
   `texts`      — collection of input strings
   `opts`       — keyword opts; `:type` is forwarded to token tracking,
@@ -206,8 +208,16 @@
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
           {:keys [usage data]} (-> (http/post endpoint
-                                              {:headers {"Content-Type"  "application/json"
-                                                         "Authorization" (str "Bearer " api-key)}
+                                              {:headers
+                                               (merge {"Content-Type"  "application/json"}
+                                                      (if (and (empty? api-key)
+                                                               (= "ai-service" provider))
+                                                        {"x-metabase-instance-token"
+                                                         (u/prog1 (premium-features/premium-embedding-token)
+                                                           (when (nil? <>)
+                                                             (throw (ex-info "Premium embedding token not set"
+                                                                             {:provider provider}))))}
+                                                        {"Authorization" (str "Bearer " api-key)}))
                                                :body    (json/encode (merge {:model           model-name
                                                                              :input           texts
                                                                              :encoding_format "base64"}
@@ -246,16 +256,14 @@
 ;;;; Embedding-service provider
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key] or throws if not configured."
+  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set
+  the ai service proxying is assumed. In that case premium-embedding-token is used for authentication."
   []
   (let [base-url (semantic-settings/ee-embedding-service-base-url)
         api-key  (semantic-settings/ee-embedding-service-api-key)]
     (when-not base-url
       (throw (ex-info "Embedding service base URL not configured"
                       {:setting "ee-embedding-service-base-url"})))
-    (when-not api-key
-      (throw (ex-info "Embedding service API key not configured"
-                      {:setting "ee-embedding-service-api-key"})))
     [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod get-embedding "ai-service" [{:keys [model-name]} text & {:as opts}]
