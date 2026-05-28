@@ -779,14 +779,20 @@
    Why this matters: `ALTER DEFAULT PRIVILEGES IN SCHEMA <s>` (without
    `FOR ROLE`) only affects future objects created by the connection user.
    Tables created later by foreign owners skip the iso-user grant -- workspace
-   data goes stale silently."
+   data goes stale silently.
+
+   `relkind` set matches the scope of `ALTER DEFAULT PRIVILEGES ... ON TABLES`:
+   ordinary tables (`r`), views (`v`), materialized views (`m`), partitioned
+   tables (`p`), and foreign tables (`f`). Spectrum external tables live in
+   `svv_external_tables` and are not covered by `pg_default_acl`, so they need
+   no entry here."
   [conn schema-name]
   (->> (jdbc/query conn
                    [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner "
                          "FROM pg_class c "
                          "JOIN pg_namespace n ON n.oid = c.relnamespace "
                          "WHERE n.nspname = ? "
-                         "  AND c.relkind IN ('r','v') "
+                         "  AND c.relkind IN ('r','v','m','p','f') "
                          "ORDER BY owner")
                     schema-name])
        (keep :owner)))
@@ -822,7 +828,7 @@
    entries at destroy time (DROP USER fails -> GHY-3709)."
   [conn schema-name]
   (when-not (current-user-usesuper? conn)
-    (let [me      (:current_user (first (jdbc/query conn ["SELECT current_user"])))
+    (let [me      (:me (first (jdbc/query conn ["SELECT current_user AS me"])))
           owners  (->> (concat (relation-owners-in-schema     conn schema-name)
                                (default-acl-grantors-in-schema conn schema-name))
                        distinct
@@ -903,6 +909,20 @@
                     username])
        (keep :namespace_name)))
 
+(defn- escape-like-pattern
+  "Escape PostgreSQL/Redshift LIKE metacharacters (`%`, `_`) and our chosen
+   escape char (`|`) in `s` so it matches literally. Used with `ESCAPE '|'` on
+   the LIKE clause -- `|` chosen over `\\` because Redshift's SQL parser treats
+   a literal `'\\'` as an unterminated string. Without this escaping, iso-user
+   names containing `_` (which they always do -- the generator produces
+   `mb__isolation_<id>` form) would match siblings via wildcard, and the
+   destroy could revoke default-priv rows belonging to unrelated users."
+  [^String s]
+  (-> s
+      (str/replace "|" "||")
+      (str/replace "%" "|%")
+      (str/replace "_" "|_")))
+
 (defn- default-acl-grants-for-user
   "Enumerate `(grantor, schema)` pairs that have an ALTER DEFAULT PRIVILEGES entry referencing
    `username` as a grantee. Returns a seq of `{:grantor :schema}` maps.
@@ -910,7 +930,10 @@
    Redshift exposes `pg_default_acl` but rejects `aclitem`->`varchar` casts and does not
    provide `aclexplode`. We use `array_to_string(defaclacl, ',')` (allowed on aclitem[]) and
    match the grantee with a delimited LIKE pattern (`,<name>=` or `{<name>=`) to avoid
-   false positives from username prefixes/substrings.
+   false positives from username prefixes/substrings. LIKE metacharacters in `username` are
+   escaped with `ESCAPE '|'` so `_` and `%` match literally -- critical because the
+   iso-user generator always produces `_`-containing names. (Pipe over backslash because
+   Redshift's parser rejects a literal backslash escape clause as an unterminated string.)
 
    Schema-less entries (`defaclnamespace = 0`, applies to any schema) are excluded -- our
    provisioning only ever issues `ALTER DEFAULT PRIVILEGES IN SCHEMA`, never the no-schema
@@ -919,18 +942,19 @@
    ACL aclitem text format: `grantee=privs/grantor`. The leading delimiter (`,` or `{`)
    distinguishes the start-of-array case from the mid-array case."
   [conn username]
-  (jdbc/query
-   conn
-   [(str "SELECT u.usename   AS grantor, "
-         "       n.nspname   AS schema "
-         "FROM   pg_catalog.pg_default_acl d "
-         "JOIN   pg_catalog.pg_user      u ON u.usesysid = d.defacluser "
-         "JOIN   pg_catalog.pg_namespace n ON n.oid      = d.defaclnamespace "
-         "WHERE  d.defaclobjtype = 'r' "
-         "  AND (array_to_string(d.defaclacl, ',') LIKE ? "
-         "       OR array_to_string(d.defaclacl, ',') LIKE ?)")
-    (str "%," username "=%")
-    (str "{" username "=%")]))
+  (let [esc (escape-like-pattern username)]
+    (jdbc/query
+     conn
+     [(str "SELECT u.usename   AS grantor, "
+           "       n.nspname   AS schema "
+           "FROM   pg_catalog.pg_default_acl d "
+           "JOIN   pg_catalog.pg_user      u ON u.usesysid = d.defacluser "
+           "JOIN   pg_catalog.pg_namespace n ON n.oid      = d.defaclnamespace "
+           "WHERE  d.defaclobjtype = 'r' "
+           "  AND (array_to_string(d.defaclacl, ',') LIKE ? ESCAPE '|' "
+           "       OR array_to_string(d.defaclacl, ',') LIKE ? ESCAPE '|')")
+      (str "%," esc "=%")
+      (str "{"  esc "=%")])))
 
 (defmethod driver/destroy-workspace-isolation! :redshift
   [_driver database workspace]
@@ -948,7 +972,21 @@
             default-acls    (when user-exists
                               (default-acl-grants-for-user t-conn username))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          ;; Only revoke if user exists
+          ;; The default-priv REVOKEs run individually rather than as part of the main batch:
+          ;; if a `pg_default_acl` row points at a schema that was dropped between discovery
+          ;; and execution, the ALTER errors and would abort an unbroken executeBatch,
+          ;; leaving the iso-user undroppable. Catching per statement lets the rest proceed.
+          (when user-exists
+            (doseq [{:keys [grantor schema]} default-acls]
+              (let [sql (format "ALTER DEFAULT PRIVILEGES FOR USER \"%s\" IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                grantor schema username)]
+                (try
+                  (.execute ^Statement stmt ^String sql)
+                  (catch Throwable t
+                    (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
+                               grantor schema username))))))
+          ;; Main batch: relation-level revokes, iso-namespace cleanup, DROP SCHEMA, DROP USER.
+          ;; These are either expected-to-succeed-or-noop or the cleanup we'd want atomic.
           (when user-exists
             (doseq [schema granted-schemas]
               (.addBatch ^Statement stmt
@@ -957,16 +995,6 @@
               (.addBatch ^Statement stmt
                          ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
                                          schema username)))
-            ;; Drop every default-priv entry referencing the iso-user. `FOR USER <grantor>`
-            ;; is required because the catalog row is owned by the grantor, not the current
-            ;; session user; without it the REVOKE targets a row that does not exist for
-            ;; current_user and the original entry persists, causing `DROP USER` to fail with
-            ;; "privileges for default privileges on new relations belonging to user
-            ;; <grantor> in schema <schema>".
-            (doseq [{:keys [grantor schema]} default-acls]
-              (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES FOR USER \"%s\" IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
-                                         grantor schema username)))
             ;; Iso-namespace default-priv was issued by the connection user at init time, so a
             ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
             ;; erroring on a schema that was dropped manually.

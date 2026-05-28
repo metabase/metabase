@@ -728,10 +728,14 @@
 ;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
 
 (defn- try-execute!
-  "Run `sql` against `spec`, swallowing exceptions. For cleanup paths where the
-   object may not exist."
+  "Run `sql` against `spec`, logging exceptions at warn level. For cleanup
+   paths where the object may not exist *or* where a residual catalog row
+   (the very class of bug GHY-3709 covers) might prevent a successful drop.
+   Logging instead of swallowing surfaces orphan-role accumulation on CI."
   [spec sql]
-  (try (jdbc/execute! spec [sql]) (catch Throwable _ nil)))
+  (try (jdbc/execute! spec [sql])
+       (catch Throwable t
+         (log/warnf t "Test cleanup failed: %s" sql))))
 
 (deftest ^:synchronized workspace-precondition-alter-default-privileges-test
   ;; Redshift mirror of `metabase.driver.postgres-test/workspace-precondition-alter-default-privileges-test`,
