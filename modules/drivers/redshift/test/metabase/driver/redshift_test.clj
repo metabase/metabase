@@ -781,6 +781,7 @@
             (is (nil? (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 owner))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           owner)))))))
 
@@ -832,6 +833,12 @@
                           (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
                                   schema dummy)))
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          ;; Flush any residual catalog rows referencing these test roles -- the
+          ;; whole point of this test is the case where DROP USER would fail on
+          ;; lingering default-priv entries, so cleanup must be belt-and-
+          ;; suspenders to keep CI re-runs from accumulating orphan roles.
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 grantor))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 dummy))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           grantor))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           dummy)))))))

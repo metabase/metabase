@@ -2484,7 +2484,7 @@
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               grantor    "ws_destroy_foreign_grantor"
               schema     "ws_destroy_foreign_schema"
-              workspace  {:id 0xdeadbeef
+              workspace  {:id   (rand-int Integer/MAX_VALUE)
                           :name "wsd-foreign-destroy"}]
           (with-drop-role! admin-spec grantor
             (with-drop-schema! admin-spec schema
