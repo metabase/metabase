@@ -14,7 +14,10 @@
 
 (def ^:private data-source-metric-keys
   "Metric keys that compose Data-Source Quality, in a stable order."
-  [:grounding])
+  [:canonical-authoring-share
+   :canonical-bypass-rate
+   :unproductive-search-rate
+   :grounding])
 
 (defn- mean
   "Arithmetic mean of a non-empty seq of doubles."

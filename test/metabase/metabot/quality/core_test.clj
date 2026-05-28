@@ -163,8 +163,11 @@
 
 (deftest score-conversation-pipeline-end-to-end-test
   (testing "a scoreable conversation runs the full pipeline and persists a real
-            composite + breakdown — the authored table was surfaced and nothing
-            errored, so both subscores are 1.0 and composite = 1.0"
+            composite + breakdown — the authored table was surfaced (grounding
+            1.0) but its synthetic id doesn't resolve in governance, so it reads
+            non-canonical (authoring share 0.0); Data-Source Quality blends the
+            two to 0.5, execution is clean (1.0), and the composite is their
+            geometric mean ≈ 0.707"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [conversation-id (seed-scoreable-conversation!)
             score           (quality.core/score-conversation! conversation-id)
@@ -172,23 +175,26 @@
             breakdown       (:quality_breakdown row)]
         (testing "score is a number and matches the persisted composite"
           (is (number? score))
-          (is (= 1.0 score))
-          (is (= 1.0 (:quality_score row))))
+          (is (< 0.7071 score 0.7072))
+          (is (= score (:quality_score row))))
         (testing "persisted breakdown shape"
           (is (= quality.constants/composite-version (:version breakdown)))
           (is (= "final_response" (:termination breakdown)))
-          (is (= {:data_source_quality 1.0 :execution_health 1.0 :composite 1.0}
-                 (:subscores breakdown)))
+          (is (= 0.5 (:data_source_quality (:subscores breakdown))))
+          (is (= 1.0 (:execution_health (:subscores breakdown))))
+          (is (< 0.7071 (:composite (:subscores breakdown)) 0.7072))
           (is (= [] (:subscore_na breakdown))
               "both subscores applicable on this fixture")
-          (is (= {:canonical_authoring_share nil
+          (is (= {:canonical_authoring_share 0.0
                   :canonical_bypass_rate     nil
                   :unproductive_search_rate  nil
                   :grounding                 1.0
                   :tool_call_failure_rate    0.0
                   :termination_signal        0.0}
                  (:metrics breakdown))
-              "grounding healthy, clean termination; the not-yet-computed canonical metrics serialize as null")
+              "authored table is grounded but non-canonical → authoring share 0.0;
+               nothing discovered and a single search-free turn leave bypass and
+               unproductive-search N/A (null)")
           (is (= {:prompt_context 1 :discovered 0 :authored 1 :inspected 0 :hallucinated 0}
                  (:set_cardinalities breakdown))
               "the user_is_viewing table lands in prompt-context; the authoring-tool input
@@ -202,12 +208,14 @@
                                            {:order-by [[:created_at :asc] [:id :asc]]})
                 user-row        (first (filter #(= :user      (:role %)) msgs))
                 assistant-row   (first (filter #(= :assistant (:role %)) msgs))
-                attribution     (:quality_attribution assistant-row)]
+                attribution     (:quality_attribution assistant-row)
+                prefix          (:prefix_subscores attribution)]
             (is (nil? (:quality_attribution user-row))
                 "user rows never carry attribution — the column stays NULL")
             (is (= quality.constants/composite-version (:version attribution)))
             (is (= [] (:observables attribution))
-                "healthy clean conversation → no observables on the only assistant turn")
-            (is (= {:data-source-quality 1.0 :execution-health 1.0 :composite 1.0}
-                   (:prefix_subscores attribution))
-                "last (and only) assistant turn's prefix_subscores match the conversation-level subscores")))))))
+                "clean conversation → no observables on the only assistant turn")
+            (testing "last (and only) assistant turn's prefix_subscores match the conversation-level subscores"
+              (is (= 0.5 (:data-source-quality prefix)))
+              (is (= 1.0 (:execution-health prefix)))
+              (is (< 0.7071 (:composite prefix) 0.7072)))))))))

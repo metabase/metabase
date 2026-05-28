@@ -9,14 +9,24 @@
 (set! *warn-on-reflection* true)
 
 (defn- metrics
-  "Compact metrics-map builder. Defaults to a healthy conversation —
-  grounded authoring, no tool errors, clean termination — so each test
-  sets only the inputs it cares about."
-  [& {:keys [grounding tool-call-failure-rate termination-signal]
-      :or   {grounding 1.0 tool-call-failure-rate 0.0 termination-signal 0.0}}]
-  {:grounding              grounding
-   :tool-call-failure-rate tool-call-failure-rate
-   :termination-signal     termination-signal})
+  "Compact metrics-map builder. The canonical data-source metrics default
+  to `:na` so a test that sets only `:grounding` exercises Data-Source
+  Quality as grounding alone; execution defaults to a healthy run (no tool
+  errors, clean termination)."
+  [& {:keys [canonical-authoring-share canonical-bypass-rate unproductive-search-rate
+             grounding tool-call-failure-rate termination-signal]
+      :or   {canonical-authoring-share :na
+             canonical-bypass-rate     :na
+             unproductive-search-rate  :na
+             grounding                 1.0
+             tool-call-failure-rate    0.0
+             termination-signal        0.0}}]
+  {:canonical-authoring-share canonical-authoring-share
+   :canonical-bypass-rate     canonical-bypass-rate
+   :unproductive-search-rate  unproductive-search-rate
+   :grounding                 grounding
+   :tool-call-failure-rate    tool-call-failure-rate
+   :termination-signal        termination-signal})
 
 ;;; ---------------------------------------------------------------------------
 ;;; Data-Source Quality
@@ -27,6 +37,18 @@
     (let [out (subscores/compose (metrics :grounding 0.8))]
       (is (= 0.8 (:data-source-quality out)))
       (is (= #{} (:na out))))))
+
+(deftest data-source-quality-is-mean-over-non-na-metrics-test
+  (testing "Data-Source Quality is the arithmetic mean over the non-N/A metric healths"
+    ;; authoring 1.0, bypass 0.0, unproductive N/A, grounding 1.0 → mean(1.0, 0.0, 1.0) = 2/3
+    (let [out (subscores/compose (metrics :canonical-authoring-share 1.0
+                                          :canonical-bypass-rate     0.0
+                                          :unproductive-search-rate  :na
+                                          :grounding                 1.0))]
+      (is (< 0.666 (:data-source-quality out) 0.667))
+      (is (= #{} (:na out)))
+      (testing "an N/A metric is excluded rather than counted as 0"
+        (is (not= 0.5 (:data-source-quality out)))))))
 
 (deftest data-source-quality-na-when-all-metrics-na-test
   (testing "every data-source metric N/A → Data-Source Quality N/A; composite = Execution Health"
