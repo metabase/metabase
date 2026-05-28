@@ -1200,7 +1200,14 @@
                    (mcp.tools/call-tool #{} nil "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
       (is (str/includes? (-> result :content first :text) "Insufficient scope")
-          "Scope enforcement error from defendpoint middleware"))))
+          "Scope enforcement error from defendpoint middleware")))
+  (testing "scope failures take precedence over missing client extensions"
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool #{} nil "visualize_query" {:query "card__1"} {:supports-mcp-ui? false}))
+          message (-> result :content first :text)]
+      (is (=? {:isError true} result))
+      (is (str/includes? message "Insufficient scope"))
+      (is (not (str/includes? message "requires a client that supports MCP Apps UI"))))))
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"

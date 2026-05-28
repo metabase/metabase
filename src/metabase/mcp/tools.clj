@@ -455,16 +455,16 @@
    (let [arguments (drop-nil-args arguments)
          supported (supported-extensions options)]
      (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
-       (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
-         (error-content (missing-extensions-error tool-name missing-extensions))
-         (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
-           (error-content (str "Insufficient scope to call tool: " tool-name))
+       (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
+         (error-content (str "Insufficient scope to call tool: " tool-name))
+         (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
+           (error-content (missing-extensions-error tool-name missing-extensions))
            ((:response-fn ui-tool) arguments {:session-id session-id})))
        (if-let [tool-def (get (tool-index) tool-name)]
-         (if-let [missing-extensions (missing-required-extensions tool-def supported)]
-           (error-content (missing-extensions-error tool-name missing-extensions))
-           (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
-             (error-content (str "Insufficient scope to call tool: " tool-name))
+         (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
+           (error-content (str "Insufficient scope to call tool: " tool-name))
+           (if-let [missing-extensions (missing-required-extensions tool-def supported)]
+             (error-content (missing-extensions-error tool-name missing-extensions))
              (let [arguments (if (tools-accepting-query-handle tool-name)
                                (resolve-query-arg session-id tool-name arguments)
                                arguments)]
