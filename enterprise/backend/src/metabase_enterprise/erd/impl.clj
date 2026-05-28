@@ -90,9 +90,12 @@
     [:= :schema schema]))
 
 (defn- visible-field-clause []
+  ;; `hidden` and `sensitive` are user-facing visibility flags that suppress
+  ;; columns in the question builder; the schema view always shows the full
+  ;; column list. Only `retired` (deactivated) fields are filtered out.
   [:or
    [:= :visibility_type nil]
-   [:not-in :visibility_type ["hidden" "sensitive" "retired"]]])
+   [:not= :visibility_type "retired"]])
 
 (defn- index-by-id [xs]
   (into {} (map (juxt :id identity)) xs))
