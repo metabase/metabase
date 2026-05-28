@@ -49,8 +49,10 @@ describe("hasCommitBeenReleased", () => {
     await expect(call(build(), PARENT_OF_LAST)).resolves.toBe(true);
   });
 
-  it("returns true when the candidate IS the last release tag's commit", async () => {
-    await expect(call(build(), LAST_TAG_SHA)).resolves.toBe(true);
+  it("short-circuits when the candidate IS the last release tag's commit", async () => {
+    const github = build();
+    await expect(call(github, LAST_TAG_SHA)).resolves.toBe(true);
+    expect(github.rest.repos.compareCommitsWithBasehead).not.toHaveBeenCalled();
   });
 
   it("compares against the release branch tip for the given major", async () => {

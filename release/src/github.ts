@@ -303,6 +303,15 @@ export async function hasCommitBeenReleased({
 
   const lastTagSha = tagDetail.data.object.sha;
 
+  // Short-circuit when the candidate IS the last release tag's commit. The
+  // compare API excludes the base from `data.commits`, so this case would
+  // otherwise reach the membership check and return `true` only as a
+  // side effect of "base is not in the commits list" — calling it out
+  // explicitly is clearer and saves an API call.
+  if (lastTagSha === ref) {
+    return true;
+  }
+
   const { data } = await github.rest.repos.compareCommitsWithBasehead({
     owner,
     repo,
