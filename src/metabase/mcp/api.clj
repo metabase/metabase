@@ -334,7 +334,8 @@
    important when Metabase is reachable via multiple hostnames (e.g. an
    in-cluster address vs. a public domain)."
   [request]
-  (let [host (get-in request [:headers "host"])]
+  (let [host (or (get-in request [:headers "x-forwarded-host"])
+                 (get-in request [:headers "host"]))]
     (if host
       ;; Preserve the request scheme when available; default to the scheme
       ;; implied by the site-url setting, or fall back to "https".

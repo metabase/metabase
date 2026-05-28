@@ -42,7 +42,8 @@
   "Derive the base URL from the request's Host header, falling back to the
    configured site-url."
   [request]
-  (let [host (get-in request [:headers "host"])]
+  (let [host (or (get-in request [:headers "x-forwarded-host"])
+                 (get-in request [:headers "host"]))]
     (if host
       (let [proto (or (get-in request [:headers "x-forwarded-proto"])
                       (when-let [su (system/site-url)]
