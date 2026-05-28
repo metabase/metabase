@@ -116,7 +116,6 @@
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
-
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)

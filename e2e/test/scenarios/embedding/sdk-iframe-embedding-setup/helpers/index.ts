@@ -20,8 +20,9 @@ export const getEmbedSidebar = () =>
     .first()
     .within(() => cy.findByRole("complementary"));
 
-export const getRecentItemCards = () =>
-  cy.findAllByTestId("embed-recent-item-card");
+export const getResourceSelectorButton = (
+  options?: Partial<Cypress.Timeoutable>,
+) => cy.findByTestId("embed-browse-entity-button", options);
 
 export const visitNewEmbedPage = (
   { waitForResource } = { waitForResource: true },
@@ -75,17 +76,19 @@ type NavigateToStepOptions =
       experience: "exploration" | "metabot";
       resourceName?: never;
       preselectSso?: boolean;
+      preselectGuest?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
       preselectSso?: boolean;
+      preselectGuest?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience, preselectSso } = options;
+  const { experience, preselectSso, preselectGuest } = options;
 
   visitNewEmbedPage();
 
@@ -98,6 +101,9 @@ export const navigateToEntitySelectionStep = (
 
   if (preselectSso || !isQuestionOrDashboardExperience) {
     cy.findByLabelText("Metabase account (SSO)").click();
+    embedModalEnableEmbedding();
+  } else if (preselectGuest) {
+    cy.findByLabelText("Guest").click();
     embedModalEnableEmbedding();
   }
 
@@ -112,14 +118,9 @@ export const navigateToEntitySelectionStep = (
     cy.findByText(labelByExperience).click();
   }
 
-  // exploration and metabot experience does not have the entity selection step
+  // Experience selection and resource picker are part of the same step.
+  // exploration and metabot do not show a resource picker.
   if (hasEntitySelection && options.resourceName) {
-    cy.log("navigate to the entity selection step");
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Entity selection step
-    });
-
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
@@ -132,8 +133,16 @@ export const navigateToEntitySelectionStep = (
     });
 
     entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findAllByText(options.resourceName).first().click();
+      // The picker opens on the "Recent items" tab by default. Scope each
+      // navigation step to its column to disambiguate when the target also
+      // appears in the recents list.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findAllByText(options.resourceName)
+        .first()
+        .click();
 
       // Collection picker requires an explicit confirmation.
       if (experience === "browser") {

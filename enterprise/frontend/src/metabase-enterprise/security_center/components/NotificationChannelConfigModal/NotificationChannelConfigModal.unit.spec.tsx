@@ -323,6 +323,13 @@ async function getSavedSettings() {
   return puts.find((r) => r.url.includes("/api/setting"))?.body;
 }
 
+async function getTestNotificationBody() {
+  const posts = await findRequests("POST");
+  return posts.find((r) =>
+    r.url.includes("/api/ee/security-center/test-notification"),
+  )?.body;
+}
+
 describe("NotificationChannelConfigModal — save payload", () => {
   describe("slack channel", () => {
     it("saves the selected slack channel", async () => {
@@ -461,6 +468,97 @@ describe("NotificationChannelConfigModal — save payload", () => {
           }),
         );
       });
+    });
+  });
+});
+
+// ── Send-test-notification payload tests (real hook + context) ──────
+
+describe("NotificationChannelConfigModal — test notification payload", () => {
+  it("sends the saved config when the form has not been touched", async () => {
+    setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Send test notification/i }),
+    );
+
+    await waitFor(async () => {
+      const body = await getTestNotificationBody();
+      expect(body).toEqual({
+        email_recipients: expect.arrayContaining([
+          expect.objectContaining(ADMIN_GROUP_RECIPIENT),
+        ]),
+        slack_channel: "#general",
+      });
+    });
+  });
+
+  it("sends unsaved Slack channel changes (metabase#74147)", async () => {
+    setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
+
+    // Wait for the Slack channels query to resolve before interacting with
+    // the picker — Slack starts enabled (slackChannel is set), but the
+    // picker isn't rendered until channelInfo loads.
+    const channelInput = await screen.findByPlaceholderText(
+      "Pick a user or channel...",
+    );
+    await userEvent.clear(channelInput);
+    await userEvent.type(channelInput, "#alerts");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Send test notification/i }),
+    );
+
+    await waitFor(async () => {
+      const body = await getTestNotificationBody();
+      expect(body?.slack_channel).toBe("#alerts");
+    });
+  });
+
+  it("sends null slack_channel when the user toggles Slack off without saving (metabase#74147)", async () => {
+    setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
+
+    await userEvent.click(screen.getByTestId("slack-toggle"));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Send test notification/i }),
+    );
+
+    await waitFor(async () => {
+      const body = await getTestNotificationBody();
+      expect(body?.slack_channel).toBeNull();
+    });
+  });
+
+  it("sends unsaved 'send to all admins' toggle changes (metabase#74147)", async () => {
+    setupWithRealHook({ emailConfigured: true });
+
+    // Default state has the admin group recipient — flip the toggle off
+    await userEvent.click(screen.getByTestId("send-to-admins-toggle"));
+    await userEvent.type(
+      screen.getByPlaceholderText(/Enter user names or email/i),
+      "ad-hoc@example.com{enter}",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Send test notification/i }),
+    );
+
+    await waitFor(async () => {
+      const body = await getTestNotificationBody();
+      expect(body?.email_recipients).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining(ADMIN_GROUP_RECIPIENT),
+        ]),
+      );
+      expect(body?.email_recipients).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "notification-recipient/raw-value",
+            details: { value: "ad-hoc@example.com" },
+          }),
+        ]),
+      );
     });
   });
 });

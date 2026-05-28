@@ -360,7 +360,7 @@ async function runAddCardToDashboard({
     dashId,
     tabId,
     cardId,
-  })(store.dispatch, store.getState);
+  })(store.dispatch);
   const nextState = store.getState();
 
   const tempDashCardId =

@@ -405,7 +405,6 @@
                              (keep (fn [[tag-name {:keys [id] :as tag}]]
                                      (or (params-by-id id)
                                          (get-parameter-value query tag-name tag))))
-
                              ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))

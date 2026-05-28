@@ -27,7 +27,6 @@
       (is (= :completed (:status result)))
       (is (vector? (get-in result [:data :rows])))
       (is (= (rows 4) (get-in result [:data :rows])))))
-
   (testing "At threshold - rows stream to disk"
     (let [result  (run-rff 50 (rows 5))
           storage (get-in result [:data :rows])]
@@ -35,7 +34,6 @@
       (is (temp-storage/streaming-temp-file? storage))
       (is (= (rows 5) @storage))
       (temp-storage/cleanup! storage)))
-
   (testing "Over threshold - rows stream to disk"
     (let [result  (run-rff 50 (rows 6))
           storage (get-in result [:data :rows])]
@@ -43,7 +41,6 @@
       (is (temp-storage/streaming-temp-file? storage))
       (is (= (rows 6) @storage))
       (temp-storage/cleanup! storage)))
-
   (testing "Over max-file-size threshold, aborts query"
     (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)]
       (let [many-rows 50000
@@ -81,12 +78,10 @@
       (is (= 0 (:row_count result)))
       (is (vector? (get-in result [:data :rows])))
       (is (empty? (get-in result [:data :rows])))))
-
   (testing "Single row"
     (let [result (run-rff 5 [[42]])]
       (is (= 1 (:row_count result)))
       (is (= [[42]] (get-in result [:data :rows])))))
-
   (testing "Large row count"
     (let [result (run-rff 100 (for [i (range 150)] [i]))
           storage (get-in result [:data :rows])]

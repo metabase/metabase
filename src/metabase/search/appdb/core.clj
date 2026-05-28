@@ -149,7 +149,6 @@
                              :timeout-ms  2000
                              :interval-ms 100})
             (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)
             query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
@@ -198,7 +197,6 @@
       (do
         (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
-
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")

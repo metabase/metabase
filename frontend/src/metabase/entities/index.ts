@@ -68,6 +68,7 @@
  *   )(BookContainer);
  */
 
-export { Questions as questions } from "./questions";
-
-export { Tables as tables } from "./tables";
+// All entities have been migrated to "metabase/api"; this barrel intentionally
+// exports nothing. Keep the empty export so the file stays a module, not a
+// script.
+export {};

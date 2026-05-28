@@ -137,8 +137,8 @@
                (get-in (add-default-limit
                         {:type        :query
                          :query       {:source-table (meta/id :venues)}
-                           ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
-                           ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
+                         ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
+                         ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
                          :constraints (when limit {:max-results-bare-rows limit})
                          :info        {:context context}})
                        [:query :limit])))))))

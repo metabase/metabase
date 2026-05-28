@@ -66,7 +66,6 @@
                                 default-email-override-settings
                                 original-values)
                               (email-override-settings)))))))))))
-
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
           (is (= "Invalid email-smtp-security-override value"
@@ -84,15 +83,15 @@
                                                            settings)))]
               (testing "If we don't change the password we don't see the password"
                 (let [payload (-> (email-override-settings)
-                                ;; user changes one property
+                                  ;; user changes one property
                                   (assoc :email-smtp-port 999)
-                                ;; the FE will have an obfuscated value
+                                  ;; the FE will have an obfuscated value
                                   (update :email-smtp-password-override setting/obfuscate-value))
                       response (mt/user-http-request :crowberto :put 200 "ee/email/override" payload)]
                   (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password-override response)))))
               (testing "If we change the password we can receive the password"
                 (let [payload (-> (email-override-settings)
-                                ;; user types in a new password
+                                  ;; user types in a new password
                                   (assoc :email-smtp-password-override "new-password"))
                       response (mt/user-http-request :crowberto :put 200 "ee/email/override" payload)]
                   (is (= "new-password" (:email-smtp-password-override response))))))))))))

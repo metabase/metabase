@@ -86,7 +86,6 @@
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
         (when-not (= :release-locks direction)
           (liquibase/consolidate-liquibase-changesets! conn liquibase))
-
         (log/info "Liquibase is ready.")
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)
@@ -95,21 +94,21 @@
           :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
-       ;; Migrations were successful; commit everything and re-enable auto-commit
+        ;; Migrations were successful; commit everything and re-enable auto-commit
         (.commit conn)
         (.setAutoCommit conn true)
         :done
-       ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
-       ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
-       ;; clear the lock in that case, so handle that case separately
+        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+        ;; clear the lock in that case, so handle that case separately
         (catch LockException e
           (.rollback conn)
           (throw e))
-       ;; If for any reason any part of the migrations fail then rollback all changes
+        ;; If for any reason any part of the migrations fail then rollback all changes
         (catch Throwable e
           (.rollback conn)
-         ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
-         ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 

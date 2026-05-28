@@ -90,6 +90,16 @@
                         ;; NB: because of test parallelism, this *will* affect other non-pg
                         ;; tests, but the check above in the test-driver function will
                         ;; prevent it from actually doing anything different in those tests.
+                        ;;
+                        ;; The linter (`:metabase/validate-deftest`) flags `with-redefs` inside a
+                        ;; `use-fixtures` body because it isn't parallel-safe -- the root var is
+                        ;; mutated globally across threads. We accept the hazard here for the
+                        ;; duration of the `:postgres-mbql5` equivalence experiment: this fixture
+                        ;; reruns every `:postgres` test under the `:postgres-mbql5` dispatch so
+                        ;; we can confirm behavioral parity. Once the experiment concludes and
+                        ;; `:postgres-mbql5` becomes `:postgres`, this entire `with-redefs` goes
+                        ;; away (see Phil's note in #ee-querying-platform 2026-05-21).
+                        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                         (with-redefs [mtd/-test-driver test-driver]
                           (mt/with-test-user :rasta (thunk))))))
 
@@ -139,7 +149,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-2
   (testing "ssl - check that expected params get added"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -155,7 +167,9 @@
                                                     :host   "localhost"
                                                     :port   5432
                                                     :dbname "bird_sightings"
-                                                    :user   "camsaul"}))))
+                                                    :user   "camsaul"})))))
+
+(deftest ^:parallel connection-details->spec-test-3
   (testing "make sure connection details w/ extra params work as expected"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -167,7 +181,9 @@
                                                    {:host               "localhost"
                                                     :port               "5432"
                                                     :dbname             "cool"
-                                                    :additional-options "prepareThreshold=0"}))))
+                                                    :additional-options "prepareThreshold=0"})))))
+
+(deftest ^:parallel connection-details->spec-test-4
   (testing "user-specified SSL options should always take precendence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -1848,7 +1864,6 @@
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
                                   (into #{} (map #(dissoc % :estimated_row_count))
                                         (#'postgres/get-tables (mt/db) schemas tables)))))]
-
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -1950,21 +1965,16 @@
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try
             (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
-
             (doseq [stmt ["CREATE TABLE sync_test_schema.readonly_table (id INTEGER);"
                           "CREATE TABLE sync_test_schema.readwrite_table (id INTEGER);"
                           "CREATE TABLE sync_test_schema.fullaccess_table (id INTEGER);"]]
               (jdbc/execute! conn stmt))
-
             (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user")
             (jdbc/execute! conn "CREATE USER sync_writable_test_user WITH PASSWORD 'password'")
-
             (jdbc/execute! conn "GRANT USAGE ON SCHEMA sync_test_schema TO sync_writable_test_user")
-
             (jdbc/execute! conn "GRANT SELECT ON sync_test_schema.readonly_table TO sync_writable_test_user")
             (jdbc/execute! conn "GRANT SELECT, INSERT ON sync_test_schema.readwrite_table TO sync_writable_test_user")
             (jdbc/execute! conn "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_test_schema.fullaccess_table TO sync_writable_test_user")
-
             (let [user-connection-details (assoc details
                                                  :user "sync_writable_test_user"
                                                  :password "password")]
@@ -2213,7 +2223,6 @@
                                     pg-cancel-ex)))))
           (is (= 0 (count (into [] (cancel-messages) (log-messages))))
               "Query cancellation exceptions should not be logged")))
-
       (let [mp (mt/metadata-provider)]
         ;; Refresh the permission set in case the metadata provider created this test DB.
         (mt/with-test-user :rasta

@@ -8,13 +8,15 @@ import {
   datasetApi,
   fieldApi,
   segmentApi,
+  tableApi,
 } from "metabase/api";
-import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
-import { DatabaseSchema, FieldSchema } from "metabase/schema";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { updateMetadata } from "./metadata-typed";
@@ -83,7 +85,7 @@ export const updateDatabase = (database) => async (dispatch) => {
   return result;
 };
 
-export const updateTable = (table) => {
+export const updateTable = (table) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateTable");
   const slimTable = _.omit(
     table,
@@ -92,13 +94,18 @@ export const updateTable = (table) => {
     "aggregation_operators",
     "segments",
   );
-  return Tables.actions.update(slimTable);
+  const result = await entityCompatibleQuery(
+    slimTable,
+    dispatch,
+    tableApi.endpoints.updateTable,
+  );
+  dispatch(updateMetadata(result, TableSchema));
+  return result;
 };
 
-export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
+  return fetchTableMetadataAndForeignKeys({ id }, { reload });
 };
 
 export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {
@@ -218,18 +225,21 @@ export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
   ({ parameter, value, field, cardId, dashboardId, uuid, token }) =>
     async (dispatch, getState) => {
+      if (field != null && field.hasRemappedValue(value)) {
+        return;
+      }
+
       if (
-        field == null ||
-        field.remappedField() == null ||
-        field.hasRemappedValue(value)
+        parameter == null ||
+        !hasRemappedParameterValues(parameter, field ? [field] : [])
       ) {
         return;
       }
 
       const entityIdentifier = uuid ?? token ?? null;
-
-      if (dashboardId != null && parameter != null) {
-        const remapping = await entityCompatibleQuery(
+      let remapping;
+      if (dashboardId != null) {
+        remapping = await entityCompatibleQuery(
           {
             ...(entityIdentifier
               ? { entityIdentifier }
@@ -241,11 +251,8 @@ export const fetchRemapping = createThunkAction(
           dashboardApi.endpoints.getRemappedDashboardParameterValue,
           { forceRefetch: false },
         );
-        if (remapping != null) {
-          dispatch(addRemappings(field.id, [remapping]));
-        }
-      } else if (cardId != null && parameter != null) {
-        const remapping = await entityCompatibleQuery(
+      } else if (cardId != null) {
+        remapping = await entityCompatibleQuery(
           {
             ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
             parameter_id: parameter.id,
@@ -255,11 +262,10 @@ export const fetchRemapping = createThunkAction(
           cardApi.endpoints.getRemappedCardParameterValue,
           { forceRefetch: false },
         );
-        if (remapping != null) {
-          dispatch(addRemappings(field.id, [remapping]));
-        }
-      } else if (parameter != null) {
-        const remapping = await entityCompatibleQuery(
+      } else if (field != null) {
+        // Field-based remapping (e.g. FK display fields). Static-list sources
+        // carry their [value, label] pairs inline and need no network call.
+        remapping = await entityCompatibleQuery(
           {
             parameter: normalizeParameter(parameter),
             field_ids: [field.id],
@@ -269,9 +275,16 @@ export const fetchRemapping = createThunkAction(
           datasetApi.endpoints.getRemappedParameterValue,
           { forceRefetch: false },
         );
-        if (remapping != null) {
-          dispatch(addRemappings(field.id, [remapping]));
-        }
       }
+
+      if (remapping == null) {
+        return;
+      }
+
+      if (field != null) {
+        dispatch(addRemappings(field.id, [remapping]));
+      }
+
+      return remapping;
     },
 );
