@@ -629,10 +629,8 @@
                           (-> %
                               (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
                               (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
-
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
                           (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
-
                           :else
                           %)]
     (->> (update query :fields #(mapv maybe-add-cast %))
@@ -1111,18 +1109,21 @@
         escaped-password (sql.u/escape-sql password :ansi)
         conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
-    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                              "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
-                         username username escaped-password)
-                 (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
-                         username username username)
-                 (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
-                         schema-name schema-name)
-                 ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
-                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)
-                 ;; CREATE TABLE at database level is also required in SQL Server
-                 (format "GRANT CREATE TABLE TO [%s]" username)]]
-      (jdbc/execute! conn-spec [sql]))
+    (try
+      (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                                "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
+                           username username escaped-password)
+                   (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
+                           username username username)
+                   (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
+                           schema-name schema-name)
+                   ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
+                   (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)
+                   ;; CREATE TABLE at database level is also required in SQL Server
+                   (format "GRANT CREATE TABLE TO [%s]" username)]]
+        (jdbc/execute! conn-spec [sql]))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions t [password escaped-password]))))
     {:schema           schema-name
      :database_details {:user     username
                         :password password}}))

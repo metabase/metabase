@@ -122,29 +122,24 @@
                        write-cache-key   [db-id :write-data]]
                    ;; Ensure pools are cleared
                    (sql-jdbc.conn/invalidate-pool-for-db! database)
-
                    (testing "initially no pools exist"
                      (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
                      (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-
                    (testing "getting a default connection creates only the default pool"
                      (sql-jdbc.conn/db->pooled-connection-spec database)
                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
                      (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-
                    (testing "getting a write connection creates a separate write pool"
                      (driver.conn/with-write-connection
                        (sql-jdbc.conn/db->pooled-connection-spec database))
                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
-
                    (testing "the two pools are different objects"
                      (let [default-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
                            write-pool   (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)]
                        (is (some? default-pool))
                        (is (some? write-pool))
                        (is (not (identical? default-pool write-pool)))))
-
                    ;; Cleanup
                    (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))))
 
@@ -184,7 +179,6 @@
               (let [db-id (u/the-id database)]
                 ;; Ensure pools are cleared
                 (sql-jdbc.conn/invalidate-pool-for-db! database)
-
                 (testing "jdbc-spec-hash differs between default and write connection types"
                   (let [default-hash (#'sql-jdbc.conn/jdbc-spec-hash database)
                         write-hash   (driver.conn/with-write-connection
@@ -193,19 +187,16 @@
                     (is (integer? write-hash))
                     (is (not= default-hash write-hash)
                         "Hash should differ because effective-details returns different details")))
-
                 (testing "hash cache uses composite keys"
                   ;; Get both pools
                   (sql-jdbc.conn/db->pooled-connection-spec database)
                   (driver.conn/with-write-connection
                     (sql-jdbc.conn/db->pooled-connection-spec database))
-
                   (let [default-cached-hash (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :default])
                         write-cached-hash   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :write-data])]
                     (is (some? default-cached-hash))
                     (is (some? write-cached-hash))
                     (is (not= default-cached-hash write-cached-hash))))
-
                 ;; Cleanup
                 (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
 
@@ -231,12 +222,10 @@
                   (sql-jdbc.conn/db->pooled-connection-spec database))
                 (driver.conn/with-admin-connection
                   (sql-jdbc.conn/db->pooled-connection-spec database))
-
                 (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
-
                 (testing "invalidate-pool-for-db! removes all pools"
                   (sql-jdbc.conn/invalidate-pool-for-db! database)
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
@@ -746,7 +735,6 @@
           (is (string? user))
           (is (int? port))
           (is (string? dbname)))
-
         (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
           (is
            (driver.u/can-connect-with-details? :postgres {:host   host
@@ -773,7 +761,6 @@
           (is (int? port))
           (is (string? dbname))
           (is (string? ssl-cert)))
-
         (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
           (is
            (driver.u/can-connect-with-details? :mysql {:host   host
@@ -817,7 +804,6 @@
                 (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec db))))
               (testing "Pool was created with swap in swapped pools cache"
                 (is (= 1 (count-swapped-pools-for-db db-id)))))))
-
         (testing "Connection works normally outside swap scope"
           (sql-jdbc.conn/invalidate-pool-for-db! db)
           (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
@@ -861,7 +847,6 @@
                  #"Nested connection detail swaps are not supported"
                  (driver.w/with-swapped-connection-details db-id {:inner-swap true}
                    (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
-
   (testing "Different databases can have concurrent swaps"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db-1    (mt/db)
@@ -879,12 +864,10 @@
             default-cache-key [db-id :default]
             write-cache-key   [db-id :write-data]]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-
         ;; Create default canonical pool
         (sql-jdbc.conn/db->pooled-connection-spec db)
         (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
             "default canonical pool exists")
-
         ;; Insert a fake write pool entry to verify it gets cleared.
         ;; Needs :datasource so destroy-pool! can handle it.
         (let [fake-ds (DataSources/pooledDataSource
@@ -893,16 +876,13 @@
                  assoc write-cache-key {:datasource fake-ds}))
         (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)
             "write canonical pool exists")
-
         ;; Create swapped pool (for default connection type)
         (driver.w/with-swapped-connection-details db-id {:test-swap true}
           (sql-jdbc.conn/db->pooled-connection-spec db))
         (is (= 1 (count-swapped-pools-for-db db-id))
             "swapped pool exists")
-
         ;; Now invalidate - should clear all pools
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-
         (testing "Default canonical pool is cleared"
           (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))))
         (testing "Write canonical pool is cleared"
@@ -927,7 +907,6 @@
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
               (is (some? pool-1))
-
               ;; Simulate password expiration by modifying the cached pool
               ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
               (let [cache             ^Cache @#'sql-jdbc.conn/swapped-connection-pools
@@ -936,7 +915,6 @@
                     ;; Use a fixed past timestamp (year 2020) to simulate expired password
                     expired-timestamp 1577836800000]
                 (.put cache cache-key (assoc pool-1 :password-expiry-timestamp expired-timestamp)))
-
               ;; Next call should detect invalid pool and recreate
               (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                 (is (= 2 @create-count) "Pool should have been recreated due to expired password")
@@ -960,7 +938,6 @@
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
               (is (some? pool-1))
-
               ;; Simulate closed tunnel by modifying the cached pool
               ;; We add a tunnel-session that reports as closed
               ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
@@ -968,7 +945,6 @@
                     swapped-db (update db :details merge swap-details)
                     cache-key  (swap-cache-key swapped-db)]
                 (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
-
               ;; Mock ssh-tunnel-open? to return false for our mock session
               (mt/with-dynamic-fn-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
                                                                  (not= :mock-closed-session (:tunnel-session pool-spec)))]
@@ -994,7 +970,6 @@
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
               (is (some? pool-1))
-
               ;; Second call should reuse the same pool
               (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                 (is (= 1 @create-count) "Pool should be reused, not recreated")

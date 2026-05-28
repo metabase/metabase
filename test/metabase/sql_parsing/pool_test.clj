@@ -76,7 +76,6 @@
                                   (fn [_i ctx]
                                     (Thread/sleep (long (+ 10 (rand-int 50))))
                                     ctx))]
-
       (is (<= @created-count 3)
           (str "Pool created " @created-count " contexts but max is 3"))
       (is (= num-threads (count results))
@@ -99,7 +98,6 @@
         (is (some? context) "Context should be created")
         (is (number? expiry-ts) "Expiry timestamp should be set")
         (is (< (System/nanoTime) expiry-ts) "Expiry should be in the future")
-
         (let [expiry-in-minutes (/ (- expiry-ts (System/nanoTime)) (* 1000000000 60))]
           (is (< 9 expiry-in-minutes 11) "Expiry should be approximately 10 minutes"))
         (finally
@@ -109,11 +107,9 @@
   (testing "with-pooled-context properly handles and replaces expired contexts"
     (let [[pool created-count] (test-pool)]
       (with-pool pool (fn [_ctx] (is (= 1 @created-count))))
-
       ;; Manually expire by disposing
       (let [tuple (.acquire ^Pool pool :python)]
         (.dispose ^Pool pool :python tuple))
-
       (with-pool pool (fn [_ctx] (is (= 2 @created-count) "Expired context should be replaced"))))))
 
 ;;; --------------------------------------------- Generator Failure Tests --------------------------------------------
@@ -123,13 +119,10 @@
     (let [counter (atom 0)
           generator (failing-generator counter 1)
           pool (#'pool/make-python-context-pool generator)]
-
       (is (some? (with-pool pool identity)) "First context creation succeeds")
-
       ;; Dispose to force new creation
       (let [tuple (.acquire ^Pool pool :python)]
         (.dispose ^Pool pool :python tuple))
-
       (is (thrown? Exception (with-pool pool identity)) "Generator failure should propagate"))))
 
 ;;; ------------------------------------------- Concurrent Access Tests ----------------------------------------------
@@ -142,7 +135,6 @@
                                   (fn [i _ctx]
                                     (Thread/sleep (long (rand-int 20)))
                                     i))]
-
       (is (= num-threads (count results)) "All threads should complete successfully")
       (is (<= @created-count 3) (str "Created " @created-count " contexts, expected <= 3")))))
 
@@ -153,11 +145,9 @@
     (let [[pool created-count] (test-pool)
           result1 (with-pool pool :context)
           result2 (with-pool pool :context)]
-
       (is (map? result1))
       (is (= 1 (:context-id result1)))
       (is (= 1 @created-count))
-
       (is (map? result2))
       (is (= 1 (:context-id result2)))  ;; Same context ID
       (is (= 1 @created-count)))))

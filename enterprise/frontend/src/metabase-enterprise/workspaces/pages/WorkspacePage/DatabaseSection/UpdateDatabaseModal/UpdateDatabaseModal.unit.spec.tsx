@@ -81,7 +81,7 @@ describe("UpdateDatabaseModal", () => {
   it("can update a workspace database", async () => {
     const { onUpdate, updatedWorkspace } = setup();
 
-    await userEvent.click(screen.getByLabelText("Schemas to include"));
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "analytics" }),
     );

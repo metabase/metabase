@@ -105,7 +105,6 @@
                                                      :channel_type "http"
                                                      :channel_id chn-id
                                                      :enabled true})]
-
           (is (= (sanitize-alert
                   (mt/user-http-request :crowberto :get 200 (alert-url (:id notification))))
                  (sanitize-alert
@@ -120,7 +119,6 @@
       (testing "by default only active alerts are returned"
         (is (= #{(:id active-noti)}
                (set (map :id (mt/user-http-request :crowberto :get 200 "alert"))))))
-
       (testing "can fetch archived alerts"
         (is (= #{(:id archived-noti)}
                (set (map :id (mt/user-http-request :crowberto :get 200 "alert" :archived true)))))))))
@@ -135,20 +133,16 @@
                                 :handlers    [{:channel_type :channel/email
                                                :recipients  [{:type :notification-recipient/user
                                                               :user_id (mt/user->id :rasta)}]}]}]
-
         (testing "admin can see all alerts"
           (is (= #{(:id crowberto-alert) (:id rasta-alert) (:id rasta-recipient-alert)}
                  (set (map :id (mt/user-http-request :crowberto :get 200 "alert"))))))
-
         (testing "can fetch alerts by user_id - should include created and received alerts"
           (is (= #{(:id crowberto-alert) (:id rasta-recipient-alert)}
                  (set (map :id (mt/user-http-request :crowberto :get 200 "alert"
                                                      :user_id (mt/user->id :crowberto))))))
-
           (is (= #{(:id rasta-alert) (:id rasta-recipient-alert)}
                  (set (map :id (mt/user-http-request :crowberto :get 200 "alert"
                                                      :user_id (mt/user->id :rasta)))))))
-
         (testing "regular users can only see alerts they created or receive"
           (is (= #{(:id rasta-alert) (:id rasta-recipient-alert)}
                  (set (map :id (mt/user-http-request :rasta :get 200 "alert"))))))))))
@@ -159,7 +153,6 @@
       [notification {}]
       (is (= (:id notification)
              (:id (mt/user-http-request :crowberto :get 200 (alert-url notification)))))))
-
   (testing "fetching a non-existing alert returns an error"
     (mt/user-http-request :rasta :get 404 (str "alert/" Integer/MAX_VALUE))))
 
@@ -177,7 +170,6 @@
                               (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification noti-id)))))
           email-recipients (fn [notification]
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
-
       (testing "creator can unsubscribe themselves"
         (unsubscribe
          :crowberto 204
@@ -186,7 +178,6 @@
                 [{:type    :notification-recipient/user
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti))))))
-
       (testing "recipient can unsubscribe themselves"
         (unsubscribe
          :lucky 204
@@ -195,7 +186,6 @@
                 [{:type    :notification-recipient/user
                   :user_id (mt/user->id :crowberto)}]
                 (email-recipients noti))))))
-
       (testing "non-recipient cannot unsubscribe"
         (unsubscribe
          :rasta 403

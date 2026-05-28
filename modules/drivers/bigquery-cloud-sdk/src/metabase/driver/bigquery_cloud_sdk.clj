@@ -52,6 +52,7 @@
     Field$Mode
     FieldValue
     FieldValueList
+    Job
     JobInfo
     QueryJobConfiguration
     Schema
@@ -217,7 +218,6 @@
   (let [[sql & params] (sql.qp/format-honeysql
                         driver
                         honeysql-form)]
-
     (*process-native*
      (fn [cols results]
        (let [col-names (map (comp keyword :name) (:cols cols))]
@@ -483,7 +483,6 @@
   (let [details     (driver.conn/effective-details database)
         project-id  (bigquery.common/get-project-id details)
         dataset-ids (or schema-names (list-datasets details))]
-
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
     ;;
@@ -741,7 +740,12 @@
         result-promise   (promise)
         request          (build-bigquery-request sql parameters)
         _                (driver.conn/track-connection-acquisition! database-details)
-        job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
+        ;; in the UI. (#71558)
+        ^Job job         (try
+                           (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                           (catch Throwable t
+                             (handle-bigquery-exception t sql parameters)))
         job-id           (.getJobId job)
         query-future     (future
                            ;; ensure the classloader is available within the future.
@@ -755,7 +759,6 @@
                                  (throw (ex-info "Null response from query" {}))))
                              (catch Throwable t
                                (deliver result-promise [:error t]))))]
-
     ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
@@ -763,7 +766,6 @@
         (when-let [cancelled (a/<! cancel-chan)]
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
-
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
     (let [[status result] @result-promise]

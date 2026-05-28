@@ -389,7 +389,6 @@
                             :profile-id      "internal"
                             :total-tokens    8
                             :data            [{:type "text" :text "hi there"}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
             (is (= conversation-id (:conversation_id response)))
@@ -464,7 +463,6 @@
                                               {:type   "tool-output"
                                                :id     "call-failed"
                                                :result {:output "<result>SQL query construction failed.</result>"}}]})
-
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))
                 queries  (:queries response)]
