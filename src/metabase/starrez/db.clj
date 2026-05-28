@@ -29,6 +29,7 @@
 
 (def ^:private data-schema "starrez_data")
 (def ^:private meta-schema "starrez_meta")
+(def ^:private active-report-table "active_report")
 (def ^:private postgres-max-columns 1600)
 
 (defn- configured? []
@@ -278,6 +279,22 @@
     (log/infof "Loaded StarRez table: %s (%d rows)" tbl (count rows))
     {:table tbl :rows (count rows) :cols (count cols)}))
 
+(defn- report-csv? [{:keys [blob-name]}]
+  (str/includes? blob-name "starrez_report_"))
+
+(defn- single-report-csv [csvs]
+  (let [report-csvs (filterv report-csv? csvs)]
+    (when (and (= 1 (count report-csvs))
+               (= 1 (count csvs)))
+      (first report-csvs))))
+
+(defn- create-active-report-table!
+  "For a selected report snapshot, also refresh one stable table that Metabase
+  questions can point at while admins switch which report snapshot is active."
+  [conn csvs]
+  (when-let [{:keys [csv-rows]} (single-report-csv csvs)]
+    [(create-and-load-table! conn active-report-table csv-rows)]))
+
 (defn- set-activation-timeouts! [conn]
   (jdbc/execute! conn ["SET LOCAL lock_timeout = '10s'"])
   (jdbc/execute! conn ["SET LOCAL statement_timeout = '5min'"]))
@@ -287,6 +304,7 @@
   - drop existing `starrez_data.*` tables in this week's blob_files
   - download each blob CSV via `download-csv` (a fn `blob-name -> CSV string`)
   - recreate tables from CSV headers
+  - for single-report snapshots, also recreate `starrez_data.active_report`
   - flip the `is_active` flag
   Returns {:results [...] :error nil} on success."
   [week-id download-csv]
@@ -307,7 +325,8 @@
                 (let [results (mapv (fn [{:keys [table-name csv-rows]}]
                                       (log/infof "Loading StarRez table for week %s: %s" week-id table-name)
                                       (create-and-load-table! conn table-name csv-rows))
-                                    csvs)]
+                                    csvs)
+                      results (into results (create-active-report-table! conn csvs))]
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = FALSE WHERE is_active = TRUE")])
                   (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = TRUE WHERE id = ?") week-id])
                   (.commit conn)
