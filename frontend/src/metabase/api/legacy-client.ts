@@ -368,9 +368,13 @@ export class LegacyApi extends EventEmitter {
             ANTI_CSRF_TOKEN = antiCsrfToken;
           }
 
-          let responseBody: Response | string | undefined = xhr.responseText;
+          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
+          // so callers don't have to handle "the response was empty" via
+          // per-endpoint `transformResponse` workarounds.
+          let responseBody: Response | string | null | undefined =
+            xhr.responseText === "" ? null : xhr.responseText;
 
-          if (options.json) {
+          if (options.json && xhr.responseText !== "") {
             try {
               responseBody = JSON.parse(xhr.responseText);
             } catch (e) {}
@@ -466,9 +470,13 @@ export class LegacyApi extends EventEmitter {
       .then((response) => {
         const unreadResponse = response.clone();
         return response.text().then((bodyText) => {
-          let body: string | Response | undefined = bodyText;
+          // An empty body (e.g. 204 No Content) surfaces as `null`, not `""`,
+          // so callers don't have to handle "the response was empty" via
+          // per-endpoint `transformResponse` workarounds.
+          let body: string | Response | null | undefined =
+            bodyText === "" ? null : bodyText;
 
-          if (options.json) {
+          if (options.json && bodyText !== "") {
             try {
               body = JSON.parse(bodyText);
             } catch (e) {}
