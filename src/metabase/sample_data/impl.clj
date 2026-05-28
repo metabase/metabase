@@ -19,7 +19,7 @@
   identify or validate the sample DB (e.g. workspace-manager config import)."
   "Sample Database")
 
-(def ^:private ^String sample-database-filename "sample-database.db.mv.db")
+(def ^:private ^String sample-database-filename "sample-database.sqlite")
 
 (defn- sample-db-dir-from-env
   "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
