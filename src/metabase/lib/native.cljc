@@ -24,6 +24,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
@@ -153,7 +154,7 @@
        ;; Otherwise just an empty map, no tags.
        {}))))
 
-(defn- assert-native-query [stage]
+(defn- assert-native-stage [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
 (def ^:private all-native-extra-keys
@@ -184,7 +185,7 @@
              stage-without-old-extras (apply dissoc stage extras-to-remove)
              result (merge stage-without-old-extras (select-keys native-extras required-extras))
              missing-keys (set/difference required-extras (set (keys native-extras)))]
-         (assert-native-query (lib.util/query-stage query 0))
+         (assert-native-stage (lib.util/query-stage query 0))
          (assert (empty? missing-keys)
                  (i18n/tru "Missing extra, required keys for native query: {0}"
                            (pr-str missing-keys)))
@@ -215,7 +216,7 @@
    Native extras must be provided if the new database requires it."
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
                                            (update stage :template-tags update-vals #(dissoc % :dimension)))))]
@@ -234,7 +235,7 @@
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
+     (assert-native-stage stage)
      (assoc stage
             :native inner-query
             :template-tags (extract-template-tags query inner-query existing-tags)))))
@@ -256,8 +257,9 @@
             ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
             (let [updates (reduce-kv
                            (fn [m updated-k updated-v]
-                             (cond-> m
-                               (contains? existing-tags updated-k) (assoc updated-k updated-v)))
+                             (let [updated-k (lib.params.parse/match-and-normalize-tag-name updated-k)]
+                               (cond-> m
+                                 (contains? existing-tags updated-k) (assoc updated-k updated-v))))
                            {}
                            updated-tags)]
               ;; merge in old values that weren't in the `updated-tags` map
@@ -268,8 +270,10 @@
                updates
                existing-tags)))
           (update-stage [stage]
-            (assert-native-query stage)
-            (update stage :template-tags update-template-tags))]
+            (assert-native-stage stage)
+            (-> stage
+                (update :template-tags update-template-tags)
+                (->> (lib.normalize/normalize ::lib.schema/stage.native))))]
     (lib.util/update-query-stage query 0 update-stage)))
 
 (mu/defn raw-native-query :- some?
@@ -315,7 +319,7 @@
    This is only filled in by [[metabase.warehouses-rest.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
@@ -352,7 +356,7 @@
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value

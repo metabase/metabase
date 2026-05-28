@@ -572,12 +572,11 @@
 
 (defn- native-query-with-snippet [metadata-provider & {:as snippet-properties}]
   (-> (lib/native-query metadata-provider "SELECT * FROM {{expensive_venues}}")
-      (lib/with-template-tags {"expensive_venues" (merge
-                                                   {:type         :snippet
-                                                    :name         "expensive_venues"
-                                                    :display-name "Expensive Venues"
-                                                    :snippet-name "expensive_venues"}
-                                                   snippet-properties)})))
+      (lib/with-template-tags {"expensive_venues" (merge {:type         :snippet
+                                                          :name         "expensive_venues"
+                                                          :display-name "Expensive Venues"
+                                                          :snippet-name "expensive_venues"}
+                                                         snippet-properties)})))
 
 (deftest ^:parallel snippet-validation-test
   (testing "`:snippet-id` should be required"
@@ -585,7 +584,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"\QUnable to resolve Snippet: missing `:snippet-id`\E"
-           (params.values/stage->params-map query (lib/query-stage query -1))))))
+           (params.values/stage->params-map query (lib/query-stage query -1)))))))
+
+(deftest ^:parallel snippet-validation-test-2
   (testing "If no such Snippet exists, it should throw an Exception"
     (let [query (native-query-with-snippet meta/metadata-provider :snippet-id Integer/MAX_VALUE)]
       (is (thrown-with-msg?
@@ -611,20 +612,20 @@
 
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
-    (let [mp       (lib.tu/mock-metadata-provider
-                    meta/metadata-provider
-                    {:native-query-snippets [{:id      1
-                                              :name    "expensive_venues"
-                                              :content "venues WHERE price = 4"}]})
-          expected {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-          query    (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
-                       (lib/with-template-tags {"expensive_venues" {:type         :snippet
-                                                                    :name         "expensive_venues"
-                                                                    :display-name "Expensive Venues"
-                                                                    :snippet-name "expensive_venues"
-                                                                    :snippet-id   1}}))]
-      (is (= expected
-             (params.values/stage->params-map query (lib/query-stage query -1)))))))
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:native-query-snippets [{:id      1
+                                           :name    "expensive_venues"
+                                           :content "venues WHERE price = 4"}]})
+          query (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
+                    ;; force unnormalized snippet names
+                    (lib/update-query-stage 0 assoc :template-tags {"snippet:expensive_venues" {:type         :snippet
+                                                                                                :name         "snippet:expensive_venues"
+                                                                                                :display-name "Expensive Venues"
+                                                                                                :snippet-name "expensive_venues"
+                                                                                                :snippet-id   1}}))]
+      (is (=  {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+              (params.values/stage->params-map query (lib/query-stage query -1)))))))
 
 (deftest ^:parallel table-tag-test
   (testing "Table template tag produces a ReferencedTableQuery"
