@@ -1,152 +1,66 @@
-import {
-  compareCommits,
-  getLastReleaseCommit,
-  getLatestGreenCommit,
-} from "./github";
+import { hasCommitBeenReleased } from "./github";
 
-// 95 passing checks clears the MIN_TOTAL_CHECKS gate in checksPassed
-const passingChecks = Array.from({ length: 95 }, () => ({
-  conclusion: "success",
-  status: "completed",
-  head_sha: "x",
-}));
+// release-x.61.x window for these tests: lastTagSha is at index 0 (oldest),
+// branch tip at the end. Commits NEWER than lastTagSha are those after it.
+const LAST_TAG_SHA = "aaaa".repeat(10);
+const PARENT_OF_LAST = "0000".repeat(10);
+const NEWER_1 = "bbbb".repeat(10);
+const NEWER_2 = "cccc".repeat(10);
 
-describe("github", () => {
-  describe("compareCommits", () => {
-    const build = (status: string) => ({
-      rest: {
-        repos: {
-          compareCommitsWithBasehead: jest
-            .fn()
-            .mockResolvedValue({ data: { status } }),
-        },
+const NEW_COMMITS_LIST = [{ sha: NEWER_1 }, { sha: NEWER_2 }];
+
+describe("hasCommitBeenReleased", () => {
+  const build = ({
+    lastTag = "v0.61.2.7",
+    commits = NEW_COMMITS_LIST,
+  }: { lastTag?: string; commits?: Array<{ sha: string }> } = {}) => ({
+    paginate: jest.fn().mockResolvedValue([{ ref: `refs/tags/${lastTag}` }]),
+    rest: {
+      git: {
+        getRef: jest
+          .fn()
+          .mockResolvedValue({ data: { object: { sha: LAST_TAG_SHA } } }),
       },
-    });
-
-    it("returns the GitHub comparison status and builds base...head", async () => {
-      const github = build("ahead");
-
-      await expect(
-        compareCommits({
-          github: github as any,
-          owner: "metabase",
-          repo: "metabase",
-          base: "a".repeat(40),
-          head: "b".repeat(40),
-        }),
-      ).resolves.toBe("ahead");
-
-      expect(github.rest.repos.compareCommitsWithBasehead).toHaveBeenCalledWith(
-        expect.objectContaining({
-          basehead: `${"a".repeat(40)}...${"b".repeat(40)}`,
-        }),
-      );
-    });
+      repos: {
+        compareCommitsWithBasehead: jest
+          .fn()
+          .mockResolvedValue({ data: { commits } }),
+      },
+    },
   });
 
-  describe("getLastReleaseCommit", () => {
-    const build = ({
-      lastTag,
-      sha = "c".repeat(40),
-    }: {
-      lastTag: string | null;
-      sha?: string;
-    }) => ({
-      paginate: jest
-        .fn()
-        .mockResolvedValue(lastTag ? [{ ref: `refs/tags/${lastTag}` }] : []),
-      rest: {
-        git: {
-          getRef: jest
-            .fn()
-            .mockResolvedValue({ data: { object: { sha } } }),
-        },
-      },
+  const call = (github: ReturnType<typeof build>, ref: string) =>
+    hasCommitBeenReleased({
+      github: github as any,
+      owner: "metabase",
+      repo: "metabase",
+      ref,
+      majorVersion: 61,
     });
 
-    it("resolves the most recent release tag to its commit sha", async () => {
-      const github = build({ lastTag: "v0.61.2.7" });
-
-      await expect(
-        getLastReleaseCommit({
-          github: github as any,
-          owner: "metabase",
-          repo: "metabase",
-          majorVersion: 61,
-        }),
-      ).resolves.toBe("c".repeat(40));
-    });
-
-    it("returns null when the major has never been released", async () => {
-      const github = build({ lastTag: null });
-
-      await expect(
-        getLastReleaseCommit({
-          github: github as any,
-          owner: "metabase",
-          repo: "metabase",
-          majorVersion: 61,
-        }),
-      ).resolves.toBeNull();
-      expect(github.rest.git.getRef).not.toHaveBeenCalled();
-    });
+  it("returns false when the candidate is newer than the last release", async () => {
+    await expect(call(build(), NEWER_2)).resolves.toBe(false);
   });
 
-  describe("getLatestGreenCommit", () => {
-    // The window compare returns commits oldest-first; getLatestGreenCommit
-    // reverses to newest-first. "new" is the branch tip, "old" its parent.
-    const build = ({
-      ancestryStatus,
-    }: {
-      ancestryStatus?: string;
-    } = {}) => ({
-      paginate: jest.fn().mockResolvedValue(passingChecks),
-      rest: {
-        repos: {
-          compareCommitsWithBasehead: jest.fn(async ({ basehead }: any) => {
-            // window scan: branch~10...branch
-            if (basehead.includes("~")) {
-              return { data: { commits: [{ sha: "old" }, { sha: "new" }] } };
-            }
-            // freshness ancestry: sinceCommit...candidate
-            return { data: { status: ancestryStatus } };
-          }),
-        },
-        checks: { listForRef: jest.fn() },
-      },
-    });
+  // The DEV-2025 regression: the candidate is an ancestor of the last release
+  // tag (e.g. green commit older than a manual/override release). It must be
+  // treated as already released — the previous SHA-equality check missed this.
+  it("returns true when the candidate is older than the last release", async () => {
+    await expect(call(build(), PARENT_OF_LAST)).resolves.toBe(true);
+  });
 
-    const run = (github: ReturnType<typeof build>, sinceCommit?: string | null) =>
-      getLatestGreenCommit({
-        github: github as any,
-        owner: "metabase",
-        repo: "metabase",
-        branch: "release-x.61.x",
-        sinceCommit,
-      });
+  it("returns true when the candidate IS the last release tag's commit", async () => {
+    await expect(call(build(), LAST_TAG_SHA)).resolves.toBe(true);
+  });
 
-    it("returns the newest green commit when no baseline is given (legacy)", async () => {
-      const github = build();
+  it("compares against the release branch tip for the given major", async () => {
+    const github = build();
+    await call(github, NEWER_1);
 
-      await expect(run(github)).resolves.toBe("new");
-    });
-
-    it("returns the newest green commit when it is ahead of the last release", async () => {
-      const github = build({ ancestryStatus: "ahead" });
-
-      await expect(run(github, "since-sha")).resolves.toBe("new");
-    });
-
-    // The core regression: the newest green commit is an ancestor of the last
-    // release (e.g. after a manual/override release from a not-yet-green tip).
-    // It must NOT be offered as a release candidate.
-    it.each(["identical", "behind", "diverged"])(
-      "returns null when the newest green commit is %s relative to the last release",
-      async status => {
-        const github = build({ ancestryStatus: status });
-
-        await expect(run(github, "since-sha")).resolves.toBeNull();
-      },
+    expect(github.rest.repos.compareCommitsWithBasehead).toHaveBeenCalledWith(
+      expect.objectContaining({
+        basehead: `${LAST_TAG_SHA}...refs/heads/release-x.61.x`,
+      }),
     );
   });
 });

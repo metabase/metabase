@@ -50,10 +50,9 @@ jobs:
         with:
           script: | # js
             const {
-              compareCommits,
-              getLastReleaseCommit,
               getLatestGreenCommit,
               getNextVersion,
+              hasCommitBeenReleased,
               sendAutoReleaseFailureMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
@@ -74,43 +73,32 @@ jobs:
               throw new Error(`Invalid override SHA provided: ${overrideSha}`);
             }
 
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-
             const nextVersion = await getNextVersion({
-              github, owner, repo, majorVersion, kind,
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              majorVersion,
+              kind,
             });
 
-            // The commit the most recent release for this major points to. Every
-            // new release must be strictly ahead of it (see the freshness gate
-            // below), regardless of how the candidate commit is chosen.
-            const lastReleaseCommit = await getLastReleaseCommit({
-              github, owner, repo, majorVersion,
-            });
-
-            // The override SHA bypasses the CI-green requirement only. getLatestGreenCommit
-            // is itself bounded to commits newer than the last release, so it never
-            // returns a stale candidate.
             const releaseCommit = (isValidOverride ? overrideSha : null) || await getLatestGreenCommit({
-              github, owner, repo,
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
               branch: `release-x.${majorVersion}.x`,
-              sinceCommit: lastReleaseCommit,
             });
 
-            // Freshness gate — path-independent. Applies equally to the green commit
-            // and the dangerous override: we must never tag a higher version number
-            // on a commit that isn't strictly newer than the last release. Anything
-            // but "ahead" (identical / behind / diverged) means the candidate is not
-            // new work on top of what shipped, so we skip. A deliberate release from
-            // a non-ahead commit must go through tag-for-release.yml directly.
-            const ancestry = (releaseCommit && lastReleaseCommit)
-              ? await compareCommits({ github, owner, repo, base: lastReleaseCommit, head: releaseCommit })
-              : 'no-previous-release';
-            const isAhead = !lastReleaseCommit || ancestry === 'ahead';
+            const hasBeenReleased = releaseCommit ? await hasCommitBeenReleased({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: releaseCommit,
+              majorVersion,
+            }) : false;
 
-            console.log({ kind, majorVersion, nextVersion, lastReleaseCommit, releaseCommit, ancestry, isAhead });
+            console.log({ kind, majorVersion, nextVersion, releaseCommit, hasBeenReleased });
 
-            if (nextVersion && releaseCommit && isAhead) {
+            if (nextVersion && releaseCommit && !hasBeenReleased) {
               core.setOutput('version', nextVersion);
               core.setOutput('commit', releaseCommit);
               core.setOutput('should_release', 'true');
@@ -121,9 +109,9 @@ jobs:
               ? 'no-next-version'
               : !releaseCommit
                 ? 'no-green-commit'
-                : 'commit-not-ahead';
+                : 'already-released';
 
-            console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason} (ancestry: ${ancestry})`);
+            console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason}`);
 
             await sendAutoReleaseFailureMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',

@@ -284,7 +284,7 @@ export type ReleaseKind = "patch" | "minor";
 export type AutoReleaseSkipReason =
   | "no-next-version"
   | "no-green-commit"
-  | "commit-not-ahead";
+  | "already-released";
 
 type AutoReleaseSkipArgs = {
   kind: ReleaseKind;
@@ -310,12 +310,12 @@ export function buildAutoReleaseSkipMessage({
     ? `:x: ${label} for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`
     : `:information_source: ${label} for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`;
 
-  const nothingNewSuffix = kind === "patch" ? "nothing new to patch" : "nothing new to ship";
+  const alreadyReleasedSuffix = kind === "patch" ? "nothing new to patch" : "nothing new to ship";
 
   const messageByReason: Record<AutoReleaseSkipReason, string> = {
     "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
     "no-next-version": noNextVersion,
-    "commit-not-ahead": `:information_source: ${label} for *v${majorVersion}* skipped: no commit newer than the last release — ${nothingNewSuffix}. ${runLink}`,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${runLink}`,
   };
 
   return messageByReason[reason];
