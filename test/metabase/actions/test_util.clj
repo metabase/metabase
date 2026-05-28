@@ -125,7 +125,7 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition (format "temp-test-data-%s" (random-uuid))
+  `(do-with-dataset-definition (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
                                                       ~table-definitions)
                                (fn [] ~@body)))
 
