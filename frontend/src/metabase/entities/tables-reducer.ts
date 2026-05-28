@@ -1,6 +1,6 @@
 import { updateIn } from "icepick";
 
-import { Questions } from "metabase/entities/questions";
+import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
@@ -29,7 +29,7 @@ export function tablesReducer(
   state: TableState = {},
   { type, payload, error }: ReducerAction,
 ): TableState {
-  if (type === Questions.actionTypes.CREATE && !error) {
+  if (type === CARD_CREATED && !error) {
     const card = payload.question;
     const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
 
@@ -43,7 +43,7 @@ export function tablesReducer(
     };
   }
 
-  if (type === Questions.actionTypes.UPDATE && !error) {
+  if (type === CARD_UPDATED && !error) {
     const card = payload.question;
     const virtualTableId = getQuestionVirtualTableId(card.id);
 

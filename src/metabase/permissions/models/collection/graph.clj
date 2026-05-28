@@ -330,7 +330,6 @@
          [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
                                                                 (filter (comp seq second))
                                                                 (into {})))]
-
      (check-data-analyst-library-permissions changes)
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)

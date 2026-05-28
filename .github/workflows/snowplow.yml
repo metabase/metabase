@@ -34,7 +34,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@2d4df498c7a578b4f3e906283f9af913590bdec7 # v1.7.0
+        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
         with:
           babashka-version: 1.12.197
       - name: Install igluctl

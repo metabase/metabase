@@ -475,13 +475,11 @@
            [:< x y]
            [:> (extract :day x) (extract :day y)]]
           [:inline -1]
-
           ;; if x>y but x<y in the month calendar then add one month
           [:and
            [:> x y]
            [:< (extract :day x) (extract :day y)]]
           [:inline 1]
-
           :else
           [:inline 0]]))
 
@@ -558,7 +556,6 @@
         (keep (fn [param]
                 (if (contains? param :name)
                   [(:name param) (:value param)]
-
                   (when-let [field-id (driver-api/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (perf/some #{:dimension} &parents)
@@ -831,7 +828,10 @@
                        (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\""
                                schema-name (:user read-user))]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     {:schema           schema-name
      :database_details read-user}))
 
@@ -841,7 +841,10 @@
         qu             (sql.u/quote-name :postgres :field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Pre-flight check (read-only) can run in its own transaction.
+    ;; Pre-flight check (read-only) can run in its own transaction. Only the
+    ;; PUBLIC-CREATE assert is needed on Redshift — its GRANT statements error
+    ;; loudly at execute time when grant authority is missing, so the silent-
+    ;; skip class of bug we catch on PostgreSQL doesn't reproduce.
     (jdbc/with-db-transaction [t-conn spec]
       (doseq [s source-schemas]
         (assert-no-public-create-grant! t-conn s)))

@@ -225,7 +225,6 @@
               driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
-
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -707,7 +706,6 @@
     [:case
      [:< position 1]
      ""
-
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
@@ -1026,7 +1024,6 @@
       (m/assoc-some :sslcert (driver-api/secret-value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
       (assoc :sslpassword (or (driver-api/secret-value-as-string :postgres db-details "ssl-key-password") ""))
-
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
@@ -1481,54 +1478,124 @@
   (when (public-create-grant? conn schema-name)
     (raise-public-create-grant! schema-name)))
 
-(defn- schema-owner
-  "Look up the owner of `schema-name` for diagnostics. Returns the rolname string
-   or nil if the schema doesn't exist on the current connection's database."
+(defn schema-missing-usage-grant-option?
+  "True when the current PostgreSQL user does not hold `USAGE WITH GRANT OPTION`
+   on `schema-name`. Without it, our `GRANT USAGE ON SCHEMA … TO <user>` silently
+   no-ops and the workspace user can't resolve table names at all."
   [conn schema-name]
-  (-> (jdbc/query conn
-                  ["SELECT r.rolname AS owner
-                    FROM pg_namespace n
-                    JOIN pg_roles r ON r.oid = n.nspowner
-                    WHERE n.nspname = ?"
-                   schema-name])
-      first
-      :owner))
+  (let [row (first (jdbc/query
+                    conn
+                    ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant"
+                     schema-name]))]
+    (not (:can_grant row))))
 
-(defn assert-can-grant-usage!
-  "Throws when the current admin connection cannot grant USAGE on `schema-name`
-   to other roles. PostgreSQL only lets a role pass on USAGE if it either owns
-   the schema or holds `USAGE WITH GRANT OPTION` (ownership implies both). When
-   a workspace admin is a CREATEROLE role separate from the schema owner —
-   common in warehouses where dbt or other tooling owns input schemas — the
-   admin can connect and create the isolation user but cannot share access to
-   the input schemas. We catch this before issuing the GRANT batch so the
-   operator gets a clear remediation instead of a JDBC `permission denied for
-   schema X` dump."
+(defn raise-missing-usage-grant-option!
+  "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition."
+  [schema-name]
+  (throw (ex-info (format (str "User lacks USAGE WITH GRANT OPTION on schema \"%s\"; workspace "
+                               "provisioning cannot grant USAGE to the workspace user. Have the "
+                               "schema owner run:\n\n"
+                               "    GRANT USAGE ON SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
+                               "then retry workspace provisioning.")
+                          schema-name schema-name)
+                  {:status-code 412
+                   :schema      schema-name})))
+
+(defn assert-has-usage-grant-option!
+  "Throws when the current PostgreSQL user lacks `USAGE WITH GRANT OPTION` on
+   `schema-name`. Called from `grant-workspace-read-access!` per input schema."
   [conn schema-name]
-  (let [{:keys [can_grant current_user_name]}
-        (first (jdbc/query conn
-                           ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant,
-                                    current_user AS current_user_name"
-                            schema-name]))]
-    (when-not can_grant
-      (let [owner (schema-owner conn schema-name)]
-        (throw (ex-info (format (str "Workspace admin %s cannot grant USAGE on schema \"%s\" "
-                                     "(owned by %s). PostgreSQL requires the granting role to own "
-                                     "the schema or hold USAGE WITH GRANT OPTION on it. Run as a "
-                                     "superuser or as the schema owner:\n\n"
-                                     "    GRANT USAGE ON SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
-                                     "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO %s WITH GRANT OPTION;\n"
-                                     "    ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" "
-                                     "GRANT SELECT ON TABLES TO %s WITH GRANT OPTION;\n\n"
-                                     "then retry workspace provisioning.")
-                                current_user_name schema-name (or owner "<unknown>")
-                                schema-name current_user_name
-                                schema-name current_user_name
-                                schema-name current_user_name)
-                        {:status-code  412
-                         :schema       schema-name
-                         :owner        owner
-                         :admin-user   current_user_name}))))))
+  (when (schema-missing-usage-grant-option? conn schema-name)
+    (raise-missing-usage-grant-option! schema-name)))
+
+(defn tables-missing-grant-option
+  "Return objects in `schema-name` for which the current PostgreSQL user does
+   *not* hold `SELECT WITH GRANT OPTION`. Probes tables, partitioned tables,
+   views, materialized views, and foreign tables — the same `relkind`s touched
+   by `GRANT SELECT ON ALL TABLES IN SCHEMA`. `GRANT` silently no-ops on objects
+   the connection user can't re-grant, so we check up front to fail fast."
+  [conn schema-name]
+  (jdbc/query
+   conn
+   [(str "SELECT n.nspname AS schema, c.relname AS object "
+         "FROM pg_class c "
+         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ? "
+         "  AND c.relkind IN ('r','p','v','m','f') "
+         "  AND NOT has_table_privilege(current_user, c.oid, 'SELECT WITH GRANT OPTION') "
+         "ORDER BY c.relname")
+    schema-name]))
+
+(defn raise-missing-grant-option!
+  "Throw the standard ex-info for the SELECT-WITH-GRANT-OPTION pre-condition,
+   naming the objects the current user cannot re-grant SELECT on."
+  [schema-name objects]
+  (let [qualified (map #(format "\"%s\".\"%s\"" (:schema %) (:object %)) objects)]
+    (throw (ex-info (format (str "User lacks SELECT WITH GRANT OPTION on %d object(s) in schema "
+                                 "\"%s\": %s. Workspace provisioning cannot grant SELECT to the "
+                                 "workspace user on these objects. Have the object owner run:\n\n"
+                                 "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
+                                 "then retry workspace provisioning.")
+                            (count objects) schema-name (str/join ", " qualified) schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :objects     (vec qualified)}))))
+
+(defn assert-has-grant-option!
+  "Throws when the current PostgreSQL user lacks `SELECT WITH GRANT OPTION` on
+   any table/view in `schema-name`. Called from `grant-workspace-read-access!`
+   per input schema alongside [[assert-no-public-create-grant!]] — without the
+   grant option, our `GRANT SELECT ON ALL TABLES IN SCHEMA` silently skips the
+   objects and the workspace user can't read them."
+  [conn schema-name]
+  (when-let [missing (seq (tables-missing-grant-option conn schema-name))]
+    (raise-missing-grant-option! schema-name missing)))
+
+(defn unmemberable-owners-in-schema
+  "Return distinct roles owning objects in `schema-name` that the current
+   PostgreSQL user is *not* a member of. `ALTER DEFAULT PRIVILEGES` (without
+   `FOR ROLE`) only affects future objects created by the connection user, so
+   tables created by any of these owner roles won't receive the workspace
+   user's default SELECT — even if the statement runs without error.
+
+   PostgreSQL-only: the query relies on `pg_has_role`'s implicit overload
+   resolution (`name, oid, text`), which Redshift's planner rejects."
+  [conn schema-name]
+  (jdbc/query
+   conn
+   [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner "
+         "FROM pg_class c "
+         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ? "
+         "  AND c.relkind IN ('r','p','v','m','f') "
+         "  AND NOT pg_has_role(current_user, c.relowner, 'MEMBER') "
+         "ORDER BY owner")
+    schema-name]))
+
+(defn raise-unmemberable-default-priv-owners!
+  "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
+   naming the owner roles we cannot target with `FOR ROLE`."
+  [schema-name owners]
+  (let [owner-names (map :owner owners)]
+    (throw (ex-info (format (str "Current user is not a member of %d role(s) that own objects in "
+                                 "schema \"%s\": %s. `ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\"` "
+                                 "cannot cover future objects created by these roles, so the "
+                                 "workspace user would lose access to new tables. Grant role "
+                                 "membership to the current user (e.g. `GRANT \"<owner>\" TO "
+                                 "CURRENT_USER`), then retry workspace provisioning.")
+                            (count owners) schema-name (str/join ", " owner-names) schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :owners      (vec owner-names)}))))
+
+(defn assert-can-alter-default-privileges!
+  "Throws when objects in `schema-name` are owned by roles the current user
+   isn't a member of, since our `ALTER DEFAULT PRIVILEGES IN SCHEMA …` (without
+   `FOR ROLE`) can't extend the workspace user's default SELECT to future
+   objects created by those roles."
+  [conn schema-name]
+  (when-let [missing (seq (unmemberable-owners-in-schema conn schema-name))]
+    (raise-unmemberable-default-priv-owners! schema-name missing)))
 
 ;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
 ;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
@@ -1567,7 +1634,10 @@
                        ;; grant role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
             (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     {:schema           schema-name
      :database_details read-user}))
 
@@ -1600,28 +1670,21 @@
                  (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
             source-schemas)))
 
-(defmethod driver/check-can-grant-workspace-access! :postgres
-  [_driver database schemas]
-  ;; Probe each input schema: admin role must hold USAGE WITH GRANT OPTION (or own
-  ;; the schema). Otherwise the GRANT batch in [[grant-workspace-read-access!]]
-  ;; would fail with a generic JDBC `permission denied for schema X`. See
-  ;; [[assert-can-grant-usage!]] for the full remediation message.
-  (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    (doseq [s (set schemas)]
-      (assert-can-grant-usage! check-conn s))))
-
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
-        ;; Isolation pre-flight: input schema must not grant CREATE to PUBLIC,
-        ;; else the workspace user inherits CREATE transitively (see comment
-        ;; block above [[init-workspace-isolation! :postgres]]). Stays inline
-        ;; (rather than under [[check-can-grant-workspace-access!]]) because
-        ;; it's an isolation concern, not a grantability concern.
+        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
+        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
+        ;; isolation hole this catches. We probe per-schema so only the schemas
+        ;; actually used as inputs need to be locked down — schemas the workspace
+        ;; never touches can keep their default ACLs.
         _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
-                           (assert-no-public-create-grant! check-conn s)))
+                           (assert-no-public-create-grant!       check-conn s)
+                           (assert-has-usage-grant-option!       check-conn s)
+                           (assert-has-grant-option!             check-conn s)
+                           (assert-can-alter-default-privileges! check-conn s)))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

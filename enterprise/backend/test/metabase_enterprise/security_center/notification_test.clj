@@ -274,7 +274,6 @@
                 (is (= 3 (count recipients)))
                 (is (= {:type :notification-recipient/raw-value :details {:value "boss@example.com"}}
                        (last recipients))))))))))
-
   (testing "no admin email appended when admin-email setting is nil"
     (let [sent   (atom nil)
           recips [(admin-group-recipient)

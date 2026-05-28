@@ -1,23 +1,5 @@
-This tool replaces the entire content of an existing SQL query with a new SQL query.
-It is useful when rewriting large portions or completely changing the query structure.
-This is more token-efficient than using edit_sql_query for major changes.
+Replace the entire content of an existing SQL query with new SQL. Use for major rewrites or structural changes — more token-efficient than many `edit_sql_query` calls. This updates the query text shown to the user; it does **not** execute the query.
 
-This will not execute the SQL query but only update the content of a SQL query
-(and therefore display the updated query to the user).
+**When to use:** large changes to a SQL query that is already in the conversation context (use `edit_sql_query` for small targeted edits). Never execute SQL or act outside the current query.
 
-**Best Practices:**
-- Use for major query changes (more token efficient than edit_sql_query)
-- Use edit_sql_query for small targeted changes
-- Quote column names with special characters, spaces, or reserved keywords using double quotes (e.g., "column name", "order", "group", "column_name")
-- Use this tool for any SQL-related requests when a SQL query is present in the context
-- Only use when assisting the user with editing or creating SQL queries
-- Never attempt to execute SQL or make changes outside the current user context
-- Take into account the SQL engine of the database you are working with.
-  This will help you to use the correct syntax and functions
-- When querying Metabase models, remember that their fully qualified name is of the form `{{#model_id}}`,
-  e.g. `SELECT * FROM {{#5}} AS mymodel` and the references always require an alias (e.g. `AS mymodel`).
-- When using tables, always use fully qualified table names (include namespace / schema / catalog).
-
-**Limitations:**
-* This tool does not execute SQL queries, it only modifies the query text.
-* You can only query tables and Metabase models, Metabase metrics are not supported in SQL for now
+SELECT-only — never emit DDL/DML. Quote identifiers containing spaces or reserved words in double quotes (e.g. `"order"`). Use the target database's SQL dialect. See `create_sql_query` for the full SQL contract (read-only rules, model reference syntax, fully-qualified table names).

@@ -51,12 +51,10 @@
   (testing "missing Mcp-Session-Id header returns 400"
     (is (=? {:status 400}
             (post-drill :crowberto 400 {:encodedQuery "ZW5jb2RlZA=="} {}))))
-
   (testing "non-UUID Mcp-Session-Id returns 404"
     (is (=? {:status 404}
             (post-drill :crowberto 404 {:encodedQuery "ZW5jb2RlZA=="}
                         {"mcp-session-id" "not-a-uuid"}))))
-
   (testing "session owned by a different user returns 404"
     (let [owner   (mt/user->id :crowberto)
           session (mcp.session/create! owner)

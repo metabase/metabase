@@ -20,6 +20,7 @@ export function createMockWorkspaceInstance(
   return {
     name: "Test workspace",
     databases: {},
+    can_write: false,
     ...opts,
   };
 }

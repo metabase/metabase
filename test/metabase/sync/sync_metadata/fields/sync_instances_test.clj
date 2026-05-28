@@ -121,7 +121,6 @@
                                                                                    :table_id      transactions-table-id
                                                                                    :parent_id     details-field-id
                                                                                    :active        true)))]
-
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
