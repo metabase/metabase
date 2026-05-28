@@ -1,6 +1,6 @@
 import { memoize } from "underscore";
 
-import { isTypeFK, isTypePK } from "metabase-lib/v1/types/utils/isa";
+import * as Lib from "metabase-lib";
 import type {
   ErdEdge,
   ErdField,
@@ -37,10 +37,10 @@ export function getNodeHeight(fieldCount: number): number {
 // Sort fields so PKs come first, then FKs, then the rest
 function sortFields(fields: ErdField[]): ErdField[] {
   return [...fields].sort((a, b) => {
-    const aPK = isTypePK(a.semantic_type);
-    const bPK = isTypePK(b.semantic_type);
-    const aFK = isTypeFK(a.semantic_type);
-    const bFK = isTypeFK(b.semantic_type);
+    const aPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(a));
+    const bPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(b));
+    const aFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(a));
+    const bFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(b));
 
     if (aPK && !bPK) {
       return -1;
