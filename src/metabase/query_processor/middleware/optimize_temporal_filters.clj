@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.optimize-temporal-filters
   "Middleware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
-  `optimize-temporal-filters` for more details."
+  `optimize-temporal-clauses` for more details."
   (:refer-clojure :exclude [get-in])
   (:require
    [better-cond.core :as b]

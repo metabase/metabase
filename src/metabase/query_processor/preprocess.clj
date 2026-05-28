@@ -27,7 +27,7 @@
    [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
@@ -101,7 +101,7 @@
    #'qp.wrap-value-literals/wrap-value-literals
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'optimize-temporal-filters/optimize-temporal-clauses
+   #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'qp.middleware.enterprise/apply-workspace-remapping

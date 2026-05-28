@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.optimize-temporal-filters-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.optimize-temporal-filters-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -12,7 +12,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
-   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
 
@@ -24,7 +24,7 @@
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
     (or (-> clause
             lib/->mbql5
-            (->> (#'optimize-temporal-filters/optimize-filter query [:stages 0]))
+            (->> (#'optimize-temporal-clauses/optimize-clause query [:stages 0]))
             lib/->legacy-MBQL)
         clause)))
 
@@ -35,7 +35,7 @@
   ([metadata-provider query]
    (let [query (lib/query metadata-provider query)]
      (-> query
-         optimize-temporal-filters/optimize-temporal-filters
+         optimize-temporal-clauses/optimize-temporal-clauses
          lib/->legacy-MBQL))))
 
 (defn- optimize-filters
@@ -122,7 +122,7 @@
 (defn- assoc-field-options [legacy-ref & kvs]
   (apply update (vec legacy-ref) 2 assoc kvs))
 
-(deftest ^:parallel optimize-temporal-filters-test
+(deftest ^:parallel optimize-temporal-clauses-test
   (doseq [field-or-expr [[:field (meta/id :orders :created-at) {}]
                          [:expression "date" {}]]
           {:keys [unit filter-value lower upper]} test-units-and-values]
@@ -246,10 +246,10 @@
           (mt/with-report-timezone-id! timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
-                     (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))
+                     (#'optimize-temporal-clauses/temporal-literal-lower-bound :day t))
                   (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
               (is (= upper
-                     (#'optimize-temporal-filters/temporal-literal-upper-bound :day t))
+                     (#'optimize-temporal-clauses/temporal-literal-upper-bound :day t))
                   (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
             (testing "optimize-with-datetime"
               (let [expected [:and
@@ -519,7 +519,7 @@
                                   [:interval 10 :minute]]
                                  [:relative-datetime 1 :minute]]]}}
               (-> query
-                  optimize-temporal-filters/optimize-temporal-filters
+                  optimize-temporal-clauses/optimize-temporal-clauses
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel optimize-filter-with-nested-compatible-field-3
@@ -539,7 +539,7 @@
                                 [:relative-datetime -1 :week]
                                 [:relative-datetime 0 :week]]}}
               (-> query
-                  optimize-temporal-filters/optimize-temporal-filters
+                  optimize-temporal-clauses/optimize-temporal-clauses
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel optimize-date-equals-date-filters-test
