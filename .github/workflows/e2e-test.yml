@@ -44,9 +44,6 @@ env:
   # Shared secret sent as the `x-internal-secret` header to authenticate.
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}
-  # TODO(DEV-1999): dry run — log the payload instead of POSTing while we
-  # validate env resolution + payload shape. Remove to start sending for real.
-  CI_CONDUCTOR_DRY_RUN: "true"
 
 jobs:
   e2e-tests:
