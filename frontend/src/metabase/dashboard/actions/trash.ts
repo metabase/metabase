@@ -2,10 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 

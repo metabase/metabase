@@ -2,12 +2,12 @@ import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
 import { cardApi, snippetApi } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,

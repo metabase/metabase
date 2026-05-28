@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { datasetApi } from "metabase/api";
 import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { useLazyListLogsQuery } from "metabase/api/logger";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 

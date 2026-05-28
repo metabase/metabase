@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { updateMetadata } from "metabase/redux/metadata-typed";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";

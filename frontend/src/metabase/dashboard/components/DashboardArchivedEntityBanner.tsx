@@ -1,7 +1,7 @@
 import { Api, dashboardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 

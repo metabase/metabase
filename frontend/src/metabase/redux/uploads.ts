@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import { UploadMode } from "metabase/redux/store/upload";

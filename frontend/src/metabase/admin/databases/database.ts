@@ -2,7 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
 import { databaseApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
 import { updateMetadata } from "metabase/redux/metadata-typed";

@@ -1,5 +1,5 @@
 import { fieldApi, tableApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { updateMetadata } from "metabase/redux/metadata-typed";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { TableSchema } from "metabase/schema";

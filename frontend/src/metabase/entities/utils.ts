@@ -1054,31 +1054,6 @@ export const undo = (
   verb: string,
 ) => merge({ notify: { subject, verb, undo: true } }, opts || {});
 
-/**
- * Structural minimum of an RTK Query endpoint descriptor. Concrete endpoints from
- * RTK Query carry many extra properties (hooks, selectors, etc.) and concrete
- * argument/result types — we only rely on `initiate` here.
- */
-
-type RTKEndpoint = { initiate: (request: any, options: any) => any };
-
-export async function entityCompatibleQuery(
-  entityQuery: EntityQuery,
-  dispatch: AnyDispatch,
-  endpoint: RTKEndpoint,
-
-  { forceRefetch = true } = {},
-): Promise<any> {
-  const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
-  const action = dispatch(endpoint.initiate(request, { forceRefetch }));
-
-  try {
-    return await action.unwrap();
-  } finally {
-    action.unsubscribe?.();
-  }
-}
-
 type Thunk<R = unknown> = (
   dispatch: Dispatch,
   getState: () => State,

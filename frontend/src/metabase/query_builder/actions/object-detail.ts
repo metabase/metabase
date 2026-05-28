@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { createThunkAction } from "metabase/redux";
 import { RESET_ROW_ZOOM } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";

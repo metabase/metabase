@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 
 import { cardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { createThunkAction } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Dispatch, GetState } from "metabase/redux/store";

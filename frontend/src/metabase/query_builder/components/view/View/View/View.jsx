@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { deletePermanently } from "metabase/archive/actions";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -16,7 +17,6 @@ import { Toaster } from "metabase/common/components/Toaster";
 import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,

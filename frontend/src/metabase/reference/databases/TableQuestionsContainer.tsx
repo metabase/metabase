@@ -3,9 +3,9 @@ import type { Location } from "history";
 import { Component } from "react";
 
 import { cardApi } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";

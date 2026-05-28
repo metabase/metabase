@@ -7,11 +7,11 @@ import {
   revisionApi,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";

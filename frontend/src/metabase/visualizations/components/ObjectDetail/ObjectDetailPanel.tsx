@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { datasetApi, skipToken, useListActionsQuery } from "metabase/api";
+import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
@@ -254,9 +254,9 @@ export function ObjectDetailPanel({
 
   const areImplicitActionsEnabled = Boolean(
     question &&
-    question.canWrite() &&
-    question.type() === "model" &&
-    question.supportsImplicitActions(),
+      question.canWrite() &&
+      question.type() === "model" &&
+      question.supportsImplicitActions(),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
