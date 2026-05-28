@@ -2357,3 +2357,113 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defmacro ^:private with-drop-schema!
+  "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
+  [admin-spec schema & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" ~schema)]))))
+
+(defmacro ^:private with-drop-role!
+  "Run `body`, ensuring `role` is dropped on `admin-spec` afterward."
+  [admin-spec role & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP ROLE IF EXISTS \"%s\"" ~role)]))))
+
+(deftest workspace-precondition-usage-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_usage_role"
+              schema     "ws_pre_usage_schema"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (jdbc/execute! admin-spec
+                             [(str "CREATE ROLE \"" role "\" WITH LOGIN PASSWORD '" password "'; "
+                                   "CREATE SCHEMA \"" schema "\"; "
+                                   ;; USAGE without WITH GRANT OPTION
+                                   "GRANT USAGE ON SCHEMA \"" schema "\" TO \"" role "\";")])
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection
+               [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                (testing "fails when grant option is missing"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"USAGE WITH GRANT OPTION"
+                       (postgres/assert-has-usage-grant-option! user-spec schema))))
+                (testing "passes once WITH GRANT OPTION is granted"
+                  (jdbc/execute! admin-spec
+                                 [(str "GRANT USAGE ON SCHEMA \"" schema "\" TO \"" role "\" WITH GRANT OPTION")])
+                  (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema))))))))))))
+
+(deftest workspace-precondition-table-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_table_role"
+              schema     "ws_pre_table_schema"
+              table      "ws_pre_table_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (jdbc/execute! admin-spec
+                             [(str "CREATE ROLE \"" role "\" WITH LOGIN PASSWORD '" password "'; "
+                                   "CREATE SCHEMA \"" schema "\"; "
+                                   "CREATE TABLE \"" schema "\".\"" table "\" (id INT); "
+                                   ;; Pass the schema-USAGE precondition so we test the table check in isolation.
+                                   "GRANT USAGE ON SCHEMA \"" schema "\" TO \"" role "\" WITH GRANT OPTION; "
+                                   ;; SELECT *without* WITH GRANT OPTION
+                                   "GRANT SELECT ON \"" schema "\".\"" table "\" TO \"" role "\";")])
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection
+               [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                (testing "fails and names the offending table"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"SELECT WITH GRANT OPTION"
+                       (postgres/assert-has-grant-option! user-spec schema))))
+                (testing "passes once SELECT WITH GRANT OPTION is granted"
+                  (jdbc/execute! admin-spec
+                                 [(str "GRANT SELECT ON \"" schema "\".\"" table "\" TO \"" role "\" WITH GRANT OPTION")])
+                  (is (nil? (postgres/assert-has-grant-option! user-spec schema))))))))))))
+
+(deftest workspace-precondition-alter-default-privileges-test
+  (mt/test-driver :postgres
+    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_adp_role"
+              owner      "ws_pre_adp_other_owner"
+              schema     "ws_pre_adp_schema"
+              table      "ws_pre_adp_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-role! admin-spec owner
+              (with-drop-schema! admin-spec schema
+                (jdbc/execute! admin-spec
+                               [(str "CREATE ROLE \"" role "\" WITH LOGIN PASSWORD '" password "'; "
+                                     "CREATE ROLE \"" owner "\"; "
+                                     "CREATE SCHEMA \"" schema "\"; "
+                                     "GRANT USAGE ON SCHEMA \"" schema "\" TO \"" role "\" WITH GRANT OPTION; "
+                                     "CREATE TABLE \"" schema "\".\"" table "\" (id INT); "
+                                     "ALTER TABLE \"" schema "\".\"" table "\" OWNER TO \"" owner "\";")])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails and names the unmemberable owner"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"ALTER DEFAULT PRIVILEGES"
+                         (postgres/assert-can-alter-default-privileges! user-spec schema))))
+                  (testing "passes once the current_user becomes a member of the owner role"
+                    (jdbc/execute! admin-spec
+                                   [(str "GRANT \"" owner "\" TO \"" role "\"")])
+                    (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema)))))))))))))

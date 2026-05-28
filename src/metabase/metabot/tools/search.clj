@@ -355,6 +355,27 @@
 (def ^:private default-search-limit 10)
 (def ^:private max-search-limit 50)
 
+;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
+;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
+;; This is where per-parameter guidance lives; cross-tool search *strategy* (navigate
+;; first, drill instead of re-searching, one search per concept) lives in the system
+;; prompt's discovery section, not here.
+(def ^:private semantic-query-desc
+  (str "A natural-language description of what you're looking for, matched by vector similarity. "
+       "Prefer one focused query that captures the user's intent; add another only to cover a "
+       "genuinely different facet of the request, not a reworded synonym."))
+
+(def ^:private keyword-query-desc
+  (str "A distinctive keyword matched against names and descriptions via full-text search. "
+       "Provide a few of the most salient terms from the request; entities matching more of them rank higher."))
+
+(def ^:private entity-types-desc
+  "Restrict results to these entity types. Omit to search across all types this tool supports.")
+
+(def ^:private limit-desc
+  (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
+       "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
@@ -381,70 +402,67 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
-   [:keyword_queries {:optional true} [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
+   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "question"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :tool-type :discovery
            :scope     scope/agent-search}
   search-tool
-  "Search for tables, models, metrics, dashboards, and saved questions."
+  "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
   (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
-   [:keyword_queries {:optional true} [:sequential :string]]
-   [:database_id :int]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
+   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:database_id [:int {:description "ID of the database to search — use the database currently selected in the SQL editor."}]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :tool-type :discovery
-           :prompt    "sql_search.md"
            :scope     scope/agent-search}
   sql-search-tool
-  "Search for SQL-queryable data sources (tables and models) within a database."
+  "Find SQL-queryable data sources (tables and models) within a specific database by topic."
   [{:keys [database_id] :as args} :- sql-search-schema]
   (do-search "SQL search" (sorted-set "model" "table") {:database-id database_id} args))
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
-   [:keyword_queries {:optional true} [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
+   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model" "metric" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "question"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :tool-type :discovery
-           :prompt    "nlq_search.md"
            :scope     scope/agent-search}
   nlq-search-tool
-  "Search for NLQ-queryable data sources (tables, models, metrics, questions)."
+  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
   [args :- nlq-search-schema]
   (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
-   [:keyword_queries {:optional true} [:sequential :string]]
-   [:search_native_query {:optional true} [:maybe :boolean]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
+   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum "table" "model" "transform"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "transform"]]]]
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :tool-type :discovery
-           :prompt    "transform_search"
            :scope     scope/agent-search}
   transform-search-tool
-  "Search for transforms, tables, and models."
+  "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
   (do-search "transform search" (sorted-set "model" "table" "transform")
              {:search-native-query search_native_query} args))

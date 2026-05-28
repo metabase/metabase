@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sample-data.core :as sample-data]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -50,9 +51,14 @@
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
+   ;; Force :let-user-control-scheduling false. The YAML only carries :details — not the
+   ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
+   ;; asserts those columns are present whenever user-control scheduling is on. Without
+   ;; this override the round-trip blows up for any DB whose source details opted in.
    :details (merge (:details db)
                    (:database_details wsd)
-                   (schema-filter-entries db wsd))})
+                   (schema-filter-entries db wsd)
+                   {:let-user-control-scheduling false})})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
@@ -79,6 +85,37 @@
   [(:name db) {:input_schemas (vec (:input_schemas wsd))
                :output        (expand-output db (:output_namespace wsd))}])
 
+(defn- stub-database-entry [db]
+  {:name    (:name db)
+   :engine  (:engine db)
+   :details {}
+   :is_stub true})
+
+(defn- stub-databases
+  "Databases that exist in the instance but are not provisioned for this workspace.
+   Excludes the sample DB (emitted separately by `sample-database-entries`), the
+   audit DB, and routing-target databases (destinations with `:router_database_id` set)."
+  [workspace-db-ids]
+  (t2/select :model/Database
+             {:where [:and
+                      [:= :is_sample false]
+                      [:= :is_audit  false]
+                      [:= :router_database_id nil]
+                      (if (seq workspace-db-ids)
+                        [:not-in :id workspace-db-ids]
+                        true)]}))
+
+(defn- sample-database-entries
+  "If the instance has a Sample Database, emit a single placeholder entry the
+   import side will use to recreate it. Always uses the canonical name/engine —
+   the entry is a directive (\"there should be a sample DB here\"), not a snapshot."
+  []
+  (when (t2/exists? :model/Database :is_sample true)
+    [{:name      sample-data/sample-database-name
+      :engine    "h2"
+      :details   {}
+      :is_sample true}]))
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -102,15 +139,21 @@
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
                          :workspace_id workspace-id})))
-      (let [dbs-by-id (if-let [ids (seq (map :database_id wsds))]
-                        (into {} (map (juxt :id identity))
-                              (t2/select :model/Database :id [:in ids]))
-                        {})
-            pairs     (for [wsd wsds
-                            :let [db (get dbs-by-id (:database_id wsd))]]
-                        [wsd db])]
+      (let [workspace-db-ids (mapv :database_id wsds)
+            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                               (into {} (map (juxt :id identity))
+                                     (t2/select :model/Database :id [:in ids]))
+                               {})
+            pairs            (for [wsd wsds
+                                   :let [db (get dbs-by-id (:database_id wsd))]]
+                               [wsd db])
+            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
+            sample-entries   (sample-database-entries)]
         {:version 1
-         :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+         :config  {:databases (-> ws-entries
+                                  (into stub-entries)
+                                  (into sample-entries))
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 

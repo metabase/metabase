@@ -56,7 +56,7 @@ describe("DeleteSection", () => {
 
     await waitFor(() =>
       expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "workspaces_instance_teardown",
+        event: "workspaces_instance_leave",
       }),
     );
   });

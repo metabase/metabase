@@ -13,7 +13,6 @@ export interface MetricUrls {
   overview: (cardId: CardId) => string;
   query: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
-  caching: (cardId: CardId) => string;
   history: (cardId: CardId) => string;
   database?: (databaseId: DatabaseId) => string;
 }
