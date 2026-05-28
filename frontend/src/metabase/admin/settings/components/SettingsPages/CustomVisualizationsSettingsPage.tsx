@@ -133,7 +133,7 @@ function CustomVizEmptyState() {
                 </Text>
               )}
             </Stack>
-            <Stack gap="xs" align="flex-start">
+            <Stack align="flex-start">
               <Button
                 variant="filled"
                 onClick={handleEnable}
