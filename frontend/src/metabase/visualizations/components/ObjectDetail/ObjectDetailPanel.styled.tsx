@@ -10,7 +10,7 @@ export const ObjectDetailContainer = styled.div<ObjectDetailContainerProps>`
   height: 100%;
 `;
 
-export const ObjectDetailWrapperDiv = styled.div`
+export const ObjectDetailLayout = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;

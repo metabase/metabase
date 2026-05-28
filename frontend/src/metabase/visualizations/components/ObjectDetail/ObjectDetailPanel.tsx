@@ -28,8 +28,8 @@ import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
   ErrorWrapper,
   ObjectDetailContainer,
-  ObjectDetailWrapperDiv,
-} from "./ObjectDetailView.styled";
+  ObjectDetailLayout,
+} from "./ObjectDetailPanel.styled";
 import type { ObjectDetailProps, ObjectId } from "./types";
 import {
   getActionItems,
@@ -66,7 +66,7 @@ function filterByPk(
   return Lib.filter(query, stageIndex, filterClause);
 }
 
-export function ObjectDetailView({
+export function ObjectDetailPanel({
   data: passedData,
   question,
   table,
@@ -109,7 +109,7 @@ export function ObjectDetailView({
   const hasFks = !_.isEmpty(tableForeignKeys);
   const hasRelationships = showRelations && hasFks && hasPk;
 
-  const isObjectDetailModal = question?.display() !== "object";
+  const isDrillThroughDetail = question?.display() !== "object";
 
   const handleExecuteModalClose = () => {
     setActionId(undefined);
@@ -141,7 +141,7 @@ export function ObjectDetailView({
 
   const loadFKReferences = useCallback(() => {
     if (zoomedRowID) {
-      loadObjectDetailFKReferences({ objectId: zoomedRowID });
+      loadObjectDetailFKReferences?.({ objectId: zoomedRowID });
     }
   }, [zoomedRowID, loadObjectDetailFKReferences]);
 
@@ -154,12 +154,12 @@ export function ObjectDetailView({
     }
 
     if (
-      isObjectDetailModal &&
+      isDrillThroughDetail &&
       table &&
       _.isEmpty(table.fks) &&
       !isVirtualCardId(table.id)
     ) {
-      fetchTableFks(table.id as ConcreteTableId);
+      fetchTableFks?.(table.id as ConcreteTableId);
     }
   });
 
@@ -169,15 +169,16 @@ export function ObjectDetailView({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const capturedKeys: Record<string, () => void> = {
+      const capturedKeys: Record<string, (() => void) | undefined> = {
         ArrowUp: viewPreviousObjectDetail,
         ArrowDown: viewNextObjectDetail,
         Escape: closeObjectDetail,
       };
 
-      if (capturedKeys[event.key] && !isModalOpen) {
+      const handler = capturedKeys[event.key];
+      if (handler && !isModalOpen) {
         event.preventDefault();
-        capturedKeys[event.key]();
+        handler();
       }
     };
 
@@ -297,7 +298,7 @@ export function ObjectDetailView({
 
   const handleDeleteSuccess = useCallback(() => {
     onActionSuccess?.();
-    closeObjectDetail();
+    closeObjectDetail?.();
   }, [closeObjectDetail, onActionSuccess]);
 
   if (!data) {
@@ -330,7 +331,7 @@ export function ObjectDetailView({
             <NotFound message={t`We couldn't find that record`} />
           </ErrorWrapper>
         ) : (
-          <ObjectDetailWrapperDiv
+          <ObjectDetailLayout
             className="ObjectDetail"
             data-testid="object-detail"
           >
@@ -358,7 +359,7 @@ export function ObjectDetailView({
               visualizationIsClickable={visualizationIsClickable}
               isDashboard={isDashboard}
             />
-          </ObjectDetailWrapperDiv>
+          </ObjectDetailLayout>
         )}
       </ObjectDetailContainer>
 

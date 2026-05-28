@@ -30,17 +30,17 @@ import {
 } from "../selectors";
 import { getIsObjectDetail } from "../selectors/mode";
 
-export function ObjectDetailModal() {
+export function ObjectDetailSidesheet() {
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   if (!isObjectDetail) {
     return null;
   }
 
-  return <ObjectDetailModalInner />;
+  return <ObjectDetailSidesheetInner />;
 }
 
-function ObjectDetailModalInner() {
+function ObjectDetailSidesheetInner() {
   const dispatch = useDispatch();
   const rawSeries = useSelector(getRawSeries);
   const question = useSelector(getQuestion);

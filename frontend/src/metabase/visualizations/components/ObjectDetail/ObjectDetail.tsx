@@ -1,49 +1,61 @@
-import { noop } from "underscore";
+import { useEffect, useState } from "react";
 
-import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
+import Question from "metabase-lib/v1/Question";
+
+import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
+
+import S from "./ObjectDetail.module.css";
+import { ObjectDetailPanel } from "./ObjectDetailPanel";
 import type { ObjectDetailProps } from "./types";
-import { getIdValue, getSingleResultsRow } from "./utils";
 
-type ObjectDetailControlKey =
-  | "question"
-  | "table"
-  | "tableForeignKeys"
-  | "tableForeignKeyReferences"
-  | "zoomedRow"
-  | "zoomedRowID"
-  | "canZoom"
-  | "canZoomPreviousRow"
-  | "canZoomNextRow"
-  | "fetchTableFks"
-  | "loadObjectDetailFKReferences"
-  | "followForeignKey"
-  | "viewPreviousObjectDetail"
-  | "viewNextObjectDetail"
-  | "closeObjectDetail"
-  | "onActionSuccess";
+export function ObjectDetail({
+  question,
+  isDataApp,
+  data,
+  closeObjectDetail,
+  card,
+  dashcard,
+  onActionSuccess,
+  ...rest
+}: ObjectDetailProps) {
+  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
-type OwnProps = Omit<ObjectDetailProps, ObjectDetailControlKey>;
+  useEffect(() => {
+    if (data.rows.length <= currentObjectIndex) {
+      setCurrentObjectIndex(0);
+    }
+  }, [data.rows, currentObjectIndex]);
 
-export function ObjectDetail(props: OwnProps) {
-  const { data } = props;
-  const zoomedRowID = getIdValue({ data });
-  const zoomedRow = getSingleResultsRow(data);
+  const hasPagination = data?.rows?.length > 1;
+  const resolvedQuestion =
+    question ??
+    (card && rest.metadata ? new Question(card, rest.metadata) : undefined);
 
   return (
-    <ObjectDetailWrapper
-      {...props}
-      zoomedRow={zoomedRow}
-      zoomedRowID={zoomedRowID ?? undefined}
-      canZoom={false}
-      canZoomPreviousRow={false}
-      canZoomNextRow={false}
-      fetchTableFks={noop}
-      loadObjectDetailFKReferences={noop}
-      followForeignKey={noop}
-      viewPreviousObjectDetail={noop}
-      viewNextObjectDetail={noop}
-      closeObjectDetail={noop}
-      onActionSuccess={noop}
-    />
+    <>
+      <ObjectDetailPanel
+        {...rest}
+        zoomedRow={data.rows[currentObjectIndex]}
+        data={data}
+        question={resolvedQuestion}
+        showHeader={rest.settings["detail.showHeader"]}
+        showControls={false}
+        showRelations={false}
+        closeObjectDetail={closeObjectDetail}
+        isDataApp={isDataApp}
+      />
+      {hasPagination && (
+        <PaginationFooter
+          className={S.pagination}
+          data-testid="pagination-footer"
+          start={currentObjectIndex}
+          end={currentObjectIndex}
+          total={data.rows.length}
+          onNextPage={() => setCurrentObjectIndex((prev) => prev + 1)}
+          onPreviousPage={() => setCurrentObjectIndex((prev) => prev - 1)}
+          singleItem
+        />
+      )}
+    </>
   );
 }
