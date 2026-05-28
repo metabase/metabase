@@ -1,6 +1,25 @@
+import { getTreemapColors } from "../model/colors";
 import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";
+
+const TWO_LEVEL_TREE: TreemapTree = [
+  {
+    rawName: "Europe",
+    displayName: "Europe",
+    value: 30,
+    rowIndices: [0, 1],
+    children: [
+      { rawName: "Sweden", displayName: "Sweden", value: 20, rowIndices: [0] },
+      {
+        rawName: "Germany",
+        displayName: "Germany",
+        value: 10,
+        rowIndices: [1],
+      },
+    ],
+  },
+];
 
 describe("getTreemapChartOption (1-level)", () => {
   it("produces a single treemap series", () => {
@@ -51,5 +70,50 @@ describe("getTreemapChartOption (1-level)", () => {
   it("returns an empty data array for an empty tree", () => {
     const option = getTreemapChartOption([]);
     expect(option.series.data).toEqual([]);
+  });
+});
+
+describe("getTreemapChartOption colors", () => {
+  it("colors each top-level node via getTreemapColors", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+    ];
+
+    const colors = getTreemapColors(tree);
+    const { series } = getTreemapChartOption(tree);
+
+    expect(series.data[0].itemStyle?.color).toBe(colors["A"]);
+    expect(series.data[1].itemStyle?.color).toBe(colors["B"]);
+  });
+
+  it("assigns distinct colors to distinct top-level nodes", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+      { rawName: "C", displayName: "C", value: 7, rowIndices: [2] },
+    ];
+
+    const { series } = getTreemapChartOption(tree);
+    const used = series.data.map((node) => node.itemStyle?.color);
+
+    expect(new Set(used).size).toBe(3);
+  });
+
+  it("does not set explicit colors on sub-grouping leaves so they inherit the parent hue", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+    const [root] = series.data;
+
+    expect(root.itemStyle?.color).toBeTruthy();
+    expect(root.children).toHaveLength(2);
+    root.children?.forEach((leaf) => {
+      expect(leaf.itemStyle?.color).toBeUndefined();
+    });
+  });
+
+  it("emits a colorSaturation offset on the leaf level so children render as lighter shades", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.levels?.[1]?.colorSaturation).toBeDefined();
   });
 });
