@@ -44,6 +44,14 @@
         (is (=? {:resource                "http://localhost:3000/api/mcp"
                  :authorization_servers   ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
+                response)))))
+  (testing "metadata URLs reflect the request Host header instead of site-url"
+    (mt/with-temporary-setting-values [site-url "https://public.example.com"]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           ".well-known/oauth-protected-resource/api/mcp"
+                                           {:request-options {:headers {"host" "internal.local:3000"}}})]
+        (is (=? {:resource              "https://internal.local:3000/api/mcp"
+                 :authorization_servers ["https://internal.local:3000"]}
                 response))))))
 
 ;;; ----------------------------------------- Dynamic Client Registration ----------------------------------------------

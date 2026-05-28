@@ -1035,7 +1035,15 @@
       (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
         (is (=? {:status  401
                  :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
-                response))))))
+                response)))))
+  (testing "WWW-Authenticate resource_metadata URL uses the request Host header, not site-url"
+    (mt/with-temporary-setting-values [site-url "https://public.example.com"]
+      (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize")
+                                                  {"host" "internal.local:3000"})]
+        (is (=? {:status 401} response))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
+                           "https://internal.local:3000/.well-known/oauth-protected-resource/api/mcp")
+            "resource_metadata should reflect the Host header, not site-url")))))
 
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"

@@ -327,8 +327,27 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+(defn- request-base-url
+  "Derive the base URL from the request's Host header, falling back to the
+   configured site-url. This ensures that the resource_metadata URL in
+   WWW-Authenticate points to the same origin the client used, which is
+   important when Metabase is reachable via multiple hostnames (e.g. an
+   in-cluster address vs. a public domain)."
+  [request]
+  (let [host (or (get-in request [:headers "x-forwarded-host"])
+                 (get-in request [:headers "host"]))]
+    (if host
+      ;; Preserve the request scheme when available; default to the scheme
+      ;; implied by the site-url setting, or fall back to "https".
+      (let [proto (or (get-in request [:headers "x-forwarded-proto"])
+                      (when-let [su (system/site-url)]
+                        (re-find #"^https?" su))
+                      "https")]
+        (str proto "://" host))
+      (system/site-url))))
+
+(defn- www-authenticate-discovery [request]
+  (str "Bearer realm=\"mcp\" resource_metadata=\"" (request-base-url request) "/.well-known/oauth-protected-resource/api/mcp\""))
 
 (def +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
@@ -380,5 +399,5 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery request)}))))))
    (constantly nil)))
