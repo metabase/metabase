@@ -16,14 +16,20 @@
 
 (use-fixtures :each
   (fn [thunk]
-    (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-      (let [lock-atom @#'ws/locked-by-config?*
-            prior     @lock-atom]
-        (try
-          (thunk)
-          (finally
-            (ws/clear-instance-workspace!)
-            (reset! lock-atom prior)))))))
+    ;; Several tests drive a `:workspace` section through `initialize!`, which
+    ;; requires the `:workspaces` feature; default it on here. Tests that assert
+    ;; the feature's *absence* override with their own `mt/with-premium-features`.
+    ;; Also save/restore the boot-lock atom so the boot-lock tests below can't
+    ;; leak a flipped lock into the rest of the suite.
+    (mt/with-premium-features #{:workspaces}
+      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
+        (let [lock-atom @#'ws/locked-by-config?*
+              prior     @lock-atom]
+          (try
+            (thunk)
+            (finally
+              (ws/clear-instance-workspace!)
+              (reset! lock-atom prior))))))))
 
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
@@ -156,6 +162,42 @@
                :config {:users [{:first_name "X" :last_name "Y"
                                  :email "x@example.com" :password "pw"}]}})))))))
 
+(deftest workspace-section-requires-workspaces-feature-test
+  (testing ":workspace section needs the :workspaces feature in addition to :config-text-file"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file}
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Workspaces is a paid feature"
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
+
+(deftest workspace-section-loads-with-workspaces-feature-test
+  (testing ":workspace section loads cleanly when both :config-text-file and :workspaces are present"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (mt/with-premium-features #{:config-text-file :workspaces}
+          (advanced-config.file/initialize!
+           {:version 1
+            :config {:workspace (workspace-section "ws-test-db")}})
+          (is (= "New workspace" (:name (ws/instance-workspace)))
+              "the workspace section should have been applied")
+          (is (= {:schema "mb__isolation_44490_1933"}
+                 (ws/db-workspace-namespace db-id))))))))
+
+(deftest workspaces-gate-is-scoped-to-workspace-section-test
+  (testing "without :workspaces, other non-:workspace sections still load (gate is :workspace-scoped)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file}
+        (advanced-config.file/initialize!
+         {:version 1
+          :config {:users [{:first_name "X" :last_name "Y"
+                            :email "x@example.com" :password "pw"}]}})
+        (is (nil? (ws/instance-workspace))
+            "no workspace section means no workspace state was set")))))
+
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
 ;;;
 ;;; Drivers with different cardinalities should round-trip through the wire format
@@ -273,7 +315,7 @@
 (deftest boot-initialize!-sets-the-lock-when-config-has-workspace-test
   (testing "boot-initialize!, given a parsed config.yml with a :workspace section, flips the lock"
     (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{:config-text-file}
+      (mt/with-premium-features #{:config-text-file :workspaces}
         (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
           (reset! (lock-atom) false)
           (with-redefs [advanced-config.file/config-from-disk

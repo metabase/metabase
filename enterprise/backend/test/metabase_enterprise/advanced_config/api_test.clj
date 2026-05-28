@@ -58,7 +58,7 @@
                                          :databases {(keyword db-name) {:input_schemas ["public"]
                                                                         :output        {:schema "ws_uploaded"}}}}}}]
       (try
-        (mt/with-premium-features #{:config-text-file}
+        (mt/with-premium-features #{:config-text-file :workspaces}
           (mt/with-temporary-setting-values [config-from-file-sync-databases false]
             (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
               (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
@@ -90,7 +90,7 @@
           prior     @lock-atom]
       (try
         (reset! lock-atom false)
-        (mt/with-premium-features #{:config-text-file}
+        (mt/with-premium-features #{:config-text-file :workspaces}
           (mt/with-temporary-setting-values [config-from-file-sync-databases false]
             (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
               (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
@@ -103,3 +103,16 @@
           (ws/clear-instance-workspace!)
           (when-let [db-id (t2/select-one-pk :model/Database :name db-name :engine "postgres")]
             (t2/delete! :model/Database db-id)))))))
+
+(deftest workspace-section-rejected-without-workspaces-feature-test
+  (testing "POST /api/ee/advanced-config returns 402 when :workspace section requires :workspaces"
+    (let [payload {:version 1
+                   :config  {:workspace {:name      "Rejected Workspace"
+                                         :databases {:some-db {:input_schemas ["public"]
+                                                               :output        {:schema "ws_rejected"}}}}}}]
+      (mt/with-premium-features #{:config-text-file}
+        (mt/assert-has-premium-feature-error
+         "Workspaces"
+         (mt/user-http-request :crowberto :post 402 "ee/advanced-config/"
+                               (first (multipart (yaml-bytes payload)))
+                               (second (multipart (yaml-bytes payload)))))))))
