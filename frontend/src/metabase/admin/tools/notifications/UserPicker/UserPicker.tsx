@@ -25,9 +25,16 @@ export const UserPicker = ({
 }: Props) => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+  const trimmedSearch = debouncedSearch.trim();
+
+  // Mantine writes the selected label back into the search input; map that
+  // case to an empty query so we show the full list instead of re-searching
+  // the BE for the literal selected name (which returns empty for names with
+  // spaces).
+  const query = value && trimmedSearch === value.label ? "" : trimmedSearch;
 
   const { data, isFetching } = useListUsersQuery({
-    query: debouncedSearch,
+    query,
     limit: 50,
   });
 
