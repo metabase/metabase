@@ -1,10 +1,12 @@
 (ns metabase-enterprise.advanced-config.file.workspace-test
+  "Tests that exercise loading the `instance-workspace` setting via the
+   advanced-config-file `:settings` section. The workspace value used to be its
+   own `:workspace` section with its own loader; both have been retired in favor
+   of going through the standard settings pipeline."
   (:require
    [clojure.java.io :as io]
-   [clojure.spec.alpha :as s]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,10 +19,11 @@
 (use-fixtures :each
   (fn [thunk]
     (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-      (try
-        (thunk)
-        (finally
-          (ws/clear-instance-workspace!))))))
+      (mt/with-premium-features #{:workspaces}
+        (try
+          (thunk)
+          (finally
+            (ws/clear-instance-workspace!)))))))
 
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
@@ -33,125 +36,87 @@
   []
   (load-fixture-by-driver :postgres))
 
-(defn- workspace-section
-  "Pull just the `:workspace` section out of the fixture, with the database name
-   rewritten to point at the supplied `db-name` (so tests can use whatever DB
-   `mt/with-temp` creates rather than depending on the fixture's literal name)."
+(defn- workspace-setting-value
+  "Pull just the `instance-workspace` setting value out of the fixture, with the
+   database name rewritten to point at the supplied `db-name`."
   [db-name]
-  (let [section (-> (load-fixture) :config :workspace)]
-    (-> section
-        (assoc :databases
-               (into {} (map (fn [[_db-name-kw wsd-config]]
-                               [(keyword db-name) wsd-config])
-                             (:databases section)))))))
+  (let [ws-value (-> (load-fixture) :config :settings :instance-workspace)]
+    (assoc ws-value :databases
+           (into {} (map (fn [[_db-name-kw wsd-config]]
+                           [(keyword db-name) wsd-config])
+                         (:databases ws-value))))))
 
 (deftest fixture-parses-test
   (testing "the checked-in fixture parses and has the expected top-level shape"
     (let [parsed (load-fixture)]
       (is (= 1 (:version parsed)))
       (is (map? (:config parsed)))
-      (is (= "New workspace" (get-in parsed [:config :workspace :name])))
-      (testing "workspace.databases is keyed by database name"
-        (let [dbs (get-in parsed [:config :workspace :databases])]
-          (is (= 1 (count dbs)))
-          (let [[_db-name wsd] (first dbs)]
-            (is (= ["public"] (:input_schemas wsd)))
-            (is (= {:schema "mb__isolation_44490_1933"} (:output wsd)))))))))
+      (let [ws-value (get-in parsed [:config :settings :instance-workspace])]
+        (is (= "New workspace" (:name ws-value)))
+        (testing "instance-workspace setting value is keyed by database name"
+          (let [dbs (:databases ws-value)]
+            (is (= 1 (count dbs)))
+            (let [[_db-name wsd] (first dbs)]
+              (is (= ["public"] (:input_schemas wsd)))
+              (is (= {:schema "mb__isolation_44490_1933"} (:output wsd))))))))))
 
-(deftest non-blank-string-spec-test
-  (testing "::non-blank-string rejects nil, non-strings, and whitespace-only strings,
-            and accepts any string with at least one non-whitespace character."
-    (let [spec :metabase-enterprise.advanced-config.file.workspace/non-blank-string]
-      (doseq [v ["" " " "  " "\t" "\n" "\t \n" nil 42 :foo]]
-        (is (not (s/valid? spec v))
-            (str "must reject " (pr-str v))))
-      (doseq [v ["a" "abc" " a" "a " " a " "non-blank with spaces"]]
-        (is (s/valid? spec v)
-            (str "must accept " (pr-str v)))))))
-
-(deftest apply-workspace-section-populates-atom-test
-  (testing "applying the :workspace section stores parsed config in the instance-workspace setting keyed by db-id"
+(deftest applying-settings-section-populates-setting-test
+  (testing "applying the :settings section stores the instance-workspace value in the setting (raw, name-keyed)"
     (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
-        (let [section (workspace-section "ws-test-db")
-              {:keys [workspace-name database-count]} (advanced-config.file.workspace/apply-workspace-section! section)]
-          (is (= "New workspace" workspace-name))
-          (is (= 1 database-count))
-          (testing "setting holds the parsed config"
-            (let [stored (ws/instance-workspace)]
-              (is (= "New workspace" (:name stored)))
-              (is (= ["public"]
-                     (get-in stored [:databases db-id :input_schemas])))
-              (is (= {:schema "mb__isolation_44490_1933"}
-                     (get-in stored [:databases db-id :output]))))))))))
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (advanced-config.file/initialize!
+         {:version 1
+          :config {:settings {:instance-workspace (workspace-setting-value "ws-test-db")}}})
+        (let [stored (ws/instance-workspace)]
+          (is (= "New workspace" (:name stored)))
+          (testing "raw setting is keyed by db NAME (matches YAML)"
+            (is (= ["public"]
+                   (get-in stored [:databases "ws-test-db" :input_schemas])))
+            (is (= {:schema "mb__isolation_44490_1933"}
+                   (get-in stored [:databases "ws-test-db" :output])))))))))
 
-(deftest re-apply-replaces-atom-test
-  (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
+(deftest re-apply-replaces-setting-test
+  (testing "re-applying replaces the prior setting value — config file is the truth"
     (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database _    {:name "ws-test-db" :engine :postgres}
-                     :model/Database _    {:name "ws-test-db-2" :engine :postgres}]
-        (let [section-1 (workspace-section "ws-test-db")
-              section-2 (assoc section-1
-                               :name "Renamed Workspace"
-                               :databases {:ws-test-db-2 {:input_schemas ["public"]
-                                                          :output        {:schema "different_schema"}}})]
-          (advanced-config.file.workspace/apply-workspace-section! section-1)
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}
+                     :model/Database _ {:name "ws-test-db-2" :engine :postgres}]
+        (let [section-1 (workspace-setting-value "ws-test-db")
+              section-2 {:name      "Renamed Workspace"
+                         :databases {:ws-test-db-2 {:input_schemas ["public"]
+                                                    :output        {:schema "different_schema"}}}}]
+          (advanced-config.file/initialize! {:version 1 :config {:settings {:instance-workspace section-1}}})
           (is (= "New workspace" (:name (ws/instance-workspace))))
-          (advanced-config.file.workspace/apply-workspace-section! section-2)
+          (advanced-config.file/initialize! {:version 1 :config {:settings {:instance-workspace section-2}}})
           (is (= "Renamed Workspace" (:name (ws/instance-workspace))))
           (is (= 1 (count (:databases (ws/instance-workspace)))))
           (is (= {:schema "different_schema"}
                  (->> (ws/instance-workspace) :databases vals first :output))
               "setting reflects the new config, not the old one"))))))
 
-(deftest unknown-database-name-throws-test
-  (testing "referencing a database that doesn't exist in app-db throws ex-info"
+(deftest invalid-shape-throws-test
+  (testing "the setter validates the incoming value against the schema"
     (mt/with-empty-h2-app-db!
       (is (thrown-with-msg?
            ExceptionInfo
-           #"Workspace config references unknown database"
-           (advanced-config.file.workspace/apply-workspace-section!
-            (workspace-section "nonexistent-db")))))))
+           #"Value does not match schema"
+           (advanced-config.file/initialize!
+            {:version 1
+             :config {:settings {:instance-workspace {:name "missing-databases"}}}}))))))
 
 (deftest db-workspace-namespace-resolves-after-loading-test
   (testing "after loading, db-workspace-namespace returns the configured output namespace"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
-        (advanced-config.file.workspace/apply-workspace-section!
-         (workspace-section "ws-test-db"))
+        (advanced-config.file/initialize!
+         {:version 1
+          :config {:settings {:instance-workspace (workspace-setting-value "ws-test-db")}}})
         (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))
 
 (deftest db-workspace-namespace-returns-nil-when-no-load-test
   (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
-    ;; The setting is cleared in the use-fixtures :each tear-down, so this confirms
-    ;; the read truly comes from the setting and not from any leftover rows.
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (is (nil? (ws/db-workspace-namespace db-id)))))))
-
-(deftest oss-rejects-workspace-section-without-premium-token-test
-  (testing "OSS instances need the :config-text-file token to load a :workspace section (no special bring-up carve-out)"
-    (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Premium token with the :config-text-file feature"
-               (advanced-config.file/initialize!
-                {:version 1
-                 :config {:workspace (workspace-section "ws-test-db")}}))))))))
-
-(deftest oss-rejects-non-settings-sections-without-premium-token-test
-  (testing "OSS instances always need the :config-text-file token for non-:settings sections"
-    (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{}
-        (is (thrown-with-msg?
-             ExceptionInfo
-             #"Premium token with the :config-text-file feature"
-             (advanced-config.file/initialize!
-              {:version 1
-               :config {:users [{:first_name "X" :last_name "Y"
-                                 :email "x@example.com" :password "pw"}]}})))))))
 
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
 ;;;
@@ -163,20 +128,20 @@
     (testing "loader stores MySQL output namespace in the :db slot"
       (mt/with-empty-h2-app-db!
         (mt/with-temp [:model/Database {db-id :id} {:name "mysql-prod" :engine :mysql :details {:db "prod_db"}}]
-          (advanced-config.file.workspace/apply-workspace-section!
+          (ws/set-instance-workspace!
            {:name "ws"
-            :databases {:mysql-prod {:input_schemas ["prod_db"]
-                                     :output        {:db "ws_alice"}}}})
+            :databases {"mysql-prod" {:input_schemas ["prod_db"]
+                                      :output        {:db "ws_alice"}}}})
           (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project + dataset in the :output map"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
-        (advanced-config.file.workspace/apply-workspace-section!
+        (ws/set-instance-workspace!
          {:name "ws"
-          :databases {:bq-prod {:input_schemas ["core"]
-                                :output        {:db "metabase-prod" :schema "ws_alice"}}}})
+          :databases {"bq-prod" {:input_schemas ["core"]
+                                 :output        {:db "metabase-prod" :schema "ws_alice"}}}})
         (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
@@ -187,9 +152,7 @@
 ;;; This test parametrizes over all of them, asserting:
 ;;;
 ;;;   - the YAML parses
-;;;   - the `:workspace` section validates against the spec
-;;;   - the loader round-trips it into the setting with the per-driver expected
-;;;     output namespace
+;;;   - the `:settings :instance-workspace` value round-trips into the setting
 ;;;
 ;;; If a driver's wire format drifts, the corresponding fixture and this test
 ;;; both have to be updated together - keeps doc and code aligned.
@@ -231,27 +194,25 @@
                 :output         {:db "metabase-prod" :schema "ws_alice"}}})
 
 (deftest per-driver-fixtures-parse-and-validate-test
-  (testing "Each per-driver fixture YAML parses, has the expected workspace section, and round-trips through the loader"
+  (testing "Each per-driver fixture YAML parses, has the expected instance-workspace setting value, and round-trips through the loader"
     (doseq [[driver expectations] per-driver-fixture-expectations]
       (testing (str driver " fixture")
-        (let [parsed  (load-fixture-by-driver driver)
-              section (get-in parsed [:config :workspace])
-              wsd     (-> section :databases vals first)]
+        (let [parsed   (load-fixture-by-driver driver)
+              ws-value (get-in parsed [:config :settings :instance-workspace])
+              wsd      (-> ws-value :databases vals first)]
           (testing "parses to the expected wire shape"
             (is (= 1 (:version parsed)))
-            (is (= "New workspace" (:name section)))
+            (is (= "New workspace" (:name ws-value)))
             (is (= (:input_schemas expectations) (:input_schemas wsd))
                 (str driver " input_schemas matches expectation"))
             (is (= (:output expectations) (:output wsd))
                 (str driver " :output matches expectation")))
-          (testing "validates against the workspace section spec"
-            (is (true? (s/valid? :metabase-enterprise.advanced-config.file.workspace/config-file-spec section))
-                (str driver " fixture must satisfy the section spec")))
-          (testing "round-trips through apply-workspace-section! into the setting"
+          (testing "round-trips through the :settings section into the setting"
             (mt/with-empty-h2-app-db!
               (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
                                                           :engine  (:engine expectations)
                                                           :details (:details expectations)}]
-                (advanced-config.file.workspace/apply-workspace-section! section)
+                (advanced-config.file/initialize!
+                 {:version 1 :config {:settings {:instance-workspace ws-value}}})
                 (is (= (:output expectations) (ws/db-workspace-namespace db-id))
                     (str driver " setting output matches fixture"))))))))))

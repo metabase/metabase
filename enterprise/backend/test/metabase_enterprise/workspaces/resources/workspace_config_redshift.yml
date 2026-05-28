@@ -26,11 +26,11 @@ config:
     remote-sync-type: read-write
     remote-sync-branch: main
     remote-sync-token: not-real
-  workspace:
-    name: New workspace
-    databases:
-      test-data (redshift):
-        input_schemas:
-        - public
-        output:
-          schema: mb__isolation_44490_1933
+    instance-workspace:
+      name: New workspace
+      databases:
+        test-data (redshift):
+          input_schemas:
+          - public
+          output:
+            schema: mb__isolation_44490_1933

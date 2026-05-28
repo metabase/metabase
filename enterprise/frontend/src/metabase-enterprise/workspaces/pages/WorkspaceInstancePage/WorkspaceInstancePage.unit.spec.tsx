@@ -2,10 +2,11 @@ import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
-  setupGetCurrentWorkspaceEndpoint,
   setupListTableRemappingsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -23,7 +24,7 @@ function setup({
   workspace = createMockWorkspaceInstance({
     name: "Dev workspace",
     databases: {
-      [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+      [POSTGRES.name]: createMockWorkspaceInstanceDatabase({
         input_schemas: ["public"],
         output: { schema: "ws_dev" },
       }),
@@ -31,11 +32,15 @@ function setup({
   }) as WorkspaceInstance | null,
 } = {}) {
   setupDatabasesEndpoints([POSTGRES]);
-  setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
+
+  const state = createMockState({
+    settings: mockSettings({ "instance-workspace": workspace }),
+  });
 
   renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
     withRouter: true,
+    storeInitialState: state,
   });
 }
 

@@ -74,24 +74,10 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defn- coerce-database-id-key
-  "JSON round-trips through the `instance-workspace` setting return integer
-   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
-  [k]
-  (cond
-    (int? k)     k
-    (keyword? k) (parse-long (name k))
-    (string? k)  (parse-long k)))
-
-(defn- normalize-database-keys
-  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
-  [config]
-  (some-> config
-          (update :databases #(update-keys % coerce-database-id-key))))
-
 (mu/defn set-instance-workspace! :- :any
   "Store the workspace config in the `instance-workspace` setting. Replaces any
-   prior value. The shape is validated against `::ws/workspace-instance-config`."
+   prior value. The shape is validated against `::ws/workspace-instance-config`
+   by the setting's setter."
   [config :- ::ws/workspace-instance-config]
   (ws.settings/instance-workspace! config)
   nil)
@@ -108,18 +94,39 @@
   (t2/delete! :model/TableRemapping)
   nil)
 
+(defn- ->db-name
+  "Normalize a `:databases` map key to the string form stored in
+   `Database.name`. YAML parses come back as keywords; raw JSON keeps strings."
+  [k]
+  (cond-> k (keyword? k) name))
+
 (defn instance-workspace
-  "Return the workspace loaded on this instance, or nil if none."
+  "Return the workspace loaded on this instance with `:databases` keys resolved
+   from db names to integer database ids. Names that don't resolve to a row are
+   silently dropped — a parent instance and a child instance can share the same
+   config.yml, and only databases present in the app DB get mapped. Returns nil
+   when no workspace is loaded. The raw, name-keyed setting value lives in
+   [[ws.settings/instance-workspace]]."
   []
-  (normalize-database-keys (ws.settings/instance-workspace)))
+  (when-let [ws (ws.settings/instance-workspace)]
+    (let [db-names (map ->db-name (keys (:databases ws)))
+          name->id (when (seq db-names)
+                     (into {} (map (juxt :name :id))
+                           (t2/select [:model/Database :id :name] :name [:in db-names])))]
+      (update ws :databases
+              (fn [databases]
+                (into {} (keep (fn [[db-name-key wsd]]
+                                 (when-let [db-id (get name->id (->db-name db-name-key))]
+                                   [db-id wsd])))
+                      databases))))))
 
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (the
-   `instance-workspace` setting is populated — either from a `:workspace` section
-   of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
-   source of truth for gating features that conflict with workspace remapping
-   (DB routing, impersonation, writeback, CSV upload, model persistence). Use
-   [[db-workspace-namespace]] when you need per-database scoping.
+   `instance-workspace` setting is populated — from env, the `:settings` section
+   of `config.yml`, or the settings API). Single source of truth for gating
+   features that conflict with workspace remapping (DB routing, impersonation,
+   writeback, CSV upload, model persistence). Use [[db-workspace-namespace]]
+   when you need per-database scoping.
 
    Deliberately ungated on premium features: a workspace child instance bootstraps
    from `config.yml` *before* its token is installed; if the workspace map is
@@ -133,8 +140,7 @@
    instance, or `nil` when this instance is not running a workspace or the
    workspace has no entry for `db-id`. The namespace map is
    `{:db ?, :schema ?}` - either or both keys may be absent depending on
-   the driver's `qualified-name-components`. Reads from the `workspace-instance`
-   setting."
+   the driver's `qualified-name-components`. Reads from [[instance-workspace]]."
   [db-id]
   (get-in (instance-workspace) [:databases db-id :output]))
 

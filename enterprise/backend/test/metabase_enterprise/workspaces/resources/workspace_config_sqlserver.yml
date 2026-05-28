@@ -20,12 +20,13 @@ config:
     last_name: Admin
     email: workspace@workspace.local
     password: password1
-  workspace:
-    name: New workspace
-    databases:
-      test-data (sqlserver):
-        input_schemas:
-        - dbo
-        output:
-          db: AnalyticsDB
-          schema: ws_alice
+  settings:
+    instance-workspace:
+      name: New workspace
+      databases:
+        test-data (sqlserver):
+          input_schemas:
+          - dbo
+          output:
+            db: AnalyticsDB
+            schema: ws_alice

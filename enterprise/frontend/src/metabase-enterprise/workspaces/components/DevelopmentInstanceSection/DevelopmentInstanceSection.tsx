@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils/settings";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -16,19 +17,13 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
 export function DevelopmentInstanceSection() {
   const applicationName = useSelector(getApplicationName);
-  const {
-    value,
-    updateSetting,
-    isLoading: isLoadingSetting,
-    settingDetails,
-  } = useAdminSetting("development-instance");
-  const { data: workspace, isLoading: isLoadingWorkspace } =
-    useGetCurrentWorkspaceQuery();
-  const isLoading = isLoadingSetting || isLoadingWorkspace;
+  const { value, updateSetting, isLoading, settingDetails } = useAdminSetting(
+    "development-instance",
+  );
+  const workspace = useSetting("instance-workspace");
   const isInWorkspace = workspace != null;
   const isSetViaEnv = settingDetails != null && settingDetails.is_env_setting;
   const isDevelopmentInstance = value ?? false;

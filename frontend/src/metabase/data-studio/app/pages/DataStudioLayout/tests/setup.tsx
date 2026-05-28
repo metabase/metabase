@@ -3,7 +3,6 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
-  setupGetCurrentWorkspaceEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -17,7 +16,6 @@ import type {
   Collection,
   RemoteSyncEntity,
   TokenFeatures,
-  WorkspaceInstance,
 } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -140,7 +138,6 @@ interface SetupOpts {
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
   isDevelopmentInstance?: boolean;
-  currentWorkspace?: WorkspaceInstance | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
@@ -155,7 +152,6 @@ export const setup = ({
   isAdmin = true,
   canManageWorkspaces = false,
   isDevelopmentInstance = false,
-  currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
@@ -197,7 +193,6 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
-  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-remote-sync-dev-instance",

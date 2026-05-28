@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupDeleteWorkspaceInstanceEndpoint } from "__support__/server-mocks";
+import {
+  setupDeleteTableRemappingsEndpoint,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { DeleteSection } from "./DeleteSection";
@@ -10,7 +13,8 @@ import { DeleteSection } from "./DeleteSection";
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 function setup() {
-  setupDeleteWorkspaceInstanceEndpoint();
+  setupDeleteTableRemappingsEndpoint();
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(<Route path="*" component={DeleteSection} />, {
     withRouter: true,
@@ -22,7 +26,7 @@ describe("DeleteSection", () => {
     trackSimpleEvent.mockClear();
   });
 
-  it("calls DELETE /api/ee/workspace-instance/current after confirming", async () => {
+  it("clears remappings and the instance-workspace setting after confirming", async () => {
     setup();
 
     await userEvent.click(
@@ -36,9 +40,17 @@ describe("DeleteSection", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          "path:/api/ee/workspace-instance/current",
+          "path:/api/ee/workspace-instance/table-remappings",
           { method: "DELETE" },
         ),
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting/instance-workspace", {
+          method: "PUT",
+        }),
       ).toBe(true);
     });
   });

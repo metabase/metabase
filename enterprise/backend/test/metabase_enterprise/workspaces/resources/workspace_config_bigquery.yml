@@ -19,12 +19,13 @@ config:
     last_name: Admin
     email: workspace@workspace.local
     password: password1
-  workspace:
-    name: New workspace
-    databases:
-      test-data (bigquery):
-        input_schemas:
-        - core
-        output:
-          db: metabase-prod
-          schema: ws_alice
+  settings:
+    instance-workspace:
+      name: New workspace
+      databases:
+        test-data (bigquery):
+          input_schemas:
+          - core
+          output:
+            db: metabase-prod
+            schema: ws_alice

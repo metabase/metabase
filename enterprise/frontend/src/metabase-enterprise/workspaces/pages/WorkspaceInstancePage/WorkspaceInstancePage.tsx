@@ -2,14 +2,12 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { Stack, Title } from "metabase/ui";
-import {
-  useGetCurrentWorkspaceQuery,
-  useListTableRemappingsQuery,
-} from "metabase-enterprise/api";
+import { useListTableRemappingsQuery } from "metabase-enterprise/api";
 import type {
   Database,
   TableRemapping,
@@ -24,11 +22,7 @@ import { WorkspaceInstanceEmptyState } from "./WorkspaceInstanceEmptyState";
 import { getDatabasesInfo } from "./utils";
 
 export function WorkspaceInstancePage() {
-  const {
-    data: workspace,
-    isLoading: isLoadingWorkspace,
-    error: workspaceError,
-  } = useGetCurrentWorkspaceQuery();
+  const workspace = useSetting("instance-workspace") ?? null;
   const {
     data: remappings,
     isLoading: isLoadingRemappings,
@@ -40,9 +34,8 @@ export function WorkspaceInstancePage() {
     error: databasesError,
   } = useListDatabasesQuery();
 
-  const isLoading =
-    isLoadingWorkspace || isLoadingRemappings || isLoadingDatabases;
-  const error = workspaceError ?? remappingsError ?? databasesError;
+  const isLoading = isLoadingRemappings || isLoadingDatabases;
+  const error = remappingsError ?? databasesError;
 
   if (
     isLoading ||
@@ -55,7 +48,7 @@ export function WorkspaceInstancePage() {
 
   return (
     <WorkspaceInstancePageBody
-      workspace={workspace ?? null}
+      workspace={workspace}
       remappings={remappings}
       databases={databasesResponse.data}
     />

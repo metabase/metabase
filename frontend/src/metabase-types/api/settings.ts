@@ -10,6 +10,7 @@ import type { GroupId } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
+import type { WorkspaceInstance } from "./workspace-instance";
 
 export interface OidcAuthProvider {
   type: "oidc";
@@ -735,6 +736,7 @@ export type SyncableEntity =
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "instance-workspace"?: WorkspaceInstance | null;
   "remote-sync-enabled"?: boolean | null;
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;

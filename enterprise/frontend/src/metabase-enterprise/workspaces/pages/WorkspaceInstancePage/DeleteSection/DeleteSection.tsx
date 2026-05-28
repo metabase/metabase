@@ -1,9 +1,10 @@
 import { jt, t } from "ttag";
 
+import { useAdminSetting } from "metabase/api/utils/settings";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { Button, Code, Group, Text } from "metabase/ui";
-import { useDeleteWorkspaceInstanceMutation } from "metabase-enterprise/api";
+import { useDeleteTableRemappingsMutation } from "metabase-enterprise/api";
 
 import { trackWorkspaceInstanceTeardown } from "../../../analytics";
 
@@ -11,7 +12,8 @@ const CONFIG_FILENAME = "config.yml";
 
 export function DeleteSection() {
   const { modalContent, show } = useConfirmation();
-  const [deleteInstance] = useDeleteWorkspaceInstanceMutation();
+  const [deleteTableRemappings] = useDeleteTableRemappingsMutation();
+  const { updateSetting } = useAdminSetting("instance-workspace");
 
   const handleClick = () => {
     show({
@@ -22,7 +24,8 @@ export function DeleteSection() {
       confirmButtonText: t`Leave workspace`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
-        await deleteInstance().unwrap();
+        await deleteTableRemappings().unwrap();
+        await updateSetting({ key: "instance-workspace", value: null });
         trackWorkspaceInstanceTeardown();
       },
     });

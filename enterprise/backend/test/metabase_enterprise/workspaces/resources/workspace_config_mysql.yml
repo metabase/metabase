@@ -22,11 +22,12 @@ config:
     last_name: Admin
     email: workspace@workspace.local
     password: password1
-  workspace:
-    name: New workspace
-    databases:
-      test-data (mysql):
-        input_schemas:
-        - prod_db
-        output:
-          db: ws_alice
+  settings:
+    instance-workspace:
+      name: New workspace
+      databases:
+        test-data (mysql):
+          input_schemas:
+          - prod_db
+          output:
+            db: ws_alice
