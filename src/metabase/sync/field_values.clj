@@ -47,12 +47,11 @@
   (let [engine (:engine (t2/select-one :model/Database :id (:db_id table)))]
     (isa? driver/hierarchy engine :sql)))
 
-(defn- empty-counts
+(def ^:private empty-counts
   "Initial counter map for a sync run.
   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
   - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
-  []
   {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
 
 (defn- update-field-values-for-table-union!
@@ -66,7 +65,7 @@
                    (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
                     (union-distinct/union-distinct-values (u/the-id table) fields-to-sync))
         outcome-counts (if (or (nil? results) (instance? Throwable results))
-                         (assoc (empty-counts) :errors n-fields)
+                         (assoc empty-counts :errors n-fields)
                          (reduce (fn [counts field]
                                    (let [field-id        (u/the-id field)
                                          existing-fv     (get fvs-map field-id)
@@ -81,7 +80,7 @@
                                                            (field-values/persist-field-values!
                                                             field existing-fv capped-values has-more-values))]
                                      (update-field-value-stats-count counts result)))
-                                 (empty-counts)
+                                 empty-counts
                                  fields-to-sync))]
     (assoc outcome-counts :probed n-fields :queries n-queries)))
 
@@ -98,7 +97,7 @@
                                       (field-values/create-or-update-full-field-values!
                                        field :field-values existing-fv))]
                     (update-field-value-stats-count counts result)))
-                (empty-counts)
+                empty-counts
                 fields-to-sync)
         (assoc :probed n-fields :queries n-fields))))
 
@@ -117,7 +116,7 @@
                                                                           (sync-util/name-for-logging field))
                                                                    (clear-field-values-for-field! field))]
                                                       (update-field-value-stats-count counts result)))
-                                                  (empty-counts)
+                                                  empty-counts
                                                   to-clear)]
     (if (empty? to-sync)
       clear-counts
@@ -140,7 +139,7 @@
                                           :else true)))
                                     to-sync)
             sync-counts    (cond
-                             (empty? fields-to-sync) (empty-counts)
+                             (empty? fields-to-sync) empty-counts
                              (sql-driver? table)     (update-field-values-for-table-union!
                                                       table fields-to-sync fvs-map)
                              :else                   (update-field-values-for-table-per-field!
