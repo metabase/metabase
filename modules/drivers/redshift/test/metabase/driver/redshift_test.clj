@@ -5,12 +5,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -723,3 +725,102 @@
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defn- qid
+  "Safely quote a Redshift/PostgreSQL identifier (user/schema/table)."
+  [s]
+  (sql.u/quote-name :postgres :field s))
+
+(defmacro ^:private with-drop-schema!
+  "Run `body`, dropping `schema` (CASCADE) afterward."
+  [schema & body]
+  `(try
+     ~@body
+     (finally
+       (execute! "DROP SCHEMA IF EXISTS %s CASCADE" (qid ~schema)))))
+
+(defmacro ^:private with-drop-user!
+  "Run `body`, dropping `user` afterward."
+  [user & body]
+  `(try
+     ~@body
+     (finally
+       (execute! "DROP USER IF EXISTS %s" (qid ~user)))))
+
+(deftest workspace-precondition-usage-grant-option-test
+  (mt/test-driver :redshift
+    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
+      (let [user-name (u/lower-case-en (mt/random-name))
+            schema    (u/lower-case-en (mt/random-name))
+            password  (str (random-uuid))]
+        (with-drop-user! user-name
+          (with-drop-schema! schema
+            (execute! "CREATE USER %s WITH PASSWORD '%s'" (qid user-name) password)
+            (execute! "CREATE SCHEMA %s" (qid schema))
+            (execute! "GRANT USAGE ON SCHEMA %s TO %s" (qid schema) (qid user-name))
+            (sql-jdbc.conn/with-connection-spec-for-testing-connection
+             [user-spec [:redshift (assoc (:details (mt/db)) :user user-name :password password)]]
+              (testing "fails when grant option is missing"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"USAGE WITH GRANT OPTION"
+                     (driver.postgres/assert-has-usage-grant-option! user-spec schema))))
+              (testing "passes once WITH GRANT OPTION is granted"
+                (execute! "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION" (qid schema) (qid user-name))
+                (is (nil? (driver.postgres/assert-has-usage-grant-option! user-spec schema)))))))))))
+
+(deftest workspace-precondition-table-grant-option-test
+  (mt/test-driver :redshift
+    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
+      (let [user-name (u/lower-case-en (mt/random-name))
+            schema    (u/lower-case-en (mt/random-name))
+            table     (u/lower-case-en (mt/random-name))
+            qsch.tbl  (sql.u/quote-name :postgres :table schema table)
+            password  (str (random-uuid))]
+        (with-drop-user! user-name
+          (with-drop-schema! schema
+            (execute! "CREATE USER %s WITH PASSWORD '%s'" (qid user-name) password)
+            (execute! "CREATE SCHEMA %s" (qid schema))
+            (execute! "CREATE TABLE %s (id INT)" qsch.tbl)
+            (execute! "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION" (qid schema) (qid user-name))
+            (execute! "GRANT SELECT ON %s TO %s" qsch.tbl (qid user-name))
+            (sql-jdbc.conn/with-connection-spec-for-testing-connection
+             [user-spec [:redshift (assoc (:details (mt/db)) :user user-name :password password)]]
+              (testing "fails and names the offending table"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"SELECT WITH GRANT OPTION"
+                     (driver.postgres/assert-has-grant-option! user-spec schema))))
+              (testing "passes once SELECT WITH GRANT OPTION is granted"
+                (execute! "GRANT SELECT ON %s TO %s WITH GRANT OPTION" qsch.tbl (qid user-name))
+                (is (nil? (driver.postgres/assert-has-grant-option! user-spec schema)))))))))))
+
+(deftest workspace-precondition-alter-default-privileges-test
+  (mt/test-driver :redshift
+    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
+      (let [user-name  (u/lower-case-en (mt/random-name))
+            owner-name (u/lower-case-en (mt/random-name))
+            schema     (u/lower-case-en (mt/random-name))
+            table      (u/lower-case-en (mt/random-name))
+            qsch.tbl   (sql.u/quote-name :postgres :table schema table)
+            password   (str (random-uuid))]
+        (with-drop-user! user-name
+          (with-drop-user! owner-name
+            (with-drop-schema! schema
+              (execute! "CREATE USER %s WITH PASSWORD '%s'" (qid user-name) password)
+              (execute! "CREATE USER %s WITH PASSWORD '%s'" (qid owner-name) (str (random-uuid)))
+              (execute! "CREATE SCHEMA %s" (qid schema))
+              ;; Pass the schema-USAGE precondition so this assert is what trips.
+              (execute! "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION" (qid schema) (qid user-name))
+              (execute! "CREATE TABLE %s (id INT)" qsch.tbl)
+              ;; Reassign ownership to a user the test user is *not* a member of.
+              (execute! "ALTER TABLE %s OWNER TO %s" qsch.tbl (qid owner-name))
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection
+               [user-spec [:redshift (assoc (:details (mt/db)) :user user-name :password password)]]
+                (testing "fails and names the unmemberable owner"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"ALTER DEFAULT PRIVILEGES"
+                       (driver.postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))

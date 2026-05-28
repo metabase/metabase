@@ -2358,14 +2358,7 @@
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
 
-;;; --- Workspace grant preconditions ----------------------------------------
-;;; Integration tests for the per-schema preconditions enforced by
-;;; `grant-workspace-read-access! :postgres` before it runs `GRANT USAGE …`,
-;;; `GRANT SELECT ON ALL TABLES …`, and `ALTER DEFAULT PRIVILEGES …`. Each
-;;; precondition is tested by constructing the failing privilege state with
-;;; the admin (superuser) connection, then probing it with a fresh login as
-;;; a low-privilege role to confirm (a) the assert throws and (b) it stops
-;;; throwing once the admin grants the missing capability.
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
 
 (defmacro ^:private with-drop-schema!
   "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
