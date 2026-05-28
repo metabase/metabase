@@ -16,6 +16,7 @@
     (v/stop!)"
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
@@ -56,6 +57,30 @@
       :else
       (str "src/metabase/" s))))
 
+(defn- module-source-dir
+  "Absolute filesystem path to the module's source directory, or nil if it doesn't exist."
+  [module-symb]
+  (let [rel (module->github-path module-symb)
+        f   (io/file rel)]
+    (when (.isDirectory f) f)))
+
+(defn- module-loc
+  "Sum of non-blank lines across `.clj`, `.cljc`, `.cljs` files under the module's source dir."
+  [module-symb]
+  (if-let [dir (module-source-dir module-symb)]
+    (->> (file-seq dir)
+         (filter (fn [^java.io.File f]
+                   (and (.isFile f)
+                        (let [n (.getName f)]
+                          (or (.endsWith n ".clj")
+                              (.endsWith n ".cljc")
+                              (.endsWith n ".cljs"))))))
+         (map (fn [^java.io.File f]
+                (with-open [r (io/reader f)]
+                  (count (remove str/blank? (line-seq r))))))
+         (reduce + 0))
+    0))
+
 ;; --- data ---------------------------------------------------------------------------------------
 
 (def ^:private cache
@@ -80,6 +105,7 @@
                                                           (= api :any) 0
                                                           (set? api)   (count api)
                                                           :else        0)
+                                             :loc       (module-loc m)
                                              :friends   (mapv str (or friends []))
                                              :githubUrl (str github-base (module->github-path m))}}]))
                            kondo)
@@ -350,6 +376,7 @@
         </select>
       </label>
       <button id=\"clear-focus\">clear focus</button>
+      <button id=\"reset-state\" title=\"clear localStorage + URL hash\">reset</button>
       <button id=\"collapse-all\">collapse all</button>
       <button id=\"expand-all\">expand all</button>
       <button id=\"relayout\">re-layout (cola)</button>
@@ -413,7 +440,11 @@ const cy = cytoscape({
         'min-height': 30,
       } },
     { selector: 'node[type=\"module\"]:childless',
-      style: { 'background-opacity': 0.85, 'width': 40, 'height': 40 } },
+      style: {
+        'background-opacity': 0.85,
+        'width':  (ele) => Math.max(36, Math.min(180, Math.sqrt(ele.data('loc') || 0) * 1.4)),
+        'height': (ele) => Math.max(36, Math.min(180, Math.sqrt(ele.data('loc') || 0) * 1.4)),
+      } },
     { selector: 'node[type=\"ns\"]',
       style: {
         'background-color': '#fff', 'border-width': 1, 'border-color': '#888',
@@ -1152,6 +1183,11 @@ document.getElementById('focus').addEventListener('change', (e) => {
   if (!v) clearFocus(); else focusOn(v);
 });
 document.getElementById('clear-focus').onclick = clearFocus;
+document.getElementById('reset-state').onclick = () => {
+  try { localStorage.clear(); } catch (_) {}
+  history.replaceState(null, '', location.pathname);
+  location.reload();
+};
 document.getElementById('degree').addEventListener('change', () => {
   writeUrlState();
   refetch();
