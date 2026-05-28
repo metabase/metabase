@@ -187,28 +187,11 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
-## Privacy
-
-When using the Metabase AI service, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
-
-If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
-
-In both cases, Metabot can't create assets or write data. If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the form you send may contain sensitive data from your conversation.
-
-### What Metabot can see
-
-Metabot has access to your Metabase metadata and some data values to help answer your questions:
-
-- **Table, Question, Model, Dashboard, and Metric metadata**: Metabot can see the structure and configuration of your content.
-- **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
-
-When you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the context for the conversation - including this metadata and conversation prompts - might be sent to Metabase.
-
 ## Further reading
 
 - [Using Metabot](metabot.md)
 - [MCP server](mcp.md)
+- [AI privacy](privacy.md)
 - [AI access and usage controls](usage-controls.md)
 - [AI usage auditing](usage-auditing.md)
 - [Metabot customization](customization.md)
