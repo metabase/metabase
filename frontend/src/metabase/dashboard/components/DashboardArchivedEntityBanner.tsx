@@ -1,6 +1,6 @@
 import { Api, dashboardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
@@ -42,7 +42,7 @@ export const DashboardArchivedEntityBanner = () => {
       onMove={({ id }) => moveDashboardToCollection({ id })}
       onDeletePermanently={() => {
         const deleteAction = (innerDispatch: Dispatch) =>
-          entityCompatibleQuery(
+          runRtkEndpoint(
             dashboard.id,
             innerDispatch,
             dashboardApi.endpoints.deleteDashboard,

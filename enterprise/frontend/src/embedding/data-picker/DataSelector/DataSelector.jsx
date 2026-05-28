@@ -12,7 +12,7 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -964,7 +964,7 @@ const DataSelector = _.compose(
     },
     (dispatch) => ({
       fetchDatabases: () =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { saved: true },
           dispatch,
           databaseApi.endpoints.listDatabases,
@@ -972,7 +972,7 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { id: getQuestionIdFromVirtualTableId(id) },
           dispatch,
           cardApi.endpoints.getCard,

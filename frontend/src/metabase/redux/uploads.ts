@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import { UploadMode } from "metabase/redux/store/upload";
@@ -97,20 +97,20 @@ export const uploadFile = createThunkAction(
         const response = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { tableId, formData },
                 dispatch,
                 tableApi.endpoints.appendTableCsv,
               );
             case UploadMode.replace:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { tableId, formData },
                 dispatch,
                 tableApi.endpoints.replaceTableCsv,
               );
             case UploadMode.create:
             default:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { file, collection_id: collectionId },
                 dispatch,
                 cardApi.endpoints.createCardFromCsv,

@@ -7,13 +7,19 @@ type RTKEndpoint = { initiate: (request: any, options: any) => any };
 
 type AnyDispatch = (action: any) => any;
 
-export async function entityCompatibleQuery(
-  entityQuery: unknown,
+/**
+ * Imperatively dispatch an RTK Query endpoint, await its result, and clean up
+ * the subscription. Use this when you need an endpoint's data inside a thunk
+ * or other non-component code path, where the `useFooQuery` hook isn't an
+ * option.
+ */
+export async function runRtkEndpoint(
+  request: unknown,
   dispatch: AnyDispatch,
   endpoint: RTKEndpoint,
   { forceRefetch = true } = {},
 ): Promise<any> {
-  const action = dispatch(endpoint.initiate(entityQuery, { forceRefetch }));
+  const action = dispatch(endpoint.initiate(request, { forceRefetch }));
 
   try {
     return await action.unwrap();

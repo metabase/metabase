@@ -1,5 +1,5 @@
 import { revisionApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   fetchDashboard,
   fetchDashboardCardData,
@@ -12,7 +12,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   (dashboardId: DashboardId, revision: Revision) => {
     return async (dispatch) => {
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         {
           id: dashboardId,
           entity: "dashboard",

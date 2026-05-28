@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
@@ -771,7 +771,7 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          entityCompatibleQuery(
+          runRtkEndpoint(
             {
               entity,
               entityId,
@@ -804,7 +804,7 @@ export const fetchDashboard = createAsyncThunk(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          entityCompatibleQuery(
+          runRtkEndpoint(
             { id: dashId, dashboard_load_id: dashboardLoadId },
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,

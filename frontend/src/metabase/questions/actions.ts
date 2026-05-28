@@ -1,5 +1,5 @@
 import { cardApi, datasetApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
@@ -25,14 +25,14 @@ export const loadMetadataForCard =
   ) =>
   async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
-      return entityCompatibleQuery(
+      return runRtkEndpoint(
         token ?? card.id,
         dispatch,
         cardApi.endpoints.getCardQueryMetadata,
         { forceRefetch: false },
       );
     } else if (card.dataset_query.database != null) {
-      return entityCompatibleQuery(
+      return runRtkEndpoint(
         {
           ...card.dataset_query,
           ...(!!token && { token }),

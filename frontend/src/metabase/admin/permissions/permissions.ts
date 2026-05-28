@@ -20,8 +20,8 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { databaseApi, permissionApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
@@ -221,7 +221,7 @@ export const updateDataPermission = createThunkAction(
         // the reducer below reads the current snapshot synchronously. Swallow
         // rejections so a failed fetch doesn't surface as an unhandled
         // promise rejection.
-        void entityCompatibleQuery(
+        void runRtkEndpoint(
           {
             id: entityId.databaseId,
             include_hidden: true,

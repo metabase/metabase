@@ -3,7 +3,7 @@ import type { Location } from "history";
 import { Component } from "react";
 
 import { cardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
@@ -40,7 +40,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = {
   fetchQuestions: () => (dispatch: Dispatch) =>
-    entityCompatibleQuery({}, dispatch, cardApi.endpoints.listCards),
+    runRtkEndpoint({}, dispatch, cardApi.endpoints.listCards),
   ...metadataActions,
   ...actions,
 };

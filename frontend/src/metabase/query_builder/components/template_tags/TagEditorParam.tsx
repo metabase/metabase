@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { fieldApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
@@ -101,7 +101,7 @@ const mapDispatchToProps = (
 ): DispatchProps => {
   return {
     async fetchField(fieldId, force) {
-      const field = await entityCompatibleQuery(
+      const field = await runRtkEndpoint(
         { id: fieldId },
         dispatch,
         fieldApi.endpoints.getField,
@@ -109,7 +109,7 @@ const mapDispatchToProps = (
       );
       const remapId = field?.dimensions?.[0]?.human_readable_field_id;
       if (remapId != null) {
-        await entityCompatibleQuery(
+        await runRtkEndpoint(
           { id: remapId },
           dispatch,
           fieldApi.endpoints.getField,

@@ -2,7 +2,7 @@ import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
@@ -191,7 +191,7 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         {
           ...dashboard,
           dashcards: dashcardsToUpdate,
@@ -263,7 +263,7 @@ export const updateDashboard = createThunkAction(
       if (attributeNames.length > 0) {
         const attributes = _.pick(dashboard, attributeNames);
 
-        await entityCompatibleQuery(
+        await runRtkEndpoint(
           { id: dashboardId, ...attributes },
           dispatch,
           dashboardApi.endpoints.updateDashboard,

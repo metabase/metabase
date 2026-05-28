@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/api/utils/entity-compatible-query";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
@@ -22,7 +22,7 @@ export const setArchivedDashboard = createThunkAction(
         ? dashboards[dashboardId]
         : { name: "Dashboard" };
 
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         { id: dashboardId, archived },
         dispatch,
         dashboardApi.endpoints.updateDashboard,
@@ -58,7 +58,7 @@ export const setArchivedDashboard = createThunkAction(
       try {
         await Promise.all(
           _.uniq(dashboardQuestionIds).map((id) =>
-            entityCompatibleQuery({ id }, dispatch, cardApi.endpoints.getCard),
+            runRtkEndpoint({ id }, dispatch, cardApi.endpoints.getCard),
           ),
         );
       } catch (err) {
@@ -90,7 +90,7 @@ export const moveDashboardToCollection = createThunkAction(
 
       const { id, archived, collection_id: current_collection_id } = dashboard;
 
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         {
           id,
           collection_id: canonicalCollectionId(collection && collection.id),
