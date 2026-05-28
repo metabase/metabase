@@ -25,7 +25,9 @@ const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
-  availableHeight: PropTypes.number.isRequired,
+  // optional: derived from a measured container, so it is undefined until
+  // the container has been laid out (e.g. on first render and in jsdom).
+  availableHeight: PropTypes.number,
   height: PropTypes.number.isRequired,
   onSetDatabaseId: PropTypes.func,
 };

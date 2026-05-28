@@ -2,15 +2,18 @@
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -19,7 +22,6 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -84,131 +86,6 @@
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
-
-(deftest get-table-details-test
-  (testing "Returns table details for valid table ID"
-    (let [table-id (mt/id :orders)]
-      (is (=? {:type           "table"
-               :id             table-id
-               :name           "ORDERS"
-               :display_name   "Orders"
-               :database_id    (mt/id)
-               :fields         sequential?
-               :related_tables sequential?}
-              (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))))))
-  (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :rasta :get 404 "agent/v1/table/999999"))))
-  (testing "Respects query parameters"
-    (let [table-id (mt/id :orders)]
-      (is (=? {:type   "table"
-               :id     table-id
-               :fields empty?}
-              (mt/user-http-request :rasta :get 200
-                                    (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
-  (testing "Field values are excluded by default"
-    (let [table-id (mt/id :orders)
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))]
-      (is (every? #(nil? (:field_values %)) (:fields table)))))
-  (testing "Field values are included when explicitly requested"
-    (let [table-id (mt/id :orders)
-          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
-      (is (some #(seq (:field_values %)) (:fields table))))))
-
-(deftest get-table-details-field-types-test
-  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
-    (mt/with-temp [:model/Database {db-id :id}    {}
-                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
-                   :model/Field    _              {:table_id table-id, :name "id"
-                                                   :base_type :type/BigInteger
-                                                   :semantic_type :type/PK}
-                   :model/Field    _              {:table_id table-id, :name "name"
-                                                   :base_type :type/Text}
-                   :model/Field    _              {:table_id table-id, :name "created_at"
-                                                   :base_type :type/Text
-                                                   :effective_type :type/DateTime
-                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
-      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
-                        :fields)
-            by-name (m/index-by :name fields)]
-        (testing "base_type is always set"
-          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
-        (testing "semantic_type is returned when set"
-          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
-          (is (nil? (get-in by-name ["name" :semantic_type]))))
-        (testing "effective_type and coercion_strategy are returned when coerced"
-          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
-          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
-        (testing "effective_type is omitted when it equals base_type"
-          (is (not (contains? (get by-name "id") :effective_type)))
-          (is (not (contains? (get by-name "name") :effective_type))))))))
-
-(deftest get-metric-details-test
-  (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                     :type          :metric
-                                     :database_id   (mt/id)
-                                     :dataset_query (orders-count-query)}]
-    (testing "Returns metric details for valid metric ID"
-      (is (=? {:type                 "metric"
-               :id                   (:id metric)
-               :name                 "Test Metric"
-               :queryable_dimensions sequential?}
-              (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
-    (testing "Respects query parameters"
-      (is (=? {:type "metric"
-               :id   (:id metric)}
-              (mt/user-http-request :rasta :get 200
-                                    (str "agent/v1/metric/" (:id metric)
-                                         "?with-queryable-dimensions=false&with-field-values=false")))))
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999"))))))
-
-(defn- ensure-fresh-field-values!
-  "Ensure field values exist for a field by deleting any existing ones and recreating them."
-  [field-id]
-  (t2/delete! :model/FieldValues :field_id field-id :type :full)
-  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
-
-(defn- visible-field-id
-  "Find the real field ID for a field by display name within a table's visible columns."
-  [table-id field-display-name]
-  (let [mp           (mt/metadata-provider)
-        query        (lib/query mp (lib.metadata/table mp table-id))
-        visible-cols (lib/visible-columns query)]
-    (->> visible-cols
-         (filter #(= (lib/display-name query %) field-display-name))
-         first
-         :id)))
-
-(deftest get-table-field-values-test
-  ;; Ensure field values exist for the field we'll test
-  (ensure-fresh-field-values! (mt/id :people :state))
-  (testing "Returns field statistics and values with default limit of 30"
-    (let [table-id (mt/id :people)
-          field-id (visible-field-id table-id "State")]
-      (is (some? field-id) "Should find the State field")
-      (let [result (mt/user-http-request :crowberto :get 200
-                                         (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
-        (is (=? {:value_metadata {:statistics   {:distinct-count 49}
-                                  :field_values sequential?}}
-                result))
-        (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
-  (testing "Respects explicit limit parameter"
-    (let [table-id (mt/id :people)
-          field-id (visible-field-id table-id "State")]
-      (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
-              (mt/user-http-request :crowberto :get 200
-                                    (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
-  (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
-  (testing "Returns 404 for non-existent field"
-    (let [table-id (mt/id :people)]
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
@@ -424,29 +301,18 @@
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
-              execute-resp)))))
-
-(deftest get-metric-field-values-test
-  (ensure-fresh-field-values! (mt/id :orders :quantity))
-  (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                     :type          :metric
-                                     :database_id   (mt/id)
-                                     :dataset_query (orders-count-query)}]
-    (testing "Returns field statistics for a field that has statistics"
-      (let [metric-details (mt/user-http-request :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
-            quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
-        (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
-        (when-let [field-id (:field_id quantity-field)]
-          (is (=? {:value_metadata {:statistics   map?
-                                    :field_values sequential?}}
-                  (mt/user-http-request :rasta :get 200
-                                        (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
-    (testing "Returns 404 for non-existent field on metric"
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
+              execute-resp))))
+  (testing "Rejects native queries with 400; force callers onto /v1/execute-sql"
+    ;; The scope `agent:query:execute` gates /v1/execute; `agent:sql:execute` gates
+    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying :type :native,
+    ;; a token with only the broader scope could run raw SQL, defeating the scope split.
+    (let [native-query {:database (mt/id)
+                        :type     "native"
+                        :native   {:query "select 1"}}
+          base64-query (u/encode-base64 (json/encode native-query))
+          resp         (mt/user-http-request :rasta :post 400 "agent/v1/execute"
+                                             {:query base64-query})]
+      (is (re-find #"Native queries are not supported" (str resp))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -490,24 +356,6 @@
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
-
-(deftest get-table-details-with-measures-test
-  (let [measure-def (-> (lib/query (mt/metadata-provider)
-                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                        (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
-    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
-                                                    :table_id   (mt/id :orders)
-                                                    :definition measure-def}]
-      (testing "with-measures=false (default) does not include measures"
-        (let [table (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
-          (is (nil? (:measures table)))))
-      (testing "with-measures=true includes measures for the table"
-        (let [table (mt/user-http-request :rasta :get 200
-                                          (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
-          (is (sequential? (:measures table)))
-          (is (=? [{:id   measure-id
-                    :name "Total Revenue"}]
-                  (:measures table))))))))
 
 (deftest combined-query-test
   (testing "Returns results for a table query that fits in a single page"
@@ -628,7 +476,31 @@
                  :collection_id coll-id
                  :description   "A test question"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp))))))
+        (t2/delete! :model/Card :id (:id create-resp)))))
+  (testing "Returns 403 when caller cannot run the proposed query"
+    ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
+    ;; to save a card whose query references data the user cannot run.
+    (mt/with-restored-data-perms!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Create-Q"}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                     {:query (orders-query :limit 10)})]
+            (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                  {:name          "Should Not Save"
+                                   :query         (:query construct-resp)
+                                   :collection_id writable-id}))))))
+  (testing "Returns 403 when caller cannot write to target collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
+        ;; rasta has data perms by default in test setup, but no write on `locked-id`.
+        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                   {:query (orders-query :limit 10)})]
+          (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                {:name          "Should Not Save"
+                                 :query         (:query construct-resp)
+                                 :collection_id locked-id}))))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
@@ -677,3 +549,455 @@
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
+
+(deftest create-collection-test
+  (testing "Creates a root-level collection"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
+                                       {:name "Agent Root Coll"})]
+        (is (=? {:id          pos?
+                 :name        "Agent Root Coll"
+                 :parent_id   nil
+                 :location    "/"
+                 :description nil}
+                resp))
+        (t2/delete! :model/Collection :id (:id resp)))))
+  (testing "Creates a nested collection under a parent"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
+                                       {:name                 "Agent Nested Coll"
+                                        :description          "Nested under parent"
+                                        :parent_collection_id parent-id})]
+        (is (=? {:id          pos?
+                 :name        "Agent Nested Coll"
+                 :parent_id   parent-id
+                 :description "Nested under parent"}
+                resp))
+        ;; location should encode the parent's id in the materialized path
+        (is (= (str "/" parent-id "/") (:location resp)))
+        (t2/delete! :model/Collection :id (:id resp)))))
+  (testing "Returns 404 when parent_collection_id does not exist"
+    (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
+                          {:name                 "Bad Parent Coll"
+                           :parent_collection_id 999999}))
+  (testing "Returns 403 when caller lacks write access on the parent"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Locked Parent"}]
+        ;; Non-admin groups have no perms on the new collection by default.
+        (mt/user-http-request :rasta :post 403 "agent/v1/collection"
+                              {:name                 "Should Fail"
+                               :parent_collection_id parent-id}))))
+  ;; Parent-inheritance behaviors (:namespace, :type "library*", :is_remote_synced, exclusion of
+  ;; :type "trash") are unit-tested directly against `apply-defaults-to-collection` in
+  ;; `metabase.collections.create-test`, since the HTTP boundary is gated by other checks
+  ;; (library collections refuse writes, snippet-namespace collections require explicit perms)
+  ;; that make end-to-end coverage redundant.
+  )
+
+;;; ----------------------------------------------- Update Question Tests ------------------------------------------
+
+(deftest update-question-patch-fields-test
+  (testing "Patches simple fields (name, description, archived)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Agent Update Q Original"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:name        "Renamed by Agent"
+                                        :description "Set by agent"})]
+        (is (=? {:id          card-id
+                 :name        "Renamed by Agent"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      ;; verify persisted
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Card :id card-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Card :id card-id))))))
+
+(deftest update-question-move-test
+  (testing "Moving a card sets collection_id (subsumes move_card)"
+    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Move Dest"}
+                   :model/Card       {card-id :id}      {:name          "Card To Move"
+                                                         :dataset_query (orders-count-query)
+                                                         :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:collection_id dest-coll-id})]
+        (is (= dest-coll-id (:collection_id resp))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+
+(deftest update-question-archive-test
+  (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Archive"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
+      ;; as inherited-from-trash and stay invisible in the Trash UI.
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+
+(deftest update-question-replace-query-test
+  (testing "Replacing the underlying query via :query (base64)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [products-id  (mt/id :products)
+            products-fk  [(db-name) "PUBLIC" "PRODUCTS"]
+            new-query    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query {:lib/type "mbql/query"
+                                                        :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                    :source-table products-fk
+                                                                    :limit        5}]}})
+            base64-query (:query new-query)
+            _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                               {:query base64-query})
+            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            stages       (:stages persisted)
+            source-table (some :source-table stages)]
+        ;; Query was replaced - source-table changed from orders to products.
+        ;; Construct sends portable FKs over the wire, but the persisted dataset_query is the
+        ;; resolved MBQL 5 map with numeric IDs.
+        (is (some? persisted))
+        (is (= products-id source-table)
+            (str "Expected persisted dataset_query :source-table to be the products table id "
+                 products-id ", got " source-table))))))
+
+(deftest update-question-not-found-test
+  (testing "Returns 404 when card does not exist"
+    (mt/user-http-request :rasta :put 404 "agent/v1/question/999999"
+                          {:name "doesn't matter"})))
+
+(deftest update-question-write-perm-test
+  (testing "Returns 403 when caller lacks write access on the card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll"}
+                     :model/Card       {card-id :id}        {:name          "Hidden Card"
+                                                             :dataset_query (orders-count-query)
+                                                             :display       :table
+                                                             :collection_id locked-coll-id}]
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                              {:name "Forbidden Rename"})))))
+
+(deftest update-question-target-perm-test
+  (testing "Returns 403 when caller can write source collection but not target"
+    ;; Guard against an LLM moving a card into a collection the user can't normally write.
+    ;; api/write-check on the card covers the source side; collection/check-allowed-to-change-
+    ;; collection covers the target side.
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Src"}
+                     :model/Collection {locked-id   :id} {:name "Locked Dest"}
+                     :model/Card       {card-id     :id} {:name          "Card In Writable"
+                                                          :dataset_query (orders-count-query)
+                                                          :display       :table
+                                                          :collection_id writable-id}]
+        (perms/grant-collection-readwrite-permissions!
+         (perms-group/all-users) writable-id)
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                              {:collection_id locked-id})))))
+
+(deftest update-question-display-validation-test
+  (testing "Rejects unknown :display values with 400"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card Display Validation"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      ;; The Malli enum on ::card-display should reject "potato" with a validation error.
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
+                            {:display "potato"}))))
+
+(deftest update-question-cycle-rejection-test
+  (testing "Returns 400 when swapping :query introduces a self-referencing cycle"
+    ;; Mirror REST's `lib/check-card-overwrite` gate. A query whose source is the very
+    ;; card being updated would persist a cyclic card otherwise (branch review A1).
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card About To Cycle"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (let [cycle-query  {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (str "card__" card-id)}}
+            base64-query (u/encode-base64 (json/encode cycle-query))]
+        (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
+                              {:query base64-query}))
+      ;; Persisted query unchanged - source-table still the orders table id, not the card.
+      (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+        (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+            "dataset_query should not have been swapped to a card__ reference")))))
+
+(deftest update-question-query-perm-test
+  (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
+    ;; Guard against the gap retro identified in branch review:
+    ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
+    ;; REST's `check-allowed-to-modify-query` runs in the REST wrapper above `queries/update-card!`;
+    ;; the agent endpoint calls `update-card!` directly, so we have to gate it ourselves.
+    (mt/with-restored-data-perms!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Q-Swap"}
+                       :model/Card       {card-id :id}     {:name          "Card With Allowed Query"
+                                                            :dataset_query (orders-count-query)
+                                                            :display       :table
+                                                            :collection_id writable-id}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+          ;; Block data access on the sample DB for the All Users group.
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (let [products-fk  [(db-name) "PUBLIC" "PRODUCTS"]
+                new-query    (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                   {:query {:lib/type "mbql/query"
+                                                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                        :source-table products-fk
+                                                                        :limit        5}]}})
+                base64-query (:query new-query)]
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/question/" card-id)
+                                  {:query base64-query}))
+          ;; Persisted query unchanged - dataset_query.stages[0].source-table is the orders table id.
+          (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+                "dataset_query should not have been swapped")))))))
+
+;;; ---------------------------------------------- Update Dashboard Tests ------------------------------------------
+
+(deftest update-dashboard-test
+  (testing "Patches name and description"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Original Name"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:name "Renamed by Agent"
+                                        :description "Set by agent"})]
+        (is (=? {:id          dash-id
+                 :name        "Renamed by Agent"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
+      (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))
+  (testing "Moving a dashboard sets collection_id and moves its cards"
+    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Dash Dest"}
+                   :model/Dashboard  {dash-id :id}      {:name "Dash To Move"}
+                   :model/Card       {card-id :id}      {:name          "Card On Dash"
+                                                         :dataset_query (orders-count-query)
+                                                         :display       :table
+                                                         :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:collection_id dest-coll-id})]
+        (is (= dest-coll-id (:collection_id resp))))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
+      ;; cards on the dashboard should follow
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+  (testing "Archiving a dashboard cascades to its cards"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
+                   :model/Card      {card-id :id} {:name          "Cascading Card"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table
+                                                   :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+  (testing "Returns 404 when dashboard does not exist"
+    (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
+                          {:name "doesn't matter"}))
+  (testing "Returns 403 when caller lacks write access on the dashboard"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll For Dash"}
+                     :model/Dashboard  {dash-id :id}        {:name          "Hidden Dash"
+                                                             :collection_id locked-coll-id}]
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                              {:name "Forbidden Rename"}))))
+  (testing "Returns 403 when caller can write source collection but not target"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Dash Src"}
+                     :model/Collection {locked-id   :id} {:name "Locked Dash Dest"}
+                     :model/Dashboard  {dash-id     :id} {:name          "Dash In Writable"
+                                                          :collection_id writable-id}]
+        (perms/grant-collection-readwrite-permissions!
+         (perms-group/all-users) writable-id)
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                              {:collection_id locked-id})))))
+
+(deftest update-dashboard-dashcards-add-test
+  (testing "Add a card to the dashboard (autoplaced)"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Add Target"}
+                   :model/Card      {card-id :id} {:name          "Card to add"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add" :card_id card-id}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)]
+          (is (= 1 (count dashcards)))
+          (is (= card-id (:card_id (first dashcards))))
+          ;; Autoplaced - row and col are set even though we didn't provide them.
+          (is (nat-int? (:row (first dashcards))))
+          (is (nat-int? (:col (first dashcards)))))))))
+
+(deftest update-dashboard-dashcards-multi-add-test
+  (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
+                   :model/Card      {c1 :id}      {:name "C1" :dataset_query (orders-count-query) :display :table}
+                   :model/Card      {c2 :id}      {:name "C2" :dataset_query (orders-count-query) :display :table}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id c1}
+                                         {:action "add" :card_id c2}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            positions (map (juxt :row :col) dashcards)]
+        (is (= 2 (count dashcards)))
+        (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col")))))
+
+(deftest update-dashboard-dashcards-remove-test
+  (testing "Remove a dashcard"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}
+                   :model/Card          {card-id :id} {:name "to remove" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id
+                                                           :row 0 :col 0 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
+      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest update-dashboard-dashcards-move-top-test
+  (testing "Move a dashcard to the top"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move"}
+                   :model/Card          {card-id :id} {:name "movable" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id
+                                                           :row 5 :col 3 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id dashcard-id :position "top"}]})
+      (let [moved (t2/select-one :model/DashboardCard :id dashcard-id)]
+        (is (= 0 (:row moved)))
+        (is (= 0 (:col moved)))))))
+
+(deftest update-dashboard-dashcards-move-top-reflow-test
+  (testing "Move to top shifts other cards down by the moved card's :size_y - no overlap"
+    ;; Regression for branch review #2: previously slammed the moved card at {:row 0 :col 0}
+    ;; without reflowing the rest, leaving cards on top of each other.
+    (mt/with-temp [:model/Dashboard     {dash-id :id}    {:name "Move-Top Reflow"}
+                   :model/Card          {a-card :id}     {:name "A" :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {b-card :id}     {:name "B" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}       {:dashboard_id dash-id :card_id a-card
+                                                          :row 0 :col 0 :size_x 12 :size_y 6}
+                   :model/DashboardCard {b-dc :id}       {:dashboard_id dash-id :card_id b-card
+                                                          :row 6 :col 0 :size_x 12 :size_y 6}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id b-dc :position "top"}]})
+      (let [a (t2/select-one :model/DashboardCard :id a-dc)
+            b (t2/select-one :model/DashboardCard :id b-dc)]
+        ;; b lands at row 0; a shifts down by b's :size_y (6).
+        (is (= 0 (:row b)))
+        (is (= 6 (:row a)))
+        ;; Bounding boxes don't intersect.
+        (is (>= (:row a) (+ (:row b) (:size_y b)))
+            "A should sit entirely below B after the move-to-top reflow")))))
+
+(deftest update-dashboard-dashcards-mixed-test
+  (testing "Mix add + remove + metadata patch in a single call"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Mix"}
+                   :model/Card          {keep-card :id} {:name "keep" :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {add-card :id}  {:name "add"  :dataset_query (orders-count-query) :display :table}
+                   :model/Card          {drop-card :id} {:name "drop" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {keep-dc :id}   {:dashboard_id dash-id :card_id keep-card
+                                                         :row 0 :col 0 :size_x 6 :size_y 4}
+                   :model/DashboardCard {drop-dc :id}   {:dashboard_id dash-id :card_id drop-card
+                                                         :row 4 :col 0 :size_x 6 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:description "Mixed patch"
+                             :dashcards [{:action "remove" :dashcard_id drop-dc}
+                                         {:action "add"    :card_id add-card}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            card-ids  (set (map :card_id dashcards))]
+        (is (= #{keep-card add-card} card-ids))
+        (is (some #(= keep-dc (:id %)) dashcards) "Untouched dashcard survives")
+        (is (= "Mixed patch" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))))
+
+(deftest update-dashboard-dashcards-add-missing-card-test
+  (testing "Returns 404 when add references a missing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Missing Card"}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id 999999}]}))))
+
+(deftest update-dashboard-dashcards-remove-missing-dashcard-test
+  (testing "Returns 404 when remove references a dashcard not on this dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Wrong Dashcard"}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "remove" :dashcard_id 999999}]}))))
+
+(deftest update-dashboard-dashcards-move-validation-test
+  (testing "Move requires :position - omitting it returns 400"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Move Validation"}
+                   :model/Card          {card-id :id} {:name "x" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 6 :size_y 4}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id dc-id}]}))))
+
+;;; ------------------------------------------------- Execute SQL Tests --------------------------------------------
+
+(deftest execute-sql-test
+  (testing "Admin can run a native SQL query (default perms)"
+    (let [resp (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                                     {:database_id (mt/id)
+                                      :sql         "SELECT 1 AS one"})]
+      (is (= "completed" (:status resp)))
+      (is (= [[1]] (-> resp :data :rows)))))
+  (testing "Returns 403 when the user lacks native-query permission"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :post 403 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"})))
+  (testing "Returns 403 when the kill-switch setting is disabled"
+    (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+      (mt/user-http-request :crowberto :post 403 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"})))
+  (testing "Malformed SQL returns the userland :failed envelope (HTTP 400), not a raw 500"
+    ;; Regression for branch review #1: previously bypassed userland middleware, so a
+    ;; bad query threw `ExceptionInfo` and surfaced as HTTP 500. Now goes through
+    ;; `prepare-agent-query`, which wraps errors in the documented `:failed` envelope
+    ;; and surfaces them as a 400 with a structured body.
+    (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
+                                     {:database_id (mt/id)
+                                      :sql         "SELECT * FROM table_that_does_not_exist"})]
+      ;; The streaming pipeline wraps the failure in :via[0]/:status.
+      (is (= "failed" (some-> resp :via first :status)))
+      (is (string? (some-> resp :via first :error)))))
+  (testing "A successful query records a QueryExecution audit row tagged :agent"
+    ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
+    ;; written. Verify a row lands and carries the agent context. The QueryExecution
+    ;; insert is async, so poll for the new row.
+    (let [before (t2/count :model/QueryExecution)]
+      (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1 AS audit_probe"})
+      (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
+                                                               {:order-by [[:started_at :desc]]}))
+                            :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
+                            :timeout-ms  5000
+                            :interval-ms 50})]
+        (is (some? latest) "QueryExecution row should be inserted within 5s")
+        (is (= :agent (:context latest)))))))
+
+;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
+
+(deftest read-resource-test
+  (testing "Dispatches a top-level URI through the shared resolver"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris ["metabase://databases"]})]
+      (is (=? {:resources [(fn [r] (and (= "metabase://databases" (:uri r))
+                                        (some? (:content r))))]
+               :output    string?}
+              resp))
+      ;; Output is XML-shaped for LLM consumption.
+      (is (str/includes? (:output resp) "<resources>"))
+      (is (str/includes? (:output resp) "metabase://databases"))))
+  (testing "Fetches a single-entity URI"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris [(str "metabase://table/" (mt/id :orders))]})]
+      (is (= 1 (count (:resources resp))))
+      (is (some? (-> resp :resources first :content)))))
+  (testing "Returns 400 when too many URIs"
+    (let [uris (vec (repeat 10 "metabase://databases"))]
+      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
+                            {:uris uris})))
+  (testing "Reports a per-URI error rather than failing the whole call"
+    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                     {:uris ["metabase://nonsense/path"]})]
+      (is (= 1 (count (:resources resp))))
+      (is (nil? (-> resp :resources first :content)))
+      (is (some? (-> resp :resources first :error))))))

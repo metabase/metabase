@@ -43,6 +43,7 @@
     :name                        "test-data (h2)"
     :is_attached_dwh             false
     :is_sample                   false
+    :is_stub                     false
     :is_full_sync                true
     :is_on_demand                false
     :description                 nil
