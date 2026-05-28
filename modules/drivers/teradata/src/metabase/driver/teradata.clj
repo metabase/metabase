@@ -30,7 +30,7 @@
 
 (doseq [[feature supported?] {:metadata/key-constraints  false
                               :test/jvm-timezone-setting false
-                              :database-routing.         false}]
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
@@ -215,13 +215,13 @@
 (defmethod sql.qp/date [:teradata :day] [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:teradata :day-of-week]
   [driver _ expr]
-  (sql.qp/adjust-day-of-week
-   driver
-   (h2x/inc (h2x/- (sql.qp/date driver :day expr)
-                   (sql.qp/date driver :week expr)))
-   (driver.common/start-of-week-offset driver)
-   (fn mod-fn [& args]
-     (into [:mod] args))))
+  (let [day-of-week (h2x/with-database-type-info [:td_day_of_week expr] "integer")]
+    (sql.qp/adjust-day-of-week
+     driver
+     day-of-week
+     (driver.common/start-of-week-offset driver)
+     (fn mod-fn [& args]
+       (into [:mod] args)))))
 (defmethod sql.qp/date [:teradata :day-of-month] [_ _ expr] [::h2x/extract :day expr])
 (defmethod sql.qp/date [:teradata :day-of-year] [driver _ expr] (h2x/inc (h2x/- (sql.qp/date driver :day expr) (trunc :year expr))))
 (defmethod sql.qp/date [:teradata :week]
@@ -234,22 +234,29 @@
 (defmethod sql.qp/date [:teradata :year] [_ _ expr] (trunc :year expr))
 
 (defn- num-to-interval [unit amount]
-  [:raw (format "INTERVAL '%d' %s" (int (Math/abs (long amount))) (name unit))])
+  (let [amount (Math/abs (long amount))]
+    (case unit
+      :second [:numtodsinterval (sql.qp/inline-num amount) (h2x/literal "SECOND")]
+      [:raw (format "INTERVAL '%d' %s" amount (name unit))])))
+
+(defn- add-months [hsql-form amount]
+  (let [expr (h2x/cast-unless-type-in "date" #{"date" "timestamp" "timestamp with time zone"} hsql-form)]
+    (h2x/with-database-type-info [:add_months expr (sql.qp/inline-num amount)]
+                                 (h2x/database-type expr))))
 
 (defmethod sql.qp/add-interval-honeysql-form :teradata [_ hsql-form amount unit]
-  (let [op (if (>= amount 0) h2x/+ h2x/-)]
-    (op (if (= unit :month)
-          (trunc :month hsql-form)
-          (h2x/->timestamp hsql-form))
-        (case unit
-          :second (num-to-interval :second amount)
-          :minute (num-to-interval :minute amount)
-          :hour (num-to-interval :hour amount)
-          :day (num-to-interval :day amount)
-          :week (num-to-interval :day (* amount 7))
-          :month (num-to-interval :month amount)
-          :quarter (num-to-interval :month (* amount 3))
-          :year (num-to-interval :year amount)))))
+  (case unit
+    :month   (add-months hsql-form amount)
+    :quarter (add-months hsql-form (* amount 3))
+    :year    (add-months hsql-form (* amount 12))
+    (let [op (if (>= amount 0) h2x/+ h2x/-)]
+      (op (h2x/->timestamp hsql-form)
+          (case unit
+            :second (num-to-interval :second amount)
+            :minute (num-to-interval :minute amount)
+            :hour   (num-to-interval :hour amount)
+            :day    (num-to-interval :day amount)
+            :week   (num-to-interval :day (* amount 7)))))))
 
 (defmethod sql.qp/float-dbtype :teradata
   [_]
@@ -259,6 +266,13 @@
 (defmethod sql.qp/->integer :teradata
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/->honeysql [:teradata ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (let [hsql-expr (sql.qp/->honeysql driver expr)]
+    (if (h2x/is-of-type? hsql-expr "date")
+      (h2x/with-database-type-info [:to_char hsql-expr (h2x/literal "YYYY-MM-DD")] "varchar(2048)")
+      (h2x/maybe-cast "varchar(2048)" hsql-expr))))
 
 (defmethod sql.qp/->honeysql [:teradata :regex-match-first]
   [driver [_ arg pattern]]
@@ -275,15 +289,29 @@
   [_ _ expr]
   (h2x/with-database-type-info [:to_timestamp expr] "timestamp"))
 
+(defmethod sql.qp/cast-temporal-string [:teradata :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamp"))
+
+(defn- subsecond-unix-timestamp->honeysql
+  [driver expr divisor]
+  (let [seconds-expr    (h2x/cast :bigint (h2x// expr divisor))
+        remainder-expr  (h2x/cast (sql.qp/float-dbtype driver) [:mod expr (sql.qp/inline-num divisor)])
+        subseconds-expr (h2x// remainder-expr divisor)]
+    (h2x/+ (sql.qp/unix-timestamp->honeysql driver :seconds seconds-expr)
+           [:numtodsinterval subseconds-expr (h2x/literal "SECOND")])))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:teradata :milliseconds]
   [driver _ expr]
-  ;; TO_TIMESTAMP only accepts integer seconds, so for milliseconds:
-  ;; 1. Convert seconds part with TO_TIMESTAMP (integer division)
-  ;; 2. Add remaining milliseconds using interval arithmetic
-  (let [seconds-expr (h2x// expr 1000)
-        millis-remainder [:mod expr 1000]]
-    (h2x/+ (sql.qp/unix-timestamp->honeysql driver :seconds seconds-expr)
-           (h2x/* millis-remainder [:raw "INTERVAL '0.001' SECOND"]))))
+  (subsecond-unix-timestamp->honeysql driver expr 1000))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:teradata :microseconds]
+  [driver _ expr]
+  (subsecond-unix-timestamp->honeysql driver expr 1000000))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:teradata :nanoseconds]
+  [driver _ expr]
+  (subsecond-unix-timestamp->honeysql driver expr 1000000000))
 
 (defn- default-select
   [driver {[from] :from}]
@@ -435,9 +463,10 @@
    "checkoutTimeout"              300000 ; 300 seconds (increase this if needed)
    "idleConnectionTestPeriod"     300   ; Test idle connections every 5 minutes
    "maxConnectionAge"             (* 6 60 60) ; 6 hours
-   " dataSourceName "               (format " db-%d-%s-%s " (u/the-id database) (name driver) (->> database
-                                                                                                   :details
-                                                                                                   ((some-fn :db
-                                                                                                             :dbname
-                                                                                                             :sid
-                                                                                                             :catalog))))})
+   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (let [details (:details database)]
+                                                                                            (or (first (str/split (:dbnames details) #","))
+                                                                                                (:user details))))})
+
+(defmethod sql.qp/->honeysql [:teradata :log]
+  [driver [_ field]]
+  [:log (sql.qp/->honeysql driver field)])

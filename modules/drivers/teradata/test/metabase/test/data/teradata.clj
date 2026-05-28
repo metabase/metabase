@@ -57,6 +57,13 @@
   (format "SELECT SYSLIB.AbortSessions(-1, '%s', 0, 'Y', 'Y'); DELETE user \"%s\" ALL; DROP user \"%s\";"
           database-name database-name database-name))
 
+(defmethod ddl/drop-db-ddl-statements :sql/test-extensions
+  [_driver {:keys [database-name] :as _dbdef} & {:as _options}]
+  (mapv #(format % database-name)
+        ["SELECT SYSLIB.AbortSessions(-1, '%s', 0, 'Y', 'Y');"
+         "DELETE user \"%s\";"
+         "DROP user \"%s\";"]))
+
 (defmethod sql.tx/qualified-name-components :teradata
   ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name table-name])
@@ -160,27 +167,41 @@
                    (some #(or (nil? %) (= "" %)) (vals row)))
                  rows)))
 
+(defn- sql-expression-value?
+  [value]
+  (and (vector? value)
+       (#{:raw ::sql.qp/compiled} (first value))))
+
+(defn- rows-contain-sql-expressions?
+  [rows]
+  (boolean (some (fn [row]
+                   (some sql-expression-value? (vals row)))
+                 rows)))
+
 (defmethod load-data/do-insert! :teradata
   [driver ^Connection conn table-identifier rows]
   (when (seq rows)
-    (let [columns      (vec (keys (first rows)))
-          column-types (column-sql-types columns rows)
-          sql          (insert-sql driver table-identifier columns)]
-      (try
-        (if (rows-require-individual-inserts? rows)
-          (execute-rows-individually! driver conn sql columns column-types rows)
-          (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
-            (doseq [row rows]
-              (set-row-parameters! driver stmt columns column-types row)
-              (.addBatch stmt))
-            (.executeBatch stmt)))
-        (catch Throwable e
-          (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
-                          {:driver driver
-                           :sql    sql
-                           :rows   (count rows)
-                           :sql-exceptions (sql-exception-chain e)}
-                          e)))))))
+    (if (rows-contain-sql-expressions? rows)
+      (doseq [row rows]
+        (load-data/do-insert*! driver conn table-identifier [row] nil))
+      (let [columns      (vec (keys (first rows)))
+            column-types (column-sql-types columns rows)
+            sql          (insert-sql driver table-identifier columns)]
+        (try
+          (if (rows-require-individual-inserts? rows)
+            (execute-rows-individually! driver conn sql columns column-types rows)
+            (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+              (doseq [row rows]
+                (set-row-parameters! driver stmt columns column-types row)
+                (.addBatch stmt))
+              (.executeBatch stmt)))
+          (catch Throwable e
+            (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
+                            {:driver driver
+                             :sql    sql
+                             :rows   (count rows)
+                             :sql-exceptions (sql-exception-chain e)}
+                            e))))))))
 
 (defmethod sql.tx/pk-sql-type :teradata [_]
   "INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 2147483647 NO CYCLE)")
@@ -221,3 +242,20 @@
         qualified-view (sql.tx/qualify-and-quote driver database-name view-name)
         qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
     [(format "REPLACE VIEW %s AS SELECT * FROM %s" qualified-view qualified-table)]))
+
+(defmethod sql.tx/generated-column-sql :teradata [_ _] nil)
+
+(defmethod sql.tx/create-table-sql :teradata
+  [driver dbdef tabledef]
+  (let [tabledef (update tabledef :field-definitions
+                         (fn [field-defs]
+                           (mapv (fn [{:keys [base-type] :as field-def}]
+                                   (cond-> field-def
+                                     (and (:pk? field-def)
+                                          (not (and (map? base-type)
+                                                    (contains? base-type :native))))
+                                     (assoc :not-null? true)))
+                                 field-defs)))]
+    ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)))
+
+(defmethod sql.tx/default-column-sql :teradata [_ _expr] nil)
