@@ -1,20 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettings } from "metabase-types/api/mocks";
 
 import { WorkspaceInstanceEmptyState } from "./WorkspaceInstanceEmptyState";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 function setup() {
-  setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([]);
-
   renderWithProviders(<WorkspaceInstanceEmptyState />);
 }
 

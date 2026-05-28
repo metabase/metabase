@@ -74,21 +74,6 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defn- coerce-database-id-key
-  "JSON round-trips through the `instance-workspace` setting return integer
-   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
-  [k]
-  (cond
-    (int? k)     k
-    (keyword? k) (parse-long (name k))
-    (string? k)  (parse-long k)))
-
-(defn- normalize-database-keys
-  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
-  [config]
-  (some-> config
-          (update :databases #(update-keys % coerce-database-id-key))))
-
 (mu/defn set-instance-workspace! :- :any
   "Store the workspace config in the `instance-workspace` setting. Replaces any
    prior value. The shape is validated against `::ws/workspace-instance-config`."
@@ -111,7 +96,7 @@
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."
   []
-  (normalize-database-keys (ws.settings/instance-workspace)))
+  (ws.settings/instance-workspace))
 
 (defenterprise workspace-mode?
   "EE impl: true iff this instance is running in workspace mode (the
