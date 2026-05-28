@@ -386,6 +386,13 @@ export const Default = {
   render: HookTemplate,
 };
 
+export const SqlTableQuestion = {
+  args: {
+    questionId: "244",
+  },
+  render: HookTemplate,
+};
+
 const CHART_COLORS = ["#509EE3", "#88BF4D", "#EF8C8C", "#F9CF48", "#A989C5"];
 
 const pageStyle: CSSProperties = {
