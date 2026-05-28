@@ -14,7 +14,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
@@ -237,7 +237,7 @@
 
 (defn- load-fixture-section [driver-kw]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver-kw) ".yml")
-      io/resource slurp yaml/parse-string :config :workspace))
+      io/resource slurp yaml/parse-string :config :settings :instance-workspace))
 
 (defn- fixture-wsd
   "Pull the single workspace-database entry from a fixture: returns
@@ -307,8 +307,9 @@
           (mt/with-empty-h2-app-db!
             (mt/with-temp [:model/Database {db-id :id} {:name db-name :engine engine :details details}]
               (try
-                ;; 1. Load through the production loader. Populates the atom.
-                (advanced-config.file.workspace/apply-workspace-section! section)
+                ;; 1. Load through the production loader. Populates the setting.
+                (advanced-config.file/initialize!
+                 {:version 1 :config {:settings {:instance-workspace section}}})
                 ;; 2. Read the namespace via the production reader.
                 (let [ws-ns      (ws/db-workspace-namespace db-id)
                       to-spec    (merge from-spec ws-ns)
