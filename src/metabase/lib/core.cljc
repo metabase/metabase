@@ -668,6 +668,17 @@
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
 
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
+
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
 
@@ -1412,6 +1423,7 @@
   dependent-metadata
   expression-clause
   expression-parts
+  referenced-columns
   string-filter-clause
   string-filter-parts
   number-filter-clause
