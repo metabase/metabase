@@ -127,7 +127,7 @@
             breakdown                 (:quality_breakdown conversation)]
         (is (nil? (:quality_score conversation))
             "pre-foundation leaves the composite NULL — there's nothing to score against")
-        (is (= quality.constants/composite-version (:version breakdown)))
+        (is (= quality.constants/quality-score-version (:version breakdown)))
         (is (= "pre-foundation" (:unscoreable breakdown))
             "sentinel reason marks the row 'tried; do not retry tomorrow' for the backfill task")))))
 
@@ -140,7 +140,7 @@
                                                         :where  [:= :id conversation-id]}))]
         (is (string? (:quality_breakdown raw-row))
             "column holds a JSON-encoded string at the DB layer")
-        (is (= {:version     quality.constants/composite-version
+        (is (= {:version     quality.constants/quality-score-version
                 :unscoreable "pre-foundation"}
                (json/decode+kw (:quality_breakdown raw-row))))))))
 
@@ -158,7 +158,8 @@
         (is (= 1.0 (:quality_score row)))
         (is (nil? (:unscoreable breakdown))
             "a real breakdown is written, not a pre-foundation sentinel")
-        (is (= 1.0 (:composite (:subscores breakdown))))
+        (is (= 1.0 (:quality_score breakdown))
+            "composite surfaces as the headline quality_score inside the breakdown")
         (is (= 1.0 (:execution_health (:subscores breakdown))))
         (is (nil? (:data_source_quality (:subscores breakdown)))
             "no data sources touched → Data-Source Quality N/A")
@@ -234,23 +235,23 @@
           (is (< 0.7071 score 0.7072))
           (is (= score (:quality_score row))))
         (testing "persisted breakdown shape"
-          (is (= quality.constants/composite-version (:version breakdown)))
+          (is (= quality.constants/quality-score-version (:version breakdown)))
           (is (= "final_response" (:termination breakdown)))
           (is (= 0.5 (:data_source_quality (:subscores breakdown))))
           (is (= 1.0 (:execution_health (:subscores breakdown))))
-          (is (< 0.7071 (:composite (:subscores breakdown)) 0.7072))
+          (is (< 0.7071 (:quality_score breakdown) 0.7072)
+              "composite surfaces as the headline quality_score inside the breakdown")
           (is (= [] (:subscore_na breakdown))
               "both subscores applicable on this fixture")
-          (is (= {:canonical_authoring_share 0.0
-                  :canonical_bypass_rate     nil
-                  :unproductive_search_rate  nil
-                  :grounding                 1.0
-                  :tool_call_failure_rate    0.0
-                  :termination_signal        0.0}
+          (is (= {:canonical_source_share 0.0
+                  :search_efficiency      nil
+                  :grounded_source_share  1.0
+                  :tool_call_failure_rate 0.0
+                  :termination_health     1.0}
                  (:metrics breakdown))
-              "authored table is grounded but non-canonical → authoring share 0.0;
-               nothing discovered and a single search-free turn leave bypass and
-               unproductive-search N/A (null)")
+              "authored table is grounded but non-canonical → canonical-source share 0.0;
+               a single search-free turn leaves search-efficiency N/A (null); a clean
+               final_response exit → termination health 1.0")
           (is (= {:prompt_context 1 :discovered 0 :authored 1 :inspected 0 :hallucinated 0}
                  (:set_cardinalities breakdown))
               "the user_is_viewing table lands in prompt-context; the authoring-tool input
@@ -265,13 +266,13 @@
                 user-row        (first (filter #(= :user      (:role %)) msgs))
                 assistant-row   (first (filter #(= :assistant (:role %)) msgs))
                 attribution     (:quality_attribution assistant-row)
-                prefix          (:prefix_subscores attribution)]
+                subscores       (:subscores attribution)]
             (is (nil? (:quality_attribution user-row))
                 "user rows never carry attribution — the column stays NULL")
-            (is (= quality.constants/composite-version (:version attribution)))
+            (is (= quality.constants/quality-score-version (:version attribution)))
             (is (= [] (:observables attribution))
                 "clean conversation → no observables on the only assistant turn")
-            (testing "last (and only) assistant turn's prefix_subscores match the conversation-level subscores"
-              (is (= 0.5 (:data-source-quality prefix)))
-              (is (= 1.0 (:execution-health prefix)))
-              (is (< 0.7071 (:composite prefix) 0.7072)))))))))
+            (testing "last (and only) assistant turn's score matches the conversation-level score"
+              (is (= 0.5 (:data_source_quality subscores)))
+              (is (= 1.0 (:execution_health subscores)))
+              (is (< 0.7071 (:quality_score attribution) 0.7072)))))))))

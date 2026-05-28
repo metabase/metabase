@@ -120,9 +120,10 @@
       (is (= #{100 200} (set (keys out))))
       (doseq [row-id [100 200]]
         (let [a (get out row-id)]
-          (is (= constants/composite-version (:version a)))
+          (is (= constants/quality-score-version (:version a)))
           (is (vector? (:observables a)))
-          (is (map?    (:prefix_subscores a))))))))
+          (is (number? (:quality_score a)))
+          (is (map?    (:subscores a))))))))
 
 (deftest project-empty-conversation-yields-empty-map-test
   (testing "no assistant rows → no attribution entries"
@@ -145,10 +146,10 @@
           out      (attribution-for messages)
           obs      (observables-for-row out 100)]
       (is (some (fn [o]
-                  (and (= "grounding" (:concern_signal o))
-                       (= "hallucinated-ref" (:kind o))
+                  (and (= "grounded_source_share" (:concern_signal o))
+                       (= "hallucinated_ref" (:kind o))
                        (= {:type "card" :id 999} (:entity o))
-                       (= "a1" (get-in o [:context :tool-call]))))
+                       (= "a1" (get-in o [:context :tool_call]))))
                 obs)))))
 
 ;;; ---------------------------------------------------------------------------
@@ -172,14 +173,14 @@
                                     :output [{:type "card" :id 10} {:type "card" :id 11}]}]
                       :terminal-state "final_response"})]
           out      (attribution-for messages)
-          o        (first (filter #(= "unproductive-search" (:kind %))
+          o        (first (filter #(= "unproductive_search" (:kind %))
                                   (observables-for-row out 200)))]
       (is o)
-      (is (= "unproductive-search-rate" (:concern_signal o)))
-      (is (= "s2" (get-in o [:context :tool-call])))
-      (is (= ["s1"] (get-in o [:context :overlapping-calls])))
+      (is (= "search_efficiency" (:concern_signal o)))
+      (is (= "s2" (get-in o [:context :tool_call])))
+      (is (= ["s1"] (get-in o [:context :overlapping_calls])))
       (testing "the first call has no prior to overlap and never fires"
-        (is (empty? (filter #(= "unproductive-search" (:kind %))
+        (is (empty? (filter #(= "unproductive_search" (:kind %))
                             (observables-for-row out 100))))))))
 
 (deftest disjoint-searches-do-not-fire-unproductive-search-test
@@ -199,7 +200,7 @@
                       :terminal-state "final_response"})]
           out      (attribution-for messages)]
       (is (empty? (mapcat (fn [row-id]
-                            (filter #(= "unproductive-search" (:kind %))
+                            (filter #(= "unproductive_search" (:kind %))
                                     (observables-for-row out row-id)))
                           [100 200]))))))
 
@@ -220,10 +221,10 @@
                       :terminal-state "final_response"})]
           out      (attribution-for messages)
           obs      (observables-for-row out 100)
-          o        (first (filter #(= "tool-error" (:kind %)) obs))]
+          o        (first (filter #(= "tool_error" (:kind %)) obs))]
       (is o)
-      (is (= "execution-health" (:concern_signal o)))
-      (is (= "c1" (get-in o [:context :tool-call])))
+      (is (= "execution_health" (:concern_signal o)))
+      (is (= "c1" (get-in o [:context :tool_call])))
       (is (= "edit_sql_query" (get-in o [:context :function])))
       (is (= {:msg "syntax error"} (get-in o [:context :error]))))))
 
@@ -237,50 +238,50 @@
                     (assistant-row {:id 100 :created-at 1 :terminal-state "iter_cap"})]
           out      (attribution-for messages)
           obs      (observables-for-row out 100)
-          o        (first (filter #(= "iter-cap" (:kind %)) obs))]
+          o        (first (filter #(= "iter_cap" (:kind %)) obs))]
       (is o)
-      (is (= "execution-health" (:concern_signal o)))
-      (is (= "iter_cap" (get-in o [:context :terminal-state]))))))
+      (is (= "execution_health" (:concern_signal o)))
+      (is (= "iter_cap" (get-in o [:context :terminal_state]))))))
 
 (deftest error-termination-fires-on-error-test
   (testing "terminal_state = error → error-termination"
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assistant-row {:id 100 :created-at 1 :terminal-state "error"})]
           out      (attribution-for messages)
-          o        (first (filter #(= "error-termination" (:kind %))
+          o        (first (filter #(= "error_termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "execution-health" (:concern_signal o)))
-      (is (= "error" (get-in o [:context :terminal-state]))))))
+      (is (= "execution_health" (:concern_signal o)))
+      (is (= "error" (get-in o [:context :terminal_state]))))))
 
 (deftest aborted-collapses-to-error-termination-test
   (testing "an aborted conversation (finished=false, no terminal_state part) fires
-            error-termination with :terminal-state \"aborted\""
+            error_termination with :terminal_state \"aborted\""
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assoc (assistant-row {:id 100 :created-at 1 :terminal-state nil})
                            :finished false)]
           out      (attribution-for messages)
-          o        (first (filter #(= "error-termination" (:kind %))
+          o        (first (filter #(= "error_termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "execution-health" (:concern_signal o)))
-      (is (= "aborted" (get-in o [:context :terminal-state]))))))
+      (is (= "execution_health" (:concern_signal o)))
+      (is (= "aborted" (get-in o [:context :terminal_state]))))))
 
 (deftest clean-termination-emits-no-termination-observable-test
   (testing "final_response / model_signaled_done leave no termination observable"
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assistant-row {:id 100 :created-at 1 :terminal-state "final_response"})]
           out      (attribution-for messages)]
-      (is (empty? (filter #(contains? #{"iter-cap" "error-termination"} (:kind %))
+      (is (empty? (filter #(contains? #{"iter_cap" "error_termination"} (:kind %))
                           (observables-for-row out 100)))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; prefix_subscores
+;;; prefix score (quality_score + subscores)
 ;;; ---------------------------------------------------------------------------
 
-(deftest last-turn-prefix-subscores-matches-conversation-level-test
-  (testing "the last assistant turn's :prefix_subscores equals the
-            conversation-level subscores computed independently"
+(deftest last-turn-prefix-score-matches-conversation-level-test
+  (testing "the last assistant turn's score equals the conversation-level
+            score computed independently"
     (let [messages   [(user-row {:id 1 :created-at 0 :pc {:user_is_viewing [{:type "table" :id 1}]}})
                       (assistant-row
                        {:id         100
@@ -301,13 +302,13 @@
           metrics    (metrics/compute normalized governance)
           conv-subs  (subscores/compose metrics)
           out        (attribution/project normalized governance)
-          last-pref  (get-in out [200 :prefix_subscores])]
-      (is (= (select-keys conv-subs [:data-source-quality :execution-health :composite])
+          last-pref  (select-keys (get out 200) [:quality_score :subscores])]
+      (is (= (subscores/project-json conv-subs)
              last-pref)))))
 
-(deftest prefix-subscores-tighten-as-conversation-progresses-test
-  (testing "each assistant turn carries a prefix_subscores vector computed against
-            the message prefix ending at that turn"
+(deftest prefix-score-tightens-as-conversation-progresses-test
+  (testing "each assistant turn carries a score computed against the message
+            prefix ending at that turn"
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assistant-row
                      {:id         100
@@ -325,12 +326,12 @@
                                     :input  [{:type "card" :id 1}]}]
                       :terminal-state "final_response"})]
           out      (attribution-for messages)
-          pref-100 (get-in out [100 :prefix_subscores])
-          pref-200 (get-in out [200 :prefix_subscores])]
-      (is (every? #(contains? pref-100 %) [:data-source-quality :execution-health :composite]))
-      (is (every? #(contains? pref-200 %) [:data-source-quality :execution-health :composite]))
-      (is (number? (:composite pref-100)))
-      (is (number? (:composite pref-200))))))
+          pref-100 (get out 100)
+          pref-200 (get out 200)]
+      (is (every? #(contains? (:subscores pref-100) %) [:data_source_quality :execution_health]))
+      (is (every? #(contains? (:subscores pref-200) %) [:data_source_quality :execution_health]))
+      (is (number? (:quality_score pref-100)))
+      (is (number? (:quality_score pref-200))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Multi-turn smoke
@@ -338,7 +339,7 @@
 
 (deftest multi-turn-fixture-produces-per-turn-attribution-blocks-test
   (testing "a multi-turn conversation produces one attribution block per assistant
-            turn, each with the version stamp and a prefix_subscores map"
+            turn, each with the version stamp and a subscores map"
     (let [n-turns  5
           messages (concat
                     [(user-row {:id 0 :created-at 0})]
@@ -356,6 +357,6 @@
       (doseq [i (range n-turns)]
         (let [a (get out (+ 100 i))]
           (is (some? a))
-          (is (= constants/composite-version (:version a)))
-          (is (map?    (:prefix_subscores a)))
+          (is (= constants/quality-score-version (:version a)))
+          (is (map?    (:subscores a)))
           (is (vector? (:observables a))))))))

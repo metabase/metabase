@@ -35,7 +35,7 @@
   Writing a sentinel is what stops a backfill from re-discovering the row
   later (discovery is `WHERE quality_breakdown IS NULL`)."
   [reason]
-  {:version     quality.constants/composite-version
+  {:version     quality.constants/quality-score-version
    :unscoreable reason})
 
 ;;; ---------------------------------------------------------------------------
@@ -102,26 +102,26 @@
   conversation row. Metric values read `1 = good`; `:na` serializes as
   null."
   [normalized metrics subscores]
-  {:version           quality.constants/composite-version
-   :subscores         {:data_source_quality (:data-source-quality subscores)
-                       :execution_health    (:execution-health subscores)
-                       :composite           (:composite subscores)}
-   :subscore_na       (mapv subscore-na-name (sort (:na subscores)))
-   :metrics           {:canonical_authoring_share (na->nil (:canonical-authoring-share metrics))
-                       :canonical_bypass_rate     (na->nil (:canonical-bypass-rate metrics))
-                       :unproductive_search_rate  (na->nil (:unproductive-search-rate metrics))
-                       :grounding                 (na->nil (:grounding metrics))
-                       :tool_call_failure_rate    (:tool-call-failure-rate metrics)
-                       :termination_signal        (na->nil (:termination-signal metrics))}
-   :set_cardinalities {:prompt_context (count (get-in normalized [:sets :P]))
-                       :discovered     (count (get-in normalized [:sets :D]))
-                       :authored       (count (get-in normalized [:sets :Q]))
-                       :inspected      (count (get-in normalized [:sets :I]))
-                       :hallucinated   (count (get-in normalized [:sets :H]))}
-   :termination       (some-> (get-in normalized [:temporal :terminal-state]) name)
-   :context           {:iterations (get-in normalized [:temporal :iterations] 0)
-                       :tool_calls (count (:tool-events normalized))
-                       :errors     (count (filter :error (:tool-events normalized)))}})
+  (merge
+   {:version quality.constants/quality-score-version}
+   ;; `:quality_score` (the composite) + a snake-cased `:subscores` map —
+   ;; the same projection the per-message attribution writes.
+   (subscores/project-json subscores)
+   {:subscore_na       (mapv subscore-na-name (sort (:na subscores)))
+    :metrics           {:canonical_source_share (na->nil (:canonical-source-share metrics))
+                        :search_efficiency      (na->nil (:search-efficiency metrics))
+                        :grounded_source_share  (na->nil (:grounded-source-share metrics))
+                        :tool_call_failure_rate (:tool-call-failure-rate metrics)
+                        :termination_health     (:termination-health metrics)}
+    :set_cardinalities {:prompt_context (count (get-in normalized [:sets :P]))
+                        :discovered     (count (get-in normalized [:sets :D]))
+                        :authored       (count (get-in normalized [:sets :Q]))
+                        :inspected      (count (get-in normalized [:sets :I]))
+                        :hallucinated   (count (get-in normalized [:sets :H]))}
+    :termination       (some-> (get-in normalized [:temporal :terminal-state]) name)
+    :context           {:iterations (get-in normalized [:temporal :iterations] 0)
+                        :tool_calls (count (:tool-events normalized))
+                        :errors     (count (filter :error (:tool-events normalized)))}}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Pipeline composition

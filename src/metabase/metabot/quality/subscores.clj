@@ -14,9 +14,9 @@
 
 (def ^:private data-source-metric-keys
   "Metric keys that compose Data-Source Quality, in a stable order."
-  [:canonical-authoring-share
-   :unproductive-search-rate
-   :grounding])
+  [:canonical-source-share
+   :search-efficiency
+   :grounded-source-share])
 
 (defn- mean
   "Arithmetic mean of a non-empty seq of doubles."
@@ -44,12 +44,13 @@
       (mean healths))))
 
 (defn- execution-health
-  "`1 −` the mean of the tool-call failure rate and the termination signal,
-  so a clean run scores 1.0 and a fully failed, force-stopped run scores
-  0.0. Always applicable."
+  "Mean of the tool-call success rate (`1 −` the failure rate) and the
+  termination health, so a clean run scores 1.0 and a fully failed,
+  force-stopped run scores 0.0. Always applicable. Algebraically identical
+  to `1 − mean(failure-rate, 1 − termination-health)`."
   ^double [metrics]
-  (- 1.0 (mean [(:tool-call-failure-rate metrics)
-                (:termination-signal metrics)])))
+  (mean [(- 1.0 (:tool-call-failure-rate metrics))
+         (:termination-health metrics)]))
 
 (defn compose
   "Group the metrics into subscores and produce the composite.
@@ -73,9 +74,23 @@
      :composite           (geometric-mean active)
      :na                  na}))
 
+(defn project-json
+  "Project a composed-subscores map (the result of [[compose]]) into the
+  persisted JSON shape shared by the conversation-level `quality_breakdown`
+  and the per-message `quality_attribution`: the headline `quality_score`
+  (the composite) alongside a snake-cased `subscores` map of the two
+  component subscores. `data_source_quality` is already nil when N/A.
+
+  Single source of truth for the persisted shape so the two payloads can't
+  drift apart."
+  [subs]
+  {:quality_score (:composite subs)
+   :subscores     {:data_source_quality (:data-source-quality subs)
+                   :execution_health    (:execution-health subs)}})
+
 (comment
   ;; Healthy: grounded authoring, no tool errors, clean exit → composite 1.0.
-  (compose {:grounding 1.0 :tool-call-failure-rate 0.0 :termination-signal 0.0})
+  (compose {:grounded-source-share 1.0 :tool-call-failure-rate 0.0 :termination-health 1.0})
 
   ;; Nothing authored → Data-Source Quality N/A, composite = Execution Health.
-  (compose {:grounding :na :tool-call-failure-rate 0.5 :termination-signal 1.0}))
+  (compose {:grounded-source-share :na :tool-call-failure-rate 0.5 :termination-health 0.0}))

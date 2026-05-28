@@ -23,7 +23,7 @@
   [[type _id]]
   (or (contains? entity-usage/card-family-types type) (= "table" type)))
 
-(defn- grounding
+(defn- grounded-source-share
   "Fraction of authored entities that were actually surfaced to the agent —
   `1 − |authored-but-never-seen| / |authored|`. The never-seen set is the
   authored entities absent from both the prompt context and every tool
@@ -46,15 +46,16 @@
       (/ (double (count (filter (comp some? :error) events)))
          (double total)))))
 
-(defn- termination-signal
-  "`0.0` when the agent stopped on its own — signaled done or emitted a
-  final response — and `1.0` for any other exit (hit the iteration cap,
-  errored, was aborted, or an unrecognized state). Reads the categorical
+(defn- termination-health
+  "`1.0` when the agent stopped on its own — signaled done or emitted a
+  final response — and `0.0` for any other exit (hit the iteration cap,
+  errored, was aborted, or an unrecognized state). A health in `[0, 1]`,
+  1 = clean, matching the rest of the metric bag. Reads the categorical
   populated by [[metabase.metabot.quality.temporal/derive]]."
   ^double [normalized]
   (case (get-in normalized [:temporal :terminal-state])
-    (:model_signaled_done :final_response) 0.0
-    1.0))
+    (:model_signaled_done :final_response) 1.0
+    0.0))
 
 (defn- canonical-key?
   "True iff the entity at set-key `k` resolves to a canonical data source
@@ -63,7 +64,7 @@
   [governance k]
   (governance/canonical? (get governance k)))
 
-(defn- canonical-authoring-share
+(defn- canonical-source-share
   "Fraction of the card/table entities the agent authored against that are
   canonical. Fields are excluded from both sides — a field is not an
   independent data source and never resolves canonical. A card/table
@@ -75,21 +76,6 @@
       :na
       (/ (double (count (filter #(canonical-key? governance %) ks)))
          (double (count ks))))))
-
-(defn- canonical-bypass-rate
-  "Health for canonical surfaces the agent saw but neither inspected nor
-  used. `shown` is the canonical subset of the discovered set; `ignored`
-  is `shown` minus everything inspected or authored against; health is
-  `1 − |ignored| / |shown|`. `:na` when no canonical surface was shown."
-  [normalized governance]
-  (let [shown (filter #(canonical-key? governance %)
-                      (keys (get-in normalized [:sets :D])))
-        used  (into (set (keys (get-in normalized [:sets :I])))
-                    (keys (get-in normalized [:sets :Q])))]
-    (if (empty? shown)
-      :na
-      (- 1.0 (/ (double (count (remove used shown)))
-                (double (count shown)))))))
 
 (defn search-events
   "Tool-events that came from a search tool, in call order. All search
@@ -141,9 +127,9 @@
                 :overlapping   overlap})))
           search-evs)))
 
-(defn- unproductive-search-rate
-  "Fraction of search calls that rediscovered an earlier call's results,
-  expressed as a health (`1 − rate`). `:na` with fewer than two search
+(defn- search-efficiency
+  "Health in `[0, 1]` (1 = good): `1 −` the fraction of search calls that
+  rediscovered an earlier call's results. `:na` with fewer than two search
   calls — a single search can't rediscover anything."
   [normalized]
   (let [evs (search-events normalized)]
@@ -160,12 +146,11 @@
   Returns a map of metric keyword → health-in-`[0, 1]`-or-`:na`, plus the
   raw execution inputs the subscore layer composes."
   [normalized governance]
-  {:canonical-authoring-share (canonical-authoring-share normalized governance)
-   :canonical-bypass-rate     (canonical-bypass-rate normalized governance)
-   :unproductive-search-rate  (unproductive-search-rate normalized)
-   :grounding                 (grounding normalized)
-   :tool-call-failure-rate    (tool-call-failure-rate normalized)
-   :termination-signal        (termination-signal normalized)})
+  {:canonical-source-share (canonical-source-share normalized governance)
+   :search-efficiency      (search-efficiency normalized)
+   :grounded-source-share  (grounded-source-share normalized)
+   :tool-call-failure-rate (tool-call-failure-rate normalized)
+   :termination-health     (termination-health normalized)})
 
 (comment
   ;; Healthy: a canonical authored source, grounded, no errors, clean exit.
@@ -174,7 +159,7 @@
             :temporal    {:terminal-state :final_response}}
            {["card" "1"] {:kind :card :moderation-status "verified"}})
 
-  ;; A canonical surface shown but never used, repeated identical searches.
+  ;; Repeated identical searches drag search efficiency; forced exit.
   (compute {:sets        {:Q {} :D {["card" "1"] {}} :I {} :H {}}
             :tool-events [{:function "search" :output [{:type "card" :id 1}]}
                           {:function "search" :output [{:type "card" :id 1}]}]

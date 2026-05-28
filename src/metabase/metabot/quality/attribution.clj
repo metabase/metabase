@@ -2,20 +2,21 @@
   "Per-turn attribution of the conversation-quality analysis back onto each
   assistant turn. The conversation-level breakdown summarizes the whole
   conversation; each turn's `metabot_message.quality_attribution` carries
-  which problems landed on *this* turn (observables) plus the subscore
-  vector as of the end of this turn (prefix subscores).
+  which problems landed on *this* turn (observables) plus the subscores as
+  of the end of this turn (the prefix score).
 
   Pure given the normalized struct and governance map. Observables are
-  derived directly from the normalized struct; prefix subscores re-run the
+  derived directly from the normalized struct; the prefix score re-runs the
   pure pipeline on each message prefix.
 
   Storage shape per assistant message:
 
   ```clojure
-  {:version          \"...\"
-   :observables      [{:concern_signal \"...\" :kind \"...\" :entity {...} :context {...}}
-                      ...]
-   :prefix_subscores {:data-source-quality 0.84 :execution-health 1.0 :composite 0.91}}
+  {:version       \"...\"
+   :observables   [{:concern_signal \"...\" :kind \"...\" :entity {...} :context {...}}
+                   ...]
+   :quality_score 0.91
+   :subscores     {:data_source_quality 0.84 :execution_health 1.0}}
   ```"
   (:require
    [metabase.metabot.quality.constants :as constants]
@@ -107,10 +108,10 @@
         :when   msg-id]
     [msg-id
      (observable
-      "unproductive-search-rate"
-      "unproductive-search"
-      {:context {:tool-call         (:call-id event)
-                 :overlapping-calls (mapv :call-id overlapping)}})]))
+      "search_efficiency"
+      "unproductive_search"
+      {:context {:tool_call         (:call-id event)
+                 :overlapping_calls (mapv :call-id overlapping)}})]))
 
 (defn- hallucinated-ref-observables
   "For each entity the agent authored against but never saw surfaced, emit
@@ -124,10 +125,10 @@
         :when   msg-id]
     [msg-id
      (observable
-      "grounding"
-      "hallucinated-ref"
+      "grounded_source_share"
+      "hallucinated_ref"
       {:entity  (entity-ref-of y)
-       :context {:tool-call (:call-id q-prov)}})]))
+       :context {:tool_call (:call-id q-prov)}})]))
 
 (defn- tool-error-observables
   "For each errored tool-event, emit `tool-error` on the turn where the
@@ -140,16 +141,16 @@
         :when   msg-id]
     [msg-id
      (observable
-      "execution-health"
-      "tool-error"
-      {:context {:tool-call (:call-id e)
+      "execution_health"
+      "tool_error"
+      {:context {:tool_call (:call-id e)
                  :function  (:function e)
                  :error     (:error e)}})]))
 
 (defn- termination-observables
   "Emit at most one termination observable on the last assistant turn.
-  `:iter_cap` produces `iter-cap`; `:error` and `:aborted` both produce
-  `error-termination`. Clean terminations (`:final_response`,
+  `:iter_cap` produces `iter_cap`; `:error` and `:aborted` both produce
+  `error_termination`. Clean terminations (`:final_response`,
   `:model_signaled_done`) yield no observable — there's nothing to
   attribute. Both kinds trace to execution health."
   [normalized last-msg-id]
@@ -157,14 +158,14 @@
     (cond
       (nil? last-msg-id) []
       (= state :iter_cap)
-      [[last-msg-id (observable "execution-health" "iter-cap"
-                                {:context {:terminal-state "iter_cap"}})]]
+      [[last-msg-id (observable "execution_health" "iter_cap"
+                                {:context {:terminal_state "iter_cap"}})]]
       (= state :error)
-      [[last-msg-id (observable "execution-health" "error-termination"
-                                {:context {:terminal-state "error"}})]]
+      [[last-msg-id (observable "execution_health" "error_termination"
+                                {:context {:terminal_state "error"}})]]
       (= state :aborted)
-      [[last-msg-id (observable "execution-health" "error-termination"
-                                {:context {:terminal-state "aborted"}})]]
+      [[last-msg-id (observable "execution_health" "error_termination"
+                                {:context {:terminal_state "aborted"}})]]
       :else [])))
 
 ;;; ---------------------------------------------------------------------------
@@ -188,13 +189,14 @@
     (vec (take-while (fn [r] (not (pos? (compare (sort-key r) target))))
                      messages))))
 
-(defn- prefix-subscores
+(defn- prefix-score
   "Run the pure pipeline on the message prefix ending at `assistant-row`
-  and return the subscore vector restricted to that prefix.
+  and return its persisted-shape score — `{:quality_score .. :subscores
+  {..}}` — restricted to that prefix.
 
   Shares `governance` with the full-conversation computation so its
   lookup cost is paid once. The slice tightens the entity sets to what is
-  *known* by the end of the prefix, which is what the prefix subscores are
+  *known* by the end of the prefix, which is what the prefix score is
   meant to reflect."
   [messages governance assistant-row]
   (let [prefix-msgs (prefix-up-to-row messages assistant-row)
@@ -203,7 +205,7 @@
                         temporal/derive)
         metrics     (metrics/compute normalized governance)
         subs        (subscores/compose metrics)]
-    (select-keys subs [:data-source-quality :execution-health :composite])))
+    (subscores/project-json subs)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public surface
@@ -214,10 +216,10 @@
   `{message-id → attribution-map}` for assistant rows only; user rows have
   no entry (their `quality_attribution` stays NULL).
 
-  Each attribution map carries the composite version stamp, the
-  observables attributable to the turn, and the subscore vector as of the
-  end of the turn. The last assistant row's prefix subscores match the
-  conversation-level subscores by construction.
+  Each attribution map carries the version stamp, the observables
+  attributable to the turn, and the score (`quality_score` + `subscores`)
+  as of the end of the turn. The last assistant row's prefix score matches
+  the conversation-level score by construction.
 
   Pure. Cost is quadratic in the number of assistant turns (each prefix
   re-extracts from scratch)."
@@ -234,9 +236,10 @@
     (into {}
           (for [row   (assistant-rows normalized)
                 :let  [msg-id (:id row)]]
-            [msg-id {:version          constants/composite-version
-                     :observables      (mapv second (get by-msg msg-id []))
-                     :prefix_subscores (prefix-subscores messages governance row)}]))))
+            [msg-id (merge
+                     {:version     constants/quality-score-version
+                      :observables (mapv second (get by-msg msg-id []))}
+                     (prefix-score messages governance row))]))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; REPL helpers
