@@ -1017,7 +1017,7 @@
 
 (defmethod expected-preflight-fragment :postgres
   [_driver input-namespace]
-  (format "cannot grant USAGE on schema \"%s\"" input-namespace))
+  (format "USAGE WITH GRANT OPTION on schema \"%s\"" input-namespace))
 
 (defn- grant-preflight-negative-supported?
   "Drivers we have a real-DB negative-path fixture for. Other drivers fall back

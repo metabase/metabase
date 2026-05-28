@@ -1670,6 +1670,20 @@
                  (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
             source-schemas)))
 
+(defmethod driver/check-can-grant-workspace-access! :postgres
+  [_driver database schemas]
+  (let [unique-schemas (set schemas)]
+    (doseq [s unique-schemas]
+      (when (str/blank? s)
+        (throw (ex-info (tru "PostgreSQL workspace input schema is blank")
+                        {:database-id (:id database) :step :grant}))))
+    (when (seq unique-schemas)
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (doseq [s unique-schemas]
+          (assert-has-usage-grant-option!       conn s)
+          (assert-has-grant-option!             conn s)
+          (assert-can-alter-default-privileges! conn s))))))
+
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
@@ -1681,10 +1695,7 @@
         ;; never touches can keep their default ACLs.
         _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
-                           (assert-no-public-create-grant!       check-conn s)
-                           (assert-has-usage-grant-option!       check-conn s)
-                           (assert-has-grant-option!             check-conn s)
-                           (assert-can-alter-default-privileges! check-conn s)))
+                           (assert-no-public-create-grant! check-conn s)))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
