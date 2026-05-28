@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { LegacyApi } from "./legacy-client";
 
 type OnBeforeRequestHandlerData = {
@@ -328,6 +330,51 @@ describe("api", () => {
       expect(result.options.transformResponse).toBe(
         complexOptions.transformResponse,
       );
+    });
+  });
+
+  // In test environments (`isTest`) the legacy client routes every request
+  // through `_makeRequestWithFetch`, so these specs cover the fetch path. The
+  // XHR path's empty-body branch mirrors the same `responseText === ""` check
+  // and is exercised end-to-end by the live app; co-locating both transports'
+  // unit coverage would require a dedicated XHR mock which the spec doesn't
+  // currently set up.
+  describe("response body parsing", () => {
+    let apiInstance: LegacyApi;
+
+    beforeEach(() => {
+      apiInstance = new LegacyApi();
+    });
+
+    afterEach(() => {
+      fetchMock.removeRoutes().clearHistory();
+    });
+
+    it("resolves an empty 204 body as null (not the empty string)", async () => {
+      fetchMock.get("path:/api/empty", { status: 204, body: "" });
+
+      const result = await apiInstance.GET("/api/empty")({});
+
+      expect(result).toBeNull();
+    });
+
+    it("resolves an empty 200 body as null (not the empty string)", async () => {
+      fetchMock.get("path:/api/also-empty", { status: 200, body: "" });
+
+      const result = await apiInstance.GET("/api/also-empty")({});
+
+      expect(result).toBeNull();
+    });
+
+    it("parses a non-empty JSON body to its decoded value", async () => {
+      fetchMock.get("path:/api/data", {
+        status: 200,
+        body: { hello: "world" },
+      });
+
+      const result = await apiInstance.GET("/api/data")({});
+
+      expect(result).toEqual({ hello: "world" });
     });
   });
 });
