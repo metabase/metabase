@@ -415,12 +415,13 @@ describe("scenarios > data studio > library > metrics", () => {
   describe("caching", () => {
     it("should allow changing metric caching settings", () => {
       cy.log("Navigate to Data Studio Library");
-      cy.visit("/data-studio/library");
+      H.DataStudio.Library.visit();
 
       cy.log("Click on the metric from the collection view");
       H.DataStudio.Library.metricItem("Trusted Orders Metric").click();
 
       cy.log("Navigate to caching tab");
+      H.DataStudio.Metrics.header().should("be.visible");
       H.DataStudio.Metrics.cachingTab().click();
 
       cy.log("Change the setting and save");
