@@ -655,12 +655,14 @@
     "create_question" "create_dashboard"
     "update_question" "update_dashboard" "create_collection"})
 
-(deftest tools-call-smoke-test
+(deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
     (is (= (apply disj (set (map :name (mcp.tools/list-tools nil)))
                   ["visualize_query" "render_drill_through"])
            smoke-tested-tools)
-        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below.")))
+
+(deftest tools-call-smoke-test
   (testing "every tool returns a successful response with valid parameters"
     (mt/with-temporary-setting-values [system.settings/site-url "https://stats.metabase.test"]
       (search.tu/with-legacy-search
@@ -707,7 +709,7 @@
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))
                     _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
-                                           (:url dash-data)))
+                                          (:url dash-data)))
                     _              (call-tool session-id "update_dashboard"
                                               {:id          (:id dash-data)
                                                :description "Smoke updated dashboard"})
