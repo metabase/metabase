@@ -20,6 +20,7 @@ const {
   CI_CONDUCTOR_DRY_RUN,
   REPO_ID,
   GITHUB_RUN_ID,
+  GITHUB_RUN_ATTEMPT,
   JOB_ID,
 } = process.env;
 
@@ -32,8 +33,15 @@ type ConductorTest = {
   name: string;
   class?: string;
   file?: string;
-  message?: string;
-  stack?: string;
+  duration?: number;
+  /** Raw per-attempt shape from Cypress, e.g. [{state:"failed"},{state:"passed"}]. */
+  attempts?: { state: string }[];
+  /**
+   * Cypress' final `displayError` blob for the test. Null for flaky tests
+   * (Cypress drops it when the final attempt passes); only broken tests carry a
+   * value. Conductor schema isn't final — fields it doesn't store are ignored.
+   */
+  message?: string | null;
 };
 
 /**
@@ -56,18 +64,20 @@ function toNumber(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function firstLine(text: string | null | undefined): string | undefined {
-  return text?.split("\n").find((line) => line.trim().length > 0);
-}
-
 /**
- * Pull the failed tests out of a single spec's run results. Only tests whose
- * final state is "failed" are included, so a test that flaked but passed on
- * retry is not reported.
+ * Pull the reportable tests out of a single spec's run results. We include any
+ * test that had at least one failed attempt — so both "broken" (every attempt
+ * failed) and "flaky" (failed at least once, passed on retry) are reported.
+ * Healthy tests (no failed attempts) are omitted. Conductor classifies the
+ * row from the raw `attempts` array.
+ *
+ * Cypress only populates `displayError` for the *final* state, so flaky tests
+ * arrive with `message: null` — we know *that* they flaked from `attempts`,
+ * but not *why*. Broken tests carry the full error blob.
  *
  * If the spec crashed before any tests ran (e.g. a compile/import error),
- * Cypress reports no failed tests but sets `results.error`; we surface that as
- * a single synthetic entry so the failure isn't lost.
+ * Cypress reports no tests but sets `results.error`; we surface that as a
+ * single synthetic entry so the failure isn't lost.
  */
 export function extractFailedTests(
   spec: Cypress.Spec,
@@ -75,34 +85,36 @@ export function extractFailedTests(
 ): ConductorTest[] {
   const file = spec?.relative;
 
-  const failedTests = (results?.tests ?? [])
-    .filter((test) => test.state === "failed")
+  const tests = (results?.tests ?? [])
+    .filter((test) =>
+      (test.attempts ?? []).some((attempt) => attempt.state === "failed"),
+    )
     .map((test) => {
       const titlePath = test.title ?? [];
       const name = titlePath[titlePath.length - 1] ?? "(unknown test)";
       const suite = titlePath.slice(0, -1).join(" > ");
-      const displayError = test.displayError ?? undefined;
       return {
         name,
         class: suite || undefined,
         file,
-        message: firstLine(displayError),
-        stack: displayError,
+        duration: test.duration,
+        attempts: test.attempts ?? [],
+        message: test.displayError ?? null,
       };
     });
 
-  if (failedTests.length === 0 && results?.error) {
+  if (tests.length === 0 && results?.error) {
     return [
       {
         name: spec?.name ?? "(spec failed to run)",
         file,
-        message: firstLine(results.error),
-        stack: results.error,
+        attempts: [{ state: "failed" }],
+        message: results.error,
       },
     ];
   }
 
-  return failedTests;
+  return tests;
 }
 
 /**
@@ -124,7 +136,12 @@ export async function reportFailedTestsToConductor(
     const body = {
       repo_id: toNumber(REPO_ID),
       run_id: toNumber(GITHUB_RUN_ID),
+      run_attempt: toNumber(GITHUB_RUN_ATTEMPT),
       job_id: getJobId(),
+      // The retry ceiling so conductor can interpret per-test `attempts`.
+      // CYPRESS_RETRIES isn't set in CI by default; e2e/support/config.js
+      // surfaces the resolved Cypress config value into this env at startup.
+      retries: toNumber(process.env.CYPRESS_RETRIES),
       tests,
     };
 

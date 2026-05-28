@@ -9,17 +9,33 @@ jest.mock("node-fetch", () => ({
   default: (...args: unknown[]) => mockFetch(...args),
 }));
 
-// ci_conductor reads its env vars once at import time, so each send-path test
-// re-imports the module with a fresh process.env.
+// ci_conductor reads some env at import time (top-level destructure) and some
+// at call time (e.g. CYPRESS_RETRIES), so loadConductor applies the env BEFORE
+// re-importing and leaves it applied until afterEach restores it.
+const envBackups: Array<{ key: string; previous: string | undefined }> = [];
+
+afterEach(() => {
+  while (envBackups.length) {
+    const { key, previous } = envBackups.pop()!;
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+});
+
 const loadConductor = async (env: Record<string, string | undefined>) => {
   jest.resetModules();
-  const original = process.env;
-  process.env = { ...original, ...env };
-  try {
-    return await import("./ci_conductor");
-  } finally {
-    process.env = original;
+  for (const [key, value] of Object.entries(env)) {
+    envBackups.push({ key, previous: process.env[key] });
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
   }
+  return await import("./ci_conductor");
 };
 
 // Minimal builders for the bits of Cypress' after:spec payload we read.
@@ -38,24 +54,32 @@ const makeResults = (
     ...overrides,
   }) as unknown as CypressCommandLine.RunResult;
 
+// Builds a TestResult-shaped object. The final `state` is derived from
+// `attemptStates` so callers can describe healthy/flaky/broken naturally.
 const test = (
   title: string[],
-  state: string,
+  attemptStates: string[],
   displayError: string | null = null,
-) => ({ title, state, displayError });
+  duration: number = 100,
+) => ({
+  title,
+  state: attemptStates[attemptStates.length - 1],
+  displayError,
+  duration,
+  attempts: attemptStates.map((state) => ({ state })),
+});
 
 describe("extractFailedTests", () => {
-  it("reports only failed tests, mapping suite/leaf/message/stack/file", () => {
+  it("reports broken tests with the full displayError as message", () => {
     const displayError =
       "AssertionError: expected true to be false\n    at Context.eval (foo.cy.spec.ts:42)";
 
     const results = makeResults({
-      stats: { failures: 1 } as CypressCommandLine.RunResult["stats"],
       tests: [
-        test(["Dashboard", "filters", "applies a filter"], "passed"),
+        test(["Dashboard", "filters", "applies a filter"], ["passed"]),
         test(
           ["Dashboard", "filters", "shows an error"],
-          "failed",
+          ["failed", "failed"],
           displayError,
         ),
       ],
@@ -66,33 +90,49 @@ describe("extractFailedTests", () => {
         name: "shows an error",
         class: "Dashboard > filters",
         file: "e2e/test/scenarios/foo/foo.cy.spec.ts",
-        message: "AssertionError: expected true to be false",
-        stack: displayError,
+        duration: 100,
+        attempts: [{ state: "failed" }, { state: "failed" }],
+        message: displayError,
       },
     ]);
   });
 
-  it("excludes passed, pending, and skipped tests (incl. flaky-but-passed)", () => {
+  it("includes flaky tests too (final passed but ≥1 failed attempt), with null message", () => {
     const results = makeResults({
       tests: [
-        test(["a", "passed test"], "passed"),
-        test(["a", "pending test"], "pending"),
-        test(["a", "skipped test"], "skipped"),
-        // a test that flaked then passed on retry has a final state of "passed"
-        test(["a", "flaky test"], "passed"),
+        test(["a", "healthy"], ["passed"]),
+        test(["a", "flaky"], ["failed", "passed"]),
+      ],
+    });
+
+    const failures = extractFailedTests(spec, results);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toMatchObject({
+      name: "flaky",
+      attempts: [{ state: "failed" }, { state: "passed" }],
+      message: null,
+    });
+  });
+
+  it("excludes healthy, pending, and skipped tests", () => {
+    const results = makeResults({
+      tests: [
+        test(["a", "passed test"], ["passed"]),
+        test(["a", "pending test"], ["pending"]),
+        test(["a", "skipped test"], ["skipped"]),
       ],
     });
 
     expect(extractFailedTests(spec, results)).toEqual([]);
   });
 
-  it("returns an empty array when nothing failed", () => {
+  it("returns an empty array when nothing has a failed attempt", () => {
     expect(extractFailedTests(spec, makeResults({}))).toEqual([]);
   });
 
   it("omits `class` for a top-level test with no suite", () => {
     const results = makeResults({
-      tests: [test(["lonely test"], "failed", "boom")],
+      tests: [test(["lonely test"], ["failed"], "boom")],
     });
 
     const [failure] = extractFailedTests(spec, results);
@@ -100,34 +140,21 @@ describe("extractFailedTests", () => {
     expect(failure.class).toBeUndefined();
   });
 
-  it("leaves message/stack undefined when a failed test has no displayError", () => {
+  it("sends message: null when a failed test has no displayError", () => {
     const results = makeResults({
-      tests: [test(["a", "no error string"], "failed", null)],
+      tests: [test(["a", "no error string"], ["failed"], null)],
     });
 
-    expect(extractFailedTests(spec, results)).toEqual([
-      {
-        name: "no error string",
-        class: "a",
-        file: "e2e/test/scenarios/foo/foo.cy.spec.ts",
-        message: undefined,
-        stack: undefined,
-      },
-    ]);
-  });
-
-  it("skips blank leading lines when deriving the message", () => {
-    const results = makeResults({
-      tests: [test(["a", "t"], "failed", "\n   \nReal message\nstack line")],
+    expect(extractFailedTests(spec, results)[0]).toMatchObject({
+      name: "no error string",
+      class: "a",
+      message: null,
     });
-
-    expect(extractFailedTests(spec, results)[0].message).toBe("Real message");
   });
 
   it("falls back to a synthetic entry when the spec crashes before any test runs", () => {
     const results = makeResults({
       error: "SyntaxError: Unexpected token\n  at compile",
-      stats: { failures: 1 } as CypressCommandLine.RunResult["stats"],
       tests: [],
     });
 
@@ -135,8 +162,8 @@ describe("extractFailedTests", () => {
       {
         name: "foo.cy.spec.ts",
         file: "e2e/test/scenarios/foo/foo.cy.spec.ts",
-        message: "SyntaxError: Unexpected token",
-        stack: "SyntaxError: Unexpected token\n  at compile",
+        attempts: [{ state: "failed" }],
+        message: "SyntaxError: Unexpected token\n  at compile",
       },
     ]);
   });
@@ -144,7 +171,7 @@ describe("extractFailedTests", () => {
   it("prefers real failed tests over the spec-level error fallback", () => {
     const results = makeResults({
       error: "some run-level error",
-      tests: [test(["a", "real failure"], "failed", "boom")],
+      tests: [test(["a", "real failure"], ["failed"], "boom")],
     });
 
     const failures = extractFailedTests(spec, results);
@@ -187,11 +214,13 @@ describe("reportFailedTestsToConductor", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("POSTs the failures with parsed numeric ids and a null job_id", async () => {
+  it("POSTs the failures with parsed numeric ids and forwarded tests", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_WEBHOOK_URL: url,
       REPO_ID: "123",
       GITHUB_RUN_ID: "456",
+      GITHUB_RUN_ATTEMPT: "2",
+      CYPRESS_RETRIES: "1",
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -206,9 +235,25 @@ describe("reportFailedTestsToConductor", () => {
     expect(JSON.parse(options.body)).toEqual({
       repo_id: 123,
       run_id: 456,
+      run_attempt: 2,
       job_id: null,
+      retries: 1,
       tests: oneTest,
     });
+  });
+
+  it("sends null run_attempt and retries when their envs are missing", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      GITHUB_RUN_ATTEMPT: undefined,
+      CYPRESS_RETRIES: undefined,
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.run_attempt).toBeNull();
+    expect(body.retries).toBeNull();
   });
 
   it("sends the x-internal-secret header when the secret is configured", async () => {

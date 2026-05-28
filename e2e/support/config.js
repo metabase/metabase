@@ -182,6 +182,15 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
+    // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
+    // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
+    // the value lives in mainConfig.retries.runMode). DEV-1999.
+    const resolvedRetries =
+      typeof config.retries === "number"
+        ? config.retries
+        : (config.retries?.runMode ?? 0);
+    process.env.CYPRESS_RETRIES = String(resolvedRetries);
+
     on("after:spec", async (spec, results) => {
       // Report failures to ci-conductor mid-run (no-ops unless configured).
       if (isCI) {
