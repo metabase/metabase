@@ -10,12 +10,9 @@ import { handleQueryFulfilled } from "./lifecycle";
  *
  * Why this exists: `getMetadata` in `metabase/selectors/metadata.ts` (and the
  * `Metadata`/`Database`/`Table`/… wrappers it builds) read directly from
- * `state.entities.*`. Until that selector is reworked to read from RTK
- * Query's own cache, every endpoint whose payload should flow into
- * `getMetadata` needs to hydrate the slices on each successful fetch.
- *
- * Delete this helper (and its call sites) once `getMetadata` no longer reads
- * from `state.entities.*` — the entity framework itself is already gone.
+ * `state.entities.*`, stitching one logical object together from several
+ * endpoints' payloads. Every endpoint whose payload should flow into
+ * `getMetadata` therefore needs to hydrate the slices on each successful fetch.
  */
 export const hydrateMetadataStore =
   <Response>(
