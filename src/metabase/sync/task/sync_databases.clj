@@ -121,6 +121,9 @@
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
 
+      (t2/select-one-fn :is_stub :model/Database :id database-id)
+      (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
+
       :else
       (sync-and-analyze-database*! database-id))))
 
@@ -323,9 +326,15 @@
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
   (doseq [task all-tasks]
-    (if (and (= audit/audit-db-id (:id database))
-             (= task sync-analyze-task-info))
+    (cond
+      (:is_stub database)
+      (log/info (u/format-color :red "Not scheduling sync task for stub database"))
+
+      (and (= audit/audit-db-id (:id database))
+           (= task sync-analyze-task-info))
       (log/info (u/format-color :red "Not scheduling sync task for audit database"))
+
+      :else
       (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

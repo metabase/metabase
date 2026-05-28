@@ -19,7 +19,6 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   createMockSettingsState,
@@ -197,8 +196,6 @@ async function setup({
     checkNotNull(metadata.question(q.id)),
   );
 
-  const modelUpdateSpy = jest.spyOn(Models.actions, "update");
-
   setupDatabasesEndpoints(databases);
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
@@ -246,7 +243,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
+  return { model, history, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({

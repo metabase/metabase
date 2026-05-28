@@ -34,7 +34,7 @@ jobs:
         run: sudo apt-get install gettext
 
       - name: Crowdin download
-        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
+        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
         id: crowdin-download
         with:
           config: locales/crowdin.yml
@@ -85,7 +85,7 @@ jobs:
           retention-days: 30
 
       - name: Crowdin upload
-        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
+        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
         id: crowdin-upload
         env:
           GITHUB_TOKEN: ${{ github.token }}
