@@ -1,9 +1,11 @@
 import type { TreemapSeriesOption } from "echarts/charts";
 
 import { getTreemapColors } from "../model/colors";
+import { getTreemapNodeId } from "../model/tooltip";
 import type { TreemapNode, TreemapTree } from "../model/types";
 
 export interface TreemapSeriesNode {
+  id: string;
   name: string;
   value: number;
   rawName: TreemapNode["rawName"];
@@ -27,14 +29,17 @@ const TWO_LEVEL_LEVELS: TreemapSeriesOption["levels"] = [
   },
 ];
 
-export function getTreemapChartOption(tree: TreemapTree): {
+export function getTreemapChartOption(
+  tree: TreemapTree,
+  colors: Record<string, string> = getTreemapColors(tree),
+): {
   series: TreemapChartSeriesOption;
 } {
   const hasChildren = tree.some((node) => node.children != null);
-  const colors = getTreemapColors(tree);
 
   const series: TreemapChartSeriesOption = {
     type: "treemap",
+    nodeClick: "zoomToNode",
     data: toSeriesData(tree, colors),
     ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
   };
@@ -43,15 +48,26 @@ export function getTreemapChartOption(tree: TreemapTree): {
 }
 
 function toSeriesData(
-  nodes: TreemapTree,
-  colors?: Record<string, string>,
+  tree: TreemapTree,
+  colors: Record<string, string>,
 ): TreemapSeriesNode[] {
-  return nodes.map((node) => ({
+  return tree.map((node, rootIndex) => ({
+    id: getTreemapNodeId(rootIndex),
     name: node.displayName,
     value: node.value,
     rawName: node.rawName,
     rowIndices: node.rowIndices,
-    ...(colors ? { itemStyle: { color: colors[String(node.rawName)] } } : {}),
-    ...(node.children ? { children: toSeriesData(node.children) } : {}),
+    itemStyle: { color: colors[String(node.rawName)] },
+    ...(node.children
+      ? {
+          children: node.children.map((leaf, leafIndex) => ({
+            id: getTreemapNodeId(rootIndex, leafIndex),
+            name: leaf.displayName,
+            value: leaf.value,
+            rawName: leaf.rawName,
+            rowIndices: leaf.rowIndices,
+          })),
+        }
+      : {}),
   }));
 }

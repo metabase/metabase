@@ -117,3 +117,21 @@ describe("getTreemapChartOption colors", () => {
     expect(series.levels?.[1]?.colorSaturation).toBeDefined();
   });
 });
+
+describe("getTreemapChartOption ids", () => {
+  it("assigns path-based ids so the tooltip can resolve a hovered node", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.data[0].id).toBe("0");
+    expect(series.data[0].children?.[0].id).toBe("0-0");
+    expect(series.data[0].children?.[1].id).toBe("0-1");
+  });
+});
+
+describe("getTreemapChartOption zoom", () => {
+  it("enables click-to-zoom on the series", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.nodeClick).toBe("zoomToNode");
+  });
+});
