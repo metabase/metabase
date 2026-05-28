@@ -20,21 +20,9 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
+import { entityTypeForObject } from "metabase/redux/store/entities";
 import { addUndo } from "metabase/redux/undo";
 import { delay } from "metabase/utils/promise";
-
-// backend returns model = "card" instead of "question"
-export const entityTypeForModel = (model: string): string => {
-  if (model === "card" || model === "dataset" || model === "metric") {
-    return "questions";
-  }
-  return `${model}s`;
-};
-
-export const entityTypeForObject = (
-  object?: { model: string } | null,
-): string | undefined =>
-  object ? entityTypeForModel(object.model) : undefined;
 
 export const entityForObject = (object?: { model: string } | null) => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require due to circular dependencies

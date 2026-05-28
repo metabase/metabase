@@ -7,14 +7,16 @@ import {
   requestsReducer,
 } from "metabase/redux/requests";
 import type { Dispatch, State } from "metabase/redux/store";
+import {
+  entityTypeForModel,
+  entityTypeForObject,
+} from "metabase/redux/store/entities";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockRequestsState } from "metabase/redux/store/mocks/requests";
 
 import {
   combineEntities,
   createEntity,
-  entityTypeForModel,
-  entityTypeForObject,
   fetchData,
   mergeEntities,
   updateData,
