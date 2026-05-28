@@ -17,11 +17,9 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import type { SeriesGroup } from "./utils";
 import {
   buildSeries,
   buildSeriesGroups,
-  composeChartsForDocumentEmbed,
   getDocumentsForDocumentMenu,
   getHeatMapSeries,
   getInterestingTimelineIds,
@@ -74,22 +72,11 @@ describe("getHeatMapSeries", () => {
         makeHeatMapSeries("Revenue by Plan (Enterprise)", [["A", 2]]),
         makeHeatMapSeries("Revenue by Plan (SMB)", [["A", 3]]),
       ],
+      segmentNames: [null, "Enterprise", "SMB"],
     });
 
     const segmentColumn = data.rows.map((row) => row[row.length - 1]);
     expect(segmentColumn).toEqual(["(All)", "Enterprise", "SMB"]);
-  });
-
-  it("falls back to the full series name when it lacks the segment suffix", () => {
-    const { data } = getHeatMapSeries({
-      series: [
-        makeHeatMapSeries("Revenue by Plan", [["A", 1]]),
-        makeHeatMapSeries("Unrelated name", [["A", 2]]),
-      ],
-    });
-
-    const segmentColumn = data.rows.map((row) => row[row.length - 1]);
-    expect(segmentColumn).toEqual(["(All)", "Unrelated name"]);
   });
 });
 
@@ -267,70 +254,42 @@ describe("getMostInterestingTimelineId", () => {
   });
 });
 
-// `SeriesGroup` is internal to utils.ts. Reconstruct just the fields
-// `composeChartsForDocumentEmbed` reads — typed as `any` because we
-// don't need (and don't have) the full shape.
-function makeCartesianSeries(id: number, name: string): SingleSeries {
-  return {
-    card: createMockCard({
-      id,
-      name,
-      display: "line",
-      visualization_settings: { "graph.split_panels": true },
-    }),
-    data: createMockDatasetData({
-      cols: [
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
+describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
+  const stateCol = createMockColumn({
+    name: "state",
+    base_type: "type/Text",
+    semantic_type: "type/State",
+  });
+  const countCol = createMockColumn({
+    name: "count",
+    base_type: "type/Integer",
+  });
+  const tsCol = createMockColumn({ name: "ts", base_type: "type/DateTime" });
+
+  const stateDataset = makeDataset([stateCol, countCol], [["CA", 10]]);
+  const tsDataset = makeDataset([tsCol, countCol], [["2025-01-01", 1]]);
+
+  function getChartsForDocumentEmbed(
+    queries: ExplorationQuery[],
+    datasets: Dataset[],
+  ) {
+    return buildSeriesGroups({
+      queries,
+      datasets,
+      metricsById: new Map(),
+      queryColors: {},
+    }).chartsForDocumentEmbed;
+  }
+
+  it("expands a multi-series map group into one entry per map", () => {
+    const charts = getChartsForDocumentEmbed(
+      [
+        makeQuery({ id: 101, name: "US sessions", dimension_id: "dim-1" }),
+        makeQuery({ id: 102, name: "EU sessions", dimension_id: "dim-1" }),
+        makeQuery({ id: 103, name: "APAC sessions", dimension_id: "dim-1" }),
       ],
-      rows: [],
-    }),
-  };
-}
-
-function makeMapSeries(id: number, name: string, color: string): SingleSeries {
-  return {
-    card: createMockCard({
-      id,
-      name,
-      display: "map",
-      visualization_settings: {
-        "map.type": "region",
-        "map.region": "us_states",
-        "map.colors": [color, "white"],
-      },
-    }),
-    data: createMockDatasetData({
-      cols: [
-        createMockColumn({ name: "state" }),
-        createMockColumn({ name: "value" }),
-      ],
-      rows: [],
-    }),
-  };
-}
-
-function makeGroup(
-  series: SingleSeries[],
-  overrides: Partial<SeriesGroup> = {},
-): SeriesGroup {
-  return {
-    series,
-    queryType: "default",
-    isTimeseries: false,
-    ...overrides,
-  };
-}
-
-describe("composeChartsForDocumentEmbed", () => {
-  it("expands a multi-series map SeriesGroup into one entry per map (the user perceives them as separate charts)", () => {
-    const group = makeGroup([
-      makeMapSeries(101, "US sessions", "red"),
-      makeMapSeries(102, "EU sessions", "blue"),
-      makeMapSeries(103, "APAC sessions", "green"),
-    ]);
-
-    const charts = composeChartsForDocumentEmbed([group]);
+      [stateDataset, stateDataset, stateDataset],
+    );
 
     expect(charts).toHaveLength(3);
     expect(charts.map((c) => c.queryIds)).toEqual([[101], [102], [103]]);
@@ -340,21 +299,13 @@ describe("composeChartsForDocumentEmbed", () => {
       "APAC sessions",
     ]);
     expect(charts.map((c) => c.display)).toEqual(["map", "map", "map"]);
-    // Per-map `map.colors` survives — each entry carries its own ramp.
-    expect(charts[0].visualization_settings["map.colors"]).toEqual([
-      "red",
-      "white",
-    ]);
-    expect(charts[1].visualization_settings["map.colors"]).toEqual([
-      "blue",
-      "white",
-    ]);
   });
 
-  it("keeps a single-series map SeriesGroup as one entry", () => {
-    const group = makeGroup([makeMapSeries(42, "World sessions", "red")]);
-
-    const charts = composeChartsForDocumentEmbed([group]);
+  it("keeps a single-series map as one entry", () => {
+    const charts = getChartsForDocumentEmbed(
+      [makeQuery({ id: 42, name: "World sessions" })],
+      [stateDataset],
+    );
 
     expect(charts).toHaveLength(1);
     expect(charts[0]).toMatchObject({
@@ -364,20 +315,18 @@ describe("composeChartsForDocumentEmbed", () => {
     });
   });
 
-  it("keeps a multi-series cartesian SeriesGroup as ONE composite entry with all source query ids", () => {
-    // Cartesian + heat-map paths combine on the BE — only maps expand.
-    const group = makeGroup([
-      makeCartesianSeries(1, "Q1"),
-      makeCartesianSeries(2, "Q2"),
-    ]);
-
-    const charts = composeChartsForDocumentEmbed([group]);
+  it("keeps a multi-series cartesian group as ONE composite entry with all source query ids", () => {
+    const charts = getChartsForDocumentEmbed(
+      [
+        makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" }),
+        makeQuery({ id: 2, name: "Q2", dimension_id: "dim-1" }),
+      ],
+      [tsDataset, tsDataset],
+    );
 
     expect(charts).toHaveLength(1);
     expect(charts[0].queryIds).toEqual([1, 2]);
     expect(charts[0].display).toBe("line");
-    // The cartesian augmentation pins `graph.dimensions` so the BE-added
-    // "Series" discriminator column becomes the breakout.
     expect(charts[0].visualization_settings["graph.dimensions"]).toEqual([
       "ts",
       "Series",
@@ -385,30 +334,20 @@ describe("composeChartsForDocumentEmbed", () => {
   });
 
   it("handles a mixed page: cartesian composite + multi-map expansion + single-series side by side", () => {
-    const cartesianGroup = makeGroup([
-      makeCartesianSeries(10, "US"),
-      makeCartesianSeries(11, "EU"),
-    ]);
-    const mapGroup = makeGroup([
-      makeMapSeries(20, "US sessions", "red"),
-      makeMapSeries(21, "EU sessions", "blue"),
-    ]);
-    const singleGroup = makeGroup([makeCartesianSeries(30, "Solo")]);
-
-    const charts = composeChartsForDocumentEmbed([
-      cartesianGroup,
-      mapGroup,
-      singleGroup,
-    ]);
+    const charts = getChartsForDocumentEmbed(
+      [
+        makeQuery({ id: 10, name: "US", dimension_id: "dim-1" }),
+        makeQuery({ id: 11, name: "EU", dimension_id: "dim-1" }),
+        makeQuery({ id: 20, name: "US sessions", dimension_id: "dim-2" }),
+        makeQuery({ id: 21, name: "EU sessions", dimension_id: "dim-2" }),
+        makeQuery({ id: 30, name: "Solo", dimension_id: "dim-3" }),
+      ],
+      [tsDataset, tsDataset, stateDataset, stateDataset, tsDataset],
+    );
 
     // 1 composite cartesian + 2 expanded maps + 1 single = 4 picker entries.
     expect(charts).toHaveLength(4);
-    expect(charts.map((c) => c.queryIds)).toEqual([
-      [10, 11], // composite
-      [20], // map 1
-      [21], // map 2
-      [30], // single
-    ]);
+    expect(charts.map((c) => c.queryIds)).toEqual([[10, 11], [20], [21], [30]]);
   });
 });
 

@@ -171,7 +171,8 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/select-one :model/ExplorationQuery :id eq-id))
+     (let [eq        (api/check-404 (t2/hydrate (t2/select-one :model/ExplorationQuery :id eq-id)
+                                                :segment_name))
            eqr       (api/check-404 (t2/select-one :model/ExplorationQueryResult
                                                    :exploration_query_id eq-id))
            sr        (api/check-404 (t2/select-one :model/StoredResult :id (:stored_result_id eqr)))

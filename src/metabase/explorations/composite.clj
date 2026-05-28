@@ -5,10 +5,14 @@
 
   Driver: the FE-sent `visualization_settings`.
 
+  Every multi-snapshot combine appends a discriminator column whose value is
+  the source `ExplorationQuery`'s hydrated `:segment_name` (the FE shows the
+  same value in its live-preview legend / pivot), falling back to `(All)` when
+  the EQ isn't segment-derived.
+
   - `N = 1` — pass-through; the lone qp-result is the composite.
   - `:table.pivot` truthy — treat as a heat-map combine. Append a
-    `\"Segment\"` discriminator column to each row whose value is the
-    source `ExplorationQuery`'s `:name`. The FE hands us `:table.pivot`,
+    `\"Segment\"` discriminator column. The FE hands us `:table.pivot`,
     `:table.pivot_column`, `:table.cell_column` settings that already
     reference the original cols, so they remain valid after the append.
   - Otherwise — multi-series cartesian combine. Append a `\"Series\"`
@@ -17,7 +21,9 @@
     column up as the series breakout.
 
   This module is pure data — serialisation/persistence lives in
-  `metabase.explorations.models.exploration-query-result`.")
+  `metabase.explorations.models.exploration-query-result`."
+  (:require
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private heat-map-segment-col-name "Segment")
 (def ^:private cartesian-series-col-name "Series")
@@ -33,11 +39,12 @@
 
 (defn- combine-rows
   "Union rows across the source qp-results, appending the source EQ's
-  `:name` to each row as the discriminator value."
+  hydrated `:segment_name` to each row as the discriminator value (falling
+  back to `(All)` for non-segment EQs)."
   [eq-results]
   (->> eq-results
        (mapcat (fn [{:keys [eq qp-result]}]
-                 (let [discriminator-value (or (:name eq) "")
+                 (let [discriminator-value (or (:segment_name eq) (tru "(All)"))
                        rows                (get-in qp-result [:data :rows])]
                    (map #(conj (vec %) discriminator-value) rows))))
        vec))

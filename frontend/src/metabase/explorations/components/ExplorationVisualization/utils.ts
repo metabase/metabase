@@ -5,6 +5,7 @@ import { createSeriesCard } from "metabase/metrics/utils/series";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
+import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isCountry, isDate, isState } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -21,6 +22,7 @@ import type {
   ExplorationThreadMetric,
   RowValue,
   RowValues,
+  SeriesSettings,
   SingleSeries,
   TimelineId,
   VisualizationDisplay,
@@ -83,6 +85,7 @@ export function buildSeriesGroups({
 }: BuildSeriesGroupsParams): {
   seriesGroups: SeriesGroup[];
   layoutStrategy: ChartLayout;
+  chartsForDocumentEmbed: ExplorationChartForDocumentEmbed[];
 } {
   const queriesWithDatasetGroups = groupQueriesWithDatasets({
     queries,
@@ -142,7 +145,14 @@ export function buildSeriesGroups({
     );
   }
 
-  return { seriesGroups, layoutStrategy };
+  const chartsForDocumentEmbed = seriesGroups.flatMap((group, i) =>
+    composeChartsForGroup(
+      group,
+      queriesWithDatasetGroups[i].map((q) => q.id),
+    ),
+  );
+
+  return { seriesGroups, layoutStrategy, chartsForDocumentEmbed };
 }
 
 function removeAxisTitlesFromAllSeries(series: SingleSeries[]) {
@@ -242,8 +252,56 @@ export function buildSeries({
     return { card, data: dataset.data };
   });
 
+  let finalSeries: SingleSeries[] = series;
+  const segmentNames = queriesWithDatasets.map((q) => q.segment_name);
+
+  if (series[0]?.card.display === "table") {
+    finalSeries = [
+      getHeatMapSeries({
+        series,
+        segmentNames,
+      }),
+    ];
+  } else if (isCartesianChart(series[0]?.card.display) && series.length > 1) {
+    // use the segment names in the legend and tooltip
+    const seriesVizSettingsKeys = series.map((s, i) =>
+      getSeriesVizSettingsKey(
+        s.data.cols[1], // column
+        true, // hasMultipleCards
+        i === 0, // isFirstCard
+        1, // metricsCount
+        null, // breakoutName
+        s.card.name, // cardName
+      ),
+    );
+    const seriesSettings: Record<string, SeriesSettings> = {};
+    seriesVizSettingsKeys.forEach((key, i) => {
+      seriesSettings[key] = {
+        title: segmentNames[i] ?? t`(All)`,
+      };
+    });
+    // getStoredSettingsForSeries only looks at settings on the first series
+    finalSeries = series.map((s, i) =>
+      i !== 0
+        ? s
+        : {
+            ...s,
+            card: {
+              ...s.card,
+              visualization_settings: {
+                ...s.card.visualization_settings,
+                series_settings: {
+                  ...s.card.visualization_settings.series_settings,
+                  ...seriesSettings,
+                },
+              },
+            },
+          },
+    );
+  }
+
   return {
-    series,
+    series: finalSeries,
     isTimeseries,
     stackCount,
     queryType: queriesWithDatasets[0]?.query_type || "default",
@@ -326,34 +384,9 @@ function getDisplay(
 
   // if we have multiple queries (segments), show a heat map rather than a bar chart
   if (numSegmentQueries >= MIN_SEGMENTS_TO_SHOW_HEATMAP) {
-    return { display: "table" };
+    return { display: "table", stackCount: numQueries };
   }
   return { display: "bar" };
-}
-
-interface GetHeatMapSeriesParams {
-  series: SingleSeries[];
-}
-
-/**
- * Recovers the segment name from a segment-filtered query's name.
- *
- * The query plan names each segmented query `"<base> (<segment>)"` — see
- * `with-segment-suffix` in `metabase.explorations.query-plan.variants`. Every
- * series in a heat-map group shares the same `<base>` (the unsegmented
- * baseline's name), so the bare segment name is what remains once that prefix
- * is stripped. Falls back to the full name when it doesn't match the shape.
- */
-function getSegmentName(seriesName: string, baseName: string): string {
-  const prefix = `${baseName} (`;
-  if (
-    baseName.length > 0 &&
-    seriesName.startsWith(prefix) &&
-    seriesName.endsWith(")")
-  ) {
-    return seriesName.slice(prefix.length, -1);
-  }
-  return seriesName;
 }
 
 export interface ExplorationChartForDocumentEmbed {
@@ -367,6 +400,7 @@ const CARTESIAN_SERIES_COL_NAME = "Series";
 
 function composeChartsForGroup(
   group: SeriesGroup,
+  queryIds: ExplorationQueryId[],
 ): ExplorationChartForDocumentEmbed[] {
   const firstSeries = group.series[0];
   const display = firstSeries.card.display;
@@ -377,54 +411,43 @@ function composeChartsForGroup(
   // entries — each appends a single-snapshot embed (the N=1
   // pass-through path through `composite/combine` server-side).
   if (display === "map" && group.series.length > 1) {
-    return group.series.map((s) => ({
-      queryIds: [s.card.id],
+    return group.series.map((s, i) => ({
+      queryIds: [queryIds[i]],
       label: s.card.name ?? group.chartLabel ?? "Chart",
       display: s.card.display,
       visualization_settings: s.card.visualization_settings ?? {},
     }));
   }
 
-  const queryIds = group.series.map((s) => s.card.id);
   const label = group.chartLabel ?? firstSeries.card.name ?? "Chart";
   let visualization_settings: VisualizationSettings =
     firstSeries.card.visualization_settings ?? {};
 
-  if (group.series.length > 1) {
-    if (display === "table") {
-      // Heat-map: the BE will append a "Segment" column to the rows. We
-      // reuse `getHeatMapSeries` to compute the full pivot settings
-      // (including `table.column_formatting` min/max) — discarding its
-      // combined data, since the BE computes that side server-side.
-      visualization_settings =
-        getHeatMapSeries({ series: group.series }).card
-          .visualization_settings ?? visualization_settings;
-    } else if (isCartesianChart(display)) {
-      // The BE will append a "Series" column. Pin `graph.dimensions` so
-      // the rendered chart reads the new column as the series breakout.
-      const cols = firstSeries.data.cols;
-      const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
-      if (xCol) {
-        visualization_settings = {
-          ...visualization_settings,
-          "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
-        };
-      }
+  if (group.series.length > 1 && isCartesianChart(display)) {
+    // The BE will append a "Series" column. Pin `graph.dimensions` so
+    // the rendered chart reads the new column as the series breakout.
+    const cols = firstSeries.data.cols;
+    const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
+    if (xCol) {
+      visualization_settings = {
+        ...visualization_settings,
+        "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
+      };
     }
   }
 
   return [{ queryIds, label, display, visualization_settings }];
 }
 
-export function composeChartsForDocumentEmbed(
-  seriesGroups: SeriesGroup[],
-): ExplorationChartForDocumentEmbed[] {
-  return seriesGroups.flatMap(composeChartsForGroup);
+interface GetHeatMapSeriesParams {
+  series: SingleSeries[];
+  segmentNames: (string | null)[];
 }
 
 // the Table viz only supports one series, so we have to combine them
 export function getHeatMapSeries({
   series,
+  segmentNames,
 }: GetHeatMapSeriesParams): SingleSeries {
   const { card, data } = series[0];
   const segmentCol: DatasetColumn = {
@@ -437,10 +460,7 @@ export function getHeatMapSeries({
   let minValue: number | undefined;
   let maxValue: number | undefined;
   series.forEach((s, i) => {
-    // The unsegmented baseline query is always first; the rest are
-    // segment-filtered variants of it.
-    const segmentName =
-      i === 0 ? t`(All)` : getSegmentName(s.card.name, card.name);
+    const segmentName = segmentNames[i] ?? t`(All)`;
     for (const row of s.data.rows) {
       rows.push([...row, segmentName]);
       const value = row[1];

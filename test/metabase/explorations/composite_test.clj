@@ -11,9 +11,10 @@
 (defn- eq-result
   "Build an `{:eq … :qp-result …}` eq-result. `cols` and `rows` go into
   `qp-result.data`; everything else is shaped just enough to look like a
-  cached snapshot."
-  [eq-name cols rows]
-  {:eq        {:name eq-name}
+  cached snapshot. `segment-name` becomes the EQ's hydrated `:segment_name`,
+  the discriminator value combine appends."
+  [segment-name cols rows]
+  {:eq        {:segment_name segment-name}
    :qp-result {:status    :completed
                :row_count (count rows)
                :data      {:cols cols :rows rows}}})
@@ -29,7 +30,7 @@
              (get-in result [:data :rows]))))))
 
 (deftest ^:parallel combine-heat-map-appends-Segment-column
-  (testing "When `:table.pivot` is truthy the combine appends a `Segment` column whose value is the source EQ's `:name`"
+  (testing "When `:table.pivot` is truthy the combine appends a `Segment` column whose value is the source EQ's `:segment_name`"
     (let [t1     (eq-result "All"        [{:name "dim"} {:name "value"}] [["A" 1] ["B" 2]])
           t2     (eq-result "Enterprise" [{:name "dim"} {:name "value"}] [["A" 3] ["B" 4]])
           t3     (eq-result "SMB"        [{:name "dim"} {:name "value"}] [["A" 5] ["B" 6]])
@@ -39,7 +40,7 @@
                 {:name "value"}
                 {:name "Segment" :display_name "Segment" :source :breakout}]
                (get-in result [:data :cols]))))
-      (testing "unions all rows, appending the EQ name as the Segment value"
+      (testing "unions all rows, appending the EQ segment_name as the Segment value"
         (is (= [["A" 1 "All"]
                 ["B" 2 "All"]
                 ["A" 3 "Enterprise"]
@@ -66,16 +67,16 @@
              (get-in result [:data :rows])))
       (is (= 4 (:row_count result))))))
 
-(deftest ^:parallel combine-handles-nil-eq-name
-  (testing "An EQ with a nil `:name` falls back to the empty string so combining never throws"
-    (let [t1     {:eq {:name nil}
+(deftest ^:parallel combine-handles-nil-segment-name
+  (testing "An EQ with a nil `:segment_name` falls back to `(All)` so combining never throws"
+    (let [t1     {:eq {:segment_name nil}
                   :qp-result {:status :completed
                               :row_count 1
                               :data {:cols [{:name "x"} {:name "y"}]
                                      :rows [["a" 1]]}}}
           t2     (eq-result "Other" [{:name "x"} {:name "y"}] [["a" 2]])
           result (composite/combine [t1 t2] {})]
-      (is (= [["a" 1 ""] ["a" 2 "Other"]]
+      (is (= [["a" 1 "(All)"] ["a" 2 "Other"]]
              (get-in result [:data :rows]))))))
 
 (deftest ^:parallel combine-preserves-first-qp-result-scaffolding

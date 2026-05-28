@@ -25,11 +25,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import {
-  buildSeriesGroups,
-  composeChartsForDocumentEmbed,
-  getHeatMapSeries,
-} from "./utils";
+import { buildSeriesGroups } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   group: ExplorationQueryGroup;
@@ -172,35 +168,31 @@ function ExplorationGroupVisualizationChart({
     [queries],
   );
 
-  const { seriesGroups, layoutStrategy } = useMemo(() => {
-    const filteredDatasets = datasets.filter((d) => d !== undefined);
-    if (filteredDatasets.length < datasets.length) {
-      return {
-        seriesGroups: undefined,
-        layoutStrategy: undefined,
-      };
-    }
-    return buildSeriesGroups({
-      queries,
-      datasets: filteredDatasets,
-      metricsById,
-      queryColors,
-    });
-    // datasets is reconstructed every render but its identity-stable
-    // entries make this safe; including the array directly would cause
-    // an unstable dep warning.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queries, metricsById, queryColors, ...datasets]);
+  const { seriesGroups, layoutStrategy, chartsForDocumentEmbed } =
+    useMemo(() => {
+      const filteredDatasets = datasets.filter((d) => d !== undefined);
+      if (filteredDatasets.length < datasets.length) {
+        return {
+          seriesGroups: undefined,
+          layoutStrategy: undefined,
+          chartsForDocumentEmbed: undefined,
+        };
+      }
+      return buildSeriesGroups({
+        queries,
+        datasets: filteredDatasets,
+        metricsById,
+        queryColors,
+      });
+      // datasets is reconstructed every render but its identity-stable
+      // entries make this safe; including the array directly would cause
+      // an unstable dep warning.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [queries, metricsById, queryColors, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
   }, [seriesGroups]);
-
-  const chartsForEmbed = useMemo(
-    () =>
-      seriesGroups ? composeChartsForDocumentEmbed(seriesGroups) : undefined,
-    [seriesGroups],
-  );
 
   if (!seriesGroups) {
     return (
@@ -221,7 +213,7 @@ function ExplorationGroupVisualizationChart({
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
-        chartsForEmbed={chartsForEmbed}
+        chartsForEmbed={chartsForDocumentEmbed}
         interestingTimelineIds={interestingTimelineIds}
       />
       <Box
@@ -242,6 +234,7 @@ function ExplorationGroupVisualizationChart({
             <ExplorationHeatMap
               key={series[0].card.id}
               series={series}
+              stackCount={stackCount}
               label={chartLabel}
             />
           ) : (
@@ -294,21 +287,25 @@ function ExplorationCartesianChart({
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
+  stackCount?: number;
   label?: string;
 }
 
-function ExplorationHeatMap({ series, label }: ExplorationHeatMapProps) {
-  const combinedSeries = getHeatMapSeries({ series });
+function ExplorationHeatMap({
+  series,
+  stackCount,
+  label,
+}: ExplorationHeatMapProps) {
   // The pivoted heat-map renders one body row per segment series plus a
   // header row. Size the table to exactly that height (rather than
   // `h="100%"`) so a short table isn't stretched to fill — and leave empty
   // space below — its grid cell.
-  const tableHeight = HEADER_HEIGHT + series.length * ROW_HEIGHT;
+  const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
     <Stack gap="sm">
       {label && <Text size="lg">{label}</Text>}
       <Box h={tableHeight}>
-        <Visualization rawSeries={[combinedSeries]} className={S.chart} />
+        <Visualization rawSeries={series} className={S.chart} />
       </Box>
     </Stack>
   );
