@@ -984,7 +984,7 @@ describe(suiteTitle, () => {
     // otherwise the orphaned `_.debounce` callback in `useUserSetting` fires
     // after `H.restore()` of the next test and writes the custom theme back
     // into the freshly-restored DB, polluting downstream snowplow assertions.
-    // Proper fix is flush-on-unmount in `useUserSetting`; tracking separately.
+    // Proper fix (flush-on-unmount in `useUserSetting`) tracked in EMB-1795.
     cy.wait("@persistSettings");
   });
 
