@@ -15,7 +15,6 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   Exploration,
-  ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
@@ -105,21 +104,18 @@ export function ExplorationPage({
 }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
+  const getSelectedEntityIdUrl = useCallback(
+    (entityId: SelectedEntityId) => {
+      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
+    },
+    [params.id, location.search],
+  );
+
   const setSelectedEntityId = useCallback(
     (entityId: SelectedEntityId) => {
-      const idSegment =
-        entityId.type === "group"
-          ? encodeURIComponent(entityId.id)
-          : entityId.id;
-      const search = location.search ?? "";
-      const explorationId: ExplorationId = parseInt(params.id, 10);
-      dispatch(
-        push(
-          `${Urls.exploration(explorationId)}/${entityId.type}/${idSegment}${search}`,
-        ),
-      );
+      dispatch(push(getSelectedEntityIdUrl(entityId)));
     },
-    [dispatch, params.id, location.search],
+    [dispatch, getSelectedEntityIdUrl],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
@@ -402,6 +398,7 @@ export function ExplorationPage({
         tree={tree}
         selectedEntityId={selectedEntityId}
         setSelectedEntityId={setSelectedEntityId}
+        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       />
       {selectedGroup && (
         <ExplorationGroupVisualization

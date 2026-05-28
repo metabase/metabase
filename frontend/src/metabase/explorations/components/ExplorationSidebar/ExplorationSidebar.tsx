@@ -7,6 +7,7 @@ import {
   useUpdateExplorationMutation,
 } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import type { TreeHandle } from "metabase/common/components/tree/Tree";
 import type {
@@ -46,6 +47,7 @@ interface ExplorationSidebarProps {
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
+  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
 }
 
 export function ExplorationSidebar({
@@ -53,6 +55,7 @@ export function ExplorationSidebar({
   tree,
   selectedEntityId,
   setSelectedEntityId,
+  getSelectedEntityIdUrl,
 }: ExplorationSidebarProps) {
   const treeRef = useRef<TreeHandle>(null);
   const pendingKeyboardSelectionRef = useRef(false);
@@ -158,9 +161,10 @@ export function ExplorationSidebar({
         {...props}
         handlePrefetch={handlePrefetch}
         pendingKeyboardSelectionRef={pendingKeyboardSelectionRef}
+        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       />
     ),
-    [handlePrefetch],
+    [handlePrefetch, getSelectedEntityIdUrl],
   );
 
   return (
@@ -188,13 +192,6 @@ export function ExplorationSidebar({
           ref={treeRef}
           data={tree}
           selectedId={selectedEntityId?.id}
-          onSelect={(item) => {
-            if (item.data?.type === "group") {
-              setSelectedEntityId({ type: "group", id: item.data.group_id });
-            } else if (item.data?.type === "document") {
-              setSelectedEntityId({ type: "document", id: item.data.id });
-            }
-          }}
           TreeNode={TreeNode}
         />
       </Box>
@@ -205,6 +202,7 @@ export function ExplorationSidebar({
 interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   pendingKeyboardSelectionRef: React.MutableRefObject<boolean>;
+  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
 }
 
 function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
@@ -267,12 +265,12 @@ function isExplorationTreeItemProps(
 function ExplorationTreeItem({
   item,
   isSelected,
-  onSelect,
   depth,
   handlePrefetch,
   pendingKeyboardSelectionRef,
+  getSelectedEntityIdUrl,
 }: ExplorationTreeItemProps) {
-  const itemRef = useRef<HTMLButtonElement>(null);
+  const itemRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (isSelected && pendingKeyboardSelectionRef.current) {
@@ -283,18 +281,26 @@ function ExplorationTreeItem({
     }
   }, [isSelected, pendingKeyboardSelectionRef]);
 
+  if (!item.data) {
+    return null;
+  }
+
+  const entityId: SelectedEntityId =
+    item.data.type === "group"
+      ? { type: "group", id: item.data.group_id }
+      : { type: "document", id: item.data.id };
+
   const iconProps =
     typeof item.icon === "string" ? { name: item.icon } : item.icon;
 
   return (
-    <UnstyledButton
+    <ForwardRefLink
       ref={itemRef}
+      to={getSelectedEntityIdUrl(entityId)}
       role="listitem"
-      aria-pressed={isSelected}
       className={cx(S.treeRow, {
         [S.treeRowSelected]: isSelected,
       })}
-      onClick={onSelect}
       onMouseEnter={() => handlePrefetch(item)}
       style={{ marginLeft: depth * 16 }}
     >
@@ -310,7 +316,7 @@ function ExplorationTreeItem({
           QUERY_INTERESTINGNESS_SCORE_THRESHOLD && (
           <PotentiallyInterestingMarker />
         )}
-    </UnstyledButton>
+    </ForwardRefLink>
   );
 }
 
