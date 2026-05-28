@@ -15,9 +15,11 @@
    [metabase.metabot.quality.extract :as extract]
    [metabase.metabot.quality.governance :as governance]
    [metabase.metabot.quality.metrics :as metrics]
+   [metabase.metabot.quality.schema :as quality.schema]
    [metabase.metabot.quality.subscores :as subscores]
    [metabase.metabot.quality.temporal :as temporal]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -26,14 +28,14 @@
 ;;; Sentinel breakdowns
 ;;; ---------------------------------------------------------------------------
 
-(defn- sentinel-breakdown
+(mu/defn- sentinel-breakdown :- ::quality.schema/sentinel-breakdown
   "JSON-encodable map persisted as `metabot_conversation.quality_breakdown`
   for conversations the pipeline declines to score. `quality_score` stays
-  NULL. Reasons: `pre-foundation`, `extract-error`.
+  NULL. `reason` is one of [[quality.constants/unscoreable-reasons]].
 
   Writing a sentinel is what stops a backfill from re-discovering the row
   later (discovery is `WHERE quality_breakdown IS NULL`)."
-  [reason]
+  [reason :- :string]
   {:version     quality.constants/quality-score-version
    :unscoreable reason})
 
@@ -86,7 +88,7 @@
 ;;; Breakdown shape
 ;;; ---------------------------------------------------------------------------
 
-(defn- build-breakdown
+(mu/defn- build-breakdown :- ::quality.schema/full-breakdown
   "Build the JSON-encodable `quality_breakdown` map persisted on the
   conversation row. Metric values read `1 = good`; `:na` serializes as
   null. `:subscores` nests each subscore's `:value` and member `:metrics`
@@ -149,11 +151,11 @@
     (cond
       (= ::extract-failed normalized)
       {:quality_score     nil
-       :quality_breakdown (sentinel-breakdown "extract-error")}
+       :quality_breakdown (sentinel-breakdown (:extract-error quality.constants/unscoreable-reasons))}
 
       (pre-foundation? normalized)
       {:quality_score     nil
-       :quality_breakdown (sentinel-breakdown "pre-foundation")}
+       :quality_breakdown (sentinel-breakdown (:pre-foundation quality.constants/unscoreable-reasons))}
 
       :else
       (run-pipeline normalized))))

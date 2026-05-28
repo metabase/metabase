@@ -10,20 +10,19 @@
   single weak subscore dominates. Pure given the metrics map from
   [[metabase.metabot.quality.metrics/compute]]."
   (:require
-   [clojure.string :as str]))
+   [metabase.metabot.quality.constants :as constants]
+   [metabase.metabot.quality.schema :as quality.schema]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private data-source-metric-keys
-  "Metric keys that compose Data-Source Quality, in a stable order."
-  [:canonical-source-share
-   :search-efficiency
-   :grounded-source-share])
+  "Metric keys that compose Data-Source Quality, in registry order."
+  (constants/metrics-for-subscore :data-source-quality))
 
 (def ^:private execution-metric-keys
-  "Metric keys that compose Execution Health, in a stable order."
-  [:tool-call-failure-rate
-   :termination-health])
+  "Metric keys that compose Execution Health, in registry order."
+  (constants/metrics-for-subscore :execution-health))
 
 (defn- mean
   "Arithmetic mean of a non-empty seq of doubles."
@@ -86,12 +85,6 @@
   [v]
   (when-not (= :na v) v))
 
-(defn- metric-json-key
-  "Render an internal metric keyword (`:canonical-source-share`) as its
-  persisted snake-case key (`:canonical_source_share`)."
-  [k]
-  (keyword (str/replace (name k) "-" "_")))
-
 (defn- subscore-entry
   "Build the persisted `{:value .. :metrics {..}}` map for one subscore:
   its composed health (already nil when N/A) plus its member metric
@@ -99,10 +92,10 @@
   [value metric-keys metrics]
   {:value   value
    :metrics (into {}
-                  (map (fn [k] [(metric-json-key k) (na->nil (metrics k))]))
+                  (map (fn [k] [(constants/metric-json-key k) (na->nil (metrics k))]))
                   metric-keys)})
 
-(defn project-json
+(mu/defn project-json :- ::quality.schema/projected
   "Project the metrics and composed-subscores maps (the results of
   [[metabase.metabot.quality.metrics/compute]] and [[compose]]) into the
   persisted JSON shape shared by the conversation-level `quality_breakdown`

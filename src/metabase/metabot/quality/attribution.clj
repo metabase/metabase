@@ -28,8 +28,10 @@
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.extract :as extract]
    [metabase.metabot.quality.metrics :as metrics]
+   [metabase.metabot.quality.schema :as quality.schema]
    [metabase.metabot.quality.subscores :as subscores]
-   [metabase.metabot.quality.temporal :as temporal]))
+   [metabase.metabot.quality.temporal :as temporal]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,10 +90,15 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- observable
-  "Common observable map. `extras` is merged after the discriminating
-  `:concern_signal` + `:kind` keys for the kind-specific fields."
-  [concern-signal kind extras]
-  (merge {:concern_signal concern-signal :kind kind} extras))
+  "Common observable map. `:concern_signal` is derived from `kind` via the
+  registry ([[constants/observable->metric]]), so the signal an observable
+  carries can't drift from the metric it is evidence for. `extras` is merged
+  after the discriminating `:concern_signal` + `:kind` keys for the
+  kind-specific fields."
+  [kind extras]
+  (merge {:concern_signal (constants/metric-json-name (constants/observable->metric kind))
+          :kind           kind}
+         extras))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Observable producers
@@ -114,7 +121,6 @@
         :when   msg-id]
     [msg-id
      (observable
-      "search_efficiency"
       "unproductive_search"
       {:context {:tool_call         (:call-id event)
                  :overlapping_calls (mapv :call-id overlapping)}})]))
@@ -131,7 +137,6 @@
         :when   msg-id]
     [msg-id
      (observable
-      "grounded_source_share"
       "hallucinated_ref"
       {:entity  (entity-ref-of y)
        :context {:tool_call (:call-id q-prov)}})]))
@@ -148,7 +153,6 @@
         :when   msg-id]
     [msg-id
      (observable
-      "tool_call_failure_rate"
       "tool_error"
       {:context {:tool_call (:call-id e)
                  :function  (:function e)
@@ -165,13 +169,13 @@
     (cond
       (nil? last-msg-id) []
       (= state :iter_cap)
-      [[last-msg-id (observable "termination_health" "iter_cap"
+      [[last-msg-id (observable "iter_cap"
                                 {:context {:terminal_state "iter_cap"}})]]
       (= state :error)
-      [[last-msg-id (observable "termination_health" "error_termination"
+      [[last-msg-id (observable "error_termination"
                                 {:context {:terminal_state "error"}})]]
       (= state :aborted)
-      [[last-msg-id (observable "termination_health" "error_termination"
+      [[last-msg-id (observable "error_termination"
                                 {:context {:terminal_state "aborted"}})]]
       :else [])))
 
@@ -218,7 +222,7 @@
 ;;; Public surface
 ;;; ---------------------------------------------------------------------------
 
-(defn project
+(mu/defn project :- ::quality.schema/attributions
   "Project the per-conversation analysis onto each assistant turn. Returns
   `{message-id → attribution-map}` for assistant rows only; user rows have
   no entry (their `quality_attribution` stays NULL).

@@ -13,7 +13,8 @@
   `{:type \"data\" :data-type \"terminal_state\" :data {:reason \"iter_cap\"}}`."
   (:refer-clojure :exclude [derive])
   (:require
-   [metabase.metabot.agent.streaming :as streaming]))
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.quality.constants :as constants]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,11 +63,6 @@
 ;;; Terminal-state classification
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private known-terminal-states
-  "Categoricals the `terminal_state` data part legally projects to. Any
-  reason outside this set falls through to `:error`."
-  #{:model_signaled_done :final_response :iter_cap :error})
-
 (defn- reason-from-terminal-state-part
   "Find the `terminal_state` data part on an assistant row's `:data` and
   project its `:reason` string to a categorical keyword. Returns `nil`
@@ -83,7 +79,7 @@
                        (some-> part :data :reason)))
                    (:data row))]
     (let [k (keyword reason-str)]
-      (if (contains? known-terminal-states k) k :error))))
+      (if (contains? constants/terminal-state-reasons k) k :error))))
 
 (defn- last-assistant-row
   "Last assistant row in chronological order. The normalized struct's

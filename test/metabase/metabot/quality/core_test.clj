@@ -5,9 +5,11 @@
    [metabase.metabot.quality.constants :as quality.constants]
    [metabase.metabot.quality.core :as quality.core]
    [metabase.metabot.quality.extract :as quality.extract]
+   [metabase.metabot.quality.schema :as quality.schema]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -129,7 +131,9 @@
             "pre-foundation leaves the composite NULL — there's nothing to score against")
         (is (= quality.constants/quality-score-version (:version breakdown)))
         (is (= "pre-foundation" (:unscoreable breakdown))
-            "sentinel reason marks the row 'tried; do not retry tomorrow' for the backfill task")))))
+            "sentinel reason marks the row 'tried; do not retry tomorrow' for the backfill task")
+        (is (nil? (mr/explain ::quality.schema/breakdown breakdown))
+            "the persisted sentinel conforms to the breakdown schema")))))
 
 (deftest score-conversation-pre-foundation-encoded-as-valid-json-test
   (testing "pre-foundation sentinel is JSON-encoded at the DB layer and decodes back into a Clojure map"
@@ -163,7 +167,9 @@
         (is (= 1.0 (get-in breakdown [:subscores :execution_health :value])))
         (is (nil? (get-in breakdown [:subscores :data_source_quality :value]))
             "no data sources touched → Data-Source Quality N/A (value nil)")
-        (is (= "model_signaled_done" (get-in breakdown [:diagnostics :termination])))))))
+        (is (= "model_signaled_done" (get-in breakdown [:diagnostics :termination])))
+        (is (nil? (mr/explain ::quality.schema/breakdown breakdown))
+            "the persisted breakdown conforms to the breakdown schema")))))
 
 (deftest score-conversation-extract-error-writes-sentinel-test
   (testing "if extract/normalize throws, the pipeline writes the extract-error
@@ -176,7 +182,9 @@
                 "extract throw routes through compute-conversation-score's catch, not the outer guard")))
         (let [row (t2/select-one :model/MetabotConversation :id conversation-id)]
           (is (nil? (:quality_score row)))
-          (is (= "extract-error" (:unscoreable (:quality_breakdown row)))))))))
+          (is (= "extract-error" (:unscoreable (:quality_breakdown row))))
+          (is (nil? (mr/explain ::quality.schema/breakdown (:quality_breakdown row)))
+              "the persisted extract-error sentinel conforms to the breakdown schema"))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Safety guards
@@ -256,7 +264,9 @@
                lands in authored; authored ⊆ prompt-context so nothing is hallucinated")
           (is (= {:n_iterations 1 :n_tool_calls 1 :n_errors 0}
                  (select-keys (:diagnostics breakdown) [:n_iterations :n_tool_calls :n_errors]))
-              "single tool call, single iteration, no errors"))
+              "single tool call, single iteration, no errors")
+          (is (nil? (mr/explain ::quality.schema/breakdown breakdown))
+              "the persisted breakdown conforms to the breakdown schema"))
         (testing "per-turn quality_attribution lands on the assistant row"
           (let [msgs            (t2/select :model/MetabotMessage
                                            :conversation_id conversation-id
@@ -268,6 +278,8 @@
             (is (nil? (:quality_attribution user-row))
                 "user rows never carry attribution — the column stays NULL")
             (is (= quality.constants/quality-score-version (:version attribution)))
+            (is (nil? (mr/explain ::quality.schema/attribution attribution))
+                "the persisted per-message attribution conforms to the attribution schema")
             (is (= [] (:observables attribution))
                 "clean conversation → no observables on the only assistant turn")
             (testing "last (and only) assistant turn's score matches the conversation-level score"
