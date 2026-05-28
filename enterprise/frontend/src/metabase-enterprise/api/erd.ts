@@ -1,6 +1,7 @@
 import type { ErdParams, ErdResponse } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+import { listTag } from "./tags";
 
 export const erdApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -10,6 +11,7 @@ export const erdApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/erd",
         params,
       }),
+      providesTags: [listTag("erd")],
     }),
   }),
 });

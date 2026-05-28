@@ -126,11 +126,11 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
     .map((node) => {
       const fieldKey = node.fields
         .map(
-          (field) =>
-            `${field.id}:${field.semantic_type ?? ""}:${field.fk_target_field_id ?? ""}`,
+          (f) =>
+            `${f.id}:${f.name}:${f.display_name}:${f.database_type}:${f.base_type}:${f.effective_type ?? ""}:${f.semantic_type ?? ""}:${f.fk_target_field_id ?? ""}:${f.fk_target_table_id ?? ""}`,
         )
         .join("|");
-      return `${node.table_id}:${fieldKey}`;
+      return `${node.table_id}:${node.name}:${node.display_name}:${node.description ?? ""}:${getOwnerKey(node.owner)}:${node.schema ?? ""}:${fieldKey}`;
     })
     .sort()
     .join(";");
@@ -144,6 +144,16 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
     .join(";");
 
   return `${nodeKey}__${edgeKey}`;
+}
+
+function getOwnerKey(owner: ErdNode["owner"]): string {
+  if (owner == null) {
+    return "";
+  }
+  if ("id" in owner && owner.id != null) {
+    return `u_${owner.id}`;
+  }
+  return `e_${owner.email}`;
 }
 
 const memoizedToFlowGraph = memoize((data: ErdResponse) => {
