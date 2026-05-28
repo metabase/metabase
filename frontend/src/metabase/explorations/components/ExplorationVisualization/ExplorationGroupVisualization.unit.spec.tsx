@@ -1,20 +1,30 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  createExploration,
+  createGroup,
+  createQuery,
+  createThread,
+} from "metabase/explorations/test-utils";
+import registerVisualizations from "metabase/visualizations/register";
 import type {
   Dataset,
   Exploration,
   ExplorationQuery,
-  ExplorationQueryGroup,
-  ExplorationQueryStatus,
   ExplorationQueryType,
-  ExplorationThread,
+  Timeline,
 } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockTimeline,
 } from "metabase-types/api/mocks";
 
 import { ExplorationGroupVisualization } from "./ExplorationGroupVisualization";
+
+registerVisualizations();
 
 // The real `Visualization` is heavy and pulls ECharts; we only care that
 // it receives the right `rawSeries` shape.
@@ -40,99 +50,7 @@ jest.mock("metabase/api/exploration", () => ({
   useCreateExplorationDocumentMutation: () => [jest.fn()],
 }));
 
-// Stub adhoc-metadata to be instantly done.
-jest.mock("metabase/api/dataset", () => ({
-  __esModule: true,
-  useGetAdhocQueryMetadataQuery: () => ({ isLoading: false }),
-  useGetAdhocQueryMetadataCachedQuery: () => ({ isLoading: false }),
-}));
-
-// `Lib.fromJsQueryAndMetadata` + `Lib.defaultDisplay` need a working
-// metadata graph; bypass them by stubbing to a deterministic default
-// that individual tests can swap out via `mockDefaultDisplay.value`.
-const mockDefaultDisplay = {
-  value: {
-    display: "line",
-    settings: { "graph.x_axis.scale": "timeseries" } as Record<string, unknown>,
-  },
-};
-jest.mock("metabase-lib", () => ({
-  __esModule: true,
-  fromJsQueryAndMetadata: () => ({}) as any,
-  defaultDisplay: () => mockDefaultDisplay.value,
-}));
-
-// `isDate` drives the timeseries-vs-categorical branch in `getDisplay`;
-// `isState`/`isCountry` drive its map branch. Default to "everything is a
-// date" so charts render as cartesian lines; a test flips
-// `mockIsDate.value` to exercise the categorical / heat-map paths.
-const mockIsDate = { value: (): boolean => true };
-jest.mock("metabase-lib/v1/types/utils/isa", () => ({
-  __esModule: true,
-  isDate: () => mockIsDate.value(),
-  isState: () => false,
-  isCountry: () => false,
-}));
-
-jest.mock("metabase/visualizations", () => ({
-  __esModule: true,
-  isCartesianChart: (display: string) =>
-    ["line", "bar", "area", "combo", "row", "scatter", "waterfall"].includes(
-      display,
-    ),
-}));
-
-// Stub `StickyXAxisChart` to keep echarts out of the test bundle.
-jest.mock("./StickyXAxisChart", () => ({
-  __esModule: true,
-  StickyXAxisChart: () => <div data-testid="sticky-x-axis-stub" />,
-}));
-
-// Mock `useElementSize` so the cartesian body's container measurement
-// is deterministic in JSDOM (which has no real ResizeObserver). The
-// default value is "small enough that the main chart overflows", so
-// the sticky axis renders; individual tests override
-// `mockScrollContainerHeight.value` to flip the overflow decision.
-const mockScrollContainerHeight = { value: 400 };
-jest.mock("@mantine/hooks", () => {
-  const actual = jest.requireActual("@mantine/hooks");
-  return {
-    ...actual,
-    useElementSize: () => ({
-      ref: () => undefined,
-      width: 800,
-      height: mockScrollContainerHeight.value,
-    }),
-  };
-});
-
-function makeQuery(
-  overrides: Partial<ExplorationQuery> & {
-    id: number;
-    name: string;
-    status: ExplorationQueryStatus;
-  },
-): ExplorationQuery {
-  return {
-    exploration_thread_id: 1,
-    card_id: 1,
-    dimension_id: "dim-1",
-    dimension_name: "Dim 1",
-    query_type: "default",
-    display: null,
-    position: 0,
-    error_message: null,
-    started_at: null,
-    finished_at: null,
-    entity_id: "abcdefghijabcdefghij1",
-    interestingness_score: 0.5,
-    dataset_query: { type: "query", database: 1, query: {} } as any,
-    segment_id: null,
-    ...overrides,
-  };
-}
-
-function makeDataset(): Dataset {
+function makeTimeseriesDataset(): Dataset {
   return createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -147,51 +65,68 @@ function makeDataset(): Dataset {
   });
 }
 
-const thread: ExplorationThread = {
-  id: 1,
-  exploration_id: 1,
-  name: null,
-  prompt: null,
-  position: 0,
-  started_at: null,
-  completed_at: null,
-  entity_id: "thrd00000000000000001",
-  created_at: "2026-04-30T00:00:00Z",
-  updated_at: "2026-04-30T00:00:00Z",
-};
+function makeCategoricalDataset(): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      rows: [
+        ["A", 1],
+        ["B", 2],
+      ],
+    }),
+  });
+}
 
-const exploration: Exploration = {
-  id: 1,
+function makeStateMapDataset(): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({
+          name: "state",
+          base_type: "type/Text",
+          semantic_type: "type/State",
+        }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      rows: [
+        ["CA", 10],
+        ["NY", 20],
+      ],
+    }),
+  });
+}
+
+const thread = createThread();
+const defaultExploration: Exploration = {
+  ...createExploration(),
   name: "Test exploration",
-  description: null,
-  creator_id: 1,
-  archived: false,
-  can_write: true,
-  collection_id: null,
-  collection_position: null,
-  collection: null,
-  entity_id: "expl00000000000000001",
-  created_at: "2026-04-30T00:00:00Z",
-  updated_at: "2026-04-30T00:00:00Z",
-  threads: [thread],
 };
 
-const group: ExplorationQueryGroup = {
+const group = createGroup({
   id: "auto:1:dim-page",
-  parent_group_id: null,
-  position: 0,
-  type: "auto",
   display_type: "page",
   name: "Revenue across regions",
   query_ids: [101, 102],
-};
+});
 
 interface SetupOpts {
   queries: ExplorationQuery[];
   datasets?: Map<number, Dataset>;
+  exploration?: Exploration;
+  availableTimelines?: Timeline[];
+  interestingTimelineIds?: ReadonlySet<number>;
 }
 
-function setup({ queries, datasets }: SetupOpts) {
+function setup({
+  queries,
+  datasets,
+  exploration: explorationOverride = defaultExploration,
+  availableTimelines = [],
+  interestingTimelineIds,
+}: SetupOpts) {
   mockDatasetsByQueryId.clear();
   if (datasets) {
     for (const [id, ds] of datasets) {
@@ -204,11 +139,12 @@ function setup({ queries, datasets }: SetupOpts) {
       group={{ ...group, query_ids: queries.map((q) => q.id) }}
       queries={queries}
       explorationThread={thread}
-      exploration={exploration}
-      availableTimelines={[]}
+      exploration={explorationOverride}
+      availableTimelines={availableTimelines}
       selectedTimelineId={null}
       onSelectTimelineId={jest.fn()}
       timelineEvents={[]}
+      interestingTimelineIds={interestingTimelineIds}
     />,
   );
 }
@@ -216,19 +152,13 @@ function setup({ queries, datasets }: SetupOpts) {
 describe("ExplorationGroupVisualization", () => {
   afterEach(() => {
     mockDatasetsByQueryId.clear();
-    mockDefaultDisplay.value = {
-      display: "line",
-      settings: { "graph.x_axis.scale": "timeseries" },
-    };
-    mockScrollContainerHeight.value = 400;
-    mockIsDate.value = () => true;
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
     setup({
       queries: [
-        makeQuery({ id: 101, name: "OK", status: "done" }),
-        makeQuery({
+        createQuery({ id: 101, name: "OK", status: "done" }),
+        createQuery({
           id: 102,
           name: "Boom",
           status: "error",
@@ -246,14 +176,11 @@ describe("ExplorationGroupVisualization", () => {
   it("renders one skeleton per query while any query is unsettled", () => {
     setup({
       queries: [
-        makeQuery({ id: 101, name: "Q1", status: "done" }),
-        makeQuery({ id: 102, name: "Q2", status: "running" }),
+        createQuery({ id: 101, name: "Q1", status: "done" }),
+        createQuery({ id: 102, name: "Q2", status: "running" }),
       ],
     });
 
-    // Both queries get a skeleton. Each skeleton renders its own
-    // `ExplorationVisualizationHeader` — we count the section by group
-    // name, present once.
     expect(
       screen.getAllByText("Revenue across regions").length,
     ).toBeGreaterThan(0);
@@ -262,12 +189,22 @@ describe("ExplorationGroupVisualization", () => {
 
   it("renders the combined Visualization with one series per query and graph.split_panels enabled", () => {
     const queries = [
-      makeQuery({ id: 101, name: "Revenue (US)", status: "done" }),
-      makeQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
+      createQuery({
+        id: 101,
+        name: "Revenue (US)",
+        status: "done",
+        dimension_id: "dim-shared",
+      }),
+      createQuery({
+        id: 102,
+        name: "Revenue (EU)",
+        status: "done",
+        dimension_id: "dim-shared",
+      }),
     ];
     const datasets = new Map([
-      [101, makeDataset()],
-      [102, makeDataset()],
+      [101, makeTimeseriesDataset()],
+      [102, makeTimeseriesDataset()],
     ]);
     setup({ queries, datasets });
 
@@ -290,10 +227,9 @@ describe("ExplorationGroupVisualization", () => {
   it("falls back to skeletons when datasets are still loading even though statuses are settled", () => {
     setup({
       queries: [
-        makeQuery({ id: 101, name: "Q1", status: "done" }),
-        makeQuery({ id: 102, name: "Q2", status: "done" }),
+        createQuery({ id: 101, name: "Q1", status: "done" }),
+        createQuery({ id: 102, name: "Q2", status: "done" }),
       ],
-      // Don't populate datasets → hook reports `currentData = undefined`.
     });
 
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
@@ -308,34 +244,79 @@ describe("ExplorationGroupVisualization", () => {
 
   it("shows the group name in the header", () => {
     const queries = [
-      makeQuery({ id: 101, name: "Revenue (US)", status: "done" }),
-      makeQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
+      createQuery({ id: 101, name: "Revenue (US)", status: "done" }),
+      createQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
     ];
     const datasets = new Map([
-      [101, makeDataset()],
-      [102, makeDataset()],
+      [101, makeTimeseriesDataset()],
+      [102, makeTimeseriesDataset()],
     ]);
     setup({ queries, datasets });
 
-    // Group name visible in the header chrome.
-    const header = screen.getByText("Revenue across regions");
-    expect(header).toBeInTheDocument();
-    // And NOT individual query names — those are only inside the chart stub.
+    expect(screen.getByText("Revenue across regions")).toBeInTheDocument();
+    // Per-query names live in chart data, not the group header.
+    expect(screen.queryByText("Revenue (US)")).not.toBeInTheDocument();
+  });
+
+  it("shows the timeline dropdown when the group has timeseries charts", async () => {
+    const timelines = [
+      createMockTimeline({ id: 1, name: "Releases" }),
+      createMockTimeline({ id: 2, name: "Incidents" }),
+    ];
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      availableTimelines: timelines,
+    });
+
     expect(
-      within(header.parentElement!).queryByText("Revenue (US)"),
+      screen.getByRole("textbox", { name: "Select timeline" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the timeline dropdown for non-timeseries charts", () => {
+    setup({
+      queries: [
+        createQuery({
+          id: 201,
+          name: "Sessions (US)",
+          status: "done",
+          dimension_id: "dim-map",
+        }),
+        createQuery({
+          id: 202,
+          name: "Sessions (EU)",
+          status: "done",
+          dimension_id: "dim-map",
+        }),
+      ],
+      datasets: new Map([
+        [201, makeStateMapDataset()],
+        [202, makeStateMapDataset()],
+      ]),
+      availableTimelines: [createMockTimeline({ id: 1, name: "Releases" })],
+    });
+
+    expect(
+      screen.queryByRole("textbox", { name: "Select timeline" }),
     ).not.toBeInTheDocument();
   });
 
-  describe("cartesian combined chart with sticky x-axis", () => {
-    /**
-     * Helper: build N queries + their datasets, render, and return
-     * the rendered `<Visualization>` and `<StickyXAxisChart>` stubs.
-     */
+  describe("cartesian combined chart", () => {
     function setupCartesian(queryCount: number) {
       const queries = Array.from({ length: queryCount }, (_, i) =>
-        makeQuery({ id: 100 + i, name: `Q${i + 1}`, status: "done" }),
+        createQuery({
+          id: 100 + i,
+          name: `Q${i + 1}`,
+          status: "done",
+          dimension_id: "dim-shared",
+        }),
       );
-      const datasets = new Map(queries.map((q) => [q.id, makeDataset()]));
+      const datasets = new Map(
+        queries.map((q) => [q.id, makeTimeseriesDataset()]),
+      );
       setup({ queries, datasets });
       return { queries };
     }
@@ -343,8 +324,6 @@ describe("ExplorationGroupVisualization", () => {
     it("renders a single combined Visualization with one rawSeries entry per query", () => {
       setupCartesian(8);
 
-      // Exactly one Visualization stub, regardless of how many
-      // queries are in the group — chunking is gone.
       const stubs = screen.getAllByTestId("visualization-stub");
       expect(stubs).toHaveLength(1);
 
@@ -359,114 +338,35 @@ describe("ExplorationGroupVisualization", () => {
         expect(s.card.visualization_settings["graph.split_panels"]).toBe(true);
       }
     });
-
-    it("renders a sticky x-axis chart alongside the combined chart when the chart overflows the container", () => {
-      // Default `mockScrollContainerHeight.value` (400) is much
-      // smaller than the natural main-chart height (5 panels × 300px
-      // = 1500px), so the chart overflows and the sticky axis is
-      // needed.
-      setupCartesian(5);
-
-      // The sticky x-axis stub is rendered as a sibling of the main
-      // combined chart.
-      expect(screen.getByTestId("sticky-x-axis-stub")).toBeInTheDocument();
-      // Exactly one main Visualization (no chunking).
-      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(1);
-    });
-
-    it("does NOT render the sticky x-axis chart when the chart fits in the container", () => {
-      // Make the scroll container larger than the natural main-chart
-      // height (2 panels × 300px = 600px) so the chart fits and the
-      // main chart's own bottom x-axis is on-screen — no need for a
-      // duplicate sticky copy.
-      mockScrollContainerHeight.value = 2000;
-      setupCartesian(2);
-
-      expect(
-        screen.queryByTestId("sticky-x-axis-stub"),
-      ).not.toBeInTheDocument();
-      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(1);
-    });
-
-    it("hides the main chart's bottom x-axis (via vis-settings) when the sticky axis is shown", () => {
-      // Sticky on → main chart should have `graph.x_axis.axis_enabled`
-      // and `graph.x_axis.labels_enabled` forced off, so we don't
-      // render the axis twice.
-      setupCartesian(5);
-
-      const stub = screen.getByTestId("visualization-stub");
-      const rawSeries = JSON.parse(
-        stub.getAttribute("data-raw-series") ?? "[]",
-      );
-      for (const s of rawSeries) {
-        expect(s.card.visualization_settings["graph.x_axis.axis_enabled"]).toBe(
-          false,
-        );
-        expect(
-          s.card.visualization_settings["graph.x_axis.labels_enabled"],
-        ).toBe(false);
-      }
-    });
-
-    it("keeps the main chart's bottom x-axis enabled when the sticky axis is hidden", () => {
-      // Sticky off → main chart keeps its own bottom x-axis, so the
-      // axis settings should NOT be force-disabled.
-      mockScrollContainerHeight.value = 2000;
-      setupCartesian(2);
-
-      const stub = screen.getByTestId("visualization-stub");
-      const rawSeries = JSON.parse(
-        stub.getAttribute("data-raw-series") ?? "[]",
-      );
-      for (const s of rawSeries) {
-        // We don't force-set the axis-enabled flags when the sticky
-        // is off — they should be absent from the per-card override
-        // (and therefore fall through to the cartesian builder's
-        // defaults, which keep the axis visible).
-        expect(
-          s.card.visualization_settings["graph.x_axis.axis_enabled"],
-        ).toBeUndefined();
-        expect(
-          s.card.visualization_settings["graph.x_axis.labels_enabled"],
-        ).toBeUndefined();
-      }
-    });
-
-    it("does not render the sticky x-axis chart for non-cartesian displays", () => {
-      mockDefaultDisplay.value = {
-        display: "map",
-        settings: {} as Record<string, unknown>,
-      };
-      setupCartesian(3);
-
-      // Map mode renders N independent Visualizations, no sticky axis.
-      expect(
-        screen.queryByTestId("sticky-x-axis-stub"),
-      ).not.toBeInTheDocument();
-      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(3);
-    });
   });
 
   describe("non-cartesian displays (e.g. map)", () => {
-    beforeEach(() => {
-      mockDefaultDisplay.value = {
-        display: "map",
-        settings: {} as Record<string, unknown>,
-      };
-    });
-
-    it("renders one Visualization per query (no combined chart) without graph.split_panels", () => {
+    function setupMapGroup() {
       const queries = [
-        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
-        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
+        createQuery({
+          id: 201,
+          name: "Sessions (US)",
+          status: "done",
+          dimension_id: "dim-map",
+        }),
+        createQuery({
+          id: 202,
+          name: "Sessions (EU)",
+          status: "done",
+          dimension_id: "dim-map",
+        }),
       ];
       const datasets = new Map([
-        [201, makeDataset()],
-        [202, makeDataset()],
+        [201, makeStateMapDataset()],
+        [202, makeStateMapDataset()],
       ]);
       setup({ queries, datasets });
+      return queries;
+    }
 
-      // N separate Visualization stubs, one per query.
+    it("renders one Visualization per query (no combined chart) without graph.split_panels", () => {
+      setupMapGroup();
+
       const stubs = screen.getAllByTestId("visualization-stub");
       expect(stubs).toHaveLength(2);
 
@@ -475,7 +375,6 @@ describe("ExplorationGroupVisualization", () => {
           stub.getAttribute("data-raw-series") ?? "[]",
         );
         expect(rawSeries).toHaveLength(1);
-        // Cartesian-only settings must NOT leak into a map card.
         expect(
           rawSeries[0].card.visualization_settings["graph.split_panels"],
         ).toBeUndefined();
@@ -485,7 +384,6 @@ describe("ExplorationGroupVisualization", () => {
         expect(rawSeries[0].card.display).toBe("map");
       }
 
-      // Each stub's series belongs to a different query (preserving order).
       const seriesByStub = stubs.map(
         (s) => JSON.parse(s.getAttribute("data-raw-series") ?? "[]")[0].card.id,
       );
@@ -493,15 +391,7 @@ describe("ExplorationGroupVisualization", () => {
     });
 
     it("bakes a distinct map.colors ramp into each map card so they don't share a color", () => {
-      const queries = [
-        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
-        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
-      ];
-      const datasets = new Map([
-        [201, makeDataset()],
-        [202, makeDataset()],
-      ]);
-      setup({ queries, datasets });
+      setupMapGroup();
 
       const stubs = screen.getAllByTestId("visualization-stub");
       const ramps = stubs.map(
@@ -510,32 +400,16 @@ describe("ExplorationGroupVisualization", () => {
             .visualization_settings["map.colors"],
       );
 
-      // Every card has a non-empty color ramp.
       for (const ramp of ramps) {
         expect(Array.isArray(ramp)).toBe(true);
         expect(ramp.length).toBeGreaterThan(0);
       }
-      // The two ramps differ — at minimum their first color is not the
-      // same hue, since `getColorsForValues` assigned distinct colors
-      // to the two query ids.
       expect(ramps[0][0]).not.toEqual(ramps[1][0]);
     });
 
     it("renders a single shared legend at the top with one item per chart", () => {
-      const queries = [
-        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
-        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
-      ];
-      const datasets = new Map([
-        [201, makeDataset()],
-        [202, makeDataset()],
-      ]);
-      setup({ queries, datasets });
+      setupMapGroup();
 
-      // One legend role, two listitem children — mirrors the
-      // auto-generated legend a cartesian `graph.split_panels` chart
-      // shows. Both query names are visible inside the legend, and
-      // they each appear exactly once (no duplicate per-chart headers).
       const legend = screen.getByRole("list", { name: "Legend" });
       expect(within(legend).getByText("Sessions (US)")).toBeInTheDocument();
       expect(within(legend).getByText("Sessions (EU)")).toBeInTheDocument();
@@ -545,24 +419,85 @@ describe("ExplorationGroupVisualization", () => {
     });
   });
 
+  it("marks interesting timelines passed via interestingTimelineIds", async () => {
+    const timelines = [
+      createMockTimeline({ id: 10, name: "Releases" }),
+      createMockTimeline({ id: 20, name: "Incidents" }),
+    ];
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      availableTimelines: timelines,
+      interestingTimelineIds: new Set([10]),
+    });
+
+    await userEvent.click(
+      screen.getByRole("textbox", { name: "Select timeline" }),
+    );
+
+    const releasesOption = await screen.findByRole("option", {
+      name: /Releases/,
+    });
+    const incidentsOption = screen.getByRole("option", { name: /Incidents/ });
+
+    expect(
+      within(releasesOption).getByTestId("potentially-interesting-marker"),
+    ).toBeInTheDocument();
+    expect(
+      within(incidentsOption).queryByTestId("potentially-interesting-marker"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("heatmap display", () => {
+    it("renders a single combined table visualization for a segment group", () => {
+      const queries = Array.from({ length: 4 }, (_, i) =>
+        createQuery({
+          id: 301 + i,
+          name: "Revenue by Plan",
+          status: "done",
+          dimension_id: "dim-segment",
+          query_type: "default",
+          segment_id: i + 1,
+        }),
+      );
+      const datasets = new Map(
+        queries.map((q) => [q.id, makeCategoricalDataset()]),
+      );
+      setup({ queries, datasets });
+
+      const stubs = screen.getAllByTestId("visualization-stub");
+      expect(stubs).toHaveLength(1);
+
+      const rawSeries = JSON.parse(
+        stubs[0].getAttribute("data-raw-series") ?? "[]",
+      );
+      expect(rawSeries).toHaveLength(1);
+      expect(rawSeries[0].card.display).toBe("table");
+      expect(rawSeries[0].card.visualization_settings["table.pivot"]).toBe(
+        true,
+      );
+    });
+  });
+
   describe("chart layout grid", () => {
-    /**
-     * Helper: give each query a categorical dataset and render. Each test
-     * gives its queries distinct `dimension_id`s so `buildSeriesGroups`
-     * yields one series group per query.
-     */
-    function setupGroupLayout(queries: ExplorationQuery[]) {
-      const datasets = new Map(queries.map((q) => [q.id, makeDataset()]));
-      return setup({ queries, datasets });
+    function setupGroupLayout(
+      queries: ExplorationQuery[],
+      datasets?: Map<number, Dataset>,
+    ) {
+      const datasetMap =
+        datasets ??
+        new Map(queries.map((q) => [q.id, makeTimeseriesDataset()]));
+      return setup({ queries, datasets: datasetMap });
     }
 
-    /** A line query in its own series group (distinct `dimension_id`). */
     function lineQuery(
       id: number,
       name: string,
       queryType: ExplorationQueryType = "default",
     ): ExplorationQuery {
-      return makeQuery({
+      return createQuery({
         id,
         name,
         status: "done",
@@ -571,17 +506,13 @@ describe("ExplorationGroupVisualization", () => {
       });
     }
 
-    /**
-     * Four segment queries sharing a `dimension_id` + `query_type` — enough
-     * for `getDisplay` to pick the `table` heat-map display for the group.
-     */
     function tableGroupQueries(
       queryType: ExplorationQueryType,
       name: string,
       startId: number,
     ): ExplorationQuery[] {
       return Array.from({ length: 4 }, (_, i) =>
-        makeQuery({
+        createQuery({
           id: startId + i,
           name,
           status: "done",
@@ -592,51 +523,64 @@ describe("ExplorationGroupVisualization", () => {
       );
     }
 
+    function datasetsForMixedLayout(
+      timeseriesQueryId: number,
+      tableQueryIds: number[],
+    ): Map<number, Dataset> {
+      const datasets = new Map<number, Dataset>([
+        [timeseriesQueryId, makeTimeseriesDataset()],
+      ]);
+      for (const id of tableQueryIds) {
+        datasets.set(id, makeCategoricalDataset());
+      }
+      return datasets;
+    }
+
     it('uses the "two-small-charts-down" layout for the day-of-week + hour-of-day trio', () => {
-      const { container } = setupGroupLayout([
+      setupGroupLayout([
         lineQuery(101, "Revenue trend"),
         lineQuery(102, "Revenue (day of week)", "temporal-pattern-day"),
         lineQuery(103, "Revenue (hour of day)", "temporal-pattern-hour"),
       ]);
 
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "two-small-charts-down",
       );
     });
 
     it('uses the "default" layout for an ordinary multi-chart group', () => {
-      const { container } = setupGroupLayout([
+      setupGroupLayout([
         lineQuery(101, "Revenue (US)"),
         lineQuery(102, "Revenue (EU)"),
       ]);
 
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "default",
       );
     });
 
     it('uses the "default" layout for a 3-chart group whose names do not match', () => {
-      const { container } = setupGroupLayout([
+      setupGroupLayout([
         lineQuery(101, "Revenue trend"),
         lineQuery(102, "Revenue by region"),
         lineQuery(103, "Revenue by plan"),
       ]);
 
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "default",
       );
     });
 
     it('uses the "two-same-size-charts-vertically" layout for a 2-chart group with a `time-facet` secondary', () => {
-      const { container } = setupGroupLayout([
+      setupGroupLayout([
         lineQuery(101, "Revenue by region"),
         lineQuery(102, "Revenue over time", "time-facet"),
       ]);
 
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "two-same-size-charts-vertically",
       );
@@ -645,7 +589,7 @@ describe("ExplorationGroupVisualization", () => {
     it('shows a "Top {k}" label on the bottom chart when its queryType is "top-n-other"', () => {
       setupGroupLayout([
         lineQuery(101, "Revenue by amount"),
-        makeQuery({
+        createQuery({
           id: 102,
           name: "Top 3 amounts",
           status: "done",
@@ -659,42 +603,41 @@ describe("ExplorationGroupVisualization", () => {
     });
 
     it('uses the "chart-and-table-vertically" layout when a 2-chart pair has a special table secondary', () => {
-      // Categorical (non-date) datasets so `getDisplay` skips the line
-      // branch; 4 segment queries on the secondary group is enough for it
-      // to resolve to a `table` heat-map display.
-      mockIsDate.value = () => false;
+      const tableQueries = tableGroupQueries("top-n-other", "Top revenue", 10);
+      setupGroupLayout(
+        [lineQuery(1, "Revenue by amount"), ...tableQueries],
+        datasetsForMixedLayout(
+          1,
+          tableQueries.map((q) => q.id),
+        ),
+      );
 
-      const { container } = setupGroupLayout([
-        lineQuery(1, "Revenue by amount"),
-        ...tableGroupQueries("top-n-other", "Top revenue", 10),
-      ]);
-
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "chart-and-table-vertically",
       );
     });
 
     it('uses the "two-small-tables-down" layout when the two bottom charts are heat-map tables', () => {
-      // Categorical (non-date) datasets so `getDisplay` skips the line
-      // branch and the two bottom groups resolve to `table` heat-maps.
-      mockIsDate.value = () => false;
+      const dayQueries = tableGroupQueries(
+        "temporal-pattern-day",
+        "Orders (day of week)",
+        10,
+      );
+      const hourQueries = tableGroupQueries(
+        "temporal-pattern-hour",
+        "Orders (hour of day)",
+        20,
+      );
+      setupGroupLayout(
+        [lineQuery(1, "Orders trend"), ...dayQueries, ...hourQueries],
+        datasetsForMixedLayout(1, [
+          ...dayQueries.map((q) => q.id),
+          ...hourQueries.map((q) => q.id),
+        ]),
+      );
 
-      const { container } = setupGroupLayout([
-        lineQuery(1, "Orders trend"),
-        ...tableGroupQueries(
-          "temporal-pattern-day",
-          "Orders (day of week)",
-          10,
-        ),
-        ...tableGroupQueries(
-          "temporal-pattern-hour",
-          "Orders (hour of day)",
-          20,
-        ),
-      ]);
-
-      expect(container.querySelector("[data-chart-layout]")).toHaveAttribute(
+      expect(screen.getByTestId("exploration-chart-grid")).toHaveAttribute(
         "data-chart-layout",
         "two-small-tables-down",
       );

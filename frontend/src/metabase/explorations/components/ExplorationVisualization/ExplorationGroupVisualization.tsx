@@ -224,11 +224,15 @@ function ExplorationGroupVisualizationChart({
         chartsForEmbed={chartsForEmbed}
         interestingTimelineIds={interestingTimelineIds}
       />
-      <Box className={S.chartGrid} data-chart-layout={layoutStrategy}>
-        {seriesGroups.map(({ series, stackCount, queryType, chartLabel }) =>
+      <Box
+        className={S.chartGrid}
+        data-chart-layout={layoutStrategy}
+        data-testid="exploration-chart-grid"
+      >
+        {seriesGroups.map(({ series, stackCount, chartLabel }) =>
           isCartesianChart(series[0].card.display) ? (
             <ExplorationCartesianChart
-              key={queryType}
+              key={series[0].card.id}
               series={series}
               timelineEvents={timelineEvents}
               stackCount={stackCount}
@@ -236,13 +240,13 @@ function ExplorationGroupVisualizationChart({
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
-              key={queryType}
+              key={series[0].card.id}
               series={series}
               label={chartLabel}
             />
           ) : (
             <ExplorationMap
-              key={queryType}
+              key={series[0].card.id}
               series={series}
               queryColors={queryColors}
               label={chartLabel}

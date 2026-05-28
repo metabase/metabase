@@ -1,11 +1,11 @@
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-
 import {
   createExploration,
   createQuery,
   leafGroup,
   metricGroup,
-} from "./test-utils";
+} from "metabase/explorations/test-utils";
+
 import type { ExplorationTreeNode, ExplorationTreeQueryGroup } from "./utils";
 import { getExplorationSidebarTree, pickInitialSidebarEntity } from "./utils";
 

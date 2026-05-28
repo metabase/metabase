@@ -2,13 +2,16 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  createExploration,
+  createQuery,
+} from "metabase/explorations/test-utils";
 import type {
   ExplorationQuery,
   ExplorationQueryGroup,
 } from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
-import { createExploration, createQuery } from "./test-utils";
 import { getExplorationSidebarTree } from "./utils";
 
 type TestSelectedEntityId =

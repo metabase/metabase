@@ -1,12 +1,19 @@
+import {
+  createExplorationDocument,
+  createQuery,
+  createThread,
+} from "metabase/explorations/test-utils";
+import registerVisualizations from "metabase/visualizations/register";
 import type {
+  Dataset,
   ExplorationQuery,
-  ExplorationQueryStatus,
   RowValues,
   SingleSeries,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
+  createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
@@ -23,12 +30,17 @@ jest.mock("metabase/visualizations", () => ({
 
 import type { SeriesGroup } from "./utils";
 import {
+  buildSeries,
+  buildSeriesGroups,
   composeChartsForDocumentEmbed,
+  getDocumentsForDocumentMenu,
   getHeatMapSeries,
   getInterestingTimelineIds,
   getMaxTimelineInterestingness,
   getMostInterestingTimelineId,
 } from "./utils";
+
+registerVisualizations();
 
 function makeQuery(
   overrides: Partial<ExplorationQuery> & {
@@ -36,25 +48,20 @@ function makeQuery(
     timeline_interestingness?: ExplorationQuery["timeline_interestingness"];
   },
 ): ExplorationQuery {
-  return {
-    exploration_thread_id: 1,
-    card_id: 1,
-    dimension_id: "dim-1",
-    dimension_name: "Dim 1",
-    query_type: "default",
-    display: null,
-    name: `q-${overrides.id}`,
-    position: 0,
-    status: "done" as ExplorationQueryStatus,
-    error_message: null,
-    started_at: null,
-    finished_at: null,
-    entity_id: "abcdefghijabcdefghij1",
-    interestingness_score: 0.5,
-    dataset_query: { type: "query", database: 1, query: {} } as any,
-    segment_id: null,
+  return createQuery({
+    status: "done",
     ...overrides,
-  };
+    name: overrides.name ?? `q-${overrides.id}`,
+  });
+}
+
+function makeDataset(
+  cols: ReturnType<typeof createMockColumn>[],
+  rows: RowValues[],
+): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({ cols, rows }),
+  });
 }
 
 function makeHeatMapSeries(name: string, rows: RowValues[]): SingleSeries {
@@ -413,5 +420,277 @@ describe("composeChartsForDocumentEmbed", () => {
       [21], // map 2
       [30], // single
     ]);
+  });
+});
+
+describe("buildSeries (display selection)", () => {
+  const metricsById = new Map();
+  const queryColors = { "1": "#509EE3", "2": "#88BF4D" };
+
+  function buildOneSeries(
+    query: ExplorationQuery,
+    dataset: Dataset,
+    extraQueriesInGroup: { query: ExplorationQuery; dataset: Dataset }[] = [],
+  ) {
+    const group = [
+      { ...query, dataset },
+      ...extraQueriesInGroup.map(({ query: q, dataset: d }) => ({
+        ...q,
+        dataset: d,
+      })),
+    ];
+    return buildSeries({
+      queriesWithDatasets: group,
+      metricsById,
+      queryColors,
+    });
+  }
+
+  it("sets the y-axis title from the thread metric name", () => {
+    const query = makeQuery({ id: 1, card_id: 42 });
+    const dataset = makeDataset(
+      [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["2025-01-01", 1]],
+    );
+    const metricsByIdWithName = new Map();
+    metricsByIdWithName.set(query.card_id, {
+      id: 1,
+      exploration_thread_id: 1,
+      card_id: query.card_id,
+      dimension_mappings: null,
+      position: 0,
+      card: { name: "Total Revenue" },
+    });
+    const group = buildSeries({
+      queriesWithDatasets: [{ ...query, dataset }],
+      metricsById: metricsByIdWithName,
+      queryColors,
+    });
+    expect(
+      group.series[0].card.visualization_settings["graph.y_axis.title_text"],
+    ).toBe("Total Revenue");
+  });
+
+  it("picks line with split panels for a 2-column timeseries dataset", () => {
+    const query = makeQuery({ id: 1 });
+    const dataset = makeDataset(
+      [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["2025-01-01", 1]],
+    );
+    const group = buildOneSeries(query, dataset);
+    expect(group.series[0].card.display).toBe("line");
+    expect(
+      group.series[0].card.visualization_settings["graph.split_panels"],
+    ).toBe(true);
+    expect(group.isTimeseries).toBe(true);
+  });
+
+  it("picks a US state map for a 2-column state dataset", () => {
+    const query = makeQuery({ id: 1 });
+    const dataset = makeDataset(
+      [
+        createMockColumn({
+          name: "state",
+          base_type: "type/Text",
+          semantic_type: "type/State",
+        }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["CA", 10]],
+    );
+    const group = buildOneSeries(query, dataset);
+    expect(group.series[0].card.display).toBe("map");
+    expect(group.series[0].card.visualization_settings["map.region"]).toBe(
+      "us_states",
+    );
+  });
+
+  it("picks a world countries map for a 2-column country dataset", () => {
+    const query = makeQuery({ id: 1 });
+    const dataset = makeDataset(
+      [
+        createMockColumn({
+          name: "country",
+          base_type: "type/Text",
+          semantic_type: "type/Country",
+        }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["US", 10]],
+    );
+    const group = buildOneSeries(query, dataset);
+    expect(group.series[0].card.display).toBe("map");
+    expect(group.series[0].card.visualization_settings["map.region"]).toBe(
+      "world_countries",
+    );
+  });
+
+  it("picks bar for a 2-column categorical dataset", () => {
+    const query = makeQuery({ id: 1 });
+    const dataset = makeDataset(
+      [
+        createMockColumn({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["A", 1]],
+    );
+    const group = buildOneSeries(query, dataset);
+    expect(group.series[0].card.display).toBe("bar");
+  });
+
+  it("picks table heat-map when the group has enough segment queries", () => {
+    const queries = Array.from({ length: 4 }, (_, i) =>
+      makeQuery({ id: i + 1, segment_id: i + 1 }),
+    );
+    const categorical = makeDataset(
+      [
+        createMockColumn({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["A", 1]],
+    );
+    const group = buildSeries({
+      queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
+      metricsById,
+      queryColors,
+    });
+    expect(group.series[0].card.display).toBe("table");
+  });
+
+  it("assigns distinct map color ramps per query id", () => {
+    const dataset = makeDataset(
+      [
+        createMockColumn({
+          name: "state",
+          base_type: "type/Text",
+          semantic_type: "type/State",
+        }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["CA", 10]],
+    );
+    const group = buildSeries({
+      queriesWithDatasets: [
+        { ...makeQuery({ id: 1 }), dataset },
+        { ...makeQuery({ id: 2 }), dataset },
+      ],
+      metricsById,
+      queryColors,
+    });
+    const ramp1 = group.series[0].card.visualization_settings["map.colors"];
+    const ramp2 = group.series[1].card.visualization_settings["map.colors"];
+    expect(ramp1?.[0]).not.toEqual(ramp2?.[0]);
+  });
+});
+
+describe("buildSeriesGroups", () => {
+  it("groups queries by dimension_id and query_type", () => {
+    const datasets = [
+      makeDataset(
+        [
+          createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
+        ],
+        [["2025-01-01", 1]],
+      ),
+      makeDataset(
+        [
+          createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
+        ],
+        [["2025-01-01", 2]],
+      ),
+    ];
+    const queries = [
+      makeQuery({ id: 1, dimension_id: "dim-a" }),
+      makeQuery({ id: 2, dimension_id: "dim-b" }),
+    ];
+    const { seriesGroups } = buildSeriesGroups({
+      queries,
+      datasets,
+      metricsById: new Map(),
+      queryColors: {},
+    });
+    expect(seriesGroups).toHaveLength(2);
+  });
+
+  it('picks "two-small-charts-down" for the temporal pattern trio', () => {
+    const tsDataset = makeDataset(
+      [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["2025-01-01", 1]],
+    );
+    const queries = [
+      makeQuery({ id: 1, dimension_id: "dim-1", query_type: "default" }),
+      makeQuery({
+        id: 2,
+        dimension_id: "dim-2",
+        query_type: "temporal-pattern-day",
+      }),
+      makeQuery({
+        id: 3,
+        dimension_id: "dim-3",
+        query_type: "temporal-pattern-hour",
+      }),
+    ];
+    const { layoutStrategy } = buildSeriesGroups({
+      queries,
+      datasets: [tsDataset, tsDataset, tsDataset],
+      metricsById: new Map(),
+      queryColors: {},
+    });
+    expect(layoutStrategy).toBe("two-small-charts-down");
+  });
+
+  it("strips axis titles from series in labeled layouts", () => {
+    const tsDataset = makeDataset(
+      [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [["2025-01-01", 1]],
+    );
+    const queries = [
+      makeQuery({ id: 1, dimension_id: "dim-1", query_type: "default" }),
+      makeQuery({
+        id: 2,
+        dimension_id: "dim-2",
+        query_type: "time-facet",
+      }),
+    ];
+    const { seriesGroups } = buildSeriesGroups({
+      queries,
+      datasets: [tsDataset, tsDataset],
+      metricsById: new Map(),
+      queryColors: {},
+    });
+    expect(
+      seriesGroups[0].series[0].card.visualization_settings[
+        "graph.y_axis.title_text"
+      ],
+    ).toBe("");
+    expect(seriesGroups[1].chartLabel).toBe("Over time");
+  });
+});
+
+describe("getDocumentsForDocumentMenu", () => {
+  it("excludes the AI summary document from the menu list", () => {
+    const documents = [
+      createExplorationDocument({ id: 1, name: "Notes" }),
+      createExplorationDocument({ id: 2, name: "Summary" }),
+    ];
+    const thread = createThread({
+      documents,
+      ai_summary_document_id: 2,
+    });
+    expect(getDocumentsForDocumentMenu(thread).map((d) => d.id)).toEqual([1]);
   });
 });

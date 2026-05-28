@@ -1,9 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  createExplorationDocument,
+  createThread,
+} from "metabase/explorations/test-utils";
 import type {
   ExplorationDocument,
-  ExplorationThread,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -45,24 +48,13 @@ function makeChart(overrides: {
   };
 }
 
-function makeDocument(
-  overrides: Partial<ExplorationDocument> & { id: number; name: string },
-): ExplorationDocument {
-  return {
-    exploration_thread_id: 1,
-    creator_id: 1,
-    content_type: "application/json",
-    ...overrides,
-  };
-}
-
 const defaultCharts: ExplorationChartForDocumentEmbed[] = [
   makeChart({ queryIds: [101], label: "Revenue (US)" }),
   makeChart({ queryIds: [201, 202, 203], label: "Revenue (EU)" }),
 ];
 
-function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
-  return {
+function makeThread(documents: ExplorationDocument[] = []) {
+  return createThread({
     id: 7,
     exploration_id: 99,
     name: null,
@@ -74,11 +66,17 @@ function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
     created_at: "2026-04-30T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",
     documents,
-  };
+  });
 }
 
 function setup({
-  documents = [makeDocument({ id: 11, name: "Notes" })],
+  documents = [
+    createExplorationDocument({
+      id: 11,
+      name: "Notes",
+      content_type: "application/json",
+    }),
+  ],
   charts = defaultCharts,
 }: {
   documents?: ExplorationDocument[];

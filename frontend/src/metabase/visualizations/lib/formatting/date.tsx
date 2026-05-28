@@ -3,7 +3,6 @@ import dayjs, { type Dayjs, type OpUnitType, type QUnitType } from "dayjs";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { formatTime } from "metabase/utils/formatting";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -1310,10 +1309,6 @@ export function formatDateTimeWithUnit(
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
-  }
-
-  if (unit === "hour-of-day") {
-    return formatTime(m, unit, options);
   }
 
   // dayjs can't format DDD to day of year, handle manually
