@@ -16,6 +16,7 @@ import {
   buildDimensionPickerSections,
   buildDimensionPickerSidebarCategories,
   getDimensionBreakoutConfig,
+  getScalarDimensionBreakoutLabel,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import {
@@ -29,6 +30,7 @@ import {
   Text,
   TextInput,
   Title,
+  UnstyledButton,
 } from "metabase/ui";
 
 import S from "./DimensionPickerSidebar.module.css";
@@ -229,7 +231,22 @@ export function DimensionPickerSidebar({
     setMode("all");
   };
 
+  const handleNoBreakout = () => {
+    if (activeDimensionBreakout.type === "scalar") {
+      return;
+    }
+
+    onSelectDimensionBreakout({
+      type: "scalar",
+      label: getScalarDimensionBreakoutLabel(),
+      dimensionMapping: {},
+    });
+    trackMetricsViewerDimensionSelected();
+  };
+
   const showFieldsByCategory = !showAllFields && categories.length > 0;
+  const showDefaultView = !showAllFields;
+  const isNoBreakoutSelected = activeDimensionBreakout.type === "scalar";
 
   return (
     <Box
@@ -250,7 +267,7 @@ export function DimensionPickerSidebar({
             </ActionIcon>
           )}
           <Title order={3} size="h4" fw="bold">
-            {showAllFields ? t`All fields` : t`Group by`}
+            {showAllFields ? t`All fields` : t`Break out by`}
           </Title>
         </Flex>
         <ActionIcon aria-label={t`Close`} variant="subtle" onClick={close}>
@@ -282,59 +299,74 @@ export function DimensionPickerSidebar({
             onSelect={handleAllFieldsSelect}
           />
         )}
-        {showFieldsByCategory && (
+        {showDefaultView && (
           <Stack gap="xs">
-            <Text px="sm" size="sm" c="text-secondary" my="sm">
-              {t`Shared dimensions`}
-            </Text>
-            <Stack gap="xs">
-              {categories.map((category) => {
-                const isSelected =
-                  category.key === selectedDimensionBreakoutCategoryKey;
-                const isExpanded = category.key === expandedCategoryKey;
+            <Flex align="center" justify="space-between" px="sm" my="sm">
+              <Text size="sm" c="text-secondary">
+                {t`Shared dimensions`}
+              </Text>
+              {showSeeAll && (
+                <Button onClick={handleSeeAll} size="sm" variant="subtle">
+                  {t`See all`}
+                </Button>
+              )}
+            </Flex>
+            {showFieldsByCategory ? (
+              <Stack gap="xs">
+                {categories.map((category) => {
+                  const isSelected =
+                    category.key === selectedDimensionBreakoutCategoryKey;
+                  const isExpanded = category.key === expandedCategoryKey;
 
-                return (
-                  <CategoryItem
-                    key={category.key}
-                    category={category}
-                    activeDimensionBreakout={activeDimensionBreakout}
-                    metricSlots={metricSlots}
-                    sourceDataById={metricSourceDataById}
-                    sourceColors={sourceColors}
-                    isSelected={isSelected}
-                    isExpanded={isExpanded}
-                    onCategorySelect={() => handleCategorySelect(category)}
-                    onToggleCategorySettings={() =>
-                      handleToggleCategorySettings(category)
-                    }
-                    onDimensionChange={(slotIndex, dimensionId) =>
-                      handleCategoryDimensionChange(
-                        category,
-                        slotIndex,
-                        dimensionId,
-                      )
-                    }
-                  />
-                );
-              })}
-            </Stack>
+                  return (
+                    <CategoryItem
+                      key={category.key}
+                      category={category}
+                      activeDimensionBreakout={activeDimensionBreakout}
+                      metricSlots={metricSlots}
+                      sourceDataById={metricSourceDataById}
+                      sourceColors={sourceColors}
+                      isSelected={isSelected}
+                      isExpanded={isExpanded}
+                      onCategorySelect={() => handleCategorySelect(category)}
+                      onToggleCategorySettings={() =>
+                        handleToggleCategorySettings(category)
+                      }
+                      onDimensionChange={(slotIndex, dimensionId) =>
+                        handleCategoryDimensionChange(
+                          category,
+                          slotIndex,
+                          dimensionId,
+                        )
+                      }
+                    />
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Text c="text-secondary" ta="center" py="lg">
+                {defaultEmptyStateText}
+              </Text>
+            )}
+            <Box className={S.noBreakoutSection}>
+              <UnstyledButton
+                className={S.noBreakoutButton}
+                data-selected={isNoBreakoutSelected}
+                aria-label={t`No breakout`}
+                aria-pressed={isNoBreakoutSelected}
+                onClick={handleNoBreakout}
+              >
+                <Icon
+                  className={S.noBreakoutIcon}
+                  name="unreferenced"
+                  size={16}
+                />
+                <Text className={S.noBreakoutLabel} component="span">
+                  {t`No breakout`}
+                </Text>
+              </UnstyledButton>
+            </Box>
           </Stack>
-        )}
-        {!showAllFields && !showFieldsByCategory && (
-          <Text c="text-secondary" ta="center" py="lg">
-            {defaultEmptyStateText}
-          </Text>
-        )}
-        {showSeeAll && (
-          <Button
-            mr="auto"
-            mt="sm"
-            onClick={handleSeeAll}
-            size="sm"
-            variant="subtle"
-          >
-            {t`See all`}
-          </Button>
         )}
       </ScrollArea>
     </Box>

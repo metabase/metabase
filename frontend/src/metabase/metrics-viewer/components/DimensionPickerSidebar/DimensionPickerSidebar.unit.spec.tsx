@@ -37,6 +37,15 @@ const timeDimensionBreakout: MetricsViewerDimensionBreakoutState = {
   projectionConfig: {},
 };
 
+const scalarDimensionBreakout: MetricsViewerDimensionBreakoutState = {
+  id: "scalar",
+  type: "scalar",
+  label: "Totals",
+  display: "scalar",
+  dimensionMapping: {},
+  projectionConfig: {},
+};
+
 const availableDimensions: AvailableDimensionsResult = {
   shared: [],
   bySource: {
@@ -115,7 +124,7 @@ describe("DimensionPickerSidebar", () => {
   it("renders the active dimension as selected", () => {
     setup();
 
-    expect(screen.getByText("Group by")).toBeInTheDocument();
+    expect(screen.getByText("Break out by")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Search fields")).toBeInTheDocument();
     expect(screen.getByLabelText("Search fields")).toBeInTheDocument();
     expect(screen.queryByText("Totals")).not.toBeInTheDocument();
@@ -195,6 +204,36 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.queryByRole("button", { name: "Revenue" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("selects no breakout and tracks it", async () => {
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "No breakout" }));
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
+      type: "scalar",
+      label: "Totals",
+      dimensionMapping: {},
+    });
+    expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metrics_viewer_dimension_selected",
+    });
+  });
+
+  it("marks no breakout as selected", () => {
+    setup({ dimensionBreakout: scalarDimensionBreakout });
+
+    expect(screen.getByRole("button", { name: "No breakout" })).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "No breakout" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("hides categories that are not available for multiple metric sources", () => {
@@ -708,6 +747,6 @@ describe("DimensionPickerSidebar", () => {
     });
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
     expect(trackSimpleEvent).not.toHaveBeenCalled();
-    expect(screen.getByText("Group by")).toBeInTheDocument();
+    expect(screen.getByText("Break out by")).toBeInTheDocument();
   });
 });

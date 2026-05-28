@@ -150,7 +150,6 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
               ) : null}
             </Flex>
             {activeDimensionBreakout &&
-              activeDimensionBreakout.type !== "scalar" &&
               (isDimensionPickerSidebarOpen ? (
                 <DimensionPickerSidebar
                   activeDimensionBreakout={activeDimensionBreakout}
@@ -165,13 +164,13 @@ function MetricsViewerPageContent(props: MetricsViewerPageProps) {
                     updateActiveDimensionBreakout
                   }
                 />
-              ) : (
+              ) : activeDimensionBreakout.type !== "scalar" ? (
                 <BreakoutLegend
                   formulaEntities={formulaEntities}
                   definitions={definitions}
                   activeBreakoutColors={activeBreakoutColors}
                 />
-              ))}
+              ) : null)}
           </Flex>
         </Stack>
       </Flex>
