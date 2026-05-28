@@ -342,12 +342,9 @@
       (task.entity-check/trigger-entity-check-job!))))
 
 ;; ### Database Deletion (orphans transforms)
-;; Transforms whose `source_database_id` matches the database being deleted survive the delete (the
-;; FK uses `ON DELETE SET NULL` and ukrit/maz asked us to preserve the SQL/Python as a tombstone),
+;; Transforms whose `source_database_id` matches the database being deleted survive the delete
 ;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
-;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`. Called from the
-;; OSS `:model/Database` before-delete hook via `defenterprise`, so we can still resolve the affected
-;; transforms by their (still non-null) `source_database_id` before the FK action fires.
+;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`.
 (defenterprise mark-transforms-stale-on-database-delete!
   "Enterprise implementation: mark all transforms whose source database is being deleted as stale
    for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
