@@ -22,6 +22,20 @@
     (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
 
+(defn- result->delta [result]
+  (cond
+    (instance? Exception result)
+    {:errors 1}
+
+    (= ::field-values/fv-created result)
+    {:created 1}
+
+    (= ::field-values/fv-updated result)
+    {:updated 1}
+
+    (= ::field-values/fv-deleted result)
+    {:deleted 1}))
+
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
     (update counts-map :errors inc)
@@ -88,19 +102,16 @@
   "Sequential per-field fallback for non-SQL drivers that can't run the UNION query (e.g. Mongo).
   Matches master's behavior — one DISTINCT per field, no batching."
   [_table fields-to-sync fvs-map]
-  (when (seq fields-to-sync)
-    (let [n-fields (count fields-to-sync)]
-      (-> (reduce (fn [counts field]
-                    (let [existing-fv (get fvs-map (u/the-id field))
-                          result      (sync-util/with-error-handling
-                                       (format "Error updating field values for %s"
-                                               (sync-util/name-for-logging field))
-                                        (field-values/create-or-update-full-field-values!
-                                         field :field-values existing-fv))]
-                      (update-field-value-stats-count counts result)))
-                  empty-counts
-                  fields-to-sync)
-          (assoc :probed n-fields :queries n-fields)))))
+  (reduce (fn [counts field]
+            (let [existing-fv (get fvs-map (u/the-id field))
+                  result      (sync-util/with-error-handling
+                               (format "Error updating field values for %s"
+                                       (sync-util/name-for-logging field))
+                                (field-values/create-or-update-full-field-values!
+                                 field :field-values existing-fv))]
+              (merge-with + counts (result->delta result) {:probed 1 :queries 1})))
+          empty-counts
+          fields-to-sync))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
