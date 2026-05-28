@@ -518,7 +518,7 @@
                   card
                   [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :products :category)]))))))))
 
-(deftest pk-of-fk-pk-field-ids-test
+(deftest ^:parallel pk-of-fk-pk-field-ids-test
   (testing "single group"
     (testing "with PK"
       (is (= (mt/id :products :id)
@@ -548,7 +548,9 @@
       (is (= (mt/id :products :id)
              (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                    (mt/id :orders :product_id)
-                                                   (mt/id :orders :product_id)])))))
+                                                   (mt/id :orders :product_id)]))))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-2
   (testing "two groups"
     (testing "both with PKs"
       (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
@@ -564,7 +566,9 @@
     (testing "none with PK"
       (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                       (mt/id :reviews :product_id)
-                                                      (mt/id :orders :user_id)])))))
+                                                      (mt/id :orders :user_id)]))))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-3
   (testing "single group with PK plus other field"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
@@ -577,7 +581,9 @@
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
                                                      (mt/id :products :id)
-                                                     -1}))))
+                                                     -1})))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-4
   (testing "single group without PK plus other field"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                     (mt/id :reviews :product_id)
@@ -587,8 +593,12 @@
                                                      Integer/MAX_VALUE})))
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
-                                                     -1}))))
+                                                     -1})))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-5
   (testing "just a PK"
-    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :products :id)]))))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :products :id)])))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-6
   (testing "just a non-key"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :people :name)])))))

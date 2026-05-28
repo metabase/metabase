@@ -179,7 +179,8 @@
   (testing "POST /events with app_mention uses visible channel reply (not streaming)"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
-            event-body   tu/base-mention-event]
+            channel-id   "C-MENTION-TEST"
+            event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
         (tu/with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [post-calls stream-calls stop-stream-calls]}]
@@ -187,8 +188,12 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk      #(>= (count @post-calls) 1)
-                       :done?      true?
+              ;; Poll on the slack_msg_id backfill rather than the post call. The backfill runs after
+              ;; post-thread-reply returns, so waiting on post-calls alone races the DB update in CI.
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
                        :timeout-ms 5000})
               (testing "a single threaded reply is posted with the answer"
                 (is (= 1 (count @post-calls)))
@@ -198,7 +203,7 @@
                 (is (empty? @stream-calls))
                 (is (empty? @stop-stream-calls)))
               (testing "assistant message in DB has slack_msg_id backfilled"
-                (let [msg (t2/select-one :model/MetabotMessage :channel_id "C123" :role "assistant")]
+                (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
 (deftest stream-start-failure-test
@@ -622,7 +627,9 @@
                   (is (= 1 (count @update-calls)))
                   (is (= channel-id (:channel (first @update-calls))))
                   (is (= message-ts (:ts (first @update-calls))))
-                  (is (str/includes? (:text (first @update-calls)) "removed"))))))))))
+                  (is (str/includes? (:text (first @update-calls)) "removed")))))))))))
+
+(deftest handle-delete-reaction-test-2
   (testing "reaction_added with a non-delete emoji is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -640,7 +647,9 @@
                        (tu/slack-request-options event-body)
                        event-body)
             (Thread/sleep 200)
-            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update"))))))
+            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update")))))))
+
+(deftest handle-delete-reaction-test-3
   (testing "reaction_added with delete emoji from non-owner is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"

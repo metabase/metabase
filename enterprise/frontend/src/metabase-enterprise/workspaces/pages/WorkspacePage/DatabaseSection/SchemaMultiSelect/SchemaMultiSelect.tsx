@@ -1,8 +1,12 @@
+import { useId } from "react";
 import { t } from "ttag";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
-import { Checkbox, Input, ScrollArea, Stack, Text } from "metabase/ui";
+import { Button, Group, Input, MultiSelect, Stack } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
+
+// to not cover the add database button
+const DROPDOWN_WIDTH = 432;
 
 export type SchemaMultiSelectProps = {
   databaseId: DatabaseId;
@@ -18,40 +22,32 @@ export function SchemaMultiSelect({
   const { data: schemas = [] } = useListDatabaseSchemasQuery({
     id: databaseId,
   });
+  const inputId = useId();
 
   const isAll = schemas.length > 0 && value.length === schemas.length;
-  const isNone = value.length === 0;
 
   const handleToggleAll = () => {
     onChange(isAll ? [] : schemas);
   };
 
   return (
-    <Input.Wrapper label={t`Schemas to include`}>
-      {schemas.length > 0 && (
-        <Stack gap="sm" mt="xs">
-          <Checkbox
-            variant="stacked"
-            label={
-              <Text c="text-secondary" lh="inherit">
-                {isAll ? t`Select none` : t`Select all`}
-              </Text>
-            }
-            checked={isAll}
-            indeterminate={!isAll && !isNone}
-            onChange={handleToggleAll}
-          />
-          <Checkbox.Group value={value} onChange={onChange}>
-            <ScrollArea.Autosize mah={200}>
-              <Stack gap="sm">
-                {schemas.map((schema) => (
-                  <Checkbox key={schema} value={schema} label={schema} />
-                ))}
-              </Stack>
-            </ScrollArea.Autosize>
-          </Checkbox.Group>
-        </Stack>
-      )}
-    </Input.Wrapper>
+    <Stack gap="xs">
+      <Group justify="space-between" align="center">
+        <Input.Label htmlFor={inputId}>{t`Schemas to include`}</Input.Label>
+        {schemas.length > 0 && (
+          <Button variant="subtle" size="compact-xs" onClick={handleToggleAll}>
+            {isAll ? t`Select none` : t`Select all`}
+          </Button>
+        )}
+      </Group>
+      <MultiSelect
+        id={inputId}
+        data={schemas.map((schema) => ({ value: schema, label: schema }))}
+        value={value}
+        placeholder={isAll ? t`All schemas selected` : t`Select schemas`}
+        comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
+        onChange={onChange}
+      />
+    </Stack>
   );
 }

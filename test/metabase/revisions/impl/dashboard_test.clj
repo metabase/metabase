@@ -489,7 +489,9 @@
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+
+(deftest revert-dashboard-with-tabs-basic-test-2
   (testing "revert renaming tabs"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create a dashboard
@@ -513,7 +515,9 @@
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+
+(deftest revert-dashboard-with-tabs-basic-test-3
   (testing "revert deleting tabs"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create a dashboard
