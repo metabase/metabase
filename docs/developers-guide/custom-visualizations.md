@@ -7,9 +7,9 @@ summary: Use the Custom Visualizations SDK to build, develop, and package your o
 
 {% include plans-blockquote.html feature="Custom visualizations" %}
 
-A custom visualization is a Metabase chart type that you build with React and TypeScript and ship as a plugin. You scaffold a project with the `@metabase/custom-viz` package, write your visualization, package it into a `.tgz` bundle, and an admin uploads it to Metabase. For how to enable the feature and upload bundles, see [Custom visualizations](../questions/visualizations/custom.md).
+A custom visualization is a Metabase chart type that you build with React and TypeScript and ship as a plugin.
 
-Plugin code runs in a locked-down sandbox — no network requests, no Metabase APIs, no browser storage — so a visualization works entirely from the query results and settings Metabase hands it. See [Sandbox restrictions](#sandbox-restrictions) for the full list.
+You scaffold a project with the `@metabase/custom-viz` package, write your visualization, package it into a `.tgz` bundle, and an admin uploads it to Metabase (see [Custom visualizations](../questions/visualizations/custom.md)).
 
 ## Prerequisites
 
@@ -52,17 +52,30 @@ tsconfig.json
 
 ### The starter visualization
 
-The scaffold ships a complete, working example: a chart that shows a thumbs-up image when a single numeric result meets a `threshold` setting, and a thumbs-down otherwise. Start dev mode (below) and it renders on any single-number question. Open `src/index.tsx` to see how it fits together — the factory function, `checkRenderable`, a `defineSetting` for the threshold, and the React component — then edit it into your own visualization.
+The scaffold ships a complete, working example: a chart that shows a thumbs-up image when a single numeric result meets a `threshold` setting, and a thumbs-down otherwise. Start dev mode (below) and it renders on any single-number question. Open `src/index.tsx` to see how it fits together: the factory function, `checkRenderable`, a `defineSetting` for the threshold, and the React component — then edit it into your own visualization.
 
 ## Develop against a running Metabase
 
 To develop your plugin against a live Metabase with hot reload:
 
-1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable.
+1. Start Metabase with the following `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable.
+
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
+
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
 Your plugin shows up in the **Custom visualizations** section of the visualization sidebar (alongside any installed plugins) and is labeled as a dev visualization. Metabase watches the dev server and re-registers your plugin whenever you rebuild, so you don't have to reload by hand.
+
+### If Metabase runs in Docker
+
+Metabase's backend — not your browser — fetches from the dev server: it pulls `metabase-plugin.json`, the JS bundle, and the hot-reload stream from the **Dev server URL**. The URL therefore has to resolve from wherever Metabase runs.
+
+When Metabase runs in a container, `http://localhost:5174` points at the container itself, and the **Development** page reports "Could not fetch metabase-plugin.json from the dev server." Point the URL at the host instead:
+
+- **Docker Desktop (macOS or Windows):** set the Dev server URL to `http://host.docker.internal:5174`.
+- **Linux:** start the container with `--add-host=host.docker.internal:host-gateway` (in Docker Compose, `extra_hosts: ["host.docker.internal:host-gateway"]`), then use the same `http://host.docker.internal:5174`.
+
+The dev server listens on all network interfaces, so `npm run dev` needs no extra flags.
 
 ## The plugin manifest
 
@@ -82,7 +95,7 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 | Field              | Description                                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `name`             | Unique identifier for the plugin. Has to match the `id` your visualization returns.                                |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically — don't list it under `assets`. |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically. |
 | `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                  |
 | `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).    |
 
@@ -344,9 +357,9 @@ The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the ve
 
 Metabase runs plugin code in an isolated sandbox, so a visualization works only from the `series` and `settings` it's given. The sandbox blocks:
 
-- **Network access** — `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `Worker`, and similar. You can't call Metabase's APIs or any other service.
-- **Browser storage** — `localStorage`, `sessionStorage`, `indexedDB`, the Cache API, and cookies.
-- **Navigation and the rest of the app** — `window.open`, history changes, and any DOM outside the plugin's own container.
+- **Network access**: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `Worker`, and similar. You can't call Metabase's APIs or any other service.
+- **Browser storage**: `localStorage`, `sessionStorage`, `indexedDB`, the Cache API, and cookies.
+- **Navigation and the rest of the app**: `window.open`, history changes, and any DOM outside the plugin's own container.
 
 Plugins also don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md) and Slack fall back to a default visualization for cards that use a custom visualization.
 
