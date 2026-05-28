@@ -49,6 +49,15 @@
 (defn- ->timeline-score [row]
   (select-keys row [:timeline_id :interestingness_score]))
 
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :segment_name]
+  [_model k queries]
+  (mi/instances-with-hydrated-data
+   queries k
+   #(let [seg-ids (into #{} (keep :segment_id) queries)]
+      (when (seq seg-ids)
+        (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in seg-ids])))
+   :segment_id))
+
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :timeline_interestingness]
   [_model k queries]
   (mi/instances-with-hydrated-data

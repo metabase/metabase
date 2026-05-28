@@ -99,6 +99,7 @@
                           {:order-by [[:position :asc] [:id :asc]]})
                :interestingness_score
                :contextual_interestingness_score
+               :segment_name
                :timeline_interestingness))
    :id
    {:default []}))

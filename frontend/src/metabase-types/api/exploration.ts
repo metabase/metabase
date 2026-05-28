@@ -149,6 +149,7 @@ export interface ExplorationQuery {
   timeline_interestingness?: ExplorationQueryTimelineInterestingness[];
   dataset_query: DatasetQuery;
   segment_id: SegmentId | null;
+  segment_name: string | null;
   params?: ExplorationQueryParams | null;
 }
 

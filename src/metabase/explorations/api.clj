@@ -197,6 +197,7 @@
    [:exploration_thread_id            ms/PositiveInt]
    [:card_id                          ms/PositiveInt]
    [:segment_id                       {:optional true} [:maybe ms/PositiveInt]]
+   [:segment_name                     {:optional true} [:maybe :string]]
    [:dimension_id                     [:maybe :string]]
    [:dimension_name                   {:optional true} :string]
    [:query_type                       :string]
@@ -629,6 +630,7 @@
                :where     [:= :exploration_thread.exploration_id id]
                :order-by  [[:exploration_query.position :asc]
                            [:exploration_query.id :asc]]})
+   :segment_name
    :timeline_interestingness))
 
 (defn- get-exploration-query-or-404
