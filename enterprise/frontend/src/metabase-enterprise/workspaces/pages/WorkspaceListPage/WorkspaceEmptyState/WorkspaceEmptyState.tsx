@@ -74,7 +74,7 @@ export function WorkspaceEmptyState() {
             order={3}
             mb="sm"
           >{t`Isolated spaces for agents and developers`}</Title>
-          <Text c="text-secondary" mb="md">
+          <Text mb="md">
             {t`Develop transforms and the semantic layer without touching production tables. Each workspace gets its own schema and database user in the warehouses you pick.`}
           </Text>
           <Stack gap="sm" pb="xl">
