@@ -2,6 +2,7 @@
   (:require
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [toucan2.core :as t2]))
@@ -95,16 +96,12 @@
   ;; The catch covers test setups that exercise pgvector before the appdb schema is up —
   ;; production semantic-search init always runs after appdb migration.
   (try
-    (let [roots (t2/select [:model/Collection :id :type]
-                           :type     [:in library-types]
-                           :location "/")]
-      (into {}
-            (mapcat (fn [{root-id :id root-type :type}]
-                      (cons [root-id root-type]
-                            (for [desc-id (t2/select-pks-set :model/Collection
-                                                             :location [:like (str "/" root-id "/%")])]
-                              [desc-id root-type])))
-                    roots)))
+    (u/for-map [{root-id :id root-type :type} (t2/select [:model/Collection :id :type]
+                                                         :type [:in library-types]
+                                                         :location "/")
+                coll-id (cons root-id (t2/select-pks-set :model/Collection
+                                                         :location [:like (str "/" root-id "/%")]))]
+      [coll-id root-type])
     (catch Exception e
       (log/warn e "Skipping Library subcollection backfill — appdb lookup failed")
       {})))
