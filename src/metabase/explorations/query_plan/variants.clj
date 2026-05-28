@@ -295,9 +295,22 @@
             case-expr              (lib/case pairs other-bucket-label)
             expr-name              (or (:display_name dim) (:dimension_id dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)
-            expr-ref               (lib/expression-ref with-expr expr-name)
-            with-bo                (lib/breakout with-expr expr-ref)]
-        (maybe-segment-filtered with-bo segment)))))
+            ;; `is_other` is defined off the bucket expression (not the raw
+            ;; field) so it agrees with the bucket label the chart shows:
+            ;; whichever rows the case expression routes to "(Other)" are
+            ;; the ones we pin last.
+            other-expr             (lib/case [[(lib/= (lib/expression-ref with-expr expr-name)
+                                                      other-bucket-label)
+                                               1]]
+                                     0)
+            with-other-expr        (lib/expression with-expr "is_other" other-expr)
+            with-bo                (lib/breakout with-other-expr
+                                                 (lib/expression-ref with-other-expr expr-name))]
+        (-> with-bo
+            (maybe-segment-filtered segment)
+            (lib/order-by (lib/expression-ref with-other-expr "is_other") :asc)
+            (lib/order-by (lib/aggregation-ref with-other-expr 0) :desc)
+            (lib/order-by (lib/expression-ref with-other-expr expr-name) :asc))))))
 
 (defmethod dataset-query "filtered-subset"
   [_ {:keys [mp card target dim segment params]}]
