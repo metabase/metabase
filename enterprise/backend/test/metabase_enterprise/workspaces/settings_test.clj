@@ -9,10 +9,11 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk]
-                      (try
-                        (thunk)
-                        (finally
-                          (ws/clear-instance-workspace!)))))
+                      (mt/with-premium-features #{:workspaces}
+                        (try
+                          (thunk)
+                          (finally
+                            (ws/clear-instance-workspace!))))))
 
 (deftest workspace-mode?-false-when-setting-empty-test
   (testing "workspace-mode? is false when no :workspace section has been loaded"

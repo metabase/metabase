@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
@@ -19,12 +20,13 @@ import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
 export function DevelopmentInstanceSection() {
   const applicationName = useSelector(getApplicationName);
-  const { value, updateSetting, isLoading } = useAdminSetting(
+  const { value, updateSetting, isLoading, settingDetails } = useAdminSetting(
     "development-instance",
   );
   const { data: workspace } = useGetCurrentWorkspaceQuery();
 
   const isInWorkspace = workspace != null;
+  const isSetViaEnv = settingDetails != null && settingDetails.is_env_setting;
   const isDevelopmentInstance = value ?? false;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,24 +42,20 @@ export function DevelopmentInstanceSection() {
         <Stack>
           <Group justify="space-between" align="center">
             <Title order={4}>{t`Development instance`}</Title>
-            <Switch
-              aria-label={t`Development instance`}
-              checked={isDevelopmentInstance}
-              disabled={isLoading || isInWorkspace}
-              onChange={handleChange}
-            />
+            {!isLoading && (
+              <Switch
+                aria-label={t`Development instance`}
+                checked={isDevelopmentInstance}
+                disabled={isInWorkspace || isSetViaEnv}
+                onChange={handleChange}
+              />
+            )}
           </Group>
           <Text c="text-secondary">
             {t`When enabled, this allows this ${applicationName} instance to enter a Workspace for testing transforms before syncing changes to your production instance. Only enable this if this instance is used for development.`}
           </Text>
           {isInWorkspace && (
-            <Box
-              bg="background-secondary"
-              px="lg"
-              py="md"
-              bdrs="md"
-              c="text-secondary"
-            >
+            <NoticeBox>
               {jt`This setting can't be disabled while this instance is in a ${(
                 <Anchor
                   key="workspace-link"
@@ -67,10 +65,27 @@ export function DevelopmentInstanceSection() {
                   {t`Workspace`}
                 </Anchor>
               )}.`}
-            </Box>
+            </NoticeBox>
+          )}
+          {!isInWorkspace && isSetViaEnv && (
+            <NoticeBox>
+              {t`This setting can't be changed because it is set via the ${settingDetails?.env_name} environment variable.`}
+            </NoticeBox>
           )}
         </Stack>
       </Card>
     </Stack>
+  );
+}
+
+type NoticeBoxProps = {
+  children: ReactNode;
+};
+
+function NoticeBox({ children }: NoticeBoxProps) {
+  return (
+    <Box bg="background-secondary" px="lg" py="md" bdrs="md" c="text-secondary">
+      {children}
+    </Box>
   );
 }
