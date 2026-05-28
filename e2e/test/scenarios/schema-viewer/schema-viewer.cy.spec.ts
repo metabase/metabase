@@ -6,6 +6,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { checkNotNull } from "metabase/utils/types";
 import type { TableId } from "metabase-types/api";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -61,21 +62,19 @@ const SV_SETUP_SQL = `
   );
 `;
 
-const tableNode = (tableId: number) => cy.get(`[data-id="table-${tableId}"]`);
+const tableNode = (tableId: TableId) => cy.get(`[data-id="table-${tableId}"]`);
 const schemaPickerTrigger = () => cy.findByTestId("schema-picker-button");
 const searchInput = () => cy.findByTestId("schema-viewer-node-search-input");
 const infoPanel = () => cy.findByTestId("graph-info-panel");
 const reactFlowViewport = () => cy.get(".react-flow__viewport");
 
 function assertViewportZoom(matcher: (zoom: number) => void) {
-  // `should()` retries until the camera animation settles; `then()` would
-  // run once and capture a mid-animation transform.
   reactFlowViewport().should(($el) => {
     const style = $el.attr("style") ?? "";
-    const m = /scale\(([\d.]+)\)/.exec(style);
-    expect(m, `viewport transform should contain scale(...): ${style}`).to.not
-      .be.null;
-    matcher(parseFloat(m![1]));
+    const match = /scale\(([\d.]+)\)/.exec(style);
+    expect(match, `viewport transform should contain scale(...): ${style}`).to
+      .not.be.null;
+    matcher(parseFloat(checkNotNull(match)[1]));
   });
 }
 
@@ -279,11 +278,6 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .findByText("No tables found")
       .should("be.visible");
     searchInput().type("{esc}");
-
-    // cy.log("Closing the info panel clears node selection");
-    // infoPanel().findByLabelText("Close").click({ force: true });
-    // cy.findByTestId("graph-info-panel").should("not.exist");
-    // cy.contains("button", "Focus node").should("not.exist");
   });
 
   it("URL state survives a hard reload, and the bare URL redirects back to the last opened (DB, schema)", () => {
@@ -390,21 +384,25 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       .and("include", `schema=${SV_SCHEMA}`);
 
     cy.log("All four sv_test tables render as nodes");
-    cy.get<number>("@usersId").then((id) => tableNode(id).should("be.visible"));
-    cy.get<number>("@profilesId").then((id) =>
+    cy.get<TableId>("@usersId").then((id) =>
       tableNode(id).should("be.visible"),
     );
-    cy.get<number>("@categoriesId").then((id) =>
+    cy.get<TableId>("@profilesId").then((id) =>
       tableNode(id).should("be.visible"),
     );
-    cy.get<number>("@productsId").then((id) =>
+    cy.get<TableId>("@categoriesId").then((id) =>
+      tableNode(id).should("be.visible"),
+    );
+    cy.get<TableId>("@productsId").then((id) =>
       tableNode(id).should("be.visible"),
     );
 
     cy.log(
       "Schema-bounded BFS: cross-schema lookup is NOT a node yet — it surfaces only as an FK pointer on products",
     );
-    cy.get<number>("@lookupId").then((id) => tableNode(id).should("not.exist"));
+    cy.get<TableId>("@lookupId").then((id) =>
+      tableNode(id).should("not.exist"),
+    );
 
     cy.log(
       "Edges visible: users<->profiles (one-to-one) and categories self-ref. Cross-schema FK has no edge until expansion",
@@ -414,7 +412,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.log(
       "Clicking the profiles.user_id FK (target on canvas) selects the connecting edge",
     );
-    cy.get<number>("@profilesId").then((id) =>
+    cy.get<TableId>("@profilesId").then((id) =>
       tableNode(id).findByText("user_id").click(),
     );
     cy.findAllByTestId("schema-viewer-edge-path")
@@ -424,11 +422,11 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.log(
       "Click the cross-schema FK on products.lookup_id — adds sv_extra.lookup to the canvas",
     );
-    cy.get<number>("@productsId").then((id) =>
+    cy.get<TableId>("@productsId").then((id) =>
       tableNode(id).findByText("lookup_id").click({ force: true }),
     );
     cy.wait("@erd");
-    cy.get<number>("@lookupId").then((id) => {
+    cy.get<TableId>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
       assertNodeInViewport(id);
     });
@@ -440,7 +438,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     );
     cy.reload();
     cy.wait("@erd");
-    cy.get<number>("@lookupId").then((id) => {
+    cy.get<TableId>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
     });
     cy.get(".react-flow__edge").should("have.length", 3);
@@ -453,19 +451,19 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       name: "other",
       schema: SV_EXTRA_SCHEMA,
     }).as("otherId");
-    cy.get<number>("@otherId").then((otherId) => {
+    cy.get<TableId>("@otherId").then((otherId) => {
       cy.visit(
         `${BASE_URL}?database-id=${WRITABLE_DB_ID}&schema=${SV_SCHEMA}&table-ids=${otherId}`,
       );
     });
     cy.wait("@erd").then(({ request }) => {
-      cy.get<number>("@otherId").then((otherId) => {
+      cy.get<TableId>("@otherId").then((otherId) => {
         expect(
           request.url,
           "ERD request should carry the URL-supplied table-ids",
         ).to.include(`table-ids=${otherId}`);
       });
-      cy.get<number>("@lookupId").then((lookupId) => {
+      cy.get<TableId>("@lookupId").then((lookupId) => {
         expect(
           request.url,
           "ERD request must NOT include the UKV-saved table-ids",
@@ -473,8 +471,12 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       });
     });
     cy.log("Canvas reflects URL precedence: `other` is shown, `lookup` is not");
-    cy.get<number>("@otherId").then((id) => tableNode(id).should("be.visible"));
-    cy.get<number>("@lookupId").then((id) => tableNode(id).should("not.exist"));
+    cy.get<TableId>("@otherId").then((id) =>
+      tableNode(id).should("be.visible"),
+    );
+    cy.get<TableId>("@lookupId").then((id) =>
+      tableNode(id).should("not.exist"),
+    );
   });
 });
 

@@ -97,14 +97,6 @@ export function SchemaViewer({
     Set<ConcreteTableId>
   >(() => new Set());
 
-  // Selection intent: the user picks a table and we remember that pick. The
-  // visible `selectedNodeId` is derived below — when the picked node
-  // temporarily disappears (schema change, table removed) the info panel
-  // renders nothing without us having to clear the intent in an effect.
-  const [selectedNodeIdIntent, setSelectedNodeId] = useState<string | null>(
-    null,
-  );
-
   // Without this, dragging a node (which produces a new `nodes` array on
   // every animation frame) would force every TableNode + FieldRow to
   // re-render through `useContext`.
@@ -125,6 +117,9 @@ export function SchemaViewer({
     return next;
   }, [nodes]);
 
+  const [selectedNodeIdIntent, setSelectedNodeId] = useState<string | null>(
+    null,
+  );
   const selectedNodeId = useMemo(
     () =>
       selectedNodeIdIntent != null &&
@@ -204,11 +199,8 @@ export function SchemaViewer({
     setEdges,
   });
 
-  // FK click: persist the new focal table, mark its fetch as in-flight, and
-  // register a pending expansion target so graph sync can auto-select the FK
-  // edge AND zoom to the new table once the next ERD response merges. If
-  // multiple FK clicks land before the response, the last registration wins
-  // (zoom follows the most recent click).
+  // FK click registers a pending expansion target so graph sync can auto-select the FK
+  // edge AND zoom to the new table once the next ERD response merges.
   const handleExpandToTable = useCallback(
     (
       tableId: ConcreteTableId,
