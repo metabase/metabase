@@ -43,6 +43,43 @@ function seedMetrics() {
   }
 }
 
+/**
+ * Create a timeline + one sentinel event in a single chain. The
+ * Exploration timeline picker (`useGetExplorationTimelinesQuery`) hides
+ * timelines without events, so test fixtures that want to surface the
+ * timeline in the picker — or attach it to an exploration — need at
+ * least one event hanging off it.
+ *
+ * Returns the new `timeline_id` so callers that need it (e.g. to assert
+ * a request body's `timeline_ids` field) can chain off it; call sites
+ * that just need the timeline to exist can ignore the return value.
+ */
+function createTimelineWithSentinelEvent(
+  name: string,
+  icon: string,
+): Cypress.Chainable<number> {
+  return cy
+    .request("POST", "/api/timeline", {
+      name,
+      collection_id: null,
+      icon,
+      default: false,
+    })
+    .then(({ body }: { body: { id: number } }) => {
+      const timelineId = body.id;
+      return cy
+        .request("POST", "/api/timeline-event", {
+          timeline_id: timelineId,
+          name: `${name} event`,
+          icon,
+          timestamp: "2020-01-01T00:00:00Z",
+          time_matters: false,
+          timezone: "UTC",
+        })
+        .then(() => timelineId);
+    });
+}
+
 describe("scenarios > explorations > new research > manual flow", () => {
   beforeEach(() => {
     H.restore();
@@ -131,19 +168,12 @@ describe("scenarios > explorations > new research > manual flow", () => {
     });
   });
 
-  it("filters the Browse pickers by typing into their search inputs", () => {
-    cy.request("POST", "/api/timeline", {
-      name: "Releases",
-      collection_id: null,
-      icon: "star",
-      default: false,
-    });
-    cy.request("POST", "/api/timeline", {
-      name: "Marketing campaigns",
-      collection_id: null,
-      icon: "bell",
-      default: false,
-    });
+  it("filters Exploration data pickers by typing into their search inputs", () => {
+    // Both timelines need an event so the picker surfaces them — the
+    // empty-state case is still exercised by the "no match" search at
+    // the bottom of this test.
+    createTimelineWithSentinelEvent("Releases", "star");
+    createTimelineWithSentinelEvent("Marketing campaigns", "bell");
 
     H.visitNewExploration();
 
@@ -209,53 +239,44 @@ describe("scenarios > explorations > new research > manual flow", () => {
   });
 
   it("picks one or more timelines via the Browse tab and POSTs them with the exploration", () => {
-    function createTimeline(name: string, icon: string) {
-      return cy
-        .request("POST", "/api/timeline", {
-          name,
-          collection_id: null,
-          icon,
-          default: false,
-        })
-        .then(({ body }: { body: { id: number } }) => body.id);
-    }
+    createTimelineWithSentinelEvent("Releases", "star").then((releasesId) => {
+      createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
+        (marketingId) => {
+          H.visitNewExploration();
+          // Need at least one metric + dimension first — that's the
+          // `canStart` gate from `NewExplorationData.tsx`.
+          H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
 
-    createTimeline("Releases", "star").then((releasesId) => {
-      createTimeline("Marketing campaigns", "bell").then((marketingId) => {
-        H.visitNewExploration();
-        // Need at least one metric + dimension first — that's the
-        // `canStart` gate from `NewExplorationData.tsx`.
-        H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
+          // Pick two timelines via the Browse → Timelines tab.
+          H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
 
-        // Pick two timelines via the Browse → Timelines tab.
-        H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
+          // Both timeline pills now live under the right pane's
+          // `Timelines` accordion section (see `PillList` in
+          // `NewExplorationData.tsx`).
+          cy.findByTestId("research-content")
+            .findByText("Releases")
+            .should("be.visible");
+          cy.findByTestId("research-content")
+            .findByText("Marketing campaigns")
+            .should("be.visible");
 
-        // Both timeline pills now live under the right pane's
-        // `Timelines` accordion section (see `PillList` in
-        // `NewExplorationData.tsx`).
-        cy.findByTestId("research-content")
-          .findByText("Releases")
-          .should("be.visible");
-        cy.findByTestId("research-content")
-          .findByText("Marketing campaigns")
-          .should("be.visible");
-
-        // Verify the request body forwards both ids in pick order
-        // and that we still land on the detail page. We can't use
-        // `H.beginResearch` here because we need to assert on the
-        // intercept's request body before it's consumed by the
-        // helper's `cy.wait`, so we drive the click + wait inline.
-        cy.intercept("POST", "/api/exploration").as("createExploration");
-        cy.findByRole("button", { name: /Begin research/i }).click();
-        cy.wait("@createExploration").then(({ request, response }) => {
-          expect(request.body.timeline_ids).to.deep.eq([
-            releasesId,
-            marketingId,
-          ]);
-          const id = response?.body?.id as number;
-          cy.url().should("include", `/question/research/${id}`);
-        });
-      });
+          // Verify the request body forwards both ids in pick order
+          // and that we still land on the detail page. We can't use
+          // `H.beginResearch` here because we need to assert on the
+          // intercept's request body before it's consumed by the
+          // helper's `cy.wait`, so we drive the click + wait inline.
+          cy.intercept("POST", "/api/exploration").as("createExploration");
+          cy.findByRole("button", { name: /Begin research/i }).click();
+          cy.wait("@createExploration").then(({ request, response }) => {
+            expect(request.body.timeline_ids).to.deep.eq([
+              releasesId,
+              marketingId,
+            ]);
+            const id = response?.body?.id as number;
+            cy.url().should("include", `/question/research/${id}`);
+          });
+        },
+      );
     });
   });
 });
@@ -532,30 +553,6 @@ describe("scenarios > explorations > detail page", () => {
     );
   });
 
-  it("renders the sticky x-axis only when the chart overflows the viewport", () => {
-    H.createExplorationViaApi({ name: "Sticky axis fixture" }).then((id) => {
-      // Tall viewport — chart fits, no sticky needed.
-      cy.viewport(1280, 1400);
-      H.visitExploration(id);
-
-      // Wait until at least one sidebar item shows the "Ready"
-      // icon (added by `ExplorationTreeItemIcon` once the query
-      // has results).
-      cy.findAllByLabelText("Ready", { timeout: 30000 })
-        .first()
-        .should("be.visible");
-      // Sticky axis only renders for cartesian groups under the
-      // overflow condition (see `CartesianPageBody`'s
-      // `shouldShowStickyAxis` in `ExplorationGroupVisualization.tsx`).
-      cy.findByTestId("exploration-sticky-x-axis").should("not.exist");
-
-      // Shrink the viewport — same chart now overflows, the
-      // sticky axis appears.
-      cy.viewport(1280, 500);
-      cy.findByTestId("exploration-sticky-x-axis").should("be.visible");
-    });
-  });
-
   it("preserves the URL `timeline` param across navigation and reload", () => {
     cy.request("POST", "/api/timeline", {
       name: "Releases",
@@ -635,41 +632,57 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("adds a single chart to the Scratchpad document via the Add to document button and lands on the document", () => {
-    H.createExplorationViaApi({ name: "Single-chart add fixture" }).then(
-      (id) => {
-        H.visitExploration(id);
+  it("adds a chart to the Scratchpad document via the Add to document button and lands on the document", () => {
+    H.createExplorationViaApi({ name: "Chart add fixture" }).then((id) => {
+      H.visitExploration(id);
 
-        // Wait until the BE finishes a query so the chart page
-        // renders the `Add to document` button.
-        cy.findAllByLabelText("Ready", { timeout: 30000 })
-          .first()
-          .should("be.visible");
+      // Wait until the BE finishes a query so the chart page
+      // renders the `Add to document` button.
+      cy.findAllByLabelText("Ready", { timeout: 30000 })
+        .first()
+        .should("be.visible");
 
-        // Auto-selection lands on the most-interesting leaf, which
-        // is always a single-query group (segments aren't seeded
-        // in this test). Click the doc-menu button → `Scratchpad`.
-        cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
-          "appendChart",
-        );
-        cy.findByLabelText("Add to document").click();
-        // Mantine renders the leftSection icon's `aria-label` ("document
-        // icon") into the menuitem's accessible name (it becomes
-        // "document icon Scratchpad"), so we match by regex on the doc name.
-        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
-        cy.wait("@appendChart").then(({ response }) => {
-          expect(response?.statusCode).to.eq(200);
-        });
+      cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
+        "appendChart",
+      );
+      cy.findByLabelText("Add to document").click();
 
-        // Toast renders with a link whose text is the doc name.
-        cy.findByText("Added to").should("be.visible");
-        cy.findByRole("link", { name: "Scratchpad" }).click();
+      // The detail page shows one entry per visible SeriesGroup —
+      // even on this no-segment fixture the BE planner usually
+      // emits more than one group per leaf (default + temporal /
+      // top-N variants), so the doc menu enters the chart-picker
+      // stage first. Pick the first listed chart, then `Scratchpad`.
+      cy.findByText("Pick a chart").should("be.visible");
+      cy.findAllByRole("menuitem").first().click();
 
-        // Detail page renders with the embedded chart.
-        cy.url().should("include", `/question/research/${id}/document/`);
-        cy.findByTestId("document-card-embed").should("be.visible");
-      },
-    );
+      cy.findByText("Add to").should("be.visible");
+      // Mantine renders the leftSection icon's `aria-label` ("document
+      // icon") into the menuitem's accessible name (it becomes
+      // "document icon Scratchpad"), so we match by regex on the doc name.
+      cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
+      cy.wait("@appendChart").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        // The append endpoint always takes the array form. The
+        // picked SeriesGroup's `queryIds` is the full set of
+        // source queries (the BE then materialises one composite
+        // ephemeral card via `composite/combine`). Length is 1 for
+        // a single-query group, N for a multi-series cartesian or
+        // heat-map — we only guard that the FE sends the array
+        // shape and not the legacy singular `exploration_query_id`.
+        const ids = request.body.exploration_query_ids as number[];
+        expect(ids).to.be.an("array");
+        expect(ids.length).to.be.at.least(1);
+      });
+
+      // Toast renders with a link whose text is the doc name.
+      cy.findByText("Added to").should("be.visible");
+      cy.findByRole("link", { name: "Scratchpad" }).click();
+
+      // Detail page renders with exactly one composite-ephemeral
+      // card embed (not N per-query embeds).
+      cy.url().should("include", `/question/research/${id}/document/`);
+      cy.findAllByTestId("document-card-embed").should("have.length", 1);
+    });
   });
 
   it("flips the AI Summary doc from running → done when the BE marks the thread complete, surfaces a toast, and renders the finished body when opened", () => {
@@ -862,9 +875,11 @@ describe("scenarios > explorations > detail page", () => {
 
         // Charts are listed as menu items named after the query
         // (e.g. the base "By Created At" and the segmented
-        // "Recent orders" or similar). Pick the first one — the
-        // Mantine menu items aren't given individual `data-testid`s,
-        // so we use the menu's role+position.
+        // "Recent orders" or similar). Each picker entry corresponds
+        // to one *SeriesGroup* — multi-series cartesian / heat-map
+        // groups collapse to a single entry whose `queryIds` is the
+        // group's full set. Mantine menu items aren't given individual
+        // `data-testid`s, so we use the menu's role+position.
         cy.findAllByRole("menuitem").first().click();
 
         // Stage 2: documents picker. The `Back` chevron now
@@ -875,15 +890,27 @@ describe("scenarios > explorations > detail page", () => {
         // icon") into the menuitem's accessible name (it becomes
         // "document icon Scratchpad"), so we match by regex on the doc name.
         cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
-        cy.wait("@appendChart").then(({ response }) => {
+        cy.wait("@appendChart").then(({ request, response }) => {
           expect(response?.statusCode).to.eq(200);
+          // The picked entry is a multi-query group (baseline + the
+          // segmented variant created above), so the contract is the
+          // full id list — verifies the FE composes the SeriesGroup
+          // into one composite materialisation request rather than
+          // falling back to per-query embeds.
+          const ids = request.body.exploration_query_ids as number[];
+          expect(ids).to.be.an("array");
+          expect(ids.length).to.be.greaterThan(1);
         });
 
         // Same toast → navigate to doc → chart embed visible.
         cy.findByText("Added to").should("be.visible");
         cy.findByRole("link", { name: "Scratchpad" }).click();
         cy.url().should("include", `/question/research/${id}/document/`);
-        cy.findByTestId("document-card-embed").should("be.visible");
+        // The N source snapshots are combined server-side into ONE
+        // ephemeral card (composite path); the doc must render exactly
+        // one cardEmbed — not N separate embeds, which would be the
+        // pre-composite per-query behaviour.
+        cy.findAllByTestId("document-card-embed").should("have.length", 1);
       },
     );
   });

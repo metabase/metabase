@@ -446,7 +446,7 @@
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
     (t2/delete! :model/Exploration :id id))
-  api/generic-204-no-content)
+  nil)
 
 (def ^:private query-summary-columns
   "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the

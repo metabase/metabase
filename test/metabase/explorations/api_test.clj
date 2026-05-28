@@ -1332,6 +1332,30 @@
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
 
+(deftest exploration-http-delete-returns-204-test
+  (testing "DELETE /api/exploration/:id returns 204 and removes the row — guards a malli regression where returning the Ring response map `generic-204-no-content` instead of literal `nil` made the `:- :nil` schema reject the response and yield a 400"
+    (mt/with-temp [:model/User u {:email "http-delete@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "http-delete"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            eid  (:id resp)]
+        ;; Live exploration: delete via HTTP.
+        (mt/user-http-request u :delete 204 (format "exploration/%d" eid))
+        (is (false? (t2/exists? :model/Exploration :id eid))))
+      (testing "archived (trashed) exploration deletes via HTTP DELETE with the same status — the trash → permanently-delete path the user reported as 400"
+        (let [resp2 (mt/user-http-request u :post 200 "exploration"
+                                          {:name "trash-then-delete"
+                                           :metrics [{:card_id (:id metric)
+                                                      :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                           :dimensions [{:dimension_id "d1"}]})
+              eid2  (:id resp2)]
+          (mt/user-http-request u :put 200 (format "exploration/%d" eid2) {:archived true})
+          (mt/user-http-request u :delete 204 (format "exploration/%d" eid2))
+          (is (false? (t2/exists? :model/Exploration :id eid2))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    auto-groups (pure fn)                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
