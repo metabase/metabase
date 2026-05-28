@@ -27,12 +27,8 @@
    Subsequent reads of the canonical `(schema, name)` pair will resolve to the workspace
    copy via the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).
 
-   When no workspace is active for `db-id`, the canonical target passes through unchanged.
-
-   Deliberately ungated on premium features: a token expiry shouldn't silently cause
-   workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
-   provisioned, the rewrite must apply."
-  :feature :none
+   When no workspace is active for `db-id`, the canonical target passes through unchanged."
+  :feature :workspaces
   [db-id target]
   (if (some? (ws/db-workspace-namespace db-id))
     (let [{to-db :db to-schema :schema to-name :name}
@@ -55,12 +51,8 @@
    `rewrite-sql` primitive as the QP's Phase 2 middleware, so canonical refs in a native
    transform's SQL resolve to the same isolation-schema names the QP would emit.
 
-   Short-circuits when no remappings are active for `db-id`.
-
-   Deliberately ungated on premium features. See [[resolve-transform-target]] for the
-   rationale -- if a workspace child has `TableRemapping` rows, isolation must engage
-   regardless of token state."
-  :feature :none
+   Short-circuits when no remappings are active for `db-id`."
+  :feature :workspaces
   [driver db-id sql]
   (if-not (ws.remapping/enabled-for-db? db-id)
     sql

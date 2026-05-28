@@ -353,10 +353,8 @@
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
    isolated warehouse table when a `TableRemapping` row exists — sync asks the
-   driver there, while app-db rows keep their logical identity. Deliberately
-   ungated on premium features: if rows exist they must be respected, regardless
-   of current token state."
-  :feature :none
+   driver there, while app-db rows keep their logical identity."
+  :feature :workspaces
   [db-id from-spec]
   (remap-table db-id from-spec))
 
@@ -375,9 +373,8 @@
    matches the to-side of any active `TableRemapping` row for `db-id`. Workspace
    isolation tables show up in `describe-database` because the connection has
    GRANT on the isolation schema, but they must not become `:model/Table` rows —
-   canonical Tables back them via remap. Like the read-side hook, deliberately
-   ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
-  :feature :none
+   canonical Tables back them via remap. See DEV-1898."
+  :feature :workspaces
   [tuples db-id]
   ;; Storage rows carry the `""` sentinel for absent slots; sync tuples carry
   ;; `nil` (e.g. MySQL `:schema` is always nil). Denormalize both sides so the
@@ -394,7 +391,7 @@
    any active remap row whose `from_schema` matches one of the input schemas.
    Lets sync's FK fetch reach the workspace-isolated warehouse tables that
    physically back canonical Tables on a workspace child."
-  :feature :none
+  :feature :workspaces
   [schema-names db-id]
   (if (empty? schema-names)
     schema-names
@@ -444,7 +441,7 @@
    than the canonical one. Without a per-iso-DB describe-fks call, the JDBC
    connection only ever talks to the canonical DB and the iso DB's FK rows go
    undiscovered."
-  :feature :none
+  :feature :workspaces
   [db-id f]
   (mapv (fn [swap-map]
           (if swap-map
@@ -465,7 +462,7 @@
    tuple is already present (`into` deduplicates; tuples are equal by value).
    Tuples carry only `:schema` and `:name` -- the only fields the
    `sync-tables-and-database!` diff keys on."
-  :feature :none
+  :feature :workspaces
   [tuples db-id]
   ;; Storage rows carry the `""` sentinel for absent slots; the sync diff
   ;; matches against `nil`-schema tuples on schema-less drivers (MySQL). Use
@@ -487,7 +484,7 @@
    `to_*` tuple pass through unchanged — used for FKs to non-remapped tables
    and for the legacy `describe-table-fks` fallback whose fk-side is already
    canonical."
-  :feature :none
+  :feature :workspaces
   [rows db-id]
   ;; Storage `:schema` is the `""` sentinel for absent slots; FK-result rows
   ;; carry `nil` on schema-less drivers (MySQL). Denormalize on both sides of
@@ -525,7 +522,7 @@
    than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
    when the driver doesn't populate them, so the empty-string sentinel never
    leaks above this boundary."
-  :feature :none
+  :feature :workspaces
   [db-id to-spec]
   (when-let [driver (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword)]
     (some-> (isolated->canonical driver
@@ -536,9 +533,8 @@
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
    (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. For display
-   paths that want users to see canonical SQL instead of the isolation schema.
-   Deliberately ungated on premium features."
-  :feature :none
+   paths that want users to see canonical SQL instead of the isolation schema."
+  :feature :workspaces
   [thunk]
   (binding [ws.remapping/*skip-remapping?* true]
     (thunk)))

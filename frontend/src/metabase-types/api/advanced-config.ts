@@ -1,4 +1,4 @@
-import type { WorkspaceInstanceDatabase } from "./workspace-instance";
+import type { WorkspaceInstance } from "./workspace-instance";
 
 export type AdvancedConfigDatabase = {
   name: string;
@@ -6,14 +6,14 @@ export type AdvancedConfigDatabase = {
   details: Record<string, unknown>;
 };
 
-export type AdvancedConfigWorkspace = {
-  name: string;
-  databases: Record<string, WorkspaceInstanceDatabase>;
+export type AdvancedConfigSettings = {
+  "instance-workspace"?: WorkspaceInstance;
+  [key: string]: unknown;
 };
 
 export type AdvancedConfigContent = {
   databases?: AdvancedConfigDatabase[];
-  workspace?: AdvancedConfigWorkspace;
+  settings?: AdvancedConfigSettings;
 };
 
 export type AdvancedConfig = {

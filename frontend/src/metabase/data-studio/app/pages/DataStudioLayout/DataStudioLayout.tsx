@@ -236,7 +236,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {isAdmin && (
+          {isAdmin && PLUGIN_WORKSPACES.isEnabled && (
             <DataStudioTab
               label={t`Settings`}
               icon="gear"

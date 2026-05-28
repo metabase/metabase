@@ -146,12 +146,8 @@
   "EE impl: true iff the `instance-workspace` setting is populated. Single
    source of truth for gating features incompatible with workspace remapping
    (DB routing, impersonation, writeback, CSV upload, model persistence); use
-   [[db-workspace-namespace]] for per-database scoping.
-
-   Deliberately ungated on premium features: a workspace child instance can
-   load its workspace from `config.yml` before its token is installed, and
-   we want incompatible features refused regardless of token state."
-  :feature :none
+   [[db-workspace-namespace]] for per-database scoping."
+  :feature :workspaces
   []
   (some? (ws.settings/instance-workspace)))
 

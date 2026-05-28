@@ -8,6 +8,7 @@ import { canManageWorkspaces, getIsDevelopmentInstance } from "./selectors";
 
 export function initializePlugin() {
   if (hasPremiumFeature("workspaces")) {
+    PLUGIN_WORKSPACES.isEnabled = true;
     PLUGIN_WORKSPACES.canManageWorkspaces = canManageWorkspaces;
     PLUGIN_WORKSPACES.getIsDevelopmentInstance = getIsDevelopmentInstance;
     PLUGIN_WORKSPACES.getDataStudioRoutes = getDataStudioRoutes;
