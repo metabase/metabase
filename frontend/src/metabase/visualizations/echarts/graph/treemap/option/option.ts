@@ -40,6 +40,7 @@ export function getTreemapChartOption(
   const series: TreemapChartSeriesOption = {
     type: "treemap",
     nodeClick: "zoomToNode",
+    roam: false,
     data: toSeriesData(tree, colors),
     ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
   };

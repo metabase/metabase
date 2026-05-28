@@ -134,4 +134,10 @@ describe("getTreemapChartOption zoom", () => {
 
     expect(series.nodeClick).toBe("zoomToNode");
   });
+
+  it("disables wheel/drag roam zoom on the series", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.roam).toBe(false);
+  });
 });
