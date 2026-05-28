@@ -89,15 +89,11 @@
                                     :add-column  [[:data_layer :text :if-not-exists]]}))))
 
 (defn- library-root-type-by-collection-id
-  "Map `collection-id → root-collection-type` for every collection currently in a Library tree.
-  Picks up the library-typed root collections (`:type` in `library-types`, `:location \"/\"`)
-  and then sweeps each root's descendants via materialized-path `LIKE` — every collection in
-  that subtree carries the root's `:type` as its `root_collection_type`.
-
-  Returns `{}` and logs a warning if the appdb is unreachable / unmigrated (only expected in
-  test setups that exercise pgvector before the appdb schema is up); production semantic-search
-  init always runs after the appdb is migrated."
+  "Map `collection-id → root-collection-type` for every collection in a Library tree.
+  Returns `{}` and logs a warning if the appdb lookup fails."
   [library-types]
+  ;; The catch covers test setups that exercise pgvector before the appdb schema is up —
+  ;; production semantic-search init always runs after appdb migration.
   (try
     (let [roots (t2/select [:model/Collection :id :type]
                            :type     [:in library-types]
@@ -114,25 +110,12 @@
       {})))
 
 (defn- add-root-collection-type-column!
-  "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can
-  match items in arbitrarily deep sub-collections of a library tree.
-
-  Backfill source order:
-    1. The gate's stored document JSON (`document->>'root_collection_type'`). Authoritative when
-       the gate doc was written by a spec that computes the field.
-    2. An application-DB lookup of every Library collection (root + subcollection). For each
-       index row whose `collection_id` resolves into the library forest, set
-       `root_collection_type` to the top-level ancestor's `:type`. Covers Library sub-collections,
-       whose gate doc may not yet carry the `root_collection_type` field.
-
-  Only Library trees are walked; other root types (`trash`, `instance-analytics`, etc.) are
-  irrelevant to the `:library` scorer and stay NULL.
-
-  Library types are hardcoded rather than referenced from
-  `metabase.collections.models.collection/library-collection-types`: migrations are frozen
-  snapshots of intent at a point in time, and the semantic-search module doesn't `:use`
-  `collections` — a boundary expansion isn't warranted for a 3-string set."
+  "Migration 4: add `root_collection_type` to index tables, backfilling first from each row's
+  gate document and then from an appdb sweep of the Library forest. Drives the `:library` scorer."
   [tx index-metadata]
+  ;; Library types are hardcoded rather than referenced from
+  ;; `metabase.collections.models.collection/library-collection-types`: migrations are frozen
+  ;; snapshots of intent, and the semantic-search module doesn't `:use` `collections`.
   (let [gate-table     (:gate-table-name index-metadata)
         library-types  ["library" "library-data" "library-metrics"]
         ;; Resolve the library forest once up-front; the same map applies to every index table.
