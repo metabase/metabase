@@ -45,7 +45,7 @@
       (str/replace #";([\s;]*(--.*\n?)*)*$" "")
       str/trimr
       (as-> trimmed
-        ;; Query could potentially end with a comment.
+            ;; Query could potentially end with a comment.
             (if (re-find #"--.*$" trimmed)
               (str trimmed "\n")
               trimmed))))
@@ -2049,8 +2049,13 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; query at a database different from the connection's bound one. The
+  ;; identifier helper drops nil components, so absent `:db` produces the same
+  ;; `schema.table` shape as before.
+  (let [{table-name :name, schema :schema, db :db} table]
+    (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -2199,8 +2204,8 @@
     (merge
      honeysql-form
      (if (needs-cte-for-duplicate-cols? source-metadata)
-        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
-        ;; This is ok since we control the alias.
+       ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
+       ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
         :from [[table-alias]]}
@@ -2257,7 +2262,6 @@
         (u/prog1 (compile-mbql driver inner-query)
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
-
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
                               (:database query)
@@ -2266,7 +2270,8 @@
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
 
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5})
+(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
+                                           :postgres :postgres-mbql5})
 
 (defn- mbql5-experiment-report
   [driver experimental-driver query]
@@ -2307,10 +2312,26 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
-  (let [{sql-query :query sql-params :params} query]
+  [driver {:keys [query output-db output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; AST `:db` position and the canonical `output-table` is bare.
+        ;;
+        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
+        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
+        ;; Server / BigQuery cross-DB) aren't expressible through this single-
+        ;; keyword shape; when those workspaces land they'll either need
+        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        target-id (cond
+                    (and (not (str/blank? output-db))
+                         (str/blank? (namespace (keyword output-table))))
+                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    :else
+                    (keyword output-table))]
     [(first (format-honeysql driver
-                             {:create-table-as [(keyword output-table)]
+                             {:create-table-as [target-id]
                               :raw sql-query}))
      sql-params]))
 

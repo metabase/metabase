@@ -19,7 +19,6 @@
       (testing "describe-database"
         (is (= {:tables #{{:schema nil, :name "checkins"}}}
                (driver/describe-database :druid (mt/db)))))
-
       (testing "describe-table"
         (is (= {:schema nil
                 :name   "checkins"
@@ -73,10 +72,10 @@
                                            :auth-enabled     true
                                            :auth-username    "admin"
                                            :auth-token-value "password1")]
-         ;; Following ensures that auth parameters are passed to GET during version sync if present.
+          ;; Following ensures that auth parameters are passed to GET during version sync if present.
           (with-redefs [secret/value-as-string (constantly "password1")
                         druid.client/GET (fn [_url & params] (vreset! get-args (apply hash-map params)) nil)]
-           ;; Just fill in the params with internally modified `dbms-version`.
+            ;; Just fill in the params with internally modified `dbms-version`.
             (druid.sync/dbms-version db-with-auth-details)
             (is (true?        (:auth-enabled     @get-args)))
             (is (= "admin"     (:auth-username    @get-args)))

@@ -7,10 +7,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.test :as mt]))
 
-(deftest format-current-time-test
+(deftest ^:parallel format-current-time-test
   (testing "formats time from context with timezone"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"}
           result  (user-context/format-current-time context)]
@@ -19,12 +19,10 @@
       ;; Should contain date components
       (is (re-find #"2024" result))
       (is (re-find #"14:30" result))))
-
   (testing "uses current_user_time when provided"
     (let [context {:current_user_time "2024-02-01T09:15:00"}
           result  (user-context/format-current-time context)]
       (is (= "2024-02-01T09:15:00" result))))
-
   (testing "handles missing timezone by using current time"
     (let [context {}
           result  (user-context/format-current-time context)]
@@ -32,43 +30,38 @@
       (is (string? result))
       ;; Should contain some date
       (is (re-find #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}" result))))
-
   (testing "handles invalid timezone gracefully"
     (is (string?
          (user-context/format-current-time {:current_time_with_timezone "invalid"})))))
 
-(deftest extract-sql-dialect-test
+(deftest ^:parallel extract-sql-dialect-test
   (testing "extracts sql_engine from explicit type: native context"
     (let [context {:user_is_viewing [{:type "native"
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
-
   (testing "extracts sql_engine from adhoc item with native dataset-query (frontend payload)"
     (let [context {:user_is_viewing [{:type "adhoc"
                                       :query (lib/native-query (mt/metadata-provider) "select 1")
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
-
   (testing "returns nil for adhoc notebook (MBQL) query"
     (let [context {:user_is_viewing [{:type  "adhoc"
                                       :query (let [mp (mt/metadata-provider)]
                                                (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
-
   (testing "returns nil when no viewing context"
     (let [context {}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
-
   (testing "returns nil when no sql_engine in context"
     (let [context {:user_is_viewing [{:type "table" :id 1}]}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result)))))
 
-(deftest format-viewing-context-test
+(deftest ^:parallel format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
       (is (=? (re-pattern
@@ -77,7 +70,6 @@
               (user-context/format-viewing-context
                {:user_is_viewing [{:type  "adhoc"
                                    :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
-
     (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -87,7 +79,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
         (is (re-find #"postgres" result))))
-
     (testing "formats adhoc native SQL query with error"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -97,7 +88,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM invalid" result))
         (is (re-find #"Table 'invalid' not found" result))))
-
     (testing "formats transform context"
       (let [context {:user_is_viewing [{:type "transform"
                                         :id 123
@@ -108,7 +98,6 @@
         (is (re-find #"Transform" result))
         (is (re-find #"Daily Revenue" result))
         (is (re-find #"sql" result))))
-
     (testing "formats transform context with error"
       (let [context {:user_is_viewing [{:type "transform"
                                         :id 123
@@ -119,7 +108,6 @@
         (is (some? result))
         (is (re-find #"Transform error" result))
         (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
-
     (testing "formats code editor context"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -131,7 +119,6 @@
         (is (re-find #"code editor" result))
         (is (re-find #"python" result))
         (is (re-find #"Line 10" result))))
-
     (testing "formats code editor with selection"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -145,7 +132,6 @@
         (is (some? result))
         (is (re-find #"Selected lines:" result))
         (is (re-find #"SELECT \* FROM foo" result))))
-
     (testing "formats code editor with no buffers"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers []}]}
@@ -153,7 +139,7 @@
         (is (some? result))
         (is (re-find #"no active buffers" result))))))
 
-(deftest format-viewing-context-test-2
+(deftest ^:parallel format-viewing-context-test-2a
   (testing "formats table entity"
     (let [context {:user_is_viewing [{:type "table"
                                       :id 123
@@ -163,8 +149,9 @@
       (is (some? result))
       (is (re-find #"table" result))
       (is (re-find #"users" result))
-      (is (re-find #"User accounts" result))))
+      (is (re-find #"User accounts" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2b
   (testing "formats model entity"
     (let [context {:user_is_viewing [{:type "model"
                                       :id 456
@@ -173,8 +160,9 @@
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"model" result))
-      (is (re-find #"Revenue Model" result))))
+      (is (re-find #"Revenue Model" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2c
   (testing "formats question entity"
     (let [context {:user_is_viewing [{:type "question"
                                       :id 789
@@ -182,8 +170,9 @@
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"question" result))
-      (is (re-find #"Top Customers" result))))
+      (is (re-find #"Top Customers" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2d
   (testing "formats metric entity"
     (let [context {:user_is_viewing [{:type "metric"
                                       :id 111
@@ -191,8 +180,9 @@
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"metric" result))
-      (is (re-find #"Total Revenue" result))))
+      (is (re-find #"Total Revenue" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2e
   (testing "formats dashboard entity"
     (let [context {:user_is_viewing [{:type "dashboard"
                                       :id 222
@@ -200,8 +190,9 @@
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"dashboard" result))
-      (is (re-find #"Executive Dashboard" result))))
+      (is (re-find #"Executive Dashboard" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2f
   (testing "handles keyword types in viewing context"
     (let [context {:user_is_viewing [{:type :table
                                       :id 321
@@ -209,13 +200,15 @@
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"table" result))
-      (is (re-find #"orders" result))))
+      (is (re-find #"orders" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2g
   (testing "handles empty viewing context"
     (let [context {}
           result (user-context/format-viewing-context context)]
-      (is (= "" result))))
+      (is (= "" result)))))
 
+(deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
     (let [context {:user_is_viewing [{:type "table" :id 1 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
@@ -224,7 +217,7 @@
       (is (re-find #"users" result))
       (is (re-find #"Top Users" result)))))
 
-(deftest format-recent-views-test
+(deftest ^:parallel format-recent-views-test
   (testing "formats recent views"
     (let [context {:user_recently_viewed [{:type "question"
                                            :id 123
@@ -239,44 +232,40 @@
       (is (re-find #"Revenue Query" result))
       (is (re-find #"Sales Dashboard" result))
       (is (re-find #"Daily revenue" result))))
-
   (testing "includes guidance text"
     (let [context {:user_recently_viewed [{:type "table" :id 1 :name "users"}]}
           result (user-context/format-recent-views context)]
       (is (re-find #"might be relevant" result))
       (is (re-find #"search tool" result))))
-
   (testing "returns empty string when no recent views"
     (let [context {}
           result (user-context/format-recent-views context)]
       (is (= "" result))))
-
   (testing "returns empty string when recent views is an empty vector (e.g. after verified-only filter)"
     (let [context {:user_recently_viewed []}
           result (user-context/format-recent-views context)]
       (is (= "" result)))))
 
-(deftest format-current-user-info-test
+(deftest ^:parallel format-current-user-info-test
   (testing "formats the current user as XML"
-    (with-redefs [entity-details/get-current-user (fn [_]
-                                                    {:structured-output {:id            1
-                                                                         :name          "Jane Doe"
-                                                                         :email-address "jane@example.com"
-                                                                         :glossary      {"ARR" "Annual Recurring Revenue"}}})]
-      (is (= (llm-rep/user->xml {:id       1
-                                 :name     "Jane Doe"
-                                 :email    "jane@example.com"
-                                 :glossary {"ARR" "Annual Recurring Revenue"}})
+    (mt/with-dynamic-fn-redefs [entity-details/get-current-user (fn [_]
+                                                                  {:structured-output {:id            1
+                                                                                       :name          "Jane Doe"
+                                                                                       :email-address "jane@example.com"
+                                                                                       :glossary      {"ARR" "Annual Recurring Revenue"}}})]
+      (is (= (llm-shape/user->xml {:id       1
+                                   :name     "Jane Doe"
+                                   :email    "jane@example.com"
+                                   :glossary {"ARR" "Annual Recurring Revenue"}})
              (user-context/format-current-user-info {})))))
-
   (testing "returns nil when there is no current user"
-    (with-redefs [entity-details/get-current-user (fn [_]
-                                                    {:output "current user not found"})]
+    (mt/with-dynamic-fn-redefs [entity-details/get-current-user (fn [_]
+                                                                  {:output "current user not found"})]
       (is (nil? (user-context/format-current-user-info {}))))))
 
-(deftest enrich-context-for-template-test
+(deftest ^:parallel enrich-context-for-template-test
   (testing "enriches context with all template variables (legacy type: native)"
-    (with-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
+    (mt/with-dynamic-fn-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
       (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                      :first_day_of_week "Monday"
                      :user_is_viewing [{:type "adhoc"
@@ -298,7 +287,6 @@
         (is (= "<user>Jane Doe</user>" (:current_user_info result)))
         (is (string? (:viewing_context result)))
         (is (string? (:recent_views result))))))
-
   (testing "enriches context from frontend adhoc native query payload"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                    :first_day_of_week "Monday"
@@ -312,12 +300,10 @@
       (is (= "postgresql" (:sql_dialect result)))
       (is (re-find #"SQL editor" (:viewing_context result)))
       (is (re-find #"SELECT \* FROM users" (:viewing_context result)))))
-
   (testing "uses default first_day_of_week when not provided"
     (let [context {}
           result (user-context/enrich-context-for-template context)]
       (is (= "Sunday" (:first_day_of_week result)))))
-
   (testing "handles minimal context"
     (let [context {}
           result (user-context/enrich-context-for-template context)]
@@ -327,26 +313,26 @@
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
 
-(deftest format-entity-includes-measures-and-segments-test
+(deftest ^:parallel format-entity-includes-measures-and-segments-test
   (testing "table viewing context includes measures and segments when present"
-    (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [table-id with-measures? with-segments?]}]
-                    ;; Verify that with-measures? and with-segments? are requested
-                    (is (true? with-measures?) "should request measures")
-                    (is (true? with-segments?) "should request segments")
-                    {:structured-output
-                     {:id table-id
-                      :type :table
-                      :name "int_shopify_order_facts"
-                      :database_id 2
-                      :database_engine "postgres"
-                      :database_schema "shopify_enriched"
-                      :description "Order facts with enriched data"
-                      :fields [{:field_id "t10-1" :name "order_id" :database_type "INTEGER"}]
-                      :measures [{:id 1 :name "avg_order_value" :display-name "Average Order Value"
-                                  :description "Average value of all orders"}]
-                      :segments [{:id 2 :name "q4_orders" :display-name "Q4 Orders"
-                                  :description "Orders placed in Q4"}]}})]
+    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                                (fn [{:keys [table-id with-measures? with-segments?]}]
+                                  ;; Verify that with-measures? and with-segments? are requested
+                                  (is (true? with-measures?) "should request measures")
+                                  (is (true? with-segments?) "should request segments")
+                                  {:structured-output
+                                   {:id table-id
+                                    :type :table
+                                    :name "int_shopify_order_facts"
+                                    :database_id 2
+                                    :database_engine "postgres"
+                                    :database_schema "shopify_enriched"
+                                    :description "Order facts with enriched data"
+                                    :fields [{:field_id "t10-1" :name "order_id" :database_type "INTEGER"}]
+                                    :measures [{:id 1 :name "avg_order_value" :display-name "Average Order Value"
+                                                :description "Average value of all orders"}]
+                                    :segments [{:id 2 :name "q4_orders" :display-name "Q4 Orders"
+                                                :description "Orders placed in Q4"}]}})]
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type "table" :id 10}]})]
         (is (re-find #"table" result))
@@ -354,24 +340,25 @@
         (is (re-find #"Measures \(Pre-defined Aggregation Formulas\)" result))
         (is (re-find #"Average Order Value" result))
         (is (re-find #"Segments \(Pre-defined Filter Conditions\)" result))
-        (is (re-find #"Q4 Orders" result)))))
+        (is (re-find #"Q4 Orders" result))))))
 
+(deftest ^:parallel format-entity-includes-measures-and-segments-test-2
   (testing "model viewing context includes measures and segments when present"
-    (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [model-id with-measures? with-segments?]}]
-                    (is (true? with-measures?) "should request measures for model")
-                    (is (true? with-segments?) "should request segments for model")
-                    {:structured-output
-                     {:id model-id
-                      :type :model
-                      :name "Revenue Model"
-                      :database_id 2
-                      :database_engine "postgres"
-                      :description "Revenue model"
-                      :measures [{:id 3 :name "total_revenue" :display-name "Total Revenue"
-                                  :description "Sum of all revenue"}]
-                      :segments [{:id 4 :name "enterprise" :display-name "Enterprise Accounts"
-                                  :description "Enterprise-tier customers"}]}})]
+    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                                (fn [{:keys [model-id with-measures? with-segments?]}]
+                                  (is (true? with-measures?) "should request measures for model")
+                                  (is (true? with-segments?) "should request segments for model")
+                                  {:structured-output
+                                   {:id model-id
+                                    :type :model
+                                    :name "Revenue Model"
+                                    :database_id 2
+                                    :database_engine "postgres"
+                                    :description "Revenue model"
+                                    :measures [{:id 3 :name "total_revenue" :display-name "Total Revenue"
+                                                :description "Sum of all revenue"}]
+                                    :segments [{:id 4 :name "enterprise" :display-name "Enterprise Accounts"
+                                                :description "Enterprise-tier customers"}]}})]
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type "model" :id 20}]})]
         (is (re-find #"model" result))
@@ -379,26 +366,27 @@
         (is (re-find #"Measures" result))
         (is (re-find #"Total Revenue" result))
         (is (re-find #"Segments" result))
-        (is (re-find #"Enterprise Accounts" result)))))
+        (is (re-find #"Enterprise Accounts" result))))))
 
+(deftest ^:parallel format-entity-includes-measures-and-segments-test-3
   (testing "table viewing context omits measures/segments sections when none exist"
-    (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [entity-id]}]
-                    {:structured-output
-                     {:id entity-id
-                      :type :table
-                      :name "plain_table"
-                      :database_id 1
-                      :database_engine "h2"
-                      :description "A plain table"
-                      :fields [{:field_id "t1-1" :name "id" :database_type "INTEGER"}]}})]
+    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                                (fn [{:keys [entity-id]}]
+                                  {:structured-output
+                                   {:id entity-id
+                                    :type :table
+                                    :name "plain_table"
+                                    :database_id 1
+                                    :database_engine "h2"
+                                    :description "A plain table"
+                                    :fields [{:field_id "t1-1" :name "id" :database_type "INTEGER"}]}})]
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type "table" :id 1}]})]
         (is (re-find #"plain_table" result))
         (is (not (re-find #"Measures" result)))
         (is (not (re-find #"Segments" result)))))))
 
-(deftest format-entity-fetches-details-from-db-test
+(deftest ^:parallel format-entity-fetches-details-from-db-test
   (testing "question with only type+id fetches name and description from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Card {card-id :id} {:name          "Retention Cohorts"
@@ -412,7 +400,6 @@
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"Retention Cohorts" result))
           (is (re-find #"Shows retention by cohort" result))))))
-
   (testing "question includes display_type in formatted output"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Card {card-id :id} {:name          "Revenue Pie Chart"
@@ -425,7 +412,6 @@
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"display_type=\"pie\"" result))))))
-
   (testing "dashboard with only type+id fetches name and description from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
@@ -434,7 +420,6 @@
                       {:user_is_viewing [{:type "dashboard" :id dash-id}]})]
           (is (re-find #"Executive Dashboard" result))
           (is (re-find #"Top-level KPIs" result))))))
-
   (testing "table with only type+id fetches details including fields from DB"
     (mt/with-test-user :rasta
       (let [result (user-context/format-viewing-context
@@ -459,3 +444,35 @@
         "Formatting result should contain the native query string")
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
+
+(deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp     (mt/metadata-provider)
+              source {:type  "query"
+                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/limit 5))}
+              text   (user-context/format-transform-source
+                      (assoc source :transform-source-type :query))]
+          (is (string? text))
+          (is (re-find #"```json" text)
+              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+          (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
+          (is (re-find #"\"source-table\"" text))
+          (is (not (re-find #"lib/metadata" text))
+              "the metadata-provider handle never leaks to the LLM-facing payload"))))))
+
+(deftest ^:parallel format-transform-source-native-renders-repr-json-test
+  (testing "native transform sources also go through the repr export so template-tags stay portable"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [source {:type  "query"
+                      :query {:database (mt/id)
+                              :type     :native
+                              :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}
+              text   (user-context/format-transform-source
+                      (assoc source :transform-source-type :native))]
+          (is (string? text))
+          (is (re-find #"\"mbql.stage/native\"" text))
+          (is (re-find #"SELECT \* FROM VENUES" text)))))))

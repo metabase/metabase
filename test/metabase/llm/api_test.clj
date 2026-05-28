@@ -24,10 +24,8 @@
       (is (= :postgres (#'api/database-engine (:id postgres-db))))
       (is (= :mysql (#'api/database-engine (:id mysql-db))))
       (is (= :bigquery (#'api/database-engine (:id bigquery-db)))))
-
     (testing "nil database returns nil"
       (is (nil? (#'api/database-engine nil))))
-
     (testing "non-existent database returns nil"
       (is (nil? (#'api/database-engine 99999999))))))
 
@@ -38,7 +36,6 @@
     (let [instructions (#'api/load-dialect-instructions :postgres)]
       (is (string? instructions))
       (is (str/includes? instructions "PostgreSQL"))))
-
   (testing "nil engine returns nil"
     (is (nil? (#'api/load-dialect-instructions nil)))))
 
@@ -55,14 +52,12 @@
                   (filter #(= "table" (:model %)))
                   (map :id)
                   set)))))
-
   (testing "returns empty set for empty input"
     (is (= #{}
            (->> []
                 (filter #(= "table" (:model %)))
                 (map :id)
                 set))))
-
   (testing "returns empty set when no tables present"
     (let [entities [{:model "card" :id 1}
                     {:model "question" :id 2}]]
@@ -81,7 +76,6 @@
              (set/union (or frontend #{})
                         (or explicit #{})
                         (or implicit #{}))))))
-
   (testing "nil sources treated as empty sets"
     (is (= #{1 2}
            (set/union (or nil #{})
@@ -95,7 +89,6 @@
     (let [prompt "Join [Orders](metabase://table/123) with [Users](metabase://table/456)"]
       (is (= #{123 456}
              (llm.context/parse-table-mentions prompt)))))
-
   (testing "multiple mentions of same table deduplicated"
     (let [prompt "[Orders](metabase://table/123) and again [Orders](metabase://table/123)"]
       (is (= #{123}
@@ -110,13 +103,11 @@
       (is (string? prompt))
       (is (str/includes? prompt "PostgreSQL"))
       (is (str/includes? prompt "CREATE TABLE users"))))
-
   (testing "includes dialect instructions when provided"
     (let [prompt (#'api/build-system-prompt {:dialect "PostgreSQL"
                                              :schema-ddl "CREATE TABLE users (id INTEGER);"
                                              :dialect-instructions "Use LIMIT instead of TOP"})]
       (is (str/includes? prompt "Use LIMIT instead of TOP"))))
-
   (testing "includes source SQL when provided"
     (let [prompt (#'api/build-system-prompt {:dialect "PostgreSQL"
                                              :schema-ddl "CREATE TABLE users (id INTEGER);"
@@ -128,14 +119,13 @@
 (deftest generate-sql-error-handling-test
   (mt/with-temp [:model/Database db {:engine :postgres}]
     (testing "403 when LLM not configured"
-      (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
         (let [response (mt/user-http-request :rasta :post 403 "llm/generate-sql"
                                              {:prompt "test"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "not configured")))))
-
     (testing "400 when no tables found"
-      (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")]
+      (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")]
         (let [response (mt/user-http-request :rasta :post 400 "llm/generate-sql"
                                              {:prompt "no table mentions here"
                                               :database_id (:id db)})]
@@ -143,18 +133,18 @@
 
 (deftest list-models-unconfigured-test
   (testing "Returns 403 when LLM is not configured"
-    (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
+    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
       (let [response (mt/user-http-request :rasta :get 403 "llm/list-models")]
         (is (str/includes? (str response) "not configured"))))))
 
 (deftest list-models-resolves-direct-provider-test
   (testing "resolves provider from provider-and-model and passes ai-proxy? = false"
     (let [captured (atom nil)]
-      (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                    metabot.settings/llm-metabot-provider    (constantly "anthropic/claude-sonnet-4")
-                    metabot.self/list-models                 (fn [provider opts]
-                                                               (reset! captured {:provider provider :opts opts})
-                                                               {:models [{:id "claude-sonnet-4" :display_name "Claude Sonnet 4"}]})]
+      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                  metabot.settings/llm-metabot-provider    (constantly "anthropic/claude-sonnet-4")
+                                  metabot.self/list-models                 (fn [provider opts]
+                                                                             (reset! captured {:provider provider :opts opts})
+                                                                             {:models [{:id "claude-sonnet-4" :display_name "Claude Sonnet 4"}]})]
         (let [response (mt/user-http-request :rasta :get 200 "llm/list-models")]
           (is (=? {:models [{:id "claude-sonnet-4"
                              :display_name "Claude Sonnet 4"}]}
@@ -166,11 +156,11 @@
 (deftest list-models-resolves-metabase-prefixed-provider-test
   (testing "resolves inner provider from metabase/ prefix and passes ai-proxy? = true"
     (let [captured (atom nil)]
-      (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                    metabot.settings/llm-metabot-provider    (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")
-                    metabot.self/list-models                 (fn [provider opts]
-                                                               (reset! captured {:provider provider :opts opts})
-                                                               {:models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]})]
+      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                  metabot.settings/llm-metabot-provider    (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")
+                                  metabot.self/list-models                 (fn [provider opts]
+                                                                             (reset! captured {:provider provider :opts opts})
+                                                                             {:models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]})]
         (let [response (mt/user-http-request :rasta :get 200 "llm/list-models")]
           (is (=? {:models [{:id "anthropic/claude-haiku-4-5"
                              :display_name "Claude Haiku 4.5"}]}
@@ -227,8 +217,8 @@
                                               :completion 200}
                                 :duration-ms 500}]
         (snowplow-test/with-fake-snowplow-collector
-          (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
-                        llm.anthropic/chat-completion       (constantly mock-chat-response)]
+          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
+                                      llm.anthropic/chat-completion       (constantly mock-chat-response)]
             (let [response      (mt/user-http-request :rasta :post 200 "llm/generate-sql"
                                                       {:prompt              "get all users"
                                                        :database_id         (:id db)
@@ -260,8 +250,8 @@
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
       (snowplow-test/with-fake-snowplow-collector
-        (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
-                      llm.anthropic/chat-completion       (fn [_] (throw (Exception. "API error")))]
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
+                                    llm.anthropic/chat-completion       (fn [_] (throw (Exception. "API error")))]
           (mt/user-http-request :rasta :post 500 "llm/generate-sql"
                                 {:prompt              "get all users"
                                  :database_id         (:id db)

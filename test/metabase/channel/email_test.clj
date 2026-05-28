@@ -14,6 +14,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
@@ -251,8 +252,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-         (with-open [file (io/writer <>)]
-           (.write ^java.io.Writer file ^String content))))
+    (with-open [file (io/writer <>)]
+      (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
@@ -298,7 +299,7 @@
     (testing "error metrics collection"
       (tu/with-prometheus-system! [_ system]
         (binding [retry/*test-time-config-hook* #(assoc % :max-retries 0)]
-          (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+          (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
              :recipients   ["test@test.com"]
@@ -373,7 +374,7 @@
 
 (deftest send-message!-cloud-test
   (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (dynamic-redefs/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
                                          email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
@@ -414,7 +415,7 @@
 
 (deftest throttle-test
   (let [send-email (fn [recipients]
-                     (with-redefs [postal/send-message (fn [& args] (last args))]
+                     (dynamic-redefs/with-dynamic-fn-redefs [postal/send-message (fn [& args] (last args))]
                        (email/send-email!
                         {}
                         (merge {:from    "awesome@metabase.com"
@@ -438,7 +439,6 @@
                  (send-email {:to ["4@metabase.com"]})))
             (testing "still ok if there is no recipient"
               (is (some? (send-email {})))))
-
           (testing "with 1 small then 1 big event"
             (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
               (is (some? (send-email {:to ["1@metabase.com"]})))
@@ -448,7 +448,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["4@metabase.com"]})))))))
-
       (testing "if an email has # of recipients greater than the limit"
         (testing "we skip throttle check if we haven't reached the limit"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
@@ -461,7 +460,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["6@metabase.com"]}))))))
-
         (testing "still throttle if we already at limit"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
             ;; mx otu the limit
@@ -471,7 +469,6 @@
                    Exception
                    #"Too many attempts!.*"
                    (send-email {:to ["4@metabase.com" "5@metabase.com" "6@metabase.com" "7@metabase.com"]})))))))
-
       (testing "keep retrying will eventually send the email"
         (with-redefs [email/email-throttler (throttle/make-throttler
                                              :email

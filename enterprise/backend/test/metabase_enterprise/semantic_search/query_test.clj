@@ -21,7 +21,6 @@
               (let [results (-> (semantic.tu/query-index {:search-string "puppy"})
                                 semantic.tu/filter-for-mock-embeddings)]
                 (is (= "Dog Training Guide" (-> results first :name)))))
-
             (testing "Bird-related query finds bird content"
               (let [results (-> (semantic.tu/query-index {:search-string "avian"})
                                 semantic.tu/filter-for-mock-embeddings)]
@@ -114,13 +113,11 @@
                   filtered-results (semantic.tu/filter-for-mock-embeddings card-results)]
               (is (pos? (count filtered-results)))
               (is (every? #(= "card" (:model %)) card-results))))
-
           (testing "Filter for dashboards only"
             (let [dashboard-results (semantic.tu/query-index {:search-string "marine mammal" :models ["dashboard"]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings dashboard-results)]
               (is (pos? (count filtered-results)))
               (is (every? #(= "dashboard" (:model %)) dashboard-results))))
-
           (testing "Filter for multiple model types"
             (let [mixed-results (semantic.tu/query-index {:search-string "predator" :models ["card" "dashboard"]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings mixed-results)]
@@ -135,13 +132,11 @@
           (testing "Include only non-archived items"
             (let [active-results (semantic.tu/query-index {:search-string "feline" :archived? false})]
               (is (every? #(not (:archived %)) active-results))))
-
           (testing "Include only archived items"
             (let [archived-results (semantic.tu/query-index {:search-string "feline" :archived? true})
                   filtered-results (semantic.tu/filter-for-mock-embeddings archived-results)]
               (is (pos? (count filtered-results)))
               (is (every? :archived archived-results))))
-
           (testing "Include all items regardless of archived status"
             (let [all-results (semantic.tu/query-index {:search-string "feline"})
                   filtered-results (semantic.tu/filter-for-mock-embeddings all-results)]
@@ -157,7 +152,6 @@
                   filtered-results (semantic.tu/filter-for-mock-embeddings crowberto-results)]
               (is (pos? (count filtered-results)))
               (is (every? #(= (mt/user->id :crowberto) (:creator_id %)) crowberto-results))))
-
           (testing "Filter by multiple creators"
             (let [multi-creator-results (semantic.tu/query-index {:search-string "endangered species"
                                                                   :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
@@ -174,7 +168,6 @@
                   filtered-results (semantic.tu/filter-for-mock-embeddings verified-results)]
               (is (pos? (count filtered-results)))
               (is (every? :verified verified-results))))
-
           (testing "Include all items regardless of verified status when filter not specified"
             (let [all-results (semantic.tu/query-index {:search-string "puppy"})
                   filtered-results (semantic.tu/filter-for-mock-embeddings all-results)]
@@ -195,7 +188,6 @@
               (is (every? #(and (= "card" (:model %))
                                 (not (:archived %))
                                 (= (mt/user->id :rasta) (:creator_id %))) results))))
-
           (testing "Archived dashboards by multiple creators"
             (let [results (semantic.tu/query-index {:search-string "Antarctic wildlife"
                                                     :models ["dashboard"]
@@ -206,7 +198,6 @@
               (is (every? #(and (= "dashboard" (:model %))
                                 (:archived %)
                                 (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
-
           (testing "Verified items with additional filters"
             (let [results (semantic.tu/query-index {:search-string "marine mammal"
                                                     :models ["dashboard"]
@@ -260,7 +251,6 @@
                 (let [results (-> (semantic.tu/query-index {:search-string "marine mammal"})
                                   semantic.tu/filter-for-mock-embeddings)]
                   (is (= "Whale Communication" (-> results first :name)))))
-
               (testing "Tiger-related query finds tiger content"
                 (let [results (-> (semantic.tu/query-index {:search-string "endangered species"})
                                   semantic.tu/filter-for-mock-embeddings)]

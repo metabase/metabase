@@ -135,6 +135,7 @@
    "SemanticSearchTokenTracking"
    "Session"
    "SupportAccessGrantLog"
+   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"
@@ -145,4 +146,6 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Workspace"
+   "WorkspaceDatabase"])

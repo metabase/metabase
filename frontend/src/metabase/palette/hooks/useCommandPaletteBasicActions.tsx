@@ -225,12 +225,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () =>
           openNewModalWithProps({
             id: "embed",
-            props: {
-              initialState: {
-                isGuest: true,
-                useExistingUserSession: true,
-              },
-            },
+            props: null,
           }),
       });
     }

@@ -192,7 +192,6 @@
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
-
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
         (mt/with-temp [:model/Database db {:engine  "mysql"
                                            :details (assoc (:details (mt/db))
@@ -221,7 +220,6 @@
                                            field-metadata)]
           (testing "Model has boolean metadata"
             (is (= :type/Boolean (:base-type boolean-col))))
-
           (testing "Can query model with boolean filter"
             (let [query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
                           (lib/filter $q (lib/= (m/find-first #(= (:name %) "number-of-cans") (lib/fieldable-columns $q))
@@ -275,7 +273,6 @@
       (testing "Should add a `+` if needed to offset"
         (is (= "+00:00"
                (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
-
     (testing "real timezone query doesn't fail"
       (is (nil? (try
                   (driver/db-default-timezone driver/*driver* (mt/db))
@@ -306,7 +303,6 @@
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
-
         ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
@@ -403,9 +399,9 @@
                         (jdbc/execute! spec [sql]))
                       true
                       (catch java.sql.SQLSyntaxErrorException se
-                       ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                       ;; of mysql or mariadb being tested against does not support system versioning,
-                       ;; so do not continue
+                        ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                        ;; of mysql or mariadb being tested against does not support system versioning,
+                        ;; so do not continue
                         (if (re-matches #".*VERSIONING'.*" (.getMessage se))
                           false
                           (throw se))))]
@@ -513,7 +509,6 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))
-
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
              (sql.qp/format-honeysql :mysql {:select [[(#'mysql/trunc-with-format "%Y" :field)]]})))
@@ -693,7 +688,7 @@
 
 (deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
-    (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
+    (mt/with-dynamic-fn-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
       (is (=? {:type :metabase.actions.error/violate-unique-constraint,
                :message "Primary already exists.",
                :errors {"PRIMARY" "This Primary value already exists."}}
@@ -758,7 +753,7 @@
                          :message     "Some of your values violate the constraint: email_format_check"
                          :status-code 400
                          :type        actions.error/violate-check-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
@@ -790,7 +785,7 @@
                          :message     "Column1 and Column2 already exist."
                          :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                          :status-code 400}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"id"      3
                                                                   "column1" "A"
                                                                   "column2" "A"}
@@ -803,7 +798,7 @@
                          :message     "Column1 and Column2 already exist."
                          :status-code 400
                          :type        actions.error/violate-unique-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
@@ -877,7 +872,7 @@
                                                                      :additional-options "trustServerCertificate=true")]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                     [spec [:mysql new-connection-details]]
-                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                     (mt/with-dynamic-fn-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                        (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
@@ -937,7 +932,7 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
@@ -961,12 +956,10 @@
                           "CREATE TABLE `fullaccess_table` (id INTEGER);"
                           "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
               (jdbc/execute! spec stmt))
-
             (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "sync_writable_test_user"
                                                  :password "password"
@@ -982,7 +975,6 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
-
                   (sync/sync-database! database)
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
@@ -1004,7 +996,6 @@
                           "CREATE USER 'partial_revokes_test_user' IDENTIFIED BY 'password';"
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.test_table TO 'partial_revokes_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "partial_revokes_test_user"
                                                  :password "password"
@@ -1016,28 +1007,23 @@
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should support metadata/table-writable-check when partial_revokes is OFF"))
-
                 (testing "With partial_revokes ON, metadata/table-writable-check is not supported"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
                   (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should not support metadata/table-writable-check when partial_revokes is ON")
-
                   (sync/sync-database! database)
                   (is (= {"test_table" nil}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
                       "is_writable should sync to nil when partial_revokes is ON"))
-
                 (testing "Revoke some permissions with partial_revokes ON"
                   (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.test_table FROM 'partial_revokes_test_user';")
                   (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should still not support metadata/table-writable-check after partial revoke")
-
                   ;; Sync database again and verify is_writable is still nil
                   (sync/sync-database! database)
                   (is (= {"test_table" nil}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
                       "is_writable should still be nil after partial revoke"))))
-
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")

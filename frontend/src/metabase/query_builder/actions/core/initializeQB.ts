@@ -1,13 +1,13 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { snippetApi } from "metabase/api";
+import { cardApi, snippetApi } from "metabase/api";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -15,13 +15,14 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { addFields } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
@@ -234,10 +235,11 @@ export async function updateTemplateTagNames(
     await Promise.all(
       query.referencedQuestionIds().map(async (id) => {
         try {
-          const actionResult = await dispatch(
-            Questions.actions.fetch({ id }, { noEvent: true }),
+          return await entityCompatibleQuery(
+            { id, ignore_error: true },
+            dispatch,
+            cardApi.endpoints.getCard,
           );
-          return Questions.HACK_getObjectFromAction(actionResult);
         } catch {
           return null;
         }
@@ -360,7 +362,9 @@ async function handleQBInit(
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(addFields(Object.values(card.param_fields).flat()));
+    await dispatch(
+      updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
+    );
   }
 
   const metadata = getMetadata(getState());

@@ -229,7 +229,7 @@
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (queries/model? card) (t2/hydrate :persisted
-                                              ;; can_manage_db determines whether we should enable model persistence settings
+                                           ;; can_manage_db determines whether we should enable model persistence settings
                                            :can_manage_db)))))
 
 (defn- get-card
@@ -408,9 +408,9 @@
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
-                                         ;; columns name on native query are not match with the column name in viz-settings. why??
-                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
-                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                        ;; columns name on native query are not match with the column name in viz-settings. why??
+                                        ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                        ;; => we assume all native queries are compatible and FE will figure it out later
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
@@ -530,7 +530,7 @@
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
+   ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
@@ -802,7 +802,6 @@
                                            :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
-
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
     ;; to be lazy and we're just going to discard the results
     (doall
@@ -839,7 +838,6 @@
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
         (api/write-check :model/Collection old-collection-id))
-
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -849,7 +847,6 @@
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
           (update-collection-positions! new-collection-id-or-nil cards-with-position))
-
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]

@@ -20,9 +20,9 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       (with-redefs [t2/update! (fn [model id updates]
-                                  (swap! update-operations conj [(name model) id updates])
-                                  (count updates))]
+       (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
+                                                (swap! update-operations conj [(name model) id updates])
+                                                (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
           db
           table
@@ -174,7 +174,6 @@
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
             (merge default-metadata {:database-partitioned nil :id 1})))))
-
   (testing "flip the state"
     (is (= [["Field" 1 {:database_partitioned false}]]
            (updates-that-will-be-performed!
@@ -187,25 +186,21 @@
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
             (merge default-metadata {:id 1})))))
-
   (testing "vector -> nil"
     (is (= [["Field" 1 {:nfc_path nil}]]
            (updates-that-will-be-performed!
             default-metadata
             (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
-
   (testing "vector -> different vector"
     (is (= [["Field" 1 {:nfc_path ["payload" "account"]}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "account"]})
             (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
-
   (testing "no change when path is identical"
     (is (= []
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
             (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
-
   (testing "no change when driver emits keywords and DB has equivalent strings"
     (is (= []
            (updates-that-will-be-performed!
@@ -233,7 +228,6 @@
              :database-required          false
              :database-is-auto-increment false
              :json-unfolding             false}))))
-
   (testing (str "if `database-type` comes back as `nil` and was already saved in application DB as `NULL` no changes "
                 "should be made")
     (is (= []
@@ -328,7 +322,6 @@
                    {:id             1
                     :base-type      :type/Integer
                     :effective-type :type/Integer}))))
-
     (testing "and sync will re-fingerprint and analyze this field"
       (mt/with-temp-test-data [["table"
                                 [{:field-name "field"
@@ -343,7 +336,7 @@
                        :base_type      :type/Text
                        :effective_type :type/Text}
                       original-field)))
-           ;; drop the column and create a new one with the same name
+            ;; drop the column and create a new one with the same name
             (sql-jdbc.execute/do-with-connection-with-options
              :h2
              (mt/db)
@@ -405,7 +398,6 @@
                        :coercion_strategy nil
                        :semantic_type     nil}
                       new-field))))
-
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            (mt/db)
@@ -413,10 +405,8 @@
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
                (next.jdbc/execute! conn [sql]))))
-
           (t2/delete! :model/Table (:table_id original-field))
           (t2/delete! :model/Field :table_id (:table_id original-field))
-
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            (mt/db)
@@ -436,7 +426,6 @@
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
           (sync/sync-database! (mt/db))
-
           (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"

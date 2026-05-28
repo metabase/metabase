@@ -44,6 +44,10 @@ const typeFilters = [
     label: "Indexed record",
     type: "indexed-entity",
   },
+  {
+    label: "Document",
+    type: "document",
+  },
 ];
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -95,6 +99,21 @@ describe("scenarios > search", () => {
           cy.findByText('Results for "orders"').should("exist");
         });
       });
+
+      it("hydrates the command palette search from the URL (#71248)", () => {
+        cy.visit("/search?q=products");
+        cy.wait("@search");
+        H.commandPaletteButton().should("contain.text", "products");
+
+        cy.intercept("GET", "/api/search?q=products*").as("paletteSearch");
+        H.commandPaletteButton().click();
+        H.commandPaletteInput().should("have.value", "products");
+        cy.wait("@paletteSearch");
+
+        H.commandPalette().within(() => {
+          cy.findByRole("option", { name: "Products" }).should("be.visible");
+        });
+      });
     });
 
     describe("type filter", () => {
@@ -141,6 +160,20 @@ describe("scenarios > search", () => {
             pkName: "ID",
             valueName: "TITLE",
           });
+        });
+
+        H.createDocument({
+          name: "Releases overview",
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                attrs: { _id: "1" },
+                content: [{ type: "text", text: "Document body" }],
+              },
+            ],
+          },
         });
       });
 

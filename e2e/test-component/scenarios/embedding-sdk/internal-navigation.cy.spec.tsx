@@ -87,7 +87,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 row: 0,
                 col: 0,
                 size_x: 24,
-                size_y: 8,
+                size_y: 30,
                 parameter_mappings: [
                   {
                     parameter_id: DASHBOARD_B_FILTER.id,
@@ -621,6 +621,47 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Verify no back button exists (we're at the root)
         cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should keep filters sticky on the navigated dashboard (EMB-1746)", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+            style={{ height: 400 }}
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Dashboard A").should("be.visible");
+
+        cy.log("Navigate to Dashboard B via custom click behavior");
+        H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
+        cy.wait("@getDashboard");
+        cy.findByText("Dashboard B").should("be.visible");
+        H.filterWidget().should("be.visible");
+
+        // Pre-fix: nested wrapper dropped user height, so the scroll context
+        // was gone and the filter row scrolled off with the content.
+        cy.log("Scroll dashboard; filter row must stay pinned at wrapper top");
+        cy.findByTestId("sdk-dashboard-styled-wrapper").scrollTo("bottom");
+
+        cy.findByTestId("sdk-dashboard-styled-wrapper").then(($wrapper) => {
+          const wrapperTop = $wrapper[0].getBoundingClientRect().top;
+
+          H.filterWidget()
+            .should("be.visible")
+            .and(($filter) => {
+              const filterTop = $filter[0].getBoundingClientRect().top;
+              expect(filterTop).to.be.closeTo(wrapperTop, 20);
+            });
+        });
       });
     });
   });

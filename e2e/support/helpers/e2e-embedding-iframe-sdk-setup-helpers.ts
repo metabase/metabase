@@ -6,16 +6,24 @@ export const embedModalEnableEmbeddingCard = () =>
 
 export const embedModalEnableEmbedding = () => {
   cy.get("body").then(($body) => {
-    const isEmbeddingDisabled =
-      $body.find('[data-testid="enable-embedding-card"]').length > 0;
+    const $card = $body.find('[data-testid="enable-embedding-card"]');
 
-    if (isEmbeddingDisabled) {
-      embedModalEnableEmbeddingCard().within(() => {
-        cy.findByText(
-          /(Agree and (continue|enable)|Enable and continue)/,
-        ).click();
-      });
+    // No enable card on screen — terms were already accepted before mount.
+    if ($card.length === 0) {
+      return;
     }
+
+    // Once accepted, the action button becomes disabled and shows "Enabled".
+    // The card itself stays mounted, so guard against double-clicks.
+    if ($card.find("button:disabled").length > 0) {
+      return;
+    }
+
+    embedModalEnableEmbeddingCard().within(() => {
+      cy.findByText(
+        /(Agree and (continue|enable)|Enable and continue)/,
+      ).click();
+    });
   });
 };
 

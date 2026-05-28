@@ -125,14 +125,11 @@
  logger/level-enabled?
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
- mbql.u/desugar-filter-clause
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
- mbql.u/simplify-compound-filter
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source

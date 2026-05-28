@@ -10,12 +10,12 @@ import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
-import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
+import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
 import { AnonymousTrackingInput } from "../widgets/UsageTracking/AnonymousTrackingInput";
@@ -51,9 +51,7 @@ export function GeneralSettingsPage() {
 
         <PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget />
 
-        <CustomHomepageDashboardSetting />
-
-        <PLUGIN_LANDING_PAGE.LandingPageWidget />
+        <HomepageSetting />
       </SettingsSection>
 
       <SettingsSection title={t`Email`}>

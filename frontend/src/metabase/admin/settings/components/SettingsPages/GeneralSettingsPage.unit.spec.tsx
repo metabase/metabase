@@ -111,7 +111,7 @@ describe("GeneralSettingsPage", () => {
       "Site name",
       "Site url",
       "Redirect to HTTPS",
-      "Custom homepage",
+      "Homepage",
       "Email address for help requests",
       "Send anonymous tracking data to Metabase",
       "Collect user data to display in usage analytics",

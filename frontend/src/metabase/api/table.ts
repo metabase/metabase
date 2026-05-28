@@ -162,6 +162,42 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    appendTableCsv: builder.mutation<
+      void,
+      { tableId: TableId; formData: FormData }
+    >({
+      query: ({ tableId, formData }) => ({
+        method: "POST",
+        url: `/api/table/${tableId}/append-csv`,
+        body: { formData },
+        formData: true,
+        fetch: true,
+      }),
+      invalidatesTags: (_, error, { tableId }) =>
+        invalidateTags(error, [
+          idTag("table", tableId),
+          listTag("field"),
+          listTag("field-values"),
+        ]),
+    }),
+    replaceTableCsv: builder.mutation<
+      void,
+      { tableId: TableId; formData: FormData }
+    >({
+      query: ({ tableId, formData }) => ({
+        method: "POST",
+        url: `/api/table/${tableId}/replace-csv`,
+        body: { formData },
+        formData: true,
+        fetch: true,
+      }),
+      invalidatesTags: (_, error, { tableId }) =>
+        invalidateTags(error, [
+          idTag("table", tableId),
+          listTag("field"),
+          listTag("field-values"),
+        ]),
+    }),
 
     /// DATA STUDIO
     getTableSelectionInfo: builder.query<
@@ -238,6 +274,8 @@ export const {
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
+  useAppendTableCsvMutation,
+  useReplaceTableCsvMutation,
 
   useGetTableSelectionInfoQuery,
   useLazyGetTableSelectionInfoQuery,

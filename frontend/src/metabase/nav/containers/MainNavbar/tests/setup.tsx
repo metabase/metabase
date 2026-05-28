@@ -20,7 +20,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import type { DashboardState } from "metabase/redux/store";
 import {
   createMockDashboardState,

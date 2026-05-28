@@ -409,7 +409,6 @@
                         (catch InterruptedException _
                           (log/warn "Interrupted while waiting for notification executor to terminate")
                           (.shutdownNow ^ThreadPoolExecutor executor))))]
-
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))
@@ -427,7 +426,7 @@
   (let [{:keys [dispatch-fn]} (case (:payload_type notification)
                                 :notification/system-event
                                 @simple-blocking-dispatcher
-                                 ;; notification/card, notification/dashboard
+                                ;; notification/card, notification/dashboard
                                 @dedup-priority-dispatcher)]
     (dispatch-fn notification)))
 

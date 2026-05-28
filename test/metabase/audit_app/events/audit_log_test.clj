@@ -11,7 +11,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -495,13 +496,11 @@
                 :topic    :channel-create
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
-
       (testing :event/channel-update
         (events/publish-event! :event/channel-update {:object          (assoc channel
                                                                               :details {:new-detail true}
                                                                               :name "New Name")
                                                       :previous-object channel})
-
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}
@@ -545,7 +544,6 @@
                  :topic :document-create
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-create (:id document)))))
-
        (testing :event/document-update
          (let [updated-doc (assoc document :name "Updated Document")]
            (is (= {:object updated-doc
@@ -559,7 +557,6 @@
                    :topic :document-update
                    :model "Document"}
                   (mt/latest-audit-log-entry :document-update (:id document))))))
-
        (testing :event/document-delete
          (is (= {:object document}
                 (events/publish-event! :event/document-delete {:object document})))
@@ -589,7 +586,6 @@
                  :topic :comment-create
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
-
        (testing :event/comment-update
          (let [updated-comment (assoc comment :content "Updated comment")]
            (is (= {:object updated-comment
@@ -602,7 +598,6 @@
                     :topic :comment-update
                     :model "Comment"}
                    (mt/latest-audit-log-entry :comment-update (:id comment))))))
-
        (testing :event/comment-delete
          (is (= {:object comment}
                 (events/publish-event! :event/comment-delete {:object comment})))
@@ -632,7 +627,6 @@
                :topic :transform-create
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
-
        (testing :event/update-transform
          (let [updated-transform (assoc transform :name "Updated Transform")]
            (is (= {:object updated-transform
@@ -646,7 +640,6 @@
                    :topic :update-transform
                    :model "Transform"}
                   (mt/latest-audit-log-entry :update-transform (:id transform))))))
-
        (testing :event/transform-delete
          (is (= {:object transform}
                 (events/publish-event! :event/transform-delete {:object transform})))
@@ -671,7 +664,6 @@
                 :topic :glossary-create
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
-
       (testing :event/glossary-update
         (let [updated-glossary (assoc glossary :term "Updated Term")]
           (is (= {:object updated-glossary
@@ -685,7 +677,6 @@
                   :topic :glossary-update
                   :model "Glossary"}
                  (mt/latest-audit-log-entry :glossary-update (:id glossary))))))
-
       (testing :event/glossary-delete
         (is (= {:object glossary}
                (events/publish-event! :event/glossary-delete {:object glossary})))
@@ -695,6 +686,40 @@
                 :topic :glossary-delete
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
+
+(deftest ^:synchronized remote-sync-event-version-after-completion-test
+  (testing "remote-sync audit log entries include version when event is published after task completion (#73329)"
+    (mt/when-ee-evailable
+     (mt/with-current-user (mt/user->id :rasta)
+       (mt/with-temp [:model/RemoteSyncTask {task-id :id}
+                      {:sync_task_type "import"
+                       :version nil
+                       :initiated_by (mt/user->id :rasta)
+                       :started_at (t/offset-date-time 2025 9 30 14 0 0)
+                       :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
+         (testing "event published with re-fetched task after version is set"
+           (t2/update! :model/RemoteSyncTask task-id {:version "abc123"})
+           (let [completed-task (t2/select-one :model/RemoteSyncTask task-id)]
+             (events/publish-event! :event/remote-sync-import
+                                    {:object completed-task
+                                     :details {:branch "main"}
+                                     :user-id (mt/user->id :rasta)}))
+           (is (= "abc123"
+                  (:version (:details (mt/latest-audit-log-entry :remote-sync-import task-id))))
+               "version should be the git hash from the completed task"))
+         (testing "event published with original task (before version set) has nil version"
+           (mt/with-temp [:model/RemoteSyncTask {task-id-2 :id :as task-2}
+                          {:sync_task_type "import"
+                           :version nil
+                           :initiated_by (mt/user->id :rasta)
+                           :started_at (t/offset-date-time 2025 9 30 14 0 0)
+                           :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
+             (events/publish-event! :event/remote-sync-import
+                                    {:object task-2
+                                     :details {:branch "main"}
+                                     :user-id (mt/user->id :rasta)})
+             (is (nil? (:version (:details (mt/latest-audit-log-entry :remote-sync-import task-id-2))))
+                 "version is nil when event is published before task sets it"))))))))
 
 (deftest remote-sync-events-test
   (mt/when-ee-evailable
@@ -715,7 +740,6 @@
                  :topic :remote-sync-import
                  :model "RemoteSyncTask"}
                 (mt/latest-audit-log-entry :remote-sync-import task-id))))
-
        (testing :event/remote-sync-export
          (is (= {:object task}
                 (events/publish-event! :event/remote-sync-export {:object task})))
@@ -726,7 +750,6 @@
                  :topic :remote-sync-export
                  :model "RemoteSyncTask"}
                 (mt/latest-audit-log-entry :remote-sync-export task-id))))
-
        (testing :event/remote-sync-settings-update
          (is (= {:object task}
                 (events/publish-event! :event/remote-sync-settings-update {:object task})))
@@ -737,7 +760,6 @@
                  :topic :remote-sync-settings-update
                  :model "RemoteSyncTask"}
                 (mt/latest-audit-log-entry :remote-sync-settings-update task-id))))
-
        (testing :event/remote-sync-create-branch
          (is (= {:object task}
                 (events/publish-event! :event/remote-sync-create-branch {:object task})))
@@ -748,7 +770,6 @@
                  :topic :remote-sync-create-branch
                  :model "RemoteSyncTask"}
                 (mt/latest-audit-log-entry :remote-sync-create-branch task-id))))
-
        (testing :event/remote-sync-stash
          (is (= {:object task}
                 (events/publish-event! :event/remote-sync-stash {:object task})))

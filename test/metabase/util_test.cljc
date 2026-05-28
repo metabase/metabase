@@ -270,7 +270,6 @@
            (u/kebab->snake-keys {:user-id 1
                                  :profile-id "abc"
                                  :nested {:still-kebab-case true}})))
-
     (testing "preserves camelCase keys"
       (is (= {:userId 1
               :profileId "abc"
@@ -287,7 +286,6 @@
            (u/deep-kebab->snake-keys {:user-id 1
                                       :profile-id "abc"
                                       :nested {:inner-key {:deeply-nested true}}}))))
-
   (testing "preserves camelCase throughout the structure"
     (is (= {:userId 1
             :nested {:innerKey {:deeplyNested true
@@ -295,7 +293,6 @@
            (u/deep-kebab->snake-keys {:userId 1
                                       :nested {:innerKey {:deeplyNested true
                                                           :kebab-converted "yes"}}}))))
-
   (testing "works with vectors and other collections"
     (is (= [{:user_id 1} {:user_id 2}]
            (u/deep-kebab->snake-keys [{:user-id 1} {:user-id 2}])))
@@ -402,14 +399,12 @@
   (testing "nil and empty maps return empty maps"
     (is (= {} (u/normalize-map nil)))
     (is (= {} (u/normalize-map {}))))
-
   (let [exp {:kebab-key 1
              :snake-key 2
              :camel-key 3}]
     (testing "Clojure maps have their keys normalized"
       (is (= exp (u/normalize-map {:kebab-key  1 :snake_key  2 :camelKey  3})))
       (is (= exp (u/normalize-map {"kebab-key" 1 "snake_key" 2 "camelKey" 3}))))
-
     #?(:cljs
        (testing "JS objects get turned into Clojure maps"
          (is (= exp (u/normalize-map #js {"kebab-key" 1 "snake_key" 2 "camelKey" 3})))))))

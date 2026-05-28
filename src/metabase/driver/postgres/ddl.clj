@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
@@ -36,7 +37,8 @@
 
 (defmethod ddl.i/refresh! :postgres
   [driver database definition dataset-query]
-  (let [{:keys [query params]} (driver-api/compile dataset-query)]
+  (let [{:keys [query params]} (driver.conn/with-default-connection
+                                 (driver-api/compile dataset-query))]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database

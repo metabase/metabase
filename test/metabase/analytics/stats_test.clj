@@ -88,8 +88,8 @@
     "250+"    5000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [channel.settings/email-configured? (constantly false)
-                channel.settings/slack-configured? (constantly false)]
+  (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                              channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -126,8 +126,8 @@
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
-    (with-redefs [channel.settings/email-configured? (constantly false)
-                  channel.settings/slack-configured? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                                channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -433,17 +433,13 @@
 (deftest activation-signals-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
-
     (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
       (is (false? (@#'stats/sufficient-users? 1)))
-
       (mt/with-temp [:model/User _ {:date_joined
                                     (t/plus (t/offset-date-time) (t/days 4))}]
         (is (false? (@#'stats/sufficient-users? 1))))
-
       (mt/with-temp [:model/User _ {:date_joined (t/offset-date-time)}]
         (is (true? (@#'stats/sufficient-users? 1)))))
-
     (testing "sufficient-queries? correctly counts the number of queries"
       (is (false? (@#'stats/sufficient-queries? 1)))
       (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
@@ -452,29 +448,24 @@
 (deftest csv-upload-available-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
-
     (testing "csv-upload-available? currently detects upload availability based on the current MB version"
       (mt/with-temp [:model/Database _ {:engine :postgres}]
-        (with-redefs [config/current-major-version (constantly 46)
-                      config/current-minor-version (constantly 0)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 46)
+                                    config/current-minor-version (constantly 0)]
           (is (false? (@#'stats/csv-upload-available?))))
-
-        (with-redefs [config/current-major-version (constantly 47)
-                      config/current-minor-version (constantly 1)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 47)
+                                    config/current-minor-version (constantly 1)]
           (is (true? (@#'stats/csv-upload-available?))))))
-
     (mt/with-temp [:model/Database _ {:engine :redshift}]
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 5)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 5)]
         (is (false? (@#'stats/csv-upload-available?))))
-
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 6)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 6)]
         (is (true? (@#'stats/csv-upload-available?))))))
-
   ;; If we can't detect the MB version, return nil
-  (with-redefs [config/current-major-version (constantly nil)
-                config/current-minor-version (constantly nil)]
+  (mt/with-dynamic-fn-redefs [config/current-major-version (constantly nil)
+                              config/current-minor-version (constantly nil)]
     (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
@@ -508,7 +499,6 @@
              (m/find-first (fn [{key-name :name}]
                              (= key-name :starburst-legacy-impersonation))
                            (#'stats/snowplow-features-data)))))
-
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
                                                       :created_at (t/instant)
@@ -523,19 +513,17 @@
 
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
-    (with-redefs [premium-features.settings/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly true)]
       (is (= "cloud" (@#'stats/deployment-model))))
-
     ;; Lets just mock io/file to always return an existing (temp) file, to validate that we're doing a filesystem check
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                    io/file                              (constantly (java.io.File. mock-file))]
+      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                  io/file                              (constantly (java.io.File. mock-file))]
         (is (= "docker" (@#'stats/deployment-model)))))
-
-    (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                  stats/in-docker?                     (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
 
 (deftest no-features-enabled-but-not-available-test
@@ -585,7 +573,6 @@
           all-features      @@#'premium-features.settings/premium-features]
       ;; make sure features are not missing
       (is (empty? (set/difference all-features included-features-set excluded-features)))
-
       ;; make sure features are not duplicated
       (is (= (count included-features) (count included-features-set))))))
 
@@ -651,7 +638,6 @@
       (is (= {:library_data 0
               :library_metrics 0}
              (#'stats/library-stats))))
-
     (testing "with library collections and data"
       (mt/with-temp [:model/User       {user-id :id}         {:email      "test@example.com"
                                                               :first_name "Test"

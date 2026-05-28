@@ -279,7 +279,7 @@
     (mt/dataset airports
       (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
             details (assoc (:details (mt/db))
-                             ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
+                           ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
                            :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
                            :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
                            :catalog catalog)]
@@ -287,8 +287,8 @@
           (sync/sync-database! db {:scan :schema})
           (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
             (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
-                ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
-                ;; undo the changes in https://github.com/metabase/metabase/pull/44032
+              ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
+              ;; undo the changes in https://github.com/metabase/metabase/pull/44032
               (is (empty? (sql-jdbc.execute/do-with-connection-with-options
                            :athena
                            db
@@ -297,21 +297,27 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))
-            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
-              (let [get-columns-called (volatile! false)]
-                (with-redefs [athena/get-columns (fn [& _]
-                                                   (vreset! get-columns-called true)
-                                                   [{:column_name "c" :type_name "bigint"}
-                                                    {:column_name "c" :type_name "string"}])]
-                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
-                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
-                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
-                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
-                         (:fields (driver/describe-table :athena db table))))
-                  (is (true? @get-columns-called)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+
+(deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
+  (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [db                 (mt/db)
+              table              (t2/select-one :model/Table :db_id (:id db) :name "airport")
+              get-columns-called (volatile! false)]
+          (with-redefs [athena/get-columns (fn [& _]
+                                             (vreset! get-columns-called true)
+                                             [{:column_name "c" :type_name "bigint"}
+                                              {:column_name "c" :type_name "string"}])]
+            (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                     {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                     {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                     {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                   (:fields (driver/describe-table :athena db table))))
+            (is (true? @get-columns-called))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
