@@ -14,6 +14,7 @@ import type {
   DatasetColumn,
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationQueryParams,
   ExplorationQueryType,
   ExplorationThread,
@@ -22,6 +23,7 @@ import type {
   RowValues,
   SingleSeries,
   TimelineId,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -32,7 +34,7 @@ interface BuildSeriesGroupsParams {
   queryColors: Record<string, string>;
 }
 
-interface SeriesGroup {
+export interface SeriesGroup {
   series: SingleSeries[];
   queryType: ExplorationQueryType;
   isTimeseries: boolean;
@@ -352,6 +354,72 @@ function getSegmentName(seriesName: string, baseName: string): string {
     return seriesName.slice(prefix.length, -1);
   }
   return seriesName;
+}
+
+export interface ExplorationChartForDocumentEmbed {
+  queryIds: ExplorationQueryId[];
+  label: string;
+  display: VisualizationDisplay;
+  visualization_settings: VisualizationSettings;
+}
+
+const CARTESIAN_SERIES_COL_NAME = "Series";
+
+function composeChartsForGroup(
+  group: SeriesGroup,
+): ExplorationChartForDocumentEmbed[] {
+  const firstSeries = group.series[0];
+  const display = firstSeries.card.display;
+
+  // Maps render one `<Visualization>` per series side-by-side (no
+  // `graph.split_panels` analogue), so the user perceives each map as a
+  // standalone chart. Expand a multi-series map group into N picker
+  // entries — each appends a single-snapshot embed (the N=1
+  // pass-through path through `composite/combine` server-side).
+  if (display === "map" && group.series.length > 1) {
+    return group.series.map((s) => ({
+      queryIds: [s.card.id],
+      label: s.card.name ?? group.chartLabel ?? "Chart",
+      display: s.card.display,
+      visualization_settings: s.card.visualization_settings ?? {},
+    }));
+  }
+
+  const queryIds = group.series.map((s) => s.card.id);
+  const label = group.chartLabel ?? firstSeries.card.name ?? "Chart";
+  let visualization_settings: VisualizationSettings =
+    firstSeries.card.visualization_settings ?? {};
+
+  if (group.series.length > 1) {
+    if (display === "table") {
+      // Heat-map: the BE will append a "Segment" column to the rows. We
+      // reuse `getHeatMapSeries` to compute the full pivot settings
+      // (including `table.column_formatting` min/max) — discarding its
+      // combined data, since the BE computes that side server-side.
+      visualization_settings =
+        getHeatMapSeries({ series: group.series }).card
+          .visualization_settings ?? visualization_settings;
+    } else if (isCartesianChart(display)) {
+      // The BE will append a "Series" column. Pin `graph.dimensions` so
+      // the rendered chart reads the new column as the series breakout.
+      const cols = firstSeries.data.cols;
+      const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
+      if (xCol) {
+        visualization_settings = {
+          ...visualization_settings,
+          "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
+        };
+      }
+    }
+  }
+
+  return [{ queryIds, label, display, visualization_settings }];
+}
+
+export function composeChartsForDocumentEmbed(
+  seriesGroups: SeriesGroup[],
+): ExplorationChartForDocumentEmbed[] {
+  return seriesGroups.flatMap(composeChartsForGroup);
 }
 
 // the Table viz only supports one series, so we have to combine them

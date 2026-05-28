@@ -563,46 +563,52 @@
     (update base :content (fnil into []) [embed])))
 
 (api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
-  "Append a static `cardEmbed` for `exploration_query_id` to the end of the document body.
-  Resolves the EQ's `stored_result_id` via the EQR FK chain, materializes a `report_card`
-  for this particular document embed (carrying display / visualization_settings /
-  dataset_query), and writes both ids into the node attrs. Each append produces a fresh
-  Card — the same snapshot can be embedded multiple times, possibly across documents, and
-  each embed gets its own Card so settings can diverge later without touching the others.
+  "Append a static `cardEmbed` representing a *composite chart* — built from one or more
+  `ExplorationQuery` snapshots combined into a single qp-result — to the end of the document
+  body.
 
-  The cardEmbed node also carries `chart_href` — the exploration chart-page URL — so the
-  FE makes the embed's card title a link back to the source chart in the exploration view
-  (instead of the saved-Card URL the title would otherwise navigate to).
+  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry
+  for single-query charts; multiple for combined cartesian / heat-map charts). The BE
+  combines those source snapshots (`metabase.explorations.composite/combine`) into one
+  ephemeral `stored_result` and materialises one ephemeral `report_card` referencing it.
+  The cardEmbed node remains single-card.
 
-  Optional `display` and `visualization_settings` in the request body let the FE pass its
-  fully-computed render settings (from `buildSeries` / `getDisplay`) for the materialized
-  Card — preserving e.g. `graph.dimensions: [date, breakout]`, `graph.split_panels`,
-  `table.pivot`, axis-title clearing on labeled layouts, etc. that the BE's recompute
-  step wouldn't produce."
+  - `chart_href` is written onto the node so the FE makes the embed's card title a link
+    back to the source chart in the exploration view.
+  - `display` / `visualization_settings` are FE-computed render settings (from
+    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card. Either may
+    be omitted — the legacy `pick-display+viz-settings` recompute fills the gap.
+
+  All source EQs must belong to `thread-id`. Each append produces a fresh ephemeral card;
+  the same source snapshot can back many embeds, possibly across documents."
   [{:keys [thread-id document-id]} :- [:map
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [exploration_query_id display visualization_settings]}
+   {:keys [exploration_query_ids display visualization_settings]}
    :- [:map
-       [:exploration_query_id    ms/PositiveInt]
+       [:exploration_query_ids   [:sequential {:min 1} ms/PositiveInt]]
        [:display                 {:optional true} [:maybe :string]]
        [:visualization_settings  {:optional true} [:maybe :map]]]]
   (write-check-thread thread-id)
-  (let [doc        (get-thread-document-or-404 thread-id document-id)
-        eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
-        _          (api/check-404 (= thread-id (:exploration_thread_id eq)))
-        sr-id      (api/check-404
-                    (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                      :exploration_query_id exploration_query_id))
-        card-id    (eqr/create-card-for-stored-result!
-                    sr-id (:id doc) (:collection_id doc) @api/*current-user*
-                    {:display-override                display
-                     :visualization-settings-override visualization_settings})
-        exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-        chart-href (chart-page-url exp-id (:card_id eq) (:dimension_id eq))
-        new-body   (append-chart-nodes (:document doc) card-id sr-id chart-href)]
-    (t2/update! :model/Document (:id doc) {:document new-body})
+  (let [doc      (get-thread-document-or-404 thread-id document-id)
+        first-eq (api/check-404 (t2/select-one :model/ExplorationQuery :id (first exploration_query_ids)))]
+    ;; Every requested EQ must exist and belong to this thread — validate in one query.
+    (api/check-404 (= (count (distinct exploration_query_ids))
+                      (t2/count :model/ExplorationQuery
+                                :id [:in exploration_query_ids]
+                                :exploration_thread_id thread-id)))
+    (t2/with-transaction [_conn]
+      (let [{:keys [card-id stored-result-id]}
+            (eqr/create-ephemeral-card-for-exploration-queries!
+             exploration_query_ids (:id doc) (:collection_id doc)
+             @api/*current-user*
+             {:display                display
+              :visualization-settings visualization_settings})
+            exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
+            chart-href (chart-page-url exp-id (:card_id first-eq) (:dimension_id first-eq))
+            new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
+        (t2/update! :model/Document (:id doc) {:document new-body})))
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
 
 (api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]

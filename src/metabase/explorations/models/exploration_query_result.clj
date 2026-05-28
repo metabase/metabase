@@ -1,11 +1,14 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [clojure.edn :as edn]
+   [metabase.api.common :as api]
+   [metabase.explorations.composite :as composite]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -110,57 +113,165 @@
                                met-name (assoc :graph.metrics    [met-name]))}))
 
 (defn create-card-for-stored-result!
-  "Materialize a real `report_card` row that pairs with `stored-result-id` for a single
-  document embed. The card carries the display / visualization_settings / dataset_query
-  needed to render the snapshot through the standard Card pipeline; the bytes still live on
-  `stored_result`. A snapshot can be embedded in multiple documents, each with its own
-  Card — the (card_id, stored_result_id) mapping is held by the `cardEmbed` node, not in any
-  DB table.
+  "Materialise a single-snapshot `report_card` for an existing `stored-result-id` (one
+  ExplorationQueryResult row). Used by the AI summary flow when the LLM hands us a
+  `stored_result_id` reference without a card id — see
+  `metabase.explorations.ai-summary/materialize-card-embeds!`. The card carries the
+  legacy recomputed display / visualization_settings (`pick-display+viz-settings`) and the
+  source EQ's `dataset_query`.
 
-  Caller supplies the target `document-id` (cards belong to the document, not the collection
-  browser) and the document's `collection-id` (cards inherit it so perms stay aligned, matching
-  the regular doc-card flow in `metabase.documents.api.document/create-cards-for-document!`).
-  `dataset_query` comes from the originating `exploration_query` snapshot.
-
-  Optional `:display-override` / `:visualization-settings-override` in the fifth-arg map win
-  over the values `pick-display+viz-settings` would recompute. The FE-driven append flow
-  uses them to pass through the rich settings it produced in `buildSeries` / `getDisplay`
-  (column-ordered `graph.dimensions`, `graph.split_panels`, `table.pivot`, axis-title
-  clearing on labeled layouts, …) which the BE-side recompute doesn't reproduce. When both
-  overrides are nil the behavior is unchanged — useful for any non-FE caller (static
-  rendering, future automation).
+  The exploration-append flow does NOT use this — it goes through
+  `create-ephemeral-card-for-exploration-queries!` which can combine multiple snapshots.
 
   Returns the new `card_id`."
-  ([stored-result-id document-id collection-id creator]
-   (create-card-for-stored-result! stored-result-id document-id collection-id creator nil))
-  ([stored-result-id document-id collection-id creator
-    {:keys [display-override visualization-settings-override]}]
-   (let [sr           (t2/select-one :model/StoredResult :id stored-result-id)
-         eqr          (t2/select-one :model/ExplorationQueryResult :stored_result_id stored-result-id)
-         eq           (t2/select-one :model/ExplorationQuery :id (:exploration_query_id eqr))
-         src-card     (when-let [card-id (:card_id eq)]
-                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                       :id card-id))
-         qp-result    (deserialize-stored-result (:result_data sr))
-         chart-config (when qp-result
-                        (try (explorations.interestingness/qp-result->chart-config eq qp-result)
-                             (catch Throwable _ nil)))
-         viz           (pick-display+viz-settings eq src-card chart-config qp-result)
-         display       (or display-override (:display viz))
-         viz-settings  (or visualization-settings-override (:visualization_settings viz))
-         dataset-query (:dataset_query eq)]
-     (query-perms/check-run-permissions-for-query dataset-query)
-     (let [card-id (:id (queries/create-card!
-                         {:name                   (promotion-card-name eq src-card)
-                          :description            (:description src-card)
-                          :type                   :question
-                          :dashboard_id           nil
-                          :dataset_query          dataset-query
-                          :display                display
-                          :visualization_settings viz-settings
-                          :document_id            document-id
-                          :collection_id          collection-id}
-                         creator))]
-       ;; Record the (card -> stored_result) reference for lifecycle/GC tracking.
-       (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
-       card-id))))
+  [stored-result-id document-id collection-id creator]
+  (let [sr           (t2/select-one :model/StoredResult :id stored-result-id)
+        eqr          (t2/select-one :model/ExplorationQueryResult :stored_result_id stored-result-id)
+        eq           (t2/select-one :model/ExplorationQuery :id (:exploration_query_id eqr))
+        src-card     (when-let [card-id (:card_id eq)]
+                       (t2/select-one [:model/Card :name :description :display :visualization_settings]
+                                      :id card-id))
+        qp-result    (deserialize-stored-result (:result_data sr))
+        chart-config (when qp-result
+                       (try (explorations.interestingness/qp-result->chart-config eq qp-result)
+                            (catch Throwable _ nil)))
+        viz          (pick-display+viz-settings eq src-card chart-config qp-result)
+        dataset-query (:dataset_query eq)]
+    (query-perms/check-run-permissions-for-query dataset-query)
+    (let [card-id (:id (queries/create-card!
+                        {:name                   (promotion-card-name eq src-card)
+                         :description            (:description src-card)
+                         :type                   :question
+                         :dashboard_id           nil
+                         :dataset_query          dataset-query
+                         :display                (:display viz)
+                         :visualization_settings (:visualization_settings viz)
+                         :document_id            document-id
+                         :collection_id          collection-id}
+                        creator))]
+      (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+      card-id)))
+
+(defn- serialize-qp-result
+  "Run `cache.impl/do-with-serialization` on a single in-memory qp-result and return the
+  gzipped+nippy byte array. The qp-result here comes from `composite/combine`, which
+  builds on top of already-deserialised source snapshots — the `prepare-for-serialization`
+  step the task runner does on a fresh QP result isn't needed (no metadata-provider atoms
+  to strip), since whatever was strippable was already stripped at write time."
+  ^bytes [qp-result]
+  (cache.impl/do-with-serialization
+   (fn [in result-fn]
+     (in qp-result)
+     (result-fn))))
+
+(defn- load-eq-results
+  "For each `eq-id`, resolve the `{:eq … :eqr … :sr … :qp-result …}` map. Asserts the EQ
+  exists and its stored_result_id is set + the snapshot bytes deserialise. Order is
+  preserved from `eq-ids` — that ordering drives the composite snapshot row order."
+  [eq-ids]
+  (mapv
+   (fn [eq-id]
+     (let [eq        (api/check-404 (t2/select-one :model/ExplorationQuery :id eq-id))
+           eqr       (api/check-404 (t2/select-one :model/ExplorationQueryResult
+                                                   :exploration_query_id eq-id))
+           sr        (api/check-404 (t2/select-one :model/StoredResult :id (:stored_result_id eqr)))
+           qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
+       {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
+   eq-ids))
+
+(defn- compose-display+viz-settings
+  "Resolve the `display` + `visualization_settings` to bake onto the ephemeral card.
+
+  Precedence per field:
+    1. FE-sent value (`display-override` / `visualization-settings-override`).
+    2. The legacy recompute from `pick-display+viz-settings` (kept as a fallback for the
+       rare gap where the FE doesn't supply both — e.g. static or AI-driven callers).
+
+  The composite qp-result + first EQ's source card supply enough context for the
+  fallback path to behave like the pre-composite single-query flow used to."
+  [composite-qp-result first-eq src-card display-override visualization-settings-override]
+  (let [chart-config (when composite-qp-result
+                       (try
+                         (explorations.interestingness/qp-result->chart-config first-eq composite-qp-result)
+                         (catch Throwable _ nil)))
+        fallback     (pick-display+viz-settings first-eq src-card chart-config composite-qp-result)]
+    {:display                (or display-override (:display fallback))
+     :visualization_settings (or visualization-settings-override (:visualization_settings fallback))}))
+
+(defn create-ephemeral-card-for-exploration-queries!
+  "Materialise an ephemeral `report_card` that represents a *composite chart* — possibly
+  built from multiple `ExplorationQuery` snapshots combined into one — for a single document
+  embed.
+
+  - `eq-ids`         Non-empty seq of `ExplorationQuery` ids; their stored_result snapshots
+                     are combined by `metabase.explorations.composite/combine` into one
+                     composite qp-result. The first id supplies metadata fallbacks (source
+                     card, dataset_query). A multi-id combine is persisted as a brand-new
+                     `stored_result` row; a single id reuses the source snapshot as-is (no
+                     duplicate row).
+  - `document-id`    Target document — the materialised card is scoped to it (`document_id`
+                     set + `collection_id` matched), which keeps it out of the regular
+                     collection-browser / data-picker pickers.
+  - `collection-id`  The document's collection (cards inherit perms).
+  - `creator`        Current user.
+  - opts             `:display` / `:visualization-settings` — FE-computed values from
+                     `buildSeries` / `getDisplay`. When supplied they're baked onto the card
+                     verbatim. Either can be nil — the gap is filled by the legacy
+                     `pick-display+viz-settings` recompute.
+
+  For a multi-id combine, inserts a `StoredResultUse` row for the new composite snapshot plus
+  one per source stored_result, so GC of any source cascades through. For a single id, inserts
+  the one row tying the card to the (reused) source snapshot.
+
+  Returns a map `{:card-id … :stored-result-id …}` — `stored-result-id` is the new composite
+  row for a combine, or the source snapshot id for a single-query embed."
+  [eq-ids document-id collection-id creator
+   {:keys [display visualization-settings]}]
+  (let [eq-results      (load-eq-results eq-ids)
+        first-eq        (:eq (first eq-results))
+        first-sr        (:sr (first eq-results))
+        src-card        (when-let [card-id (:card_id first-eq)]
+                          (t2/select-one [:model/Card :name :description :display :visualization_settings]
+                                         :id card-id))
+        composite-qp    (composite/combine eq-results (or visualization-settings {}))
+        composed        (compose-display+viz-settings
+                         composite-qp first-eq src-card display visualization-settings)
+        dataset-query   (:dataset_query first-eq)
+        creator-id      (:id creator)]
+    (query-perms/check-run-permissions-for-query dataset-query)
+    ;; Single-query embeds reuse the source snapshot as-is — `composite/combine` returned it
+    ;; unchanged, so copying its bytes into a fresh stored_result would just duplicate them.
+    ;; Only a genuine multi-snapshot combine produces new cols/rows that need their own row.
+    (let [single?         (= 1 (count eq-results))
+          composite-bytes (when-not single? (serialize-qp-result composite-qp))]
+      (t2/with-transaction [_conn]
+        (let [stored-result-id (if single?
+                                 (:id first-sr)
+                                 (first (t2/insert-returning-pks!
+                                         :model/StoredResult
+                                         {:result_data   composite-bytes
+                                          :creator_id    creator-id
+                                          :database_id   (or (:database_id first-sr)
+                                                             (-> dataset-query :database))
+                                          :dataset_query dataset-query})))
+              card-id          (:id (queries/create-card!
+                                     {:name                   (or (not-empty (:name first-eq))
+                                                                  (not-empty (:name src-card))
+                                                                  (tru "Chart"))
+                                      :description            (:description src-card)
+                                      :type                   :question
+                                      :dashboard_id           nil
+                                      :dataset_query          dataset-query
+                                      :display                (:display composed)
+                                      :visualization_settings (:visualization_settings composed)
+                                      :document_id            document-id
+                                      :collection_id          collection-id}
+                                     creator))]
+          ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
+          ;; reference the new composite snapshot plus every source, so a delete of any source
+          ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
+          (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+          (when-not single?
+            (doseq [{:keys [sr]} eq-results]
+              (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
+          {:card-id card-id :stored-result-id stored-result-id})))))

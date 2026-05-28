@@ -3,14 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   ExplorationDocument,
-  ExplorationQuery,
-  ExplorationQueryId,
   ExplorationThread,
-  SingleSeries,
+  VisualizationSettings,
 } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { GroupDocumentMenu } from "./GroupDocumentMenu";
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 const mockAppend = jest.fn();
 const mockCreate = jest.fn();
@@ -34,25 +32,16 @@ jest.mock("metabase/common/hooks/use-toast", () => ({
   useToast: () => [mockToast],
 }));
 
-function makeQuery(id: number, name: string): ExplorationQuery {
+function makeChart(overrides: {
+  queryIds: number[];
+  label: string;
+  display?: ExplorationChartForDocumentEmbed["display"];
+  visualization_settings?: VisualizationSettings;
+}): ExplorationChartForDocumentEmbed {
   return {
-    id,
-    exploration_thread_id: 1,
-    card_id: 1,
-    dimension_id: "dim-1",
-    dimension_name: "Dim 1",
-    query_type: "default",
-    display: null,
-    name,
-    position: 0,
-    status: "done",
-    error_message: null,
-    started_at: null,
-    finished_at: null,
-    entity_id: "abcdefghijabcdefghij1",
-    interestingness_score: 0.5,
-    dataset_query: { type: "query", database: 1, query: {} } as any,
-    segment_id: null,
+    display: "line",
+    visualization_settings: {},
+    ...overrides,
   };
 }
 
@@ -67,9 +56,9 @@ function makeDocument(
   };
 }
 
-const queries = [
-  makeQuery(101, "Revenue (US)"),
-  makeQuery(102, "Revenue (EU)"),
+const defaultCharts: ExplorationChartForDocumentEmbed[] = [
+  makeChart({ queryIds: [101], label: "Revenue (US)" }),
+  makeChart({ queryIds: [201, 202, 203], label: "Revenue (EU)" }),
 ];
 
 function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
@@ -90,16 +79,15 @@ function makeThread(documents: ExplorationDocument[] = []): ExplorationThread {
 
 function setup({
   documents = [makeDocument({ id: 11, name: "Notes" })],
-  seriesByQueryId,
+  charts = defaultCharts,
 }: {
   documents?: ExplorationDocument[];
-  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
+  charts?: ExplorationChartForDocumentEmbed[];
 } = {}) {
   renderWithProviders(
     <GroupDocumentMenu
-      queries={queries}
+      charts={charts}
       explorationThread={makeThread(documents)}
-      seriesByQueryId={seriesByQueryId}
     />,
   );
 }
@@ -117,7 +105,7 @@ beforeEach(() => {
 });
 
 describe("GroupDocumentMenu", () => {
-  it("first stage shows the group's queries — not the documents", async () => {
+  it("first stage shows the page's charts (one entry per SeriesGroup) — not the documents", async () => {
     setup();
 
     await userEvent.click(
@@ -158,8 +146,27 @@ describe("GroupDocumentMenu", () => {
     expect(mockAppend).not.toHaveBeenCalled();
   });
 
-  it("clicking a document appends the picked chart with the right query+document ids", async () => {
-    setup();
+  it("sends the FULL set of source query ids + the FE-computed `display` + `visualization_settings` on the chosen chart", async () => {
+    // A multi-query chart (e.g. heat-map or split-panel cartesian)
+    // appends its entire query-id list, so the BE materialises one
+    // composite ephemeral card instead of N separate embeds.
+    setup({
+      charts: [
+        makeChart({
+          queryIds: [101],
+          label: "Revenue (US)",
+        }),
+        makeChart({
+          queryIds: [201, 202, 203],
+          label: "Revenue (EU)",
+          display: "bar",
+          visualization_settings: {
+            "graph.dimensions": ["created_at", "Series"],
+            "graph.split_panels": true,
+          },
+        }),
+      ],
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Add to document" }),
@@ -173,11 +180,71 @@ describe("GroupDocumentMenu", () => {
     expect(mockAppend).toHaveBeenCalledWith({
       threadId: 7,
       documentId: 11,
-      exploration_query_id: 102,
-      // No FE-computed series supplied for this test — the menu sends
-      // explicit `null` for both override fields.
-      display: null,
-      visualization_settings: null,
+      exploration_query_ids: [201, 202, 203],
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["created_at", "Series"],
+        "graph.split_panels": true,
+      },
+    });
+  });
+
+  it("renders one entry per map even when those maps originated from the same SeriesGroup (compose-time expansion)", async () => {
+    // The menu doesn't know whether two entries came from the same
+    // underlying SeriesGroup — it just renders the `charts` list it's
+    // given. This test guarantees the per-map UX works end-to-end: each
+    // map is an independent picker entry, and clicking one sends just
+    // that map's query id (no composite of the other maps).
+    setup({
+      charts: [
+        makeChart({
+          queryIds: [301],
+          label: "Sessions in US",
+          display: "map",
+          visualization_settings: {
+            "map.type": "region",
+            "map.region": "us_states",
+            "map.colors": ["red", "white"],
+          },
+        }),
+        makeChart({
+          queryIds: [302],
+          label: "Sessions in EU",
+          display: "map",
+          visualization_settings: {
+            "map.type": "region",
+            "map.region": "us_states",
+            "map.colors": ["blue", "white"],
+          },
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to document" }),
+    );
+
+    expect(await screen.findByText("Pick a chart")).toBeInTheDocument();
+    expect(screen.getByText("Sessions in US")).toBeInTheDocument();
+    expect(screen.getByText("Sessions in EU")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Sessions in EU"));
+    await userEvent.click(await screen.findByText("Notes"));
+
+    await waitFor(() => {
+      expect(mockAppend).toHaveBeenCalledTimes(1);
+    });
+    // Only the picked map's query id flows through — no composite.
+    expect(mockAppend).toHaveBeenCalledWith({
+      threadId: 7,
+      documentId: 11,
+      exploration_query_ids: [302],
+      display: "map",
+      visualization_settings: {
+        "map.type": "region",
+        "map.region": "us_states",
+        "map.colors": ["blue", "white"],
+      },
     });
   });
 
@@ -200,45 +267,9 @@ describe("GroupDocumentMenu", () => {
       expect(mockAppend).toHaveBeenCalledWith({
         threadId: 7,
         documentId: 22, // the freshly-created document
-        exploration_query_id: 101,
-        display: null,
-        visualization_settings: null,
-      });
-    });
-  });
-
-  it("sends the FE-computed `display` + `visualization_settings` from `seriesByQueryId` so the embed renders identically to the exploration view", async () => {
-    const card = createMockCard({
-      id: 102,
-      display: "line",
-      visualization_settings: {
-        "graph.dimensions": ["created_at", "category"],
-        "graph.split_panels": true,
-      },
-    });
-    const series: SingleSeries = { card, data: createMockDataset().data };
-    setup({
-      seriesByQueryId: new Map<ExplorationQueryId, SingleSeries>([
-        [102, series],
-      ]),
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Add to document" }),
-    );
-    await userEvent.click(await screen.findByText("Revenue (EU)"));
-    await userEvent.click(await screen.findByText("Notes"));
-
-    await waitFor(() => {
-      expect(mockAppend).toHaveBeenCalledWith({
-        threadId: 7,
-        documentId: 11,
-        exploration_query_id: 102,
+        exploration_query_ids: [101],
         display: "line",
-        visualization_settings: {
-          "graph.dimensions": ["created_at", "category"],
-          "graph.split_panels": true,
-        },
+        visualization_settings: {},
       });
     });
   });

@@ -1,9 +1,7 @@
 import { Group, Text } from "metabase/ui";
 import type {
   ExplorationQuery,
-  ExplorationQueryId,
   ExplorationThread,
-  SingleSeries,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
@@ -11,6 +9,7 @@ import type {
 import { DocumentMenu } from "./DocumentMenu";
 import { GroupDocumentMenu } from "./GroupDocumentMenu";
 import { TimelineDropdown } from "./TimelineDropdown";
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
@@ -21,13 +20,7 @@ interface ExplorationVisualizationHeaderProps {
   onSelectTimelineId?: (timelineId: TimelineId | null) => void;
   showTimelineDropdown?: boolean;
   showDocumentMenu?: boolean;
-  /**
-   * When provided alongside `showDocumentMenu`, the header renders a
-   * `GroupDocumentMenu` (chart-picker → document-picker) instead of the
-   * single-chart `DocumentMenu`. Used by `ExplorationGroupVisualization`.
-   */
-  groupQueries?: ExplorationQuery[];
-  seriesByQueryId?: Map<ExplorationQueryId, SingleSeries>;
+  chartsForEmbed?: ExplorationChartForDocumentEmbed[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
@@ -39,20 +32,19 @@ export function ExplorationVisualizationHeader({
   onSelectTimelineId,
   showTimelineDropdown,
   showDocumentMenu,
-  groupQueries,
-  seriesByQueryId,
+  chartsForEmbed,
   interestingTimelineIds,
 }: ExplorationVisualizationHeaderProps) {
   const showGroupDocumentMenu =
     showDocumentMenu &&
     explorationThread &&
-    groupQueries &&
-    groupQueries.length > 1;
+    chartsForEmbed &&
+    chartsForEmbed.length > 1;
   const showSingleDocumentMenu =
     showDocumentMenu &&
     !showGroupDocumentMenu &&
     explorationThread &&
-    groupQueries?.length === 1;
+    chartsForEmbed?.length === 1;
 
   return (
     <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
@@ -74,16 +66,14 @@ export function ExplorationVisualizationHeader({
           )}
         {showGroupDocumentMenu && (
           <GroupDocumentMenu
-            queries={groupQueries}
+            charts={chartsForEmbed}
             explorationThread={explorationThread}
-            seriesByQueryId={seriesByQueryId}
           />
         )}
         {showSingleDocumentMenu && (
           <DocumentMenu
-            explorationQuery={groupQueries?.[0]}
+            chart={chartsForEmbed[0]}
             explorationThread={explorationThread}
-            seriesByQueryId={seriesByQueryId}
           />
         )}
       </Group>
