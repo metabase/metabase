@@ -51,6 +51,20 @@
       (is (not (#'agent/should-continue? 0 max-iter [{:type :usage}])))
       (is (not (#'agent/should-continue? 0 max-iter []))))))
 
+(deftest finish-reason-test
+  (let [max-iter 3
+        final    [{:type :tool-output :result {:final-response? true}}]
+        tool     [{:type :tool-input :id "t1"}]
+        text     [{:type :text :text "done"}]]
+    (testing "a final response is a clean stop, even on the last allowed iteration"
+      (is (= :final-response (#'agent/finish-reason max-iter max-iter final)))
+      (is (= :final-response (#'agent/finish-reason 1 max-iter final))))
+    (testing "no pending tool calls on the last iteration is a clean stop, not a force-stop"
+      (is (= :stop (#'agent/finish-reason max-iter max-iter text)))
+      (is (= :stop (#'agent/finish-reason 1 max-iter text))))
+    (testing "pending tool calls that hit the iteration cap are a force-stop"
+      (is (= :max-iterations (#'agent/finish-reason max-iter max-iter tool))))))
+
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
@@ -382,7 +396,7 @@
                          {:type :text}
                          ;; Cumulative usage after iteration 3: 300+300=600 prompt, 50+10=60 completion
                          {:type :usage :usage {:promptTokens 600 :completionTokens 60}}
-                     ;; Terminal-state precedes the final state part on every successful loop exit.
+                         ;; Terminal-state precedes the final state part on every successful loop exit.
                          {:type :data :data-type "terminal_state" :data {:reason "model_signaled_done"}}
                          {:type      :data
                           :data-type "state"

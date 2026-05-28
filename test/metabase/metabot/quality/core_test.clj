@@ -186,9 +186,9 @@
                   :unproductive_search_rate  nil
                   :grounding                 1.0
                   :tool_call_failure_rate    0.0
-                  :termination_signal        nil}
+                  :termination_signal        0.0}
                  (:metrics breakdown))
-              "grounding healthy; the not-yet-computed metrics serialize as null")
+              "grounding healthy, clean termination; the not-yet-computed canonical metrics serialize as null")
           (is (= {:prompt_context 1 :discovered 0 :authored 1 :inspected 0 :hallucinated 0}
                  (:set_cardinalities breakdown))
               "the user_is_viewing table lands in prompt-context; the authoring-tool input

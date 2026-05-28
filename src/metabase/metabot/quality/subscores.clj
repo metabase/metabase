@@ -42,8 +42,12 @@
       (mean healths))))
 
 (defn- execution-health
+  "`1 −` the mean of the tool-call failure rate and the termination signal,
+  so a clean run scores 1.0 and a fully failed, force-stopped run scores
+  0.0. Always applicable."
   ^double [metrics]
-  (- 1.0 (double (:tool-call-failure-rate metrics))))
+  (- 1.0 (mean [(:tool-call-failure-rate metrics)
+                (:termination-signal metrics)])))
 
 (defn compose
   "Group the metrics into subscores and produce the composite.
@@ -68,8 +72,8 @@
      :na                  na}))
 
 (comment
-  ;; Healthy: grounded authoring, no tool errors → composite 1.0.
-  (compose {:grounding 1.0 :tool-call-failure-rate 0.0})
+  ;; Healthy: grounded authoring, no tool errors, clean exit → composite 1.0.
+  (compose {:grounding 1.0 :tool-call-failure-rate 0.0 :termination-signal 0.0})
 
   ;; Nothing authored → Data-Source Quality N/A, composite = Execution Health.
-  (compose {:grounding :na :tool-call-failure-rate 0.5}))
+  (compose {:grounding :na :tool-call-failure-rate 0.5 :termination-signal 1.0}))

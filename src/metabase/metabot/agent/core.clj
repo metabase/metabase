@@ -191,11 +191,15 @@
        (not (has-final-response? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped."
+  "Determine why the agent loop stopped. A final response or the absence of
+  any tool call means the agent chose to stop, so those win even on the last
+  allowed iteration; only pending tool calls that hit the cap are a
+  force-stop."
   [iteration max-iterations parts]
   (cond
-    (>= iteration max-iterations) :max-iterations
     (has-final-response? parts)   :final-response
+    (not (has-tool-calls? parts)) :stop
+    (>= iteration max-iterations) :max-iterations
     :else                         :stop))
 
 ;;; Call LLM

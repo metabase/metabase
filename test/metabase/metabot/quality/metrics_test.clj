@@ -24,12 +24,15 @@
   (into {} (map (fn [a] [(entity-key (:type a) (:id a)) a])) atoms))
 
 (defn- normalized
-  "Minimal normalized struct. `metrics/compute` reads only the authored
-  (`:Q`) and hallucinated (`:H`) sets plus `:tool-events`."
-  [& {:keys [Q H tool-events]
-      :or   {Q [] H [] tool-events []}}]
+  "Minimal normalized struct. `metrics/compute` reads the authored (`:Q`)
+  and hallucinated (`:H`) sets, `:tool-events`, and the temporal
+  terminal-state. Defaults to a clean exit so grounding / failure-rate
+  tests don't have to set it."
+  [& {:keys [Q H tool-events terminal-state]
+      :or   {Q [] H [] tool-events [] terminal-state :model_signaled_done}}]
   {:sets        {:P {} :D {} :Q (set-of Q) :I {} :H (set-of H)}
-   :tool-events tool-events})
+   :tool-events tool-events
+   :temporal    {:terminal-state terminal-state}})
 
 ;;; ---------------------------------------------------------------------------
 ;;; Grounding — bare fraction
@@ -94,3 +97,22 @@
                 (metrics/compute (normalized :tool-events [(event "a" {:msg "x"})
                                                            (event "b" {:msg "y"})])
                                  {}))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Termination signal — categorical from the terminal state
+;;; ---------------------------------------------------------------------------
+
+(deftest termination-signal-zero-on-clean-exit-test
+  (testing "the agent stopping on its own — signaling done or a final response — is 0.0"
+    (is (= 0.0 (:termination-signal (metrics/compute (normalized :terminal-state :model_signaled_done) {}))))
+    (is (= 0.0 (:termination-signal (metrics/compute (normalized :terminal-state :final_response) {}))))))
+
+(deftest termination-signal-one-on-forced-exit-test
+  (testing "hitting the iteration cap, erroring, or being aborted is 1.0"
+    (is (= 1.0 (:termination-signal (metrics/compute (normalized :terminal-state :iter_cap) {}))))
+    (is (= 1.0 (:termination-signal (metrics/compute (normalized :terminal-state :error) {}))))
+    (is (= 1.0 (:termination-signal (metrics/compute (normalized :terminal-state :aborted) {}))))))
+
+(deftest termination-signal-one-on-unrecognized-state-test
+  (testing "an unrecognized terminal state defaults to 1.0"
+    (is (= 1.0 (:termination-signal (metrics/compute (normalized :terminal-state :something-else) {}))))))

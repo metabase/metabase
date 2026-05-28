@@ -9,12 +9,14 @@
 (set! *warn-on-reflection* true)
 
 (defn- metrics
-  "Compact metrics-map builder. Defaults grounding to 1.0 and the failure
-  rate to 0.0 so each test sets only what it cares about."
-  [& {:keys [grounding tool-call-failure-rate]
-      :or   {grounding 1.0 tool-call-failure-rate 0.0}}]
+  "Compact metrics-map builder. Defaults to a healthy conversation —
+  grounded authoring, no tool errors, clean termination — so each test
+  sets only the inputs it cares about."
+  [& {:keys [grounding tool-call-failure-rate termination-signal]
+      :or   {grounding 1.0 tool-call-failure-rate 0.0 termination-signal 0.0}}]
   {:grounding              grounding
-   :tool-call-failure-rate tool-call-failure-rate})
+   :tool-call-failure-rate tool-call-failure-rate
+   :termination-signal     termination-signal})
 
 ;;; ---------------------------------------------------------------------------
 ;;; Data-Source Quality
@@ -36,17 +38,27 @@
           "composite is the geometric mean over the lone applicable subscore"))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Execution Health
+;;; Execution Health — 1 − mean(failure-rate, termination-signal)
 ;;; ---------------------------------------------------------------------------
 
-(deftest execution-health-is-one-minus-failure-rate-test
-  (testing "Execution Health = 1 − tool-call failure rate"
-    (is (= 0.75 (:execution-health (subscores/compose (metrics :tool-call-failure-rate 0.25)))))))
+(deftest execution-health-folds-failure-and-termination-test
+  (testing "Execution Health = 1 − mean(tool-call failure rate, termination signal)"
+    (testing "no failures and a clean exit → 1.0"
+      (is (= 1.0 (:execution-health (subscores/compose (metrics))))))
+    (testing "no failures but a forced exit → 0.5"
+      (is (= 0.5 (:execution-health
+                  (subscores/compose (metrics :tool-call-failure-rate 0.0 :termination-signal 1.0))))))
+    (testing "half the calls failed on a clean exit → 0.75"
+      (is (= 0.75 (:execution-health
+                   (subscores/compose (metrics :tool-call-failure-rate 0.5 :termination-signal 0.0))))))
+    (testing "every call failed and a forced exit → 0.0"
+      (is (= 0.0 (:execution-health
+                  (subscores/compose (metrics :tool-call-failure-rate 1.0 :termination-signal 1.0))))))))
 
 (deftest execution-health-always-applicable-test
   (testing "Execution Health is never N/A, even when Data-Source Quality is"
-    (let [out (subscores/compose (metrics :grounding :na :tool-call-failure-rate 0.5))]
-      (is (= 0.5 (:execution-health out)))
+    (let [out (subscores/compose (metrics :grounding :na :tool-call-failure-rate 0.5 :termination-signal 0.0))]
+      (is (= 0.75 (:execution-health out)))
       (is (not (contains? (:na out) :execution-health))))))
 
 ;;; ---------------------------------------------------------------------------
@@ -55,11 +67,18 @@
 
 (deftest composite-geometric-mean-over-subscores-test
   (testing "composite = geometric mean over the non-N/A subscores"
-    ;; Data-Source Quality = 1.0, Execution Health = 0.75 → sqrt(0.75) ≈ 0.866
-    (let [out (subscores/compose (metrics :grounding 1.0 :tool-call-failure-rate 0.25))]
+    ;; Data-Source Quality = 1.0, Execution Health = 0.5 → sqrt(0.5) ≈ 0.707
+    (let [out (subscores/compose (metrics :grounding 1.0 :tool-call-failure-rate 0.0 :termination-signal 1.0))]
       (is (= 1.0 (:data-source-quality out)))
-      (is (= 0.75 (:execution-health out)))
-      (is (< 0.866 (:composite out) 0.867)))))
+      (is (= 0.5 (:execution-health out)))
+      (is (< 0.7071 (:composite out) 0.7072)))))
+
+(deftest composite-equals-execution-health-when-data-source-na-test
+  (testing "Data-Source Quality N/A → composite = Execution Health alone"
+    (let [out (subscores/compose (metrics :grounding :na :tool-call-failure-rate 0.0 :termination-signal 1.0))]
+      (is (nil? (:data-source-quality out)))
+      (is (= 0.5 (:execution-health out)))
+      (is (= 0.5 (:composite out))))))
 
 (deftest composite-zero-subscore-zeros-composite-test
   (testing "any subscore at 0.0 → composite 0.0 (geometric-mean property)"
@@ -70,7 +89,7 @@
 (deftest composite-weakest-link-domination-test
   (testing "geometric mean punishes a single weak subscore harder than arithmetic mean would"
     ;; Data-Source Quality = 0.9, Execution Health = 0.1 → sqrt(0.09) = 0.3
-    (let [out (subscores/compose (metrics :grounding 0.9 :tool-call-failure-rate 0.9))]
+    (let [out (subscores/compose (metrics :grounding 0.9 :tool-call-failure-rate 0.8 :termination-signal 1.0))]
       (is (= 0.9 (:data-source-quality out)))
       (is (< 0.099 (:execution-health out) 0.101))
       (is (< 0.29 (:composite out) 0.31)))))

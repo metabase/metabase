@@ -34,6 +34,16 @@
       (/ (double (count (filter (comp some? :error) events)))
          (double total)))))
 
+(defn- termination-signal
+  "`0.0` when the agent stopped on its own — signaled done or emitted a
+  final response — and `1.0` for any other exit (hit the iteration cap,
+  errored, was aborted, or an unrecognized state). Reads the categorical
+  populated by [[metabase.metabot.quality.temporal/derive]]."
+  ^double [normalized]
+  (case (get-in normalized [:temporal :terminal-state])
+    (:model_signaled_done :final_response) 0.0
+    1.0))
+
 (defn compute
   "Pure conversation metrics. `normalized` is the struct from
   [[metabase.metabot.quality.extract/normalize]] with `:temporal`
@@ -43,13 +53,18 @@
   raw execution inputs the subscore layer composes."
   [normalized _governance]
   {:grounding              (grounding normalized)
-   :tool-call-failure-rate (tool-call-failure-rate normalized)})
+   :tool-call-failure-rate (tool-call-failure-rate normalized)
+   :termination-signal     (termination-signal normalized)})
 
 (comment
-  ;; Healthy: everything authored was grounded, no tool errors.
-  (compute {:sets {:Q {["card" "1"] {}} :H {}} :tool-events []} {})
+  ;; Healthy: everything authored was grounded, no tool errors, clean exit.
+  (compute {:sets        {:Q {["card" "1"] {}} :H {}}
+            :tool-events []
+            :temporal    {:terminal-state :final_response}}
+           {})
 
-  ;; Ungrounded + half the tool calls errored.
+  ;; Ungrounded, half the tool calls errored, forced to stop at the cap.
   (compute {:sets        {:Q (zipmap (range 4) (repeat {})) :H (zipmap (range 4) (repeat {}))}
-            :tool-events [{:error {:msg "x"}} {}]}
+            :tool-events [{:error {:msg "x"}} {}]
+            :temporal    {:terminal-state :iter_cap}}
            {}))
