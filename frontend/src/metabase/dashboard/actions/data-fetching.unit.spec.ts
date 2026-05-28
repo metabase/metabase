@@ -577,6 +577,69 @@ describe("fetchDashboardCardData", () => {
     firstResolve!();
     await firstFetch;
   });
+
+  it("includes permission-stripped cards (no dataset_query) in the batch request so the backend can emit a 403 card-error", async () => {
+    const dashboardId = 700;
+    const viewableDashcardId = 71;
+    const viewableCardId = 71;
+    const restrictedDashcardId = 72;
+    const restrictedCardId = 72;
+
+    const database = createSampleDatabase();
+    const viewableDashcard = createMockDashboardCard({
+      id: viewableDashcardId,
+      card_id: viewableCardId,
+      dashboard_id: dashboardId,
+      card: createMockCard({ id: viewableCardId }),
+    });
+    // Cards the current user can't read are returned by /api/dashboard/:id
+    // with dataset_query stripped off the embedded card.
+    const restrictedDashcard = createMockDashboardCard({
+      id: restrictedDashcardId,
+      card_id: restrictedCardId,
+      dashboard_id: dashboardId,
+      card: createMockCard({
+        id: restrictedCardId,
+        dataset_query: undefined as never,
+      }),
+    });
+
+    const batchCalls = setupDashboardCardQueryBatchEndpoint(dashboardId, [
+      { id: viewableDashcardId, card_id: viewableCardId },
+      { id: restrictedDashcardId, card_id: restrictedCardId },
+    ]);
+
+    const DASHBOARD = createMockDashboard({
+      id: dashboardId,
+      dashcards: [viewableDashcard, restrictedDashcard],
+    });
+    const state: Partial<State> = {
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD.id,
+        dashboards: {
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: [viewableDashcardId, restrictedDashcardId],
+          }),
+        },
+        dashcards: {
+          [viewableDashcardId]: viewableDashcard,
+          [restrictedDashcardId]: restrictedDashcard,
+        },
+      }),
+      entities: createMockEntitiesState({ databases: [database] }),
+      settings: createMockSettingsState(),
+    };
+
+    const dispatch = createMockDispatch(() => state);
+    await fetchDashboardCardData()(dispatch as never, (() => state) as never);
+
+    expect(batchCalls).toHaveLength(1);
+    const body = JSON.parse(String(batchCalls[0].init?.body ?? "{}"));
+    expect(
+      body.cards.map((c: { dashcard_id: number }) => c.dashcard_id).sort(),
+    ).toEqual([viewableDashcardId, restrictedDashcardId]);
+  });
 });
 
 describe("reloadDashboardCards", () => {

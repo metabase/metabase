@@ -258,13 +258,15 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboard = dashboards[dashboardId];
 
+    // Safe to assert non-null here: the `!card.dataset_query` guard above
+    // is the only case buildCardQuery returns null.
     const { datasetQuery, queryParams } = buildCardQuery(
       card,
       dashcard,
       dashboard.parameters,
       parameterValues,
       editingDashboard?.parameters,
-    );
+    )!;
 
     const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
     if (!reload) {
@@ -616,19 +618,22 @@ export const fetchDashboardCardData =
     type BatchEntry = {
       card: Card;
       dashcard: (typeof nonVirtualDashcards)[number]["dashcard"];
-      queryParams: ReturnType<typeof getDatasetQueryParams>;
+      // `null` when the card was stripped of `dataset_query` by the backend —
+      // the dashcard still goes in the batch so the backend can emit the 403.
+      queryParams: ReturnType<typeof getDatasetQueryParams> | null;
     };
     const batchEntries: BatchEntry[] = useBatchEndpoint
       ? nonVirtualDashcardsToFetch.map(({ card, dashcard }) => ({
           card: card as Card,
           dashcard,
-          queryParams: buildCardQuery(
-            card as Card,
-            dashcard,
-            dashboard.parameters,
-            parameterValues,
-            editingDashboard?.parameters,
-          ).queryParams,
+          queryParams:
+            buildCardQuery(
+              card as Card,
+              dashcard,
+              dashboard.parameters,
+              parameterValues,
+              editingDashboard?.parameters,
+            )?.queryParams ?? null,
         }))
       : [];
 
@@ -746,7 +751,12 @@ export const fetchDashboardCardData =
       for (const { card, dashcard, queryParams } of batchCardsToFetch) {
         const deferred = defer();
         batchDeferreds.set(`${dashcard.id},${card.id}`, deferred);
-        setFetchCardDataCancel(card.id, dashcard.id, deferred, queryParams);
+        setFetchCardDataCancel(
+          card.id,
+          dashcard.id,
+          deferred,
+          queryParams ?? undefined,
+        );
       }
 
       const clearBatchDeferreds = () => {
@@ -980,6 +990,13 @@ function buildCardQuery(
   parameterValues: ParameterValuesMap,
   editingDashboardParameters: Parameter[] | null | undefined,
 ) {
+  // The backend strips `dataset_query` from cards the current user can't read.
+  // Return null so the batch dispatch can still include the dashcard — the
+  // backend's per-card runner emits a real 403 card-error which the FE then
+  // surfaces as the standard permission-error tile.
+  if (!card.dataset_query) {
+    return null;
+  }
   const savedParameterIds = new Set(
     editingDashboardParameters?.map((p) => p.id),
   );
