@@ -5,7 +5,7 @@ import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { Code } from "metabase/ui";
+import { Box, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
@@ -204,7 +204,7 @@ interface TagExampleProps {
 const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
-    <p>
+    <Box py="sm">
       <Code block>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
         <Button
@@ -215,7 +215,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
           {t`Try it`}
         </Button>
       )}
-    </p>
+    </Box>
   </div>
 );
 
