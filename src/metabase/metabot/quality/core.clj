@@ -10,7 +10,6 @@
   entity-usage get a `pre-foundation` sentinel; conversations that throw
   inside extract get an `extract-error` sentinel."
   (:require
-   [clojure.string :as str]
    [metabase.metabot.quality.attribution :as attribution]
    [metabase.metabot.quality.constants :as quality.constants]
    [metabase.metabot.quality.extract :as extract]
@@ -87,41 +86,29 @@
 ;;; Breakdown shape
 ;;; ---------------------------------------------------------------------------
 
-(defn- na->nil
-  "Map the `:na` sentinel to JSON null; pass any computed value through."
-  [v]
-  (when-not (= :na v) v))
-
-(defn- subscore-na-name
-  "Render a subscore key as its persisted snake-case string."
-  [k]
-  (str/replace (name k) "-" "_"))
-
 (defn- build-breakdown
   "Build the JSON-encodable `quality_breakdown` map persisted on the
   conversation row. Metric values read `1 = good`; `:na` serializes as
-  null."
+  null. `:subscores` nests each subscore's `:value` and member `:metrics`
+  (the shared [[subscores/project-json]] projection); `:diagnostics`
+  carries the run-level iteration/tool/termination counts and the
+  entity-set sizes."
   [normalized metrics subscores]
   (merge
    {:version quality.constants/quality-score-version}
-   ;; `:quality_score` (the composite) + a snake-cased `:subscores` map —
+   ;; `:quality_score` (the composite) + a nested `:subscores` map —
    ;; the same projection the per-message attribution writes.
-   (subscores/project-json subscores)
-   {:subscore_na       (mapv subscore-na-name (sort (:na subscores)))
-    :metrics           {:canonical_source_share (na->nil (:canonical-source-share metrics))
-                        :search_efficiency      (na->nil (:search-efficiency metrics))
-                        :grounded_source_share  (na->nil (:grounded-source-share metrics))
-                        :tool_call_failure_rate (:tool-call-failure-rate metrics)
-                        :termination_health     (:termination-health metrics)}
-    :set_cardinalities {:prompt_context (count (get-in normalized [:sets :P]))
-                        :discovered     (count (get-in normalized [:sets :D]))
-                        :authored       (count (get-in normalized [:sets :Q]))
-                        :inspected      (count (get-in normalized [:sets :I]))
-                        :hallucinated   (count (get-in normalized [:sets :H]))}
-    :termination       (some-> (get-in normalized [:temporal :terminal-state]) name)
-    :context           {:iterations (get-in normalized [:temporal :iterations] 0)
-                        :tool_calls (count (:tool-events normalized))
-                        :errors     (count (filter :error (:tool-events normalized)))}}))
+   (subscores/project-json metrics subscores)
+   {:diagnostics
+    {:n_iterations  (get-in normalized [:temporal :iterations] 0)
+     :n_tool_calls  (count (:tool-events normalized))
+     :n_errors      (count (filter :error (:tool-events normalized)))
+     :termination   (some-> (get-in normalized [:temporal :terminal-state]) name)
+     :entity_counts {:prompt_context (count (get-in normalized [:sets :P]))
+                     :discovered     (count (get-in normalized [:sets :D]))
+                     :authored       (count (get-in normalized [:sets :Q]))
+                     :inspected      (count (get-in normalized [:sets :I]))
+                     :hallucinated   (count (get-in normalized [:sets :H]))}}}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Pipeline composition

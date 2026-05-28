@@ -8,7 +8,9 @@
 
   The composite is the geometric mean over the non-N/A subscores, so a
   single weak subscore dominates. Pure given the metrics map from
-  [[metabase.metabot.quality.metrics/compute]].")
+  [[metabase.metabot.quality.metrics/compute]]."
+  (:require
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,6 +19,11 @@
   [:canonical-source-share
    :search-efficiency
    :grounded-source-share])
+
+(def ^:private execution-metric-keys
+  "Metric keys that compose Execution Health, in a stable order."
+  [:tool-call-failure-rate
+   :termination-health])
 
 (defn- mean
   "Arithmetic mean of a non-empty seq of doubles."
@@ -74,19 +81,43 @@
      :composite           (geometric-mean active)
      :na                  na}))
 
+(defn- na->nil
+  "Map the `:na` sentinel to JSON null; pass any computed value through."
+  [v]
+  (when-not (= :na v) v))
+
+(defn- metric-json-key
+  "Render an internal metric keyword (`:canonical-source-share`) as its
+  persisted snake-case key (`:canonical_source_share`)."
+  [k]
+  (keyword (str/replace (name k) "-" "_")))
+
+(defn- subscore-entry
+  "Build the persisted `{:value .. :metrics {..}}` map for one subscore:
+  its composed health (already nil when N/A) plus its member metric
+  healths, snake-cased and with `:na` rendered as JSON null."
+  [value metric-keys metrics]
+  {:value   value
+   :metrics (into {}
+                  (map (fn [k] [(metric-json-key k) (na->nil (metrics k))]))
+                  metric-keys)})
+
 (defn project-json
-  "Project a composed-subscores map (the result of [[compose]]) into the
+  "Project the metrics and composed-subscores maps (the results of
+  [[metabase.metabot.quality.metrics/compute]] and [[compose]]) into the
   persisted JSON shape shared by the conversation-level `quality_breakdown`
   and the per-message `quality_attribution`: the headline `quality_score`
-  (the composite) alongside a snake-cased `subscores` map of the two
-  component subscores. `data_source_quality` is already nil when N/A.
+  (the composite) alongside a snake-cased `subscores` map. Each subscore
+  nests its own `:value` (nil when N/A) and the `:metrics` that compose it.
 
   Single source of truth for the persisted shape so the two payloads can't
   drift apart."
-  [subs]
+  [metrics subs]
   {:quality_score (:composite subs)
-   :subscores     {:data_source_quality (:data-source-quality subs)
-                   :execution_health    (:execution-health subs)}})
+   :subscores     {:data_source_quality (subscore-entry (:data-source-quality subs)
+                                                        data-source-metric-keys metrics)
+                   :execution_health    (subscore-entry (:execution-health subs)
+                                                        execution-metric-keys metrics)}})
 
 (comment
   ;; Healthy: grounded authoring, no tool errors, clean exit → composite 1.0.

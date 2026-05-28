@@ -223,7 +223,7 @@
           obs      (observables-for-row out 100)
           o        (first (filter #(= "tool_error" (:kind %)) obs))]
       (is o)
-      (is (= "execution_health" (:concern_signal o)))
+      (is (= "tool_call_failure_rate" (:concern_signal o)))
       (is (= "c1" (get-in o [:context :tool_call])))
       (is (= "edit_sql_query" (get-in o [:context :function])))
       (is (= {:msg "syntax error"} (get-in o [:context :error]))))))
@@ -240,7 +240,7 @@
           obs      (observables-for-row out 100)
           o        (first (filter #(= "iter_cap" (:kind %)) obs))]
       (is o)
-      (is (= "execution_health" (:concern_signal o)))
+      (is (= "termination_health" (:concern_signal o)))
       (is (= "iter_cap" (get-in o [:context :terminal_state]))))))
 
 (deftest error-termination-fires-on-error-test
@@ -251,7 +251,7 @@
           o        (first (filter #(= "error_termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "execution_health" (:concern_signal o)))
+      (is (= "termination_health" (:concern_signal o)))
       (is (= "error" (get-in o [:context :terminal_state]))))))
 
 (deftest aborted-collapses-to-error-termination-test
@@ -264,7 +264,7 @@
           o        (first (filter #(= "error_termination" (:kind %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "execution_health" (:concern_signal o)))
+      (is (= "termination_health" (:concern_signal o)))
       (is (= "aborted" (get-in o [:context :terminal_state]))))))
 
 (deftest clean-termination-emits-no-termination-observable-test
@@ -303,7 +303,7 @@
           conv-subs  (subscores/compose metrics)
           out        (attribution/project normalized governance)
           last-pref  (select-keys (get out 200) [:quality_score :subscores])]
-      (is (= (subscores/project-json conv-subs)
+      (is (= (subscores/project-json metrics conv-subs)
              last-pref)))))
 
 (deftest prefix-score-tightens-as-conversation-progresses-test

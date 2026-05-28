@@ -118,7 +118,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest na-set-sorts-deterministically-test
-  (testing "(sort (:na out)) gives a stable seq for the breakdown's subscore_na slot"
+  (testing "(sort (:na out)) gives a stable seq of the N/A subscore keys"
     (let [out (subscores/compose (metrics :grounded-source-share :na))]
       (is (= [:data-source-quality] (sort (:na out)))))))
 
@@ -128,15 +128,26 @@
 
 (deftest project-json-surfaces-composite-as-quality-score-test
   (testing "project-json lifts the composite to a top-level quality_score and
-            snake-cases the two component subscores"
-    (let [subs (subscores/compose (metrics :grounded-source-share 1.0
-                                           :tool-call-failure-rate 0.0
-                                           :termination-health     1.0))]
+            nests each subscore's value and member metrics under it"
+    (let [m    (metrics :grounded-source-share 1.0
+                        :tool-call-failure-rate 0.0
+                        :termination-health     1.0)
+          subs (subscores/compose m)]
       (is (= {:quality_score 1.0
-              :subscores     {:data_source_quality 1.0 :execution_health 1.0}}
-             (subscores/project-json subs))))))
+              :subscores     {:data_source_quality {:value   1.0
+                                                    :metrics {:canonical_source_share nil
+                                                              :search_efficiency      nil
+                                                              :grounded_source_share  1.0}}
+                              :execution_health    {:value   1.0
+                                                    :metrics {:tool_call_failure_rate 0.0
+                                                              :termination_health     1.0}}}}
+             (subscores/project-json m subs))))))
 
 (deftest project-json-renders-na-data-source-quality-as-nil-test
-  (testing "an N/A Data-Source Quality projects as nil (JSON null), never :na"
-    (let [subs (subscores/compose (metrics :grounded-source-share :na))]
-      (is (nil? (:data_source_quality (:subscores (subscores/project-json subs))))))))
+  (testing "an N/A Data-Source Quality projects its value as nil (JSON null), never :na,
+            and its N/A member metrics likewise as nil"
+    (let [m    (metrics :grounded-source-share :na)
+          subs (subscores/compose m)
+          dsq  (:data_source_quality (:subscores (subscores/project-json m subs)))]
+      (is (nil? (:value dsq)))
+      (is (nil? (:grounded_source_share (:metrics dsq)))))))

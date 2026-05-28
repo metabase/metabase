@@ -160,11 +160,10 @@
             "a real breakdown is written, not a pre-foundation sentinel")
         (is (= 1.0 (:quality_score breakdown))
             "composite surfaces as the headline quality_score inside the breakdown")
-        (is (= 1.0 (:execution_health (:subscores breakdown))))
-        (is (nil? (:data_source_quality (:subscores breakdown)))
-            "no data sources touched → Data-Source Quality N/A")
-        (is (= ["data_source_quality"] (:subscore_na breakdown)))
-        (is (= "model_signaled_done" (:termination breakdown)))))))
+        (is (= 1.0 (get-in breakdown [:subscores :execution_health :value])))
+        (is (nil? (get-in breakdown [:subscores :data_source_quality :value]))
+            "no data sources touched → Data-Source Quality N/A (value nil)")
+        (is (= "model_signaled_done" (get-in breakdown [:diagnostics :termination])))))))
 
 (deftest score-conversation-extract-error-writes-sentinel-test
   (testing "if extract/normalize throws, the pipeline writes the extract-error
@@ -236,28 +235,27 @@
           (is (= score (:quality_score row))))
         (testing "persisted breakdown shape"
           (is (= quality.constants/quality-score-version (:version breakdown)))
-          (is (= "final_response" (:termination breakdown)))
-          (is (= 0.5 (:data_source_quality (:subscores breakdown))))
-          (is (= 1.0 (:execution_health (:subscores breakdown))))
+          (is (= "final_response" (get-in breakdown [:diagnostics :termination])))
+          (is (= 0.5 (get-in breakdown [:subscores :data_source_quality :value])))
+          (is (= 1.0 (get-in breakdown [:subscores :execution_health :value])))
           (is (< 0.7071 (:quality_score breakdown) 0.7072)
               "composite surfaces as the headline quality_score inside the breakdown")
-          (is (= [] (:subscore_na breakdown))
-              "both subscores applicable on this fixture")
           (is (= {:canonical_source_share 0.0
                   :search_efficiency      nil
-                  :grounded_source_share  1.0
-                  :tool_call_failure_rate 0.0
-                  :termination_health     1.0}
-                 (:metrics breakdown))
+                  :grounded_source_share  1.0}
+                 (get-in breakdown [:subscores :data_source_quality :metrics]))
               "authored table is grounded but non-canonical → canonical-source share 0.0;
-               a single search-free turn leaves search-efficiency N/A (null); a clean
-               final_response exit → termination health 1.0")
+               a single search-free turn leaves search-efficiency N/A (null)")
+          (is (= {:tool_call_failure_rate 0.0
+                  :termination_health     1.0}
+                 (get-in breakdown [:subscores :execution_health :metrics]))
+              "no tool errors → failure rate 0.0; a clean final_response exit → termination health 1.0")
           (is (= {:prompt_context 1 :discovered 0 :authored 1 :inspected 0 :hallucinated 0}
-                 (:set_cardinalities breakdown))
+                 (get-in breakdown [:diagnostics :entity_counts]))
               "the user_is_viewing table lands in prompt-context; the authoring-tool input
                lands in authored; authored ⊆ prompt-context so nothing is hallucinated")
-          (is (= {:iterations 1 :tool_calls 1 :errors 0}
-                 (:context breakdown))
+          (is (= {:n_iterations 1 :n_tool_calls 1 :n_errors 0}
+                 (select-keys (:diagnostics breakdown) [:n_iterations :n_tool_calls :n_errors]))
               "single tool call, single iteration, no errors"))
         (testing "per-turn quality_attribution lands on the assistant row"
           (let [msgs            (t2/select :model/MetabotMessage
@@ -273,6 +271,6 @@
             (is (= [] (:observables attribution))
                 "clean conversation → no observables on the only assistant turn")
             (testing "last (and only) assistant turn's score matches the conversation-level score"
-              (is (= 0.5 (:data_source_quality subscores)))
-              (is (= 1.0 (:execution_health subscores)))
+              (is (= 0.5 (get-in subscores [:data_source_quality :value])))
+              (is (= 1.0 (get-in subscores [:execution_health :value])))
               (is (< 0.7071 (:quality_score attribution) 0.7072)))))))))

@@ -16,8 +16,14 @@
    :observables   [{:concern_signal \"...\" :kind \"...\" :entity {...} :context {...}}
                    ...]
    :quality_score 0.91
-   :subscores     {:data_source_quality 0.84 :execution_health 1.0}}
-  ```"
+   :subscores     {:data_source_quality {:value 0.84 :metrics {...}}
+                   :execution_health    {:value 1.0  :metrics {...}}}}
+  ```
+
+  Each observable's `:concern_signal` names the metric it is evidence for
+  (`grounded_source_share`, `search_efficiency`, `tool_call_failure_rate`,
+  `termination_health`), so a reviewer can join an observable straight onto
+  the nested `subscores → metrics` value it explains."
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.extract :as extract]
@@ -132,8 +138,9 @@
 
 (defn- tool-error-observables
   "For each errored tool-event, emit `tool-error` on the turn where the
-  error occurred. Preserves the raw `:error` value so reviewers can see
-  what the tool reported back to the agent."
+  error occurred. Evidence for `tool_call_failure_rate`. Preserves the raw
+  `:error` value so reviewers can see what the tool reported back to the
+  agent."
   [normalized call-id->msg]
   (for [e       (:tool-events normalized)
         :when   (some? (:error e))
@@ -141,7 +148,7 @@
         :when   msg-id]
     [msg-id
      (observable
-      "execution_health"
+      "tool_call_failure_rate"
       "tool_error"
       {:context {:tool_call (:call-id e)
                  :function  (:function e)
@@ -152,19 +159,19 @@
   `:iter_cap` produces `iter_cap`; `:error` and `:aborted` both produce
   `error_termination`. Clean terminations (`:final_response`,
   `:model_signaled_done`) yield no observable — there's nothing to
-  attribute. Both kinds trace to execution health."
+  attribute. Both kinds are evidence for `termination_health`."
   [normalized last-msg-id]
   (let [state (get-in normalized [:temporal :terminal-state])]
     (cond
       (nil? last-msg-id) []
       (= state :iter_cap)
-      [[last-msg-id (observable "execution_health" "iter_cap"
+      [[last-msg-id (observable "termination_health" "iter_cap"
                                 {:context {:terminal_state "iter_cap"}})]]
       (= state :error)
-      [[last-msg-id (observable "execution_health" "error_termination"
+      [[last-msg-id (observable "termination_health" "error_termination"
                                 {:context {:terminal_state "error"}})]]
       (= state :aborted)
-      [[last-msg-id (observable "execution_health" "error_termination"
+      [[last-msg-id (observable "termination_health" "error_termination"
                                 {:context {:terminal_state "aborted"}})]]
       :else [])))
 
@@ -205,7 +212,7 @@
                         temporal/derive)
         metrics     (metrics/compute normalized governance)
         subs        (subscores/compose metrics)]
-    (subscores/project-json subs)))
+    (subscores/project-json metrics subs)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public surface
