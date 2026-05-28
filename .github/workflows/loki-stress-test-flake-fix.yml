@@ -59,9 +59,7 @@ jobs:
           fi
 
           FILES=$( \
-            gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-              --paginate \
-              --jq '.[] | select(.status != "removed") | .filename' \
+            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' \
             | grep '\.stories\.tsx$' \
             | xargs -n1 \
             | sort -u \
