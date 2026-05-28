@@ -195,14 +195,14 @@
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
   close everything. Centralizes the boilerplate so the per-resource drop fns
   don't repeat it."
-  [f]
+  [f & args]
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
    (no-db-connection-spec)
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (f stmt)))))
+       (apply f stmt args)))))
 
 (defn- drop-old-datasets!
   "Drop test datasets (databases) prefixed by `sha_` that are >2 days old."
@@ -633,43 +633,51 @@
 ;; Sadly Snowflake does not implement locks outside very limited scope of
 ;; automatic locking around DDL; there are no advisory locks, so we are stuck
 ;; building them ourselves out of table rows.
-(defn- setup-locks [conn]
+(defn- setup-locks! []
   ;; Reuse the existing tracking database, but make a new table.
-  (jdbc/execute! conn "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")))
   ;; normal tables literally cannot have primary keys enforced! must be hybrid.
-  (jdbc/execute! conn "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
-                       (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())"))
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
+                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())"))))
 
-(defn- acquire-lock [conn dataset-name]
+(alter-var-root #'setup-locks! memoize)
+
+(defn- try-lock! [^java.sql.Statement stmt dataset-name]
   (try
-    (jdbc/execute! conn ["INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES (?)"
-                         dataset-name])
+    (.executeQuery stmt (format "INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES ('%s')"
+                                dataset-name))
     true
     (catch SnowflakeSQLException e
       (when-not (= "A primary key already exists." (.getMessage e))
         (throw e))
-      (jdbc/execute! conn ["DELETE FROM metabase_test_tracking.PUBLIC.locks
-                             WHERE TIMEDIFF('seconds', current_timestamp()::TIMESTAMPTZ, at) > 60"
-                           dataset-name])
+      (with-write-stmt! (fn [^java.sql.Statement stmt]
+                          (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
+                                           WHERE TIMEDIFF('seconds', current_timestamp()::TIMESTAMPTZ, at) > 60")))
       false)))
+
+(defn- lock! [dataset-name]
+  (setup-locks!)
+  (loop [tries 0]
+    (let [locked? (with-write-stmt! try-lock! dataset-name)]
+      (when (< 10000 tries)
+        (throw (Exception. "could not acquire snowflake lock")))
+      (when (not locked?)
+        (Thread/sleep 100)
+        (recur (inc tries))))))
+
+(defn- unlock! [dataset-name ^java.sql.Statement stmt]
+  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
+                              dataset-name)))
 
 (defmethod test.data.impl.get-or-create/dataset-lock :snowflake
   [_driver dataset-name]
   (let [lock (reify Lock
                (lock [_]
-                 (let [conn (no-db-connection-spec)]
-                   (setup-locks conn)
-                   (loop [locked? (acquire-lock conn dataset-name)
-                          tries 0]
-                     (when (< 10000 tries)
-                       (throw (Exception. "could not acquire snowflake lock")))
-                     (when (not locked?)
-                       (Thread/sleep 100)
-                       (recur (acquire-lock conn dataset-name) (inc tries))))))
+                 (lock! dataset-name))
                (unlock [_]
-                 (jdbc/execute! (no-db-connection-spec)
-                                ["DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = ?"
-                                 dataset-name])))]
+                 (with-write-stmt! (partial unlock! dataset-name))))]
     (reify ReadWriteLock
       ;; currently readLock is only used for one call, so use same lock as write
       (readLock [_] lock)
