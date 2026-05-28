@@ -979,6 +979,7 @@ const RETIRED_ENTITY_NAMES = [
   "fields",
   "measures",
   "metrics",
+  "questions",
   "schemas",
   "segments",
   "snippets",

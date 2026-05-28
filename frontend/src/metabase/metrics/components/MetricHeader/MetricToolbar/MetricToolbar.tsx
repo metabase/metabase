@@ -10,12 +10,12 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
+  PLUGIN_CACHING,
   PLUGIN_LIBRARY,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
@@ -26,7 +26,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Button, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -34,12 +34,15 @@ import type { Card } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../types";
 
+import S from "./MetricToolbar.module.css";
+
 type MetricModalType =
   | "move"
   | "copy"
   | "archive"
   | "add-to-dashboard"
-  | "alert";
+  | "alert"
+  | "caching";
 
 interface MetricToolbarProps {
   card: Card;
@@ -111,6 +114,11 @@ function MetricToolbarButtons({
     PLUGIN_LIBRARY.isLibraryCollectionType(card.collection?.type) &&
     canAccessDataStudio;
 
+  const isCacheableQuestion =
+    card.can_write &&
+    PLUGIN_CACHING.isGranularCachingEnabled() &&
+    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
+
   return (
     <Group wrap="nowrap" gap="sm">
       {isNumericMetric(card) && (
@@ -125,7 +133,14 @@ function MetricToolbarButtons({
       )}
       <Menu position="bottom-end">
         <Menu.Target>
-          <ToolbarButton icon="ellipsis" aria-label={t`More options`} />
+          <ActionIcon
+            variant="default"
+            size="lg"
+            className={S.moreOptionsButton}
+            aria-label={t`More options`}
+          >
+            <Icon name="ellipsis" />
+          </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
@@ -176,6 +191,18 @@ function MetricToolbarButtons({
                 ? t`Edit alerts`
                 : t`Create an alert`}
             </Menu.Item>
+          )}
+
+          {isCacheableQuestion && (
+            <>
+              <Menu.Divider role="separator" />
+              <Menu.Item
+                leftSection={<Icon name="sync" />}
+                onClick={() => onOpenModal("caching")}
+              >
+                {t`Caching`}
+              </Menu.Item>
+            </>
           )}
 
           {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
@@ -248,6 +275,14 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
       return (
         <QuestionAlertListModal
           question={new Question(card)}
+          onClose={onClose}
+        />
+      );
+    case "caching":
+      return (
+        <PLUGIN_CACHING.MetricCachingModal
+          cardId={card.id}
+          cardName={card.name}
           onClose={onClose}
         />
       );

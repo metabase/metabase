@@ -99,8 +99,9 @@ describe("NewDatabaseModal", () => {
   it("tracks an analytics event when a database is added", async () => {
     const { workspace } = setup();
 
+    await userEvent.click(await screen.findByLabelText("Schemas to include"));
     await userEvent.click(
-      await screen.findByRole("checkbox", { name: "public" }),
+      await screen.findByRole("option", { name: "public" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
