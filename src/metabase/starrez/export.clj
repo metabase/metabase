@@ -104,6 +104,43 @@
                  :when success]
              [name blob_name])))
 
+(defn- successful-report-blob-files
+  "Build one {report-id blob-name} map per successful report export."
+  [results]
+  (->> results
+       (filter #(and (:success %) (= (:kind %) :report)))
+       (mapv (fn [{:keys [name blob_name]}] {name blob_name}))))
+
+(defn- successful-table-blob-files
+  "Build one combined {table-name blob-name} map for successful table exports."
+  [results]
+  (successful-blob-files (filter #(= (:kind %) :table) results)))
+
+(defn- record-export-snapshots!
+  "Record table exports as one snapshot and each report export as its own snapshot.
+  Returns the ids of the created snapshot rows."
+  [results]
+  (let [table-files  (successful-table-blob-files results)
+        report-files (successful-report-blob-files results)]
+    (filterv some?
+             (into (cond-> []
+                     (seq table-files) (conj (starrez.db/record-export-week! table-files)))
+                   (map starrez.db/record-export-week!)
+                   report-files))))
+
+(defn- activate-single-snapshot
+  "Activate the exported snapshot only when the run produced exactly one snapshot.
+  Separate report snapshots need manual activation so reports are not recombined."
+  [snapshot-ids]
+  (case (count snapshot-ids)
+    0 nil
+    1 (starrez.db/activate-week!
+       (first snapshot-ids)
+       #(starrez.storage/download-export
+         (starrez.settings/starrez-blob-sas-url)
+         %))
+    {:error "Multiple snapshots were exported; activate the required snapshot manually."}))
+
 (defn run-export
   "Export all configured StarRez tables and reports to blob storage,
   then record the week's snapshot in `starrez_meta.weeks` (if Postgres is configured).
@@ -117,20 +154,14 @@
       (let [tables   (split-csv-setting (starrez.settings/starrez-export-tables))
             reports  (split-csv-setting (starrez.settings/starrez-export-reports))
             results  (into (mapv export-table tables)
-                           (mapv export-report reports))
-            blob-map (successful-blob-files results)]
-        (if (and (:activate? opts) (seq blob-map))
-          (let [week-id (starrez.db/record-export-week! blob-map)]
+                           (mapv export-report reports))]
+        (if (:activate? opts)
+          (let [snapshot-ids (record-export-snapshots! results)]
             {:results    results
-             :activation (when week-id
-                           (starrez.db/activate-week!
-                            week-id
-                            #(starrez.storage/download-export
-                              (starrez.settings/starrez-blob-sas-url)
-                              %)))})
+             :snapshots   snapshot-ids
+             :activation (activate-single-snapshot snapshot-ids)})
           (do
-            (when (seq blob-map)
-              (starrez.db/record-export-week! blob-map))
+            (record-export-snapshots! results)
             results)))
       (finally
         (reset! export-running? false)))))

@@ -76,8 +76,7 @@
         " is_active    BOOLEAN     NOT NULL DEFAULT FALSE,"
         " blob_files   JSONB       NOT NULL,"
         " notes        TEXT)")
-   (str "CREATE UNIQUE INDEX IF NOT EXISTS weeks_week_start_uniq ON "
-        meta-schema ".weeks (week_start)")
+   (str "DROP INDEX IF EXISTS " meta-schema ".weeks_week_start_uniq")
    (str "CREATE UNIQUE INDEX IF NOT EXISTS weeks_one_active ON "
         meta-schema ".weeks (is_active) WHERE is_active = TRUE")])
 
@@ -112,7 +111,7 @@
       (reset! bootstrap-once! false))))
 
 (defn record-export-week!
-  "Upsert a row in `starrez_meta.weeks` for the current ISO week.
+  "Insert a row in `starrez_meta.weeks` for the current export snapshot.
   `blob-files` is a {table-or-report-name blob-name} map.
   Returns the row id, or nil on failure."
   [blob-files]
@@ -129,9 +128,6 @@
                      conn
                      [(str "INSERT INTO " meta-schema ".weeks (week_start, fetched_at, blob_files)"
                            " VALUES (?, NOW(), ?::jsonb)"
-                           " ON CONFLICT (week_start) DO UPDATE SET"
-                           "   fetched_at = EXCLUDED.fetched_at,"
-                           "   blob_files = EXCLUDED.blob_files"
                            " RETURNING id")
                       (java.sql.Date/valueOf ^java.time.LocalDate (this-monday))
                       (json/generate-string blob-files)]
@@ -312,10 +308,10 @@
                                       (log/infof "Loading StarRez table for week %s: %s" week-id table-name)
                                       (create-and-load-table! conn table-name csv-rows))
                                     csvs)]
-                (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = FALSE WHERE is_active = TRUE")])
-                (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = TRUE WHERE id = ?") week-id])
-                (.commit conn)
-                {:results results :error nil})
+                  (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = FALSE WHERE is_active = TRUE")])
+                  (jdbc/execute! conn [(str "UPDATE " meta-schema ".weeks SET is_active = TRUE WHERE id = ?") week-id])
+                  (.commit conn)
+                  {:results results :error nil})
                 (catch Exception e
                   (try
                     (.rollback conn)

@@ -28,6 +28,25 @@ import {
   Title,
 } from "metabase/ui";
 
+function getSnapshotLabel(blobFiles: Record<string, string>) {
+  const keys = Object.keys(blobFiles);
+  const reportKeys = keys.filter((key) =>
+    blobFiles[key]?.includes("starrez_report_"),
+  );
+
+  if (keys.length === 0) {
+    return t`Empty snapshot`;
+  }
+
+  if (reportKeys.length === keys.length) {
+    return reportKeys.length === 1
+      ? `${t`Report`} ${reportKeys[0]}`
+      : `${t`Reports`} ${reportKeys.join(", ")}`;
+  }
+
+  return keys.join(", ");
+}
+
 function ConfigSection() {
   const [testConnection, { isLoading: testing, data: testResult }] =
     useTestStarRezConnectionMutation();
@@ -336,19 +355,19 @@ function PostgresConfigSection() {
   );
 }
 
-function WeeksSection() {
+function SnapshotsSection() {
   const { data, isLoading, refetch } = useListStarRezWeeksQuery();
   const [activate, { isLoading: activating, data: activateResult }] =
     useActivateStarRezWeekMutation();
 
-  const weeks = data?.weeks ?? [];
+  const snapshots = data?.weeks ?? [];
 
   return (
-    <SettingsSection title={t`Snapshot Weeks`}>
+    <SettingsSection title={t`Snapshots`}>
       <Stack gap="md">
         <Group justify="space-between" align="center">
           <Text c="text-secondary">
-            {t`Each export records a week. Click "Activate" to drop and reload starrez_data.* tables from that week's snapshot.`}
+            {t`Each export creates a snapshot. Click "Activate" to drop and reload starrez_data.* tables from that snapshot.`}
           </Text>
           <Button variant="subtle" size="sm" onClick={() => refetch()}>
             {t`Refresh`}
@@ -372,13 +391,13 @@ function WeeksSection() {
           </Flex>
         ) : data?.error ? (
           <Alert color="red">{data.error}</Alert>
-        ) : weeks.length === 0 ? (
+        ) : snapshots.length === 0 ? (
           <Text c="text-secondary">
-            {t`No snapshot weeks yet. Run an export to create one.`}
+            {t`No snapshots yet. Run an export to create one.`}
           </Text>
         ) : (
           <Stack gap="sm">
-            {weeks.map((w) => (
+            {snapshots.map((w) => (
               <Paper
                 key={w.id}
                 withBorder
@@ -392,11 +411,11 @@ function WeeksSection() {
                 <Flex justify="space-between" align="center">
                   <Stack gap={4}>
                     <Group gap="sm">
-                      <Title order={5}>{t`Week of ${w.week_start}`}</Title>
+                      <Title order={5}>{getSnapshotLabel(w.blob_files)}</Title>
                       {w.is_active && <Badge color="green">{t`Active`}</Badge>}
                     </Group>
                     <Text size="xs" c="text-secondary">
-                      {t`Fetched: ${w.fetched_at}`} •{" "}
+                      {t`Exported: ${w.fetched_at}`} •{" "}
                       {Object.keys(w.blob_files).length} {t`files`}
                     </Text>
                   </Stack>
@@ -445,7 +464,7 @@ export function StarRezSettingsPage() {
       <ConfigSection />
       <PostgresConfigSection />
       <ExportSection />
-      <WeeksSection />
+      <SnapshotsSection />
       <PastExportsSection />
     </SettingsPageWrapper>
   );
