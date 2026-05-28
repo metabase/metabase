@@ -33,25 +33,25 @@
     (ws/clear-instance-workspace!)
     (is (false? (ws/workspace-mode?)))))
 
-(deftest development-instance?-defaults-to-false-test
-  (testing "development-instance? defaults to false without a workspace and without the setting"
+(deftest development-instance-defaults-to-false-test
+  (testing "development-instance defaults to false without a workspace and without the setting"
     (mt/with-premium-features #{:workspaces}
       (ws/clear-instance-workspace!)
-      (mt/with-temporary-setting-values [ws.settings/development-instance? false]
-        (is (false? (ws.settings/development-instance?)))))))
+      (mt/with-temporary-setting-values [ws.settings/development-instance false]
+        (is (false? (ws.settings/development-instance)))))))
 
-(deftest development-instance?-honors-explicit-setting-test
-  (testing "development-instance? returns true when the setting is explicitly enabled"
+(deftest development-instance-honors-explicit-setting-test
+  (testing "development-instance returns true when the setting is explicitly enabled"
     (mt/with-premium-features #{:workspaces}
       (ws/clear-instance-workspace!)
-      (mt/with-temporary-setting-values [ws.settings/development-instance? true]
-        (is (true? (ws.settings/development-instance?)))))))
+      (mt/with-temporary-setting-values [ws.settings/development-instance true]
+        (is (true? (ws.settings/development-instance)))))))
 
-(deftest development-instance?-implicitly-true-when-workspace-loaded-test
-  (testing "development-instance? is implicitly true when an instance-workspace is loaded, even when the setting is false"
+(deftest development-instance-implicitly-true-when-workspace-loaded-test
+  (testing "development-instance is implicitly true when an instance-workspace is loaded, even when the setting is false"
     (mt/with-premium-features #{:workspaces}
-      (mt/with-temporary-setting-values [ws.settings/development-instance? false]
+      (mt/with-temporary-setting-values [ws.settings/development-instance false]
         (ws/set-instance-workspace! {:name "Acme" :databases {}})
-        (is (true? (ws.settings/development-instance?)))
+        (is (true? (ws.settings/development-instance)))
         (ws/clear-instance-workspace!)
-        (is (false? (ws.settings/development-instance?)))))))
+        (is (false? (ws.settings/development-instance)))))))

@@ -3,7 +3,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 export function getIsDevelopmentInstance(state: State): boolean {
-  return getSetting(state, "development-instance?");
+  return getSetting(state, "development-instance");
 }
 
 export function canManageWorkspaces(state: State): boolean {

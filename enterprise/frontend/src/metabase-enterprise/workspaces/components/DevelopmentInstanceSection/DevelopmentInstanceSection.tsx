@@ -20,7 +20,7 @@ import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 export function DevelopmentInstanceSection() {
   const applicationName = useSelector(getApplicationName);
   const { value, updateSetting, isLoading } = useAdminSetting(
-    "development-instance?",
+    "development-instance",
   );
   const { data: workspace } = useGetCurrentWorkspaceQuery();
 
@@ -29,7 +29,7 @@ export function DevelopmentInstanceSection() {
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     updateSetting({
-      key: "development-instance?",
+      key: "development-instance",
       value: event.currentTarget.checked,
     });
   };

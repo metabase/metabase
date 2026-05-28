@@ -236,7 +236,7 @@ export const createMockSettings = (
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
   "development-mode?": false,
-  "development-instance?": false,
+  "development-instance": false,
   "disable-cors-on-localhost": false,
   "llm-openai-model": "",
   "llm-openai-api-key": "",

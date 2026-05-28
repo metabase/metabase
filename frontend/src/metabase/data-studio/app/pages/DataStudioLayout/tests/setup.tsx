@@ -59,7 +59,7 @@ const setupRemoteSyncSettingsEndpoints = (
   setupPropertiesEndpoints(
     createMockSettings({
       ...remoteSyncSettings,
-      "development-instance?": isDevelopmentInstance,
+      "development-instance": isDevelopmentInstance,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   );
@@ -128,7 +128,7 @@ const createStoreState = ({
     }),
     settings: mockSettings({
       ...settings,
-      "development-instance?": isDevelopmentInstance,
+      "development-instance": isDevelopmentInstance,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
