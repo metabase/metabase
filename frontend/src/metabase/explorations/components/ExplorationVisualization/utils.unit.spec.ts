@@ -17,17 +17,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-// `isCartesianChart` reads from the visualization registry, which is
-// empty in jest. Stub it so `composeChartsForDocumentEmbed` recognises
-// "line"/"bar" as cartesian and runs the graph.dimensions augmentation.
-jest.mock("metabase/visualizations", () => ({
-  __esModule: true,
-  isCartesianChart: (display: string) =>
-    ["line", "bar", "area", "combo", "row", "scatter", "waterfall"].includes(
-      display,
-    ),
-}));
-
 import type { SeriesGroup } from "./utils";
 import {
   buildSeries,

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useEffect, useImperativeHandle, useRef } from "react";
 
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
+import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -101,6 +102,7 @@ function setup({
   initialMetrics = [],
   initialDimensions = [],
 }: SetupOpts = {}) {
+  setupTimelinesEndpoints([]);
   setupExplorationDataEndpoint([metricRevenue, metricChurn]);
 
   const selectionRef: React.MutableRefObject<ExplorationSelection | null> = {
