@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (def keep-me
@@ -15,3 +15,17 @@
   :export?    false
   :audit      :never
   :doc        false)
+
+(defsetting development-instance?
+  (deferred-tru "Marks this Metabase instance as a development instance that can be attached to a Workspace for testing transforms before syncing changes to production. Implicitly true whenever an `instance-workspace` is loaded.")
+  :type               :boolean
+  :default            false
+  :encryption         :no
+  :feature            :workspaces
+  :visibility         :authenticated
+  :export?            false
+  :audit              :getter
+  :can-read-from-env? true
+  :getter             (fn []
+                        (or (setting/get-value-of-type :boolean :development-instance?)
+                            (some? (instance-workspace)))))

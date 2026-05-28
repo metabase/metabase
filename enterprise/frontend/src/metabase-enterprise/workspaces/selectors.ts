@@ -1,6 +1,10 @@
 import type { State } from "metabase/redux/store";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getTokenFeature } from "metabase/setup/selectors";
+
+export function getIsDevelopmentInstance(state: State): boolean {
+  return getSetting(state, "development-instance?");
+}
 
 export function canManageWorkspaces(state: State): boolean {
   if (getUserIsAdmin(state)) {
@@ -14,6 +18,6 @@ export function canManageWorkspaceInstance(state: State): boolean {
   return getUserIsAdmin(state);
 }
 
-export function getIsDevelopmentMode(state: State): boolean {
-  return getTokenFeature(state, "development_mode");
+export function canAccessDevelopmentInstanceSettings(state: State): boolean {
+  return getUserIsAdmin(state);
 }

@@ -5,7 +5,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/redux";
 import { Stack, Title } from "metabase/ui";
 import {
   useGetCurrentWorkspaceQuery,
@@ -18,7 +17,6 @@ import type {
 } from "metabase-types/api";
 
 import { HelpMenu } from "../../components/HelpMenu";
-import { getIsDevelopmentMode } from "../../selectors";
 
 import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
@@ -77,7 +75,6 @@ function WorkspaceInstancePageBody({
 }: WorkspaceInstancePageBodyProps) {
   const databasesInfo =
     workspace != null ? getDatabasesInfo(workspace, databases, remappings) : [];
-  const isDevelopmentMode = useSelector(getIsDevelopmentMode);
 
   return (
     <PageContainer data-testid="workspace-instance-page">
@@ -102,7 +99,7 @@ function WorkspaceInstancePageBody({
               remappings={remappings}
             />
           ))}
-          {isDevelopmentMode && <DeleteSection />}
+          <DeleteSection />
         </Stack>
       )}
     </PageContainer>

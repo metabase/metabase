@@ -18,6 +18,7 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
+import { SettingsPage } from "./app/pages/SettingsPage";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
@@ -52,7 +53,7 @@ export function getDataStudioRoutes(
           {getDataStudioTransformRoutes()}
         </Route>
         <Route component={WorkspacesSectionLayout}>
-          {PLUGIN_WORKSPACES.getDataStudioRoutes()}
+          {PLUGIN_WORKSPACES.getDataStudioRoutes(store)}
         </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
@@ -81,6 +82,7 @@ export function getDataStudioRoutes(
           />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
+        <Route path="settings" component={SettingsPage} />
       </Route>
     </Route>
   );

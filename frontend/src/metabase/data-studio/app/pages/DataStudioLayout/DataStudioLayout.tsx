@@ -7,6 +7,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { canAccessDataStudioSettings } from "metabase/data-studio/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -94,6 +95,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canManageWorkspaces = useSelector(
     PLUGIN_WORKSPACES.canManageWorkspaces,
   );
+  const isDevelopmentInstance = useSelector(
+    PLUGIN_WORKSPACES.getIsDevelopmentInstance,
+  );
+  const canAccessSettings = useSelector(canAccessDataStudioSettings);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -204,7 +209,11 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             <DataStudioTab
               label={t`Workspaces`}
               icon="folder"
-              to={Urls.workspaces()}
+              to={
+                isDevelopmentInstance
+                  ? Urls.workspaceInstance()
+                  : Urls.workspaces()
+              }
               isSelected={currentTab === "workspaces"}
               showLabel={isNavbarOpened}
             />
@@ -224,6 +233,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               icon="play_outlined"
               to={Urls.transformRunList()}
               isSelected={currentTab === "runs"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {canAccessSettings && (
+            <DataStudioTab
+              label={t`Settings`}
+              icon="gear"
+              to={Urls.dataStudioSettings()}
+              isSelected={currentTab === "settings"}
               showLabel={isNavbarOpened}
             />
           )}

@@ -568,6 +568,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
+  "development-instance?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;

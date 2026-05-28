@@ -6,13 +6,10 @@ import {
   setupListTableRemappingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { TableRemapping, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockDatabase,
-  createMockSettings,
   createMockTableRemapping,
-  createMockTokenFeatures,
   createMockWorkspaceInstance,
   createMockWorkspaceInstanceDatabase,
 } from "metabase-types/api/mocks";
@@ -32,7 +29,6 @@ function setup({
       }),
     },
   }) as WorkspaceInstance | null,
-  isDevelopmentMode = false,
 } = {}) {
   setupDatabasesEndpoints([POSTGRES]);
   setupGetCurrentWorkspaceEndpoint(workspace);
@@ -40,15 +36,6 @@ function setup({
 
   renderWithProviders(<Route path="*" component={WorkspaceInstancePage} />, {
     withRouter: true,
-    storeInitialState: {
-      settings: createMockSettingsState(
-        createMockSettings({
-          "token-features": createMockTokenFeatures({
-            development_mode: isDevelopmentMode,
-          }),
-        }),
-      ),
-    },
   });
 }
 
@@ -81,7 +68,7 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the empty state when no workspace is set up", async () => {
+  it("renders the empty state with set up button when no workspace is set up", async () => {
     setup({ workspace: null });
 
     expect(
@@ -90,17 +77,7 @@ describe("WorkspaceInstancePage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Set up a workspace" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the set up button in the empty state on a developer instance", async () => {
-    setup({ workspace: null, isDevelopmentMode: true });
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Set up a workspace",
-      }),
+      await screen.findByRole("button", { name: "Set up a workspace" }),
     ).toBeInTheDocument();
   });
 
@@ -126,17 +103,8 @@ describe("WorkspaceInstancePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render the delete section on the main instance", async () => {
-    setup({ isDevelopmentMode: false });
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("workspace-instance-delete-section"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders the delete section on a developer instance", async () => {
-    setup({ isDevelopmentMode: true });
+  it("renders the delete section", async () => {
+    setup();
 
     expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
     expect(

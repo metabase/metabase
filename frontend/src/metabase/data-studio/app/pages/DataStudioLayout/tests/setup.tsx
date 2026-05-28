@@ -53,11 +53,13 @@ const createRemoteSyncSettings = ({
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
   tokenFeatures?: Partial<TokenFeatures>,
+  isDevelopmentInstance = false,
 ) => {
   const remoteSyncSettings = createRemoteSyncSettings(settings);
   setupPropertiesEndpoints(
     createMockSettings({
       ...remoteSyncSettings,
+      "development-instance?": isDevelopmentInstance,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   );
@@ -101,6 +103,7 @@ const setupNavbarEndpoints = (isOpened = true) => {
 interface StoreStateOptions {
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
+  isDevelopmentInstance?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
 }
@@ -108,6 +111,7 @@ interface StoreStateOptions {
 const createStoreState = ({
   isAdmin = true,
   canManageWorkspaces = false,
+  isDevelopmentInstance = false,
   remoteSyncSettings = {},
   tokenFeatures,
 }: StoreStateOptions = {}) => {
@@ -124,6 +128,7 @@ const createStoreState = ({
     }),
     settings: mockSettings({
       ...settings,
+      "development-instance?": isDevelopmentInstance,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
@@ -134,6 +139,7 @@ interface SetupOpts {
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
+  isDevelopmentInstance?: boolean;
   currentWorkspace?: WorkspaceInstance | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
@@ -148,6 +154,7 @@ export const setup = ({
   remoteSyncBranch = null,
   isAdmin = true,
   canManageWorkspaces = false,
+  isDevelopmentInstance = false,
   currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
@@ -182,7 +189,11 @@ export const setup = ({
   };
 
   setupSettingsEndpoints([]);
-  setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
+  setupRemoteSyncSettingsEndpoints(
+    remoteSyncSettings,
+    tokenFeatures,
+    isDevelopmentInstance,
+  );
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
@@ -196,6 +207,7 @@ export const setup = ({
   const state = createStoreState({
     isAdmin,
     canManageWorkspaces,
+    isDevelopmentInstance,
     remoteSyncSettings,
     tokenFeatures,
   });

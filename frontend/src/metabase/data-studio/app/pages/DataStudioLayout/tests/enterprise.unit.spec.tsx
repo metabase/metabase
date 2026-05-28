@@ -207,14 +207,29 @@ describe("DataStudioLayout", () => {
   });
 
   describe("workspaces tab", () => {
-    it("admin sees the tab and it links to the workspaces index", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
+    it("admin on a non-development instance sees the tab linking to the workspaces list", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: true,
+        isDevelopmentInstance: false,
+      });
 
       const tab = await screen.findByLabelText("Workspaces");
       expect(tab).toHaveAttribute("href", Urls.workspaces());
     });
 
-    it("non-admin with manage-workspaces permission sees the tab linking to the workspaces index", async () => {
+    it("admin on a development instance sees the tab linking to the workspace instance page", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        isAdmin: true,
+        isDevelopmentInstance: true,
+      });
+
+      const tab = await screen.findByLabelText("Workspaces");
+      expect(tab).toHaveAttribute("href", Urls.workspaceInstance());
+    });
+
+    it("non-admin with manage-workspaces permission sees the tab linking to the workspaces list", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         isAdmin: false,

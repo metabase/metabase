@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import type { ReactNode } from "react";
 import type { RouteComponent } from "react-router";
 
@@ -13,10 +14,13 @@ export type AdminConnectionInfoSectionProps = {
 const getDefaultWorkspaces = () => ({
   canManageWorkspaces: (_state: State): boolean => false,
   canManageWorkspaceInstance: (_state: State): boolean => false,
-  getDataStudioRoutes: (): ReactNode => null,
+  canAccessDevelopmentInstanceSettings: (_state: State): boolean => false,
+  getIsDevelopmentInstance: (_state: State): boolean => false,
+  getDataStudioRoutes: (_store: Store<State>): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
   AdminConnectionInfoSection:
     PluginPlaceholder<AdminConnectionInfoSectionProps>,
+  DevelopmentInstanceSection: PluginPlaceholder,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultWorkspaces();

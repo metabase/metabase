@@ -6,6 +6,10 @@ export function workspaces() {
   return WORKSPACES_ROOT_URL;
 }
 
+export function workspaceInstance() {
+  return `${WORKSPACES_ROOT_URL}/instance`;
+}
+
 export function workspace(id: WorkspaceId) {
   return `${WORKSPACES_ROOT_URL}/${id}`;
 }

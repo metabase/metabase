@@ -278,6 +278,10 @@ export function dataStudioGitSync() {
   return `${dataStudio()}/git-sync`;
 }
 
+export function dataStudioSettings() {
+  return `${dataStudio()}/settings`;
+}
+
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
   return `${dataStudioLibrary()}/snippets/${snippetId}`;
 }
