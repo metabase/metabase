@@ -552,7 +552,7 @@
   (testing "img-src defaults to wildcard when csp-img-enabled is false (master-compatible behavior)"
     (mt/with-temporary-setting-values [csp-img-enabled false
                                        csp-img-allowed-hosts "example.com"]
-      (is (= "img-src *" (csp-directive "img-src")))))
+      (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
   (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
     (mt/with-temporary-setting-values [csp-img-enabled true
                                        csp-img-allowed-hosts ""]

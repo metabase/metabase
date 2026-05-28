@@ -222,7 +222,7 @@
                   :img-src      (if (server.settings/csp-img-enabled)
                                   (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
                                     config/is-dev? (conj frontend-address))
-                                  ["*"])
+                                  (into ["*"] always-allowed-resource-hosts))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
