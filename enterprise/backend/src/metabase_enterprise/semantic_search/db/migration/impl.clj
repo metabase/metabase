@@ -1,8 +1,11 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
-   [next.jdbc :as jdbc]))
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [toucan2.core :as t2]))
 
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
@@ -86,6 +89,34 @@
                          (execute! {:alter-table [(keyword table-name)]
                                     :add-column  [[:data_layer :text :if-not-exists]]}))))
 
+(defn- library-root-type-by-collection-id
+  "Map `collection-id → root-collection-type` for every collection currently in a Library tree.
+  Library content rules (`metabase-enterprise.library.validation`) constrain every collection
+  inside a library tree to itself carry a library `:type`, so one appdb query covers the whole
+  forest — the root of each subtree is just the first id parsed out of `:location` (or the row
+  itself when `:location` is `\"/\"`).
+
+  Returns `{}` and logs a warning if the appdb is unreachable / unmigrated (only expected in
+  test setups that exercise pgvector before the appdb schema is up); production semantic-search
+  init always runs after the appdb is migrated."
+  [library-types]
+  (let [colls (try
+                (t2/select [:model/Collection :id :type :location]
+                           :type [:in library-types])
+                (catch Exception e
+                  (log/warn e "Skipping Library subcollection backfill — appdb lookup failed")
+                  nil))
+        type-by-id (into {} (map (juxt :id :type)) colls)]
+    (into {}
+          (map (fn [{:keys [id type location]}]
+                 (let [root-id (some-> location
+                                       (str/split #"/")
+                                       (->> (remove str/blank?))
+                                       first
+                                       parse-long)]
+                   [id (or (type-by-id root-id) type)])))
+          colls)))
+
 (defn- add-root-collection-type-column!
   "Migration 4: Add `root_collection_type` column to index tables so the `:library` scorer can
   match items in arbitrarily deep sub-collections of a library tree.
@@ -93,22 +124,23 @@
   Backfill source order:
     1. The gate's stored document JSON (`document->>'root_collection_type'`). Authoritative when
        the gate doc was written by a spec that computes the field.
-    2. The row's own `collection_type` when it already equals a library root type. This works
-       because library-typed collections cannot currently have sub-collections — every indexed
-       row with `collection_type` in the library set is necessarily at the root of its tree.
-       If/when library sub-collections become possible, this fallback must be replaced with a
-       proper materialized-path lookup against the application DB.
+    2. An application-DB lookup of every Library collection (root + subcollection). For each
+       index row whose `collection_id` resolves into the library forest, set
+       `root_collection_type` to the top-level ancestor's `:type`. Covers Library sub-collections,
+       whose gate doc may not yet carry the `root_collection_type` field.
 
-  Only library root types are considered for the fallback; other root types (`trash`,
-  `instance-analytics`, etc.) are irrelevant to the `:library` scorer and stay NULL.
+  Only Library trees are walked; other root types (`trash`, `instance-analytics`, etc.) are
+  irrelevant to the `:library` scorer and stay NULL.
 
   Library types are hardcoded rather than referenced from
   `metabase.collections.models.collection/library-collection-types`: migrations are frozen
   snapshots of intent at a point in time, and the semantic-search module doesn't `:use`
   `collections` — a boundary expansion isn't warranted for a 3-string set."
   [tx index-metadata]
-  (let [gate-table    (:gate-table-name index-metadata)
-        library-types [[:inline "library"] [:inline "library-data"] [:inline "library-metrics"]]]
+  (let [gate-table     (:gate-table-name index-metadata)
+        library-types  ["library" "library-data" "library-metrics"]
+        ;; Resolve the library forest once up-front; the same map applies to every index table.
+        root-type-by-coll-id (library-root-type-by-collection-id library-types)]
     (alter-index-tables!
      tx index-metadata 4
      (fn [execute! table-name]
@@ -130,12 +162,14 @@
                              [:= gate-id composite-gate-id]
                              [:= tbl-root-coll-type nil]
                              [:!= gate-doc-root nil]]})
-         ;; 3. Fallback: rows still NULL whose collection_type is itself a library root type.
-         (execute! {:update kw-tbl
-                    :set    {:root_collection_type :collection_type}
-                    :where  [:and
-                             [:= :root_collection_type nil]
-                             [:in :collection_type library-types]]}))))))
+         ;; 3. AppDB-driven fallback: one UPDATE per distinct root type, covering both library
+         ;; roots and any sub-collections beneath them.
+         (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
+           (execute! {:update kw-tbl
+                      :set    {:root_collection_type [:inline root-type]}
+                      :where  [:and
+                               [:= :root_collection_type nil]
+                               [:in :collection_id (mapv key entries)]]})))))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
