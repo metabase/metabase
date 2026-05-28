@@ -50,18 +50,22 @@
                                        :link  metabase-link}
                                 title   (assoc :title title)
                                 display (assoc :display display))]
-          {:structured-output structured
-           :instructions (str "Query created. The visualization will be posted as a separate "
-                              "follow-up message in the thread with the query results. "
-                              "Use future tense when referring to results — they haven't "
-                              "appeared yet when the user sees your text.")
-           :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
-        (construct/entity-usage-on-result query-result
-                                          (get structured :entity-usage construct/empty-entity-usage))))
+          (construct/stamp-artifact-valid
+           {:structured-output structured
+            :instructions (str "Query created. The visualization will be posted as a separate "
+                               "follow-up message in the thread with the query results. "
+                               "Use future tense when referring to results — they haven't "
+                               "appeared yet when the user sees your text.")
+            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]}
+           true))
+        (-> (construct/entity-usage-on-result query-result
+                                              (get structured :entity-usage construct/empty-entity-usage))
+            (construct/stamp-artifact-valid false))))
     (catch Exception e
       (log/error e "Failed to construct slackbot notebook query")
-      (construct/entity-usage-on-result
-       (if (:agent-error? (ex-data e))
-         {:output (ex-message e)}
-         {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
-       construct/empty-entity-usage))))
+      (-> (construct/entity-usage-on-result
+           (if (:agent-error? (ex-data e))
+             {:output (ex-message e)}
+             {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
+           construct/empty-entity-usage)
+          (construct/stamp-artifact-valid false)))))

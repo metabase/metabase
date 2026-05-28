@@ -252,6 +252,21 @@
           (is (= [] (:output eu)))
           (is (str/includes? (:output result) "boom")))))))
 
+(deftest write-transform-sql-tool-stamps-agent-error-as-invalid-test
+  (testing (str "write_transform_sql does not throw on an agent-input error — it returns a normal "
+                "result relaying the message and stamps :artifact-valid false, so the failed "
+                "authoring attempt feeds the quality score's artifact-validity-share")
+    (let [memory-atom (atom {:state {}})]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql
+                                  (fn [_] (throw (ex-info "unknown table" {:agent-error? true})))]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:edit_action {:mode "replace" :new_content "SELECT 1"}
+                         :transform_name "Test"
+                         :database_id 99}))]
+          (is (false? (get-in result [:structured-output :artifact-valid])))
+          (is (= "unknown table" (:output result))))))))
+
 (deftest write-transform-python-entity-usage-success-test
   (when (premium-features/has-feature? :transforms-python)
     (testing "write_transform_python success path emits :entity-usage with database + source-tables"

@@ -1,6 +1,8 @@
 (ns metabase.metabot.quality.metrics
-  "Pure per-conversation quality measurements. Each metric is a health in
-  `[0, 1]` (1 = good) or `:na` when its denominator is empty.
+  "Pure per-conversation quality measurements. Each metric is a value in
+  `[0, 1]` or `:na` when its denominator is empty. Most are healths (1 = good);
+  the exception is `tool-call-failure-rate`, a rate (1 = bad) that
+  [[metabase.metabot.quality.subscores]] inverts when it folds Execution Health.
 
   [[compute]] reads the normalized struct (with `:temporal` populated by
   [[metabase.metabot.quality.temporal/derive]]) and the batched governance
@@ -45,6 +47,25 @@
       0.0
       (/ (double (count (filter (comp some? :error) events)))
          (double total)))))
+
+(defn- artifact-validity-share
+  "Fraction of authoring tool calls that produced a valid artifact —
+  `valid-authoring-calls / authoring-calls`. A health in `[0, 1]` (1 = good):
+  every authored artifact valid → `1.0`, all invalid → `0.0`. An authoring call
+  is counted only when its result carried an explicit `:artifact-valid` stamp
+  (`true` or `false`); calls with no stamp (in-flight turns, non-authoring
+  tools, or authoring tools outside the query/transform/document family) are
+  excluded from both numerator and denominator. Per-call by design — a turn that
+  thrashes on invalid artifacts before succeeding scores poorly. `:na` when no
+  stamped authoring call exists."
+  [normalized]
+  (let [evs (->> (:tool-events normalized)
+                 (filter #(= :authoring (:tool-type %)))
+                 (filter #(some? (:artifact-valid %))))]
+    (if (empty? evs)
+      :na
+      (/ (double (count (filter #(true? (:artifact-valid %)) evs)))
+         (double (count evs))))))
 
 (defn- termination-health
   "`1.0` when the agent stopped on its own — signaled done or emitted a
@@ -150,7 +171,8 @@
    :search-efficiency      (search-efficiency normalized)
    :grounded-source-share  (grounded-source-share normalized)
    :tool-call-failure-rate (tool-call-failure-rate normalized)
-   :termination-health     (termination-health normalized)})
+   :termination-health     (termination-health normalized)
+   :artifact-validity-share (artifact-validity-share normalized)})
 
 (comment
   ;; Healthy: a canonical authored source, grounded, no errors, clean exit.

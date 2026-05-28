@@ -92,9 +92,10 @@
         (is (nil? (:final-response? result)))
         (is (re-find #"SQL chart draft generation failed" (:output result)))
         (is (re-find #"syntax error near FROM" (:output result)))
-        (testing "error branch still carries :entity-usage on :structured-output"
-          (is (= {:entity-usage {:input  [{:type "database" :id 1}]
-                                 :output []}}
+        (testing "error branch still carries :entity-usage on :structured-output, stamped invalid"
+          (is (= {:entity-usage   {:input  [{:type "database" :id 1}]
+                                   :output []}
+                  :artifact-valid false}
                  (:structured-output result))))))))
 
 (deftest document-construct-sql-chart-tool-test-3
@@ -121,9 +122,10 @@
         (is (nil? (:final-response? result)))
         (is (re-find #"could not be processed by Metabase" (:output result)))
         (is (re-find #"missing_table" (:output result)))
-        (testing "qp-rejection branch still carries :entity-usage on :structured-output"
-          (is (= {:entity-usage {:input  [{:type "database" :id 1}]
-                                 :output []}}
+        (testing "qp-rejection branch still carries :entity-usage on :structured-output, stamped invalid"
+          (is (= {:entity-usage   {:input  [{:type "database" :id 1}]
+                                   :output []}
+                  :artifact-valid false}
                  (:structured-output result))))))))
 
 (deftest document-construct-model-chart-tool-test
@@ -151,6 +153,26 @@
         (is (= {:database 1
                 :type "query"}
                (:dataset_query structured)))))))
+
+(deftest document-construct-model-chart-tool-stamps-construct-failure-as-invalid-test
+  (testing (str "when the wrapped construct_notebook_query produces no resolved query (an "
+                "invalid authoring attempt), document_construct_model_chart returns a normal "
+                "result relaying the message and stamps :artifact-valid false")
+    (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
+                                (fn [_]
+                                  ;; Mirrors construct's Option C agent-error shape: a message,
+                                  ;; empty entity-usage, stamped invalid, and no resolved :query.
+                                  {:output            "unknown table"
+                                   :structured-output {:entity-usage   {:input [] :output []}
+                                                       :artifact-valid false}})]
+      (let [result (document-tools/document-construct-model-chart-tool
+                    {:name "N"
+                     :description "D"
+                     :query ""
+                     :viz_settings {:chart_type "bar"}})]
+        (is (nil? (:final-response? result)))
+        (is (= "unknown table" (:output result)))
+        (is (false? (get-in result [:structured-output :artifact-valid])))))))
 
 ;;; ----------------------------------- entity-usage ----------------------------------------
 

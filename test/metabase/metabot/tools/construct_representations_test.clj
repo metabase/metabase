@@ -150,6 +150,40 @@
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
 
+(deftest construct-notebook-query-tool-stamps-agent-error-as-invalid-test
+  (testing (str "an agent-input error (unknown table) is not thrown — the wrapper returns a "
+                "normal result that relays the validation message to the LLM verbatim and "
+                "stamps :artifact-valid false, so the quality score's artifact-validity-share "
+                "counts the failed authoring attempt without overloading the :error channel")
+    (with-mp-and-stubs!
+      (fn []
+        (let [bad-query    (query-data
+                            {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "DOES_NOT_EXIST"]
+                                          "aggregation"  [["count" {}]]}]})
+              result       (construct/construct-notebook-query-tool {:query bad-query})
+              expected-msg (try
+                             (construct/execute-representations-query bad-query)
+                             (catch clojure.lang.ExceptionInfo inner
+                               (ex-message inner)))]
+          (is (false? (get-in result [:structured-output :artifact-valid])))
+          (is (= construct/empty-entity-usage
+                 (get-in result [:structured-output :entity-usage])))
+          (testing "message fidelity is preserved for the LLM"
+            (is (= expected-msg (:output result)))))))))
+
+(deftest construct-notebook-query-tool-genuine-exception-returns-fallback-test
+  (testing (str "a genuine (non-agent) exception is still caught and returned as a normal "
+                "{:output \"Failed to construct...\"} result with empty entity-usage, not re-thrown")
+    (with-redefs [construct/execute-representations-query
+                  (fn [_] (throw (Exception. "boom")))]
+      (let [result (construct/construct-notebook-query-tool {:query {}})]
+        (is (= "Failed to construct notebook query: boom" (:output result)))
+        (is (= construct/empty-entity-usage
+               (get-in result [:structured-output :entity-usage])))))))
+
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
     (with-mp-and-stubs!

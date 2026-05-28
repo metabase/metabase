@@ -24,9 +24,11 @@
   to surface generated queries on the admin detail page. `:entity-usage` is
   the structured per-call entity record described in
   `notes/bot-1569/impl-plan-v2.md` §A — populated by tools (§A.6) and read
-  by downstream observability consumers."
+  by downstream observability consumers. `:artifact-valid` is the authoring
+  tools' outcome stamp (true = produced a valid artifact, false = invalid),
+  read by the quality pipeline's `artifact-validity-share` metric."
   [:query-id :query-content :query :database :chart-type
-   :entity-usage])
+   :entity-usage :artifact-valid])
 
 (defn- trim-structured-output [structured]
   (when (map? structured)

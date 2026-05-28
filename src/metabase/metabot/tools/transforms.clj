@@ -92,6 +92,14 @@
   [result entity-usage]
   (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
 
+(defn stamp-artifact-valid
+  "Stamp the authoring-outcome flag onto a transform-authoring tool result's
+  `:structured-output`. `valid?` is `true` on success and `false` on
+  agent-input rejection or a genuine exception. Read by the quality pipeline's
+  `artifact-validity-share` metric. Shared with the EE Python transform tool."
+  [result valid?]
+  (assoc-in result [:structured-output :artifact-valid] valid?))
+
 (defn transform-inspection-entity-usage
   "Build the `:entity-usage` map for a transform-inspection tool call.
   Input is a single `{:type \"transform\" :id transform-id}` entry. Output is
@@ -269,14 +277,22 @@
             eu          (entity-usage-for-transform {:database_id final-db} final-sql)
             with-eu     (entity-usage-on-result raw-result eu)
             dep-issues  (check-dependencies transform_id (:source transform))]
-        (cond-> with-eu
-          dep-issues (update :instructions str (format-dependency-warnings dep-issues))))
+        (stamp-artifact-valid
+         (cond-> with-eu
+           dep-issues (update :instructions str (format-dependency-warnings dep-issues)))
+         true))
       (catch Exception e
-        (entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))})
-         base-eu)))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          (-> (entity-usage-on-result {:output (ex-message e)} base-eu)
+              (stamp-artifact-valid false))
+          (do
+            (log/error e "Failed to write SQL transform")
+            (-> (entity-usage-on-result
+                 {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}
+                 base-eu)
+                (stamp-artifact-valid false))))))))
 
 (def write-transform-python-schema
   "Schema for write-transform-python-tool"

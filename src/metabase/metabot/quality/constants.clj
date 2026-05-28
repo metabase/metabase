@@ -2,7 +2,7 @@
   "Constants and the metric registry shared across the Metabot quality-score
   pipeline. The registry ([[metrics]] + [[observable->metric]]) is the single
   source for the metric vocabulary: subscore grouping, the snake_case JSON
-  projection, and each observable's `concern_signal` all derive from it, so a
+  projection, and each observable's `metric` reference all derive from it, so a
   rename happens in one place."
   (:require
    [clojure.string :as str]))
@@ -32,17 +32,19 @@
    {:key :search-efficiency      :subscore :data-source-quality}
    {:key :grounded-source-share  :subscore :data-source-quality}
    {:key :tool-call-failure-rate :subscore :execution-health}
-   {:key :termination-health     :subscore :execution-health}])
+   {:key :termination-health     :subscore :execution-health}
+   {:key :artifact-validity-share :subscore :artifact-validity}])
 
 (def observable->metric
-  "Per-turn observable kind (as persisted, snake_case string) → the metric it
-  is evidence for. Drives each observable's `concern_signal`, so the signal
-  can't drift from the metric it names."
+  "Per-turn observation type (as persisted, snake_case string) → the metric it
+  is evidence for. Drives each observable's `metric` reference, so it can't
+  drift from the metric it names."
   {"unproductive_search" :search-efficiency
    "hallucinated_ref"    :grounded-source-share
    "tool_error"          :tool-call-failure-rate
    "iter_cap"            :termination-health
-   "error_termination"   :termination-health})
+   "error_termination"   :termination-health
+   "invalid_artifact"    :artifact-validity-share})
 
 (defn metric-json-name
   "snake_case string form of an internal metric keyword

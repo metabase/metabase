@@ -180,14 +180,17 @@
             attach-eu  (fn [r] (construct-tools/entity-usage-on-result r entity-usage))]
         (cond
           (not valid?)
-          (attach-eu (sql-validation-error-result dialect error-message))
+          (construct-tools/stamp-artifact-valid
+           (attach-eu (sql-validation-error-result dialect error-message)) false)
 
           (not (map? query))
-          (attach-eu {:output "Failed to construct SQL chart draft."})
+          (construct-tools/stamp-artifact-valid
+           (attach-eu {:output "Failed to construct SQL chart draft."}) false)
 
           :else
           (if-let [query-error (check-query query)]
-            (attach-eu (query-processing-error-result query-error))
+            (construct-tools/stamp-artifact-valid
+             (attach-eu (query-processing-error-result query-error)) false)
             (let [structured {:tool          "document_construct_sql_chart"
                               :name          name
                               :description   description
@@ -200,16 +203,23 @@
                               :query         query
                               :result-type   :chart-draft
                               :entity-usage  entity-usage}]
-              {:output "Draft chart payload generated from SQL query."
-               :structured-output structured
-               :final-response? true}))))
+              (construct-tools/stamp-artifact-valid
+               {:output "Draft chart payload generated from SQL query."
+                :structured-output structured
+                :final-response? true}
+               true)))))
       (catch Exception e
-        (log/error e "Error constructing SQL chart draft")
-        (construct-tools/entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))})
-         entity-usage)))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          (-> (construct-tools/entity-usage-on-result {:output (ex-message e)} entity-usage)
+              (construct-tools/stamp-artifact-valid false))
+          (do
+            (log/error e "Error constructing SQL chart draft")
+            (-> (construct-tools/entity-usage-on-result
+                 {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}
+                 entity-usage)
+                (construct-tools/stamp-artifact-valid false))))))))
 
 (def ^:private model-chart-schema
   "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
@@ -241,26 +251,36 @@
           dataset-query (:query structured)
           entity-usage  (get structured :entity-usage construct-tools/empty-entity-usage)]
       (if (map? dataset-query)
-        {:output "Draft chart payload generated from model/notebook query."
-         :structured-output {:tool          "document_construct_model_chart"
-                             :name          name
-                             :description   description
-                             :dataset_query dataset-query
-                             :display       chart-type
-                             :chart_type    chart-type
-                             :query_id      query-id
-                             :query         dataset-query
-                             :result-type   :chart-draft
-                             :entity-usage  entity-usage}
-         :final-response? true}
-        ;; Preserve tool error messaging from construct_notebook_query path.
-        (construct-tools/entity-usage-on-result
-         (or result {:output "Failed to construct model chart draft."})
-         entity-usage)))
+        (construct-tools/stamp-artifact-valid
+         {:output "Draft chart payload generated from model/notebook query."
+          :structured-output {:tool          "document_construct_model_chart"
+                              :name          name
+                              :description   description
+                              :dataset_query dataset-query
+                              :display       chart-type
+                              :chart_type    chart-type
+                              :query_id      query-id
+                              :query         dataset-query
+                              :result-type   :chart-draft
+                              :entity-usage  entity-usage}
+          :final-response? true}
+         true)
+        ;; Preserve tool error messaging from construct_notebook_query path. Under Option C,
+        ;; the inner construct call no longer throws on agent-input errors — it returns a
+        ;; result with no resolved query — so a nil dataset-query here is an authoring miss.
+        (-> (construct-tools/entity-usage-on-result
+             (or result {:output "Failed to construct model chart draft."})
+             entity-usage)
+            (construct-tools/stamp-artifact-valid false))))
     (catch Exception e
-      (log/error e "Error constructing model chart draft")
-      (construct-tools/entity-usage-on-result
-       (if (:agent-error? (ex-data e))
-         {:output (ex-message e)}
-         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))})
-       construct-tools/empty-entity-usage))))
+      (if (:agent-error? (ex-data e))
+        ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+        ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+        (-> (construct-tools/entity-usage-on-result {:output (ex-message e)} construct-tools/empty-entity-usage)
+            (construct-tools/stamp-artifact-valid false))
+        (do
+          (log/error e "Error constructing model chart draft")
+          (-> (construct-tools/entity-usage-on-result
+               {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}
+               construct-tools/empty-entity-usage)
+              (construct-tools/stamp-artifact-valid false)))))))

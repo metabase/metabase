@@ -31,7 +31,7 @@
   "A non-negative count."
   [:int {:min 0}])
 
-(def ^:private concern-signal
+(def ^:private metric-ref
   "The metric an observable is evidence for, as its snake_case name. Exactly
   the metrics that own an observable (derived from the registry)."
   (into [:enum]
@@ -66,10 +66,16 @@
    [:value   health]
    [:metrics (closed-metric-map :execution-health)]])
 
+(mr/def ::artifact-validity
+  [:map {:closed true}
+   [:value   health]
+   [:metrics (closed-metric-map :artifact-validity)]])
+
 (mr/def ::subscores
   [:map {:closed true}
    [:data_source_quality ::data-source-quality]
-   [:execution_health    ::execution-health]])
+   [:execution_health    ::execution-health]
+   [:artifact_validity   ::artifact-validity]])
 
 ;;; ---------------------------------------------------------------------------
 ;;; Conversation-level breakdown
@@ -118,16 +124,16 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- observable-schema
-  "Closed `:map` for one observable kind: the shared discriminators plus the
-  kind-specific `extras`."
-  [kind & extras]
+  "Closed `:map` for one observation type: the shared discriminators plus the
+  observation-specific `extras`."
+  [observation & extras]
   (into [:map {:closed true}
-         [:concern_signal concern-signal]
-         [:kind           [:= kind]]]
+         [:observation [:= observation]]
+         [:metric      metric-ref]]
         extras))
 
 (mr/def ::observable
-  [:multi {:dispatch :kind}
+  [:multi {:dispatch :observation}
    ["unproductive_search"
     (observable-schema "unproductive_search"
                        [:context [:map {:closed true}
@@ -148,7 +154,12 @@
                        [:context [:map {:closed true} [:terminal_state [:= "iter_cap"]]]])]
    ["error_termination"
     (observable-schema "error_termination"
-                       [:context [:map {:closed true} [:terminal_state [:enum "error" "aborted"]]]])]])
+                       [:context [:map {:closed true} [:terminal_state [:enum "error" "aborted"]]]])]
+   ["invalid_artifact"
+    (observable-schema "invalid_artifact"
+                       [:context [:map {:closed true}
+                                  [:tool_call :string]
+                                  [:function  :string]]])]])
 
 (mr/def ::attribution
   [:map {:closed true}

@@ -14,16 +14,17 @@
     (let [ks (map :key constants/metrics)]
       (is (= (count ks) (count (distinct ks))))))
   (testing "every metric belongs to a known subscore"
-    (is (every? #{:data-source-quality :execution-health}
+    (is (every? #{:data-source-quality :execution-health :artifact-validity}
                 (map :subscore constants/metrics))))
   (testing "metrics-for-subscore partitions the registry, in order, with nothing dropped"
     (is (= (map :key constants/metrics)
            (concat (constants/metrics-for-subscore :data-source-quality)
-                   (constants/metrics-for-subscore :execution-health))))))
+                   (constants/metrics-for-subscore :execution-health)
+                   (constants/metrics-for-subscore :artifact-validity))))))
 
-(deftest observable-concern-signals-name-real-metrics-test
+(deftest observable-metric-refs-name-real-metrics-test
   (testing "every observable maps to a metric in the registry, so no derived
-            concern_signal can name a metric that doesn't exist"
+            metric reference can name a metric that doesn't exist"
     (is (every? (set (map :key constants/metrics))
                 (vals constants/observable->metric)))))
 

@@ -176,9 +176,10 @@
             (is (string? (:output result)))
             (is (re-find #"Unknown database" (:output result)))
             (is (re-find #"Sample" (:output result)))
-            (is (= {:entity-usage {:input [] :output []}}
+            (is (= {:entity-usage   {:input [] :output []}
+                    :artifact-valid false}
                    (:structured-output result))
-                "error branch carries only the empty :entity-usage placeholder — no leaked query data")
+                "error branch carries only the empty :entity-usage placeholder (no leaked query data), stamped invalid")
             (is (nil? (:data-parts result)))))))))
 
 (deftest slackbot-tool-unexpected-error-is-wrapped-test
@@ -255,9 +256,10 @@
                      :query     external-query
                      :display   "table"})]
         (testing "only placeholder entity-usage in structured-output, no data-parts, clear message"
-          (is (= {:entity-usage {:input [] :output []}}
+          (is (= {:entity-usage   {:input [] :output []}
+                  :artifact-valid false}
                  (:structured-output result))
-              "error branch carries only the empty :entity-usage placeholder — no leaked query data")
+              "error branch carries only the empty :entity-usage placeholder (no leaked query data), stamped invalid")
           (is (nil? (:data-parts result)))
           (is (string? (:output result)))
           (is (re-find #"Unknown database" (:output result)))

@@ -13,16 +13,17 @@
 
   ```clojure
   {:version       \"...\"
-   :observables   [{:concern_signal \"...\" :kind \"...\" :entity {...} :context {...}}
+   :observables   [{:observation \"...\" :metric \"...\" :entity {...} :context {...}}
                    ...]
    :quality_score 0.91
    :subscores     {:data_source_quality {:value 0.84 :metrics {...}}
                    :execution_health    {:value 1.0  :metrics {...}}}}
   ```
 
-  Each observable's `:concern_signal` names the metric it is evidence for
+  Each observable's `:metric` names the metric it is evidence for
   (`grounded_source_share`, `search_efficiency`, `tool_call_failure_rate`,
-  `termination_health`), so a reviewer can join an observable straight onto
+  `termination_health`, `artifact_validity_share`), so a reviewer can join an
+  observable straight onto
   the nested `subscores → metrics` value it explains."
   (:require
    [metabase.metabot.quality.constants :as constants]
@@ -90,14 +91,14 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- observable
-  "Common observable map. `:concern_signal` is derived from `kind` via the
-  registry ([[constants/observable->metric]]), so the signal an observable
-  carries can't drift from the metric it is evidence for. `extras` is merged
-  after the discriminating `:concern_signal` + `:kind` keys for the
-  kind-specific fields."
-  [kind extras]
-  (merge {:concern_signal (constants/metric-json-name (constants/observable->metric kind))
-          :kind           kind}
+  "Common observable map. `:metric` is derived from `observation` via the
+  registry ([[constants/observable->metric]]), so the metric an observable
+  references can't drift from the one it is evidence for. `extras` is merged
+  after the discriminating `:observation` + `:metric` keys for the
+  observation-specific fields."
+  [observation extras]
+  (merge {:observation observation
+          :metric      (constants/metric-json-name (constants/observable->metric observation))}
          extras))
 
 ;;; ---------------------------------------------------------------------------
@@ -157,6 +158,22 @@
       {:context {:tool_call (:call-id e)
                  :function  (:function e)
                  :error     (:error e)}})]))
+
+(defn- invalid-artifact-observables
+  "For each authoring call that produced an invalid artifact (`:artifact-valid`
+  stamped `false`), emit `invalid-artifact` on that call's turn. Evidence for
+  `artifact_validity_share`, distinct from `tool_error` (a tool crash) — here the
+  tool ran fine but the artifact the LLM asked it to author was invalid."
+  [normalized call-id->msg]
+  (for [e       (:tool-events normalized)
+        :when   (and (= :authoring (:tool-type e)) (false? (:artifact-valid e)))
+        :let    [msg-id (get call-id->msg (:call-id e))]
+        :when   msg-id]
+    [msg-id
+     (observable
+      "invalid_artifact"
+      {:context {:tool_call (:call-id e)
+                 :function  (:function e)}})]))
 
 (defn- termination-observables
   "Emit at most one termination observable on the last assistant turn.
@@ -242,6 +259,7 @@
                         (unproductive-search-observables normalized call-id->msg)
                         (hallucinated-ref-observables    normalized call-id->msg)
                         (tool-error-observables          normalized call-id->msg)
+                        (invalid-artifact-observables    normalized call-id->msg)
                         (termination-observables         normalized last-msg-id))
         by-msg         (group-by first observable-seq)]
     (into {}

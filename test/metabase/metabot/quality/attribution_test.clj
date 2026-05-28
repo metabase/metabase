@@ -146,8 +146,8 @@
           out      (attribution-for messages)
           obs      (observables-for-row out 100)]
       (is (some (fn [o]
-                  (and (= "grounded_source_share" (:concern_signal o))
-                       (= "hallucinated_ref" (:kind o))
+                  (and (= "grounded_source_share" (:metric o))
+                       (= "hallucinated_ref" (:observation o))
                        (= {:type "card" :id 999} (:entity o))
                        (= "a1" (get-in o [:context :tool_call]))))
                 obs)))))
@@ -173,14 +173,14 @@
                                     :output [{:type "card" :id 10} {:type "card" :id 11}]}]
                       :terminal-state "final_response"})]
           out      (attribution-for messages)
-          o        (first (filter #(= "unproductive_search" (:kind %))
+          o        (first (filter #(= "unproductive_search" (:observation %))
                                   (observables-for-row out 200)))]
       (is o)
-      (is (= "search_efficiency" (:concern_signal o)))
+      (is (= "search_efficiency" (:metric o)))
       (is (= "s2" (get-in o [:context :tool_call])))
       (is (= ["s1"] (get-in o [:context :overlapping_calls])))
       (testing "the first call has no prior to overlap and never fires"
-        (is (empty? (filter #(= "unproductive_search" (:kind %))
+        (is (empty? (filter #(= "unproductive_search" (:observation %))
                             (observables-for-row out 100))))))))
 
 (deftest disjoint-searches-do-not-fire-unproductive-search-test
@@ -200,7 +200,7 @@
                       :terminal-state "final_response"})]
           out      (attribution-for messages)]
       (is (empty? (mapcat (fn [row-id]
-                            (filter #(= "unproductive_search" (:kind %))
+                            (filter #(= "unproductive_search" (:observation %))
                                     (observables-for-row out row-id)))
                           [100 200]))))))
 
@@ -221,9 +221,9 @@
                       :terminal-state "final_response"})]
           out      (attribution-for messages)
           obs      (observables-for-row out 100)
-          o        (first (filter #(= "tool_error" (:kind %)) obs))]
+          o        (first (filter #(= "tool_error" (:observation %)) obs))]
       (is o)
-      (is (= "tool_call_failure_rate" (:concern_signal o)))
+      (is (= "tool_call_failure_rate" (:metric o)))
       (is (= "c1" (get-in o [:context :tool_call])))
       (is (= "edit_sql_query" (get-in o [:context :function])))
       (is (= {:msg "syntax error"} (get-in o [:context :error]))))))
@@ -238,9 +238,9 @@
                     (assistant-row {:id 100 :created-at 1 :terminal-state "iter_cap"})]
           out      (attribution-for messages)
           obs      (observables-for-row out 100)
-          o        (first (filter #(= "iter_cap" (:kind %)) obs))]
+          o        (first (filter #(= "iter_cap" (:observation %)) obs))]
       (is o)
-      (is (= "termination_health" (:concern_signal o)))
+      (is (= "termination_health" (:metric o)))
       (is (= "iter_cap" (get-in o [:context :terminal_state]))))))
 
 (deftest error-termination-fires-on-error-test
@@ -248,10 +248,10 @@
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assistant-row {:id 100 :created-at 1 :terminal-state "error"})]
           out      (attribution-for messages)
-          o        (first (filter #(= "error_termination" (:kind %))
+          o        (first (filter #(= "error_termination" (:observation %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "termination_health" (:concern_signal o)))
+      (is (= "termination_health" (:metric o)))
       (is (= "error" (get-in o [:context :terminal_state]))))))
 
 (deftest aborted-collapses-to-error-termination-test
@@ -261,10 +261,10 @@
                     (assoc (assistant-row {:id 100 :created-at 1 :terminal-state nil})
                            :finished false)]
           out      (attribution-for messages)
-          o        (first (filter #(= "error_termination" (:kind %))
+          o        (first (filter #(= "error_termination" (:observation %))
                                   (observables-for-row out 100)))]
       (is o)
-      (is (= "termination_health" (:concern_signal o)))
+      (is (= "termination_health" (:metric o)))
       (is (= "aborted" (get-in o [:context :terminal_state]))))))
 
 (deftest clean-termination-emits-no-termination-observable-test
@@ -272,7 +272,7 @@
     (let [messages [(user-row {:id 1 :created-at 0})
                     (assistant-row {:id 100 :created-at 1 :terminal-state "final_response"})]
           out      (attribution-for messages)]
-      (is (empty? (filter #(contains? #{"iter_cap" "error_termination"} (:kind %))
+      (is (empty? (filter #(contains? #{"iter_cap" "error_termination"} (:observation %))
                           (observables-for-row out 100)))))))
 
 ;;; ---------------------------------------------------------------------------

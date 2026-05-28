@@ -13,7 +13,8 @@
    :user-id         Long
    :messages        [<row>...]
    :tool-events     [{:call-id :function :tool-type :arguments
-                      :iteration-index :input :output :error :duration-ms} ...]
+                      :iteration-index :input :output :error :artifact-valid
+                      :duration-ms} ...]
    :prompt-context  {:P [<entity-ref>...]}
    :sets            {:P {[type id-str] <atom>} :D ... :Q ... :I ... :H ...}}
   ```
@@ -212,6 +213,16 @@
   [tool-output-part]
   (:entity-usage (structured-output tool-output-part)))
 
+(defn- artifact-valid-of
+  "Read the `:artifact-valid` authoring-outcome stamp off a tool-output part's
+  structured output. Returns `true`/`false` when an authoring tool stamped its
+  outcome, or `nil` when absent (non-authoring tools, in-flight turns, legacy
+  rows). Tolerates the snake-case spelling the persistence trim may preserve."
+  [tool-output-part]
+  (let [so (structured-output tool-output-part)
+        v  (when so (get so :artifact-valid (get so :artifact_valid ::missing)))]
+    (when (and (some? v) (not= v ::missing)) v)))
+
 (defn- pair-events
   "Pair `:tool-input` parts with their matching `:tool-output` parts by
   `:id`. Inputs without a matching output (in-flight or crashed turn)
@@ -243,6 +254,7 @@
                :input           (vec (filter entity-ref? (:input eu)))
                :output          (vec (filter entity-ref? (:output eu)))
                :error           (:error output-part)
+               :artifact-valid  (when output-part (artifact-valid-of output-part))
                :duration-ms     (:duration-ms output-part)}))
           inputs)))
 

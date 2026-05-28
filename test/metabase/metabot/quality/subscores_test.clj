@@ -14,17 +14,20 @@
   Data-Source Quality as grounding alone; execution defaults to a healthy
   run (no tool errors, clean termination)."
   [& {:keys [canonical-source-share search-efficiency
-             grounded-source-share tool-call-failure-rate termination-health]
+             grounded-source-share tool-call-failure-rate termination-health
+             artifact-validity-share]
       :or   {canonical-source-share :na
              search-efficiency      :na
              grounded-source-share  1.0
              tool-call-failure-rate 0.0
-             termination-health     1.0}}]
+             termination-health     1.0
+             artifact-validity-share :na}}]
   {:canonical-source-share canonical-source-share
    :search-efficiency      search-efficiency
    :grounded-source-share  grounded-source-share
    :tool-call-failure-rate tool-call-failure-rate
-   :termination-health     termination-health})
+   :termination-health     termination-health
+   :artifact-validity-share artifact-validity-share})
 
 ;;; ---------------------------------------------------------------------------
 ;;; Data-Source Quality
@@ -34,7 +37,8 @@
   (testing "grounding being the only live data-source metric, Data-Source Quality = its health"
     (let [out (subscores/compose (metrics :grounded-source-share 0.8))]
       (is (= 0.8 (:data-source-quality out)))
-      (is (= #{} (:na out))))))
+      (is (= #{:artifact-validity} (:na out))
+          "no authoring attempted → Artifact Validity is the lone N/A subscore"))))
 
 (deftest data-source-quality-is-mean-over-non-na-metrics-test
   (testing "Data-Source Quality is the arithmetic mean over the non-N/A metric healths"
@@ -43,7 +47,7 @@
                                           :search-efficiency      0.0
                                           :grounded-source-share  1.0))]
       (is (< 0.666 (:data-source-quality out) 0.667))
-      (is (= #{} (:na out)))
+      (is (= #{:artifact-validity} (:na out)))
       (testing "an N/A metric is excluded rather than counted as 0"
         (is (not= 0.5 (:data-source-quality out)))))))
 
@@ -51,7 +55,7 @@
   (testing "every data-source metric N/A → Data-Source Quality N/A; composite = Execution Health"
     (let [out (subscores/compose (metrics :grounded-source-share :na :tool-call-failure-rate 0.0))]
       (is (nil? (:data-source-quality out)))
-      (is (= #{:data-source-quality} (:na out)))
+      (is (= #{:data-source-quality :artifact-validity} (:na out)))
       (is (= 1.0 (:execution-health out)))
       (is (= 1.0 (:composite out))
           "composite is the geometric mean over the lone applicable subscore"))))
@@ -79,6 +83,44 @@
     (let [out (subscores/compose (metrics :grounded-source-share :na :tool-call-failure-rate 0.5 :termination-health 1.0))]
       (is (= 0.75 (:execution-health out)))
       (is (not (contains? (:na out) :execution-health))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Artifact Validity — its own weakest-link subscore (the artifact-validity share)
+;;; ---------------------------------------------------------------------------
+
+(deftest artifact-validity-na-when-no-authoring-test
+  (testing "no stamped authoring call → Artifact Validity N/A, excluded from the composite"
+    (let [out (subscores/compose (metrics :artifact-validity-share :na))]
+      (is (nil? (:artifact-validity out)))
+      (is (contains? (:na out) :artifact-validity)))))
+
+(deftest artifact-validity-is-the-validity-share-test
+  (testing "Artifact Validity = the artifact-validity share, its lone member health"
+    (is (= 1.0 (:artifact-validity (subscores/compose (metrics :artifact-validity-share 1.0)))))
+    (is (= 0.5 (:artifact-validity (subscores/compose (metrics :artifact-validity-share 0.5)))))
+    (is (= 0.0 (:artifact-validity (subscores/compose (metrics :artifact-validity-share 0.0)))))))
+
+(deftest artifact-validity-zeros-composite-test
+  (testing "all authoring invalid → Artifact Validity 0.0 geometrically zeros the composite"
+    ;; ac38193d shape: clean data-source + forced exit (exec 0.5) but every authoring call invalid
+    (let [out (subscores/compose (metrics :grounded-source-share 1.0
+                                          :tool-call-failure-rate 0.0
+                                          :termination-health     0.0
+                                          :artifact-validity-share 0.0))]
+      (is (= 0.5 (:execution-health out)))
+      (is (= 0.0 (:artifact-validity out)))
+      (is (= 0.0 (:composite out))))))
+
+(deftest artifact-validity-thrash-then-succeed-is-materially-penalized-test
+  (testing "one invalid then one valid authoring call (share 0.5) materially lowers the composite
+            without zeroing it — per-call scoring punishes thrash-then-succeed"
+    (let [out (subscores/compose (metrics :grounded-source-share 1.0
+                                          :tool-call-failure-rate 0.0
+                                          :termination-health     1.0
+                                          :artifact-validity-share 0.5))]
+      (is (= 0.5 (:artifact-validity out)))
+      ;; geomean[dsq=1.0, exec=1.0, validity=0.5] = 0.5^(1/3) ≈ 0.7937
+      (is (< 0.79 (:composite out) 0.80)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Composite — geometric mean over non-N/A subscores
@@ -120,7 +162,7 @@
 (deftest na-set-sorts-deterministically-test
   (testing "(sort (:na out)) gives a stable seq of the N/A subscore keys"
     (let [out (subscores/compose (metrics :grounded-source-share :na))]
-      (is (= [:data-source-quality] (sort (:na out)))))))
+      (is (= [:artifact-validity :data-source-quality] (sort (:na out)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; project-json — persisted shape shared by breakdown + attribution
@@ -140,7 +182,9 @@
                                                               :grounded_source_share  1.0}}
                               :execution_health    {:value   1.0
                                                     :metrics {:tool_call_failure_rate 0.0
-                                                              :termination_health     1.0}}}}
+                                                              :termination_health     1.0}}
+                              :artifact_validity   {:value   nil
+                                                    :metrics {:artifact_validity_share nil}}}}
              (subscores/project-json m subs))))))
 
 (deftest project-json-renders-na-data-source-quality-as-nil-test

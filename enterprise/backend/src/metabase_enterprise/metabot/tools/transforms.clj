@@ -84,10 +84,17 @@
             eu           (tools.transforms/entity-usage-for-transform
                           {:database_id final-db :source_tables final-tables}
                           nil)]
-        (tools.transforms/entity-usage-on-result raw-result eu))
+        (-> (tools.transforms/entity-usage-on-result raw-result eu)
+            (tools.transforms/stamp-artifact-valid true)))
       (catch Exception e
-        (tools.transforms/entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))})
-         base-eu)))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          (-> (tools.transforms/entity-usage-on-result {:output (ex-message e)} base-eu)
+              (tools.transforms/stamp-artifact-valid false))
+          (do
+            (log/error e "Failed to write Python transform")
+            (-> (tools.transforms/entity-usage-on-result
+                 {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}
+                 base-eu)
+                (tools.transforms/stamp-artifact-valid false))))))))

@@ -24,6 +24,10 @@
   "Metric keys that compose Execution Health, in registry order."
   (constants/metrics-for-subscore :execution-health))
 
+(def ^:private artifact-validity-metric-keys
+  "Metric keys that compose Artifact Validity, in registry order."
+  (constants/metrics-for-subscore :artifact-validity))
+
 (defn- mean
   "Arithmetic mean of a non-empty seq of doubles."
   ^double [xs]
@@ -58,14 +62,27 @@
   (mean [(- 1.0 (:tool-call-failure-rate metrics))
          (:termination-health metrics)]))
 
+(defn- artifact-validity
+  "The artifact-validity share itself — its lone member metric is already a
+  health in `[0, 1]` (1 = good), so the subscore is that value, or nil when no
+  authoring call was stamped (the share is `:na`, or absent from a partial
+  metrics map). Its own subscore — a weakest-link axis in the composite
+  geometric mean — so a conversation that authored nothing valid geometrically
+  zeroes the composite, while pure-chat turns (no authoring) are unaffected."
+  [metrics]
+  (let [s (:artifact-validity-share metrics)]
+    (when (and (some? s) (not= :na s))
+      (double s))))
+
 (defn compose
   "Group the metrics into subscores and produce the composite.
 
   ```clojure
   {:data-source-quality Double-or-nil   ; nil when N/A
    :execution-health    Double
+   :artifact-validity   Double-or-nil   ; nil when N/A (no authoring attempted)
    :composite           Double
-   :na                  #{:data-source-quality}}
+   :na                  #{:data-source-quality :artifact-validity}}
   ```
 
   Pure. `metrics` is the map from
@@ -73,10 +90,16 @@
   [metrics]
   (let [dsq    (data-source-quality metrics)
         eh     (execution-health metrics)
-        active (cond-> [eh] (some? dsq) (conj dsq))
-        na     (cond-> #{} (nil? dsq) (conj :data-source-quality))]
+        av     (artifact-validity metrics)
+        active (cond-> [eh]
+                 (some? dsq) (conj dsq)
+                 (some? av)  (conj av))
+        na     (cond-> #{}
+                 (nil? dsq) (conj :data-source-quality)
+                 (nil? av)  (conj :artifact-validity))]
     {:data-source-quality dsq
      :execution-health    eh
+     :artifact-validity   av
      :composite           (geometric-mean active)
      :na                  na}))
 
@@ -110,7 +133,9 @@
    :subscores     {:data_source_quality (subscore-entry (:data-source-quality subs)
                                                         data-source-metric-keys metrics)
                    :execution_health    (subscore-entry (:execution-health subs)
-                                                        execution-metric-keys metrics)}})
+                                                        execution-metric-keys metrics)
+                   :artifact_validity   (subscore-entry (:artifact-validity subs)
+                                                        artifact-validity-metric-keys metrics)}})
 
 (comment
   ;; Healthy: grounded authoring, no tool errors, clean exit → composite 1.0.

@@ -98,6 +98,14 @@
   [result entity-usage]
   (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
 
+(defn- stamp-artifact-valid
+  "Stamp the authoring-outcome flag onto a SQL tool result's `:structured-output`.
+  `valid?` is `true` on the success branch and `false` on syntactic-validation
+  failure, agent-input rejection, or a genuine exception. Read by the quality
+  pipeline's `artifact-validity-share` metric."
+  [result valid?]
+  (assoc-in result [:structured-output :artifact-valid] valid?))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
 ;;; ──────────────────────────────────────────────────────────────────
@@ -128,21 +136,32 @@
                 structured  (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr       (instructions/query-created-instructions-for query-id)
                 results-url (streaming/query->question-url query)]
-            {:output (format-query-output structured instr {:preamble? true})
-             :structured-output structured
-             :instructions instr
-             :data-parts [(streaming/navigate-to-part results-url)]})
+            (stamp-artifact-valid
+             {:output (format-query-output structured instr {:preamble? true})
+              :structured-output structured
+              :instructions instr
+              :data-parts [(streaming/navigate-to-part results-url)]}
+             true))
           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :structured-output {:entity-usage entity-usage}
-             :instructions instr})))
+            (stamp-artifact-valid
+             {:output (format-validation-error-output instr)
+              :structured-output {:entity-usage entity-usage}
+              :instructions instr}
+             false))))
       (catch Exception e
-        (log/error e "Error creating SQL query")
-        (entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))})
-         entity-usage)))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp the artifact
+          ;; invalid so the failed authoring attempt feeds `artifact-validity-share`, not the
+          ;; tool-output `:error` channel (machinery failure). The LLM reads the same guidance
+          ;; and self-corrects.
+          (-> (entity-usage-on-result {:output (ex-message e)} entity-usage)
+              (stamp-artifact-valid false))
+          (do
+            (log/error e "Error creating SQL query")
+            (-> (entity-usage-on-result
+                 {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}
+                 entity-usage)
+                (stamp-artifact-valid false))))))))
 
 (mu/defn ^{:tool-name    "create_sql_query"
            :tool-type    :authoring
@@ -154,8 +173,10 @@
   (let [entity-usage (entity-usage-for-sql database_id sql_query)
         buffer-id    (first-code-editor-buffer-id)]
     (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."
-       :structured-output {:entity-usage entity-usage}}
+      (stamp-artifact-valid
+       {:output "No active code editor buffer found for SQL editing."
+        :structured-output {:entity-usage entity-usage}}
+       false)
       (let [{:keys [validation-result action-result]}
             (create-sql-query-tools/create-sql-query
              {:database-id database_id
@@ -167,14 +188,18 @@
                                                    (metabot.tools.sql.common/native-physical-table-refs database_id sql_query))
                 structured (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr      (instructions/query-created-instructions-for query-id)]
-            {:output (format-query-output structured instr {:preamble? true})
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
+            (stamp-artifact-valid
+             {:output (format-query-output structured instr {:preamble? true})
+              :structured-output structured
+              :instructions instr
+              :data-parts [(code-edit-part buffer-id query-content)]}
+             true))
           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :structured-output {:entity-usage entity-usage}
-             :instructions instr}))))))
+            (stamp-artifact-valid
+             {:output (format-validation-error-output instr)
+              :structured-output {:entity-usage entity-usage}
+              :instructions instr}
+             false)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Edit SQL query
@@ -214,24 +239,33 @@
                 instr        (instructions/edit-sql-query-instructions-for query-id)
                 results-url  (streaming/query->question-url query)
                 buffer-id    (first-code-editor-buffer-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
+            (stamp-artifact-valid
+             {:output (format-query-output structured instr)
+              :structured-output structured
+              :instructions instr
+              :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]}
+             true))
           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             ;; SQL pre-transpile isn't available on the validation-failure
-             ;; branch, so card refs from the edits payload aren't recoverable
-             ;; here; record the database alone.
-             :structured-output {:entity-usage (entity-usage-for-sql existing-db nil)}
-             :instructions instr})))
+            (stamp-artifact-valid
+             {:output (format-validation-error-output instr)
+              ;; SQL pre-transpile isn't available on the validation-failure
+              ;; branch, so card refs from the edits payload aren't recoverable
+              ;; here; record the database alone.
+              :structured-output {:entity-usage (entity-usage-for-sql existing-db nil)}
+              :instructions instr}
+             false))))
       (catch Exception e
-        (log/error e "Error editing SQL query")
-        (entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))})
-         (entity-usage-for-sql existing-db nil))))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          (-> (entity-usage-on-result {:output (ex-message e)} (entity-usage-for-sql existing-db nil))
+              (stamp-artifact-valid false))
+          (do
+            (log/error e "Error editing SQL query")
+            (-> (entity-usage-on-result
+                 {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}
+                 (entity-usage-for-sql existing-db nil))
+                (stamp-artifact-valid false))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -269,18 +303,27 @@
                 instr       (instructions/replace-sql-query-instructions-for query-id)
                 results-url (streaming/query->question-url query)
                 buffer-id   (first-code-editor-buffer-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]})
+            (stamp-artifact-valid
+             {:output (format-query-output structured instr)
+              :structured-output structured
+              :instructions instr
+              :data-parts [(if buffer-id (code-edit-part buffer-id query-content) (streaming/navigate-to-part results-url))]}
+             true))
           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :structured-output {:entity-usage entity-usage}
-             :instructions instr})))
+            (stamp-artifact-valid
+             {:output (format-validation-error-output instr)
+              :structured-output {:entity-usage entity-usage}
+              :instructions instr}
+             false))))
       (catch Exception e
-        (log/error e "Error replacing SQL query")
-        (entity-usage-on-result
-         (if (:agent-error? (ex-data e))
-           {:output (ex-message e)}
-           {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))})
-         entity-usage)))))
+        (if (:agent-error? (ex-data e))
+          ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
+          ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
+          (-> (entity-usage-on-result {:output (ex-message e)} entity-usage)
+              (stamp-artifact-valid false))
+          (do
+            (log/error e "Error replacing SQL query")
+            (-> (entity-usage-on-result
+                 {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}
+                 entity-usage)
+                (stamp-artifact-valid false))))))))
