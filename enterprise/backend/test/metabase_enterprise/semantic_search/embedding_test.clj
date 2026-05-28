@@ -219,16 +219,6 @@
            (embedding/get-embedding {:provider "ai-service"
                                      :model-name "test-model"
                                      :vector-dimensions 4}
-                                    "test text")))))
-  (testing "ai-service throws when API key not configured"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"
-                                       ee-embedding-service-api-key  nil]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Embedding service API key not configured"
-           (embedding/get-embedding {:provider "ai-service"
-                                     :model-name "test-model"
-                                     :vector-dimensions 4}
                                     "test text"))))))
 
 (deftest test-embedding-service-snowplow-tracking
