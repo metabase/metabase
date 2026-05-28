@@ -745,9 +745,10 @@
     (let [table  (t2/select-one :model/Table :id table-id)
           db-id  (:db_id table)
           driver (:engine (t2/select-one :model/Database :id db-id))]
-      (->> (partition-all *batch-size* fields)
-           (mapcat (fn [batch] (run-batch driver db-id table batch)))
-           (into {})))))
+      (into {}
+            (comp (partition-all *batch-size*)
+                  (mapcat #(run-batch driver db-id table %)))
+            fields))))
 
 (defn sync-fields-grouped-by-table!
   "Sync FieldValues for `fields`, grouping by `:table_id` and using the UNION path on SQL drivers
