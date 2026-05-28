@@ -391,8 +391,6 @@ describe("DataSelector", () => {
       />,
     );
 
-    // findBy* waits out componentDidMount's async step-loading chain so its
-    // state updates stay wrapped in act()
     expect(
       await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
@@ -456,8 +454,6 @@ describe("DataSelector", () => {
       />,
     );
 
-    // findBy* waits out componentDidMount's async step-loading chain so its
-    // state updates stay wrapped in act()
     expect(
       await screen.findByText(
         "To pick some data, you'll need to add some first",
@@ -481,8 +477,6 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
-    // findBy* waits out componentDidMount's async step-loading chain so its
-    // state updates stay wrapped in act()
     expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
   });
 

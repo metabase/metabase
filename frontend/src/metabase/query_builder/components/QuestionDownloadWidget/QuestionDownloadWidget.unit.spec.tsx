@@ -60,18 +60,10 @@ const setup = ({
   setupLastDownloadFormatEndpoints();
 
   renderWithProviders(
-    // A fixed `formatPreference` is passed so the widget skips the asynchronous
-    // `last_download_format` user-key-value query. No test here exercises the
-    // saved-preference behaviour, and skipping it keeps the query's
-    // (auto-batched) store update from landing after a test has finished.
     <QuestionDownloadWidget
       question={question}
       result={result}
       onDownload={onDownload}
-      formatPreference={{
-        last_download_format: "csv",
-        last_table_download_format: "csv",
-      }}
     />,
     {
       storeInitialState: state,
