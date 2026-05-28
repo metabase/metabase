@@ -299,7 +299,7 @@ export class LegacyApi extends EventEmitter {
           (e as { status?: number }).status === 503 &&
           retryCount < maxAttempts
         ) {
-          await delay(retryDelays.pop() ?? 0);
+          await delay(retryDelays.pop() ?? 0, options.signal);
         } else {
           throw e;
         }
