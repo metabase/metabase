@@ -277,7 +277,8 @@
          :ssl            1
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
-         :UseNativeQuery 1}]
+         :UseNativeQuery 1
+         :UseThriftClient 0}]
     (merge base-spec
            (when log-level
              {:LogLevel log-level})
