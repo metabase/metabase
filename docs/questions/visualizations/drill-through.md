@@ -136,13 +136,13 @@ Drill-through behavior depends on the [embedding type](../../embedding/start.md)
 
 To turn off drill-through in modular embedding, use the **Allow people to drill through on data points** setting when you create the embed. In a dashboard, override drill-through on a single card with [custom click behavior](../../dashboards/interactive.md).
 
-Use [modular embedding SDK plugins](./embedding/sdk/plugins.md) to customize some drill-through menu options and click behavior in embedded apps.
+Use [modular embedding SDK plugins](../../embedding/sdk/introduction.md) to customize some drill-through menu options and click behavior in embedded apps.
 
 ## Alternatives to drill-through
 
 On a dashboard, you can replace drill-through with a different click action:
 
 - **[Custom click behavior](../../dashboards/interactive.md#customizing-click-behavior):** Send users to another question, dashboard, external URL, or update a filter on the current dashboard
-- **[Cross-filtering](../../dashboards/interactive.md#use-a-chart-to-filter-other-cards):** Update a filter on cards across a dashboard
+- **[Cross-filtering](../../dashboards/interactive.md#use-a-chart-to-filter-a-dashboard):** Update a filter on cards across a dashboard
 
 Setting one of these alternatives on a card replaces the drill-through menu for that card.
