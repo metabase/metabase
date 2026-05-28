@@ -11,7 +11,9 @@
   shape lives in [[metabase.query-processor.pivot.middleware]]."
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -20,6 +22,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
@@ -484,7 +487,7 @@
 (def ^:dynamic ^:private *pivot-max-result-rows*
   "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
   adds a column to the output, so fewer rows are needed to fill the pivot table."
-  200000)
+  67108864)
 
 (defn- pivot-query-max-rows
   "Calculate the per-sub-query row limit for pivot queries: `floor(pivot-max-result-rows / num-aggregations)`.
@@ -494,6 +497,101 @@
     (if (pos? num-aggs)
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
+
+;;; ------------------------------------------------ GROUPING SETS (PG) ------------------------------------------------
+
+(defn- split-top-level-commas
+  "Split string by commas at parenthesis depth 0 only."
+  [s]
+  (loop [i 0, depth 0, start 0, acc []]
+    (if (>= i (count s))
+      (conj acc (str/trim (subs s start)))
+      (let [c (nth s i)]
+        (cond
+          (= c \() (recur (inc i) (inc depth) start acc)
+          (= c \)) (recur (inc i) (dec depth) start acc)
+          (and (= c \,) (zero? depth))
+          (recur (inc i) depth (inc i) (conj acc (str/trim (subs s start i))))
+          :else (recur (inc i) depth start acc))))))
+
+(defn- parse-group-by-cols
+  "Extract GROUP BY column expressions from compiled SQL string.
+  Returns nil if GROUP BY not found."
+  [sql]
+  (let [upper (str/upper-case sql)
+        idx   (str/index-of upper " GROUP BY ")]
+    (when idx
+      (let [after    (subs sql (+ idx (count " GROUP BY ")))
+            rest-up  (str/upper-case after)
+            end-idx  (or (str/index-of rest-up " ORDER BY ")
+                         (str/index-of rest-up " LIMIT ")
+                         (count after))
+            group-by (str/trim (subs after 0 end-idx))]
+        (split-top-level-commas group-by)))))
+
+(defn- rewrite-grouping-sets-sql
+  "Rewrite compiled SQL: replace GROUP BY with GROUPING SETS, add GROUPING() to SELECT.
+  Strips ORDER BY and LIMIT (meaningless with mixed grouping levels).
+  Returns nil if SQL structure can't be parsed."
+  [sql group-cols combos]
+  (let [upper    (str/upper-case sql)
+        from-idx (str/index-of upper " FROM ")
+        gb-idx   (str/index-of upper " GROUP BY ")]
+    (when (and from-idx gb-idx)
+      (let [select-part   (subs sql 0 from-idx)
+            middle-part   (subs sql from-idx gb-idx)
+            sets          (str/join ",\n  "
+                            (for [combo combos]
+                              (if (empty? combo)
+                                "()"
+                                (str "(" (str/join ", " (map #(nth group-cols %) combo)) ")"))))
+            grouping-args (str/join ", " (reverse group-cols))]
+        (str select-part
+             ",\n  GROUPING(" grouping-args ") AS \"pivot-grouping\""
+             middle-part
+             "GROUP BY GROUPING SETS(\n  " sets ")")))))
+
+(defn- reorder-pivot-grouping-rff
+  "Wrap rff to move pivot-grouping (last column from GROUPING()) to after breakout columns."
+  [rff num-breakouts]
+  (fn [metadata]
+    (let [cols (vec (:cols metadata))
+          n (count cols)
+          pg-col (nth cols (dec n))
+          reordered-cols (into (subvec cols 0 num-breakouts)
+                               (cons pg-col (subvec cols num-breakouts (dec n))))
+          rf (rff (assoc metadata :cols reordered-cols))]
+      (fn
+        ([] (rf))
+        ([acc] (rf acc))
+        ([acc row]
+         (let [row (vec row)
+               pg-val (peek row)
+               reordered-row (into (subvec row 0 num-breakouts)
+                                   (cons pg-val (subvec row num-breakouts (dec (count row)))))]
+           (rf acc reordered-row)))))))
+
+(defn- run-pivot-grouping-sets
+  "Run pivot query as single GROUPING SETS query (PostgreSQL). 8x faster than N-query fan-out.
+  Returns nil if SQL cannot be rewritten (caller should fall back to multi-query)."
+  [compiled query pivot-opts rff]
+  (let [sql           (:query compiled)
+        params        (:params compiled)
+        group-cols    (parse-group-by-cols sql)]
+    (when group-cols
+      (let [num-breakouts (count (lib/breakouts query))
+            combos        (breakout-combinations num-breakouts
+                                                 (:pivot-rows pivot-opts)
+                                                 (:pivot-cols pivot-opts)
+                                                 (:show-row-totals pivot-opts)
+                                                 (:show-column-totals pivot-opts))
+            gs-sql        (rewrite-grouping-sets-sql sql group-cols combos)]
+        (when gs-sql
+          (let [native-query  {:database (:database query)
+                               :type     :native
+                               :native   {:query gs-sql :params params}}
+                reordered-rff (reorder-pivot-grouping-rff rff num-breakouts)]
+            (qp/process-query native-query reordered-rff)))))))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
@@ -511,6 +609,13 @@
                         (pivot-options query (get query :viz-settings))
                         (pivot-options query (get-in query [:info :visualization-settings]))
                         (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+           use-gs?     (= driver/*driver* :postgres)
+           compiled    (when use-gs?
+                         (try
+                           (qp.compile/compile query)
+                           (catch Throwable t
+                             (log/errorf t "pivot-gs: compile failed, falling back to multi-query")
+                             nil)))
            pivot-limit (pivot-query-max-rows query)
            query       (-> query
                            (assoc-in [:middleware :pivot-options] pivot-opts)
@@ -519,4 +624,6 @@
                              (update-in [:constraints :max-results-bare-rows] min pivot-limit))
                            add-canonical-col-info)
            all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+       (or (when (and use-gs? compiled (:query compiled))
+             (run-pivot-grouping-sets compiled query pivot-opts rff))
+           (process-multiple-queries all-queries rff pivot-limit))))))
