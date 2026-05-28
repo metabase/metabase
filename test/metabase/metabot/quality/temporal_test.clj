@@ -1,7 +1,8 @@
 (ns metabase.metabot.quality.temporal-test
-  "Phase 4 unit tests — pure. Each test either hand-builds a minimal
-  normalized struct or feeds a synthetic message fixture through
-  `extract/normalize` before calling `derive`. No DB hits."
+  "Unit tests for the temporal derivations — pure. Each test either
+  hand-builds a minimal normalized struct or feeds a synthetic message
+  fixture through `extract/normalize` before exercising the temporal
+  functions. No DB hits."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.agent.streaming :as streaming]
@@ -200,6 +201,37 @@
       (is (= :model_signaled_done (get-in enriched [:temporal :terminal-state]))))))
 
 ;;; ---------------------------------------------------------------------------
+;;; instrumented? — did the conversation run the instrumented agent loop
+;;; ---------------------------------------------------------------------------
+
+(deftest instrumented-true-when-assistant-row-carries-terminal-state-part-test
+  (testing "a terminal_state data part on an assistant row marks the conversation instrumented"
+    (is (true? (temporal/instrumented?
+                (extract/normalize
+                 [(user-row 1 "x")
+                  (assistant-row 2 [(text-part "done")
+                                    (terminal-state-data-part :model_signaled_done)])]))))))
+
+(deftest instrumented-false-when-no-terminal-state-part-test
+  (testing "an assistant turn of only text parts is not instrumented — the
+            compute-terminal-state default of :model_signaled_done is a fallback,
+            not a real signal, and must not read as instrumented"
+    (is (false? (temporal/instrumented?
+                 (extract/normalize
+                  [(user-row 1 "x")
+                   (assistant-row 2 [(text-part "just chatting")])]))))))
+
+(deftest instrumented-true-when-any-assistant-row-carries-the-part-test
+  (testing "a part on an earlier turn counts even when the latest turn carries none"
+    (is (true? (temporal/instrumented?
+                (extract/normalize
+                 [(user-row 1 "x")
+                  (assistant-row 2 [(text-part "first answer")
+                                    (terminal-state-data-part :model_signaled_done)])
+                  (user-row 3 "follow up")
+                  (assistant-row 4 [(text-part "still typing")])]))))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Integration shape — the full :temporal block
 ;;; ---------------------------------------------------------------------------
 
@@ -213,7 +245,7 @@
              (set (keys (:temporal enriched))))))))
 
 (deftest derive-end-to-end-realistic-conversation-test
-  (testing "a productive conversation with one error+recovery and one CONV_Q entity"
+  (testing "a productive conversation with one error+recovery and one authored entity"
     (let [enriched
           (temporal/derive
            (extract/normalize

@@ -126,6 +126,18 @@
 ;;; Public surface
 ;;; ---------------------------------------------------------------------------
 
+(defn instrumented?
+  "True iff any assistant row carries a real `terminal_state` data part —
+  i.e. the conversation ran the instrumented agent loop. Reads `:messages`
+  directly rather than the derived `:terminal-state`, because that field
+  defaults to `:model_signaled_done` when no part exists and so cannot be
+  told apart from a genuine done signal."
+  [{:keys [messages]}]
+  (boolean (some (fn [row]
+                   (and (= :assistant (:role row))
+                        (some? (reason-from-terminal-state-part row))))
+                 messages)))
+
 (defn derive
   "Given a normalized struct from `extract/normalize`, return the same
   struct with `:t-first-used` populated on each CONV_Q atom record and a

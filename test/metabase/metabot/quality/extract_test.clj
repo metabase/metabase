@@ -84,7 +84,6 @@
     (is (= :inspection (extract/tool-type-for "get_field_values")))
     (is (= :utility    (extract/tool-type-for "todo_write")))
     (is (= :utility    (extract/tool-type-for "ask_for_sql_clarification"))))
-
   (testing "unknown tool names return nil so callers can skip them safely"
     (is (nil? (extract/tool-type-for "no_such_tool")))))
 
@@ -182,7 +181,6 @@
               {:type "table"     :id 9}]
              (:P prompt-context))
           "prompt-context surfaces the raw refs in channel order for downstream debugging")))
-
   (testing "channel provenance is recorded on each :P atom"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "x"
@@ -218,7 +216,27 @@
                                                       {:input  []
                                                        :output [{:type "table" :id 10 :metadata {:rank 0}}
                                                                 {:type "model" :id 20 :metadata {:rank 1}}]})])])]
-    (is (= #{["table" "10"] ["model" "20"]} (set (keys (:D sets)))))))
+    (is (= #{["table" "10"] ["card" "20"]} (set (keys (:D sets))))
+        "a discovered model keys under the collapsed \"card\" type")))
+
+(deftest normalize-collapses-card-family-subtypes-to-one-atom-test
+  (testing "a row surfaced as a model in discovery and authored against as a card
+            collapse to one [\"card\" id] atom, so the authored entity is grounded"
+    (let [{:keys [sets]} (extract/normalize
+                          [(user-row 1 "go")
+                           (assistant-row 2
+                                          [(input-part "c1" "search" {})
+                                           (output-part "c1" "search"
+                                                        {:input  []
+                                                         :output [{:type "model" :id 4523 :metadata {:rank 0}}]})
+                                           (input-part "c2" "construct_notebook_query" {})
+                                           (output-part "c2" "construct_notebook_query"
+                                                        {:input  [{:type "card" :id 4523}]
+                                                         :output []})])])]
+      (is (= #{["card" "4523"]} (set (keys (:D sets)))))
+      (is (= #{["card" "4523"]} (set (keys (:Q sets)))))
+      (is (= #{} (set (keys (:H sets))))
+          "authored card is grounded by the discovered model — same report_card row"))))
 
 (deftest normalize-authoring-inputs-go-to-Q-and-filter-databases-test
   (testing "authoring tool's :input refs land in :Q with database refs filtered out"
@@ -292,7 +310,6 @@
       (is (= #{["table" "999"]} (set (keys (:H sets)))))
       (is (= "table" (:type (get-in sets [:H ["table" "999"]]))))
       (is (= 999     (:id   (get-in sets [:H ["table" "999"]]))))))
-
   (testing "a Q ref that's also in D is grounded → not in H"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "x")
@@ -310,7 +327,6 @@
       (is (= #{["table" "7"]} (set (keys (:Q sets)))))
       (is (= #{}              (set (keys (:H sets))))
           "ground-via-D removes the ref from CONV_H")))
-
   (testing "a Q ref that's also in P is grounded → not in H"
     (let [{:keys [sets]} (extract/normalize
                           [(user-row 1 "look at this"

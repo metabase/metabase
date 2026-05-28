@@ -88,12 +88,14 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn entity-key
-  "Stable dedup key for an entity-ref. Coerces `:id` to its string form so
-  `{:type \"table\" :id 1}` and `{:type \"table\" :id \"1\"}` dedup to
-  the same atom — some inspection tools record string ids for aggregation
-  aliases. `:type` is already a string at this layer."
+  "Stable dedup key `[type id-str]` for an entity-ref. Coerces `:id` to its
+  string form so `{:id 1}` and `{:id \"1\"}` dedup to the same atom — some
+  inspection tools record string ids for aggregation aliases. Card-family
+  subtypes fold to `\"card\"` so the same `report_card` row surfaced under
+  one subtype and authored against under another dedup to one atom; the
+  atom keeps its first-seen `:type` for display."
   [{:keys [type id]}]
-  [type (str id)])
+  [(entity-usage/canonical-type type) (str id)])
 
 (defn- entity-ref?
   "True for an entity-usage entry whose `:type` is in the closed

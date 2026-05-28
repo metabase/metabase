@@ -12,6 +12,8 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-usage :as entity-usage]
@@ -852,8 +854,8 @@
                   :output []}
                  eu)))))))
 
-(deftest query->entity-usage-implicit-join-and-field-refs-test
-  (testing "an implicit join + breakout field surfaces both tables and the field id"
+(deftest query->entity-usage-implicit-join-target-table-excluded-test
+  (testing "an implicit-join breakout field surfaces the source table and the field, but not the join-target table"
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
@@ -870,7 +872,6 @@
           (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
           (is (= {:input  [{:type "database" :id 1}
                            {:type "table"    :id 10}
-                           {:type "table"    :id 20}
                            {:type "field"    :id 201}]
                   :output []}
                  eu)))))))
@@ -896,3 +897,25 @@
                  eu))
           (is (every? #(not= "model" (:type %)) (:input eu))
               "source-card type stays `card`, never `model`/`question`/`metric`"))))))
+
+(deftest query->entity-usage-metric-base-table-excluded-test
+  (testing "a metric's base source table is not an authored table; the metric and breakout field are"
+    (let [metric-id    100
+          metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          mp           (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-card-from-query metric-id metric-query {:type :metric}))
+          query        (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/aggregate (lib.metadata/metric mp metric-id))
+                           (lib/breakout (meta/field-metadata :orders :created-at)))
+          eu           (construct/query->entity-usage query)]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id metric-id}
+                       {:type "metric"   :id metric-id}
+                       {:type "field"    :id (meta/id :orders :created-at)}]
+              :output []}
+             eu)
+          "the metric's base table (orders) is absent; the metric and field remain")
+      (is (every? #(not= "table" (:type %)) (:input eu))
+          "the metric's base table is not emitted as an authored `table`"))))

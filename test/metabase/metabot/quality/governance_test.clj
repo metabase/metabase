@@ -6,6 +6,8 @@
   `resolve`."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.metabot.quality.governance :as governance]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -63,20 +65,18 @@
             (is (true? (:lives-in-personal? (facts personal-id*))))
             (is (false? (governance/canonical? (facts personal-id*))))))))))
 
-(deftest resolve-collapses-card-types-to-single-query-test
-  (testing "all four card-types (card/question/model/metric) query report_card; same id under different types lands as separate keys with the same facts"
+(deftest resolve-collapses-card-types-to-single-key-test
+  (testing "all four card-types (card/question/model/metric) query report_card and collapse to one [\"card\" id] key — they are the same row"
     (mt/with-temp [:model/Card {c-id :id} {:name "shared"}]
       (let [res (governance/resolve [{:type "card"     :id c-id}
                                      {:type "question" :id c-id}
                                      {:type "model"    :id c-id}
                                      {:type "metric"   :id c-id}]
                                     #{})]
-        (is (= 4 (count res))
-            "one key per requested type")
-        (is (every? #(= :card (:kind %)) (vals res))
-            "each key carries a card facts map")
-        (is (every? #(= "shared" (:name %)) (vals res))
-            "each key carries the same facts map")))))
+        (is (= #{["card" (str c-id)]} (set (keys res)))
+            "every subtype resolves under the single collapsed key")
+        (is (= :card (:kind (get res ["card" (str c-id)]))))
+        (is (= "shared" (:name (get res ["card" (str c-id)]))))))))
 
 (deftest resolve-folds-multiple-most-recent-rows-to-single-verified-test
   (testing "pathological multiple most_recent=true rows still resolve :moderation-status = verified if any is verified"
@@ -250,24 +250,29 @@
 
 (deftest library-collection-ids-and-table-placement-test
   (testing "library-collection-ids returns the Library root plus descendants; a published table nested under it is canonical"
-    (mt/with-temp [:model/Collection {root-id :id} {:name "Library" :type "library"}
-                   :model/Collection {data-id :id} {:name "Data" :type "library-data"
-                                                    :location (str "/" root-id "/")}
-                   :model/Database   {db-id :id}   {:name "wh"}
-                   :model/Table      {pub-id :id}  {:name "published" :db_id db-id
-                                                    :collection_id data-id :is_published true :active true}
-                   :model/Table      {else-id :id} {:name "elsewhere" :db_id db-id
-                                                    :is_published false :active true}]
-      (let [lib-cids (governance/library-collection-ids)]
-        (is (contains? lib-cids root-id)
-            "the Library root id is included")
-        (is (contains? lib-cids data-id)
-            "a descendant of the Library root is included")
-        (let [res (governance/resolve [{:type "table" :id pub-id}
-                                       {:type "table" :id else-id}]
-                                      lib-cids)]
-          (is (true? (:in-library? (get res ["table" (str pub-id)]))))
-          (is (true? (governance/canonical? (get res ["table" (str pub-id)])))
-              "published table in the Library tree is canonical")
-          (is (false? (governance/canonical? (get res ["table" (str else-id)])))
-              "an unpublished table outside the Library is not canonical"))))))
+    ;; with-library-synced reuses a pre-existing Library root (restoring its state after) or mints a
+    ;; temporary one, and forces the root remote-synced — so the descendant's :is_remote_synced true
+    ;; satisfies the matching-parent constraint regardless of whether the appdb already has a Library.
+    (collections.tu/with-library-synced
+      (let [root-id (:id (collection/library-collection))]
+        (mt/with-temp [:model/Collection {data-id :id} {:name "Data" :type "library-data"
+                                                        :location (str "/" root-id "/")
+                                                        :is_remote_synced true}
+                       :model/Database   {db-id :id}   {:name "wh"}
+                       :model/Table      {pub-id :id}  {:name "published" :db_id db-id
+                                                        :collection_id data-id :is_published true :active true}
+                       :model/Table      {else-id :id} {:name "elsewhere" :db_id db-id
+                                                        :is_published false :active true}]
+          (let [lib-cids (governance/library-collection-ids)]
+            (is (contains? lib-cids root-id)
+                "the Library root id is included")
+            (is (contains? lib-cids data-id)
+                "a descendant of the Library root is included")
+            (let [res (governance/resolve [{:type "table" :id pub-id}
+                                           {:type "table" :id else-id}]
+                                          lib-cids)]
+              (is (true? (:in-library? (get res ["table" (str pub-id)]))))
+              (is (true? (governance/canonical? (get res ["table" (str pub-id)])))
+                  "published table in the Library tree is canonical")
+              (is (false? (governance/canonical? (get res ["table" (str else-id)])))
+                  "an unpublished table outside the Library is not canonical"))))))))

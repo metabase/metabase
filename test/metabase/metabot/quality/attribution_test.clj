@@ -152,62 +152,6 @@
                 obs)))))
 
 ;;; ---------------------------------------------------------------------------
-;;; canonical-bypass
-;;; ---------------------------------------------------------------------------
-
-(deftest canonical-bypass-fires-for-shown-canonical-never-used-test
-  (testing "a canonical surface shown but never inspected or authored against
-            fires canonical-bypass on the surfacing turn"
-    (let [messages   [(user-row {:id 1 :created-at 0})
-                      (assistant-row
-                       {:id         100
-                        :created-at 1
-                        :tool-calls [{:call-id "s1" :function "search"
-                                      :output [{:type "card" :id 10}]}]
-                        :terminal-state "final_response"})]
-          governance {["card" "10"] {:kind :card :moderation-status "verified"}}
-          out        (attribution-for messages :governance governance)
-          o          (first (filter #(= "canonical-bypass" (:kind %))
-                                    (observables-for-row out 100)))]
-      (is o)
-      (is (= "canonical-bypass-rate" (:concern_signal o)))
-      (is (= {:type "card" :id 10} (:entity o)))
-      (is (= "s1" (get-in o [:context :tool-call]))))))
-
-(deftest canonical-bypass-not-fired-when-surface-used-test
-  (testing "a canonical surface later authored against or inspected is not a bypass"
-    (doseq [follow-up [{:call-id "a1" :function "construct_notebook_query"
-                        :input [{:type "card" :id 10}]}
-                       {:call-id "i1" :function "get_field_values"
-                        :input [{:type "card" :id 10}]}]]
-      (let [messages   [(user-row {:id 1 :created-at 0})
-                        (assistant-row
-                         {:id         100
-                          :created-at 1
-                          :tool-calls [{:call-id "s1" :function "search"
-                                        :output [{:type "card" :id 10}]}
-                                       follow-up]
-                          :terminal-state "final_response"})]
-            governance {["card" "10"] {:kind :card :moderation-status "verified"}}
-            out        (attribution-for messages :governance governance)]
-        (is (empty? (filter #(= "canonical-bypass" (:kind %))
-                            (observables-for-row out 100))))))))
-
-(deftest canonical-bypass-not-fired-for-non-canonical-surface-test
-  (testing "a discovered surface that isn't canonical never bypasses"
-    (let [messages   [(user-row {:id 1 :created-at 0})
-                      (assistant-row
-                       {:id         100
-                        :created-at 1
-                        :tool-calls [{:call-id "s1" :function "search"
-                                      :output [{:type "card" :id 10}]}]
-                        :terminal-state "final_response"})]
-          governance {["card" "10"] {:kind :card :moderation-status "unverified"}}
-          out        (attribution-for messages :governance governance)]
-      (is (empty? (filter #(= "canonical-bypass" (:kind %))
-                          (observables-for-row out 100)))))))
-
-;;; ---------------------------------------------------------------------------
 ;;; unproductive-search
 ;;; ---------------------------------------------------------------------------
 

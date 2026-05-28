@@ -40,15 +40,24 @@
 
 (deftest data-source-quality-is-mean-over-non-na-metrics-test
   (testing "Data-Source Quality is the arithmetic mean over the non-N/A metric healths"
-    ;; authoring 1.0, bypass 0.0, unproductive N/A, grounding 1.0 → mean(1.0, 0.0, 1.0) = 2/3
+    ;; authoring 1.0, unproductive-search 0.0, grounding 1.0 → mean(1.0, 0.0, 1.0) = 2/3
     (let [out (subscores/compose (metrics :canonical-authoring-share 1.0
-                                          :canonical-bypass-rate     0.0
-                                          :unproductive-search-rate  :na
+                                          :unproductive-search-rate  0.0
                                           :grounding                 1.0))]
       (is (< 0.666 (:data-source-quality out) 0.667))
       (is (= #{} (:na out)))
       (testing "an N/A metric is excluded rather than counted as 0"
-        (is (not= 0.5 (:data-source-quality out)))))))
+        (is (not= 0.5 (:data-source-quality out)))))
+    (testing "canonical-bypass-rate is not a member, so a live value never moves the mean"
+      (is (= (:data-source-quality
+              (subscores/compose (metrics :canonical-authoring-share 1.0
+                                          :unproductive-search-rate  0.0
+                                          :grounding                 1.0)))
+             (:data-source-quality
+              (subscores/compose (metrics :canonical-authoring-share 1.0
+                                          :unproductive-search-rate  0.0
+                                          :grounding                 1.0
+                                          :canonical-bypass-rate     0.0))))))))
 
 (deftest data-source-quality-na-when-all-metrics-na-test
   (testing "every data-source metric N/A → Data-Source Quality N/A; composite = Execution Health"

@@ -21,6 +21,20 @@
     "dashboard" "database" "transform" "field"
     "collection" "document"})
 
+(def card-family-types
+  "The `:type` values that all resolve to a single `report_card` row — a
+  card and its subtypes. They share `report_card`'s primary-key space, so
+  the same id under any of these types is the same row."
+  #{"card" "question" "model" "metric"})
+
+(defn canonical-type
+  "Fold a card-family `:type` to `\"card\"` so a row surfaced under one
+  subtype (e.g. a search hit typed `model`) and referenced under another
+  (e.g. a query whose source is typed `card`) dedup to one entity. Any
+  other type passes through unchanged."
+  [type]
+  (if (contains? card-family-types type) "card" type))
+
 (def entity-usage-entry-schema
   "Shape of a single entry in `:input` or `:output`. Open map — `:metadata`
   carries per-tool annotations (rank, arg-slot, uri, …) without further

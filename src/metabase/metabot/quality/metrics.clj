@@ -11,22 +11,17 @@
   (:require
    [clojure.set :as set]
    [metabase.metabot.quality.constants :as constants]
-   [metabase.metabot.quality.governance :as governance]))
+   [metabase.metabot.quality.governance :as governance]
+   [metabase.metabot.tools.entity-usage :as entity-usage]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private card-types
-  "Entity-usage `:type` values that resolve to a single `report_card` row,
-  mirroring the governance partitioning. With `table` these are the only
-  entity types that can be a canonical data source."
-  #{"card" "question" "model" "metric"})
 
 (defn- data-source-key?
   "True for a set key `[type id-str]` whose type can be a canonical data
   source — a card-family entity or a table. Fields, dashboards, databases,
   and transforms are not data sources for canonical-share purposes."
   [[type _id]]
-  (or (contains? card-types type) (= "table" type)))
+  (or (contains? entity-usage/card-family-types type) (= "table" type)))
 
 (defn- grounding
   "Fraction of authored entities that were actually surfaced to the agent —

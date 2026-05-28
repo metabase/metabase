@@ -15,7 +15,6 @@
 (def ^:private data-source-metric-keys
   "Metric keys that compose Data-Source Quality, in a stable order."
   [:canonical-authoring-share
-   :canonical-bypass-rate
    :unproductive-search-rate
    :grounding])
 

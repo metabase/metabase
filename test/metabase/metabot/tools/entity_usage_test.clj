@@ -17,13 +17,11 @@
 (deftest ^:parallel entity-usage-schema-shape-test
   (testing "empty :input and :output lists are valid"
     (is (mr/validate entity-usage/entity-usage-schema {:input [] :output []})))
-
   (testing "populated entries with valid type/id are accepted"
     (is (mr/validate entity-usage/entity-usage-schema
                      {:input  [{:type "database" :id 7}]
                       :output [{:type "table" :id 42}
                                {:type "card" :id "uuid-like-string"}]})))
-
   (testing "optional :metadata map of arbitrary keyword keys is accepted"
     (is (mr/validate entity-usage/entity-usage-schema
                      {:input  []
@@ -32,16 +30,13 @@
                                            :verified true
                                            :database_id 7
                                            :uri "metabase://table/1"}}]})))
-
   (testing "unknown entity :type is rejected"
     (is (not (mr/validate entity-usage/entity-usage-schema
                           {:input  []
                            :output [{:type "spaceship" :id 1}]}))))
-
   (testing "missing :input or :output is rejected (both required)"
     (is (not (mr/validate entity-usage/entity-usage-schema {:input []})))
     (is (not (mr/validate entity-usage/entity-usage-schema {:output []}))))
-
   (testing "extra top-level keys are rejected (closed map)"
     (is (not (mr/validate entity-usage/entity-usage-schema
                           {:input [] :output [] :other "nope"})))))
@@ -49,7 +44,6 @@
 (deftest ^:parallel validate-result-utility-test
   (testing "utility tool with no :entity-usage is valid"
     (is (nil? (entity-usage/validate-result :utility {:output "ok"}))))
-
   (testing "utility tool that emits :entity-usage is flagged"
     (let [problem (entity-usage/validate-result
                    :utility
@@ -65,12 +59,10 @@
                   {:entity-usage {:input  [{:type "database" :id 1}]
                                   :output [{:type "table" :id 9
                                             :metadata {:rank 0}}]}}}))))
-
     (testing (str (name tool-type) " tool with missing :entity-usage is flagged")
       (let [problem (entity-usage/validate-result tool-type {:output "ok"})]
         (is (= :entity-usage-required-but-missing (:violation problem)))
         (is (= tool-type (:tool-type problem)))))
-
     (testing (str (name tool-type) " tool with malformed :entity-usage returns malli explain")
       (let [problem (entity-usage/validate-result
                      tool-type
@@ -79,6 +71,14 @@
                                       :output []}}})]
         (is (some? problem))
         (is (contains? problem :errors))))))
+
+(deftest ^:parallel canonical-type-test
+  (testing "every card-family subtype folds to \"card\""
+    (doseq [t ["card" "question" "model" "metric"]]
+      (is (= "card" (entity-usage/canonical-type t)))))
+  (testing "non-card-family types pass through unchanged"
+    (doseq [t ["table" "field" "dashboard" "database" "transform" "collection" "document"]]
+      (is (= t (entity-usage/canonical-type t))))))
 
 (deftest ^:parallel validate-result-unknown-tool-type-test
   (testing "unknown :tool-type is flagged distinctly from missing usage"

@@ -14,6 +14,7 @@
   (:refer-clojure :exclude [resolve])
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -21,12 +22,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Entity-type partitioning
 ;;; ---------------------------------------------------------------------------
-
-(def ^:private card-types
-  "Entity-usage `:type` values that all live in `report_card`. The four
-  share a query but stay distinct in the returned `[type id-str]` key so
-  the join with extract.clj's set construction is symmetric."
-  #{"card" "question" "model" "metric"})
 
 (defn- coerce-int
   "Coerce an entity-usage `:id` (which may be int or numeric string) to
@@ -53,7 +48,7 @@
        (if (nil? n)
          acc
          (cond
-           (contains? card-types type) (update acc :card     (fnil conj #{}) n)
+           (contains? entity-usage/card-family-types type) (update acc :card (fnil conj #{}) n)
            (= "table" type)            (update acc :table    (fnil conj #{}) n)
            (= "dashboard" type)        (update acc :dashboard (fnil conj #{}) n)
            (= "database" type)         (update acc :database (fnil conj #{}) n)
@@ -128,37 +123,16 @@
    rows))
 
 (defn- index-cards
-  "Re-key the per-card facts map to the public `[type id-str]` shape. A
-  single card-id explodes into one key per requested type (e.g. if the
-  same card-id appears as both `card` and `question`, both keys land with
-  the same facts). The `report_card.type` column is intentionally not part
-  of the public key — extract.clj records the type as it appeared in the
-  entity-usage stream, and governance keys must mirror that for join
-  symmetry."
-  [card-facts types-by-id]
+  "Key the per-card facts map to the public `[\"card\" id-str]` shape. Every
+  card-family subtype collapses to the one `\"card\"` key — mirroring how
+  extract.clj keys its sets — so the governance↔set-construction join is
+  symmetric."
+  [card-facts]
   (reduce-kv
    (fn [acc card-id facts]
-     (reduce (fn [acc' t]
-               (assoc acc' [t (str card-id)] facts))
-             acc
-             (get types-by-id card-id #{})))
+     (assoc acc ["card" (str card-id)] facts))
    {}
    card-facts))
-
-(defn- requested-card-types-by-id
-  "Invert the partitioned refs back into `{card-id #{requested-types}}` so
-  [[index-cards]] knows which `[type id-str]` keys to emit for each
-  card-id. Refs whose id didn't coerce are absent (matched
-  [[partition-refs]] earlier)."
-  [refs]
-  (reduce
-   (fn [acc {:keys [type id]}]
-     (let [n (coerce-int id)]
-       (if (and n (contains? card-types type))
-         (update acc n (fnil conj #{}) type)
-         acc)))
-   {}
-   refs))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Table batch query
@@ -250,12 +224,11 @@
   One batched query per entity-type bucket, plus memoized root-collection
   lookups for cards nested inside other collections."
   [entity-refs library-cids]
-  (let [{:keys [card table dashboard database transform]} (partition-refs entity-refs)
-        types-by-card-id                                  (requested-card-types-by-id entity-refs)]
+  (let [{:keys [card table dashboard database transform]} (partition-refs entity-refs)]
     (merge
      (-> (card-rows  card)
          fold-card-rows
-         (index-cards types-by-card-id))
+         index-cards)
      (-> (table-rows table)
          (index-tables library-cids))
      (-> (name-only-rows :report_dashboard dashboard) (index-name-only "dashboard"))

@@ -17,8 +17,9 @@
 (defn- finalize-once!
   "Helper: run start-turn! + finalize-assistant-turn! with a one-text-part
   body and no `:context` kwarg, so the resulting conversation carries no
-  prompt-context block and no entity-usage anywhere. With Phase 6 wired
-  up, scoring this routes through the `pre-foundation` sentinel."
+  prompt-context block, no entity-usage, and no `terminal_state` part —
+  none of the three foundation signals. Scoring it routes through the
+  `pre-foundation` sentinel."
   []
   (let [conversation-id (str (random-uuid))]
     (mt/with-current-user (mt/user->id :rasta)
@@ -33,10 +34,10 @@
          :assistant-msg-id assistant-msg-id}))))
 
 (defn- seed-scoreable-conversation!
-  "Insert a minimal but real conversation that carries enough BOT-1569
-  Layer-0 atoms (a prompt-context block on the user row + a tool-event
-  with `:entity-usage`) for the full pipeline to run. Returns the
-  conversation id."
+  "Insert a minimal but real conversation that carries enough foundation
+  signal (a prompt-context block on the user row + a tool-event with
+  `:entity-usage`) for the full pipeline to run. Returns the conversation
+  id."
   []
   (let [conversation-id (str (random-uuid))
         user-id         (mt/user->id :rasta)]
@@ -77,6 +78,41 @@
                                     :data      {:reason "final_response"}}]})
     conversation-id))
 
+(defn- seed-pure-chat-conversation!
+  "Insert a real conversation that ran the instrumented loop but touched no
+  data: a user row with no prompt-context block and an assistant row whose
+  only parts are text and a `terminal_state` data part — no entity-usage.
+  Returns the conversation id."
+  []
+  (let [conversation-id (str (random-uuid))
+        user-id         (mt/user->id :rasta)]
+    (t2/insert! :model/MetabotConversation
+                {:id      conversation-id
+                 :user_id user-id})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :user_id         user-id
+                 :role            :user
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :data            [{:role "user" :content "what can you help me with?"}]})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :role            :assistant
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :finished        true
+                 :data            [{:type "text" :text "I can help you explore your data."}
+                                   {:type      "data"
+                                    :data-type "terminal_state"
+                                    :version   1
+                                    :data      {:reason "model_signaled_done"}}]})
+    conversation-id))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Sentinel paths
 ;;; ---------------------------------------------------------------------------
@@ -108,10 +144,30 @@
                 :unscoreable "pre-foundation"}
                (json/decode+kw (:quality_breakdown raw-row))))))))
 
+(deftest score-conversation-instrumented-pure-chat-is-scoreable-test
+  (testing "a pure-chat turn that ran the instrumented loop — a terminal_state
+            part but no entity-usage and no prompt-context — is scored, not
+            sentinelled; with no data sources Data-Source Quality is N/A and the
+            composite equals a clean Execution Health of 1.0"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (seed-pure-chat-conversation!)
+            score           (quality.core/score-conversation! conversation-id)
+            row             (t2/select-one :model/MetabotConversation :id conversation-id)
+            breakdown       (:quality_breakdown row)]
+        (is (= 1.0 score))
+        (is (= 1.0 (:quality_score row)))
+        (is (nil? (:unscoreable breakdown))
+            "a real breakdown is written, not a pre-foundation sentinel")
+        (is (= 1.0 (:composite (:subscores breakdown))))
+        (is (= 1.0 (:execution_health (:subscores breakdown))))
+        (is (nil? (:data_source_quality (:subscores breakdown)))
+            "no data sources touched → Data-Source Quality N/A")
+        (is (= ["data_source_quality"] (:subscore_na breakdown)))
+        (is (= "model_signaled_done" (:termination breakdown)))))))
+
 (deftest score-conversation-extract-error-writes-sentinel-test
   (testing "if extract/normalize throws, the pipeline writes the extract-error
-            sentinel rather than nil'ing out — defense in depth for malformed
-            post-BOT-1569 rows"
+            sentinel rather than nil'ing out — defense in depth for malformed rows"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [{:keys [conversation-id]} (finalize-once!)]
         (mt/with-log-level [metabase.metabot.quality.core :fatal]

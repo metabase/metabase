@@ -224,27 +224,32 @@
 (defn query->entity-usage
   "Produce an `:entity-usage` map from a resolved pMBQL query.
 
-  Walks the query for table / card / metric references via
-  [[lib/all-referenced-entity-ids]], collects `:field` refs via [[lib/all-field-ids]], and
-  prepends the query's own `:database` id. Card subtypes (model / question / metric) are NOT
-  resolved — `\"card\"` is used as the catch-all type, matching how the SQL tools emit
-  `{{#N}}` template-tag refs. `:measure`, `:segment`, and `:snippet` references are dropped
-  because they are not present in the entity-usage vocabulary (see
-  [[metabase.metabot.tools.entity-usage/entity-types]]).
+  Tables are the ones the author named directly: non-metric `:source-table`s and table template
+  tags. A table reached only because the author referenced something else — a field's
+  implicit-join target, the table backing a template-tag field, or the base table a metric is
+  defined over — is deliberately excluded, since the author referenced the field or metric, not
+  the table. Card / metric references come from [[lib/all-referenced-entity-ids]], `:field` refs
+  from [[lib/all-field-ids]], and the query's own `:database` id is prepended. Card subtypes
+  (model / question / metric) are NOT resolved — `\"card\"` is used as the catch-all type,
+  matching how the SQL tools emit `{{#N}}` template-tag refs. `:measure`, `:segment`, and
+  `:snippet` references are dropped because they are not present in the entity-usage vocabulary
+  (see [[metabase.metabot.tools.entity-usage/entity-types]]).
 
   Authoring construct-family tools have no `:output` entities, so the output vector is
   always empty."
   [pmbql-query]
-  (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [pmbql-query])
+  (let [{:keys [card metric]} (lib/all-referenced-entity-ids [pmbql-query])
+        table-ids (into #{} cat [(lib/all-non-metric-source-table-ids pmbql-query)
+                                 (lib/all-template-tag-table-ids pmbql-query)])
         field-ids (lib/all-field-ids pmbql-query)
         entry     (fn [type id] {:type type :id id})
         sorted    (fn [ids] (sort (seq ids)))]
     {:input  (vec (concat
                    (when-let [db (:database pmbql-query)]
                      [(entry "database" db)])
-                   (for [id (sorted table)]    (entry "table"  id))
-                   (for [id (sorted card)]     (entry "card"   id))
-                   (for [id (sorted metric)]   (entry "metric" id))
+                   (for [id (sorted table-ids)] (entry "table"  id))
+                   (for [id (sorted card)]      (entry "card"   id))
+                   (for [id (sorted metric)]    (entry "metric" id))
                    (for [id (sorted field-ids)] (entry "field" id))))
      :output []}))
 

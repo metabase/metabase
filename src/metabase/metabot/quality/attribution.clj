@@ -6,8 +6,8 @@
   vector as of the end of this turn (prefix subscores).
 
   Pure given the normalized struct and governance map. Observables are
-  derived directly from the normalized struct and governance; prefix
-  subscores re-run the pure pipeline on each message prefix.
+  derived directly from the normalized struct; prefix subscores re-run the
+  pure pipeline on each message prefix.
 
   Storage shape per assistant message:
 
@@ -20,7 +20,6 @@
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.extract :as extract]
-   [metabase.metabot.quality.governance :as governance]
    [metabase.metabot.quality.metrics :as metrics]
    [metabase.metabot.quality.subscores :as subscores]
    [metabase.metabot.quality.temporal :as temporal]))
@@ -95,27 +94,6 @@
 ;; public `project` function groups by message-id at the end. Pairs whose
 ;; `message-id` lookup fails (e.g. an orphan tool-event with no matching
 ;; tool-input part) are filtered out — attribution requires an anchor row.
-
-(defn- canonical-bypass-observables
-  "For each canonical surface the agent saw but neither inspected nor
-  authored against, emit `canonical-bypass` on the turn it was first
-  surfaced. A surface is bypassed purely because it was shown and then
-  ignored — no name or relationship matching."
-  [normalized governance call-id->msg]
-  (let [used (into (set (keys (get-in normalized [:sets :I])))
-                   (keys (get-in normalized [:sets :Q])))]
-    (for [[k x]   (get-in normalized [:sets :D])
-          :when   (and (governance/canonical? (get governance k))
-                       (not (contains? used k)))
-          :let    [d-prov (first-provenance-in-set x :D)
-                   msg-id (when d-prov (get call-id->msg (:call-id d-prov)))]
-          :when   msg-id]
-      [msg-id
-       (observable
-        "canonical-bypass-rate"
-        "canonical-bypass"
-        {:entity  (entity-ref-of x)
-         :context {:tool-call (:call-id d-prov)}})])))
 
 (defn- unproductive-search-observables
   "For each search call that rediscovered an earlier call's results, emit
@@ -248,7 +226,6 @@
         call-id->msg   (build-call-id->msg-id normalized)
         last-msg-id    (last-assistant-msg-id normalized)
         observable-seq (concat
-                        (canonical-bypass-observables    normalized governance call-id->msg)
                         (unproductive-search-observables normalized call-id->msg)
                         (hallucinated-ref-observables    normalized call-id->msg)
                         (tool-error-observables          normalized call-id->msg)

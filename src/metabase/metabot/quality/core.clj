@@ -57,13 +57,17 @@
   (boolean (seq (get-in normalized [:prompt-context :P]))))
 
 (defn- pre-foundation?
-  "A conversation is pre-foundation iff neither layer-0 signal is present
-  in the normalized struct — no `:entity-usage` populated by any tool
-  call AND no `prompt-context` block on any user row. Either signal's
-  presence is enough to run the pipeline."
+  "A conversation is pre-foundation iff it shows no sign of having run the
+  instrumented agent loop — no `:entity-usage` populated by any tool call,
+  no `prompt-context` block on any user row, and no `terminal_state` data
+  part on any assistant row. Any one of the three is enough to score: a
+  clean pure-chat turn that emitted a `terminal_state` part is scoreable
+  (its Execution Health stands alone), while genuinely old
+  pre-instrumentation rows lack all three and stay sentinelled."
   [normalized]
   (and (not (has-entity-usage? normalized))
-       (not (has-prompt-context? normalized))))
+       (not (has-prompt-context? normalized))
+       (not (temporal/instrumented? normalized))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Entity-ref harvesting (for the batched governance lookup)

@@ -43,6 +43,22 @@
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
+(defn- stage-aggregates-metric?
+  "True if any aggregation clause in `stage` references a metric."
+  [stage]
+  (boolean
+   (match/match-one (:aggregation stage)
+     [:metric _ _] true)))
+
+(mu/defn all-non-metric-source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Like [[all-source-table-ids]], but omits the `:source-table` of any stage that aggregates a
+  metric. A metric-bearing stage's source table is the base table the metric is defined over —
+  fixed by the metric rather than chosen on its own — so it is not counted as a table referenced
+  in its own right. Stages without a metric contribute their `:source-table` as usual."
+  [query :- ::lib.schema/query]
+  (stage-values-set query (comp (remove stage-aggregates-metric?)
+                                (keep :source-table))))
+
 (mu/defn all-template-tags-map :- [:maybe ::lib.schema.template-tag/template-tag-map]
   "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]
