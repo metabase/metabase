@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [metabase.warehouse-schema.field-values.union-distinct :as union-distinct]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -300,7 +299,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception. Mock the SQL-path fetcher
       ;; (union-distinct-values) since that's what the H2 sync path will call.
-      (mt/with-dynamic-fn-redefs [union-distinct/union-distinct-values (fn [& _] (throw (java.net.ConnectException.)))]
+      (mt/with-dynamic-fn-redefs [field-values/union-distinct-values (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}

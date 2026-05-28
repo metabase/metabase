@@ -10,7 +10,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.field-values.union-distinct :as union-distinct]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -60,10 +59,10 @@
   fallback — by design)."
   [table fields-to-sync fvs-map]
   (let [n-fields  (count fields-to-sync)
-        n-queries (count (partition-all union-distinct/*batch-size* fields-to-sync))
+        n-queries (count (partition-all field-values/*batch-size* fields-to-sync))
         results   (sync-util/with-error-handling
                    (format "Error fetching union distinct values for %s" (sync-util/name-for-logging table))
-                    (union-distinct/union-distinct-values (u/the-id table) fields-to-sync))
+                    (field-values/union-distinct-values (u/the-id table) fields-to-sync))
         outcome-counts (if (or (nil? results) (instance? Throwable results))
                          (assoc empty-counts :errors n-fields)
                          (reduce (fn [counts field]
@@ -72,7 +71,7 @@
                                          {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
                                          {capped-values :values
                                           cap-hit?      :has_more_values} (field-values/limit-values values)
-                                         row-limit-hit?  (>= raw-count union-distinct/*distinct-limit*)
+                                         row-limit-hit?  (>= raw-count field-values/*distinct-limit*)
                                          has-more-values (boolean (or cap-hit? row-limit-hit?))
                                          result          (sync-util/with-error-handling
                                                           (format "Error updating field values for %s"

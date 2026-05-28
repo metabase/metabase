@@ -13,7 +13,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
-   [metabase.warehouse-schema.field-values.union-distinct :as union-distinct]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -45,7 +44,7 @@
                          (mapcat (fn [batch]
                                    (t2/select :model/Field :id [:in batch])))
                          (filter field-values/field-should-have-field-values?)))]
-    (union-distinct/sync-fields-grouped-by-table! fields)))
+    (field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
   (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
