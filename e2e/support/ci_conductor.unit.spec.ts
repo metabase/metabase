@@ -246,6 +246,26 @@ describe("reportFailedTestsToConductor", () => {
     expect(mockFetch.mock.calls[0][0]).toBe(endpoint);
   });
 
+  it("uses JOB_ID env when set (populated by the resolve-job-id action)", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      JOB_ID: "789",
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).job_id).toBe(789);
+  });
+
+  it("sends a null job_id when JOB_ID is missing or non-numeric", async () => {
+    const { reportFailedTestsToConductor } = await loadConductor({
+      CI_CONDUCTOR_WEBHOOK_URL: url,
+      JOB_ID: "not-a-number",
+    });
+
+    await reportFailedTestsToConductor(oneTest);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).job_id).toBeNull();
+  });
+
   it("sends null ids when the env vars are missing or non-numeric", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_WEBHOOK_URL: url,

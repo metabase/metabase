@@ -68,6 +68,10 @@ jobs:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
+      # Export this job's numeric GitHub job id as $JOB_ID for any later step
+      # (e.g. ci-conductor failed-tests reporting in after:spec). DEV-1999.
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Setup python-runner
         if: ${{ inputs.name == 'python' }}
         env:

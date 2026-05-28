@@ -1,0 +1,35 @@
+name: Resolve current job id
+description: >
+  Resolve this job's GitHub workflow_jobs.id via the Actions API and export it
+  as JOB_ID (and JOB_HTML_URL) to $GITHUB_ENV, so any later step can read the
+  numeric job id without making its own API call. Best-effort: warns and
+  proceeds on failure so it can never break the run.
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve JOB_ID
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUNNER_NAME: ${{ runner.name }}
+      run: |
+        # GitHub doesn't expose the current job's numeric id, so we look it up
+        # from the Actions API. A runner runs exactly one job at a time, so
+        # filtering by runner_name within (run_id, run_attempt) is unique.
+        # max_by(.started_at) handles the rare case of a runner sequentially
+        # running multiple jobs in the same attempt — we want the latest.
+        set +e
+        out=$(gh api \
+          "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+          --jq "[.jobs[] | select(.runner_name == \"$RUNNER_NAME\")] | max_by(.started_at) | \"\(.id) \(.html_url)\"" \
+          2>/dev/null)
+        if [ -n "$out" ] && [ "$out" != "null null" ]; then
+          read -r job_id job_url <<<"$out"
+          echo "JOB_ID=$job_id" >> "$GITHUB_ENV"
+          echo "JOB_HTML_URL=$job_url" >> "$GITHUB_ENV"
+          echo "Resolved JOB_ID=$job_id"
+        else
+          echo "::warning::Could not resolve current job id (runner=$RUNNER_NAME)"
+        fi
+        exit 0

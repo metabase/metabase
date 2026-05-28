@@ -20,6 +20,7 @@ const {
   CI_CONDUCTOR_DRY_RUN,
   REPO_ID,
   GITHUB_RUN_ID,
+  JOB_ID,
 } = process.env;
 
 // When set, the payload is logged instead of POSTed — used to validate env
@@ -36,15 +37,14 @@ type ConductorTest = {
 };
 
 /**
- * The conductor's `failed_tests.job_id` is a GitHub *numeric* workflow-job id.
- * That number isn't exposed to a running job and isn't static across runs, so
- * for now we send `null` (the column is nullable, and `run_id` already ties a
- * failure to its PR/branch). Kept as a single seam so we can later return a
- * resolved id — or a job name, if the schema changes to accept one — without
- * reshaping the payload. See DEV-1999.
+ * GitHub doesn't expose the current job's numeric `workflow_jobs.id` to a
+ * running job, so the `./.github/actions/resolve-job-id` composite action
+ * resolves it once at job start and exports it as `JOB_ID`. We just read that
+ * env here. Falls back to null when the env isn't set (the column is
+ * nullable). See DEV-1999.
  */
 function getJobId(): number | null {
-  return null;
+  return toNumber(JOB_ID);
 }
 
 /** Parse a numeric env var, treating missing/blank/non-numeric as null. */
