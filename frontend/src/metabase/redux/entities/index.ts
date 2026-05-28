@@ -1,11 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import type {
-  RequestsStateTree,
-  requestsReducer,
-} from "metabase/redux/requests";
-
 import { questionsReducer } from "./questions-reducer";
 import { tablesReducer } from "./tables-reducer";
 
@@ -97,19 +92,3 @@ export const reducer = combineReducers(sliceReducers);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default reducer;
-
-/**
- * Backwards-compatible wrapper kept until the call sites in `reducers-common.ts`
- * and the test entity-store stop using it. The old entity framework chained an
- * invalidate-lists pre-pass through here; with the framework gone the only
- * remaining job is to default `state` to `{}` so Redux's reducer-init check is
- * satisfied. Removed in a follow-up step alongside a default in
- * `requestsReducer` itself.
- */
-export const enhanceRequestsReducer =
-  (originalRequestsReducer: typeof requestsReducer) =>
-  (
-    state: RequestsStateTree | undefined,
-    action: Parameters<typeof originalRequestsReducer>[1],
-  ) =>
-    originalRequestsReducer(state ?? {}, action);
