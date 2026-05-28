@@ -16,6 +16,8 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private cache-breakpoint "<<<METABOT_CACHE_BREAKPOINT>>>")
 
 (def ^:private all-yes-perms
