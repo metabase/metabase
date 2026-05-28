@@ -82,7 +82,6 @@
           (is (= "terminal_state" (:data-type part)))
           (is (= 1 (:version part)))
           (is (= {:reason expected} (:data part)))))))
-
   (testing "unknown reasons fall through to \"error\" — the conservative
             classification for concern signal 6"
     (is (= {:reason "error"}

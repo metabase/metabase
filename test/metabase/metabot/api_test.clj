@@ -845,7 +845,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
 
-(deftest strip-tool-output-bloat-test
+(deftest strip-tool-output-bloat-drops-transient-keys-test
   (testing "drops transient keys and structured-output fields outside the persisted subset"
     (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
            (metabot.persistence/strip-tool-output-bloat
@@ -854,7 +854,9 @@
              :result {:output            "<result>XML</result>"
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                       :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}})))))
+
+(deftest strip-tool-output-bloat-keeps-query-subset-test
   (testing "keeps the query-related subset of :structured-output for analytics extraction"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
       (is (= {:type   :tool-output
@@ -874,7 +876,9 @@
                                             :database      1
                                             :resources     [{:field_values [1 2 3]}]
                                             :reactions     [:noop]}
-                        :data-parts        [{:type :data}]}})))))
+                        :data-parts        [{:type :data}]}}))))))
+
+(deftest strip-tool-output-bloat-preserves-snake-case-alias-test
   (testing "preserves the snake-case :structured_output alias when present"
     (is (= {:type   :tool-output
             :id     "call-snake"
@@ -886,16 +890,22 @@
              :result {:output            "<result>...</result>"
                       :structured_output {:query-id      "qid-2"
                                           :query-content "SELECT 2"
-                                          :extra-bloat   [1 2 3]}}}))))
+                                          :extra-bloat   [1 2 3]}}})))))
+
+(deftest strip-tool-output-bloat-leaves-non-tool-output-untouched-test
   (testing "leaves non-tool-output parts untouched"
     (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part)))))
+      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part))))))
+
+(deftest strip-tool-output-bloat-handles-no-output-key-test
   (testing "handles result with no :output key and no query-related structured-output"
     (is (= {:type :tool-output :id "call-2" :result {}}
            (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-2"
-             :result {:structured-output {:some "data"}}}))))
+             :result {:structured-output {:some "data"}}})))))
+
+(deftest strip-tool-output-bloat-preserves-entity-usage-test
   (testing "preserves :entity-usage inside :structured-output"
     (let [eu {:input  [{:type "database" :id 1}]
               :output [{:type "table" :id 9 :metadata {:rank 0}}]}]

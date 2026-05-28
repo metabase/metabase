@@ -9,6 +9,7 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.quality.core :as quality.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -379,10 +380,12 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        content    (->> parts
+        ;; used-table extraction needs the value before `strip-tool-output-bloat` so it can see keys that strip
+        ;; discards, e.g. `:transform`
+        pre-strip  (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
-                        (filter streaming/persistable-data-part?)
-                        (mapv strip-tool-output-bloat))]
+                        (filter streaming/persistable-data-part?))
+        content    (mapv strip-tool-output-bloat pre-strip)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -411,7 +414,11 @@
         (quality.core/score-conversation! conversation-id)
         (catch Throwable t
           (log/error t "score-conversation! escaped the inner guard"
-                     {:conversation-id conversation-id}))))))
+                     {:conversation-id conversation-id}))))
+    ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
+    ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
+    ;; `message_id` FK is valid even before the UPDATE completes.
+    (used-tables/record-used-tables! assistant-msg-id pre-strip)))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
