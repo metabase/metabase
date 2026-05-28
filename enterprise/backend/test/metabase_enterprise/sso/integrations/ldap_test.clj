@@ -27,7 +27,6 @@
                              "cn" "John Smith"}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "jsmith1"))))
-
       (testing "find by email"
         (is (= {:dn "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
@@ -40,7 +39,6 @@
                              "cn" "John Smith"}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "John.Smith@metabase.com"))))
-
       (testing "find by email, no groups"
         (is (= {:dn "cn=Fred Taylor,ou=People,dc=metabase,dc=com"
                 :first-name "Fred"
@@ -52,7 +50,6 @@
                              "sn" "Taylor"}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "fred.taylor@metabase.com"))))
-
       (testing "find by email, no givenName"
         (is (= {:dn "cn=Jane Miller,ou=People,dc=metabase,dc=com"
                 :first-name nil
@@ -64,7 +61,6 @@
                              "sn" "Miller"}
                 :groups []}
                (ldap/find-user "jane.miller@metabase.com"))))
-
       (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
         (testing "find by username with custom group membership filter"
           (is (= {:dn "cn=Sally Brown,ou=People,dc=metabase,dc=com"
@@ -78,7 +74,6 @@
                                "cn" "Sally Brown"}
                   :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sbrown20"))))
-
         (testing "find by email with custom group membership filter"
           (is (= {:dn "cn=Sally Brown,ou=People,dc=metabase,dc=com"
                   :first-name "Sally"

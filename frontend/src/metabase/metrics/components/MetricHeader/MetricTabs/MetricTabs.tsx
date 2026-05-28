@@ -7,11 +7,10 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
-import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
@@ -68,18 +67,6 @@ function getTabs(
     tabs.push({
       label: t`Dependencies`,
       to: urls.dependencies(card.id),
-    });
-  }
-
-  const isCacheableQuestion =
-    card.can_write &&
-    PLUGIN_CACHING.isGranularCachingEnabled() &&
-    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
-
-  if (isCacheableQuestion) {
-    tabs.push({
-      label: t`Caching`,
-      to: urls.caching(card.id),
     });
   }
 

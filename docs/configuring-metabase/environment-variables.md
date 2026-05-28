@@ -1030,7 +1030,7 @@ When set to `true`, users who log in via JWT will automatically get a Metabase a
 - [Exported as](../installation-and-operation/serialization.md): `landing-page`.
 - [Configuration file name](./config-file.md): `landing-page`
 
-Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
+Enter a relative URL like /dashboard/1 or /collection/2.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 
@@ -2190,6 +2190,18 @@ By default, this is 0 and the thread interrupt escalation does not run.
 
 Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
         This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
+### `MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `3`
+
+Maximum number of SQL-backed transforms a single transform-job run may execute in parallel.
+
+This setting is only configurable on instances with the transforms add-on; OSS
+  deployments without the add-on always use the default.
 
 ### `MB_TRANSFORM_TIMEOUT`
 

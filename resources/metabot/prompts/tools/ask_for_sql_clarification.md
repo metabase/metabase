@@ -1,7 +1,13 @@
-Use this tool when you need more information from the user to properly complete their SQL request.
-The clarification question will be inserted as a comment in the SQL query at the user's cursor position.
+Ask the user a short clarifying question when their request is genuinely ambiguous. The `question` text is inserted as a SQL comment at the user's cursor — so this is a small-surface input for *short prose only*, not a delivery channel.
 
-<critical>
-MANDATORY: You MUST call this tool to communicate with the user. The user will not be able to see any text
-you send unless you call this tool.
-</critical>
+**Use only for:**
+- Structural ambiguity where picking wrong would produce a fundamentally different query (e.g. "Top by revenue or order count?", "By customer or by account?").
+- Off-topic or non-SQL requests where you need to redirect.
+
+**Do not use for:**
+- Delivering SQL. If you have a query ready, call `create_sql_query` (or `edit_sql_query`/`replace_sql_query` for changes to an existing query). Never put a `SELECT` (or any SQL body) in the `question` argument.
+- Judgement calls you can resolve yourself. Pick a reasonable default, deliver the query via `create_sql_query`, and flag the assumption in the explanation that accompanies the query.
+- Anything discovery (`search`, `read_resource`) can answer.
+
+**Argument:**
+- `question` — one short sentence, phrased as a question, no SQL.

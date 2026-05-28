@@ -98,7 +98,6 @@
   ;; Clear existing list of releases
   (let [target "../../docs/releases.md"]
     (shell (str "rm -rf " target))
-
     ;; Publish releases
     (spit target
           (-> list-of-releases

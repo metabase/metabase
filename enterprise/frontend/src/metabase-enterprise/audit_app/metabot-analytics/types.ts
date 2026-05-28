@@ -105,8 +105,18 @@ export type ConversationDetail = {
   feedback: ConversationFeedback[];
 };
 
-export type DataComplexityCatalogId = "library" | "universe" | "metabot";
-export type DataComplexityGroupId = "size" | "ambiguity";
+export const DATA_COMPLEXITY_CATALOG_IDS = [
+  "library",
+  "universe",
+  "metabot",
+] as const;
+
+export const DATA_COMPLEXITY_GROUP_IDS = ["size", "ambiguity"] as const;
+
+export type DataComplexityRating = "low" | "medium" | "high";
+export type DataComplexityCatalogId =
+  (typeof DATA_COMPLEXITY_CATALOG_IDS)[number];
+export type DataComplexityGroupId = (typeof DATA_COMPLEXITY_GROUP_IDS)[number];
 
 export type DataComplexitySizeComponentId = "entity_count" | "field_count";
 export type DataComplexityAmbiguityComponentId =
@@ -116,33 +126,36 @@ export type DataComplexityAmbiguityComponentId =
 export type DataComplexityComponentId =
   | DataComplexitySizeComponentId
   | DataComplexityAmbiguityComponentId;
-
-export type DataComplexitySubScore =
-  | { error: string }
-  | { measurement: number; score: number };
-
-export type DataComplexitySizeGroup = {
-  score: number | null;
-  components: Record<DataComplexitySizeComponentId, DataComplexitySubScore>;
+type DataComplexityGroupComponents = {
+  size: DataComplexitySizeComponentId;
+  ambiguity: DataComplexityAmbiguityComponentId;
 };
 
-export type DataComplexityAmbiguityGroup = {
-  score: number | null;
-  components: Record<
-    DataComplexityAmbiguityComponentId,
-    DataComplexitySubScore
-  >;
+export type DataComplexityFailure = { error: string };
+export type ScoreAndRating = {
+  score: number;
+  rating: DataComplexityRating | null;
+  rating_label: string | null;
 };
 
-export type DataComplexityGroup =
-  | DataComplexitySizeGroup
-  | DataComplexityAmbiguityGroup;
+export type ScoreAndRatingError = {
+  [K in keyof ScoreAndRating]: null;
+};
 
-export type DataComplexityCatalog = {
-  score: number | null;
+export type DataComplexityLeaf = {
+  measurement: number;
+} & ScoreAndRating;
+
+export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
+
+export type DataComplexityCatalog = (ScoreAndRating | ScoreAndRatingError) & {
   components: {
-    size: DataComplexitySizeGroup;
-    ambiguity: DataComplexityAmbiguityGroup;
+    [G in DataComplexityGroupId]: (ScoreAndRating | ScoreAndRatingError) & {
+      components: Record<
+        DataComplexityGroupComponents[G],
+        DataComplexitySubScore
+      >;
+    };
   };
 };
 

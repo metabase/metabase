@@ -20,7 +20,6 @@
           (mt/assert-has-premium-feature-error "Audit app" (mt/user-http-request user-id
                                                                                  :delete 402
                                                                                  (format "ee/audit-app/user/%d/subscriptions" user-id))))))
-
     (mt/with-premium-features #{:audit-app}
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp [:model/User                  {user-id :id} {}

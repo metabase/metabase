@@ -4,6 +4,8 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
+import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/setup";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
@@ -60,8 +62,13 @@ export function McpUiAppRoute() {
   );
 
   const theme = useMemo(
-    () => buildMcpAppsTheme(hostCssVariables, scheme),
-    [hostCssVariables, scheme],
+    () =>
+      buildMcpAppsTheme({
+        hostCssVariables,
+        preset: scheme,
+        agentName: hostContext?.userAgent,
+      }),
+    [hostCssVariables, scheme, hostContext?.userAgent],
   );
 
   return (
@@ -92,6 +99,7 @@ function McpUiAppRouteContent({
   sessionToken,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const isHosted = useSelector(getIsHosted);
 
   const { mcpSessionId = "" } =
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
@@ -187,6 +195,7 @@ function McpUiAppRouteContent({
           app={app}
           footerStyle={footerStyle}
           instanceUrl={instanceUrl}
+          isFeedbackEnabled={Boolean(isHosted)}
           isSubmittingFeedback={isSubmittingFeedback}
           onSelectFeedback={setSelectedFeedback}
           submittedFeedback={submittedFeedback}
