@@ -13,14 +13,16 @@ export const MetricsViewer = {
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
   getDimensionPillContainer: () =>
     cy.findByTestId("metrics-viewer-dimension-pill-container"),
-  tablist: () => cy.findByRole("tablist"),
-  getTab: (tab: string) =>
-    MetricsViewer.tablist().findByRole("tab", { name: tab }),
-  tabsShouldBe: (tabs: string[]) => {
-    tabs.forEach((tab) =>
-      MetricsViewer.tablist().findByRole("tab", { name: tab }).should("exist"),
-    );
+  dimensionPickerSidebar: () =>
+    cy.findByTestId("metrics-viewer-dimension-picker-sidebar"),
+  getColumnPickerButton: () =>
+    MetricsViewer.getMerticControls().findByLabelText("Change column"),
+  openDimensionPickerSidebar: () => {
+    MetricsViewer.getColumnPickerButton().click();
+    return MetricsViewer.dimensionPickerSidebar();
   },
+  closeDimensionPickerSidebar: () =>
+    MetricsViewer.dimensionPickerSidebar().findByLabelText("Close").click(),
   getMetricVisualization: () => cy.findByTestId("visualization-root"),
   getMetricVisualizationDataPoints: () =>
     MetricsViewer.getMetricVisualization().get(
@@ -50,10 +52,6 @@ export const MetricsViewer = {
       .click(),
   getLayoutControls: () => cy.findByTestId("metrics-viewer-layout-controls"),
   getAllCards: () => cy.findAllByTestId("metrics-viewer-card"),
-  getAddDimensionButton: () =>
-    cy.findByRole("button", { name: "Add dimension tab" }),
-  getRemoveTabButton: (tabLabel: string) =>
-    cy.findByRole("button", { name: `Remove ${tabLabel} tab` }),
   openMetricHomePage: (metricName: string) => {
     MetricsViewer.searchBarPills().contains(metricName).rightclick();
     cy.findByText(/Go to metric home page/).click();
