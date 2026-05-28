@@ -4,9 +4,9 @@
 ## a null source_database_id rather than blocking the delete or cascading the transform.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/061_update_migrations.yaml
+  - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
-      id: v61.2026-05-22T11:00:00
+      id: v62.2026-05-22T11:00:00
       author: bronsa
       comment: Make transform.source_database_id nullable
       changes:
@@ -21,13 +21,26 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v61.2026-05-22T11:00:01
+      id: v62.2026-05-22T11:00:01
       author: bronsa
-      comment: Change fk_tranform_source_database_id to ON DELETE SET NULL
+      comment: Drop fk_tranform_source_database_id (recreated next with ON DELETE SET NULL)
       changes:
         - dropForeignKeyConstraint:
             baseTableName: transform
             constraintName: fk_tranform_source_database_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v62.2026-05-22T11:00:02
+      author: bronsa
+      comment: Recreate fk_tranform_source_database_id with ON DELETE SET NULL
+      changes:
         - addForeignKeyConstraint:
             baseTableName: transform
             baseColumnNames: source_database_id
@@ -38,10 +51,4 @@ databaseChangeLog:
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: transform
-            constraintName: fk_tranform_source_database_id
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: source_database_id
-            referencedTableName: metabase_database
-            referencedColumnNames: id
             constraintName: fk_tranform_source_database_id
