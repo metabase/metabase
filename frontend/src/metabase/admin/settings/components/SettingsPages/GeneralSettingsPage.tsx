@@ -29,6 +29,7 @@ export function GeneralSettingsPage() {
   });
   const hasHostingFeature = useHasTokenFeature("hosting");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
+  const customVizAvailable = useHasTokenFeature("custom-viz-available");
   const enableAnonymousTracking = !hasHostingFeature;
   const { value: cspImgEnabled } = useAdminSetting("csp-img-enabled");
   const { value: customVizEnabled } = useAdminSetting("custom-viz-enabled");
@@ -104,7 +105,9 @@ export function GeneralSettingsPage() {
                     {t`Custom Visualizations`}
                   </Link>
                 )} before disabling this setting.`
-              : jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+              : customVizAvailable
+                ? jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+                : t`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below.`
           }
           inputType="boolean"
           disabled={Boolean(customVizEnabled)}
@@ -115,7 +118,9 @@ export function GeneralSettingsPage() {
           title={t`Allowed domains for images`}
           description={
             cspImgEnabled
-              ? jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+              ? customVizAvailable
+                ? jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+                : jt`Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
               : t`Turn on the "Restrict image domains" setting above to enforce this allowlist.`
           }
           inputType="textarea"
