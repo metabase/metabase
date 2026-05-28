@@ -94,6 +94,9 @@ describe(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
+      "persistSettings",
+    );
 
     mockEmbedJsToDevServer();
   });
@@ -965,7 +968,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
@@ -976,6 +979,13 @@ describe(suiteTitle, () => {
     // Should no longer derive background-hover as it is color-mix'd
     // in the colors configuration
     codeBlock().should("not.contain", '"background-hover"');
+
+    // Wait for the debounced theme persist to land before the test ends —
+    // otherwise the orphaned `_.debounce` callback in `useUserSetting` fires
+    // after `H.restore()` of the next test and writes the custom theme back
+    // into the freshly-restored DB, polluting downstream snowplow assertions.
+    // Proper fix (flush-on-unmount in `useUserSetting`) tracked in EMB-1795.
+    cy.wait("@persistSettings");
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {

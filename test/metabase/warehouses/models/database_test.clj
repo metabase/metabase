@@ -738,6 +738,15 @@
       (is (= "b6f1a9e8"
              (serdes/identity-hash db))))))
 
+(deftest ^:parallel serdes-extract-is-stub-test
+  (testing "serdes/extract-one preserves :is_stub true and elides it when false"
+    (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}
+                   :model/Database non-stub {:engine :h2 :name "non-stub"}]
+      (testing "stub DB carries :is_stub true into the extracted map"
+        (is (true? (:is_stub (serdes/extract-one "Database" nil stub)))))
+      (testing "non-stub DB elides :is_stub from the extracted map (matches default)"
+        (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub)))))))
+
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
     (mt/with-model-cleanup [:model/Database]

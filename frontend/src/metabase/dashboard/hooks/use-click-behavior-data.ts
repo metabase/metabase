@@ -11,9 +11,9 @@ import {
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { Questions } from "metabase/entities/questions";
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getUserAttributes } from "metabase/selectors/user";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
@@ -39,9 +39,10 @@ function isEntityObject(value: unknown): value is EntityObject {
 
 function resolveLinkedObject(target: LinkedEntityTarget, state: State) {
   if (target.entityType === "question") {
-    const object = Questions.selectors.getObject(state, {
-      entityId: target.entityId,
-    });
+    const object =
+      target.entityId != null
+        ? getMetadata(state).question(target.entityId)
+        : null;
     if (object instanceof Question) {
       const card = object.card();
       return isEntityObject(card) ? card : null;
