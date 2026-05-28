@@ -1,7 +1,7 @@
 (ns metabase.metabot.quality.extract
   "Layer 1 of the conversation-quality pipeline. Pure: given the
   `MetabotMessage` rows for a conversation, produces the normalized struct
-  every later layer (governance / temporal / concern-signals / subscores /
+  every later layer (governance / temporal / metrics / subscores /
   attribution) consumes.
 
   See `notes/bot-1569/quality-score-impl.md` §B for the contract. The

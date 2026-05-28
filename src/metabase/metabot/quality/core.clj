@@ -1,22 +1,21 @@
 (ns metabase.metabot.quality.core
   "Public surface for the Metabot conversation quality-score pipeline.
 
-  See `notes/bot-1569/quality-score-impl.md` for the full design. This
-  namespace owns the I/O wrapper called from
+  Owns the I/O wrapper called from
   `metabase.metabot.persistence/finalize-assistant-turn!` and the pure
-  pipeline composition (extract → governance → temporal → concern-signals
-  → subscores) that produces the per-conversation breakdown.
+  pipeline composition (extract → governance → temporal → metrics →
+  subscores) that produces the per-conversation breakdown.
 
-  Phase 6: real scores land here. The Phase-1 stub is replaced by the
-  full pipeline; conversations that lack BOT-1569 layer-0 atoms get a
-  `pre-foundation` sentinel, conversations that throw inside extract
-  get an `extract-error` sentinel."
+  Conversations that carry neither prompt context nor any tool
+  entity-usage get a `pre-foundation` sentinel; conversations that throw
+  inside extract get an `extract-error` sentinel."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.quality.attribution :as attribution]
-   [metabase.metabot.quality.concern-signals :as concern-signals]
    [metabase.metabot.quality.constants :as quality.constants]
    [metabase.metabot.quality.extract :as extract]
    [metabase.metabot.quality.governance :as governance]
+   [metabase.metabot.quality.metrics :as metrics]
    [metabase.metabot.quality.subscores :as subscores]
    [metabase.metabot.quality.temporal :as temporal]
    [metabase.util.log :as log]
@@ -31,11 +30,10 @@
 (defn- sentinel-breakdown
   "JSON-encodable map persisted as `metabot_conversation.quality_breakdown`
   for conversations the pipeline declines to score. `quality_score` stays
-  NULL. Reasons in MVP: `pre-foundation`, `extract-error` (documented in
-  `notes/bot-1569/quality-score-impl.md` §Sentinel breakdowns).
+  NULL. Reasons: `pre-foundation`, `extract-error`.
 
-  Writing a sentinel is what stops the backfill task from re-discovering
-  the row tomorrow (discovery is `WHERE quality_breakdown IS NULL`)."
+  Writing a sentinel is what stops a backfill from re-discovering the row
+  later (discovery is `WHERE quality_breakdown IS NULL`)."
   [reason]
   {:version     quality.constants/composite-version
    :unscoreable reason})
@@ -85,24 +83,37 @@
 ;;; Breakdown shape
 ;;; ---------------------------------------------------------------------------
 
+(defn- na->nil
+  "Map the `:na` sentinel to JSON null; pass any computed value through."
+  [v]
+  (when-not (= :na v) v))
+
+(defn- subscore-na-name
+  "Render a subscore key as its persisted snake-case string."
+  [k]
+  (str/replace (name k) "-" "_"))
+
 (defn- build-breakdown
-  "Compose the `quality_breakdown` map per §Storage formats. Keys are
-  intentionally a mix of kebab- and snake-case to match the impl plan's
-  documented JSON shape."
-  [normalized concern-signals subscores]
+  "Build the JSON-encodable `quality_breakdown` map persisted on the
+  conversation row. Metric values read `1 = good`; `:na` serializes as
+  null."
+  [normalized metrics subscores]
   {:version           quality.constants/composite-version
-   :subscores         {:A         (:A subscores)
-                       :B         (:B subscores)
-                       :C         (:C subscores)
-                       :D         (:D subscores)
-                       :composite (:composite subscores)}
-   :subscore_na       (mapv name (sort (:na subscores)))
-   :concern_signals   concern-signals
-   :set_cardinalities {:P (count (get-in normalized [:sets :P]))
-                       :D (count (get-in normalized [:sets :D]))
-                       :Q (count (get-in normalized [:sets :Q]))
-                       :I (count (get-in normalized [:sets :I]))
-                       :H (count (get-in normalized [:sets :H]))}
+   :subscores         {:data_source_quality (:data-source-quality subscores)
+                       :execution_health    (:execution-health subscores)
+                       :composite           (:composite subscores)}
+   :subscore_na       (mapv subscore-na-name (sort (:na subscores)))
+   :metrics           {:canonical_authoring_share (na->nil (:canonical-authoring-share metrics))
+                       :canonical_bypass_rate     (na->nil (:canonical-bypass-rate metrics))
+                       :unproductive_search_rate  (na->nil (:unproductive-search-rate metrics))
+                       :grounding                 (na->nil (:grounding metrics))
+                       :tool_call_failure_rate    (:tool-call-failure-rate metrics)
+                       :termination_signal        (na->nil (:termination-signal metrics))}
+   :set_cardinalities {:prompt_context (count (get-in normalized [:sets :P]))
+                       :discovered     (count (get-in normalized [:sets :D]))
+                       :authored       (count (get-in normalized [:sets :Q]))
+                       :inspected      (count (get-in normalized [:sets :I]))
+                       :hallucinated   (count (get-in normalized [:sets :H]))}
    :termination       (some-> (get-in normalized [:temporal :terminal-state]) name)
    :context           {:iterations (get-in normalized [:temporal :iterations] 0)
                        :tool_calls (count (:tool-events normalized))
@@ -118,14 +129,13 @@
   map carrying the conversation-level fields to persist plus a
   per-assistant-message `:quality_attribution` map keyed by message id."
   [normalized]
-  (let [governance     (governance/resolve (all-entity-refs normalized))
-        ancestry-of    (memoize governance/walk-source-card-ancestry)
-        normalized'    (temporal/derive normalized)
-        signals        (concern-signals/compute normalized' governance ancestry-of)
-        subs           (subscores/compose normalized' signals)
-        attribution    (attribution/project normalized' governance ancestry-of)]
+  (let [governance  (governance/resolve (all-entity-refs normalized))
+        normalized' (temporal/derive normalized)
+        metrics     (metrics/compute normalized' governance)
+        subs        (subscores/compose metrics)
+        attribution (attribution/project normalized' governance)]
     {:quality_score       (:composite subs)
-     :quality_breakdown   (build-breakdown normalized' signals subs)
+     :quality_breakdown   (build-breakdown normalized' metrics subs)
      :quality_attribution attribution}))
 
 (defn compute-conversation-score
@@ -138,7 +148,7 @@
     no `:quality_attribution`.
   - **Real score** — composite `:quality_score`, full
     `:quality_breakdown`, and `:quality_attribution` keyed by assistant
-    message id (Phase 7)."
+    message id."
   [messages]
   (let [normalized (try (extract/normalize messages)
                         (catch Throwable t
@@ -169,8 +179,8 @@
   per-assistant-row attribution is updated separately (and only on the
   real-score path — sentinel paths leave `quality_attribution` NULL).
 
-  One UPDATE per assistant row, idiomatic Toucan. Phase 10 may revisit
-  to bulk-update if profiling shows the per-row cost matters."
+  One UPDATE per assistant row; revisit with a bulk update if profiling
+  shows the per-row cost matters."
   [conversation-id result]
   (t2/update! :model/MetabotConversation conversation-id
               {:quality_score     (:quality_score result)
@@ -188,10 +198,9 @@
     :sentinel — sentinel breakdown written; `quality_score` stays NULL
     nil       — throw caught by the inner safety guard, no UPDATE fired.
 
-  The inner try/catch is log-only at MVP — Prometheus / Snowplow
-  instrumentation is a follow-up task (see §Out of scope in the impl
-  plan). Callers in `metabase.metabot.persistence/finalize-assistant-turn!`
-  add an outer try/catch as defense in depth."
+  The inner try/catch is log-only; operational telemetry is a follow-up.
+  Callers in `metabase.metabot.persistence/finalize-assistant-turn!` add
+  an outer try/catch as defense in depth."
   [conversation-id]
   (try
     (let [messages (conversation-messages conversation-id)

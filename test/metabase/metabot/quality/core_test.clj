@@ -163,8 +163,8 @@
 
 (deftest score-conversation-pipeline-end-to-end-test
   (testing "a scoreable conversation runs the full pipeline and persists a real
-            composite + breakdown — every signal at zero here, so all applicable
-            subscores are 1.0 and composite = 1.0"
+            composite + breakdown — the authored table was surfaced and nothing
+            errored, so both subscores are 1.0 and composite = 1.0"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [conversation-id (seed-scoreable-conversation!)
             score           (quality.core/score-conversation! conversation-id)
@@ -174,31 +174,29 @@
           (is (number? score))
           (is (= 1.0 score))
           (is (= 1.0 (:quality_score row))))
-        (testing "breakdown shape per §Storage formats"
+        (testing "persisted breakdown shape"
           (is (= quality.constants/composite-version (:version breakdown)))
           (is (= "final_response" (:termination breakdown)))
-          (is (= {:A 1.0 :B nil :C 1.0 :D 1.0 :composite 1.0}
-                 (:subscores breakdown))
-              "Subscore B is N/A — no non-field discovery; A/C/D all healthy")
-          (is (= ["B"] (:subscore_na breakdown))
-              "subscore_na is a sorted vector of N/A letter codes")
-          (is (= {:selection-quality      0.0
-                  :grounding              0.0
-                  :discovery-efficiency   0.0
-                  :execution-health       0.0
-                  :conversational-economy 0.0
-                  :termination            0.0}
-                 (:concern_signals breakdown))
-              "every concern signal at 0 on this clean fixture")
-          (is (= {:P 1 :D 0 :Q 1 :I 0 :H 0}
+          (is (= {:data_source_quality 1.0 :execution_health 1.0 :composite 1.0}
+                 (:subscores breakdown)))
+          (is (= [] (:subscore_na breakdown))
+              "both subscores applicable on this fixture")
+          (is (= {:canonical_authoring_share nil
+                  :canonical_bypass_rate     nil
+                  :unproductive_search_rate  nil
+                  :grounding                 1.0
+                  :tool_call_failure_rate    0.0
+                  :termination_signal        nil}
+                 (:metrics breakdown))
+              "grounding healthy; the not-yet-computed metrics serialize as null")
+          (is (= {:prompt_context 1 :discovered 0 :authored 1 :inspected 0 :hallucinated 0}
                  (:set_cardinalities breakdown))
-              "the user_is_viewing table lands in P; the authoring-tool input lands in Q;
-               Q ⊆ P so H is empty")
+              "the user_is_viewing table lands in prompt-context; the authoring-tool input
+               lands in authored; authored ⊆ prompt-context so nothing is hallucinated")
           (is (= {:iterations 1 :tool_calls 1 :errors 0}
                  (:context breakdown))
               "single tool call, single iteration, no errors"))
-        (testing "Phase 7 — per-turn quality_attribution lands on the assistant row
-                  with the same shape the conversation breakdown uses"
+        (testing "per-turn quality_attribution lands on the assistant row"
           (let [msgs            (t2/select :model/MetabotMessage
                                            :conversation_id conversation-id
                                            {:order-by [[:created_at :asc] [:id :asc]]})
@@ -210,6 +208,6 @@
             (is (= quality.constants/composite-version (:version attribution)))
             (is (= [] (:observables attribution))
                 "healthy clean conversation → no observables on the only assistant turn")
-            (is (= {:A 1.0 :B nil :C 1.0 :D 1.0 :composite 1.0}
+            (is (= {:data-source-quality 1.0 :execution-health 1.0 :composite 1.0}
                    (:prefix_subscores attribution))
                 "last (and only) assistant turn's prefix_subscores match the conversation-level subscores")))))))

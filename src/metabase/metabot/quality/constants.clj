@@ -13,7 +13,7 @@
   "Version stamp written into every persisted `quality_breakdown` and
   `quality_attribution` payload. Bumps on any change that would alter a
   previously-scored conversation's value."
-  "v2.0")
+  "v3.0")
 
 ;; ---- Saturation constants (placeholder; tuned in Phase 5) -----------------
 ;;
