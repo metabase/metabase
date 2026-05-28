@@ -5,7 +5,7 @@ import type {
 } from "metabase/metrics-viewer/utils";
 import { Stack, Text } from "metabase/ui";
 
-import { getSidebarSectionName, hasSameDimensions } from "../../utils";
+import { getSidebarSectionName, hasMatchingDimensions } from "../../utils";
 
 import { DimensionButton } from "./DimensionButton";
 
@@ -38,7 +38,10 @@ export function AllFieldsSectionList({
                 <DimensionButton
                   key={`${item.dimensionBreakoutInfo.type}-${item.name}-${itemIndex}`}
                   item={item}
-                  isSelected={hasSameDimensions(item, activeDimensionBreakout)}
+                  isSelected={hasMatchingDimensions(
+                    item,
+                    activeDimensionBreakout,
+                  )}
                   onClick={() => onSelect(item)}
                 />
               ))}

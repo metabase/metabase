@@ -38,6 +38,24 @@ export function hasSameDimensions(
   );
 }
 
+export function hasMatchingDimensions(
+  item: DimensionPickerItem,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+) {
+  if (item.dimensionBreakoutInfo.type !== dimensionBreakout.type) {
+    return false;
+  }
+
+  const itemEntries = getDimensionMappingEntries(item.dimensionBreakoutInfo);
+  return (
+    itemEntries.length > 0 &&
+    itemEntries.every(
+      ([slotIndex, dimensionId]) =>
+        dimensionBreakout.dimensionMapping[Number(slotIndex)] === dimensionId,
+    )
+  );
+}
+
 export function filterSections(
   sections: DimensionPickerSection[],
   searchText: string,

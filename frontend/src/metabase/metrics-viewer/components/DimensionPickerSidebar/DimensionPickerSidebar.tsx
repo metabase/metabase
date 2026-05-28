@@ -38,6 +38,7 @@ import { CategoryItem } from "./components/CategoryItem";
 import {
   filterSections,
   getSelectedCategoryKey,
+  hasMatchingDimensions,
   hasSameDimensions,
   isCategorySelected,
 } from "./utils";
@@ -141,6 +142,32 @@ export function DimensionPickerSidebar({
 
     onSelectDimensionBreakout(item.dimensionBreakoutInfo);
     trackMetricsViewerDimensionSelected();
+  };
+
+  const handleAllFieldsSelect = (item: DimensionPickerItem) => {
+    if (hasMatchingDimensions(item, activeDimensionBreakout)) {
+      return;
+    }
+
+    const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+      item.dimensionBreakoutInfo.type,
+    );
+    if (
+      activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
+      dimensionBreakoutConfig.matchMode === "aggregate"
+    ) {
+      onUpdateActiveDimensionBreakout({
+        dimensionMapping: {
+          ...activeDimensionBreakout.dimensionMapping,
+          ...item.dimensionBreakoutInfo.dimensionMapping,
+        },
+        label: item.dimensionBreakoutInfo.label,
+      });
+      trackMetricsViewerDimensionSelected();
+      return;
+    }
+
+    handleSelect(item);
   };
 
   const handleCategorySelect = (category: DimensionPickerSidebarCategory) => {
@@ -252,7 +279,7 @@ export function DimensionPickerSidebar({
             metricSourceDataById={metricSourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
-            onSelect={handleSelect}
+            onSelect={handleAllFieldsSelect}
           />
         )}
         {showFieldsByCategory && (
