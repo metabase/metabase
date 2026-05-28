@@ -987,7 +987,7 @@
         (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
                                                                 (if-not @fake-execute-called
                                                                   (do (reset! fake-execute-called true)
-                                                        ;; simulate a transient error being thrown
+                                                                      ;; simulate a transient error being thrown
                                                                       (throw (ex-info "Transient error" {:retryable? true})))
                                                                   (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
@@ -1003,7 +1003,7 @@
         (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
                                                                 (if (not @fake-execute-called)
                                                                   (do (reset! fake-execute-called true)
-                                                        ;; Simulate a cancellation happening
+                                                                      ;; Simulate a cancellation happening
                                                                       (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
                                                                   (apply orig-fn args)))]
           (try
