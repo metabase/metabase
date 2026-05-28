@@ -159,6 +159,26 @@
                     {:type "card"     :id 43}]
                    (:input eu)))))))))
 
+(deftest create-sql-query-entity-usage-physical-tables-test
+  (testing "create_sql_query success path captures directly-named physical tables (sqlglot) and {{#N}} card refs (text parse), without leaking a referenced card's source tables"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :dataset_query (mt/native-query {:query "SELECT * FROM checkins"})}]
+          (let [result (agent-sql/create-sql-query-tool
+                        {:database_id (mt/id)
+                         :sql_query   (format "SELECT * FROM venues v JOIN {{#%d}} c ON true" card-id)})
+                eu     (get-in result [:structured-output :entity-usage])
+                input  (set (:input eu))]
+            (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+            (is (= [] (:output eu)))
+            (is (contains? input {:type "database" :id (mt/id)}))
+            (is (contains? input {:type "card" :id card-id}))
+            (is (contains? input {:type "table" :id (mt/id :venues)}))
+            (is (not (contains? input {:type "table" :id (mt/id :checkins)}))
+                "the referenced card's underlying table must not leak into the authored set")))))))
+
 (deftest create-sql-query-entity-usage-validation-error-test
   (testing "create_sql_query validation-error path still emits :entity-usage with the database"
     (mt/test-drivers #{:postgres}

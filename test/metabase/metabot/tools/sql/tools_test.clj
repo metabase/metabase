@@ -190,6 +190,31 @@
             "SELECT * FROM {{#1}} JOIN {{#2}} JOIN {{#1-again}}"))))
   (testing "returns [] for SQL without card refs"
     (is (= [] (sql-common/card-refs-in-sql "SELECT 1"))))
+  (testing "ignores card refs written inside line comments"
+    (is (= [] (sql-common/card-refs-in-sql "-- a note mentioning {{#999}}\nSELECT 1"))))
+  (testing "ignores card refs written inside block comments but keeps real refs"
+    (is (= [{:type "card" :id 123}]
+           (sql-common/card-refs-in-sql "/* {{#888}} */ SELECT * FROM x WHERE y = {{#123}}"))))
   (testing "returns [] for nil or non-string inputs"
     (is (= [] (sql-common/card-refs-in-sql nil)))
     (is (= [] (sql-common/card-refs-in-sql 42)))))
+
+(deftest native-physical-table-refs-test
+  (mt/test-drivers #{:postgres}
+    (testing "resolves a directly-named physical table to a {:type \"table\"} entity-usage ref"
+      (is (= [{:type "table" :id (mt/id :venues)}]
+             (sql-common/native-physical-table-refs (mt/id) "SELECT * FROM venues"))))
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:database_id   (mt/id)
+                    :dataset_query (mt/native-query {:query "SELECT * FROM checkins"})}]
+      (testing "a {{#N}} card reference does not surface the card's underlying source tables"
+        (is (= []
+               (sql-common/native-physical-table-refs
+                (mt/id) (format "SELECT count(*) FROM {{#%d}} c" card-id)))))
+      (testing "a directly-named table alongside a card ref keeps only the directly-named table"
+        (is (= [{:type "table" :id (mt/id :venues)}]
+               (sql-common/native-physical-table-refs
+                (mt/id) (format "SELECT * FROM venues v JOIN {{#%d}} c ON true" card-id))))))
+    (testing "best-effort: blank SQL and a nil database both degrade to []"
+      (is (= [] (sql-common/native-physical-table-refs (mt/id) "   ")))
+      (is (= [] (sql-common/native-physical-table-refs nil "SELECT * FROM venues"))))))

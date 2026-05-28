@@ -73,15 +73,24 @@
 
 (defn- entity-usage-for-sql
   "Build an `:entity-usage` map for an authoring SQL tool. `:input` carries the
-  database the tool wrote against followed by any `{{#N}}` card refs in the SQL
-  body; `:output []` because authoring tools don't surface entities. `database-id`
+  database the tool wrote against, any `{{#N}}` card refs in the SQL body, and —
+  when `table-refs` is supplied — the physical tables the query named directly;
+  `:output []` because authoring tools don't surface entities. `database-id`
   may be nil — in that case the database ref is omitted (e.g. error branches
-  where we couldn't resolve the in-memory query)."
-  [database-id sql]
-  {:input  (cond-> []
-             (some? database-id) (conj {:type "database" :id database-id})
-             true                (into (metabot.tools.sql.common/card-refs-in-sql sql)))
-   :output []})
+  where we couldn't resolve the in-memory query).
+
+  Physical-table refs (3-arity) are passed only on success branches, where a
+  validated query is in scope; validation-failure and exception branches use
+  the 2-arity form and stay cards-only, as before. Build `table-refs` with
+  [[metabot.tools.sql.common/native-physical-table-refs]]."
+  ([database-id sql]
+   (entity-usage-for-sql database-id sql nil))
+  ([database-id sql table-refs]
+   {:input  (cond-> []
+              (some? database-id) (conj {:type "database" :id database-id})
+              true                (into (metabot.tools.sql.common/card-refs-in-sql sql))
+              (seq table-refs)    (into table-refs))
+    :output []}))
 
 (defn- entity-usage-on-result
   "Attach `:entity-usage` to an existing tool-result map under `:structured-output`,
@@ -114,7 +123,9 @@
             {:keys [valid? dialect error-message]} validation-result
             {:keys [query-id query]} action-result]
         (if valid?
-          (let [structured  (assoc action-result :result-type :query :entity-usage entity-usage)
+          (let [entity-usage (entity-usage-for-sql database_id sql_query
+                                                   (metabot.tools.sql.common/native-physical-table-refs database_id sql_query))
+                structured  (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr       (instructions/query-created-instructions-for query-id)
                 results-url (streaming/query->question-url query)]
             {:output (format-query-output structured instr {:preamble? true})
@@ -152,7 +163,9 @@
             {:keys [valid? dialect error-message]} validation-result
             {:keys [query-id query-content]} action-result]
         (if valid?
-          (let [structured (assoc action-result :result-type :query :entity-usage entity-usage)
+          (let [entity-usage (entity-usage-for-sql database_id sql_query
+                                                   (metabot.tools.sql.common/native-physical-table-refs database_id sql_query))
+                structured (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr      (instructions/query-created-instructions-for query-id)]
             {:output (format-query-output structured instr {:preamble? true})
              :structured-output structured
@@ -195,7 +208,8 @@
             {:keys [valid? error-message dialect]} validation-result
             {:keys [query-id query query-content]} action-result]
         (if valid?
-          (let [entity-usage (entity-usage-for-sql (:database action-result) query-content)
+          (let [entity-usage (entity-usage-for-sql (:database action-result) query-content
+                                                   (metabot.tools.sql.common/native-physical-table-refs (:database action-result) query-content))
                 structured   (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr        (instructions/edit-sql-query-instructions-for query-id)
                 results-url  (streaming/query->question-url query)
@@ -249,7 +263,9 @@
             {:keys [valid? dialect error-message]} validation-result
             {:keys [query-id query query-content]} action-result]
         (if valid?
-          (let [structured  (assoc action-result :result-type :query :entity-usage entity-usage)
+          (let [entity-usage (entity-usage-for-sql existing-db query-content
+                                                   (metabot.tools.sql.common/native-physical-table-refs existing-db query-content))
+                structured  (assoc action-result :result-type :query :entity-usage entity-usage)
                 instr       (instructions/replace-sql-query-instructions-for query-id)
                 results-url (streaming/query->question-url query)
                 buffer-id   (first-code-editor-buffer-id)]
