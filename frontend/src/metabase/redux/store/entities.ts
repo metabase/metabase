@@ -37,6 +37,4 @@ export interface EntitiesState {
   metrics: Record<string, NormalizedMetric>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
-
-  [key: `${string}_list`]: unknown;
 }
