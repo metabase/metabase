@@ -45,6 +45,7 @@ export interface StarRezExportItemResult {
   blob_name: string;
   records_count?: number;
   success: boolean;
+  error?: string;
 }
 
 export interface StarRezExportResult {
@@ -53,7 +54,7 @@ export interface StarRezExportResult {
 }
 
 const starRezApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getStarRezStatus: builder.query<StarRezStatus, void>({
       query: () => ({ method: "GET", url: "/api/starrez/status" }),
       providesTags: ["starrez-status"],
@@ -83,7 +84,7 @@ const starRezApi = Api.injectEndpoints({
     }),
 
     deleteStarRezExport: builder.mutation<{ success: boolean }, string>({
-      query: blobName => ({
+      query: (blobName) => ({
         method: "POST",
         url: "/api/starrez/exports/delete",
         body: { "blob-name": blobName },
@@ -107,7 +108,7 @@ const starRezApi = Api.injectEndpoints({
     }),
 
     activateStarRezWeek: builder.mutation<StarRezActivateResult, number>({
-      query: weekId => ({
+      query: (weekId) => ({
         method: "POST",
         url: `/api/starrez/weeks/${weekId}/activate`,
       }),

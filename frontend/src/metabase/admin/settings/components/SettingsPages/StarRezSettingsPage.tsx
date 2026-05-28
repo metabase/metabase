@@ -171,6 +171,11 @@ function ExportSection() {
                     <Text size="sm" c="text-secondary" ff="monospace">
                       {r.blob_name}
                     </Text>
+                    {r.error && (
+                      <Text size="sm" c="error">
+                        {r.error}
+                      </Text>
+                    )}
                   </Stack>
                   {typeof r.records_count === "number" && (
                     <Text size="sm" c="text-secondary">

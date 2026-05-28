@@ -38,7 +38,7 @@
   :encryption :no
   :visibility :admin
   :type       :string
-  :default    "RoomBooking,Entry,Person"
+  :default    ""
   :audit      :getter)
 
 (defsetting starrez-export-reports
@@ -54,7 +54,7 @@
   :encryption :no
   :visibility :admin
   :type       :string
-  :default    "DateModified"
+  :default    ""
   :audit      :getter)
 
 (defsetting starrez-keep-versions

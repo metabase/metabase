@@ -65,20 +65,25 @@
   [report-id]
   (log/infof "Starting StarRez export for report: %s" report-id)
   (let [sas-url   (starrez.settings/starrez-blob-sas-url)
-        csv-str   (starrez.client/fetch-report-csv report-id)
+        report    (starrez.client/fetch-report-csv report-id)
+        csv-str   (:body report)
         prefix    (str "report_" report-id)
         blob-name (str "starrez_" prefix "_" (timestamp-str) ".csv")
-        success?  (if (seq csv-str)
+        error     (or (:error report)
+                      (when-not (seq csv-str)
+                        (str "No CSV body for report " report-id)))
+        success?  (if (and (:ok report) (seq csv-str))
                     (starrez.storage/upload-export sas-url blob-name csv-str)
-                    (do (log/warnf "No CSV body for report %s — skipping upload" report-id)
+                    (do (log/warnf "%s — skipping upload" error)
                         false))]
     (when success?
       (let [keep-n (starrez.settings/starrez-keep-versions)]
         (starrez.storage/cleanup-old-exports sas-url prefix keep-n)))
-    {:kind      :report
-     :name      report-id
-     :blob_name blob-name
-     :success   success?}))
+    (cond-> {:kind      :report
+             :name      report-id
+             :blob_name blob-name
+             :success   success?}
+      (and (not success?) error) (assoc :error error))))
 
 (defn- split-csv-setting [s]
   (->> (str/split (or s "") #",")

@@ -10,6 +10,7 @@ Required environment variables:
 Optional:
 
   INVENTORY_JSON defaults to /private/tmp/collegiate_notebook_inventory.json
+  OUTPUT_JSON    defaults to /private/tmp/collegiate_metabase_scaffold.json
 
 This creates:
 
@@ -34,6 +35,9 @@ import urllib.request
 ROOT_COLLECTION = "Collegiate Python Reports"
 INVENTORY_PATH = pathlib.Path(
     os.environ.get("INVENTORY_JSON", "/private/tmp/collegiate_notebook_inventory.json")
+)
+OUTPUT_PATH = pathlib.Path(
+    os.environ.get("OUTPUT_JSON", "/private/tmp/collegiate_metabase_scaffold.json")
 )
 
 
@@ -143,6 +147,10 @@ def main() -> int:
 
     root = client.ensure_collection(ROOT_COLLECTION)
     root_id = root["id"]
+    scaffold = {
+        "root_collection": {"name": ROOT_COLLECTION, "id": root_id},
+        "notebooks": [],
+    }
     print(f"Root collection: {ROOT_COLLECTION} ({root_id})")
 
     for notebook in inventory:
@@ -158,6 +166,19 @@ def main() -> int:
             f"- {collection_name}: collection {collection['id']}, "
             f"dashboard {dashboard['id']}"
         )
+        scaffold["notebooks"].append(
+            {
+                "notebook": notebook["notebook"],
+                "collection_name": collection_name,
+                "collection_id": collection["id"],
+                "dashboard_name": dashboard_name,
+                "dashboard_id": dashboard["id"],
+            }
+        )
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(json.dumps(scaffold, indent=2), encoding="utf-8")
+    print(f"Wrote {OUTPUT_PATH}")
 
     return 0
 

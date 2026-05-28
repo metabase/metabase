@@ -148,19 +148,22 @@
 
 (defn fetch-report-csv
   "Fetch a StarRez report by ID (or name) as CSV.
-  Returns the CSV string body, or nil on error."
+  Returns {:ok true :body csv-string} or {:ok false :error message}."
   [report-id]
-  (if (missing-config-error)
-    (do (log/warnf "Skipping StarRez report fetch: %s" (missing-config-error)) nil)
+  (if-let [err (missing-config-error)]
+    (do
+      (log/warnf "Skipping StarRez report fetch: %s" err)
+      {:ok false :error err})
     (try
       (let [resp (http/get (report-url report-id :csv)
                            (assoc (request-opts) :as :string))]
         (if (<= 200 (or (:status resp) 0) 299)
-          (:body resp)
-          (do
-            (log/warnf "StarRez report %s returned HTTP %s body=%s"
-                       report-id (:status resp) (pr-str (:body resp)))
-            nil)))
+          {:ok true :body (:body resp)}
+          (let [error (str "StarRez report " report-id " returned HTTP " (:status resp)
+                           (when-let [body (:body resp)]
+                             (str " — " (pr-str body))))]
+            (log/warn error)
+            {:ok false :error error})))
       (catch Exception e
         (log/errorf e "Error fetching StarRez report=%s" report-id)
-        nil))))
+        {:ok false :error (ex-message e)}))))
