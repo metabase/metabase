@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]))
 
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
@@ -150,3 +151,35 @@
             (let [sql (first result)]
               (is (re-find #"my_schema" sql) "Schema name should be present")
               (is (re-find #"my_table" sql) "Table name should be present"))))))))
+
+(deftest run-transform!-returns-flat-rows-affected-map-test
+  ;; Regression guard: `execute-raw-queries! :sql-jdbc` yields one `{:rows-affected N}` map per
+  ;; statement, and the transform layer used to re-wrap that into `{:rows-affected {:rows-affected N}}`.
+  ;; The nested map silently broke the incremental-rows metric (the consumer extracted a map where an
+  ;; int was expected). `(int? …)` and `(= 3 …)` are both false if the double-wrap is reintroduced.
+  ;; H2-only: the inline `VALUES` source keeps the transform self-contained (no source table needed).
+  (testing "run-transform! returns a single {:rows-affected <int>} map, never a nested/double-wrapped one"
+    (mt/test-drivers #{:h2}
+      (let [base {:conn-spec     (driver/connection-spec :h2 (mt/db))
+                  :database      (mt/db)
+                  :output-schema "PUBLIC"
+                  :query         {:query "SELECT * FROM (VALUES (1),(2),(3)) AS t(a)"}}]
+        (transforms.tu/with-transform-cleanup! [full-target {:type :table :schema "PUBLIC" :name "rows_affected_full"}
+                                                inc-target  {:type :table :schema "PUBLIC" :name "rows_affected_inc"}]
+          (testing "[:sql :table] full create (CTAS) path"
+            (let [result (driver/run-transform! :h2 (assoc base
+                                                           :transform-type :table
+                                                           :output-table   (keyword "PUBLIC" (:name full-target)))
+                                                {})]
+              (is (int? (:rows-affected result))
+                  "rows-affected must be a bare int, not a nested map")))
+          (testing "[:sql :table-incremental]: first run creates (CTAS), second appends via INSERT...SELECT"
+            (let [details       (assoc base
+                                       :transform-type :table-incremental
+                                       :output-table   (keyword "PUBLIC" (:name inc-target)))
+                  create-result (driver/run-transform! :h2 details {})
+                  append-result (driver/run-transform! :h2 details {})]
+              (is (int? (:rows-affected create-result))
+                  "rows-affected must be a bare int, not a nested map")
+              (is (= 3 (:rows-affected append-result))
+                  "the INSERT...SELECT path reports the flat, true insert count"))))))))

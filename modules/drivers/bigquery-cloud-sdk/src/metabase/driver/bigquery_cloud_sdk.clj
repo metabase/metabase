@@ -1063,8 +1063,8 @@
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]
-           (or (and table-result (.getTotalRows table-result))
-               0))))
+           {:rows-affected (or (and table-result (.getTotalRows table-result))
+                               0)})))
       (catch Exception e
         (log/error e "Error executing BigQuery DDL")
         (throw e)))))

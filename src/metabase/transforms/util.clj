@@ -30,14 +30,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- driver-result->rows-processed
-  "Extract a row count from `driver/run-transform!`'s heterogeneous return (map with `:rows-affected`, bare integer, or nil), coerced to `Long`."
-  [driver-result]
-  (some-> (cond
-            (integer? driver-result) driver-result
-            (map? driver-result)     (:rows-affected driver-result))
-          long))
-
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
 
 (defn check-feature-enabled
@@ -156,7 +148,9 @@
         ;; fail-started-run! after succeed-started-run! has already fired.
         (when-some [rows-available (:rows-available source-range-params)]
           (try
-            (when-some [rows-processed (driver-result->rows-processed (:result ret))]
+            ;; `run-transform!` returns a single `{:rows-affected N}` map (SQL) or an HTTP
+            ;; response map carrying `:rows-affected` (Python); extract it directly.
+            (when-some [rows-processed (:rows-affected (:result ret))]
               (tracing/add-span-attrs! :tasks {:transform/rows-processed rows-processed})
               (transforms.instrumentation/record-incremental-rows!
                rows-available
