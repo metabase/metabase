@@ -211,8 +211,7 @@
   [driver [_ value]]
   (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
 
-;; BigQuery's string type is `STRING`; it does not have a `TEXT` type, so the `:sql` default for
-;; `::cast-to-text` (`CAST(expr AS text)`) is a syntax error. Mirrors the `:text` handler above.
+;; BigQuery's string type is `STRING`. Mirrors the `:text` handler above.
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
