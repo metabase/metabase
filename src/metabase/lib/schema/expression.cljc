@@ -266,9 +266,12 @@
     #(cond
        (vector? %) ;; non-literal (checked above)
        true
+
        (not (int? %))
        false
+
        (not (pos? %))
        false
+
        :else
        true)]])
