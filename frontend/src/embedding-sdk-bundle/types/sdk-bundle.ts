@@ -12,6 +12,10 @@ import type { StaticQuestion } from "embedding-sdk-bundle/components/public/Stat
 import type { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard/EditableDashboard";
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
+import type {
+  QueryQuestionParams,
+  QueryQuestionResult,
+} from "embedding-sdk-bundle/lib/query-question";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
@@ -64,6 +68,9 @@ type ReduxStoreExports = {
 type ReduxStoreUtilityFunctionExports = {
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
+  >;
+  queryQuestion: ReduxStoreUtilityFunction<
+    (params: QueryQuestionParams) => Promise<QueryQuestionResult>
   >;
 };
 

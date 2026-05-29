@@ -29,6 +29,7 @@ export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
+export { useQuestionQuery } from "./hooks/public/use-question-query";
 
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
@@ -146,6 +147,11 @@ export type {
   SdkUserId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+export type {
+  UseQuestionQueryOptions,
+  UseQuestionQueryResult,
+} from "./hooks/public/use-question-query";
+export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
   EmbeddingEntityType,
