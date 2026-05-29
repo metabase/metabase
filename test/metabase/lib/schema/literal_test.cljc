@@ -95,7 +95,6 @@
     #?@(:clj
         ([:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} (Object.)]
          :mbql.clause/value
-
          [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} (Object.)]
          ::expression/number))))
 

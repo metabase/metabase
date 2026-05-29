@@ -20,6 +20,13 @@
   [tag]
   (keyword "mbql.clause" (name tag)))
 
+(defn registered-tags
+  "Snapshot of every MBQL clause tag currently registered via [[define-mbql-clause]]
+  (e.g. `#{:starts-with :sum :count …}`). Returns a sorted set so iteration order is
+  deterministic."
+  []
+  @tag-registry)
+
 (def ^:private invalid-clause-schema
   [:fn {:error/message "not a known MBQL clause"} (constantly false)])
 

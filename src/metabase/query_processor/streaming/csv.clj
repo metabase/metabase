@@ -109,10 +109,8 @@
             ;; removed from the exported data
             pivot-export-options
             (vreset! pivot-data {:pivot-grouping-index pivot-grouping-index}))
-
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
-
           ;; Write the column names for non-pivot tables
           (when (or (not pivot?) (not enable-pivoted-exports?))
             (let [header (m/remove-nth (or pivot-grouping-index (inc (count col-names))) col-names)]

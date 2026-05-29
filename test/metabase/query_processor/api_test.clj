@@ -792,7 +792,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 140 (count rows)))
-
             (is (= ["AK" "Google" 0 119] (first rows)))
             (is (= ["AK" "Organic" 0 89] (second rows)))
             (is (= ["WA" nil 2 148] (nth rows 135)))
@@ -809,7 +808,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 137 (count rows)))
-
             (is (= ["AK" "Google" 0 27] (first rows)))
             (is (= ["AK" "Organic" 0 25] (second rows)))
             (is (= ["VA" nil 2 29] (nth rows 130)))
@@ -881,7 +879,6 @@
                                                             (mt/id :people :source)]})
                          :values set)]
           (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
-
       (testing "search"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/search/g"
@@ -892,7 +889,6 @@
           ;; results matched on g, does not include Doohickey (which is in above results)
           (is (set/subset? #{["Widget"] ["Google"]} values))
           (is (not (contains? values ["Doohickey"])))))
-
       (testing "deduplicates the values returned from multiple fields"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/values"
@@ -917,7 +913,6 @@
                                                        :type                 :string/=,
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))
-
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card {source-card-id :id} {:archived true}]
             (is (= mock-default-result

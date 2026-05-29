@@ -169,9 +169,19 @@ const NATIVE_QUESTION_WITH_SNIPPET: NativeDatasetQuery = {
   },
 };
 
+// Silence `console.warn` / `console.error` at module load so that describe-body
+// invocations of `setErrorPage(...)` (which logs via `console.error`) don't
+// produce noise. `beforeAll` would fire too late — describes are registered
+// during module evaluation.
+const originalWarn = console.warn;
+const originalError = console.error;
+console.warn = jest.fn();
+console.error = jest.fn();
+
 describe("QB Actions > initializeQB", () => {
-  beforeAll(() => {
-    console.warn = jest.fn();
+  afterAll(() => {
+    console.warn = originalWarn;
+    console.error = originalError;
   });
 
   afterEach(() => {

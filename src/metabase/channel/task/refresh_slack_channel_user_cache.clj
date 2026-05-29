@@ -48,7 +48,6 @@
                     ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
                    (cron/with-misfire-handling-instruction-do-nothing)))
-
                  (triggers/start-now))
         startup-job     (jobs/build
                          (jobs/of-type RefreshCacheOnStartup)
