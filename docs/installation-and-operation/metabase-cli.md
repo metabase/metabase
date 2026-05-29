@@ -12,7 +12,7 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` authenticate
 ## Requirements
 
 - Node.js, to install the CLI from npm.
-- A Metabase instance on v0.62 or later.
+- A Metabase instance on version 58 or later.
 - An [API key](../people-and-groups/api-keys.md#create-an-api-key) to authenticate the CLI against your instance.
 - A Pro or Enterprise plan for some command groups. For example, `git-sync` needs the premium [Remote sync](./remote-sync.md) feature.
 
