@@ -5,13 +5,16 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
@@ -122,10 +125,11 @@
 
 ;; For saved entities (table, model, question, metric, dashboard), the frontend only sends
 ;; type + id. We fetch full details from the DB using entity-details and render them via
-;; llm-representations, mirroring what the Python AI service did via HTTP callbacks.
+;; llm-shape (the output-side XML formatters), mirroring what the Python AI service did
+;; via HTTP callbacks.
 
 (defn- fetch-and-format
-  "Fetch entity details and format with llm-rep. Falls back to format-simple-entity on failure."
+  "Fetch entity details and format with llm-shape. Falls back to format-simple-entity on failure."
   [entity preamble details-fn format-fn]
   (try
     (let [{:keys [structured-output]} (details-fn)]
@@ -146,7 +150,7 @@
                                                         :with-metrics? false
                                                         :with-measures? true
                                                         :with-segments? true})
-                    llm-rep/table->xml))
+                    llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
@@ -158,7 +162,7 @@
                                                         :with-metrics? false
                                                         :with-measures? true
                                                         :with-segments? true})
-                    llm-rep/model->xml))
+                    llm-shape/model->xml))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
@@ -202,7 +206,7 @@
                       "The user is currently looking at the results of a report:"
                       #(entity-details/get-report-details {:report-id (:id entity)
                                                            :with-field-values? false})
-                      llm-rep/question->xml)))
+                      llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
@@ -210,14 +214,14 @@
                     "The user is currently looking at the details of a metric:"
                     #(entity-details/get-metric-details {:metric-id (:id entity)
                                                          :with-field-values? false})
-                    llm-rep/metric->xml))
+                    llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a dashboard:"
                     #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
-                    llm-rep/dashboard->xml))
+                    llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting
 
@@ -236,22 +240,42 @@
                                                te/lines)))))
 
 (defn- transform-query-source-text
+  "Format a transform's `:query` source for the LLM.
+
+  When the source carries a query map with a `:database` key, we normalise it and export to
+  the same canonical portable representations form the `construct_notebook_query` tool
+  consumes (rendered as a JSON code block). Both structured (`mbql.stage/mbql`) and native
+  (`mbql.stage/native`) stages go through this path - the latter is intentional: the repr
+  export preserves portable `card-id` / `snippet-id` references inside `template-tags`, and
+  stays in lockstep with the freshly-built-query payloads `construct_notebook_query` returns
+  to the LLM.
+
+  Pre-resolved string sources (`:query` is itself a string, or carries `:query-content` -
+  the SQL-tool's already-rendered shape) pass through unchanged: there's no map to
+  normalise.
+
+  Falls back to a `pprint`'d query map only as a last resort, when repr export is
+  unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
   (let [query (:query source)]
     (cond
       (string? query) query
       (string? (:query-content query)) (:query-content query)
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (and (map? query) (:database query))
       (try
-        (let [normalized (lib-be/normalize-query query)]
-          (if (lib/native-only-query? normalized)
-            (or (lib/raw-native-query normalized)
-                (some :native (:stages normalized))
-                (get-in normalized [:native :query]))
+        (let [normalized (lib-be/normalize-query query)
+              database-id (:database normalized)
+              mp (when database-id
+                   (lib-be/application-database-metadata-provider database-id))
+              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+          (if exported
+            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
             (u/pprint-to-str normalized)))
         (catch Exception _
           (u/pprint-to-str query)))
+      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
+      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
+      (string? (get-in query [:native :query])) (get-in query [:native :query])
       (map? query) (u/pprint-to-str query)
       :else (some-> query str))))
 
@@ -368,10 +392,10 @@
   [_context]
   (try
     (when-let [{:keys [id name email-address glossary]} (:structured-output (entity-details/get-current-user nil))]
-      (llm-rep/user->xml {:id       id
-                          :name     name
-                          :email    email-address
-                          :glossary glossary}))
+      (llm-shape/user->xml {:id       id
+                            :name     name
+                            :email    email-address
+                            :glossary glossary}))
     (catch Exception e
       (log/error e "Error formatting current user info")
       nil)))

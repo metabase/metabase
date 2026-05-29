@@ -51,7 +51,7 @@ export const ChartSettingsWidgetPopover = ({
           <Box
             pt={hasMultipleSections ? 0 : undefined}
             ref={contentRef}
-            mah="37.5rem"
+            mah="40rem"
             miw="336px"
             className={CS.overflowYAuto}
           >

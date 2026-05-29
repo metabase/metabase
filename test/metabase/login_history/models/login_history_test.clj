@@ -50,25 +50,20 @@
                        :model/User {other-user-id :id} {}]
           (testing "false when the user has no prior first-device events"
             (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
-
           (testing "false at the cap (comparison is strict greater-than)"
             (insert-login-histories! (new-devices user-id cap))
             (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
-
           (testing "true when the user is past the cap"
             (insert-login-histories! (new-devices user-id 1))
             (is (true? (#'login-history/too-many-new-device-emails-recently? user-id))))
-
           (testing "repeated logins from the same device count as one first-device event"
             (mt/with-temp [:model/User {repeat-user-id :id} {}]
               (insert-login-histories! (repeat 20 {:user_id repeat-user-id :device_id (str (random-uuid))}))
               (is (false? (#'login-history/too-many-new-device-emails-recently? repeat-user-id)))))
-
           (testing "another user's activity does not count toward this user's limit"
             (insert-login-histories! (new-devices other-user-id 10))
             (mt/with-temp [:model/User {fresh-user-id :id} {}]
               (is (false? (#'login-history/too-many-new-device-emails-recently? fresh-user-id)))))
-
           (testing "events outside the rate-limit window do not count"
             (mt/with-temp [:model/User {old-user-id :id} {}]
               (let [two-days-ago (t/minus (t/offset-date-time) (t/days 2))]

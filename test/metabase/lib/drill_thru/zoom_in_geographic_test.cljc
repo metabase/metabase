@@ -38,13 +38,11 @@
                                        :filters      [[:= {}
                                                        [:field {} field-key]
                                                        "United States"]]}]}]
-
       (testing "sanity check: make sure COUNTRY has :type/Country semantic type"
         (testing `lib/returned-columns
           (let [[country _count] (lib/returned-columns query)]
             (is (=? {:semantic-type :type/Country}
                     country)))))
-
       (lib.drill-thru.tu/test-drill-variants-with-merged-args
        lib.drill-thru.tu/test-drill-application
        "single-stage query"
@@ -68,7 +66,6 @@
        "mutli-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned
@@ -124,7 +121,6 @@
        "multi-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned
@@ -144,7 +140,7 @@
   (testing "If there are already breakouts on lat/lon, we should update them rather than append new ones (#34874)"
     (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                              (lib/aggregate (lib/count))
-                               ;; make sure we don't remove other, irrelevant breakouts.
+                             ;; make sure we don't remove other, irrelevant breakouts.
                              (lib/breakout (meta/field-metadata :people :name))
                              (lib/breakout (meta/field-metadata :people :state))
                              (lib/breakout (-> (meta/field-metadata :people :latitude)
@@ -230,7 +226,6 @@
        "multi-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned

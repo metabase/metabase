@@ -74,15 +74,15 @@ describe("scenarios > data studio > library > metrics", () => {
     });
 
     H.DataStudio.Metrics.aboutPageDescriptionSidebar().within(() => {
-      cy.findByText("Last edited by Bobby Tables").should("be.visible");
+      cy.findByText(/^Last updated/).should("be.visible");
 
+      cy.findByText("Source").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
-
       cy.findByText("Orders").should("be.visible");
-      cy.findByText("Source table").should("be.visible");
 
-      cy.findByText("Dependencies").should("be.visible");
-      cy.findByText("Dependents").should("be.visible");
+      cy.findByText("Relationships").should("be.visible");
+      cy.findByText("No dependencies").should("be.visible");
+      cy.findByText("No charts use this metric").should("be.visible");
     });
 
     cy.log("Ensure chart is visible");
@@ -255,7 +255,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("be.visible");
   });
 
-  it("should view metric in the metrics explorer view via more menu", () => {
+  it("should view metric in the metrics explorer view via the Explore button", () => {
     cy.log("Navigate to Data Studio Library");
     cy.visit("/data-studio/library");
 
@@ -269,8 +269,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
-    cy.log("Verify View link opens in new tab");
-    H.DataStudio.Metrics.moreMenu().click();
+    cy.log("Verify the Explore button points to the metrics explorer");
     H.DataStudio.Metrics.exploreLink()
       .should("have.attr", "href")
       .and("match", /\/explore\?metricId=\d+/);

@@ -143,18 +143,15 @@
                                            saml-identity-provider-uri         nil
                                            saml-identity-provider-certificate nil]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "SSO requests fail if SAML has been configured but not enabled"
         (mt/with-temporary-setting-values [saml-enabled                       false
                                            saml-identity-provider-uri         default-idp-uri
                                            saml-identity-provider-certificate default-idp-cert]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "SSO requests fail if SAML is enabled but hasn't been configured"
         (mt/with-temporary-setting-values [saml-enabled               true
                                            saml-identity-provider-uri nil]
           (is (some? (client/client :get 400 "/auth/sso")))))
-
       (testing "The IDP provider certificate must also be included for SSO to be configured"
         (mt/with-temporary-setting-values [saml-enabled                       true
                                            saml-identity-provider-uri         default-idp-uri
@@ -910,7 +907,6 @@
                                                           default-redirect-uri)
                    response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                (is (successful-login? response))
-
                ;; Doesn't test the warning message because there are issues setting up log capture with client-real-response
                ;; and client-full-response doesn't work with the saml lib
 

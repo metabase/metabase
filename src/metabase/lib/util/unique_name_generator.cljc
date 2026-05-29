@@ -248,9 +248,9 @@
 
   to get a new, fresh unique name generator for recursive usage without 'poisoning the well'."
   ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-   ;;
-   ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
-   ;; case
+  ;;
+  ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
+  ;; case
   (unique-name-generator-factory
    {:truncate-fn     truncate-alias
     :name-key-fn     u/lower-case-en

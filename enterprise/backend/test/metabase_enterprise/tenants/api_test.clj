@@ -415,7 +415,6 @@
           (testing "attempting to archive tenant root collection returns 400"
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:archived true}))
-
           (testing "tenant root collection remains unarchived"
             (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
 
@@ -431,7 +430,6 @@
               (testing "archive child collection returns 200"
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-id)
                                       {:archived true}))
-
               (testing "child collection is archived"
                 (is (t2/select-one-fn :archived :model/Collection :id child-id))))))))))
 
@@ -442,7 +440,6 @@
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
           (testing "attempting to delete tenant root collection returns 400"
             (mt/user-http-request :crowberto :delete 400 (str "collection/" tenant-collection-id)))
-
           (testing "tenant root collection still exists"
             (is (t2/exists? :model/Collection :id tenant-collection-id))))))))
 
@@ -458,7 +455,6 @@
                                                              :archived true}]
               (testing "deleting the collection is allowed"
                 (mt/user-http-request :crowberto :delete 200 (str "collection/" child-id)))
-
               (testing "child collection still exists"
                 (is (not (t2/exists? :model/Collection :id child-id)))))))))))
 
@@ -473,7 +469,6 @@
           (testing "attempting to move tenant root collection returns 400"
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:parent_id target-id}))
-
           (testing "tenant root collection location remains at root"
             (is (= "/" (t2/select-one-fn :location :model/Collection :id tenant-collection-id)))))))))
 
@@ -492,7 +487,6 @@
               (testing "can move child B under child A"
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-b-id)
                                       {:parent_id child-a-id})
-
                 (is (= (str "/" tenant-collection-id "/" child-a-id "/")
                        (t2/select-one-fn :location :model/Collection :id child-b-id)))))))))))
 

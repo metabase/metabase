@@ -115,7 +115,6 @@
                 (is (= [{:args [pgvector @index-ref documents]
                          :ret  ret}]
                        @calls))))
-
             (testing "check proxies after switch"
               (reset! calls [])
               (let [new-index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model2)
@@ -251,9 +250,7 @@
                   job-thread ^Closeable (open-job-thread pgvector index-metadata)]
         (let [index @index-ref
               {:keys [caught-ex ^Thread thread]} @job-thread]
-
           (is (= (frequencies (map :model docs)) (semantic.pgvector-api/gate-updates! pgvector index-metadata docs)))
-
           (let [max-wait         (+ (System/currentTimeMillis) 1000)
                 get-indexed-q    {:select [:model [:model_id :id]] :from [(keyword (:table-name index))]}
                 get-indexed      (fn [] (frequencies
@@ -269,10 +266,8 @@
                                      (< max-wait (System/currentTimeMillis)) indexed
                                      (= indexed expected-indexed) indexed
                                      :else (recur (get-indexed))))]
-
             (testing "we indexed all the expected documents"
               (is (= expected-indexed indexed-in-time))))
-
           (testing "interrupt"
             (.interrupt thread)
             (is (.join thread (Duration/ofSeconds 10)))

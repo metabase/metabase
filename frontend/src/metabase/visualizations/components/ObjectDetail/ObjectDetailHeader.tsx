@@ -22,9 +22,9 @@ export interface ObjectDetailHeaderProps {
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
   showControls?: boolean;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
-  closeObjectDetail: () => void;
+  viewPreviousObjectDetail?: () => void;
+  viewNextObjectDetail?: () => void;
+  closeObjectDetail?: () => void;
 }
 
 export function ObjectDetailHeader({

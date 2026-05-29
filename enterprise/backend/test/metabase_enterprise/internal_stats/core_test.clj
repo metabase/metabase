@@ -36,7 +36,6 @@
           (mt/with-temporary-setting-values [enable-embedding-interactive      false
                                              embedding-app-origins-interactive "example.com"]
             (is (not (:enabled-embedding-interactive (sut/embedding-settings 0 0))))))
-
         (testing "with enabled interactive embedding and without a configured app origin"
           (mt/with-temporary-setting-values [enable-embedding-interactive      false]
             (is (not (:enabled-embedding-interactive (sut/embedding-settings 0 0))))))))
@@ -69,12 +68,10 @@
                                        jwt-shared-secret    "asdfasdf"
                                        jwt-enabled          true]
       (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
-
   (testing "with sdk disabled and jwt enabled"
     (mt/with-temporary-setting-values [enable-embedding-sdk false
                                        jwt-enabled          true]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
-
   (testing "with sdk enabled and jwt disabled"
     (mt/with-temporary-setting-values [enable-embedding-sdk true
                                        jwt-enabled          false]

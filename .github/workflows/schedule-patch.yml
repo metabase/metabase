@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Dispatch patch release for the current and previous major
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             // Nightly patches cover the current supported major and the one

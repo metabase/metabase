@@ -66,19 +66,15 @@
   (testing "All models (except transforms, which are admin-only) are relevant if we're not looking in the trash"
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
-
   (testing "We only search for certain models in the trash"
     (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
-
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
-
   (testing "All models including transforms are visible for superusers"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
-
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
       (let [search-ctx (with-all-models-and-regular-user (create-test-filter-context active-filters))]
@@ -107,7 +103,6 @@
   (mt/with-premium-features #{}
     (testing "The kitchen sink context is complete"
       (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
-
     (testing "In the general case, we simply filter by models, and exclude dashboard cards"
       (is (= {:select [:some :stuff],
               :from :somewhere,
@@ -123,7 +118,6 @@
                [:in :search_index.model ["a"]]
                [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
-
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
               :from :somewhere,

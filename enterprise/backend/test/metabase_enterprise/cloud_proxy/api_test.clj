@@ -69,7 +69,6 @@
           (testing (str "operation " op " requires superuser")
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (str "ee/cloud-proxy/" op)))))))))
-
   (testing "superuser can access superuser operations"
     (mt/with-premium-features #{:hosting}
       (with-redefs [hm.client/call mock-hm-call]
@@ -99,12 +98,10 @@
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/cloud-proxy/mb-plan-trial-up-available")]
           (is (contains? resp :plan_alias))
           (is (not (contains? resp :plan-alias))))
-
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/cloud-proxy/mb-plan-change-plan-preview")]
           (is (contains? resp :amount_due_now))
           (is (contains? resp :next_payment_date))
           (is (not (contains? resp :amount-due-now))))
-
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/cloud-proxy/get-plan")]
           (is (contains? resp :per_user_price))
           (is (contains? resp :billing_period_months))

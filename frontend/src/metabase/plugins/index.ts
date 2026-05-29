@@ -16,6 +16,7 @@ export {
 export {
   PLUGIN_CACHING,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
@@ -39,6 +40,7 @@ export {
 export {
   PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
+  PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
@@ -66,7 +68,6 @@ export {
   type SdkIframeEmbedSetupModalInitialState,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
-export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -110,6 +111,7 @@ export {
   type SourceReplacementButtonChildProps,
   type SourceReplacementButtonProps,
   type SourceReplacementModalProps,
+  type SourceReplacementTriggeredFrom,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {
@@ -147,6 +149,10 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
+export {
+  PLUGIN_WORKSPACES,
+  type AdminConnectionInfoSectionProps,
+} from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
@@ -179,7 +185,6 @@ import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
-import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
@@ -198,6 +203,7 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
+import { reinitialize as reinitializeWorkspaces } from "./oss/workspaces";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -222,7 +228,6 @@ export function reinitialize() {
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
-  reinitializeEntities();
   reinitializeLibrary();
   reinitializeMetabot();
   reinitializeModelPersistence();
@@ -242,5 +247,6 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
+  reinitializeWorkspaces();
   reinitializeWritableConnection();
 }

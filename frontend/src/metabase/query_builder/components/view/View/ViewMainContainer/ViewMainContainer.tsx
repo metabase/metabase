@@ -4,6 +4,7 @@ import type { ResizableBoxProps } from "react-resizable";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
+import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -154,6 +155,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
+      <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />

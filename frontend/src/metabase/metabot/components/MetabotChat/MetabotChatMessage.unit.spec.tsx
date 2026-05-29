@@ -9,7 +9,6 @@ const setup = (message: MetabotAgentChatMessage) =>
       debug={false}
       readonly={false}
       hideActions
-      showFeedbackButtons={false}
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
       getCopyText={() => ""}
@@ -96,7 +95,6 @@ describe("AgentMessage", () => {
           debug
           readonly={false}
           hideActions
-          showFeedbackButtons={false}
           setFeedbackMessage={() => {}}
           submittedFeedback={undefined}
           getCopyText={() => ""}

@@ -575,8 +575,8 @@
         {:model "FieldValues" :id "0"}))
 
 (defmethod serdes/dependencies "FieldValues" [fv]
-  ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
-  [(pop (serdes/path fv))])
+  (let [db-path (first (serdes/path fv))]
+    [[db-path]]))
 
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.

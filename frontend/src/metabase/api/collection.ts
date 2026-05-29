@@ -28,7 +28,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const flattenCollectionTree = (tree: Collection[]): Collection[] =>
   tree.flatMap((collection) => [
@@ -62,7 +62,7 @@ export const collectionApi = Api.injectEndpoints({
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
         onQueryStarted: (request, lifecycle) =>
-          hydrateLegacyEntities([collectionSchemaForRequest(request)])(
+          hydrateMetadataStore([collectionSchemaForRequest(request)])(
             request,
             lifecycle,
           ),
@@ -82,7 +82,7 @@ export const collectionApi = Api.injectEndpoints({
         "collection-tree",
       ],
       onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities<Collection[]>(
+        hydrateMetadataStore<Collection[]>(
           [collectionSchemaForRequest(request)],
           flattenCollectionTree,
         )(request, lifecycle),
@@ -100,7 +100,7 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateLegacyEntities<ListCollectionItemsResponse>(
+      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
         [ObjectUnionSchema],
         (response) => response.data,
       ),
@@ -117,7 +117,7 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
       onQueryStarted: (request, lifecycle) =>
-        hydrateLegacyEntities(collectionSchemaForRequest(request))(
+        hydrateMetadataStore(collectionSchemaForRequest(request))(
           request,
           lifecycle,
         ),

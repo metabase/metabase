@@ -159,6 +159,7 @@ Metabase's reference documentation.
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
 - [Metabot in Slack](./ai/metabot-slack.md)
+- [AI privacy](./ai/privacy.md)
 
 ### Exploration and organization
 
