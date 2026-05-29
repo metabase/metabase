@@ -65,25 +65,17 @@ export async function aiStreamingQuery(
     });
 
     if (!response.ok) {
-      let responseBody: unknown;
+      // Mirror the legacy client's error shape (`{ status, data }`) so streaming
+      // and non-streaming callers handle failures the same way. A non-JSON or
+      // empty error body leaves `data` undefined; the status still identifies it.
+      let data: unknown;
       try {
-        responseBody = await response.json();
+        data = await response.json();
       } catch {
         // ignore json parse errors
       }
 
-      if (typeof responseBody === "string") {
-        throw { status: response.status, message: responseBody };
-      }
-
-      if (responseBody && typeof responseBody === "object") {
-        throw {
-          status: response.status,
-          ...(responseBody as Record<string, unknown>),
-        };
-      }
-
-      throw new Error(`Response status: ${response.status}`);
+      throw { status: response.status, data };
     }
 
     if (!response.body) {
