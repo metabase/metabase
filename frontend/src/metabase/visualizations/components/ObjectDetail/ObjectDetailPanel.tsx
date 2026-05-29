@@ -9,7 +9,6 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { entityCompatibleQuery } from "metabase/entities/utils";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
@@ -29,8 +28,8 @@ import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
   ErrorWrapper,
   ObjectDetailContainer,
-  ObjectDetailWrapperDiv,
-} from "./ObjectDetailView.styled";
+  ObjectDetailLayout,
+} from "./ObjectDetailPanel.styled";
 import type { ObjectDetailProps, ObjectId } from "./types";
 import {
   getActionItems,
@@ -67,7 +66,7 @@ function filterByPk(
   return Lib.filter(query, stageIndex, filterClause);
 }
 
-export function ObjectDetailView({
+export function ObjectDetailPanel({
   data: passedData,
   question,
   table,
@@ -88,6 +87,7 @@ export function ObjectDetailView({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  onActionSuccess,
   className,
   isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
@@ -109,7 +109,7 @@ export function ObjectDetailView({
   const hasFks = !_.isEmpty(tableForeignKeys);
   const hasRelationships = showRelations && hasFks && hasPk;
 
-  const isObjectDetailModal = question?.display() !== "object";
+  const isDrillThroughDetail = question?.display() !== "object";
 
   const handleExecuteModalClose = () => {
     setActionId(undefined);
@@ -141,7 +141,7 @@ export function ObjectDetailView({
 
   const loadFKReferences = useCallback(() => {
     if (zoomedRowID) {
-      loadObjectDetailFKReferences({ objectId: zoomedRowID });
+      loadObjectDetailFKReferences?.({ objectId: zoomedRowID });
     }
   }, [zoomedRowID, loadObjectDetailFKReferences]);
 
@@ -154,12 +154,12 @@ export function ObjectDetailView({
     }
 
     if (
-      isObjectDetailModal &&
+      isDrillThroughDetail &&
       table &&
       _.isEmpty(table.fks) &&
       !isVirtualCardId(table.id)
     ) {
-      fetchTableFks(table.id as ConcreteTableId);
+      fetchTableFks?.(table.id as ConcreteTableId);
     }
   });
 
@@ -169,15 +169,16 @@ export function ObjectDetailView({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const capturedKeys: Record<string, () => void> = {
+      const capturedKeys: Record<string, (() => void) | undefined> = {
         ArrowUp: viewPreviousObjectDetail,
         ArrowDown: viewNextObjectDetail,
         Escape: closeObjectDetail,
       };
 
-      if (capturedKeys[event.key] && !isModalOpen) {
+      const handler = capturedKeys[event.key];
+      if (handler && !isModalOpen) {
         event.preventDefault();
-        capturedKeys[event.key]();
+        handler();
       }
     };
 
@@ -295,14 +296,10 @@ export function ObjectDetailView({
     [zoomedRowID],
   );
 
-  const handleActionSuccess = useCallback(() => {
-    dispatch(runQuestionQuery());
-  }, [dispatch]);
-
   const handleDeleteSuccess = useCallback(() => {
-    handleActionSuccess();
-    closeObjectDetail();
-  }, [closeObjectDetail, handleActionSuccess]);
+    onActionSuccess?.();
+    closeObjectDetail?.();
+  }, [closeObjectDetail, onActionSuccess]);
 
   if (!data) {
     return null;
@@ -334,7 +331,7 @@ export function ObjectDetailView({
             <NotFound message={t`We couldn't find that record`} />
           </ErrorWrapper>
         ) : (
-          <ObjectDetailWrapperDiv
+          <ObjectDetailLayout
             className="ObjectDetail"
             data-testid="object-detail"
           >
@@ -362,7 +359,7 @@ export function ObjectDetailView({
               visualizationIsClickable={visualizationIsClickable}
               isDashboard={isDashboard}
             />
-          </ObjectDetailWrapperDiv>
+          </ObjectDetailLayout>
         )}
       </ObjectDetailContainer>
 
@@ -373,7 +370,7 @@ export function ObjectDetailView({
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch
         onClose={handleExecuteModalClose}
-        onSuccess={handleActionSuccess}
+        onSuccess={onActionSuccess}
       />
 
       <Modal opened={isDeleteModalOpen} onClose={handleDeleteModalClose}>
