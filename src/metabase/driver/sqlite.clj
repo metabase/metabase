@@ -39,15 +39,14 @@
 
 (defmethod driver/connection-properties :sqlite
   [_driver]
-  (->>
-   [{:name         "db"
-     :display-name (tru "Filename")
-     :placeholder  "/path/to/toucan_sightings.sqlite"
-     :required     true}
-    driver.common/cloud-ip-address-info
-    driver.common/advanced-options-start
-    driver.common/default-advanced-options]
-   (into [] (mapcat u/one-or-many))))
+  (into [] (mapcat u/one-or-many)
+        [{:name         "db"
+          :display-name (tru "Filename")
+          :placeholder  "/path/to/toucan_sightings.sqlite"
+          :required     true}
+         driver.common/cloud-ip-address-info
+         driver.common/advanced-options-start
+         driver.common/default-advanced-options]))
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false
