@@ -71,7 +71,7 @@ export function WorkspaceEmptyState() {
                 {t`Create a workspace config that you can download and use to set up a workspace in a development instance.`}
               </Text>
               <Button variant="filled" mt="xs" onClick={openCreate}>
-                {t`Create a workspace config`}
+                {t`Create a workspace`}
               </Button>
             </Stack>
             {canManageInstance && (

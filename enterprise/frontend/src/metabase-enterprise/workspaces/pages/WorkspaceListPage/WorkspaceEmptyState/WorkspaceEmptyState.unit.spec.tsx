@@ -23,7 +23,7 @@ describe("WorkspaceEmptyState", () => {
     setup();
 
     expect(
-      screen.getByRole("button", { name: "Create a workspace config" }),
+      screen.getByRole("button", { name: "Create a workspace" }),
     ).toBeInTheDocument();
   });
 
