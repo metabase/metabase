@@ -129,10 +129,16 @@ describe("getTreemapChartOption ids", () => {
 });
 
 describe("getTreemapChartOption zoom", () => {
-  it("enables click-to-zoom on the series", () => {
+  it("disables native click (drilling is handled by a custom click handler)", () => {
     const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
 
-    expect(series.nodeClick).toBe("zoomToNode");
+    expect(series.nodeClick).toBe(false);
+  });
+
+  it("keeps the initial view at two levels via leafDepth", () => {
+    const { series } = getTreemapChartOption(TWO_LEVEL_TREE);
+
+    expect(series.leafDepth).toBe(2);
   });
 
   it("disables wheel/drag roam zoom on the series", () => {

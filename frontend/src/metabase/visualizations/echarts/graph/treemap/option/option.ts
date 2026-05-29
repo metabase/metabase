@@ -39,9 +39,13 @@ export function getTreemapChartOption(
 
   const series: TreemapChartSeriesOption = {
     type: "treemap",
-    nodeClick: "zoomToNode",
+    // Native click is disabled; TreemapChart hijacks `click` to drill into the
+    // clicked node's grouping (see TreemapChart/events.ts). `leafDepth: 2` keeps
+    // the initial view at two levels.
+    nodeClick: false,
     roam: false,
     data: toSeriesData(tree, colors),
+    leafDepth: 2,
     ...(hasChildren ? { levels: TWO_LEVEL_LEVELS } : {}),
   };
 

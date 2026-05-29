@@ -18,6 +18,7 @@ import {
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
+import { useChartEvents } from "./events";
 
 export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
@@ -63,6 +64,11 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
     chartRef.current = chart;
   }, []);
 
+  const hasChildren = Boolean(
+    chartData?.tree.some((node) => node.children != null),
+  );
+  const { eventHandlers } = useChartEvents(chartRef, hasChildren);
+
   useCloseTooltipOnScroll(chartRef);
 
   const colorsCss = useInjectSeriesColorsClasses(
@@ -78,6 +84,7 @@ export const TreemapChart = ({ rawSeries, settings }: VisualizationProps) => {
       <ResponsiveEChartsRenderer
         ref={containerRef}
         option={option}
+        eventHandlers={eventHandlers}
         onInit={handleInit}
       />
       {colorsCss}
