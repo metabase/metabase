@@ -19,6 +19,7 @@ const mockDocument: ExplorationDocumentWithIsAiSummary = {
   creator_id: 1,
   content_type: "application/json+vnd.prose-mirror",
   isAiSummary: false,
+  isCanceled: false,
 };
 
 function setup(
