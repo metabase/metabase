@@ -355,14 +355,14 @@ export function SchemaViewer({
           </Panel>
         )}
         {!hasDbSelected && !isFetching && error == null && (
-          <Panel position="top-center">
+          <Panel position="bottom-center">
             <Stack
               align="center"
               justify="center"
               pt="xl"
               data-testid="schema-viewer-empty-state"
             >
-              <Text c="text-tertiary">{t`Pick a database to view its schema`}</Text>
+              <Text c="text-tertiary">{t`No schema selected`}</Text>
             </Stack>
           </Panel>
         )}

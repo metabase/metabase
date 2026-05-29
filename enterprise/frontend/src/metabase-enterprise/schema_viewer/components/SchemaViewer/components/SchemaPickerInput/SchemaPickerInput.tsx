@@ -81,7 +81,7 @@ export function SchemaPickerInput({
           schema
         ) : (
           <Text c="text-secondary" fw={700}>
-            {t`Pick a database to view`}
+            {t`Pick a schema to view`}
           </Text>
         )}
       </Button>

@@ -131,8 +131,8 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
   it("walks the full picker → canvas → selection → info panel → search → layout flow on the Sample Database", () => {
     cy.log("Bare URL renders the empty state with the picker auto-opened");
     cy.visit(BASE_URL);
-    cy.findByTestId("schema-viewer-empty-state")
-      .findByText("Pick a database to view its schema")
+    cy.findByTestId("schema-picker-button")
+      .findByText("Pick a schema to view")
       .should("be.visible");
 
     cy.log("Pick the Sample Database from the picker");
@@ -165,7 +165,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .and("contain", "ORDERS")
       .and("contain", "Sample Database")
       .and("contain", "PUBLIC")
-      .and("contain", "User ID")
+      .and("contain", "USER_ID")
       .and("contain", "PEOPLE");
 
     cy.log("Read-only adapter: no 'Find and replace' / 'Replace' button");
@@ -496,8 +496,8 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     cy.visit("/data-studio");
     H.DataStudio.nav().findByText("Schema viewer").click();
     cy.url().should("include", "/data-studio/schema-viewer");
-    cy.findByTestId("schema-viewer-empty-state")
-      .findByText("Pick a database to view its schema")
+    cy.findByTestId("schema-picker-button")
+      .findByText("Pick a schema to view")
       .should("be.visible");
 
     cy.log("Navigate to the Orders Data Model page via the table picker tree");
