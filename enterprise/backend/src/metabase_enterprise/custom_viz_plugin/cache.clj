@@ -277,7 +277,8 @@
      :hash    (or (:bundle_hash plugin) (bytes-hash bytes))}))
 
 (defn- asset-whitelisted?
-  "Check whether an asset path is explicitly listed in the plugin's manifest."
+  "Check whether an asset path is servable for the plugin. Only the manifest `icon`
+   is servable — see [[metabase-enterprise.custom-viz-plugin.manifest/asset-paths]]."
   [{:keys [manifest]} ^String asset-path]
   (when manifest
     (let [allowed (set (manifest/asset-paths manifest))]
