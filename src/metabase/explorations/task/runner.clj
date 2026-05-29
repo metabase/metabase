@@ -253,11 +253,6 @@
   (t2/select-one-fn :exploration_id :model/ExplorationThread
                     :id (:exploration_thread_id exploration-query)))
 
-(defn- params-get
-  "Read `k` from a `params` blob whose keys may be keywords or strings."
-  [params k]
-  (or (get params k) (get params (name k))))
-
 (defn- variant-note
   "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
   (which adds no breakdown beyond the bare metric × dimension)."
@@ -266,8 +261,8 @@
     "temporal-pattern-day"  "aggregated by day-of-week"
     "temporal-pattern-hour" "aggregated by hour-of-day"
     "time-facet"            "one line per dimension value, over time"
-    "top-n-other"           (str "top " (params-get params :k) " values, remainder grouped as Other")
-    "filtered-subset"       (let [vs (params-get params :filter_values)]
+    "top-n-other"           (str "top " (:k params) " values, remainder grouped as Other")
+    "filtered-subset"       (let [vs (:filter_values params)]
                               (str "restricted to "
                                    (if (and (sequential? vs) (= 1 (count vs)))
                                      (str (first vs))
@@ -296,9 +291,9 @@
   Returns nil when the row has no thread."
   [exploration-query]
   (when-let [thread-id (:exploration_thread_id exploration-query)]
-    {:prompt           (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))
+    {:prompt           (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id)
      :card-description (when-let [card-id (:card_id exploration-query)]
-                         (some-> (:description (t2/select-one [:model/Card :description] :id card-id))
+                         (some-> (t2/select-one-fn :description :model/Card :id card-id)
                                  str/trim
                                  not-empty))
      :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))}))

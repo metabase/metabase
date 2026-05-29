@@ -28,6 +28,7 @@
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -105,10 +106,7 @@
                                             (when (= :breakout (:source c)) i))
                                           (:cols data)))]
       (when (and dim-idx (seq (:rows data)))
-        (vec (keep (fn [row]
-                     (let [v (nth row dim-idx nil)]
-                       (when (some? v) v)))
-                   (:rows data)))))
+        (u/keepv #(nth % dim-idx nil) (:rows data))))
     (catch Throwable _ nil)))
 
 (def ^:private discovery-cache-threshold

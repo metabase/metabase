@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -33,9 +34,9 @@
 (defn- hydrate-score-from-result [score-key queries]
   (mi/instances-with-hydrated-data
    queries score-key
-   #(into {} (map (juxt :exploration_query_id score-key))
-          (t2/select [:model/ExplorationQueryResult :exploration_query_id score-key]
-                     :exploration_query_id [:in (map :id queries)]))
+   #(u/index-by :exploration_query_id score-key
+                (t2/select [:model/ExplorationQueryResult :exploration_query_id score-key]
+                           :exploration_query_id [:in (map :id queries)]))
    :id))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :interestingness_score]

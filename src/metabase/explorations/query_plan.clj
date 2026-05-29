@@ -26,6 +26,7 @@
    [metabase.explorations.settings :as explorations.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -186,7 +187,7 @@
 
 (defn- thread-prompt-for
   [thread-id]
-  (:prompt (t2/select-one [:model/ExplorationThread :id :prompt] :id thread-id)))
+  (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id))
 
 (defn- creator-id-for-thread
   [thread-id]
@@ -209,7 +210,7 @@
     {:thread-id      thread-id
      :thread-prompt  (thread-prompt-for thread-id)
      :metric-dim-ctx metric-dim-ctx
-     :metric-by-id   (into {} (map (juxt :metric-id identity)) (:metrics metric-dim-ctx))
+     :metric-by-id   (u/index-by :metric-id (:metrics metric-dim-ctx))
      :creator-id     (creator-id-for-thread thread-id)
      :thread-metrics thread-metrics
      :thread-dims    thread-dims}))
@@ -307,5 +308,4 @@
 (defn debug-transcript
   "Return the persisted query-plan transcript for `thread-id`."
   [thread-id]
-  (:query_plan_transcript
-   (t2/select-one [:model/ExplorationThread :id :query_plan_transcript] :id thread-id)))
+  (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id thread-id))
