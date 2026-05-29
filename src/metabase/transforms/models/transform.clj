@@ -166,32 +166,28 @@
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))
 
+(defn- hydrate-permission
+  [k transforms pred]
+  (mi/instances-with-hydrated-data
+   transforms k
+   #(u/index-by :id pred transforms)
+   :id
+   {:default false}))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
   [_model k transforms]
-  (mi/instances-with-hydrated-data
-   transforms k
-   #(u/index-by :id mi/can-read? transforms)
-   :id
-   {:default false}))
+  (hydrate-permission k transforms mi/can-read?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
   [_model k transforms]
-  (mi/instances-with-hydrated-data
-   transforms k
-   #(u/index-by :id mi/can-write? transforms)
-   :id
-   {:default false}))
+  (hydrate-permission k transforms mi/can-write?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
   [_model k transforms]
-  (mi/instances-with-hydrated-data
-   transforms k
-   #(u/index-by :id mi/can-write? transforms)
-   :id
-   {:default false}))
+  (hydrate-permission k transforms mi/can-write?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
