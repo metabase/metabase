@@ -1,7 +1,5 @@
-import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { useLocation } from "react-use";
 import _ from "underscore";
 
 import { useInitialCollectionId } from "metabase/collections/hooks";
@@ -14,6 +12,7 @@ import AppBar from "metabase/nav/components/AppBar";
 import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
 import QuestionLineage from "metabase/nav/components/QuestionLineage";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
+import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
 import {
   getOriginalQuestion,
@@ -63,59 +62,43 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
-type RouterLocation = { pathname?: string; state?: { cardId?: number } };
-
 function AppBarContainer(props: AppBarProps & RouterProps) {
   const collectionId = useInitialCollectionId(props) ?? undefined;
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const originalQuestion = useSelector(getOriginalQuestion);
-  const routerLocation = useLocation() as RouterLocation;
 
-  const dashboard = useMemo(() => {
-    const pathname = routerLocation.pathname;
-    const isOnQuestionPage = !!pathname && /\/question\//.test(pathname);
-    return isOnQuestionPage ? question?.dashboard() : undefined;
-  }, [question, routerLocation.pathname]);
+  const { pathname } = props.location;
+  const dashboard =
+    pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined;
 
-  const collectionBreadcrumbs = useMemo(
-    () => <CollectionBreadcrumbs dashboard={dashboard} />,
-    [dashboard],
-  );
+  const locationState = props.location.state as { cardId?: number } | undefined;
 
-  const questionLineage = useMemo(
-    () => (
-      <QuestionLineage
-        question={question}
-        originalQuestion={originalQuestion}
-      />
-    ),
-    [question, originalQuestion],
-  );
-
-  const onSearchItemSelect = useCallback(
-    (result: SearchResult) => {
-      // Skip the navigation when we're already viewing the model that owns
-      // the indexed-entity row — just update the zoomed-in row in place.
-      const isSameModel = result?.model_id === routerLocation.state?.cardId;
-      if (isSameModel && result.model === "indexed-entity") {
-        dispatch(zoomInRow({ objectId: result.id }));
-      } else {
-        const url = modelToUrl(result);
-        if (url) {
-          dispatch(push(url));
-        }
+  const onSearchItemSelect = (result: SearchResult) => {
+    // Skip the navigation when we're already viewing the model that owns
+    // the indexed-entity row — just update the zoomed-in row in place.
+    const isSameModel = result?.model_id === locationState?.cardId;
+    if (isSameModel && result.model === "indexed-entity") {
+      dispatch(zoomInRow({ objectId: result.id }));
+    } else {
+      const url = modelToUrl(result);
+      if (url) {
+        dispatch(push(url));
       }
-    },
-    [dispatch, routerLocation.state?.cardId],
-  );
+    }
+  };
 
   return (
     <AppBar
       {...props}
       collectionId={collectionId}
-      collectionBreadcrumbs={collectionBreadcrumbs}
-      questionLineage={questionLineage}
+      collectionBreadcrumbs={<CollectionBreadcrumbs dashboard={dashboard} />}
+      questionLineage={
+        <QuestionLineage
+          question={question}
+          originalQuestion={originalQuestion}
+        />
+      }
       onSearchItemSelect={onSearchItemSelect}
     />
   );
