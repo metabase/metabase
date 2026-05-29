@@ -61,7 +61,10 @@ import {
   type WritebackAction,
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import type { Notification } from "metabase-types/api/notification";
+import type {
+  AdminNotification,
+  Notification,
+} from "metabase-types/api/notification";
 
 import { getLensKey } from "../utils/transform-inspector-lens";
 
@@ -460,6 +463,25 @@ export function provideNotificationTags(
     ...(notification.creator ? provideUserTags(notification.creator) : []),
   ];
 }
+
+export const provideAdminNotificationTags = (
+  notification: Pick<AdminNotification, "id" | "creator">,
+): TagDescription<TagType>[] => [
+  idTag("notification", notification.id),
+  ...(notification.creator ? provideUserTags(notification.creator) : []),
+];
+
+export const adminNotificationListTag = (): TagDescription<TagType> =>
+  idTag("notification", "LIST-ADMIN");
+
+export const provideAdminNotificationListTags = (
+  notifications: Pick<Notification, "id">[],
+): TagDescription<TagType>[] => [
+  adminNotificationListTag(),
+  ...notifications.map((notification) =>
+    idTag("notification", notification.id),
+  ),
+];
 
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],

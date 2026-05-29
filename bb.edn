@@ -325,16 +325,25 @@
               ["./bin/mage ci-report source-replacement" "Report for a branch by name"]
               ["./bin/mage ci-report abc123def" "Report for a specific commit SHA"]
               ["./bin/mage ci-report --detailed 68292" "Detailed report with full FAIL/ERROR blocks"]
+              ["./bin/mage ci-report --attempt 1 68292"
+               "Report for attempt 1 of PR #68292 (use while a rerun attempt is in flight)"]
+              ["./bin/mage ci-report --attempt=-1 68292"
+               "Report for one attempt prior to the latest (0 = latest, -1 = prior, etc.)"]
               ["./bin/mage ci-report --detailed > ci_report.md"
                "Save detailed report to markdown file and print progress."]]
-   :options [["-d" "--detailed" "Include full FAIL/ERROR blocks with expected/actual diffs"]]
+   :options [["-d" "--detailed" "Include full FAIL/ERROR blocks with expected/actual diffs"]
+             ["-a" "--attempt N" "Workflow run attempt number to fetch (default: latest). Negative N indexes back from latest (0 = latest, -1 = one prior). Useful when a rerun is in progress and you want results from an earlier attempt."
+              :parse-fn Integer/parseInt]]
    :usage-fn (fn [_]
                (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
                     "Parses Trunk test reports to extract test failure details.\n\n"
                     "Accepts a PR number/URL, branch name, or commit SHA.\n"
                     "With no arguments, uses the current branch's PR if one exists,\n"
                     "otherwise falls back to the current branch's latest CI run.\n\n"
-                    "Use --detailed to get full test failure output with expected/actual diffs.\n\n"
+                    "Use --detailed to get full test failure output with expected/actual diffs.\n"
+                    "Use --attempt N to fetch a specific workflow run attempt (e.g. attempt 1\n"
+                    "while attempt 2 is rerunning). N may be 0 (latest) or negative\n"
+                    "(e.g. -1 = one attempt prior to the latest).\n\n"
                     "Requires GitHub CLI (gh) to be installed and authenticated.\n"
                     "If you see 'gh: command not found' or auth errors, run: gh auth login"))
    :requires [[mage.ci-report :as ci-report]]

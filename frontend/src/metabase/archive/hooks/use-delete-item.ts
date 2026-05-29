@@ -56,7 +56,10 @@ export function useDeleteItem() {
   const [deleteExploration] = useDeleteExplorationMutation();
 
   return useCallback(
-    async (item: DeletableItem) => {
+    async (
+      item: DeletableItem,
+      { notify = true }: { notify?: boolean } = {},
+    ) => {
       await match(item)
         .with(
           { model: "card" },
@@ -76,7 +79,9 @@ export function useDeleteItem() {
         )
         .exhaustive();
 
-      sendToast({ message: t`This item has been permanently deleted.` });
+      if (notify) {
+        sendToast({ message: t`This item has been permanently deleted.` });
+      }
     },
     [
       sendToast,
