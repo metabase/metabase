@@ -101,6 +101,9 @@
   [_]
   "dbo")
 
+(defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
+
 (defmethod driver/prettify-native-form :sqlserver
   [_ native-form]
   (sql.u/format-sql-and-fix-params :tsql native-form))
@@ -1147,9 +1150,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
-(defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
 
 (defmethod driver/init-workspace-isolation! :sqlserver
   [_driver database workspace]
