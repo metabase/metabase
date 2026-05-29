@@ -209,7 +209,7 @@ describe("getTreemapData (1-level)", () => {
     });
   });
 
-  it("preserves null grouping values on the node and stringifies the display name", () => {
+  it("renders a null grouping value using the standard null display value", () => {
     const result = getTreemapData(
       makeRawSeries([
         [null, 7],
@@ -221,7 +221,7 @@ describe("getTreemapData (1-level)", () => {
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       rawName: null,
-      displayName: "",
+      displayName: NULL_DISPLAY_VALUE,
       value: 7,
     });
   });

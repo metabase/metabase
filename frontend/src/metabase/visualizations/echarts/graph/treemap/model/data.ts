@@ -62,7 +62,7 @@ export function getTreemapData(
     const { node: rootNode } = getOrCreateNode(
       rootByKey,
       groupingValue,
-      String(groupingValue ?? ""),
+      groupingValue == null ? NULL_DISPLAY_VALUE : String(groupingValue),
       subGrouping != null,
     );
     addRowMetric(rootNode, metricValue, rowIndex);
@@ -80,9 +80,7 @@ export function getTreemapData(
     const { node: leaf, wasCreated } = getOrCreateNode(
       leafMap,
       subGroupingValue,
-      subGroupingValue == null
-        ? NULL_DISPLAY_VALUE
-        : String(subGroupingValue),
+      subGroupingValue == null ? NULL_DISPLAY_VALUE : String(subGroupingValue),
       false,
     );
     addRowMetric(leaf, metricValue, rowIndex);
