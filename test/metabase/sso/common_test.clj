@@ -205,13 +205,11 @@
           (integrations.common/sync-group-memberships! user #{})
           (is (= #{"All Users"}
                  (group-memberships user)))))
-
       (testing "add admin role when in new groups"
         (mt/with-user-in-groups [user []]
           (integrations.common/sync-group-memberships! user #{(perms-group/admin)})
           (is (= #{"All Users" "Administrators"}
                  (group-memberships user)))))
-
       (testing "keep admin role when already present and in new groups"
         (mt/with-user-in-groups [user [(perms-group/admin)]]
           (integrations.common/sync-group-memberships! user #{(perms-group/admin)})

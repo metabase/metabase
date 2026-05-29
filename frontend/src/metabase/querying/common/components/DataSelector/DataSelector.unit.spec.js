@@ -379,7 +379,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -392,7 +392,7 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 
@@ -444,7 +444,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -455,7 +455,9 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByText("To pick some data, you'll need to add some first"),
+      await screen.findByText(
+        "To pick some data, you'll need to add some first",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -475,10 +477,10 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
-    expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
   });
 
-  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", () => {
+  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
     renderWithProviders(
       <DataSelector
         availableModels={[]}
@@ -494,6 +496,7 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
   });
 });

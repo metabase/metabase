@@ -110,9 +110,9 @@
                 *purge-chan*    purge-chan]
         (let [orig (mt/original-fn #'cache/serialized-bytes)]
           (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
-                                                 ;; if `save-results!` isn't going to get called because `*result-fn*`
-                                                 ;; throws an Exception, catch it and send it to `save-chan` so it still
-                                                 ;; gets a result and tests can finish
+                                                               ;; if `save-results!` isn't going to get called because `*result-fn*`
+                                                               ;; throws an Exception, catch it and send it to `save-chan` so it still
+                                                               ;; gets a result and tests can finish
                                                                (try
                                                                  (orig)
                                                                  (catch Throwable e
@@ -274,7 +274,6 @@
                (mt/wait-for-result save-chan)))
         (is (= :not-cached
                (run-query))))))
-
   (testing "...but if it takes *longer* than the min TTL, it should be cached"
     (with-mock-cache! [save-chan]
       (binding [*query-caching-min-ttl* 0.1]
@@ -323,7 +322,7 @@
           (let [query           (mt/native-query {:query (tx/native-array-query driver/*driver*)})
                 query           (assoc query :cache-strategy (ttl-strategy))
                 original-result (qp/process-query query)
-                              ;; clear any existing values in the `save-chan`
+                ;; clear any existing values in the `save-chan`
                 _               (while (a/poll! save-chan))
                 _               (mt/wait-for-result save-chan)
                 cached-result   (qp/process-query query)]
@@ -360,7 +359,7 @@
               (let [query           (mt/native-query {:query (format "SELECT 'foo'::%s;" dom-name)})
                     query           (assoc query :cache-strategy (ttl-strategy))
                     original-result (qp/process-query query)
-                                    ;; clear any existing values in the `save-chan`
+                    ;; clear any existing values in the `save-chan`
                     _               (while (a/poll! save-chan))
                     _               (mt/wait-for-result save-chan)
                     cached-result   (qp/process-query query)]

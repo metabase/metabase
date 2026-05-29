@@ -5,6 +5,7 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  DashboardId,
   Dataset,
   GetPublicCard,
 } from "metabase-types/api";
@@ -121,4 +122,13 @@ export function setupCardPublicLinkEndpoints(cardId: CardId) {
 
 export function setupListPublicCardsEndpoint(publicCards: GetPublicCard[]) {
   fetchMock.get("path:/api/card/public", publicCards);
+}
+
+export function setupCardDashboardsEndpoint(
+  cardId: CardId,
+  dashboards: { id: DashboardId; name: string; enable_embedding: boolean }[],
+) {
+  fetchMock.get(`path:/api/card/${cardId}/dashboards`, dashboards, {
+    name: `card-${cardId}-dashboards`,
+  });
 }

@@ -30,33 +30,26 @@
       (testing "empty start-ids returns empty ordering"
         (is (= {:dependencies {} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{} [(tx 1 #{})]))))
-
       (testing "single transform with no deps"
         (is (= {:dependencies {1 #{}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{1} [(tx 1 #{})]))))
-
       (testing "direct dependency is resolved and included in the closure"
         (is (= {:dependencies {1 #{} 2 #{1}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{2} [(tx 1 #{}) (tx 2 #{1})]))))
-
       (testing "transitive dependencies are walked outward"
         (is (= {:dependencies {1 #{} 2 #{1} 3 #{2}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{3} [(tx 1 #{}) (tx 2 #{1}) (tx 3 #{2})]))))
-
       (testing "multiple start ids with a shared upstream"
         (is (= {:dependencies {1 #{} 2 #{1} 3 #{1}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{2 3} [(tx 1 #{}) (tx 2 #{1}) (tx 3 #{1})]))))
-
       (testing "unrelated transforms are never visited or included"
         (let [{:keys [dependencies]} (ordering/transform-ordering #{2} [(tx 1 #{}) (tx 2 #{}) (tx 3 #{})])]
           (is (= {2 #{}} dependencies))
           (is (not (contains? dependencies 1)))
           (is (not (contains? dependencies 3)))))
-
       (testing "non-existent start ids are captured in :not-found, not in :dependencies"
         (is (= {:dependencies {} :not-found #{999} :failed #{}}
                (ordering/transform-ordering #{999} [(tx 1 #{})]))))
-
       (testing "a cycle in the dep graph does not infinite-loop"
         (is (= {:dependencies {1 #{2} 2 #{1}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{1} [(tx 1 #{2}) (tx 2 #{1})])))))))
@@ -73,7 +66,6 @@
         ;; treats 1 as a leaf, and the supposed downstream dep (2) is never visited.
         (is (= {:dependencies {1 #{}} :not-found #{} :failed #{1}}
                (ordering/transform-ordering #{1} [(tx 1 #{2}) (tx 2 #{})])))))
-
     (testing "failure on a discovered upstream: upstream is still included (the parent's deps found it), but has no further deps of its own"
       (with-redefs [transforms-base.i/table-dependencies
                     (fn [transform]

@@ -2,6 +2,7 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
@@ -30,7 +31,6 @@ type RequestOptions = {
     data?: Record<string, unknown>;
     response?: Response;
   }) => Response | undefined;
-  raw: Record<string, boolean>;
   headers: Record<string, string>;
   retry: boolean;
   retryCount: number;
@@ -38,8 +38,6 @@ type RequestOptions = {
   formData?: boolean;
   fetch?: boolean;
   bodyParamName?: string | null;
-  cancelled?: Promise<unknown>;
-  controller?: AbortController;
   signal?: AbortSignal;
 };
 
@@ -48,7 +46,6 @@ const DEFAULT_OPTIONS: RequestOptions = {
   hasBody: false,
   noEvent: false,
   transformResponse: ({ body }) => body as Response,
-  raw: {},
   headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
@@ -82,12 +79,6 @@ type MethodCreator = (
       }) => Response | undefined),
 ) => ApiMethod;
 
-type ResponseErrorInfo = {
-  body: unknown;
-  status: number;
-  metabaseVersion: string | null;
-};
-
 /**
  * Thrown when the transport itself fails before a response is received —
  * e.g. the server dropped the connection, DNS lookup failed, or the user is
@@ -101,11 +92,25 @@ export class NetworkError extends Error {
   }
 }
 
-export class LegacyApi extends EventEmitter {
+type ResponseErrorInfo = {
+  body: unknown;
+  status: number;
+  metabaseVersion: string | null;
+};
+
+type EventMap = {
+  // Per-status events. Listeners receive the request URL (with basename
+  // stripped so subscribers see the relative path).
+  [status: number]: [string];
+  // Fired for any non-2xx response. Payload includes the response body so
+  // callers can inspect the failure beyond just its status.
+  responseError: [ResponseErrorInfo];
+};
+
+export class LegacyApi extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
-  onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
@@ -205,19 +210,7 @@ export class LegacyApi extends EventEmitter {
           ...middlewareResult.options,
         } as RequestOptions;
         const { data } = middlewareResult;
-        for (const tag of url.match(/:\w+/g) || []) {
-          const paramName = tag.slice(1);
-          let value = data[paramName];
-          delete data[paramName];
-          if (value === undefined) {
-            console.warn("Warning: calling", method, "without", tag);
-            value = "";
-          }
-          if (!options.raw || !options.raw[paramName]) {
-            value = encodeURIComponent(value as string);
-          }
-          url = url.replace(tag, value as string);
-        }
+        url = substituteUrlTags(url, data, method);
         // remove undefined
         for (const name in data) {
           if (data[name] === undefined) {
@@ -301,7 +294,10 @@ export class LegacyApi extends EventEmitter {
           (e as { status?: number }).status === 503 &&
           retryCount < maxAttempts
         ) {
-          await delay(retryDelays.pop() ?? 0);
+          await delay(retryDelays.pop() ?? 0, options.signal);
+          if (options.signal?.aborted) {
+            throw { isCancelled: true };
+          }
         } else {
           throw e;
         }
@@ -395,13 +391,11 @@ export class LegacyApi extends EventEmitter {
             }
             resolve(responseBody);
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({
-                body: responseBody,
-                status,
-                metabaseVersion,
-              });
-            }
+            this.emit("responseError", {
+              body: responseBody,
+              status,
+              metabaseVersion,
+            });
 
             reject({
               status: status,
@@ -410,17 +404,22 @@ export class LegacyApi extends EventEmitter {
             });
           }
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
         }
       };
       xhr.send(body);
 
-      if (options.cancelled) {
-        options.cancelled.then(() => {
+      if (options.signal) {
+        const onAbort = () => {
           isCancelled = true;
           xhr.abort();
-        });
+        };
+        if (options.signal.aborted) {
+          onAbort();
+        } else {
+          options.signal.addEventListener("abort", onAbort);
+        }
       }
     });
   }
@@ -433,24 +432,21 @@ export class LegacyApi extends EventEmitter {
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
-    const controller = options.controller || new AbortController();
-    const signal = controller.signal;
-    options.cancelled?.then(() => controller.abort());
-
+    // We bridge `options.signal` through a local controller (rather than
+    // handing it to `fetch` directly) so an already-aborted signal still gets
+    // its request dispatched: the request is sent this microtask, then the
+    // local controller aborts on the next. This matches XHR's `send()` →
+    // `abort()` semantics and keeps superseded-but-parked requests (e.g.
+    // through the embedding-SDK token refresh) going out.
+    const controller = new AbortController();
     const requestUrl = new URL(this.basename + url, location.origin);
     const request = new Request(requestUrl.href, {
       method,
       headers,
       body: requestBody,
-      signal,
+      signal: controller.signal,
     });
 
-    // Propagate aborts from an externally-supplied signal. If the signal is
-    // already aborted (e.g. cancelled while we were awaiting auth-refresh
-    // middleware), defer the propagation to the next microtask so the request
-    // still gets dispatched first — matching XHR's `send()` then-`abort()`
-    // semantics, where `xhr.send()` runs before the cancel handler is wired
-    // up. Otherwise the network never sees the request at all.
     if (options.signal) {
       if (options.signal.aborted) {
         queueMicrotask(() => controller.abort());
@@ -491,7 +487,7 @@ export class LegacyApi extends EventEmitter {
           }
 
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
 
           if (status >= 200 && status <= 299) {
@@ -504,16 +500,14 @@ export class LegacyApi extends EventEmitter {
             }
             return body;
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({ body, status, metabaseVersion });
-            }
+            this.emit("responseError", { body, status, metabaseVersion });
 
             throw { status: status, data: body };
           }
         });
       })
       .catch((error: unknown) => {
-        if (signal.aborted) {
+        if (options.signal?.aborted) {
           throw { isCancelled: true };
         }
         // A raw `fetch` rejection (e.g. the server dropped the connection)

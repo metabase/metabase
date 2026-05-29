@@ -8,7 +8,7 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useState } from "react";
 
-interface McpAppState {
+export interface McpAppState {
   query: string | null;
 
   /**

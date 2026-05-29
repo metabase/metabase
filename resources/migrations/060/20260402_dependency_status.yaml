@@ -259,6 +259,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:11
       author: ericnormand
       comment: Drop dependency_analysis_version index from report_card
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: report_card
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: report_card
@@ -275,6 +281,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:12
       author: ericnormand
       comment: Drop dependency_analysis_version index from transform
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: transform
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: transform
@@ -291,6 +303,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:13
       author: ericnormand
       comment: Drop dependency_analysis_version index from native_query_snippet
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: native_query_snippet
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: native_query_snippet
@@ -307,6 +325,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:14
       author: ericnormand
       comment: Drop dependency_analysis_version index from report_dashboard
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: report_dashboard
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: report_dashboard
@@ -323,6 +347,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:15
       author: ericnormand
       comment: Drop dependency_analysis_version index from document
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: document
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: document
@@ -339,6 +369,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:16
       author: ericnormand
       comment: Drop dependency_analysis_version index from sandboxes
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: sandboxes
+            columnName: dependency_analysis_version
       changes:
         - dropIndex:
             tableName: sandboxes
@@ -357,6 +393,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:17
       author: ericnormand
       comment: Drop dependency_analysis_version column from report_card
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: report_card
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: report_card
@@ -376,6 +418,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:18
       author: ericnormand
       comment: Drop dependency_analysis_version column from transform
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: transform
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: transform
@@ -395,6 +443,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:19
       author: ericnormand
       comment: Drop dependency_analysis_version column from native_query_snippet
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: native_query_snippet
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: native_query_snippet
@@ -414,6 +468,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:20
       author: ericnormand
       comment: Drop dependency_analysis_version column from report_dashboard
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: report_dashboard
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: report_dashboard
@@ -433,6 +493,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:21
       author: ericnormand
       comment: Drop dependency_analysis_version column from document
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: document
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: document
@@ -452,6 +518,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:22
       author: ericnormand
       comment: Drop dependency_analysis_version column from sandboxes
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: sandboxes
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: sandboxes
@@ -471,6 +543,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:23
       author: ericnormand
       comment: Drop dependency_analysis_version column from segment
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: segment
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: segment
@@ -490,6 +568,12 @@ databaseChangeLog:
       id: v60.2026-04-02T00:00:24
       author: ericnormand
       comment: Drop dependency_analysis_version column from measure
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: measure
+            columnName: dependency_analysis_version
       changes:
         - dropColumn:
             tableName: measure

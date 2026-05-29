@@ -211,17 +211,14 @@
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
                        (assoc item :used_tables tables)))
-
                    ;; Handle MBQL/notebook queries
                    (when-let [db-and-table-ids (mbql-source-table-ids item)]
                      (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-
                    ;; Handle Python transforms
                    (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
                      (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-
                    ;; Unknown item: return unchanged
                    item))
                 user-viewing)]

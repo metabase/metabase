@@ -217,7 +217,6 @@
                          (map #(dissoc % :id :table-id))
                          sorted)
                     (->> nested lib.metadata.calculation/returned-columns sorted)))
-
             (is (=? (->> (concat (from :source/card (cols-of :orders))
                                  (from :source/card (cols-of :products)))
                          (map #(dissoc % :id :table-id))
@@ -688,7 +687,7 @@
           model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
-               ;; intentionally omitting `:dataset-query`
+              ;; intentionally omitting `:dataset-query`
               {:cards [{:id              model-id
                         :type            :model
                         :database-id     (meta/id)

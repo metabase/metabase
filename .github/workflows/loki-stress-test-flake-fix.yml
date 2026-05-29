@@ -59,7 +59,9 @@ jobs:
           fi
 
           FILES=$( \
-            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' \
+            gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+              --paginate \
+              --jq '.[] | select(.status != "removed") | .filename' \
             | grep '\.stories\.tsx$' \
             | xargs -n1 \
             | sort -u \
@@ -194,7 +196,7 @@ jobs:
 
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loki-stress-test-report
           include-hidden-files: true

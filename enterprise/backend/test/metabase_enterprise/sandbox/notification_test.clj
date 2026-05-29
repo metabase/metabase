@@ -22,7 +22,6 @@
                                         :result
                                         :data
                                         :rows))]
-
           (is (= [[100]]
                  (send-alert-by-user! :crowberto)))
           (is (= [[10]]

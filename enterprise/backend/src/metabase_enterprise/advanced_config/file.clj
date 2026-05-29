@@ -101,6 +101,7 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
+   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -118,7 +119,9 @@
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
   ;; for `api-keys:` section code
-  metabase-enterprise.advanced-config.file.api-keys/keep-me)
+  metabase-enterprise.advanced-config.file.api-keys/keep-me
+  ;; for `workspace:` section code
+  advanced-config.file.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -166,10 +169,6 @@
                 (u/emoji "🗄️"))
       (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
     path*))
-
-(def ^:private ^:dynamic *config*
-  "Override the config contents as returned by [[config]], for test mocking purposes."
-  nil)
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
@@ -231,13 +230,22 @@
        (string? form) expand-templates-in-str))
    m))
 
-(defn- config
-  "Contents of the config file if it exists, otherwise `nil`. If config exists, it will be returned as a map."
+(defn- config-from-disk
+  "Read the config file from disk."
   []
-  (when-let [m (or *config*
-                   (yaml/from-file (str (path))))]
-    (s/assert* ::config m)
-    (expand-templates m)))
+  (yaml/from-file (str (path))))
+
+(defn- config
+  "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.
+   `:expand-templates?` defaults to `false` — env-var expansion against the
+   running process's environment is dangerous, so callers must opt in. The
+   boot-time loader passes `true`; the runtime upload endpoint leaves it off."
+  ([parsed-config] (config parsed-config {}))
+  ([parsed-config {:keys [expand-templates?]
+                   :or   {expand-templates? false}}]
+   (when parsed-config
+     (s/assert* ::config parsed-config)
+     (cond-> parsed-config expand-templates? expand-templates))))
 
 (defn- sort-by-initialization-order
   "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
@@ -249,20 +257,36 @@
     (concat settings-sections other-sections)))
 
 (defn ^{:added "0.45.0"} initialize!
-  "Initialize Metabase according to the directives in the config file, if it exists."
+  "Initialize Metabase according to the directives in `parsed-config` — a parsed
+   YAML map matching the [[::config]] spec. Opts:
+
+   - `:expand-templates?` (default `false`) — when true, walk the map and expand
+     `{{env VAR}}` templates against the running process's environment. Off by
+     default because reading server-side env vars from an uploaded YAML is
+     dangerous. The boot-time loader (see [[boot-initialize!]]) passes `true`
+     explicitly."
+  ([parsed-config]
+   (initialize! parsed-config {}))
+  ([parsed-config opts]
+   ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
+   ;; enabling that check tho)
+   (when-let [m (config parsed-config opts)]
+     (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
+       ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
+       ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
+       (when-not (= section-name :settings)
+         (when-not (premium-features/enable-config-text-file?)
+           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
+                           {}))))
+       (when (= section-name :workspace)
+         (premium-features/assert-has-feature :workspaces (tru "Workspaces")))
+       (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
+       (advanced-config.file.i/initialize-section! section-name section-config))
+     (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
+   :ok))
+
+(defn boot-initialize!
+  "Boot-time entry point: read the config file from disk and run [[initialize!]]
+   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
   []
-  ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
-  ;; enabling that check tho)
-  (when-let [m (config)]
-    (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Since you
-      ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
-      ;; other sections.
-      (when-not (= section-name :settings)
-        (when-not (premium-features/enable-config-text-file?)
-          (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
-                          {}))))
-      (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
-      (advanced-config.file.i/initialize-section! section-name section-config))
-    (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
-  :ok)
+  (initialize! (config-from-disk) {:expand-templates? true}))
