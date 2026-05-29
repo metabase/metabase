@@ -11,7 +11,7 @@ import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
 import { addAntiCsrfToken, updateAntiCsrfToken } from "./csrf";
-import { NetworkError, isRetriableError } from "./errors";
+import { isRetriableError, networkError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
 import { apiRequestManipulationMiddleware } from "./middleware";
@@ -153,11 +153,11 @@ export class ApiClient extends EventEmitter<EventMap> {
       }
       // A raw `fetch` rejection (e.g. the server dropped the connection)
       // surfaces as a plain Error here, indistinguishable from JS
-      // exceptions thrown elsewhere. Wrap it so downstream renderers can
-      // `instanceof NetworkError`-check and route it to the connectivity
-      // error message.
+      // exceptions thrown elsewhere. Wrap it in a plain, redux-serializable
+      // shape so downstream renderers can `isNetworkError`-check and route it
+      // to the connectivity error message.
       if (error instanceof Error) {
-        throw new NetworkError(error.message);
+        throw networkError(error.message);
       }
       throw error;
     }

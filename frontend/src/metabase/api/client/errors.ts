@@ -1,18 +1,27 @@
 /**
  * Thrown when the transport itself fails before a response is received —
  * e.g. the server dropped the connection, DNS lookup failed, or the user is
- * offline. Callers can `instanceof`-check this to render a connectivity
- * error message instead of treating it as a generic JS exception.
+ * offline. Shaped as a plain object (not an `Error` subclass) so it round-trips
+ * through `JSON.stringify` and RTK Query's `serializableCheck` middleware —
+ * matches the `{ isCancelled }` and `{ status, data }` shapes also thrown from
+ * `_dispatch`. Callers `isNetworkError`-check to render a connectivity error
+ * message instead of treating it as a generic failure.
  */
-export class NetworkError extends Error {
-  constructor(message = "Network error") {
-    super(message);
-    this.name = "NetworkError";
-  }
+export type NetworkError = {
+  isNetworkError: true;
+  message: string;
+};
+
+export function networkError(message = "Network error"): NetworkError {
+  return { isNetworkError: true, message };
 }
 
 export function isNetworkError(error: unknown): error is NetworkError {
-  return error instanceof NetworkError;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { isNetworkError?: unknown }).isNetworkError === true
+  );
 }
 
 export function getErrorStatus(error: unknown): number | undefined {
