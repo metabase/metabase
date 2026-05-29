@@ -184,11 +184,13 @@
                      :visualization {:chart_type "bar"}})]
         (testing "tool returns a clear, agent-targeted error rather than producing a chart"
           ;; `construct-notebook-query-tool` catches the ex-info, returns `{:output <message>}`
-          ;; plus a `:structured-output` containing only the empty-entity-usage placeholder
-          ;; required by the authoring-tool validator — no leaked query / chart data.
-          (is (= {:entity-usage {:input [] :output []}}
+          ;; plus a `:structured-output` carrying the empty-entity-usage placeholder required by
+          ;; the authoring-tool validator and `:artifact-valid false` (the agent-input rejection
+          ;; feeds `artifact-validity-share`) — no leaked query / chart data.
+          (is (= {:entity-usage {:input [] :output []} :artifact-valid false}
                  (:structured-output result))
-              (str "expected structured-output to carry only the empty :entity-usage placeholder, got: "
+              (str "expected structured-output to carry the empty :entity-usage placeholder and "
+                   ":artifact-valid false, got: "
                    (pr-str (:structured-output result))))
           (is (string? (:output result)))
           (is (re-find #"Sample" (:output result))
