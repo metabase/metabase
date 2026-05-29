@@ -51,7 +51,6 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.datasets :as mtd]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -67,41 +66,6 @@
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
-
-;; TODO: once h2-mbql5 is on master, share code with that
-(defn- test-driver [driver thunk]
-  (when (contains? (tx.env/test-drivers) driver)
-    (testing (str "\n" driver "\n")
-      (driver/with-driver (tx/the-driver-with-test-extensions driver)
-        (thunk))
-      ;; the above is the original definition of test-driver, but we add in
-      ;; this clause to avoid having to rewrite all the tests below twice:
-      (when (= driver :postgres)
-        (driver/with-driver (tx/the-driver-with-test-extensions :postgres-mbql5)
-          (thunk))))))
-
-(use-fixtures :each (fn [thunk]
-                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
-                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
-                      ;;
-                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
-                      ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false]
-                        ;; NB: because of test parallelism, this *will* affect other non-pg
-                        ;; tests, but the check above in the test-driver function will
-                        ;; prevent it from actually doing anything different in those tests.
-                        ;;
-                        ;; The linter (`:metabase/validate-deftest`) flags `with-redefs` inside a
-                        ;; `use-fixtures` body because it isn't parallel-safe -- the root var is
-                        ;; mutated globally across threads. We accept the hazard here for the
-                        ;; duration of the `:postgres-mbql5` equivalence experiment: this fixture
-                        ;; reruns every `:postgres` test under the `:postgres-mbql5` dispatch so
-                        ;; we can confirm behavioral parity. Once the experiment concludes and
-                        ;; `:postgres-mbql5` becomes `:postgres`, this entire `with-redefs` goes
-                        ;; away (see Phil's note in #ee-querying-platform 2026-05-21).
-                        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                        (with-redefs [mtd/-test-driver test-driver]
-                          (mt/with-test-user :rasta (thunk))))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -494,7 +458,7 @@
 
 (defn- ^:private maybe-convert-and-compile [driver query]
   (cond-> query
-    (= driver :postgres-mbql5) (lib.convert/->mbql5)
+    (= driver :postgres) (lib.convert/->mbql5)
     :always qp.compile/compile))
 
 (defn- ^:private json-alias-mock-metadata-provider [driver]
@@ -2185,7 +2149,7 @@
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
               (let [query    (cond-> {:type :query, :database 1}
-                               (= driver/*driver* :postgres-mbql5) (lib.convert/->mbql5))
+                               (= driver/*driver* :postgres) (lib.convert/->mbql5))
                     metadata {}
                     rows     []
                     qp       (fn [query rff]
