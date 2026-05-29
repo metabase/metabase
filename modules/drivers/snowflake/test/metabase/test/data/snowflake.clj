@@ -654,14 +654,14 @@
         (throw e))
       (with-write-stmt! (fn [^java.sql.Statement stmt]
                           (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
-                                           WHERE TIMEDIFF('seconds', current_timestamp()::TIMESTAMPTZ, at) > 60")))
+                                           WHERE TIMEDIFF('seconds', at, current_timestamp()::TIMESTAMPTZ) > 60")))
       false)))
 
 (defn- lock! [dataset-name]
   (setup-locks!)
   (loop [tries 0]
     (let [locked? (with-write-stmt! try-lock! dataset-name)]
-      (when (< 10000 tries)
+      (when (< 1000 tries)
         (throw (Exception. "could not acquire snowflake lock")))
       (when (not locked?)
         (Thread/sleep 100)
