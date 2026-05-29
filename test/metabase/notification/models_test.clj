@@ -60,14 +60,37 @@
            java.lang.Exception
            #"Update payload_id is not allowed."
            (t2/update! :model/Notification noti-id {:payload_id 1338})))))
-  (testing "can't change creator id"
+  (testing "superusers can change creator_id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (is (thrown-with-msg?
-           java.lang.Exception
-           #"Update creator_id is not allowed."
-           (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))
+      (is (= (mt/user->id :rasta)
+             (t2/select-one-fn :creator_id :model/Notification noti-id)))))
+  (testing "non-superusers and unauthenticated callers can't change creator_id"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (testing "non-superuser (single-pk update)"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               java.lang.Exception
+               #"Only superusers can change a notification's creator_id."
+               (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))
+      (testing "non-superuser (bulk update via :id [:in …])"
+        ;; The admin bulk endpoint uses this form; the model hook is the backstop in case the
+        ;; endpoint's superuser check is ever relaxed or bypassed.
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               java.lang.Exception
+               #"Only superusers can change a notification's creator_id."
+               (t2/update! :model/Notification :id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
+      (testing "no current user (system context)"
+        (is (thrown-with-msg?
+             java.lang.Exception
+             #"Only superusers can change a notification's creator_id."
+             (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"

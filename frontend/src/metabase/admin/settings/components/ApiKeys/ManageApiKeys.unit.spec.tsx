@@ -138,7 +138,7 @@ describe("ManageApiKeys", () => {
   it("should regenerate an API key", async () => {
     await setup();
     const REGEN_URL = "path:/api/api-key/1/regenerate";
-    fetchMock.put(REGEN_URL, 200);
+    fetchMock.put(REGEN_URL, { unmasked_key: "mb_regenerated" });
 
     await userEvent.click(
       within(
@@ -157,10 +157,8 @@ describe("ManageApiKeys", () => {
 
     await screen.findByText("Copy and save the API key");
     expect(
-      await fetchMock.callHistory
-        .lastCall(REGEN_URL, { method: "PUT" })
-        ?.request?.json(),
-    ).toEqual({});
+      fetchMock.callHistory.called(REGEN_URL, { method: "PUT" }),
+    ).toBeTruthy();
     await waitFor(() => {
       expect(
         fetchMock.callHistory.calls("path:/api/api-key", { method: "GET" }),

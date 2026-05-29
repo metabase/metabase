@@ -233,6 +233,18 @@ export interface TreeTableProps<
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
 
   /**
+   * Click handler for the header "select all" checkbox. When provided
+   * (and `showCheckboxes` is true), TreeTable renders a tri-state checkbox
+   * in the header's checkbox column. Its state is inferred from the visible
+   * rows via `getSelectionState` (or TanStack's built-in row selection when
+   * `getSelectionState` is omitted).
+   */
+  onHeaderCheckboxClick?: (event: MouseEvent) => void;
+
+  /** Custom aria-label for the header "select all" checkbox. */
+  headerCheckboxAriaLabel?: string;
+
+  /**
    * Callback to determine if a row's children are currently loading.
    * When true, shows a loading spinner instead of expand button.
    */
@@ -312,6 +324,9 @@ export interface TreeTableHeaderProps<
   isMeasured?: boolean;
   totalContentWidth?: number;
   headerVariant?: TreeTableHeaderVariant;
+  getSelectionState?: (row: Row<TData>) => SelectionState;
+  onHeaderCheckboxClick?: (event: MouseEvent) => void;
+  headerCheckboxAriaLabel?: string;
 }
 
 /**
@@ -334,4 +349,5 @@ export interface SelectionCheckboxProps {
   disabled?: boolean;
   onClick: (event: MouseEvent) => void;
   className?: string;
+  ariaLabel?: string;
 }

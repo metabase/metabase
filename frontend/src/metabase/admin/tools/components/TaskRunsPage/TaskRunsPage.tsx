@@ -6,6 +6,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Flex } from "metabase/ui";
 
+import { toBackendStartedAt } from "../../utils";
 import { TaskRunTypePicker } from "../RunTypePicker";
 import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
 import { TaskRunDatePicker } from "../TaskRunStartedAtPicker";
@@ -24,6 +25,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
       "entity-type": entityType,
       "entity-id": entityId,
       "started-at": startedAt,
+      "include-today": includeToday,
       status,
     },
     { patchUrlState },
@@ -40,7 +42,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
       "run-type": runType ?? undefined,
       "entity-type": entityType ?? undefined,
       "entity-id": entityId ?? undefined,
-      "started-at": startedAt ?? undefined,
+      "started-at": toBackendStartedAt(startedAt, includeToday),
       status: status ?? undefined,
     },
     {
@@ -71,12 +73,16 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
 
           <TaskRunDatePicker
             value={startedAt}
+            includeToday={includeToday}
             placeholder={t`Filter by started at`}
-            onChange={(startedAt) =>
+            onChange={(nextStartedAt, nextIncludeToday) =>
               patchUrlState({
-                "started-at": startedAt,
-                "entity-type": null,
-                "entity-id": null,
+                "started-at": nextStartedAt,
+                "include-today": nextIncludeToday,
+                ...(nextStartedAt !== startedAt && {
+                  "entity-type": null,
+                  "entity-id": null,
+                }),
                 page: 0,
               })
             }
@@ -85,6 +91,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
           <TaskRunEntityPicker
             runType={runType}
             startedAt={startedAt}
+            includeToday={includeToday}
             value={entityValue}
             onChange={(entity) =>
               patchUrlState({
