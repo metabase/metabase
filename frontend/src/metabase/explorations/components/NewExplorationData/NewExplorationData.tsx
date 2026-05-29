@@ -37,6 +37,7 @@ import {
   Stack,
   Text,
   Title,
+  UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as LibMetric from "metabase-lib/metric/core";
@@ -403,18 +404,18 @@ function ResearchPlanEmptyState({
       <Text size="md" c="text-secondary" ta="center">
         {isBlockDragInFlight
           ? t`Drop here to start a new research area`
-          : t`Pick a metric or a dimension from the Data palette — each one becomes its own research area here.`}
+          : t`Use AI agent to pick metrics and dimensions automatically for your research, or pick them from the Data palette.`}
       </Text>
       <Group gap="sm">
         <Button
-          variant="default"
+          variant="subtle"
           size="sm"
           leftSection={<Icon name="add" size={12} />}
           onClick={onAddMetric}
           aria-label={t`Add metrics`}
         >{t`Add metric`}</Button>
         <Button
-          variant="default"
+          variant="subtle"
           size="sm"
           leftSection={<Icon name="add" size={12} />}
           onClick={onAddDimension}
@@ -512,11 +513,18 @@ function MetricBlockItem({
             aria-hidden
           />
         </Accordion.Control>
+        <UnstyledButton
+          className={S.blockHeaderSelectArea}
+          onClick={onActivate}
+          aria-pressed={isActive}
+          aria-label={t`Select research area for ${block.metric.name}`}
+        />
         <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
       </Box>
       <Accordion.Panel>
         {/* Inner clickable wrapper */}
         <Box
+          className={S.blockBody}
           onClick={onActivate}
           role="button"
           tabIndex={0}
@@ -608,10 +616,17 @@ function DimensionBlockItem({
             aria-hidden
           />
         </Accordion.Control>
+        <UnstyledButton
+          className={S.blockHeaderSelectArea}
+          onClick={onActivate}
+          aria-pressed={isActive}
+          aria-label={t`Select research area for ${block.dimension.display_name ?? block.dimension.id}`}
+        />
         <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
       </Box>
       <Accordion.Panel>
         <Box
+          className={S.blockBody}
           onClick={onActivate}
           role="button"
           tabIndex={0}

@@ -74,7 +74,7 @@ describe("NewExplorationData (Research plan)", () => {
 
       expect(screen.getByText("Research plan")).toBeInTheDocument();
       expect(
-        screen.getByText(/each one becomes its own research area/i),
+        screen.getByText(/pick them from the Data palette/i),
       ).toBeInTheDocument();
       // Header "Add metric" + empty-state "Add metric" + empty-state
       // "Add dimension" → 3 add affordances total.
@@ -168,6 +168,24 @@ describe("NewExplorationData (Research plan)", () => {
 
       expect(screen.getByText(/No dimensions yet/i)).toBeInTheDocument();
     });
+
+    it("clicking the empty space in the header selects the block", async () => {
+      const { navigation } = setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: /Select research area for Revenue/i,
+        }),
+      );
+
+      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
+      expect(navigation.selectBlock).toHaveBeenCalledWith(
+        "metric:1",
+        "dimensions",
+      );
+    });
   });
 
   describe("dimension block", () => {
@@ -204,6 +222,24 @@ describe("NewExplorationData (Research plan)", () => {
       await userEvent.click(
         screen.getByRole("button", {
           name: /Edit research area for Plan/i,
+        }),
+      );
+
+      expect(navigation.selectBlock).toHaveBeenCalledTimes(1);
+      expect(navigation.selectBlock).toHaveBeenCalledWith(
+        "dim:accounts.plan",
+        "metrics",
+      );
+    });
+
+    it("clicking the empty space in the header selects the block", async () => {
+      const { navigation } = setup({
+        blocks: [mockDimensionBlock(dimPlan, [revenueMetric])],
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: /Select research area for Plan/i,
         }),
       );
 

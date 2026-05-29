@@ -1,6 +1,5 @@
 .container {
   flex-basis: max-content;
-  border-left: 1px solid var(--mb-color-border);
 }
 
 .emptyState {
@@ -107,8 +106,17 @@
 }
 
 .accordionControlRow .accordionControl {
-  flex: 1;
+  flex: 0 1 auto;
+  width: auto !important;
+  min-width: 0;
   padding-right: 0 !important;
+}
+
+.blockHeaderSelectArea {
+  flex: 1;
+  align-self: stretch;
+  min-width: 1rem;
+  cursor: pointer;
 }
 
 .accordionRoot .accordionLabel {
@@ -145,9 +153,13 @@
 
 .accordionRoot .accordionContent {
   border-top: 1px solid var(--mb-color-border) !important;
-  padding-inline: 1rem !important;
-  padding-bottom: 0.75rem !important;
-  padding-top: 0.75rem !important;
+  padding: 0 !important;
+}
+
+.blockBody {
+  padding-inline: 1rem;
+  padding-block: 0.75rem;
+  cursor: pointer;
 }
 
 .accordionRoot .accordionPanel {
