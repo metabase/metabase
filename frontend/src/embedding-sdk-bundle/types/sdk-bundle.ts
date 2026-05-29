@@ -16,6 +16,10 @@ import type {
   ExecuteActionParams,
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
+import type {
+  QueryQuestionParams,
+  QueryQuestionResult,
+} from "embedding-sdk-bundle/lib/query-question";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
@@ -71,6 +75,9 @@ type ReduxStoreUtilityFunctionExports = {
   >;
   executeAction: ReduxStoreUtilityFunction<
     (params: ExecuteActionParams) => Promise<ExecuteActionResult>
+  >;
+  queryQuestion: ReduxStoreUtilityFunction<
+    (params: QueryQuestionParams) => Promise<QueryQuestionResult>
   >;
 };
 

@@ -224,6 +224,7 @@ import {
   MetabotQuestion,
   StaticDashboard,
   StaticQuestion,
+  useQuestionQuery,
 } from "@metabase/embedding-sdk-react";
 
 /**
@@ -260,6 +261,7 @@ globalThis.InteractiveDashboard = InteractiveDashboard;
 globalThis.StaticDashboard = StaticDashboard;
 globalThis.CreateDashboardModal = CreateDashboardModal;
 globalThis.CollectionBrowser = CollectionBrowser;
+globalThis.useQuestionQuery = useQuestionQuery;
 ```
 
 ### `src/dev.jsx` — dev entry
@@ -486,8 +488,70 @@ Set on `globalThis` by the host in production and by `src/dev-globals.jsx` in de
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
+| `useQuestionQuery` | Hook that runs a saved question and returns its dataset (`{ data, isLoading, error, refetch }`). Use when you want to read raw query results (rows, columns, metadata) and render your own UI from them instead of dropping in a `StaticQuestion` / `InteractiveQuestion`. **Signature:** `useQuestionQuery(questionId, options?)` — the first arg is the bare numeric id, NOT an object. The optional second arg is `{ initialSqlParameters?, enabled? }`. Must be called from inside a component rendered under `MetabaseProvider`. |
 
 Network APIs (`fetch`, `XMLHttpRequest`, `WebSocket`, etc.) are blocked by the sandbox in production. Never make direct network requests from the bundle — let the SDK components do the talking.
+
+### When to use `useQuestionQuery` vs a `StaticQuestion` / `InteractiveQuestion`
+
+This is a decision the agent makes per-rendering, not once for the whole app:
+
+- **`StaticQuestion` / `InteractiveQuestion`** — use ONLY when a stock Metabase chart, displayed as-is, is exactly what the data app needs. No surrounding custom layout that the chart has to integrate with, no custom interactions, no derived/aggregated values pulled out of the dataset, no per-row UI, no list/grid/card pattern built from the rows. The SDK widget renders its own chrome, sizing, and interaction model — you take it or leave it.
+- **`useQuestionQuery`** — use **whenever ANY of the following applies**, even slightly:
+    - You want to render the data as something other than the saved question's visualization type (a stat tile, a list of cards, a custom table, a Pokémon-style grid, a sparkline, anything bespoke).
+    - You need to read a single value out of the result (e.g. "the count from the first row", "the sum of column X") and display it.
+    - You want to drive your own state or other components from the rows (filters, selections, derived dashboards-of-tiles, etc.).
+    - You need to format, transform, group, or join the rows before display.
+    - You want custom empty/loading/error states.
+    - You want the data layout to integrate with the surrounding bundle UI (consistent fonts, spacings, branded headers, etc.) that the SDK widget can't be styled into.
+
+**Default to `useQuestionQuery`.** Reach for `StaticQuestion`/`InteractiveQuestion` only when the saved-question chart, with its own framing, IS the deliverable. The moment the user asks for "something custom" — even subtle, even just "show the count nicely" — switch to `useQuestionQuery` and render the UI yourself.
+
+The hook returns `{ data, isLoading, error, ... }` from the SDK. Read `data` once it's loaded to get rows/columns/metadata; render with normal React. Hooks must be called from inside a component rendered under `MetabaseProvider`.
+
+#### Call each question at most once per render tree
+
+**Call `useQuestionQuery(N)` exactly once per unique question id** in the rendered tree. Calling it from multiple components with the same id is almost never what you want:
+
+- Each call mounts an independent subscription and fires its own query — same rows fetched multiple times, more bytes, slower first paint, and the components can briefly disagree if one finishes before the other.
+- The query state (`isLoading`, `error`, `data`) is duplicated, so each consuming component has to handle the loading dance separately even though they're all waiting on the same query.
+
+Lift the call to the highest component that needs the data, then **pass the result down as props** (or a context if the consumers are deep). Each consumer becomes a pure render of one shared `data`/`isLoading`/`error` triple. Think of `useQuestionQuery(N)` as defining a single "data source" per question — derived values (count, sum, top-K, filtered subset) come from JS on top of that one `data`, not from extra calls.
+
+```jsx
+// ✅ One call, derived values + multiple presentations
+function Dashboard() {
+  const { useQuestionQuery } = globalThis;
+  const { data, isLoading, error } = useQuestionQuery(1);
+  if (isLoading) return <Spinner />;
+  if (error) return <ErrorBox error={error} />;
+
+  const rows = data.rows;
+  const total = rows.length;
+  const topByValue = rows.toSorted((a, b) => b[2] - a[2]).slice(0, 5);
+
+  return (
+    <>
+      <StatTile label="Total customers" value={total} />
+      <TopList rows={topByValue} />
+      <CustomTable rows={rows} cols={data.cols} />
+    </>
+  );
+}
+
+// ❌ Same question fetched three times
+function Dashboard() {
+  return (
+    <>
+      <StatTile /> {/* calls useQuestionQuery(1) */}
+      <TopList />  {/* calls useQuestionQuery(1) */}
+      <CustomTable /> {/* calls useQuestionQuery(1) */}
+    </>
+  );
+}
+```
+
+Different ids, or the same id with different `initialSqlParameters`, are different data sources — call them separately. Same id + same parameters → fetch once.
 
 ## SDK component sizing
 
