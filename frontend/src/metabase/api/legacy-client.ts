@@ -79,12 +79,6 @@ type MethodCreator = (
       }) => Response | undefined),
 ) => ApiMethod;
 
-type ResponseErrorInfo = {
-  body: unknown;
-  status: number;
-  metabaseVersion: string | null;
-};
-
 /**
  * Thrown when the transport itself fails before a response is received —
  * e.g. the server dropped the connection, DNS lookup failed, or the user is
@@ -98,11 +92,25 @@ export class NetworkError extends Error {
   }
 }
 
-export class LegacyApi extends EventEmitter {
+type ResponseErrorInfo = {
+  body: unknown;
+  status: number;
+  metabaseVersion: string | null;
+};
+
+type EventMap = {
+  // Per-status events. Listeners receive the request URL (with basename
+  // stripped so subscribers see the relative path).
+  [status: number]: [string];
+  // Fired for any non-2xx response. Payload includes the response body so
+  // callers can inspect the failure beyond just its status.
+  responseError: [ResponseErrorInfo];
+};
+
+export class LegacyApi extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
-  onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
   requestClient: RequestClientInfo | undefined;
 
   beforeRequestHandlers: OnBeforeRequestHandler[] = [];
@@ -383,13 +391,11 @@ export class LegacyApi extends EventEmitter {
             }
             resolve(responseBody);
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({
-                body: responseBody,
-                status,
-                metabaseVersion,
-              });
-            }
+            this.emit("responseError", {
+              body: responseBody,
+              status,
+              metabaseVersion,
+            });
 
             reject({
               status: status,
@@ -398,7 +404,7 @@ export class LegacyApi extends EventEmitter {
             });
           }
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
         }
       };
@@ -481,7 +487,7 @@ export class LegacyApi extends EventEmitter {
           }
 
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
 
           if (status >= 200 && status <= 299) {
@@ -494,9 +500,7 @@ export class LegacyApi extends EventEmitter {
             }
             return body;
           } else {
-            if (this.onResponseError) {
-              this.onResponseError({ body, status, metabaseVersion });
-            }
+            this.emit("responseError", { body, status, metabaseVersion });
 
             throw { status: status, data: body };
           }
