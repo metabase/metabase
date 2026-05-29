@@ -4,6 +4,8 @@ import { TitleSection } from "metabase/data-studio/common/components/TitleSectio
 import { Button, Code, FixedSizeIcon, Group, Text, Tooltip } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
+import { trackWorkspaceConfigDownloaded } from "../../../analytics";
+
 const CONFIG_FILENAME = "config.yml";
 
 export type SetupSectionProps = {
@@ -11,7 +13,8 @@ export type SetupSectionProps = {
 };
 
 export function SetupSection({ workspace }: SetupSectionProps) {
-  const description = jt`Download this ${<Code key="config">{CONFIG_FILENAME}</Code>} and upload it on the developer instance to load this isolated workspace. The file carries the database credentials the developer instance needs.`;
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
+  const description = jt`Run a local Metabase instance backed by this workspace's data so you can make changes safely. Pass this ${<Code key="config">{CONFIG_FILENAME}</Code>} file, containing the database credentials, when starting the instance.`;
   const isDisabled = workspace.databases.length === 0;
 
   return (
@@ -35,6 +38,9 @@ export function SetupSection({ workspace }: SetupSectionProps) {
             component="a"
             href={`/api/ee/workspace-manager/${workspace.id}/config`}
             download={CONFIG_FILENAME}
+            onClick={() =>
+              trackWorkspaceConfigDownloaded({ workspaceId: workspace.id })
+            }
             leftSection={<FixedSizeIcon name="download" aria-hidden />}
           >
             {t`Download ${CONFIG_FILENAME}`}

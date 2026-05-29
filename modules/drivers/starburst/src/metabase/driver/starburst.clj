@@ -947,7 +947,6 @@
                                   (:tag driver-api/mb-version-info "")
                                   driver-api/local-process-uuid))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
-
                   ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                   ;; very picky about properties (throwing an error if any are unrecognized)
                   ;; all valid properties can be found in the JDBC Driver source here:

@@ -205,7 +205,6 @@
                      :user_id  (mt/user->id :rasta)
                      :object   old-card-data
                      :message  "Test revision without card_schema"})
-
         (testing "Can fetch revisions without error through API"
           (let [revisions (revision/revisions+details :model/Card card-id)]
             (is (seq revisions))

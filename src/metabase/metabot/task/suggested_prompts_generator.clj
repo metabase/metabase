@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.request.core :as request]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -21,8 +22,16 @@
 
 (defn- maybe-generate-suggested-prompts! []
   (try
-    (if-not (metabot.config/any-metabot-enabled?)
+    (cond
+      (not (metabot.config/any-metabot-enabled?))
       (log/info "Metabot is disabled. Skipping suggested prompt generation.")
+
+      ;; Pre-check so a locked managed-AI instance logs a clean info-level skip instead of bubbling
+      ;; the 402 from `generate-sample-prompts` up into the catch as a noisy startup error.
+      (metabot.usage/managed-free-limit-reached?)
+      (log/info "Managed AI free limit reached. Skipping suggested prompt generation.")
+
+      :else
       ;; Run as admin since this is a system task generating prompts for all content in scope.
       ;; Users will only see prompts for content they have access to (filtered at query time).
       (request/as-admin

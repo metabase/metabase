@@ -36,14 +36,12 @@ type SetupOpts = {
   isAdmin?: boolean;
   canManageWorkspaces?: boolean;
   workspace?: WorkspaceInstance | null;
-  isDevelopmentMode?: boolean;
 };
 
 function setup({
   isAdmin = true,
   canManageWorkspaces = false,
   workspace = null,
-  isDevelopmentMode = false,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([POSTGRES]);
   setupGetCurrentWorkspaceEndpoint(workspace);
@@ -62,7 +60,6 @@ function setup({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         workspaces: true,
-        development_mode: isDevelopmentMode,
       }),
     }),
   });
@@ -83,17 +80,8 @@ describe("WorkspaceIndexPage", () => {
     expect(screen.queryByTestId("workspace-list-page")).not.toBeInTheDocument();
   });
 
-  it("admin in development mode sees the instance page even without a workspace", async () => {
-    setup({ isAdmin: true, workspace: null, isDevelopmentMode: true });
-
-    expect(
-      await screen.findByTestId("workspace-instance-page"),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("workspace-list-page")).not.toBeInTheDocument();
-  });
-
-  it("admin without a workspace and not in development mode sees the list page", async () => {
-    setup({ isAdmin: true, workspace: null, isDevelopmentMode: false });
+  it("admin without a workspace sees the list page", async () => {
+    setup({ isAdmin: true, workspace: null });
 
     expect(
       await screen.findByTestId("workspace-list-page"),

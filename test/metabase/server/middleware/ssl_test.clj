@@ -55,14 +55,12 @@
       (let [response (handler (-> (ring.mock/request :get "/foo")
                                   (ring.mock/header :X-URL-Scheme "https")))]
         (is (= 200 (:status response))))
-
       (let [response (handler (-> (ring.mock/request :get "/foo")
                                   (ring.mock/header :X-Forwarded-SSL "on")))]
         (is (= 200 (:status response))))
       (let [response (handler (-> (ring.mock/request :get "/foo")
                                   (ring.mock/header :Front-End-HTTPS "on")))]
         (is (= 200 (:status response))))
-
       (let [response (handler (-> (ring.mock/request :get "/foo")
                                   (ring.mock/header :Origin "https://foo")))]
         (is (= 200 (:status response)))))))

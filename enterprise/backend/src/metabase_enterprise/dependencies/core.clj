@@ -102,7 +102,6 @@
     (when (seq (:snippet deps))
       ;; Copy any snippet deps to each database, since they span them all.
       (vswap! by-db update-vals #(assoc % :snippet (:snippet deps))))
-
     @by-db))
 
 (mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]

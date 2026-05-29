@@ -17,15 +17,14 @@
       (is (not (contains? scopes "agent:viz:*"))))))
 
 (deftest user-metabot-perms-nql-scopes-test
-  (testing "nql :yes grants notebook, query, table, metric scopes"
+  (testing "nql :yes grants notebook, query, question scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
                    :permission/metabot-nlq            :yes
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:notebook:*"))
       (is (contains? scopes "agent:query:*"))
-      (is (contains? scopes "agent:table:*"))
-      (is (contains? scopes "agent:metric:*"))
+      (is (contains? scopes "agent:question:*"))
       (is (not (contains? scopes "agent:sql:*"))))))
 
 (deftest user-metabot-perms-other-tools-scopes-test
