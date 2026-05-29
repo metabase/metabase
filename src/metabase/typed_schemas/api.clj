@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -29,7 +30,7 @@
   (assoc javascript-response-headers "Content-Type" "text/typescript; charset=utf-8"))
 
 (def ^:private js-identifier-key-pattern
-  #"\"([A-Za-z_$][A-Za-z0-9_$]*)\":")
+  #"\"([A-Za-z_$][A-Za-z0-9_$]*)\"\s*:")
 
 (defn- js-type
   [{:keys [type base_type effective_type] :as _column}]
@@ -146,13 +147,34 @@
    :columns     (mapv column-schema result-columns)
    :parameters  []})
 
+(defn- persisted-dimension->column
+  [dimension]
+  (let [field-id (some-> dimension :sources first :field-id)]
+    {:name           (:name dimension)
+     :display_name   (:display-name dimension)
+     :base_type      (some-> (:effective-type dimension) u/qualified-name)
+     :effective_type (some-> (:effective-type dimension) u/qualified-name)
+     :semantic_type  (some-> (:semantic-type dimension) u/qualified-name)
+     :field_id       field-id}))
+
 (defn- dimension-schema
   [{:keys [field_id] :as dimension}]
-  (assoc (column-schema dimension)
-         :key (generated-key (:name dimension) field_id)
-         :id (str field_id)
-         :fieldId (when (integer? field_id) field_id)
-         :operators []))
+  (let [dimension-id (or (:id dimension) field_id)
+        field-id     (or field_id (some-> dimension :sources first :field-id))
+        column       (if (:sources dimension)
+                       (persisted-dimension->column dimension)
+                       dimension)]
+    (assoc (column-schema column)
+           :key (generated-key (:name column) dimension-id)
+           :id (str dimension-id)
+           :fieldId (when (integer? field-id) field-id)
+           :operators [])))
+
+(defn- metric-dimensions
+  [{:keys [id]}]
+  (metrics/sync-dimensions! :metadata/metric id)
+  (-> (t2/select-one [:model/Card :dimensions] :id id)
+      :dimensions))
 
 (defn- source-table-schema
   [[database-name schema-name table-name]]
@@ -171,10 +193,12 @@
    :jsType        "unknown"})
 
 (defn- metric-schema
-  [{:keys [id name description verified portable_entity_id base_table_portable_fk queryable-dimensions] :as details}
+  [{:keys [id name description verified portable_entity_id base_table_portable_fk] :as details}
    card]
   (let [result-column (or (some-> (metric-result-column card) column-schema)
-                          (fallback-metric-column details))]
+                          (fallback-metric-column details))
+        dimensions    (or (seq (metric-dimensions details))
+                          (:queryable-dimensions details))]
     {:kind        "metric"
      :key         (generated-key name id)
      :id          id
@@ -184,7 +208,7 @@
      :verified    (boolean verified)
      :sourceTable (source-table-schema base_table_portable_fk)
      :columns     [result-column]
-     :dimensions  (mapv dimension-schema queryable-dimensions)}))
+     :dimensions  (mapv dimension-schema dimensions)}))
 
 (defn- typed-schema
   []
@@ -209,13 +233,17 @@
   [s]
   (str/replace s js-identifier-key-pattern "$1:"))
 
+(defn- encode-pretty
+  [schema]
+  (json/encode schema {:pretty true}))
+
 (defn- render-javascript
   [schema]
-  (str "export default " (unquote-js-property-names (json/encode schema)) ";\n"))
+  (str "export default " (unquote-js-property-names (encode-pretty schema)) ";\n"))
 
 (defn- render-typescript
   [schema]
-  (str "export default " (unquote-js-property-names (json/encode schema)) " as const;\n"))
+  (str "export default " (unquote-js-property-names (encode-pretty schema)) " as const;\n"))
 
 (api.macros/defendpoint :get "/v1/javascript" :- :any
   "Generate a JavaScript semantic schema module."

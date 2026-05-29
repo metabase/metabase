@@ -28,6 +28,7 @@ export type QuestionSchema = {
 
 export type MetricDimensionSchema = SchemaColumn & {
   id: string | number;
+  fieldId?: number;
 };
 
 export type MetricSchema = {
