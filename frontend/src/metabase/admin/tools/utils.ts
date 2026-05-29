@@ -113,6 +113,8 @@ export const toBackendStartedAt = (
   if (!value) {
     return undefined;
   }
+  // A trailing "~" makes the date range open-ended on the upper bound,
+  // extending it through today so the current day's runs are included.
   return includeToday ? `${value}~` : value;
 };
 

@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import {
   Combobox,
@@ -27,6 +27,7 @@ type TaskRunDatePickerProps = {
 
 type DateOption = {
   label: string;
+  includeTodayLabel?: string;
   value: TaskRunDateFilterOption;
 };
 
@@ -57,27 +58,58 @@ export const TaskRunDatePicker = ({
    */
   const options: DateOption[] = [
     { label: t`Today`, value: "thisday" },
-    { label: t`Yesterday`, value: "past1days" },
-    { label: t`Previous week`, value: "past1weeks" },
-    { label: t`Previous 7 days`, value: "past7days" },
-    { label: t`Previous 30 days`, value: "past30days" },
-    { label: t`Previous month`, value: "past1months" },
-    { label: t`Previous 3 months`, value: "past3months" },
-    { label: t`Previous 12 months`, value: "past12months" },
+    {
+      label: t`Yesterday`,
+      includeTodayLabel: t`Yesterday, including today`,
+      value: "past1days",
+    },
+    {
+      label: t`Previous week`,
+      includeTodayLabel: t`Previous week, including today`,
+      value: "past1weeks",
+    },
+    {
+      label: t`Previous 7 days`,
+      includeTodayLabel: t`Previous 7 days, including today`,
+      value: "past7days",
+    },
+    {
+      label: t`Previous 30 days`,
+      includeTodayLabel: t`Previous 30 days, including today`,
+      value: "past30days",
+    },
+    {
+      label: t`Previous month`,
+      includeTodayLabel: t`Previous month, including today`,
+      value: "past1months",
+    },
+    {
+      label: t`Previous 3 months`,
+      includeTodayLabel: t`Previous 3 months, including today`,
+      value: "past3months",
+    },
+    {
+      label: t`Previous 12 months`,
+      includeTodayLabel: t`Previous 12 months, including today`,
+      value: "past12months",
+    },
   ];
 
-  const selectedLabel = options.find((option) => option.value === value)?.label;
+  const selectedOption = options.find((option) => option.value === value);
   const includeTodayAllowed = isIncludeTodayAllowed(value);
 
   const displayLabel = (() => {
-    if (!selectedLabel) {
+    if (!selectedOption) {
       return null;
     }
-    if (includeToday && includeTodayAllowed) {
-      return c("Date range with include-today suffix")
-        .t`${selectedLabel}, including today`;
+    if (
+      includeToday &&
+      includeTodayAllowed &&
+      selectedOption.includeTodayLabel
+    ) {
+      return selectedOption.includeTodayLabel;
     }
-    return selectedLabel;
+    return selectedOption.label;
   })();
 
   const handleClear = (event: MouseEvent) => {
