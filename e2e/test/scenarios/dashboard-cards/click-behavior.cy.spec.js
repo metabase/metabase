@@ -192,12 +192,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           native: {
             query: `
               SELECT
-                DATE_TRUNC('month', CREATED_AT) AS "Created At",
+                STRFTIME('%Y-%m', CREATED_AT) AS "Created At",
                 COUNT(*) AS "count"
               FROM
                 ORDERS
               GROUP BY
-                DATE_TRUNC('month', CREATED_AT)
+                STRFTIME('%Y-%m', CREATED_AT)
               LIMIT
                 5
             `,
