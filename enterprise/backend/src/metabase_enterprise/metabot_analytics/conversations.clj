@@ -248,3 +248,41 @@
        :user_agent           (:user_agent conversation)
        :sanitized_user_agent (:sanitized_user_agent conversation)
        :feedback             (fetch-conversation-feedback conversation-id)})))
+
+(defn fetch-conversation-quality
+  "Fetch the raw conversation-quality-score columns for `conversation-id`:
+  the conversation's `quality_score`/`quality_breakdown` plus each
+  (non-deleted) message's `quality_attribution`, ordered oldest-first.
+  When `include-data?` is set, each message also carries its raw `data`
+  part stream (the `--timeline` source). 404s if no conversation matches.
+
+  Temporary diagnostic surface for the conversation-quality-score work
+  (BOT-1515); mirrors `scripts/quality_score_dump.py` for instances
+  without direct appdb access. The JSON columns are decoded by the model
+  `deftransforms`, so the values returned here are already parsed."
+  [conversation-id {:keys [include-data?]}]
+  (let [conversation (t2/select-one [:model/MetabotConversation
+                                     :id :user_id :created_at :quality_score :quality_breakdown]
+                                    :id conversation-id)]
+    (api/check-404 conversation)
+    (let [cols     (cond-> [:id :external_id :role :created_at :finished :error :quality_attribution]
+                     include-data? (conj :data))
+          messages (t2/select (into [:model/MetabotMessage] cols)
+                              :conversation_id conversation-id
+                              {:where    [:= :deleted_at nil]
+                               :order-by [[:created_at :asc] [:id :asc]]})]
+      {:conversation_id   (:id conversation)
+       :user_id           (:user_id conversation)
+       :created_at        (:created_at conversation)
+       :quality_score     (:quality_score conversation)
+       :quality_breakdown (:quality_breakdown conversation)
+       :messages          (mapv (fn [m]
+                                  (cond-> {:id                  (:id m)
+                                           :external_id         (:external_id m)
+                                           :role                (:role m)
+                                           :created_at          (:created_at m)
+                                           :finished            (:finished m)
+                                           :error               (:error m)
+                                           :quality_attribution (:quality_attribution m)}
+                                    include-data? (assoc :data (:data m))))
+                                messages)})))
