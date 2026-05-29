@@ -36986,6 +36986,1690 @@
         "tags" : [ "/api/measure" ]
       }
     },
+    "/api/measure/{id}/dimension/{dimension-key}/remapping" : {
+      "get" : {
+        "description" : "Fetch remapped value for a specific dimension value.\n\n   Returns a pair [value, display-name] if remapping exists, or [value] otherwise.",
+        "operationId" : "get-api-measure-id-dimension-dimension-key-remapping",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.RemappedValueResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/remapping",
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}/dimension/{dimension-key}/search" : {
+      "get" : {
+        "description" : "Search for values of a dimension that contain the query string.\n\n   Returns field values matching the search query in the same format as the field values API.",
+        "operationId" : "get-api-measure-id-dimension-dimension-key-search",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "items" : {
+                      "type" : "string"
+                    },
+                    "type" : "array"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/search",
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}/dimension/{dimension-key}/values" : {
+      "get" : {
+        "description" : "Fetch values for a dimension of a measure.\n\n   Returns field values in the same format as the field values API:\n   - values: list of [value] or [value, display-name] tuples\n   - field_id: the underlying field ID\n   - has_more_values: boolean indicating if there are more values",
+        "operationId" : "get-api-measure-id-dimension-dimension-key-values",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "items" : {
+                        "anyOf" : [ {
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ],
+                          "type" : "array"
+                        }, {
+                          "prefixItems" : [ { } ],
+                          "type" : "array"
+                        } ]
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/values",
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/metabot/agent-streaming" : {
+      "post" : {
+        "description" : "Send a chat message to the LLM via the AI Proxy.",
+        "operationId" : "post-api-metabot-agent-streaming",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "context" : {
+                    "$ref" : "#/components/schemas/metabase.metabot.context.context"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                    "type" : "string"
+                  },
+                  "debug" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "history" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.metabot.schema.messages"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
+                  },
+                  "state" : {
+                    "properties" : {
+                      "chart-configs" : {
+                        "additionalProperties" : { },
+                        "type" : "object"
+                      },
+                      "charts" : {
+                        "additionalProperties" : { },
+                        "type" : "object"
+                      },
+                      "queries" : {
+                        "additionalProperties" : { },
+                        "type" : "object"
+                      }
+                    },
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "message", "context", "conversation_id", "history", "state" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/agent-streaming",
+        "tags" : [ "/api/metabot" ]
+      }
+    },
+    "/api/metabot/conversations" : {
+      "get" : {
+        "description" : "List conversations visible in the current user's history, most-recent first.\n\n  New conversations are participation-based (the user authored at least one\n  message); legacy conversations created before message authors were stamped\n  fall back to the conversation originator.",
+        "operationId" : "get-api-metabot-conversations",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "properties" : {
+                          "conversation_id" : {
+                            "description" : "value must be a valid UUID.",
+                            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                            "type" : "string"
+                          },
+                          "created_at" : {
+                            "format" : "date-time",
+                            "type" : "string"
+                          },
+                          "last_message_at" : {
+                            "oneOf" : [ {
+                              "format" : "date-time",
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "summary" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "conversation_id", "created_at", "summary", "user_id", "message_count", "last_message_at" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/conversations",
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}" : {
+      "get" : {
+        "description" : "Return a single conversation with its flattened chat messages.\n\n  Accessible to any participant in the conversation or to any superuser.",
+        "operationId" : "get-api-metabot-conversations-id",
+        "parameters" : [ {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "chat_messages" : {
+                      "items" : {
+                        "properties" : { },
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                      "type" : "string"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "summary" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "summary", "user_id", "chat_messages" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/conversations/{id}",
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/document/generate-content" : {
+      "post" : {
+        "description" : "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent.",
+        "operationId" : "post-api-metabot-document-generate-content",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "instructions" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "references" : {
+                    "description" : "Value must be a map.",
+                    "properties" : { },
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "instructions" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "description" : {
+                      "oneOf" : [ {
+                        "minLength" : 1,
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "draft_card" : {
+                      "oneOf" : [ {
+                        "properties" : {
+                          "database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "dataset_query" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "name" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "parameters" : {
+                            "oneOf" : [ {
+                              "items" : {
+                                "description" : "Value must be a map.",
+                                "properties" : { },
+                                "type" : "object"
+                              },
+                              "type" : "array"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "visualization_settings" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          }
+                        },
+                        "required" : [ "name", "dataset_query", "database_id", "parameters", "visualization_settings" ],
+                        "type" : "object"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "error" : {
+                      "oneOf" : [ {
+                        "minLength" : 1,
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "draft_card", "error", "description" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/document/generate-content",
+        "tags" : [ "/api/metabot/document" ]
+      }
+    },
+    "/api/metabot/feedback" : {
+      "post" : {
+        "description" : "Persist Metabot feedback.",
+        "operationId" : "post-api-metabot-feedback",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "freeform_feedback" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "issue_type" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "message_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "positive" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/feedback",
+        "tags" : [ "/api/metabot" ]
+      }
+    },
+    "/api/metabot/metabot" : {
+      "get" : {
+        "description" : "List configured metabot instances",
+        "operationId" : "get-api-metabot-metabot",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/metabot",
+        "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/metabot/{id}" : {
+      "get" : {
+        "description" : "Retrieve one metabot instance",
+        "operationId" : "get-api-metabot-metabot-id",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/metabot/{id}",
+        "tags" : [ "/api/metabot/metabot" ]
+      },
+      "put" : {
+        "description" : "Update a metabot instance",
+        "operationId" : "put-api-metabot-metabot-id",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "use_verified_content" : {
+                    "type" : "boolean"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/metabot/metabot/{id}",
+        "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/metabot/{id}/prompt-suggestions" : {
+      "delete" : {
+        "description" : "Delete all prompt suggestions for the metabot instance with `id`.",
+        "operationId" : "delete-api-metabot-metabot-id-prompt-suggestions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/metabot/metabot/{id}/prompt-suggestions",
+        "tags" : [ "/api/metabot/metabot" ]
+      },
+      "get" : {
+        "description" : "Return the prompt suggestions for the metabot instance with `id`.",
+        "operationId" : "get-api-metabot-metabot-id-prompt-suggestions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sample",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "model",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "metric", "model" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "model_id",
+          "required" : false,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/metabot/{id}/prompt-suggestions",
+        "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/metabot/{id}/prompt-suggestions/regenerate" : {
+      "post" : {
+        "description" : "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.\n   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,\n   `:no-library-content` when the Metabot has no models or metrics to summarize, or\n   `:ai-produced-no-prompts` when generation produced nothing.\n   Returns a 402 if the instance has reached its managed-AI usage limit.",
+        "operationId" : "post-api-metabot-metabot-id-prompt-suggestions-regenerate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "prompt_count" : {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "status" : {
+                        "const" : "generated"
+                      }
+                    },
+                    "required" : [ "status", "prompt_count" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "no-library-content"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "ai-produced-no-prompts"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/metabot/{id}/prompt-suggestions/regenerate",
+        "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/metabot/{id}/prompt-suggestions/{prompt-id}" : {
+      "delete" : {
+        "description" : "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`.",
+        "operationId" : "delete-api-metabot-metabot-id-prompt-suggestions-prompt-id",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "prompt-id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/metabot/metabot/{id}/prompt-suggestions/{prompt-id}",
+        "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/permissions/user-permissions" : {
+      "get" : {
+        "description" : "Return the current user's resolved metabot permissions, taking the most\n  permissive value across all their groups.",
+        "operationId" : "get-api-metabot-permissions-user-permissions",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "permissions" : {
+                      "properties" : {
+                        "metabot" : {
+                          "enum" : [ "yes", "no" ],
+                          "type" : "string"
+                        },
+                        "metabot-nlq" : {
+                          "enum" : [ "yes", "no" ],
+                          "type" : "string"
+                        },
+                        "metabot-other-tools" : {
+                          "enum" : [ "yes", "no" ],
+                          "type" : "string"
+                        },
+                        "metabot-sql-generation" : {
+                          "enum" : [ "yes", "no" ],
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "metabot", "metabot-sql-generation", "metabot-nlq", "metabot-other-tools" ],
+                      "type" : "object"
+                    }
+                  },
+                  "required" : [ "permissions" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/permissions/user-permissions",
+        "tags" : [ "/api/metabot/permissions" ]
+      }
+    },
+    "/api/metabot/settings" : {
+      "get" : {
+        "description" : "Return available models for a provider using its configured API key.",
+        "operationId" : "get-api-metabot-settings",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "provider",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "anthropic", "openai", "metabase", "openrouter" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "api-key-error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "models" : {
+                      "items" : {
+                        "properties" : {
+                          "display_name" : {
+                            "type" : "string"
+                          },
+                          "group" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "display_name" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "value", "models" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/settings",
+        "tags" : [ "/api/metabot" ]
+      },
+      "put" : {
+        "description" : "Update the Metabot provider API key and/or model setting and return the refreshed settings payload.",
+        "operationId" : "put-api-metabot-settings",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "api-key" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "provider" : {
+                    "enum" : [ "anthropic", "openai", "metabase", "openrouter" ],
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "provider" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "api-key-error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "models" : {
+                      "items" : {
+                        "properties" : {
+                          "display_name" : {
+                            "type" : "string"
+                          },
+                          "group" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "display_name" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "value", "models" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/metabot/settings",
+        "tags" : [ "/api/metabot" ]
+      }
+    },
+    "/api/metabot/slack/events" : {
+      "post" : {
+        "description" : "Respond to activities in Slack",
+        "operationId" : "post-api-metabot-slack-events",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "oneOf" : [ {
+                  "properties" : {
+                    "challenge" : {
+                      "type" : "string"
+                    },
+                    "type" : {
+                      "const" : "url_verification"
+                    }
+                  },
+                  "required" : [ "type", "challenge" ],
+                  "type" : "object"
+                }, {
+                  "properties" : {
+                    "event" : {
+                      "properties" : {
+                        "event_ts" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "type", "event_ts" ],
+                      "type" : "object"
+                    },
+                    "type" : {
+                      "const" : "event_callback"
+                    }
+                  },
+                  "required" : [ "type", "event" ],
+                  "type" : "object"
+                }, {
+                  "properties" : {
+                    "type" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "type" ],
+                  "type" : "object"
+                } ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "string"
+                    },
+                    "headers" : {
+                      "properties" : {
+                        "Content-Type" : {
+                          "const" : "text/plain"
+                        }
+                      },
+                      "required" : [ "Content-Type" ],
+                      "type" : "object"
+                    },
+                    "status" : {
+                      "const" : 200
+                    }
+                  },
+                  "required" : [ "status", "headers", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/slack/events",
+        "tags" : [ "/api/metabot/slack" ]
+      }
+    },
+    "/api/metabot/slack/interactive" : {
+      "post" : {
+        "description" : "Handle interactive payloads from Slack (button clicks, modal submissions).",
+        "operationId" : "post-api-metabot-slack-interactive",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/slack/interactive",
+        "tags" : [ "/api/metabot/slack" ]
+      }
+    },
+    "/api/metabot/slack/settings" : {
+      "put" : {
+        "description" : "Update Metabot Slack settings atomically.\n   All credential fields must be provided together.\n   Setting values requires the metabot-v3 feature, but clearing values is always allowed.\n   slack-connect-enabled is automatically set to true when credentials are provided, nil when cleared.",
+        "operationId" : "put-api-metabot-slack-settings",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "metabot-slack-signing-secret" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-id" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-secret" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "slack-connect-client-id", "slack-connect-client-secret", "metabot-slack-signing-secret" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "ok" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "ok" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/metabot/slack/settings",
+        "tags" : [ "/api/metabot/slack" ]
+      }
+    },
+    "/api/metabot/source-feedback" : {
+      "post" : {
+        "description" : "Persist Metabot source feedback.",
+        "operationId" : "post-api-metabot-source-feedback",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "message_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  },
+                  "source_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "source_type" : {
+                    "enum" : [ "table", "card", "model" ],
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/source-feedback",
+        "tags" : [ "/api/metabot" ]
+      }
+    },
+    "/api/metric" : {
+      "get" : {
+        "description" : "Get a list of metrics.\n\n  Returns metrics (Cards with type='metric') that the current user has read access to,\n  filtered by collection visibility permissions.",
+        "operationId" : "get-api-metric",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.metrics.api.Metric"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "total", "limit", "offset", "data" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metric",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/breakout-values" : {
+      "post" : {
+        "description" : "Fetch distinct breakout dimension values for a metric or measure definition.\n   Accepts the same definition format as POST /dataset.\n   Returns extracted values and column metadata for the breakout dimension.",
+        "operationId" : "post-api-metric-breakout-values",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.metrics.api.DatasetRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.BreakoutValuesResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metric/breakout-values",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/dataset" : {
+      "post" : {
+        "description" : "Execute a metric or measure-based query and stream the results.\n\n   Request body requires a `definition` object containing:\n   - expression: A metric math expression tree (leaf reference or arithmetic)\n     Examples: [:metric {:lib/uuid \"a\"} 42], [:- {} [:metric {:lib/uuid \"a\"} 1] [:metric {:lib/uuid \"b\"} 2]]\n   - filters (optional): Per-instance filters keyed by :lib/uuid from the expression\n   - projections (optional): Typed projections keyed by source type and ID",
+        "operationId" : "post-api-metric-dataset",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.metrics.api.DatasetRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.DatasetResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metric/dataset",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}" : {
+      "get" : {
+        "description" : "Fetch a `Metric` with ID.\n\n  Returns the metric with hydrated dimensions and dimension mappings.",
+        "operationId" : "get-api-metric-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.MetricWithDimensions"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metric/{id}",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/remapping" : {
+      "get" : {
+        "description" : "Fetch remapped value for a specific dimension value.\n\n   Returns a pair [value, display-name] if remapping exists, or [value] otherwise.",
+        "operationId" : "get-api-metric-id-dimension-dimension-key-remapping",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.RemappedValueResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/remapping",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/search" : {
+      "get" : {
+        "description" : "Search for values of a dimension that contain the query string.\n\n   Returns field values matching the search query in the same format as the field values API.",
+        "operationId" : "get-api-metric-id-dimension-dimension-key-search",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "items" : {
+                      "type" : "string"
+                    },
+                    "type" : "array"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/search",
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/values" : {
+      "get" : {
+        "description" : "Fetch values for a dimension of a metric.\n\n   Returns field values in the same format as the field values API:\n   - values: list of [value] or [value, display-name] tuples\n   - field_id: the underlying field ID\n   - has_more_values: boolean indicating if there are more values",
+        "operationId" : "get-api-metric-id-dimension-dimension-key-values",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "items" : {
+                        "anyOf" : [ {
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ],
+                          "type" : "array"
+                        }, {
+                          "prefixItems" : [ { } ],
+                          "type" : "array"
+                        } ]
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/values",
+        "tags" : [ "/api/metric" ]
+      }
+    },
     "/api/model-index" : {
       "get" : {
         "description" : "Retrieve list of ModelIndex.",
