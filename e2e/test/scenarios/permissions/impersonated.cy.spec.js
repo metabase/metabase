@@ -113,10 +113,9 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.log("configure caching");
         H.openQuestionActions("Edit settings");
         cy.findByLabelText("When to get new results").click();
-        H.cacheStrategySidesheet().within(() => {
-          cy.findByText(/Default/).click();
-          cy.findByText(/Caching settings/).should("be.visible");
-        });
+        H.cacheStrategySidesheet()
+          .findByText(/Caching settings/)
+          .should("be.visible");
         H.selectCacheStrategy(/Duration/);
         H.cacheStrategySidesheet()
           .findByRole("button", { name: /Save/ })
