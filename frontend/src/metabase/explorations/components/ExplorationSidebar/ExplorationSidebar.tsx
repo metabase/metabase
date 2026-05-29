@@ -9,8 +9,7 @@ import {
 } from "metabase/api/exploration";
 import { EditableText } from "metabase/common/components/EditableText";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { Tree } from "metabase/common/components/tree";
-import type { TreeHandle } from "metabase/common/components/tree/Tree";
+import { Tree, useTree } from "metabase/common/components/tree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
@@ -64,7 +63,10 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   getSelectedEntityIdUrl,
 }: ExplorationSidebarProps) {
-  const treeRef = useRef<TreeHandle>(null);
+  const treeController = useTree({
+    data: tree,
+    selectedId: selectedEntityId?.id,
+  });
   const pendingKeyboardSelectionRef = useRef(false);
 
   const [updateExploration] = useUpdateExplorationMutation();
@@ -104,6 +106,12 @@ export function ExplorationSidebar({
     },
     [prefetchQueryResult],
   );
+
+  // `collapse` is stable, but treeController is not
+  // so we need to be careful to prevent this effect from running on every render
+  // eslint complains when passing `treeController.collapse` to `useEffect` deps
+  // so destructure it
+  const { collapse } = treeController;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -155,12 +163,18 @@ export function ExplorationSidebar({
         currentItem?.data?.parent_id &&
         currentItem.data.parent_id !== nextItem?.data?.parent_id
       ) {
-        treeRef.current?.collapse(currentItem.data.parent_id);
+        collapse(currentItem.data.parent_id);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [flatItems, selectedEntityId, setSelectedEntityId, handlePrefetch]);
+  }, [
+    flatItems,
+    selectedEntityId,
+    setSelectedEntityId,
+    handlePrefetch,
+    collapse,
+  ]);
 
   const TreeNode = useCallback(
     (props: TreeNodeProps<ExplorationTreeNode>) => (
@@ -195,13 +209,7 @@ export function ExplorationSidebar({
         maxLength={EXPLORATION_NAME_MAX_LENGTH}
       />
       <Box className={S.tree}>
-        <Tree
-          ref={treeRef}
-          role="tree"
-          data={tree}
-          selectedId={selectedEntityId?.id}
-          TreeNode={TreeNode}
-        />
+        <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
       </Box>
     </Stack>
   );
