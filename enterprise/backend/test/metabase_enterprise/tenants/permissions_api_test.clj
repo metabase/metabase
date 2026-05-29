@@ -12,11 +12,12 @@
   (testing "POST /permissions/group"
     (testing "creates tenant group when is_tenant_group is true (enterprise only)"
       (mt/with-premium-features #{:tenants}
-        (mt/with-model-cleanup [:model/PermissionsGroup]
-          (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Tenants Group" :is_tenant_group true})
-          (let [group (t2/select-one :model/PermissionsGroup :name "Tenants Group")]
-            (is (some? group))
-            (is (true? (:is_tenant_group group)))))))
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-model-cleanup [:model/PermissionsGroup]
+            (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Tenants Group" :is_tenant_group true})
+            (let [group (t2/select-one :model/PermissionsGroup :name "Tenants Group")]
+              (is (some? group))
+              (is (true? (:is_tenant_group group))))))))
     (testing "validates is_tenant_group parameter type"
       (testing "rejects invalid type"
         (is (= {:errors {:is_tenant_group "nullable boolean"}
@@ -27,8 +28,15 @@
   (testing "POST /permissions/group enterprise feature enforcement"
     (testing "allows creating tenant groups with tenants feature enabled"
       (mt/with-premium-features #{:tenants}
-        (mt/with-model-cleanup [:model/PermissionsGroup]
-          (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Tenant Group EE" :is_tenant_group true})
-          (let [group (t2/select-one :model/PermissionsGroup :name "Tenant Group EE")]
-            (is (some? group))
-            (is (true? (:is_tenant_group group)))))))))
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-model-cleanup [:model/PermissionsGroup]
+            (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Tenant Group EE" :is_tenant_group true})
+            (let [group (t2/select-one :model/PermissionsGroup :name "Tenant Group EE")]
+              (is (some? group))
+              (is (true? (:is_tenant_group group))))))))
+    (testing "rejects tenant group creation when use-tenants setting is off, even with the premium feature"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants false]
+          (let [response (mt/user-http-request :crowberto :post 400 "permissions/group"
+                                               {:name "Tenant Group Disabled" :is_tenant_group true})]
+            (is (re-find #"Tenant groups cannot be created" (pr-str response)))))))))
