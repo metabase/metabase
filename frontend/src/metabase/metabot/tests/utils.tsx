@@ -130,10 +130,15 @@ export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  // The client calls `fetch(new Request(url, init))`, so the body lives on the
-  // Request object rather than a separate init arg.
-  const [request] = agentSpy.mock.lastCall ?? [];
-  return JSON.parse(await (request as Request).clone().text());
+  // Today the client calls `fetch(url, init)`, so the body is on `init`. A
+  // follow-up switches it to `fetch(new Request(url, init))`, moving the body
+  // onto the Request. Read whichever shape is present so this works either way.
+  const [first, init] = agentSpy.mock.lastCall ?? [];
+  const body =
+    typeof first === "string"
+      ? (init?.body as string)
+      : await (first as Request).clone().text();
+  return JSON.parse(body);
 };
 
 // Common mock response fixtures

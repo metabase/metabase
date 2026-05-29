@@ -3,10 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { lastReqBody } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
@@ -81,11 +82,7 @@ describe("AIQuestionAnalysisButton", () => {
       await screen.findByRole("button", { name: "Explain this chart" }),
     );
 
-    await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-    // The client calls `fetch(new Request(url, init))`, so the body lives on the
-    // Request object rather than a separate init arg.
-    const [request] = agentSpy.mock.lastCall ?? [];
-    const body = JSON.parse(await (request as Request).clone().text());
+    const body = await lastReqBody(agentSpy);
     expect(body.message).toBe("Analyze this chart");
   });
 

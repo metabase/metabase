@@ -948,11 +948,11 @@ describe("Remote Sync", () => {
       cy.log(
         "wait for the conflict modal to finish rendering before interacting",
       );
-      H.modal().within(() => {
-        cy.findByRole("heading", {
+      H.modal()
+        .findByRole("heading", {
           name: /Your local data will be overwritten by the remote branch/,
-        }).should("be.visible");
-      });
+        })
+        .should("be.visible");
 
       cy.log("choose the new branch option and push");
       cy.findByLabelText(/Create a new branch and push changes there/)
