@@ -106,6 +106,7 @@ export const TaskRunDatePicker = ({
         <Input
           component="button"
           type="button"
+          data-testid="task-run-date-picker"
           pointer
           w={PICKER_WIDTH}
           styles={{
