@@ -40,10 +40,11 @@ export const Title = styled.div`
 
 export const Description = styled(MarkdownPreview)`
   color: var(--mb-color-text-secondary);
+  margin-top: 0.25rem;
 `;
 
 export const Body = styled.div`
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;

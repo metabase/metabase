@@ -124,7 +124,7 @@ function PinnedItemCard({
       to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
-      <Card p={0} radius="md" withBorder>
+      <Card p={0} radius="md" shadow="none" withBorder>
         <Body>
           <Header>
             <EntityIcon {...iconData} size="1.5rem" color="brand" />

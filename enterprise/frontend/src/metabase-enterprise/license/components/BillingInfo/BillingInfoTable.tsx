@@ -120,7 +120,7 @@ export const BillingInfoTable = ({
   return (
     <>
       <SettingHeader id="billing" title={t`Billing`} />
-      <Card mt="md" p={0} radius="md" withBorder>
+      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
         {billingInfo.content?.map((lineItem, index, arr) => (
           <BillingInfoRow
             key={lineItem.name}
