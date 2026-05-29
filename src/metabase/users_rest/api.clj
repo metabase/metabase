@@ -262,6 +262,7 @@
   (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                  (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
@@ -270,6 +271,7 @@
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses {})
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                            (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
@@ -397,11 +399,9 @@
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (let [user (api/check-404 (users/fetch-user :id id))]
-    (api/check-404 (or (nil? (:tenant_id user)) (perms/use-tenants)))
-    (-> user
-        (t2/hydrate :user_group_memberships)
-        add-structured-attributes)))
+  (-> (api/check-404 (users/fetch-user :id id))
+      (t2/hydrate :user_group_memberships)
+      add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
