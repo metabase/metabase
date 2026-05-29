@@ -191,11 +191,11 @@
 
 (defmethod query-name "temporal-pattern-day"
   [_ {:keys [card dim-label segment]}]
-  (with-segment-suffix (tru "{0} by {1} (day of week)" (:name card) dim-label) segment))
+  (with-segment-suffix (tru "{0} by {1} (Day of week)" (:name card) dim-label) segment))
 
 (defmethod query-name "temporal-pattern-hour"
   [_ {:keys [card dim-label segment]}]
-  (with-segment-suffix (tru "{0} by {1} (hour of day)" (:name card) dim-label) segment))
+  (with-segment-suffix (tru "{0} by {1} (Hour of day)" (:name card) dim-label) segment))
 
 (defmethod query-name "time-facet"
   [_ {:keys [card dim-label]}]
@@ -203,7 +203,7 @@
 
 (defmethod query-name "top-n-other"
   [_ {:keys [card dim-label segment params]}]
-  (with-segment-suffix (tru "{0} by {1} (top {2} + Other)" (:name card) dim-label (:k params)) segment))
+  (with-segment-suffix (tru "{0} by {1} (Top {2} + Other)" (:name card) dim-label (:k params)) segment))
 
 (defmethod query-name "filtered-subset"
   [_ {:keys [card dim-label segment params]}]
