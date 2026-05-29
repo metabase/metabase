@@ -356,6 +356,9 @@
   Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
   the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
 
+  NULL values are kept as a valid distinct value — they're meaningful in parameter widgets
+  (\"no value set\") and match the per-field MBQL path's storage behavior.
+
   Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
   [values]
   (loop [str-length 0
@@ -364,9 +367,6 @@
     (cond
       (empty? values)
       {:values (vec acc) :has_more_values false}
-
-      (nil? (first values)) ; skip NULLs
-      (recur str-length acc (rest values))
 
       (contains? acc (first values))
       (recur str-length acc (rest values))

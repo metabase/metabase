@@ -486,9 +486,10 @@
 (deftest ^:parallel limit-values-empty-test
   (is (= {:values [] :has_more_values false} (field-values/limit-values []))))
 
-(deftest ^:parallel limit-values-skips-nils-test
-  (is (= {:values ["a" "b"] :has_more_values false}
-         (field-values/limit-values [nil "a" nil "b" nil]))))
+(deftest ^:parallel limit-values-keeps-nils-test
+  (testing "nil is a meaningful distinct value (sorts first); only deduplicated, not dropped"
+    (is (= {:values [nil "a" "b"] :has_more_values false}
+           (field-values/limit-values [nil "a" nil "b" nil])))))
 
 (deftest ^:parallel limit-values-dedupes-and-sorts-test
   (is (= {:values [1 2 3] :has_more_values false}
