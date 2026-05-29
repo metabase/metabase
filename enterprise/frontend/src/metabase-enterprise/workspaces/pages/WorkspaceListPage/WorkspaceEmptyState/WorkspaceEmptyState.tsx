@@ -1,15 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
-  Anchor,
   Box,
   Button,
   Card,
+  Divider,
   FixedSizeIcon,
   Group,
   Stack,
@@ -33,6 +34,7 @@ export function WorkspaceEmptyState() {
     useDisclosure(false);
   const dispatch = useDispatch();
   const canManageInstance = useSelector(canManageWorkspaceInstance);
+  const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
@@ -49,23 +51,6 @@ export function WorkspaceEmptyState() {
     openSetup();
   };
 
-  const createButton = (
-    <Button key="create" variant="filled" onClick={openCreate}>
-      {t`Create a workspace`}
-    </Button>
-  );
-
-  const setupButton = (
-    <Anchor
-      key="setup"
-      role="button"
-      component="button"
-      onClick={handleSetupClick}
-    >
-      {t`upload a workspace config`}
-    </Anchor>
-  );
-
   return (
     <>
       <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
@@ -73,21 +58,42 @@ export function WorkspaceEmptyState() {
           <Title
             order={3}
             mb="sm"
-          >{t`Isolated spaces for agents and developers`}</Title>
+          >{t`Workspaces let you develop your semantic layer without affecting your production setup`}</Title>
           <Text mb="md">
-            {t`Develop transforms and the semantic layer without touching production tables. Each workspace gets its own schema and database user in the warehouses you pick.`}
+            {t` While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema. You can build measures, dashboards, and more on top of these remapped tables. Once you're happy with your changes, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
-          <Stack gap="sm" pb="xl">
-            <Box>{createButton}</Box>
+          <Stack gap="lg" pb="xl">
+            <Stack gap="xs" align="flex-start">
+              <Title
+                order={5}
+              >{t`Is this your production ${applicationName}?`}</Title>
+              <Text c="text-secondary">
+                {t`Create a workspace config that you can download and use to set up a workspace in a development instance.`}
+              </Text>
+              <Button variant="filled" mt="xs" onClick={openCreate}>
+                {t`Create a workspace config`}
+              </Button>
+            </Stack>
             {canManageInstance && (
-              <Box>{jt`or ${setupButton} generated from your production instance to put this development instance into a workspace.`}</Box>
+              <>
+                <Divider />
+                <Stack gap="xs" align="flex-start">
+                  <Title order={5}>{t`Set up a workspace`}</Title>
+                  <Text c="text-secondary">
+                    {t`If you're using this ${applicationName} for development, you can upload a workspace config file to put this ${applicationName} into that workspace.`}
+                  </Text>
+                  <Button variant="default" mt="xs" onClick={handleSetupClick}>
+                    {t`Upload a workspace config`}
+                  </Button>
+                </Stack>
+              </>
             )}
           </Stack>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
             <Group pt="md" gap="sm" align="stretch">
               {showFileBasedDevLink && (
                 <DocsLink
-                  title={t`File-based development`}
+                  title={t`Agent-driven development`}
                   description={t`How to use the CLI to develop content locally.`}
                   link={fileBasedDevDocsUrl}
                 />
