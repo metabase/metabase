@@ -37,6 +37,7 @@ import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresol
 import {
   getChildTargetId,
   getCurrentDocument,
+  getDocumentHost,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
@@ -238,6 +239,7 @@ export const CardEmbedComponent = memo(
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
     const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+    const documentHost = useSelector(getDocumentHost);
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -435,6 +437,11 @@ export const CardEmbedComponent = memo(
       const chartHref = node.attrs.chart_href as string | null | undefined;
       if (chartHref) {
         dispatch(navigateToCardFromDocument(chartHref, document));
+        return;
+      }
+      // exploration documents should have chart_href
+      // but if they don't, they still shouldn't open questions in query builder
+      if (documentHost === "exploration") {
         return;
       }
       if (card && metadata) {
