@@ -250,14 +250,14 @@
                                       :type :advanced
                                       :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
-        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*distinct-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values :model/Field
                                    :id (mt/id :blueberries_consumed :str)))))
-        (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
-          (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
-                                               (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
+        (testing "it should still have FieldValues, but the stored list has at most field-values/*distinct-limit* elements"
+          (is (= {:values                (take field-values/*distinct-limit*
+                                               (one-off-dbs/range-str (+ 100 field-values/*distinct-limit*)))
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [:model/FieldValues :values :human_readable_values :has_more_values]

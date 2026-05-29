@@ -58,29 +58,21 @@
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
 
-(def ^:dynamic *distinct-limit*
-  "Per-column row cap for warehouse-side distinct-value fetches. Used by both the UNION ALL
-  per-arm `LIMIT` and by `persist-field-values!` to detect whether the warehouse hit that cap."
-  1000)
+(def ^:dynamic ^Integer *distinct-limit*
+  "Per-column row cap for warehouse-side distinct-value fetches. Used by the UNION ALL per-arm
+  `LIMIT`, by the per-field MBQL `lib/limit` in `distinct-values`, and by `persist-field-values!`
+  to detect whether the warehouse hit that cap.
 
-(def ^:dynamic ^Integer *absolute-max-distinct-values-limit*
-  "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
-  less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
-  values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
-  Admins can however manually mark any Field as `list`, which is effectively ordering Metabase to keep FieldValues for
-  the Field regardless of its cardinality.
+  Fields with fewer distinct values than this get marked as `auto-list`, meaning we save all
+  their distinct values in a FieldValues object that powers the list widget in the FE. Admins
+  can also manually mark any Field as `list`, which keeps FieldValues regardless of cardinality.
 
-  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Metabase to
-  explode trying to make their dreams a reality; we need some sort of hard limit to prevent catastrophes. So this
-  limit is effectively a safety to prevent Users from nuking their own instance for Fields that really shouldn't be
-  List Fields at all. For these very-high-cardinality Fields, we're effectively capping the number of
-  FieldValues that get could saved.
+  If a user does something crazy like marking a million-arity Field as List, this limit
+  prevents Metabase from exploding trying to fetch all values. The trade-off:
 
-  This number should be a balance of:
-
-  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
-    that I marked as List is not showing all values in the List Widget'
-  * Not being too high, which would result in Metabase running out of memory dealing with too many values"
+  * Too low → GitHub issues like 'My 500-distinct-value Field that I marked as List is not
+    showing all values in the List Widget'
+  * Too high → Metabase runs out of memory materialising the result set"
   (int 1000))
 
 (def ^java.time.Period advanced-field-values-max-age
@@ -391,7 +383,7 @@
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
 (mu/defn distinct-values
   "Fetch raw distinct values for `field` from the warehouse, row-capped at
-  `*absolute-max-distinct-values-limit*`. Returns `{:values rows-as-1-tuples}`.
+  `*distinct-limit*`. Returns `{:values rows-as-1-tuples}`.
 
   Callers that persist these values via `persist-field-values!` get the char-length cap +
   `:has_more_values` computation for free. Callers that need to surface values directly
@@ -408,7 +400,7 @@
                   (fn [query]
                     (-> query
                         (lib/breakout field)
-                        (lib/limit *absolute-max-distinct-values-limit*)))
+                        (lib/limit *distinct-limit*)))
                   qp.reducible/default-rff)]
       {:values (-> result :data :rows)})
     (catch Throwable e

@@ -108,10 +108,10 @@
             ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
              (:id field) constraints {}))
           ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
-          ;; `*absolute-max-distinct-values-limit*`; we treat hitting that as `has_more_values`.
+          ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
           (let [rows (-> (field-values/distinct-values field) :values)]
             {:values          rows
-             :has_more_values (= (count rows) field-values/*absolute-max-distinct-values-limit*)}))
+             :has_more_values (= (count rows) field-values/*distinct-limit*)}))
         ;; Apply the char-length cap and update `has_more_values` if it fires.
         limited-values (field-values/take-by-length field-values/*total-max-length* values)]
     {:values          limited-values

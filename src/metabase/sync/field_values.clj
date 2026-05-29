@@ -67,36 +67,46 @@
           {:results {} :queries 0 :failed-fields #{}}
           (partition-all field-values/*batch-size* fields)))
 
+(defn- fetch-distinct-per-field
+  "Portable per-field fallback for non-SQL drivers (e.g. Mongo). Returns the same shape as
+  `fetch-distinct-for-table` (so the caller's persist reduce doesn't care which path produced
+  the results). One QP query per field."
+  [fields]
+  (reduce (fn [acc field]
+            (let [field-id (u/the-id field)
+                  result   (sync-util/with-error-handling
+                            (format "Error fetching distinct values for %s"
+                                    (sync-util/name-for-logging field))
+                             (field-values/distinct-values field))
+                  acc'     (update acc :queries inc)]
+              (if (or (nil? result) (instance? Throwable result))
+                (update acc' :failed-fields conj field-id)
+                (assoc-in acc' [:results field-id :values] (map first (:values result))))))
+          {:results {} :queries 0 :failed-fields #{}}
+          fields))
+
 (defn- sync-fields-for-table!
   "Fetch distinct values for `fields` from `table` and persist them via
   `field-values/persist-field-values!`. SQL drivers batch via UNION ALL; non-SQL drivers fall
-  back to one query per field. Returns a counts map of outcomes."
+  back to one query per field via the portable MBQL path. Returns a counts map of outcomes."
   [table fields fvs-map]
   (when (seq fields)
-    (if (sql-driver? table)
-      (let [{:keys [results queries failed-fields]} (fetch-distinct-for-table table fields)]
-        (reduce (fn [counts field]
-                  (let [field-id (u/the-id field)
-                        delta    (if (contains? failed-fields field-id)
-                                   {:errors 1}
-                                   (let [raw-values (get-in results [field-id :values] [])
-                                         result     (sync-util/with-error-handling
-                                                     (format "Error updating field values for %s"
-                                                             (sync-util/name-for-logging field))
-                                                      (field-values/persist-field-values!
-                                                       field (get fvs-map field-id) raw-values))]
-                                     (result->delta result)))]
-                    (merge-with + counts delta {:probed 1})))
-                (merge-with + empty-counts {:queries queries})
-                fields))
+    (let [{:keys [results queries failed-fields]} (if (sql-driver? table)
+                                                    (fetch-distinct-for-table table fields)
+                                                    (fetch-distinct-per-field fields))]
       (reduce (fn [counts field]
-                (let [result (sync-util/with-error-handling
-                              (format "Error updating field values for %s"
-                                      (sync-util/name-for-logging field))
-                               (field-values/create-or-update-full-field-values!
-                                field :field-values (get fvs-map (u/the-id field))))]
-                  (merge-with + counts (result->delta result) {:probed 1 :queries 1})))
-              empty-counts
+                (let [field-id (u/the-id field)
+                      delta    (if (contains? failed-fields field-id)
+                                 {:errors 1}
+                                 (let [raw-values (get-in results [field-id :values] [])
+                                       result     (sync-util/with-error-handling
+                                                   (format "Error updating field values for %s"
+                                                           (sync-util/name-for-logging field))
+                                                    (field-values/persist-field-values!
+                                                     field (get fvs-map field-id) raw-values))]
+                                   (result->delta result)))]
+                  (merge-with + counts delta {:probed 1})))
+              (merge-with + empty-counts {:queries queries})
               fields))))
 
 (defn sync-fields-grouped-by-table!
