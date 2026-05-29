@@ -15,15 +15,16 @@ type ReducerAction = { type: string; payload?: any };
 /**
  * Reducer for the `state.entities.questions` slice.
  *
- * The `questions` entity has been removed from the entity framework (its CRUD
- * now lives in `metabase/api/card`), but the normalized slice still needs to:
+ * Questions no longer go through the entity framework — CRUD lives in
+ * `metabase/api/card`. The slice itself is still consumed by `getMetadata` in
+ * `metabase/selectors/metadata.ts`, so we keep it in sync when:
  *
- * - reflect the latest moderation status when a card is soft-reloaded, and
- * - absorb ad-hoc card values injected by RTK Query consumers.
+ * - a card is soft-reloaded (to reflect the latest moderation status), and
+ * - an RTK Query consumer injects ad-hoc card values via
+ *   `INJECT_RTK_QUERY_QUESTION_VALUE`.
  *
- * It is registered as the retired-entity reducer for `questions` in
- * `metabase/redux/entities`, where it runs after `handleEntities` has merged any
- * `payload.entities.questions`.
+ * It runs after the generic slice reducer in `./index` has merged any
+ * `payload.entities.questions` from `metabase/entities/*` actions.
  */
 export function questionsReducer(
   state: QuestionState = {},

@@ -14,16 +14,16 @@ type ReducerAction = { type: string; payload?: any; error?: unknown };
 /**
  * Reducer for the `state.entities.tables` slice.
  *
- * The `tables` entity has been removed from the entity framework (its CRUD now
- * lives in `metabase/api/table`), but the normalized slice still needs to:
+ * Tables no longer go through the entity framework — CRUD lives in
+ * `metabase/api/table`. The slice itself is still consumed by `getMetadata` in
+ * `metabase/selectors/metadata.ts`, so we keep it in sync when:
  *
- * - keep virtual tables (the `card__<id>` representation of saved questions) in
- *   sync as questions are created, updated, and archived, and
- * - keep `original_fields` in sync when a field is updated elsewhere.
+ * - questions are created/updated/archived (the saved-question virtual table
+ *   `card__<id>` representation needs to track them), and
+ * - a field is updated elsewhere (so `original_fields` doesn't go stale).
  *
- * It is registered as the retired-entity reducer for `tables` in
- * `metabase/redux/entities`, where it runs after `handleEntities` has merged any
- * `payload.entities.tables`.
+ * It runs after the generic slice reducer in `./index` has merged any
+ * `payload.entities.tables` from `metabase/entities/*` actions.
  */
 export function tablesReducer(
   state: TableState = {},

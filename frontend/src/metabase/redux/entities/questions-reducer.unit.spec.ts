@@ -1,8 +1,9 @@
+import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
+
 import {
   INJECT_RTK_QUERY_QUESTION_VALUE,
   questionsReducer,
-} from "metabase/entities/questions-reducer";
-import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
+} from "./questions-reducer";
 
 describe("questionsReducer", () => {
   describe(SOFT_RELOAD_CARD, () => {

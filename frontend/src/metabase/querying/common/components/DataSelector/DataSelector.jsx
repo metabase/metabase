@@ -13,10 +13,10 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -1198,7 +1198,7 @@ const DataSelector = _.compose(
     },
     (dispatch) => ({
       fetchDatabases: (databaseQuery) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { ...databaseQuery, "can-query": true },
           dispatch,
           databaseApi.endpoints.listDatabases,
@@ -1206,7 +1206,7 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { id: getQuestionIdFromVirtualTableId(id) },
           dispatch,
           cardApi.endpoints.getCard,
