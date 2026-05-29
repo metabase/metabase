@@ -1128,14 +1128,14 @@ describe("issue 32499", () => {
           ],
           joins: [
             {
-              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
-              alias: "Orders",
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders_2" }]],
+              alias: "Orders_2",
               "source-table": ORDERS_ID,
               strategy: "left-join",
               condition: [
                 "=",
                 ["field", ORDERS.ID, null],
-                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+                ["field", ORDERS.ID, { "join-alias": "Orders_2" }],
               ],
             },
           ],
@@ -1147,7 +1147,7 @@ describe("issue 32499", () => {
     H.openQuestionActions("Edit metadata");
 
     const columns = [
-      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "Orders_2 → User ID", modified: "JOIN COLUMN" },
       { original: "User ID", modified: "ORIGINAL COLUMN" },
     ];
 
