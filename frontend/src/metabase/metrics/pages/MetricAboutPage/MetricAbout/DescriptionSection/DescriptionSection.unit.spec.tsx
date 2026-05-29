@@ -202,14 +202,22 @@ describe("DescriptionSection", () => {
 
     it("uses singular verb agreement for one dependent chart", async () => {
       setup({ role: "admin", dependentsCount: 1 });
-      const link = (await screen.findByText("1 chart")).closest("a");
-      expect(link).toHaveTextContent("1 chart uses this metric");
+      expect(
+        (await screen.findByText("1 chart")).closest("a"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("metric-description-sidebar"),
+      ).toHaveTextContent("1 chart uses this metric");
     });
 
     it("uses plural verb agreement for multiple dependent charts", async () => {
       setup({ role: "admin", dependentsCount: 3 });
-      const link = (await screen.findByText("3 charts")).closest("a");
-      expect(link).toHaveTextContent("3 charts use this metric");
+      expect(
+        (await screen.findByText("3 charts")).closest("a"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("metric-description-sidebar"),
+      ).toHaveTextContent("3 charts use this metric");
     });
   });
 });

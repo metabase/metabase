@@ -37,3 +37,11 @@
     0 0 0 0.5px rgba(0, 0, 0, 0.1),
     0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
+
+.text {
+  color: var(--mb-color-brand);
+}
+
+.link:hover .text {
+  color: var(--mb-color-text-hover);
+}

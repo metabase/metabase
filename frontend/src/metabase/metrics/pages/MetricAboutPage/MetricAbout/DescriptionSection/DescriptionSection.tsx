@@ -18,7 +18,7 @@ import type { Card as CardApiType, CardType } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../../types";
 
-import { MetadataCard, MetadataRow } from "./MetadataCard";
+import { MetadataCard, MetadataRow, MetadataRowLink } from "./MetadataCard";
 import { MetricSubSection } from "./MetricSubSection";
 
 interface DescriptionSectionProps {
@@ -65,6 +65,11 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
 
   const hasSource = Boolean(database || table);
   const dependenciesUrl = urls.dependencies(card.id);
+  const databaseUrl = database && urls.database?.(database.id);
+  const tableUrl =
+    table && card.database_id != null
+      ? urls.table?.(card.database_id, table.id)
+      : undefined;
 
   return (
     <Stack
@@ -74,12 +79,18 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       data-testid="metric-description-sidebar"
     >
       <Text fz="lg" fw={700}>{t`About`}</Text>
-      <Tooltip label={<DateTime value={card.updated_at} />}>
-        <Text size="sm" c="text-secondary" data-testid="metric-last-updated">
+      <Tooltip label={<DateTime value={card.updated_at} />} offset={8}>
+        <Text
+          size="sm"
+          c="text-secondary"
+          w="fit-content"
+          mt="sm"
+          data-testid="metric-last-updated"
+        >
           {t`Last updated ${getRelativeTime(card.updated_at)}`}
         </Text>
       </Tooltip>
-      <Box mt="sm" data-testid="metric-description-section">
+      <Box mt="md" data-testid="metric-description-section">
         {card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
@@ -99,16 +110,25 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         <MetricSubSection title={t`Source`} mt="xl">
           <MetadataCard>
             {database && (
-              <MetadataRow icon="database" to={urls.database?.(database.id)}>
-                {database.name}
+              <MetadataRow icon="database">
+                {databaseUrl ? (
+                  <MetadataRowLink to={databaseUrl}>
+                    {database.name}
+                  </MetadataRowLink>
+                ) : (
+                  database.name
+                )}
               </MetadataRow>
             )}
-            {table && card.database_id != null && (
-              <MetadataRow
-                icon="table"
-                to={urls.table?.(card.database_id, table.id)}
-              >
-                {table.display_name || table.name}
+            {table && (
+              <MetadataRow icon="table">
+                {tableUrl ? (
+                  <MetadataRowLink to={tableUrl}>
+                    {table.display_name || table.name}
+                  </MetadataRowLink>
+                ) : (
+                  (table.display_name ?? table.name)
+                )}
               </MetadataRow>
             )}
           </MetadataCard>
@@ -118,36 +138,32 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       {canSeeRelationships && (
         <MetricSubSection title={t`Relationships`} mt="xl">
           <MetadataCard>
-            {dependenciesCount > 0 ? (
-              <MetadataRow icon="dependencies" to={dependenciesUrl}>
-                {ngettext(
-                  msgid`${dependenciesCount} dependency`,
-                  `${dependenciesCount} dependencies`,
-                  dependenciesCount,
-                )}
-              </MetadataRow>
-            ) : (
-              <MetadataRow icon="dependencies">{t`No dependencies`}</MetadataRow>
-            )}
-            {dependentsCount > 0 ? (
-              <MetadataRow icon="dependencies" to={dependenciesUrl}>
-                <Text component="span" c="text-primary" fw={400}>
-                  {jt`${(
-                    <Text key="count" component="span" fw={600} c="brand">
+            <MetadataRow icon="dependencies" muted={dependenciesCount === 0}>
+              {dependenciesCount > 0 ? (
+                <MetadataRowLink to={dependenciesUrl}>
+                  {ngettext(
+                    msgid`${dependenciesCount} dependency`,
+                    `${dependenciesCount} dependencies`,
+                    dependenciesCount,
+                  )}
+                </MetadataRowLink>
+              ) : (
+                t`No dependencies`
+              )}
+            </MetadataRow>
+            <MetadataRow icon="dependent" muted={dependentsCount === 0}>
+              {dependentsCount > 0
+                ? jt`${(
+                    <MetadataRowLink key="count" to={dependenciesUrl}>
                       {ngettext(
                         msgid`${dependentsCount} chart`,
                         `${dependentsCount} charts`,
                         dependentsCount,
                       )}
-                    </Text>
-                  )} ${ngettext(msgid`uses`, `use`, dependentsCount)} this metric`}
-                </Text>
-              </MetadataRow>
-            ) : (
-              <MetadataRow icon="dependencies">
-                {t`No charts use this metric`}
-              </MetadataRow>
-            )}
+                    </MetadataRowLink>
+                  )} ${ngettext(msgid`uses`, `use`, dependentsCount)} this metric`
+                : t`No charts use this metric`}
+            </MetadataRow>
           </MetadataCard>
         </MetricSubSection>
       )}

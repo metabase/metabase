@@ -22,12 +22,14 @@ export function MetadataCard({ children }: MetadataCardProps) {
 
 interface MetadataRowProps {
   icon: IconName;
-  to?: string;
   children: ReactNode;
+  /** Empty-state styling: muted icon and text. */
+  muted?: boolean;
 }
 
-export function MetadataRow({ icon, to, children }: MetadataRowProps) {
-  const body = (
+export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
+  const color = muted ? "text-secondary" : "text-primary";
+  return (
     <Group gap={rem(10)} wrap="nowrap" align="center">
       <Center
         bg="background-primary"
@@ -35,20 +37,27 @@ export function MetadataRow({ icon, to, children }: MetadataRowProps) {
         h={rem(24)}
         className={S.iconCircle}
       >
-        <Icon
-          name={icon}
-          size={12}
-          c={to ? "text-primary" : "text-secondary"}
-        />
+        <Icon name={icon} size={12} c={color} />
       </Center>
-      <Text
-        component="span"
-        c={to ? "brand" : "text-secondary"}
-        fw={to ? 600 : 400}
-      >
+      <Text component="span" c={color}>
         {children}
       </Text>
     </Group>
   );
-  return to ? <Link to={to}>{body}</Link> : body;
+}
+
+export function MetadataRowLink({
+  to,
+  children,
+}: {
+  to: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link to={to} className={S.link}>
+      <Text component="span" fw={600} className={S.text}>
+        {children}
+      </Text>
+    </Link>
+  );
 }
