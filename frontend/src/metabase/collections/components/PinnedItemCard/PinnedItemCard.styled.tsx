@@ -4,11 +4,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
-import { Card } from "metabase/common/components/Card";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Box, type BoxProps } from "metabase/ui";
-
-export const ItemCard = styled(Card)``;
 
 export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
   display: block;
