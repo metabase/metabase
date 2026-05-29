@@ -16,7 +16,10 @@ export const MetricPage = {
   overviewTab: () => MetricPage.header().findByText("Overview"),
   definitionTab: () => MetricPage.header().findByText("Definition"),
   dependenciesTab: () => MetricPage.header().findByText("Dependencies"),
-  cachingTab: () => MetricPage.header().findByText("Caching"),
+  openCachingModal: () => {
+    MetricPage.moreMenu().click();
+    cy.findByText("Caching").click();
+  },
   historyTab: () => MetricPage.header().findByText("History"),
   aboutPageDescriptionSidebar: () =>
     metricAboutPage().findByTestId("metric-description-sidebar"),

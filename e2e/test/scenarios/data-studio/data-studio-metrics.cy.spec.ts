@@ -425,23 +425,22 @@ describe("scenarios > data studio > library > metrics", () => {
         .contains("Trusted Orders Metric")
         .click();
 
-      cy.log("Navigate to caching tab");
+      cy.log("Open caching modal from more options menu");
       H.DataStudio.Metrics.header().should("be.visible");
-      H.DataStudio.Metrics.cachingTab().click();
+      H.DataStudio.Metrics.openCachingModal();
 
       cy.log("Change the setting and save");
       cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
       cy.findByRole("radio", { name: /Duration/ }).click();
       cy.findByRole("button", { name: "Save" }).click();
-      cy.findByRole("button", { name: /Saved/ }).should("exist");
 
-      // wait for the save button to disappear - that means the form is no longer dirty
-      // and navigating away won't show the confirmation modal that was causing flakes
-      cy.findByRole("button", { name: /Saved/ }).should("not.exist");
+      // Wait for the modal to close after save completes
+      cy.findByRole("dialog").should("not.exist");
 
-      cy.log("Navigate away and come back to verify the change is persisted");
-      H.DataStudio.Metrics.overviewTab().click();
-      H.DataStudio.Metrics.cachingTab().click();
+      cy.log(
+        "Re-open caching modal to verify the change is persisted",
+      );
+      H.DataStudio.Metrics.openCachingModal();
       cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
     });
   });
