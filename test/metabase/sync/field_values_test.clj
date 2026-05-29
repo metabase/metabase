@@ -320,6 +320,47 @@
           "Partitioned tables that require a WHERE on the partition column can't go through the
            native UNION ALL path because it bypasses add-required-filters-if-needed middleware"))))
 
+;;; ---------------------------------- nested-JSON fields dispatch ----------------------------------
+
+(deftest ^:synchronized sync-fields-for-table!-routes-parent-id-fields-to-per-field-test
+  (testing "Fields with :parent_id (nested-JSON unfolded) go through the per-field path even when
+            the table is otherwise batch-able. Batching builds a CAST(name AS …) that doesn't
+            qualify the column with its parent, so the SQL would target the wrong column AND the
+            by-name lookup could collide if two child fields share a name across different parents
+            (e.g. JSON columns unfolded to `address.name` and `user.name`)."
+    (let [calls-to-fetch-distinct-for-table (atom [])
+          calls-to-fetch-distinct-per-field (atom [])]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/Table {tbl-id :id :as table} {:db_id db-id, :name "t"
+                                                          :database_require_filter false}
+                     :model/Field {parent-a :id} {:table_id tbl-id, :name "address"
+                                                  :base_type :type/JSON, :has_field_values :list}
+                     :model/Field {parent-b :id} {:table_id tbl-id, :name "user"
+                                                  :base_type :type/JSON, :has_field_values :list}
+                     :model/Field nested-a {:table_id tbl-id, :parent_id parent-a, :name "name"
+                                            :base_type :type/Text, :has_field_values :list}
+                     :model/Field nested-b {:table_id tbl-id, :parent_id parent-b, :name "name"
+                                            :base_type :type/Text, :has_field_values :list}
+                     :model/Field plain-c  {:table_id tbl-id, :name "plain"
+                                            :base_type :type/Text, :has_field_values :list}]
+        (with-redefs [sync.field-values/fetch-distinct-for-table
+                      (fn [_table fields]
+                        (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
+                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                         :queries 1
+                         :failed-fields #{}})
+                      sync.field-values/fetch-distinct-per-field
+                      (fn [fields]
+                        (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
+                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                         :queries (count fields)
+                         :failed-fields #{}})]
+          (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
+          (testing "Plain field goes to batch path"
+            (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))
+          (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"
+            (is (= [#{(:id nested-a) (:id nested-b)}] @calls-to-fetch-distinct-per-field))))))))
+
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
 
 (deftest ^:mb/driver-tests ^:synchronized sync-fields-grouped-by-table!-test

@@ -97,15 +97,34 @@
           {:results {} :queries 0 :failed-fields #{}}
           fields))
 
+(defn- merge-fetch-results
+  "Combine `{:results :queries :failed-fields}` maps from the batch and per-field fetchers."
+  [a b]
+  {:results       (merge (:results a) (:results b))
+   :queries       (+ (:queries a 0) (:queries b 0))
+   :failed-fields (into #{} cat [(:failed-fields a) (:failed-fields b)])})
+
 (defn- sync-fields-for-table!
   "Fetch distinct values for `fields` from `table` and persist them via
-  `field-values/persist-field-values!`. SQL drivers batch via UNION ALL; non-SQL drivers fall
-  back to one query per field via the portable MBQL path. Returns a counts map of outcomes."
+  `field-values/persist-field-values!`.
+
+  Dispatch: SQL drivers that meet `can-batch-distinct?` use the UNION ALL batch path for fields
+  without a `:parent_id`. Nested-JSON child fields (`:parent_id` set) and the entire field set
+  for non-batchable tables go through the portable per-field MBQL path — that path goes through
+  the QP, which builds correct column references for nested-JSON fields (`run-distinct-batch`'s
+  hand-rolled HoneySQL CAST does not).
+
+  Returns a counts map of outcomes."
   [table fields fvs-map]
   (when (seq fields)
-    (let [{:keys [results queries failed-fields]} (if (can-batch-distinct? table)
-                                                    (fetch-distinct-for-table table fields)
-                                                    (fetch-distinct-per-field fields))]
+    (let [{nested true plain false}    (group-by #(boolean (:parent_id %)) fields)
+          batch?                       (can-batch-distinct? table)
+          batch-fields                 (when batch? plain)
+          per-field-fields             (concat nested (when-not batch? plain))
+          {:keys [results queries failed-fields]}
+          (merge-fetch-results
+           (when (seq batch-fields)     (fetch-distinct-for-table table batch-fields))
+           (when (seq per-field-fields) (fetch-distinct-per-field per-field-fields)))]
       (reduce (fn [counts field]
                 (let [field-id (u/the-id field)
                       delta    (if (contains? failed-fields field-id)
