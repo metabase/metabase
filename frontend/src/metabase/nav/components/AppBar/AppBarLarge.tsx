@@ -41,7 +41,7 @@ export interface AppBarLargeProps {
   onToggleNavbar: () => void;
 }
 
-const AppBarLarge = ({
+export const AppBarLarge = ({
   detailView,
   collectionId,
   isNavBarOpen,
@@ -136,6 +136,3 @@ const AppBarLarge = ({
     </AppBarRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBarLarge;

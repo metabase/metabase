@@ -1,7 +1,6 @@
 import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -18,7 +17,8 @@ import type { CollectionId } from "metabase-types/api";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
-import getSelectedItems, {
+import {
+  getSelectedItems,
   isCollectionPath,
   isMetricPath,
   isModelPath,
@@ -35,8 +35,8 @@ interface EntityLoaderProps {
 }
 
 interface StateProps {
-  questionId?: number;
-  collectionId?: CollectionId;
+  questionId?: number | null;
+  collectionId?: CollectionId | null;
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
@@ -61,7 +61,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-function MainNavbar({
+function MainNavbarInner({
   isOpen,
   location,
   params,
@@ -158,15 +158,7 @@ function maybeGetCollectionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  /**
-   * Previously the `_.compose` type was broken, so it wasn't checking for type compatibility, and would
-   * return the composed function type as `any`. Now that it works better, legit errors are surfacing.
-   * But I don't have time, or enough context to fix this one.
-   *
-   * It seems the error came from the mismatch of the `dashboard` type, where the component expects
-   * a dashboard response, but the injected prop is from the redux store which has a different type.
-   */
-  MainNavbar as any,
-);
+export const MainNavbar = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(MainNavbarInner);

@@ -8,10 +8,10 @@ import {
   getSidebarOpen,
 } from "metabase/documents/selectors";
 import { getMetabotVisible } from "metabase/metabot/state";
-import AppBar from "metabase/nav/components/AppBar";
+import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
 import QuestionLineage from "metabase/nav/components/QuestionLineage";
-import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
+import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
 import {
@@ -89,7 +89,7 @@ function AppBarContainer(props: AppBarProps & RouterProps) {
   };
 
   return (
-    <AppBar
+    <AppBarView
       {...props}
       collectionId={collectionId}
       collectionBreadcrumbs={<CollectionBreadcrumbs dashboard={dashboard} />}
@@ -104,8 +104,7 @@ function AppBarContainer(props: AppBarProps & RouterProps) {
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const AppBar = _.compose(
   withRouter,
   connect(mapStateToProps, mapDispatchToProps),
 )(AppBarContainer);

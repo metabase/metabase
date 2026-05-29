@@ -7,8 +7,8 @@ import type { DetailViewState } from "metabase/redux/store";
 import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
-import AppBarLarge from "./AppBarLarge";
-import AppBarSmall from "./AppBarSmall";
+import { AppBarLarge } from "./AppBarLarge";
+import { AppBarSmall } from "./AppBarSmall";
 
 export interface AppBarProps {
   currentUser: User;
@@ -34,7 +34,7 @@ export interface AppBarProps {
   onCloseNavbar: () => void;
 }
 
-const AppBar = (props: AppBarProps): JSX.Element => {
+export const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
@@ -55,6 +55,3 @@ const AppBar = (props: AppBarProps): JSX.Element => {
     </header>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBar;

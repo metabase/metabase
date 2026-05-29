@@ -37,7 +37,7 @@ export interface AppBarSmallProps {
   onCloseNavbar: () => void;
 }
 
-const AppBarSmall = ({
+export const AppBarSmall = ({
   detailView,
   isNavBarOpen,
   isNavBarEnabled,
@@ -127,6 +127,3 @@ const AppBarSmall = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBarSmall;

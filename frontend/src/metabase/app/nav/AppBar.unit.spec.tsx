@@ -30,7 +30,7 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import AppBar from "./AppBar";
+import { AppBar } from "./AppBar";
 
 const FOO_COLLECTION = createMockCollection({
   id: 3,

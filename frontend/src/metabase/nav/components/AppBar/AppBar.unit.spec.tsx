@@ -6,8 +6,7 @@ import {
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type { AppBarProps } from "./AppBar";
-import AppBar from "./AppBar";
+import { AppBar, type AppBarProps } from "./AppBar";
 
 function NewItemButtonMock() {
   return <div data-testid="new-button" />;
