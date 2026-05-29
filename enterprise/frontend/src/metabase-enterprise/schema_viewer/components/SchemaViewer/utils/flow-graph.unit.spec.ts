@@ -1,53 +1,13 @@
-import type {
-  ErdEdge,
-  ErdField,
-  ErdNode,
-  ErdResponse,
-} from "metabase-types/api";
+import type { ErdResponse } from "metabase-types/api";
+import {
+  createMockErdEdge,
+  createMockErdField,
+  createMockErdNode,
+} from "metabase-types/api/mocks";
 
 import { HEADER_HEIGHT_PX, ROW_HEIGHT_PX } from "../constants";
 
 import { getNodeHeight, getNodeId, toFlowGraph } from "./flow-graph";
-
-function field(overrides: Partial<ErdField> = {}): ErdField {
-  return {
-    id: 1,
-    name: "f",
-    display_name: "f",
-    database_type: "text",
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    semantic_type: null,
-    fk_target_field_id: null,
-    fk_target_table_id: null,
-    ...overrides,
-  };
-}
-
-function node(overrides: Partial<ErdNode> = {}): ErdNode {
-  return {
-    table_id: 1,
-    name: "t1",
-    display_name: "T1",
-    description: null,
-    owner: null,
-    schema: "public",
-    db_id: 1,
-    fields: [],
-    ...overrides,
-  };
-}
-
-function edge(overrides: Partial<ErdEdge> = {}): ErdEdge {
-  return {
-    source_table_id: 1,
-    source_field_id: 10,
-    target_table_id: 2,
-    target_field_id: 20,
-    relationship: "many-to-one",
-    ...overrides,
-  };
-}
 
 describe("getNodeId", () => {
   it("returns `table-${table_id}`", () => {
@@ -66,15 +26,31 @@ describe("toFlowGraph — field sort order", () => {
   it("places PK rows first, then FK rows, then everything else (preserving original order within categories)", () => {
     const response: ErdResponse = {
       nodes: [
-        node({
+        createMockErdNode({
           table_id: 1,
           fields: [
-            field({ id: 1, name: "extra_a", semantic_type: null }),
-            field({ id: 2, name: "fk_b", semantic_type: "type/FK" }),
-            field({ id: 3, name: "pk_c", semantic_type: "type/PK" }),
-            field({ id: 4, name: "extra_d", semantic_type: null }),
-            field({ id: 5, name: "fk_e", semantic_type: "type/FK" }),
-            field({ id: 6, name: "pk_f", semantic_type: "type/PK" }),
+            createMockErdField({ id: 1, name: "extra_a", semantic_type: null }),
+            createMockErdField({
+              id: 2,
+              name: "fk_b",
+              semantic_type: "type/FK",
+            }),
+            createMockErdField({
+              id: 3,
+              name: "pk_c",
+              semantic_type: "type/PK",
+            }),
+            createMockErdField({ id: 4, name: "extra_d", semantic_type: null }),
+            createMockErdField({
+              id: 5,
+              name: "fk_e",
+              semantic_type: "type/FK",
+            }),
+            createMockErdField({
+              id: 6,
+              name: "pk_f",
+              semantic_type: "type/PK",
+            }),
           ],
         }),
       ],
@@ -97,7 +73,7 @@ describe("toFlowGraph — edge ids and handles", () => {
   it("generates edge id from source and target field ids", () => {
     const response: ErdResponse = {
       nodes: [],
-      edges: [edge({ source_field_id: 10, target_field_id: 20 })],
+      edges: [createMockErdEdge({ source_field_id: 10, target_field_id: 20 })],
     };
     const { edges } = toFlowGraph(response);
     expect(edges[0].id).toBe("edge-10-20");
@@ -106,7 +82,7 @@ describe("toFlowGraph — edge ids and handles", () => {
   it("uses non-self-ref handles when source and target tables differ", () => {
     const response: ErdResponse = {
       nodes: [],
-      edges: [edge({ source_table_id: 1, target_table_id: 2 })],
+      edges: [createMockErdEdge({ source_table_id: 1, target_table_id: 2 })],
     };
     const { edges } = toFlowGraph(response);
     expect(edges[0].source).toBe("table-1");
@@ -119,7 +95,7 @@ describe("toFlowGraph — edge ids and handles", () => {
     const response: ErdResponse = {
       nodes: [],
       edges: [
-        edge({
+        createMockErdEdge({
           source_table_id: 1,
           target_table_id: 1,
           source_field_id: 10,
@@ -137,12 +113,12 @@ describe("toFlowGraph — edge ids and handles", () => {
     const response: ErdResponse = {
       nodes: [],
       edges: [
-        edge({
+        createMockErdEdge({
           relationship: "one-to-one",
           source_field_id: 1,
           target_field_id: 2,
         }),
-        edge({
+        createMockErdEdge({
           relationship: "many-to-one",
           source_field_id: 3,
           target_field_id: 4,
@@ -159,17 +135,23 @@ describe("toFlowGraph — per-table edge roles", () => {
   it("populates sourceFieldIds, targetFieldIds, and selfRefTargetFieldIds correctly", () => {
     const response: ErdResponse = {
       nodes: [
-        node({ table_id: 1, fields: [field({ id: 10 })] }),
-        node({ table_id: 2, fields: [field({ id: 20 })] }),
+        createMockErdNode({
+          table_id: 1,
+          fields: [createMockErdField({ id: 10 })],
+        }),
+        createMockErdNode({
+          table_id: 2,
+          fields: [createMockErdField({ id: 20 })],
+        }),
       ],
       edges: [
-        edge({
+        createMockErdEdge({
           source_table_id: 1,
           source_field_id: 10,
           target_table_id: 2,
           target_field_id: 20,
         }),
-        edge({
+        createMockErdEdge({
           source_table_id: 2,
           source_field_id: 21,
           target_table_id: 2,
@@ -194,8 +176,13 @@ describe("toFlowGraph — per-table edge roles", () => {
 describe("toFlowGraph — memoization", () => {
   it("returns the same reference when called twice with deep-equal responses", () => {
     const responseA: ErdResponse = {
-      nodes: [node({ table_id: 1, fields: [field({ id: 10 })] })],
-      edges: [edge({ source_field_id: 10, target_field_id: 20 })],
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [createMockErdField({ id: 10 })],
+        }),
+      ],
+      edges: [createMockErdEdge({ source_field_id: 10, target_field_id: 20 })],
     };
     const responseB: ErdResponse = JSON.parse(JSON.stringify(responseA));
 
@@ -207,11 +194,11 @@ describe("toFlowGraph — memoization", () => {
   it("returns a different reference when an edge's relationship changes", () => {
     const responseA: ErdResponse = {
       nodes: [],
-      edges: [edge({ relationship: "many-to-one" })],
+      edges: [createMockErdEdge({ relationship: "many-to-one" })],
     };
     const responseB: ErdResponse = {
       nodes: [],
-      edges: [edge({ relationship: "one-to-one" })],
+      edges: [createMockErdEdge({ relationship: "one-to-one" })],
     };
     expect(toFlowGraph(responseA)).not.toBe(toFlowGraph(responseB));
   });
