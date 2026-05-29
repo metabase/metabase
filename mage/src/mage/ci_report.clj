@@ -560,22 +560,43 @@
                                   :conclusion (:conclusion job)})
    :link  (:html_url job)})
 
+(defn- resolve-attempt
+  "Resolve a possibly-negative attempt index against max-attempt.
+   Positive N => N. 0 => max-attempt. Negative N => max-attempt + N
+   (so -1 means one attempt prior to the latest)."
+  [attempt-number max-attempt]
+  (if (pos? attempt-number)
+    attempt-number
+    (+ max-attempt attempt-number)))
+
 (defn- attempt-checks
   "Fetch check-like data for a specific attempt across all workflow runs for a
    commit. Skips workflow runs whose total attempt count is less than the
-   requested attempt-number."
+   resolved attempt number. Returns {:checks vec :resolved-attempt N :max-attempt N}.
+
+   `attempt-number` may be negative or zero to index relative to the latest
+   attempt: 0 = latest, -1 = one prior to latest, etc."
   [sha attempt-number]
   (let [runs (workflow-runs-for-sha sha)
         max-attempt (some->> runs (map :run_attempt) (apply max))]
     (when (zero? (count runs))
       (u/exit (format "Error: No workflow runs found for SHA %s" sha) 1))
-    (when (and max-attempt (> attempt-number max-attempt))
-      (u/exit (format "Error: requested attempt %d but max attempt across workflow runs is %d"
-                      attempt-number max-attempt) 1))
-    (->> runs
-         (filter (fn [run] (<= attempt-number (:run_attempt run))))
-         (mapcat (fn [run] (jobs-for-attempt (:id run) attempt-number)))
-         (mapv job->check))))
+    (let [resolved (resolve-attempt attempt-number max-attempt)]
+      (when (< resolved 1)
+        (u/exit (format "Error: resolved attempt %d is < 1 (requested %d, max attempt %d)"
+                        resolved attempt-number max-attempt) 1))
+      (when (> resolved max-attempt)
+        (u/exit (format "Error: resolved attempt %d exceeds max attempt %d (requested %d)"
+                        resolved max-attempt attempt-number) 1))
+      (when (not= resolved attempt-number)
+        (log-progress (format "Resolved attempt %d to absolute attempt %d (max: %d)"
+                              attempt-number resolved max-attempt)))
+      {:resolved-attempt resolved
+       :max-attempt      max-attempt
+       :checks           (->> runs
+                              (filter (fn [run] (<= resolved (:run_attempt run))))
+                              (mapcat (fn [run] (jobs-for-attempt (:id run) resolved)))
+                              (mapv job->check))})))
 
 (defn- resolve-branch-head
   "Resolve a branch name to its latest CI commit SHA.
@@ -601,9 +622,10 @@
                     (format "Fetching attempt %d jobs for SHA %s..."
                             attempt (subs (:headRefOid info) 0 12))
                     "Checking PR status..."))
-    (let [checks (if attempt
-                   (attempt-checks (:headRefOid info) attempt)
-                   (pr-checks pr-number))]
+    (let [{:keys [checks resolved-attempt]}
+          (if attempt
+            (attempt-checks (:headRefOid info) attempt)
+            {:checks (pr-checks pr-number)})]
       (when-not checks
         (u/exit (format "Error: Could not fetch checks for PR #%s (API error)" pr-number) 1))
       (let [{:keys [failed pending]} (categorize-checks checks)]
@@ -620,7 +642,7 @@
           (generate-report pr-number info checks logs-by-job-id
                            {:detailed?    detailed?
                             :progress-log *progress-log*
-                            :attempt      attempt})
+                            :attempt      resolved-attempt})
           (log-success "Done!"))))))
 
 (defn- run-commit-report!
@@ -631,9 +653,10 @@
                   (format "Fetching attempt %d jobs for %s..."
                           attempt (subs sha 0 (min 12 (count sha))))
                   (format "Fetching check runs for %s..." (subs sha 0 (min 12 (count sha))))))
-  (let [checks (if attempt
-                 (attempt-checks sha attempt)
-                 (commit-check-runs sha))]
+  (let [{:keys [checks resolved-attempt]}
+        (if attempt
+          (attempt-checks sha attempt)
+          {:checks (commit-check-runs sha)})]
     (when-not checks
       (binding [*out* *err*]
         (println (format "Error: Could not fetch checks for %s" sha)))
@@ -654,7 +677,7 @@
                           :progress-log *progress-log*
                           :branch       branch
                           :sha          sha
-                          :attempt      attempt})
+                          :attempt      resolved-attempt})
         (log-success "Done!")))))
 
 (defn generate-report! [{:keys [arguments options]}]
