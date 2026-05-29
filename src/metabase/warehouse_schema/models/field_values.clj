@@ -585,14 +585,27 @@
 
 (defn- decode-value
   "Coerce a string value (from `CAST(... AS <text>)`) back to a native Clojure value using the
-  field's `base_type`. NULL/`nil` passes through unchanged."
+  field's `base_type`. NULL/`nil` passes through unchanged.
+
+  We only decode types whose Clojure representation would JSON-encode differently than a
+  string: numbers and booleans need to land in `:model/FieldValues.values` as JSON numbers /
+  booleans, not strings, to match the per-field MBQL path. Temporal types (`:type/Date`,
+  `:type/DateTime`, `:type/Time`) and `:type/UUID` are *already* JSON-encoded as strings by
+  `mi/transform-json` on the way to the DB, so leaving them as strings here matches what the
+  per-field path stores after its round-trip — no decoding needed."
   [base-type ^String s]
   (cond
     (nil? s)                       nil
     (isa? base-type :type/Boolean) (contains? #{"true" "t" "1"} (u/lower-case-en s))
     (isa? base-type :type/Integer) (try (Long/parseLong s)
                                         (catch NumberFormatException _
-                                          (bigint s)))
+                                          (try (bigint s)
+                                               (catch NumberFormatException _ s))))
+    ;; `:type/Decimal` derives from `:type/Float`, so it has to come first.
+    (isa? base-type :type/Decimal) (try (bigdec s)
+                                        (catch NumberFormatException _ s))
+    (isa? base-type :type/Float)   (try (Double/parseDouble s)
+                                        (catch NumberFormatException _ s))
     :else                          s))
 
 (defn- table-honeysql

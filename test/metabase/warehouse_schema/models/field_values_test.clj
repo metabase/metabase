@@ -591,7 +591,9 @@
 
 (deftest decode-value-test
   (testing "nil passes through"
-    (is (nil? (#'field-values/decode-value :type/Text nil))))
+    (is (nil? (#'field-values/decode-value :type/Text nil)))
+    (is (nil? (#'field-values/decode-value :type/Integer nil)))
+    (is (nil? (#'field-values/decode-value :type/Float nil))))
   (testing "Text base-type → string passthrough"
     (is (= "hello" (#'field-values/decode-value :type/Text "hello")))
     (is (= "" (#'field-values/decode-value :type/Text ""))))
@@ -600,16 +602,43 @@
     (is (= -1 (#'field-values/decode-value :type/Integer "-1"))))
   (testing "BigInteger overflow → BigInteger"
     (is (= 12345678901234567890N
-           (#'field-values/decode-value :type/Integer "12345678901234567890"))))
-  (testing "Boolean accepts true/t/1"
+           (#'field-values/decode-value :type/Integer "12345678901234567890")))
+    (is (= 12345678901234567890N
+           (#'field-values/decode-value :type/BigInteger "12345678901234567890"))))
+  (testing "Boolean accepts true/t/1 (case-insensitive)"
     (is (true?  (#'field-values/decode-value :type/Boolean "true")))
+    (is (true?  (#'field-values/decode-value :type/Boolean "TRUE")))
+    (is (true?  (#'field-values/decode-value :type/Boolean "True")))
     (is (true?  (#'field-values/decode-value :type/Boolean "t")))
     (is (true?  (#'field-values/decode-value :type/Boolean "1")))
     (is (false? (#'field-values/decode-value :type/Boolean "false")))
+    (is (false? (#'field-values/decode-value :type/Boolean "FALSE")))
     (is (false? (#'field-values/decode-value :type/Boolean "f")))
     (is (false? (#'field-values/decode-value :type/Boolean "0"))))
+  (testing "Float base-type → Double"
+    (is (= 3.14   (#'field-values/decode-value :type/Float "3.14")))
+    (is (= -0.5   (#'field-values/decode-value :type/Float "-0.5")))
+    (is (= 0.0    (#'field-values/decode-value :type/Float "0")))
+    (is (= 1.0e10 (#'field-values/decode-value :type/Float "1.0E10"))))
+  (testing "Decimal base-type → BigDecimal (Decimal isa Float, so must come first in the cond)"
+    (is (= 3.14M           (#'field-values/decode-value :type/Decimal "3.14")))
+    (is (= 0M              (#'field-values/decode-value :type/Decimal "0")))
+    (is (= 1234567890.123M (#'field-values/decode-value :type/Decimal "1234567890.123"))))
+  (testing "Decimal-derived semantic types (e.g. :type/Currency) → BigDecimal"
+    (is (= 19.99M (#'field-values/decode-value :type/Currency "19.99"))))
+  (testing "Float-derived non-decimal types (e.g. :type/Coordinate) → Double"
+    (is (= 37.5 (#'field-values/decode-value :type/Coordinate "37.5"))))
+  (testing "Malformed numeric input → string passthrough via catch"
+    (is (= "n/a" (#'field-values/decode-value :type/Integer "n/a")))
+    (is (= "n/a" (#'field-values/decode-value :type/Float "n/a")))
+    (is (= "n/a" (#'field-values/decode-value :type/Decimal "n/a"))))
+  (testing "Types we don't decode (already JSON-encoded as strings by mi/transform-json) → string passthrough"
+    (is (= "2024-01-15"          (#'field-values/decode-value :type/Date "2024-01-15")))
+    (is (= "2024-01-15T10:30:00" (#'field-values/decode-value :type/DateTime "2024-01-15T10:30:00")))
+    (is (= "10:30:00"            (#'field-values/decode-value :type/Time "10:30:00")))
+    (is (= "abc-def-1234"        (#'field-values/decode-value :type/UUID "abc-def-1234")))
+    (is (= "192.168.1.1"         (#'field-values/decode-value :type/IPAddress "192.168.1.1"))))
   (testing "Unknown base-type → string passthrough"
-    (is (= "raw" (#'field-values/decode-value :type/Float "raw")))
     (is (= "anything" (#'field-values/decode-value :type/SomeMadeUpType "anything")))))
 
 (deftest ^:mb/driver-tests run-distinct-batch-integration-test
@@ -634,21 +663,22 @@
 
 (deftest ^:mb/driver-tests run-distinct-batch-matches-per-field-test
   (testing "run-distinct-batch returns the same value set per column as the per-field DISTINCT path"
-    ;; Only check fields whose distinct count is below the per-column LIMIT. For columns that hit
-    ;; the cap, both paths return a valid subset but the warehouse is free to pick *which* 1000
-    ;; — the subsets may differ across paths/engines without either being wrong.
+    ;; Cover Text (state), Boolean-shaped low-cardinality (source), and Float (rating). Only fields whose
+    ;; distinct count is below the per-column LIMIT — for columns that hit the cap, both paths return a
+    ;; valid subset but the warehouse is free to pick *which* 1000, and the subsets may differ across
+    ;; paths/engines without either being wrong.
     (mt/test-drivers (sql-test-drivers)
       (mt/dataset test-data
-        (let [table  (t2/select-one :model/Table :id (mt/id :people))
-              fields (mapv #(t2/select-one :model/Field :id (mt/id :people %))
-                           [:state :source])
-              per-field-results (into {}
-                                      (map (fn [f]
-                                             (let [v (-> (field-values/distinct-values f) :values)]
-                                               [(:id f) (set (map first v))])))
-                                      fields)
-              union-results     (field-values/run-distinct-batch table fields)]
-          (doseq [field fields]
+        (let [people-table   (t2/select-one :model/Table :id (mt/id :people))
+              products-table (t2/select-one :model/Table :id (mt/id :products))
+              text-fields    (mapv #(t2/select-one :model/Field :id (mt/id :people %)) [:state :source])
+              float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
+              expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
+              per-field-results (into {} (map (fn [f] [(:id f) (expected-set f)])) (concat text-fields float-fields))
+              people-results    (field-values/run-distinct-batch people-table text-fields)
+              products-results  (field-values/run-distinct-batch products-table float-fields)
+              union-results     (merge people-results products-results)]
+          (doseq [field (concat text-fields float-fields)]
             (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
               (let [expected (get per-field-results (:id field))
                     actual   (set (:values (get union-results (:id field))))]
