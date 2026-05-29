@@ -13,6 +13,9 @@ export const createSnowplowTracker = (getUserId: GetUserId): void => {
     appId: "metabase",
     platform: "web",
     eventMethod: "post",
+    // v4 flips encodeBase64 to false for POST; pin it true to keep the exact v3
+    // wire format (ue_px/cx), making the tracker bump a no-op for existing events.
+    encodeBase64: true,
     discoverRootDomain: true,
     contexts: { webPage: true },
     anonymousTracking: { withServerAnonymisation: true },

@@ -67,7 +67,10 @@ export function trackSchemaEvent<S extends SchemaType>(
     Snowplow.trackSelfDescribingEvent({
       event: {
         schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
-        data: event,
+        // v4 narrows the self-describing data bound to a non-array object; the generic
+        // SchemaEventMap[S] union can't prove that statically. Every event payload here
+        // is a plain object, so the cast is sound.
+        data: event as Record<string, unknown>,
       },
     });
   }
