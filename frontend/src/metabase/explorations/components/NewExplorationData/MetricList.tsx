@@ -20,12 +20,6 @@ interface MetricListProps {
   metrics: ExplorationMetric[];
   selectedIds: Set<ExplorationMetric["id"]>;
   onToggle: (metric: ExplorationMetric) => void;
-  /**
-   * Same context the panel passes to `selection.toggleMetric`. Threaded
-   * into each row's drag payload so that a drop on the Research plan's
-   * empty-state target can build a metric block with the metric's
-   * interesting dimensions hydrated — matching click-the-checkbox.
-   */
   dragContext: ToggleMetricContext;
 }
 
@@ -89,13 +83,6 @@ interface DraggableMetricRowProps {
   dragContext: ToggleMetricContext;
 }
 
-/**
- * Per-row component so each list item can call `useDraggable` (hooks
- * can't run inside a `.map` callback). The row stays in place visually
- * — the `<DragOverlay>` rendered by the page-level `DndContext` shows
- * the floating ghost — so we deliberately do *not* apply the dnd-kit
- * `transform` to this node, only the virtualizer's `translateY`.
- */
 function DraggableMetricRow({
   metric,
   isSelected,

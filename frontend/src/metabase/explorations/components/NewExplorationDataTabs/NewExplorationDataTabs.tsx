@@ -11,22 +11,15 @@ import { BrowseMetricsPanel } from "./BrowseMetricsPanel";
 import { BrowseTimelinesPanel } from "./BrowseTimelinesPanel";
 import S from "./NewExplorationLeftTabs.module.css";
 
-export interface NewExplorationBrowseProps {
+export interface NewExplorationDataTabsProps {
   selection: ExplorationSelection;
   navigation: ExplorationNavigation;
 }
 
-/**
- * Inner-tabs container for the Browse panel: Metrics, Dimensions,
- * Timelines. Each sub-panel renders its own search input + virtualized
- * list and commits to `selection` on every checkbox click. The active
- * sub-tab is controlled by `navigation` so the right pane's "+" buttons
- * can deep-link into a specific picker.
- */
-export function NewExplorationBrowse({
+export function NewExplorationDataTabs({
   selection,
   navigation,
-}: NewExplorationBrowseProps) {
+}: NewExplorationDataTabsProps) {
   return (
     <Tabs
       variant="pills"

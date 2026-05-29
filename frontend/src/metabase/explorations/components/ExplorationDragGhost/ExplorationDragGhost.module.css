@@ -1,13 +1,7 @@
 .ghost {
-  /* Compact width so the ghost doesn't cover the drop targets the
-     user is aiming at. The pointer drives the position via the
-     DragOverlay; we just shape the box. */
   max-width: 20rem;
   background: var(--mb-color-background-primary);
   cursor: grabbing;
-
-  /* dnd-kit's DragOverlay applies its own translate based on pointer
-     position. Keep our box transform-free so we don't conflict. */
 }
 
 .kindBadge {

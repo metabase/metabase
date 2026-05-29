@@ -19,48 +19,18 @@ import type {
   Timeline,
 } from "metabase-types/api";
 
-/**
- * The "Research plan" column is now a stack of collapsible blocks, each
- * organized around a single picked entity:
- *
- * - A **metric block** ("Look at metric in depth") puts a metric in the
- *   header and lists the dimensions the user wants to investigate it by
- *   in the body.
- *
- * - A **dimension block** ("Break by dimension") puts a dimension (or a
- *   dimension group, e.g., all `created_at` granularities) in the header
- *   and lists the metrics that reference it as a secondary set in the
- *   body.
- *
- * Blocks own their own dimension/metric sub-lists, so the same dimension
- * may legitimately appear in two metric blocks (and in a standalone
- * dimension block) without dedup — that matches the wireframe and the
- * stated rule that "even though some these dimensions might be already
- * listed in the first section" each block has its own copy.
- */
 export interface MetricBlock {
   kind: "metric";
-  /** Stable id used as React key + by `removeBlock`. Format: `metric:${metric.id}`. */
   id: string;
   metric: ExplorationMetric;
-  /** Dimensions the user wants to break this metric by. */
   dimensions: MetricDimension[];
 }
 
 export interface DimensionBlock {
   kind: "dimension";
-  /** Format: `dim:${head.id}`. */
   id: string;
-  /**
-   * The dimension that anchors this block. When the user toggled a group
-   * row in the Browse picker (e.g., "Orders → Created At" covering
-   * day/week/month/quarter), this is the group head; the full group
-   * lives in `groupDimensions` so we can flatten it when POSTing.
-   */
   dimension: MetricDimension;
-  /** All dimensions covered by this picker row (group siblings + the head). */
   groupDimensions: MetricDimension[];
-  /** Metrics that reference any of `groupDimensions`. Rendered as the block's body. */
   metrics: ExplorationMetric[];
 }
 
@@ -76,7 +46,6 @@ export function isDimensionBlock(
   return block.kind === "dimension";
 }
 
-/** Stable block id helpers — keep call sites symmetric with the union shape. */
 export function metricBlockId(metricId: ExplorationMetric["id"]): string {
   return `metric:${metricId}`;
 }
@@ -85,56 +54,24 @@ export function dimensionBlockId(dimensionId: DimensionId): string {
   return `dim:${dimensionId}`;
 }
 
-/**
- * Context the `toggleMetric` / `addMetric` helpers need to attach the
- * metric's "interesting" dimensions when adding it.
- */
 export interface ToggleMetricContext {
-  /** Flat map of every dimension across every group currently visible. */
   dimensionsById: Map<DimensionId, MetricDimension>;
 }
 
-/**
- * Context the `toggleDimension` helper needs to construct a dimension
- * block:
- *   - `group` carries the picker row's sibling dimensions (the
- *     Browse Dimensions panel groups e.g., every `created_at`
- *     granularity under one row),
- *   - `metricsByDimension` lets us hydrate the block's metric list.
- */
 export interface ToggleDimensionContext {
-  /** The group this dimension row represents. `null` if the row is a
-   *  bare dimension (no group siblings). */
   group: ExplorationDimensionGroup | null;
-  /** Map from dimension id → metrics that reference that dimension. */
   metricsByDimension: Map<DimensionId, ExplorationMetric[]>;
 }
 
 export interface ExplorationSelection {
-  /** Source of truth: ordered list of blocks rendered in the Research plan. */
   blocks: ExplorationBlock[];
-
-  /** Set of metric ids that have their own primary block. Used by the
-   *  Browse Metrics picker to show the "selected" check. */
   metricBlockIds: Set<ExplorationMetric["id"]>;
-  /** Set of dimension ids that have their own primary block (or are the
-   *  head dimension of a group-keyed block). Used by Browse Dimensions. */
   dimensionBlockIds: Set<DimensionId>;
 
-  /**
-   * Flat, deduped union of every metric appearing in any block (primary
-   * or secondary). Used to build the POST body for `/api/exploration`.
-   */
   metrics: ExplorationMetric[];
-  /**
-   * Flat, deduped union of every dimension across blocks (including
-   * group siblings inside dimension blocks). Used to build the POST body.
-   */
   dimensions: MetricDimension[];
-
-  /** Timelines selected globally — applied to the whole exploration. */
   timelines: Timeline[];
-  /** All timelines from the API (includes events). */
+
   allTimelines: Timeline[];
   timelinesLoading: boolean;
   timelinesError: unknown;
@@ -142,93 +79,45 @@ export interface ExplorationSelection {
   name: string;
   setName: Dispatch<SetStateAction<string>>;
 
-  /** Direct setter — used by tests to seed state. Prefer `addMetric` /
-   *  `toggleMetric` / `toggleDimension` in production code. */
   setBlocks: Dispatch<SetStateAction<ExplorationBlock[]>>;
   setTimelines: Dispatch<SetStateAction<Timeline[]>>;
 
-  /**
-   * Idempotently ensure a metric block exists. Used by the chat tool
-   * to add metrics surfaced by the LLM without toggling them off if
-   * they were already present.
-   */
   addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
 
-  /**
-   * Toggle a metric **block**. Creates the block (with the metric's
-   * interesting dimensions pre-populated) if absent; removes it if
-   * present. Idempotent per click. Does **not** affect secondary
-   * appearances of this metric inside dimension blocks.
-   */
   toggleMetric: (
     metric: ExplorationMetric,
     context: ToggleMetricContext,
   ) => void;
 
-  /**
-   * Toggle a dimension **block**. Creates the block (with every metric
-   * referencing the group's dimensions hydrated as secondaries) if
-   * absent; removes it if present.
-   */
   toggleDimension: (
     dimension: MetricDimension,
     context: ToggleDimensionContext,
   ) => void;
 
   toggleTimeline: (timeline: Timeline) => void;
-  /** Resolve ids against `allTimelines` and merge into the selection. Idempotent. */
   addTimelinesById: (timelineIds: number[]) => void;
 
-  /** Remove a block by id (metric or dimension). */
   removeBlock: (blockId: string) => void;
-  /**
-   * Remove a dimension from a metric block's body. No-op if the block
-   * is not a metric block or the dimension isn't in it.
-   */
   removeDimensionFromMetricBlock: (
     blockId: string,
     dimensionId: DimensionId,
   ) => void;
-  /**
-   * Remove a metric from a dimension block's body. No-op if the block
-   * is not a dimension block or the metric isn't in it.
-   */
   removeMetricFromDimensionBlock: (
     blockId: string,
     metricId: ExplorationMetric["id"],
   ) => void;
 
-  /**
-   * Append a dimension to a metric block's body. Used by DnD drops
-   * from the Browse Dimensions list onto a metric block. Idempotent
-   * (no-op if the block already includes this dimension). Returns
-   * silently if the target isn't a metric block.
-   */
   addDimensionToMetricBlock: (
     blockId: string,
     dimension: MetricDimension,
   ) => void;
-  /**
-   * Append a metric to a dimension block's body. Used by DnD drops
-   * from the Browse Metrics list onto a dimension block. Idempotent
-   * (no-op if the block already includes this metric). Returns
-   * silently if the target isn't a dimension block.
-   */
+
   addMetricToDimensionBlock: (
     blockId: string,
     metric: ExplorationMetric,
   ) => void;
 }
 
-/**
- * Order a metric block's dimensions by `dimension_interestingness`
- * (descending; null treated as 0). Returns a new array — never mutates
- * the input. Ties keep their incoming order (stable). Both the rendered
- * pills and the `CreateExplorationRequest` group read from
- * `block.dimensions`, so sorting here keeps display and request
- * consistent and matches the interestingness-desc order used by the
- * Data palette's dimension list.
- */
 function sortDimensionsByInterestingness(
   dimensions: MetricDimension[],
 ): MetricDimension[] {
@@ -281,14 +170,6 @@ function buildDimensionBlock(
   };
 }
 
-/**
- * Owns the lifted state for `/question/research`'s new-exploration page:
- * an ordered list of "Research plan" blocks (metric- or dimension-keyed),
- * plus the global timeline selection and exploration name. Toggle
- * helpers create/remove primary blocks; the Browse pickers, chat tool
- * calls, and Research plan pill removals all funnel through the same
- * block operations so the UI stays in sync.
- */
 export function useExplorationSelection(): ExplorationSelection {
   const [blocks, setBlocks] = useState<ExplorationBlock[]>([]);
   const [timelines, setTimelines] = useState<Timeline[]>([]);
@@ -467,9 +348,6 @@ export function useExplorationSelection(): ExplorationSelection {
     const ids = new Set<DimensionId>();
     for (const block of blocks) {
       if (isDimensionBlock(block)) {
-        // Treat every dimension covered by the group row as "selected"
-        // in the Browse picker — otherwise the picker would show the
-        // group row unchecked even though a dim block exists for it.
         for (const d of block.groupDimensions) {
           ids.add(d.id);
         }

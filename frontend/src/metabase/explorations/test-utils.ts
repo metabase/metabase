@@ -29,12 +29,6 @@ export interface MockSelectionOpts {
   timelines?: Timeline[];
 }
 
-/**
- * Convenience constructor — pass an `ExplorationMetric` and the
- * dimensions you want listed in its block's body and we'll synthesize
- * the `MetricBlock` for you. Useful in tests that don't care about the
- * block's id beyond uniqueness.
- */
 export function mockMetricBlock(
   metric: ExplorationMetric,
   dimensions: MetricDimension[] = [],
@@ -67,8 +61,6 @@ export function makeMockSelection(
   const blocks = opts.blocks ?? [];
   const timelines = opts.timelines ?? [];
 
-  // Derive the read-only aggregates from blocks so tests can assert on
-  // them without re-running the production memoizers.
   const metricBlockIds = new Set<ExplorationMetric["id"]>();
   const dimensionBlockIds = new Set<MetricDimension["id"]>();
   const metricSeen = new Set<ExplorationMetric["id"]>();

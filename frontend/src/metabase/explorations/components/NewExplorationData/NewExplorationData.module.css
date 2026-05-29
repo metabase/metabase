@@ -11,20 +11,15 @@
     border-color 0.1s ease-in-out;
 }
 
-/* When a palette item is being dragged anywhere, every empty-state
-   slot becomes a candidate target — show it more prominently. */
 .emptyStateDropTarget {
   border-color: var(--mb-color-brand);
 }
 
-/* And when the cursor is actually over the empty state, light it up. */
 .emptyStateDropOver {
   border-color: var(--mb-color-brand) !important;
   background: var(--mb-color-brand-lighter);
 }
 
-/* "Drop to create a new block" zone shown below the accordion when
-   blocks already exist and a drag is in flight. */
 .newBlockDropZone {
   border: 1px dashed var(--mb-color-brand);
   border-radius: var(--mantine-radius-md);
@@ -39,9 +34,6 @@
   background: var(--mb-color-brand-lighter) !important;
 }
 
-/* "Selected timelines" tray above the Begin research button. It's a
-   persistent drop target, so it has an idle bordered look that gets
-   brighter while a timeline drag is in flight / hovering. */
 .timelinePanel {
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
@@ -80,23 +72,17 @@
   margin-top: 0.75rem !important;
 }
 
-/* While a compatible drag is in flight, mark every valid drop target
-   with a subtle dashed outline so the user sees where they can drop. */
 .accordionItemDropTarget {
   outline: 1px dashed var(--mb-color-brand);
   outline-offset: -1px;
 }
 
-/* The block currently under the pointer gets a stronger highlight. */
 .accordionItemDropOver {
   outline: 2px solid var(--mb-color-brand) !important;
   outline-offset: -1px;
   background: var(--mb-color-brand-lighter) !important;
 }
 
-/* The currently active (selected) block. Distinct from the DnD
-   over-state — same brand color, but solid border instead of outline
-   so the highlight is visible even when no drag is in flight. */
 .accordionItemActive {
   border-color: var(--mb-color-brand) !important;
   box-shadow: 0 0 0 1px var(--mb-color-brand);
@@ -113,9 +99,6 @@
   }
 }
 
-/* Header row: chevron + title on the left, header controls on the right.
-   The "+" / "All events" / "T Range" controls sit beside (not inside)
-   the collapse control so we never nest two <button>s. */
 .accordionControlRow {
   display: flex;
   align-items: center;
@@ -140,26 +123,15 @@
   min-width: 0;
 }
 
-/* Entity-type icon at the left of the block header (the badge-text
-   it replaced was a secondary "metric" / "dimension" string). */
 .blockEntityIcon {
   color: var(--mb-color-brand);
   flex: none;
 }
 
-/* Mantine's built-in chevron is hidden — we render our own inside the
-   Accordion.Control (see `.inlineChevron`) so it sits right after the
-   title, not all the way to the right next to the Remove area button
-   (where users were accidentally clicking the close icon). */
 .accordionRoot .accordionChevron {
   display: none !important;
 }
 
-/* Our inline chevron — placed as a sibling of the title inside the
-   Accordion.Control, so it hugs the title and stays well away from
-   the remove icon. Rotates when the parent Accordion.Item is
-   expanded; Mantine stamps `data-state="active"` on the control
-   button when the item is open. */
 .inlineChevron {
   color: var(--mb-color-brand);
   flex: none;

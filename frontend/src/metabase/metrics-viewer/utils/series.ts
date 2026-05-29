@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { createSeriesCard } from "metabase/metrics/utils/series";
 import type {
   DimensionPillBarItem,
@@ -57,7 +58,6 @@ import {
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
-import { getDimensionIcon } from "./tabs";
 
 export function shouldShowStackSeries(
   display: MetricsViewerDisplayType,

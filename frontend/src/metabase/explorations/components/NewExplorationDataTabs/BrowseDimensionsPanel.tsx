@@ -27,16 +27,6 @@ export interface BrowseDimensionsPanelProps {
   navigation: ExplorationNavigation;
 }
 
-/**
- * Browse → Dimensions tab.
- *
- * When a metric block is active the panel enters per-block mode:
- *   - the list is filtered to dimension groups that intersect the
- *     metric's `dimension_ids`,
- *   - checkbox state reflects block membership (not the global
- *     dim-block set), and
- *   - toggling adds/removes the dimension from that block.
- */
 export function BrowseDimensionsPanel({
   selection,
   navigation,
@@ -60,8 +50,6 @@ export function BrowseDimensionsPanel({
     q: debouncedSearch.trim() || undefined,
   });
 
-  // Resolve the active block if it's a *metric* block — only those
-  // make the Dimensions panel enter per-block mode.
   const activeMetricBlock = useMemo(() => {
     if (navigation.activeBlockId == null) {
       return null;
@@ -75,8 +63,6 @@ export function BrowseDimensionsPanel({
     [response],
   );
 
-  // In block mode, filter to groups that contain at least one
-  // dimension referenced by the active metric.
   const visibleGroups = useMemo(() => {
     if (activeMetricBlock == null) {
       return allGroups;
@@ -87,11 +73,6 @@ export function BrowseDimensionsPanel({
     );
   }, [allGroups, activeMetricBlock]);
 
-  // Group representative row: take the first dimension as the row's
-  // anchor so `DimensionList` can render one row per group. We keep
-  // the head's `group` (its source/table) intact so `DimensionList`
-  // can section by `group.id` — the row label is the bare field name
-  // (the source goes into the section header above the row).
   const groupRows = useMemo<MetricDimension[]>(
     () =>
       visibleGroups.map((g) => ({
@@ -124,9 +105,6 @@ export function BrowseDimensionsPanel({
     return map;
   }, [response]);
 
-  // In block mode, the "selected" set comes from the active block's
-  // own dimension list. Otherwise the picker uses the global
-  // dim-block ids (a dim is "selected" iff it has its own block).
   const blockSelectedDimIds = useMemo(() => {
     if (activeMetricBlock == null) {
       return null;
@@ -140,9 +118,6 @@ export function BrowseDimensionsPanel({
       if (!group) {
         return blockSelectedDimIds.has(dimensionId);
       }
-      // In block mode, the metric only references *some* of the
-      // group's sibling dims — so a row counts as "selected" iff
-      // at least one of its siblings is in the block.
       return group.dimensions.some((d) => blockSelectedDimIds.has(d.id));
     }
     const group = groupByRowId.get(dimensionId);
@@ -172,10 +147,6 @@ export function BrowseDimensionsPanel({
             isSelected={isSelected}
             onToggle={(dimension) => {
               if (activeMetricBlock != null) {
-                // In block mode toggle adds/removes the picker row's
-                // group head from this metric's block. We don't
-                // cascade siblings here — the user clicked a single
-                // row, that's what we mutate.
                 const wasSelected = isSelected(dimension.id);
                 if (wasSelected) {
                   removeDimensionFromMetricBlock(

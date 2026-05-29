@@ -23,19 +23,6 @@ export interface BrowseMetricsPanelProps {
   navigation: ExplorationNavigation;
 }
 
-/**
- * Browse → Metrics tab. Search input + virtualized list; each click
- * commits to `selection.toggleMetric` immediately.
- *
- * When a dimension block is active (`navigation.activeBlockId` points
- * at a dimension block) the panel enters per-block mode:
- *   - the list is filtered to metrics that reference at least one of
- *     the block's group dimensions,
- *   - the checkbox state reflects block membership (not the global
- *     metric-block set), and
- *   - toggling adds/removes the metric from that block, not the global
- *     selection.
- */
 export function BrowseMetricsPanel({
   selection,
   navigation,
@@ -59,9 +46,6 @@ export function BrowseMetricsPanel({
     q: debouncedSearch.trim() || undefined,
   });
 
-  // The toggle helper needs every dimension across every group so it
-  // can attach the metric's "interesting" dimensions when the user
-  // selects it (non-block-mode path only).
   const dimensionsById = useMemo(() => {
     const map = new Map<DimensionId, MetricDimension>();
     for (const group of response?.dimension_groups ?? []) {
@@ -72,9 +56,6 @@ export function BrowseMetricsPanel({
     return map;
   }, [response]);
 
-  // Resolve the active block if it's a *dimension* block — only those
-  // make the Metrics panel enter per-block mode. Metric blocks
-  // activate the Dimensions panel instead.
   const activeDimensionBlock = useMemo(() => {
     if (navigation.activeBlockId == null) {
       return null;
@@ -88,11 +69,6 @@ export function BrowseMetricsPanel({
     [response],
   );
 
-  // In block mode, filter to metrics that reference at least one of the
-  // block's group dimensions. The cross-reference is intentional —
-  // a metric might reference *some* of the group's siblings but not
-  // others; surfacing all of them matches the "relevant metrics for
-  // this dimension" mental model.
   const visibleMetrics = useMemo(() => {
     if (activeDimensionBlock == null) {
       return allMetrics;

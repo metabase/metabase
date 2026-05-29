@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionBlock,
   ExplorationBlock,
@@ -23,7 +24,6 @@ import {
 } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { getDimensionIcon } from "metabase/metrics-viewer/utils/tabs";
 import { useDispatch } from "metabase/redux";
 import {
   Accordion,
@@ -72,16 +72,6 @@ function dimensionToSelection(d: MetricDimension) {
   };
 }
 
-/**
- * Translate one Research plan block into a `CreateExplorationRequest`
- * group entry.
- *
- * - **Metric block** → group with `[block.metric]` and the block's
- *   own `dimensions`.
- * - **Dimension block** → group with `block.metrics` and the group's
- *   sibling dimensions (`groupDimensions`), preserving the picker-row
- *   semantics of "every dimension covered by this row".
- */
 function blockToGroup(block: ExplorationBlock) {
   if (isMetricBlock(block)) {
     return {
@@ -105,8 +95,6 @@ export function buildCreateExplorationRequest(
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
 
-  // The timeline selection is exploration-wide, not per-block, so we
-  // attach the same `timeline_ids` to every group the request carries.
   const timelineIds = timelines.map((tl) => tl.id);
   const groups = blocks.map((block) => ({
     ...blockToGroup(block),
@@ -177,18 +165,6 @@ export function NewExplorationData({
 
   const defaultExpandedIds = blocks.map((b) => b.id);
 
-  /**
-   * Empty-space clicks within this column should deselect the active
-   * block. The page-level `useClickOutside` only fires when the click
-   * lands outside the Research plan + Data palette columns — and the
-   * user wants the column's own gutters/title/drop-zone areas to
-   * deselect too. We detect "did the click land on a block?" via the
-   * `data-block-id` attribute that `MetricBlockItem` /
-   * `DimensionBlockItem` carry; if not, we clear. Block items don't
-   * stopPropagation: their own `onActivate` runs first (React bubble
-   * order), then this handler skips the clear because `closest()`
-   * finds a `data-block-id` on the bubble path.
-   */
   const handleBackgroundClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (navigation.activeBlockId == null) {
@@ -304,21 +280,6 @@ interface NewBlockDropZoneProps {
   dimensionBlockIds: Set<DimensionId>;
 }
 
-/**
- * "Drop here to create a new research area" target rendered below the
- * existing accordion when blocks > 0. It only appears while a drag is
- * in flight — there's no idle UI here, the empty-state placeholder
- * (see `ResearchPlanEmptyState`) covers the no-blocks-yet case. Drops
- * route through the same `RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID` path
- * in `useExplorationDnd` so the behavior is identical to dropping on
- * the empty state.
- *
- * Hidden when the dragged entity is *already* the primary of an
- * existing block (metric in `metricBlockIds`, dimension in
- * `dimensionBlockIds`). In that case "create a new block" would be a
- * no-op — the existing block can't be duplicated — so we hide the
- * affordance to avoid suggesting an action that won't do anything.
- */
 function NewBlockDropZone({
   metricBlockIds,
   dimensionBlockIds,
@@ -330,9 +291,7 @@ function NewBlockDropZone({
   const activeData = dndContext.active?.data.current as
     | ExplorationDragData
     | undefined;
-  // Only metric/dimension drags can create a new block. Timelines are
-  // detached from the block model, so a timeline drag must not surface
-  // this "new research area" target.
+
   if (activeData == null || activeData.kind === "timeline") {
     return null;
   }
@@ -365,22 +324,6 @@ interface SelectedTimelinesPanelProps {
   onRemoveTimeline: (timeline: Timeline) => void;
 }
 
-/**
- * The "Timelines" tray pinned above the "Begin research" button. Unlike
- * metrics/dimensions, timelines are a flat, exploration-wide selection
- * (not a per-block list), so they live in their own always-visible
- * section rather than as accordion blocks.
- *
- * It doubles as a drop target: dragging a row from the Browse →
- * Timelines panel onto this tray adds it (idempotently, via
- * `addTimelinesById` in `useExplorationDnd`).
- *
- * Visibility rule: once any timeline is picked the tray stays visible
- * (so the user can see/remove their selection). When nothing is picked
- * yet it stays hidden *until* a timeline drag is in flight, at which
- * point an empty drop target appears so the first timeline has
- * somewhere to land — mirroring `NewBlockDropZone`'s drag-only target.
- */
 function SelectedTimelinesPanel({
   timelines,
   onRemoveTimeline,
@@ -393,9 +336,7 @@ function SelectedTimelinesPanel({
     | ExplorationDragData
     | undefined;
   const isTimelineDragInFlight = activeData?.kind === "timeline";
-  // Hooks above run unconditionally; bail out only after they've been
-  // called so the empty tray is hidden unless a timeline is being
-  // dragged in.
+
   if (timelines.length === 0 && !isTimelineDragInFlight) {
     return null;
   }
@@ -439,12 +380,6 @@ function ResearchPlanEmptyState({
   onAddMetric,
   onAddDimension,
 }: ResearchPlanEmptyStateProps) {
-  // The empty state is a metric/dimension drop target only — dropping a
-  // metric creates a metric block, a dimension creates a dimension
-  // block. Timelines are completely detached from metrics/dimensions, so
-  // a timeline drag does NOT light this area up (it lands in the
-  // dedicated timelines tray instead). We treat only metric/dimension
-  // drags as "in flight" here.
   const { setNodeRef, isOver } = useDroppable({
     id: RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
   });
@@ -491,12 +426,6 @@ function ResearchPlanEmptyState({
 }
 
 interface BlockHeaderControlsProps {
-  /**
-   * Per-block "All events" + "T Range" affordances called out in the
-   * wireframe. They're stubbed (no behavior) for now — the underlying
-   * per-block timeline / time range model isn't wired up yet — but the
-   * buttons render so layouts and accessibility labels are in place.
-   */
   onRemoveBlock: () => void;
 }
 
@@ -527,13 +456,6 @@ interface MetricBlockItemProps {
   onRemoveDimension: (dimensionId: DimensionId) => void;
 }
 
-/**
- * Hook that wires a Research plan block as a dnd-kit drop target and
- * reports whether the *currently active* drag would land here legally
- * (i.e. cross-kind: dimension dragged over a metric block, or metric
- * dragged over a dimension block). The two booleans drive the
- * hover-state styling.
- */
 function useBlockDroppable(blockId: string, blockKind: "metric" | "dimension") {
   const { setNodeRef, isOver } = useDroppable({ id: blockId });
   const dndContext = useDndContext();
@@ -549,11 +471,6 @@ function useBlockDroppable(blockId: string, blockKind: "metric" | "dimension") {
   };
 }
 
-/**
- * "Look at metric in depth" area — header carries the metric name +
- * per-block controls, body lists the dimensions the user wants to break
- * this metric by.
- */
 function MetricBlockItem({
   block,
   isActive,
@@ -598,14 +515,7 @@ function MetricBlockItem({
         <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
       </Box>
       <Accordion.Panel>
-        {/*
-         * Inner clickable wrapper. We deliberately put `role="button"`
-         * here, not on the `Accordion.Panel`, because Mantine's Panel
-         * is a structural div that doesn't forward arbitrary ARIA
-         * attributes. Clicking anywhere here activates the block —
-         * the `Remove` pill buttons inside stop propagation
-         * themselves, so they keep working.
-         */}
+        {/* Inner clickable wrapper */}
         <Box
           onClick={onActivate}
           role="button"
@@ -654,11 +564,6 @@ interface DimensionBlockItemProps {
   onRemoveMetric: (metricId: ExplorationMetric["id"]) => void;
 }
 
-/**
- * "Break by dimension" area — header carries the dimension name + the
- * per-block controls, body lists every metric that references this
- * dimension (or a sibling within its group).
- */
 function DimensionBlockItem({
   block,
   isActive,
@@ -670,10 +575,6 @@ function DimensionBlockItem({
     block.id,
     "dimension",
   );
-  // Use the metrics-viewer's canonical dimension-icon mapping so the
-  // icon next to a dimension name in the Research plan reads the
-  // same as everywhere else in the product (calendar for dates,
-  // string for category, int for numeric, location for geo, etc.).
   const dimensionIconName = getDimensionIcon(
     LibMetric.fromMetricDimension(block.dimension),
   );
@@ -778,20 +679,8 @@ function PillItem({ label, onRemove, ...rest }: PillItemProps) {
   );
 }
 
-/**
- * Render a dimension's full table-qualified label — "Table name -
- * Dimension name" when the dimension carries a group, falling back to
- * the bare `display_name` (or id as last resort) otherwise. Matches
- * the formatting shown by the Browse Dimensions picker so the pill
- * inside a metric block reads the same as the row the user dragged
- * or clicked from.
- */
 function formatDimensionLabel(dim: MetricDimension): string {
   const name = dim.display_name ?? dim.id;
   const tableName = dim.group?.display_name;
   return tableName ? `${tableName} - ${name}` : name;
 }
-
-// Re-export the block union for any external consumer that imports
-// types from this module.
-export type { ExplorationBlock };

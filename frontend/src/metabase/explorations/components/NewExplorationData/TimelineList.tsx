@@ -19,10 +19,6 @@ import type { Timeline } from "metabase-types/api";
 
 import S from "./TimelineList.module.css";
 
-/**
- * Client-side case-insensitive filter across timeline name + description.
- * A pure function so the Browse panel filters with the exact same rules.
- */
 export function filterTimelinesBySearch(
   timelines: Timeline[],
   search: string,

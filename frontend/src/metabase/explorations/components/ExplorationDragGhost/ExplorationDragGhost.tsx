@@ -9,16 +9,6 @@ export interface ExplorationDragGhostProps {
   data: ExplorationDragData;
 }
 
-/**
- * Floating preview rendered by the page-level `<DragOverlay>` while a
- * Browse-picker row is being dragged. The original row is dimmed in
- * place (see `ItemList.module.css` → `.metricItemDragging`); this
- * component is what the cursor actually carries.
- *
- * Kept deliberately small — a pill with an entity-kind icon, the name
- * and a "metric"/"dimension" badge — so it doesn't obscure the drop
- * targets it's being aimed at.
- */
 export function ExplorationDragGhost({ data }: ExplorationDragGhostProps) {
   if (data.kind === "metric") {
     return (

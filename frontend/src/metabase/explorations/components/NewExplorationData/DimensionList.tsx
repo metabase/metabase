@@ -21,21 +21,9 @@ interface DimensionListProps {
   dimensions: MetricDimension[];
   isSelected: (dimensionId: DimensionId) => boolean;
   onToggle: (dimension: MetricDimension) => void;
-  /**
-   * Resolves the toggle context for a given dimension row. Threaded
-   * into each row's drag payload so a drop on the Research plan's
-   * empty-state target can build a dimension block with its group
-   * siblings + referencing metrics hydrated — matching the
-   * `selection.toggleDimension` checkbox path exactly.
-   */
   getDragContext: (dimension: MetricDimension) => ToggleDimensionContext;
 }
 
-/**
- * Virtualized list of dimension rows — wide cards with a checkbox,
- * title and optional source name, matching `MetricList`. Rendered by
- * the Browse → Dimensions panel.
- */
 export function DimensionList({
   dimensions,
   isSelected,
@@ -187,9 +175,6 @@ function DraggableDimensionRow({
         onPointerDown={(event) => event.stopPropagation()}
         aria-label={dimension.display_name}
       />
-      {/* No secondary source line: the section header above the row
-          already labels the source/table, so the row only needs the
-          field name. */}
       <Stack gap="xs" flex={1}>
         <Text fw="bold" lh="1.25" lineClamp={1}>
           {dimension.display_name}
