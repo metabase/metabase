@@ -414,19 +414,16 @@ describe("scenarios > data studio > library > metrics", () => {
 
   describe("caching", () => {
     it("should allow changing metric caching settings", () => {
-      cy.log("Navigate to Data Studio Library");
-      H.DataStudio.Library.visit();
-
-      cy.log("Click on the metric from the collection view");
-      // Wait for metric items to load - the library page fetches items from
-      // multiple collections in parallel and the default 4s timeout may not
-      // be sufficient in CI
-      cy.findAllByTestId("metric-name", { timeout: 30000 })
-        .contains("Trusted Orders Metric")
-        .click();
+      cy.log("Navigate directly to the metric page");
+      cy.request("GET", "/api/search", {
+        q: "Trusted Orders Metric",
+        models: "metric",
+      }).then(({ body }) => {
+        const metric = body.data[0];
+        cy.visit(`/data-studio/library/metrics/${metric.id}`);
+      });
 
       cy.log("Wait for metric detail page to load");
-      cy.url().should("include", "/metric/");
       cy.findByTestId("metric-header", { timeout: 30000 }).should(
         "be.visible",
       );
