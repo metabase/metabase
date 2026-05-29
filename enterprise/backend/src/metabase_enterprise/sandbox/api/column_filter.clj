@@ -35,7 +35,7 @@
   Tables with no sandbox, or with attribute-only sandboxes (no `card_id`), are absent. Reads `perms/sandboxes-for-user`,
   the per-request cache, so returns `{}` outside a request (background tasks, REPL) even when sandboxes are configured."
   [table-ids :- [:set ms/PositiveInt]]
-  (let [sandboxes (filter #(contains? table-ids (:table_id %)) (perms/sandboxes-for-user))
+  (let [sandboxes (filter (comp table-ids :table_id) (perms/sandboxes-for-user))
         card-ids  (into #{} (keep :card_id) sandboxes)]
     (if (seq card-ids)
       (let [cards-by-id (into {}
