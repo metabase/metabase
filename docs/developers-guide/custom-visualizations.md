@@ -92,12 +92,12 @@ Every plugin includes a `metabase-plugin.json` file at the root of the project:
 }
 ```
 
-| Field              | Description                                                                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Field              | Description                                                                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`             | Unique identifier for the plugin. Metabase registers your visualization under this name and uses it to match replacement bundles. It doesn't have to match the `id` your visualization returns. |
-| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically.                                                                                                                     |
-| `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                                                                                                       |
-| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                         |
+| `icon`             | Path to the visualization icon (SVG recommended). Metabase serves it automatically.                                                                                                             |
+| `assets`           | Other static files to bundle (images and JSON only). Reference them in code with `getAssetUrl()`.                                                                                               |
+| `metabase.version` | Semver range of Metabase versions the plugin supports (for example, `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`).                                                                                 |
 
 ## Defining a visualization
 
@@ -182,10 +182,10 @@ export default createVisualization;
 
 ## Query results
 
-`series` is an array of result sets — one entry per series on the chart. A single question produces one entry; a dashboard card with [multiple series](../dashboards/multiple-series.md) produces several. Each entry has a `data` object:
+`series` is an array of result sets, with one entry per series on the chart. A single question produces one entry; a dashboard card with [multiple series](../dashboards/multiple-series.md) produces several entries. Each entry has a `data` object:
 
-- `data.rows` — an array of rows; each row is an array of cell values in column order.
-- `data.cols` — an array of column objects describing each value. The fields you'll reach for most: `name` (database column name), `display_name` (label shown in the UI), `base_type` (Metabase type, for example `"type/Integer"`), and `semantic_type` (for example `"type/Currency"` or `"type/Latitude"`).
+- `data.rows`: an array of rows; each row is an array of cell values in column order.
+- `data.cols`: an array of column objects describing each value. The fields you'll reach for most: `name` (database column name), `display_name` (label shown in the UI), `base_type` (Metabase type, for example `"type/Integer"`), and `semantic_type` (for example `"type/Currency"` or `"type/Latitude"`).
 
 ```tsx
 const [{ data }] = series;
@@ -357,15 +357,18 @@ Upload the `.tgz` file in **Admin** > **Settings** > **Custom visualizations** >
 
 The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the versions your plugin supports with `metabase.version` in `metabase-plugin.json`, using [npm semver range](https://github.com/npm/node-semver#ranges) syntax — `">=1.62.0"`, `"^1.62"`, `">=1.62 <1.64"`. Write the range against the full version number (`">=1.62.0"`), not a bare major version (`">=62"`), which won't match.
 
-Metabase accepts the upload regardless of version, but a plugin only loads when the running instance falls within its range. If the instance is outside the range — whether the plugin needs a newer version, or a later downgrade moves the instance out of range — the plugin doesn't appear in the visualization picker, and cards that used it fall back to a default visualization until the instance is back in range.
+If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload. If a running instance later falls outside the range — after a downgrade, say — the plugin stops loading, and cards that used it fall back to a default visualization until the instance is back in range.
 
 ## Sandbox restrictions
 
 Metabase runs plugin code in an isolated sandbox, so a visualization works only from the `series` and `settings` it's given. The sandbox blocks:
 
-- **Network access**: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `Worker`, and similar. You can't call Metabase's APIs or any other service.
-- **Browser storage**: `localStorage`, `sessionStorage`, `indexedDB`, the Cache API, and cookies.
-- **Navigation and the rest of the app**: `window.open`, history changes, and any DOM outside the plugin's own container.
+- **Network access**: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `Worker`, `SharedWorker`, `RTCPeerConnection`, `WebTransport`, `BroadcastChannel`, `navigator.sendBeacon`, and `FontFace.load`. You can't call Metabase's APIs or any other service.
+- **Browser storage and cookies**: `localStorage`, `sessionStorage`, `indexedDB`, the Cache API, `document.cookie`, and the `CookieStore` API.
+- **Device and credential APIs**: clipboard, geolocation, camera and microphone, service workers, the Credentials and Permissions APIs, USB, Bluetooth, HID, serial, WebXR, and Web Share.
+- **Browser UI**: `window.open`, dialogs (`alert`, `confirm`, `prompt`, `print`), notifications, modal dialogs, fullscreen, and payment requests.
+- **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
+- **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
 Plugins also don't render in static visualizations: dashboard subscriptions sent by [email](../dashboards/subscriptions.md) and Slack fall back to a default visualization for cards that use a custom visualization.
 
