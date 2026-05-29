@@ -437,9 +437,7 @@ describe("scenarios > data studio > library > metrics", () => {
       // Wait for the modal to close after save completes
       cy.findByRole("dialog").should("not.exist");
 
-      cy.log(
-        "Re-open caching modal to verify the change is persisted",
-      );
+      cy.log("Re-open caching modal to verify the change is persisted");
       H.DataStudio.Metrics.openCachingModal();
       cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
     });
