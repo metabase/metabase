@@ -945,6 +945,15 @@ describe("Remote Sync", () => {
       H.DataStudio.Transforms.visit();
       H.getPullOption().should("not.be.disabled").click();
 
+      cy.log(
+        "wait for the conflict modal to finish rendering before interacting",
+      );
+      H.modal()
+        .findByRole("heading", {
+          name: /Your local data will be overwritten by the remote branch/,
+        })
+        .should("be.visible");
+
       cy.log("choose the new branch option and push");
       cy.findByLabelText(/Create a new branch and push changes there/)
         .should("be.visible")
