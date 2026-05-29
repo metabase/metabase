@@ -186,7 +186,7 @@ const isBulkInvalidation = (statePath: (string | number)[]): boolean => {
 };
 
 export const requestsReducer = (
-  state: RequestsStateTree,
+  state: RequestsStateTree = {},
   action: RequestsAction,
 ): RequestsStateTree => {
   if (action?.payload?.statePath) {

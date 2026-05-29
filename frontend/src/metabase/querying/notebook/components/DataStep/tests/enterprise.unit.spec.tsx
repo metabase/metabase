@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
-function setup(opts: SetupOpts = {}) {
+async function setup(opts: SetupOpts = {}) {
   return baseSetup({
     enterprisePlugins: ["embedding"],
     ...opts,
@@ -14,7 +15,8 @@ function setup(opts: SetupOpts = {}) {
 
 describe("DataStep", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
@@ -35,7 +37,6 @@ describe("DataStep", () => {
 
   afterAll(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
   });
@@ -47,7 +48,7 @@ describe("DataStep", () => {
       });
 
       it("should not show the tooltip", async () => {
-        setup({ isEmbeddingSdk: true });
+        await setup({ isEmbeddingSdk: true });
 
         await userEvent.hover(await screen.findByText("Orders"));
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -56,7 +57,7 @@ describe("DataStep", () => {
       it.each([{ metaKey: true }, { ctrlKey: true }])(
         "meta/ctrl click should not open the data source",
         async (clickConfig) => {
-          const { mockWindowOpen } = setup({
+          const { mockWindowOpen } = await setup({
             isEmbeddingSdk: true,
           });
 
@@ -70,7 +71,7 @@ describe("DataStep", () => {
       );
 
       it("middle click should not open the data source", async () => {
-        const { mockWindowOpen } = setup({
+        const { mockWindowOpen } = await setup({
           isEmbeddingSdk: true,
         });
 

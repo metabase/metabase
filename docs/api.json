@@ -28623,6 +28623,64 @@
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
+    "/api/ee/remote-sync/test-connection" : {
+      "post" : {
+        "operationId" : "post-api-ee-remote-sync-test-connection",
+        "summary" : "POST /api/ee/remote-sync/test-connection",
+        "description" : "Test whether the Remote Sync credentials can reach the git repository.\n\n  When called with an empty body, validates the currently saved URL and token. When the body provides\n  `remote-sync-url` or `remote-sync-token`, those override the saved values — useful for verifying a\n  new Personal Access Token before saving. An obfuscated token (matching the existing token's masked\n  representation) is treated as \"unchanged\" and the stored token value is used for the test.\n\n  Only validates connection and authentication; branch existence is not checked here.\n\n  Returns `{:status :success}` on success. On failure, returns a 400 with a user-friendly error\n  message describing the connection problem.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "remote-sync-token" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "remote-sync-url" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
     "/api/ee/replacement/check-replace-source" : {
       "post" : {
         "operationId" : "post-api-ee-replacement-check-replace-source",
@@ -36415,45 +36473,45 @@
         } ],
         "responses" : {
           "2XX" : {
+            "description" : "Successful response",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
-                    "additionalProperties" : false,
+                    "type" : "object",
                     "properties" : {
                       "prompt_count" : {
-                        "minimum" : 1,
-                        "type" : "integer"
+                        "type" : "integer",
+                        "minimum" : 1
                       },
                       "status" : {
                         "const" : "generated"
                       }
                     },
                     "required" : [ "status", "prompt_count" ],
-                    "type" : "object"
+                    "additionalProperties" : false
                   }, {
-                    "additionalProperties" : false,
+                    "type" : "object",
                     "properties" : {
                       "status" : {
                         "const" : "no-library-content"
                       }
                     },
                     "required" : [ "status" ],
-                    "type" : "object"
+                    "additionalProperties" : false
                   }, {
-                    "additionalProperties" : false,
+                    "type" : "object",
                     "properties" : {
                       "status" : {
                         "const" : "ai-produced-no-prompts"
                       }
                     },
                     "required" : [ "status" ],
-                    "type" : "object"
+                    "additionalProperties" : false
                   } ]
                 }
               }
-            },
-            "description" : "Successful response"
+            }
           },
           "4XX" : {
             "description" : "Client error response"
