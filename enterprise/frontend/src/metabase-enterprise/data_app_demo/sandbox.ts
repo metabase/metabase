@@ -14,6 +14,7 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 
@@ -85,6 +86,9 @@ export function createDataAppSandbox(appId: number = 0) {
     liveTargetCallback: isLiveTarget,
     endowments: Object.getOwnPropertyDescriptors({
       React,
+      // Data fetching
+      useQuestionQuery,
+      // Provider
       MetabaseProvider,
       // Question components
       InteractiveQuestion,
