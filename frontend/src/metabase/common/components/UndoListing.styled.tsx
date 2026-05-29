@@ -1,12 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
-import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
-import { Card } from "metabase/common/components/Card";
 import { Link } from "metabase/common/components/Link";
 import type { BoxProps } from "metabase/ui";
-import { Box, Icon } from "metabase/ui";
+import { Box, Card, Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 
 const LIST_H_MARGINS = "var(--mantine-spacing-md)";
@@ -21,29 +19,32 @@ export const UndoList = styled.ul`
   align-items: flex-start;
 `;
 
-export const ToastCard = styled(Card)<{
-  translateY?: number;
-  color?: string;
+interface ToastCardProps extends ComponentPropsWithoutRef<typeof Card> {
+  dark?: boolean;
   noBorder?: boolean;
-}>`
-  padding: 10px var(--mantine-spacing-md);
-  margin-top: var(--mantine-spacing-sm);
-  max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: ${(props) =>
-    props.dark
-      ? "var(--mb-color-background-primary-inverse)"
-      : "var(--mb-color-background-primary)"};
-  color: ${(props) =>
-    props.dark
-      ? "var(--mb-color-text-secondary-inverse)"
-      : "var(--mb-color-text-primary)"};
-  ${({ noBorder }) =>
-    noBorder &&
-    css`
-      border: none;
-      overflow-x: hidden;
-    `};
-`;
+}
+
+export const ToastCard = forwardRef<HTMLDivElement, ToastCardProps>(
+  function ToastCard({ dark = true, noBorder, style, ...props }, ref) {
+    return (
+      <Card
+        ref={ref}
+        {...props}
+        bg={dark ? "background-primary-inverse" : "background-primary"}
+        c={dark ? "text-secondary-inverse" : "text-primary"}
+        withBorder={!noBorder}
+        radius="md"
+        style={{
+          padding: "10px var(--mantine-spacing-md)",
+          marginTop: "var(--mantine-spacing-sm)",
+          maxWidth: `calc(100vw - 2 * ${LIST_H_MARGINS})`,
+          ...(noBorder && { overflowX: "hidden" as const }),
+          ...style,
+        }}
+      />
+    );
+  },
+);
 
 export const CardContent = styled.div`
   display: flex;
