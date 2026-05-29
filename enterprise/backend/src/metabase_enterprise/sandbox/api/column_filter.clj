@@ -17,11 +17,10 @@
   at all — a security regression. *Fail-loud* (throwing 503) would require every FE
   surface to handle a new error state. Fail-closed is the conservative middle.
 
-  The vulnerable window for the legitimate case (card was just created, async metadata
-  computation hasn't finished) is bounded by `metabase.queries.models.card.metadata/
-  metadata-sync-wait-ms` (1.5 seconds) for live admin workflows. For permanently failed
-  extractions, sandboxed users will see zero columns until an admin fixes the source card
-  — which is what we want, given the alternative is leaking every column."
+  In the legitimate case (card was just created, async metadata computation hasn't
+  finished) sandboxed users see zero columns until the metadata lands. For permanently
+  failed extractions, sandboxed users will see zero columns until an admin fixes the source
+  card — which is what we want, given the alternative is leaking every column."
   (:require
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
