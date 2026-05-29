@@ -10,7 +10,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
-import CopyModal from "metabase/common/components/CopyModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";

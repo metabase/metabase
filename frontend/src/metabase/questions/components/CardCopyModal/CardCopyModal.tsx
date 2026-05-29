@@ -3,7 +3,7 @@ import { useLatest } from "react-use";
 
 import { useCreateCardMutation } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import CopyModal from "metabase/common/components/CopyModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import type { CopyCardProperties } from "metabase/questions/components/CopyCardForm";
 import type { Card } from "metabase-types/api";
 

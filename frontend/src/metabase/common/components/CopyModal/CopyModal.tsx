@@ -14,11 +14,11 @@ import type {
   GenericCopyModalProps,
 } from "./types";
 
-function CopyModal<T extends CopyableType>(
+export function CopyModal<T extends CopyableType>(
   props: CopyModalProps<T>,
 ): React.JSX.Element;
-function CopyModal(props: GenericCopyModalProps): React.JSX.Element;
-function CopyModal(props: GenericCopyModalProps) {
+export function CopyModal(props: GenericCopyModalProps): React.JSX.Element;
+export function CopyModal(props: GenericCopyModalProps) {
   const {
     entityType,
     entityObject,
@@ -87,6 +87,3 @@ function CopyModal(props: GenericCopyModalProps) {
     </Modal>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CopyModal;

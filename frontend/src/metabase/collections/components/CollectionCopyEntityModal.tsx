@@ -7,7 +7,7 @@ import {
   useCopyDocumentMutation,
 } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
-import CopyModal from "metabase/common/components/CopyModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { entityTypeForObject } from "metabase/redux/store/entities";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
