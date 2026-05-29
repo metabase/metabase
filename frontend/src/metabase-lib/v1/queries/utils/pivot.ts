@@ -3,10 +3,15 @@ import _ from "underscore";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import {
+  getDimensionReferenceWithoutBaseType,
+  isDimensionReferenceWithOptions,
+} from "metabase-lib/v1/references";
 import type {
   ColumnNameCollapsedRowsSetting,
   ColumnNameColumnSplitSetting,
   DatasetColumn,
+  DimensionReference,
   FieldRefColumnSplitSetting,
   FieldReference,
   PivotTableCollapsedRowsSetting,
@@ -113,12 +118,35 @@ function migratePivotSetting(
   fieldRefs: (FieldReference | null)[] = [],
 ): string[] {
   const columnNameByFieldRef = Object.fromEntries(
-    columns.map((column) => [JSON.stringify(column.field_ref), column.name]),
+    columns.map((column) => [
+      getPivotColumnKeyForComparison(column.field_ref),
+      column.name,
+    ]),
   );
 
   return fieldRefs
-    .map((fieldRef) => columnNameByFieldRef[JSON.stringify(fieldRef)])
+    .map(
+      (fieldRef) =>
+        columnNameByFieldRef[getPivotColumnKeyForComparison(fieldRef)],
+    )
     .filter(isNotNull);
+}
+
+/*
+  When comparing field refs for pivot viz settings, ignore `base-type`.
+  Sometimes it's present, sometimes it's not. New pivot settings use column
+  names only and do not depend on field refs.
+ */
+function getFieldRefForComparison(fieldRef: DimensionReference) {
+  return isDimensionReferenceWithOptions(fieldRef)
+    ? getDimensionReferenceWithoutBaseType(fieldRef)
+    : fieldRef;
+}
+
+function getPivotColumnKeyForComparison(
+  fieldRef: DimensionReference | null | undefined,
+) {
+  return JSON.stringify(fieldRef ? getFieldRefForComparison(fieldRef) : null);
 }
 
 // Field ref-based visualization settings are considered legacy and are not used
