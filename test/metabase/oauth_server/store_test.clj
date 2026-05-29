@@ -172,7 +172,12 @@
       (testing "delete-authorization-code returns true"
         (is (true? (proto/delete-authorization-code acs code))))
       (testing "get returns nil after delete"
-        (is (nil? (proto/get-authorization-code acs code)))))))
+        (is (nil? (proto/get-authorization-code acs code))))
+      (testing "row is marked as denied with a decided_at timestamp"
+        (let [row (t2/select-one :model/OAuthAuthorizationCode :code code)]
+          (is (some? row) "Row should still exist in the database")
+          (is (= "denied" (:decision row)))
+          (is (some? (:decided_at row))))))))
 
 (deftest authorization-code-store-get-nonexistent-test
   (let [acs (store/create-authorization-code-store)]
@@ -209,7 +214,12 @@
       (testing "get returns nil after consume"
         (is (nil? (proto/get-authorization-code acs code))))
       (testing "consuming again returns nil"
-        (is (nil? (proto/consume-authorization-code acs code)))))))
+        (is (nil? (proto/consume-authorization-code acs code))))
+      (testing "row is marked as authorized with a decided_at timestamp"
+        (let [row (t2/select-one :model/OAuthAuthorizationCode :code code)]
+          (is (some? row) "Row should still exist in the database")
+          (is (= "authorized" (:decision row)))
+          (is (some? (:decided_at row))))))))
 
 (deftest authorization-code-store-consume-race-test
   (testing "concurrent consume calls: exactly one succeeds"
