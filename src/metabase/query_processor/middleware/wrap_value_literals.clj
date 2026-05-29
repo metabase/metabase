@@ -3,7 +3,6 @@
   information; parses datetime string literals when appropriate."
   (:refer-clojure :exclude [select-keys])
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -188,7 +187,7 @@
 (defn- parse-datetime-string-literal [s target-unit klass]
   (let [t (parse-temporal-string-literal-to-class s klass)
         target-unit (if (and (= target-unit :default)
-                             (not (str/includes? s "T")))
+                             (try (LocalDate/parse s) true (catch Exception _ false)))
                       :day
                       target-unit)]
     (lib/absolute-datetime t target-unit)))
