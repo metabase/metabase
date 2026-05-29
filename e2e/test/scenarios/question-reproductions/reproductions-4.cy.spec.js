@@ -1033,7 +1033,7 @@ describe("issue 47940", () => {
     cy.log("verify there is a table displayed");
     cy.findByTestId("visualization-root").should(
       "contain",
-      "December 31, 1969, 4:00 PM",
+      "January 1, 1970, 12:00 AM",
     );
   });
 });
