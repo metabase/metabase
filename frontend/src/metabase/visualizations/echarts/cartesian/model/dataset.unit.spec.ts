@@ -32,6 +32,7 @@ import {
   getDatasetExtents,
   getDatasetKey,
   getJoinedCardsDataset,
+  getSortedSeriesModels,
   replaceValues,
   sortDataset,
 } from "./dataset";
@@ -757,6 +758,79 @@ describe("dataset transform functions", () => {
         series1: [1, 2],
         series2: [2, 2],
       });
+    });
+  });
+
+  describe("getSortedSeriesModels", () => {
+    const seriesModels = [
+      createMockSeriesModel({ dataKey: "2.0.0", name: "2.0.0" }),
+      createMockSeriesModel({ dataKey: "2.1.0", name: "2.1.0" }),
+      createMockSeriesModel({ dataKey: "2.0.10", name: "2.0.10" }),
+      createMockSeriesModel({ dataKey: "1.9.0", name: "1.9.0" }),
+    ];
+
+    it("sorts breakout series by item name ascending with natural ordering", () => {
+      const result = getSortedSeriesModels(
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          "graph.breakout_series_sort": "name_asc",
+        }),
+      );
+
+      expect(result.map((series) => series.name)).toEqual([
+        "1.9.0",
+        "2.0.0",
+        "2.0.10",
+        "2.1.0",
+      ]);
+    });
+
+    it("sorts breakout series by item name descending with natural ordering", () => {
+      const result = getSortedSeriesModels(
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          "graph.breakout_series_sort": "name_desc",
+        }),
+      );
+
+      expect(result.map((series) => series.name)).toEqual([
+        "2.1.0",
+        "2.0.10",
+        "2.0.0",
+        "1.9.0",
+      ]);
+    });
+
+    it("sorts breakout series by total value descending", () => {
+      const result = getSortedSeriesModels(
+        seriesModels,
+        createMockComputedVisualizationSettings({
+          "graph.breakout_series_sort": "value_desc",
+        }),
+        [
+          {
+            [X_AXIS_DATA_KEY]: 1,
+            ["2.0.0"]: 10,
+            ["2.1.0"]: 30,
+            ["2.0.10"]: 20,
+            ["1.9.0"]: 1,
+          },
+          {
+            [X_AXIS_DATA_KEY]: 2,
+            ["2.0.0"]: 20,
+            ["2.1.0"]: 5,
+            ["2.0.10"]: 15,
+            ["1.9.0"]: 2,
+          },
+        ],
+      );
+
+      expect(result.map((series) => series.name)).toEqual([
+        "2.1.0",
+        "2.0.10",
+        "2.0.0",
+        "1.9.0",
+      ]);
     });
   });
 

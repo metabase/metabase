@@ -1,5 +1,4 @@
-import type { EChartsOption } from "echarts";
-import type { EChartsType } from "echarts/core";
+import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
@@ -29,7 +28,10 @@ import type {
   RenderingContext,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import type {
+  EChartsEventHandler,
+  ZREventHandler,
+} from "metabase/visualizations/types/echarts";
 import {
   canBrush,
   getBrushData,
@@ -47,9 +49,48 @@ import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
-function getSplitPanelGrids(option: EChartsOption) {
+function getSplitPanelGrids(option: EChartsCoreOption) {
   const { grid } = option;
   return Array.isArray(grid) && grid.length > 1 ? grid : null;
+}
+
+function getSelectableLineSeriesIndex(
+  option: EChartsCoreOption,
+  event: EChartsSeriesMouseEvent,
+) {
+  const { seriesIndex } = event;
+  if (event.seriesType !== "line" || seriesIndex == null) {
+    return null;
+  }
+
+  const seriesOption = Array.isArray(option.series)
+    ? option.series[seriesIndex]
+    : null;
+
+  return seriesOption?.type === "line" && seriesOption.silent !== true
+    ? seriesIndex
+    : null;
+}
+
+function getSelectableLineSeriesIndexFromLegend(
+  option: EChartsCoreOption,
+  chartModel: BaseCartesianChartModel,
+  legendSeriesIndex: number,
+) {
+  const seriesModel = chartModel.seriesModels[legendSeriesIndex];
+  if (!seriesModel || !Array.isArray(option.series)) {
+    return null;
+  }
+
+  const seriesIndex = option.series.findIndex((seriesOption) => {
+    return (
+      seriesOption.id === seriesModel.dataKey &&
+      seriesOption.type === "line" &&
+      seriesOption.silent !== true
+    );
+  });
+
+  return seriesIndex >= 0 ? seriesIndex : null;
 }
 
 export const useChartEvents = (
@@ -57,8 +98,10 @@ export const useChartEvents = (
   containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  option: EChartsOption,
+  option: EChartsCoreOption,
   renderingContext: RenderingContext,
+  selectedLineSeriesIndex: number | null,
+  setSelectedLineSeriesIndex: (seriesIndex: number | null) => void,
   {
     card,
     rawSeries,
@@ -81,6 +124,8 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  const lastLineSeriesClickTime = useRef(0);
+  const optionRef = useLatest(option);
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
@@ -117,8 +162,6 @@ export const useChartEvents = (
     hovered,
   });
 
-  const optionRef = useLatest(option);
-
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
       {
@@ -133,6 +176,10 @@ export const useChartEvents = (
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
           if (isBrushing.current) {
+            return;
+          }
+
+          if (selectedLineSeriesIndex != null) {
             return;
           }
 
@@ -170,6 +217,16 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
+          const selectableLineSeriesIndex = getSelectableLineSeriesIndex(
+            optionRef.current,
+            event,
+          );
+          if (selectableLineSeriesIndex != null) {
+            lastLineSeriesClickTime.current = Date.now();
+            setSelectedLineSeriesIndex(selectableLineSeriesIndex);
+            return;
+          }
+
           const clickData = getSeriesClickData(chartModel, settings, event);
 
           if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
@@ -263,6 +320,8 @@ export const useChartEvents = (
     [
       chartRef,
       onHoverChange,
+      selectedLineSeriesIndex,
+      setSelectedLineSeriesIndex,
       timelineEventsModel,
       chartModel,
       hovered,
@@ -285,10 +344,24 @@ export const useChartEvents = (
     ],
   );
 
+  const zrEventHandlers: ZREventHandler[] = useMemo(
+    () => [
+      {
+        eventName: "click",
+        handler: () => {
+          if (Date.now() - lastLineSeriesClickTime.current > 100) {
+            setSelectedLineSeriesIndex(null);
+          }
+        },
+      },
+    ],
+    [setSelectedLineSeriesIndex],
+  );
+
   useEffect(
     function handleHoverStates() {
       const chart = chartRef.current;
-      if (!chart) {
+      if (!chart || selectedLineSeriesIndex != null) {
         return;
       }
 
@@ -353,6 +426,7 @@ export const useChartEvents = (
       chartRef,
       hovered,
       option,
+      selectedLineSeriesIndex,
     ],
   );
 
@@ -370,6 +444,16 @@ export const useChartEvents = (
 
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {
+      const selectableLineSeriesIndex = getSelectableLineSeriesIndexFromLegend(
+        optionRef.current,
+        chartModel,
+        seriesIndex,
+      );
+      if (selectableLineSeriesIndex != null) {
+        setSelectedLineSeriesIndex(selectableLineSeriesIndex);
+        return;
+      }
+
       const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
 
@@ -402,7 +486,9 @@ export const useChartEvents = (
       }
     },
     [
-      chartModel.seriesModels,
+      chartModel,
+      optionRef,
+      setSelectedLineSeriesIndex,
       rawSeries,
       settings,
       visualizationIsClickable,
@@ -416,6 +502,7 @@ export const useChartEvents = (
     onSelectSeries,
     onOpenQuestion,
     eventHandlers,
+    zrEventHandlers,
   };
 };
 

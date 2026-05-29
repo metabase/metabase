@@ -474,6 +474,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.other_category_color"?: SeriesSettingDefinition<Value, Props>;
   "graph.other_category_aggregation_fn"?: SeriesSettingDefinition<Value, Props>;
   "graph.series_labels"?: SeriesSettingDefinition<Value, Props>;
+  "graph.breakout_series_sort"?: SeriesSettingDefinition<Value, Props>;
   "graph.series_order"?: SeriesSettingDefinition<
     Value,
     ChartSettingSeriesOrderProps

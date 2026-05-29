@@ -148,7 +148,11 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       };
     },
     writeDependencies: ["graph.metrics"],
-    eraseDependencies: ["graph.series_order_dimension", "graph.series_order"],
+    eraseDependencies: [
+      "graph.series_order_dimension",
+      "graph.series_order",
+      "graph.breakout_series_sort",
+    ],
     dashboard: false,
     useRawSeries: true,
   },
@@ -481,6 +485,28 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
 };
 
 export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
+  "graph.breakout_series_sort": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Sort breakdown by`;
+    },
+    widget: "select",
+    getDefault: () => null,
+    getHidden: (_series, vizSettings) => {
+      return (vizSettings["graph.dimensions"] ?? []).length < 2;
+    },
+    getProps: () => ({
+      options: [
+        { name: t`Default`, value: null },
+        { name: t`Value (high to low)`, value: "value_desc" },
+        { name: t`Breakdown item name (ascending)`, value: "name_asc" },
+        { name: t`Breakdown item name (descending)`, value: "name_desc" },
+      ],
+    }),
+    readDependencies: ["graph.dimensions"],
+  },
   "graph.show_values": {
     get section() {
       return t`Display`;

@@ -653,6 +653,7 @@ const buildEChartsLineAreaSeries = (
     z: Z_INDEXES.lineAreaSeries,
     id: seriesModel.dataKey,
     type: "line",
+    triggerLineEvent: true,
     lineStyle: {
       color: seriesModel.color,
       type: seriesSettings["line.style"],

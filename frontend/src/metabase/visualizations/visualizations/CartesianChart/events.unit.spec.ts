@@ -3,17 +3,21 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,
 } from "metabase-types/api/mocks";
 
-import { getEventDimensions } from "./events";
+import { getEventDimensions, getTooltipModel } from "./events";
 
 const CARD_ID = 107;
 
@@ -40,6 +44,8 @@ const sumColumn = createMockColumn({
   base_type: "type/Float",
   effective_type: "type/Float",
 });
+
+const settings = {} as ComputedVisualizationSettings;
 
 const dimensionModel: DimensionModel = {
   column: createdAtColumn,
@@ -205,5 +211,52 @@ describe("getEventDimensions", () => {
       { column: createdAtColumn, value: "2027-10-01T00:00:00" },
       { column: sourceColumn, value: "Affiliate" },
     ]);
+  });
+});
+
+describe("getTooltipModel", () => {
+  it("focuses the selected line row in comparison tooltips", () => {
+    const firstSeries = createMockSeriesModel({
+      dataKey: "first-series",
+      name: "First series",
+      column: sumColumn,
+    });
+    const selectedSeries = createMockSeriesModel({
+      dataKey: "selected-series",
+      name: "Selected series",
+      column: sumColumn,
+    });
+
+    const datum = {
+      [X_AXIS_DATA_KEY]: "2027-10-01",
+      [firstSeries.dataKey]: 10,
+      [selectedSeries.dataKey]: 20,
+    };
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [firstSeries, selectedSeries],
+      dataset: [datum],
+      transformedDataset: [{ ...datum, [INDEX_KEY]: 0 }],
+      columnByDataKey: {
+        [firstSeries.dataKey]: sumColumn,
+        [selectedSeries.dataKey]: sumColumn,
+      },
+    });
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      settings,
+      0,
+      "line",
+      firstSeries.dataKey,
+      selectedSeries.dataKey,
+    );
+
+    expect(tooltipModel?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "First series", isFocused: false }),
+        expect.objectContaining({ name: "Selected series", isFocused: true }),
+      ]),
+    );
   });
 });

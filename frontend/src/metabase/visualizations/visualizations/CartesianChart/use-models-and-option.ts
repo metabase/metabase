@@ -7,6 +7,7 @@ import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type {
   CartesianChartModel,
+  DataKey,
   ScatterPlotModel,
   WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -36,7 +37,8 @@ export function useModelsAndOption(
     hovered,
     isFullscreen,
     gridSize,
-  }: VisualizationProps,
+    selectedLineSeriesIndex,
+  }: VisualizationProps & { selectedLineSeriesIndex?: number | null },
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
   const tc = useTranslateContent();
@@ -140,15 +142,6 @@ export function useModelsAndOption(
     return ids;
   }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
-  const tooltipOption = useMemo(() => {
-    return getTooltipOption(
-      chartModel,
-      settings,
-      card.display as CardDisplayType,
-      containerRef,
-    );
-  }, [chartModel, settings, card.display, containerRef]);
-
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -196,21 +189,37 @@ export function useModelsAndOption(
         );
     }
 
+    const selectedLineSeriesOption =
+      selectedLineSeriesIndex != null && Array.isArray(baseOption.series)
+        ? baseOption.series[selectedLineSeriesIndex]
+        : null;
+    const selectedSeriesDataKey =
+      typeof selectedLineSeriesOption?.id === "string"
+        ? (selectedLineSeriesOption.id as DataKey)
+        : null;
+
     return {
       ...baseOption,
-      tooltip: tooltipOption,
+      tooltip: getTooltipOption(
+        chartModel,
+        settings,
+        card.display as CardDisplayType,
+        containerRef,
+        selectedSeriesDataKey,
+      ),
     };
   }, [
     width,
     height,
     card.display,
-    tooltipOption,
     chartModel,
     chartLayout,
     timelineEventsModel,
     selectedOrHoveredTimelineEventIds,
     settings,
     renderingContext,
+    containerRef,
+    selectedLineSeriesIndex,
   ]);
 
   return { chartModel, timelineEventsModel, option, renderingContext };
