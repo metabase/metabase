@@ -1,27 +1,62 @@
-import { t } from "ttag";
+import type { MouseEvent } from "react";
+import { useState } from "react";
+import { c, t } from "ttag";
 
-import { Select, type SelectProps } from "metabase/ui";
-import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
+import {
+  Combobox,
+  Group,
+  Input,
+  Popover,
+  Select,
+  Stack,
+  Switch,
+} from "metabase/ui";
 import type { TaskRunDateFilterOption } from "metabase-types/api";
 
-type TaskRunDatePickerProps = Omit<
-  SelectProps,
-  "data" | "value" | "onChange"
-> & {
+import { guardTaskRunStartedAtRange } from "../../utils";
+
+type TaskRunDatePickerProps = {
   value: TaskRunDateFilterOption | null;
-  onChange: (value: TaskRunDateFilterOption | null) => void;
+  includeToday: boolean;
+  placeholder?: string;
+  onChange: (
+    value: TaskRunDateFilterOption | null,
+    includeToday: boolean,
+  ) => void;
 };
 
+type DateOption = {
+  label: string;
+  value: TaskRunDateFilterOption;
+};
+
+const PICKER_WIDTH = 260;
+const RIGHT_SECTION_FULL_WIDTH = 52;
+
+/**
+ * TODO: this whole component (Select + Switch in a popover with a Select-like trigger) should be generalized.
+ */
 export const TaskRunDatePicker = ({
   value,
+  includeToday,
+  placeholder,
   onChange,
-  ...props
 }: TaskRunDatePickerProps) => {
+  const emit = (
+    next: TaskRunDateFilterOption | null,
+    nextIncludeToday: boolean,
+  ) =>
+    onChange(
+      next,
+      next === null || next === "thisday" ? false : nextIncludeToday,
+    );
+
+  const [opened, setOpened] = useState<boolean>(false);
   /**
    * Using a simple version of TimeFilterWidget here in order to align with a design of admin page.
    * That means no custom date ranges.
    */
-  const data: SelectData<TaskRunDateFilterOption> = [
+  const options: DateOption[] = [
     { label: t`Today`, value: "thisday" },
     { label: t`Yesterday`, value: "past1days" },
     { label: t`Previous week`, value: "past1weeks" },
@@ -32,23 +67,114 @@ export const TaskRunDatePicker = ({
     { label: t`Previous 12 months`, value: "past12months" },
   ];
 
+  const selectedLabel = options.find((option) => option.value === value)?.label;
+  const includeTodayAllowed = value !== null && value !== "thisday";
+
+  const displayLabel = (() => {
+    if (!selectedLabel) {
+      return null;
+    }
+    if (includeToday && includeTodayAllowed) {
+      return c("Date range with include-today suffix")
+        .t`${selectedLabel}, including today`;
+    }
+    return selectedLabel;
+  })();
+
+  const handleClear = (event: MouseEvent) => {
+    event.stopPropagation();
+    emit(null, false);
+  };
+
+  const handleSelectChange = (next: string | null) => {
+    if (next === null) {
+      emit(null, false);
+      return;
+    }
+    if (guardTaskRunStartedAtRange(next)) {
+      emit(next, includeToday);
+    }
+  };
+
   return (
-    <Select
-      comboboxProps={{
-        middlewares: {
-          flip: true,
-          size: {
-            padding: 6,
-          },
-        },
-        position: "bottom-start",
-        width: 300,
-      }}
-      clearable
-      data={data}
-      value={value}
-      onChange={onChange}
-      {...props}
-    />
+    <Popover
+      opened={opened}
+      onChange={setOpened}
+      position="bottom-start"
+      withinPortal
+    >
+      <Popover.Target>
+        <Input
+          component="button"
+          type="button"
+          pointer
+          w={PICKER_WIDTH}
+          styles={{
+            input: {
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+              // Mantine's `rightSectionWidth` only sets a CSS variable that
+              // the layered styles in this bundle don't pick up, so the input
+              // padding doesn't follow the section. Override it directly so
+              // long labels ellipsize instead of sliding under the icons.
+              paddingInlineEnd: RIGHT_SECTION_FULL_WIDTH,
+            },
+            section: {
+              width: "auto",
+              paddingRight: "10px",
+            },
+          }}
+          onClick={() => setOpened((open) => !open)}
+          rightSection={
+            <Group gap="xs" wrap="nowrap">
+              {value !== null && (
+                <Input.ClearButton
+                  size="sm"
+                  aria-label={t`Clear`}
+                  style={{
+                    pointerEvents: "all",
+                    color: "var(--mb-color-text-primary)",
+                  }}
+                  onClick={handleClear}
+                />
+              )}
+              <Combobox.Chevron />
+            </Group>
+          }
+          rightSectionPointerEvents="none"
+        >
+          {displayLabel ?? (
+            <Input.Placeholder c="text-tertiary">
+              {placeholder}
+            </Input.Placeholder>
+          )}
+        </Input>
+      </Popover.Target>
+
+      <Popover.Dropdown p="md">
+        <Stack gap="md" w={PICKER_WIDTH}>
+          <Select
+            data={options}
+            value={value}
+            aria-label={t`Date range`}
+            placeholder={t`Started at`}
+            comboboxProps={{
+              withinPortal: false,
+              floatingStrategy: "fixed",
+              position: "bottom-start",
+            }}
+            onChange={handleSelectChange}
+          />
+          <Switch
+            label={t`Include today`}
+            checked={includeToday && includeTodayAllowed}
+            disabled={!includeTodayAllowed}
+            onChange={(event) => emit(value, event.currentTarget.checked)}
+          />
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
