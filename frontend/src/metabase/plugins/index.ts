@@ -16,6 +16,7 @@ export {
 export {
   PLUGIN_CACHING,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
@@ -67,7 +68,6 @@ export {
   type SdkIframeEmbedSetupModalInitialState,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
-export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -185,7 +185,6 @@ import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
-import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
@@ -229,7 +228,6 @@ export function reinitialize() {
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
-  reinitializeEntities();
   reinitializeLibrary();
   reinitializeMetabot();
   reinitializeModelPersistence();

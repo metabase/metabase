@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -81,6 +81,8 @@ const metadata = createMockMetadata({
 });
 
 const provider = createMetadataProvider({ metadata });
+
+const userEvent = _userEvent.setup();
 
 function getJoinedQuery() {
   return Lib.createTestQuery(provider, {
@@ -286,7 +288,10 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    // restore (not reset): resetAllMocks would leave the spied
+    // `getBoundingClientRect` returning `undefined`, which crashes
+    // floating-ui callbacks that fire after the tests finish.
+    jest.restoreAllMocks();
   });
 
   it("should display a join correctly", () => {

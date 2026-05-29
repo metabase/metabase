@@ -203,7 +203,9 @@
           tool  (-> tool
                     (update :inputSchema  malli->ui-input-schema)
                     (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
-                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
+                    (assoc :scope scope
+                           :required-extensions #{:mcp-app-ui}
+                           :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -278,22 +280,43 @@
   :mimeType    "text/markdown"
   :render-fn   (classpath-text-resource "metabot/prompts/tools/construct_notebook_query.md")})
 
+(defn- visualize-query-render-fn
+  "Shared render-fn for visualize_query and render_drill_through. Both expose the
+   same iframe template; they only differ in URI so hosts that dedupe by URI
+   (notably ChatGPT, which otherwise skips rendering a new iframe for a tool
+   whose `_meta.ui.resourceUri` already has one mounted) treat them as distinct.
+   `tag` is a per-URI marker embedded in the rendered HTML so the bytes hash
+   differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
+   distinct bodies the second URI's asset is silently dropped and the widget 404s."
+  [tag]
+  (fn [opts]
+    (let [site-url    (system/site-url)
+          session-key (:session-key opts)
+          session-id  (:session-id opts)]
+      (str "<!-- metabase-mcp-asset: " tag " -->\n"
+           (render-embed-mcp-template
+            {:instanceUrl    (json/encode site-url)
+             :instanceUrlRaw site-url
+             :sessionToken   (when session-key (json/encode session-key))
+             :mcpSessionId   (when session-id (json/encode session-id))})))))
+
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
- "agent:visualize"
- {:name        "Visualize Query"
-  :description "Interactive Metabase SDK visualization for a query"
+ "agent:viz:mcp-ui:query"
+ {:name          "Visualize Query"
+  :description   "Interactive Metabase SDK visualization for a query"
   :prefersBorder true
-  :render-fn   (fn [opts]
-                 (let [site-url    (system/site-url)
-                       session-key (:session-key opts)
-                       session-id  (:session-id opts)]
-                   (render-embed-mcp-template
-                    {:instanceUrl    (json/encode site-url)
-                     :instanceUrlRaw site-url
-                     :sessionToken   (when session-key (json/encode session-key))
-                     :mcpSessionId   (when session-id (json/encode session-id))})))})
+  :render-fn     (visualize-query-render-fn "visualize-query")})
+
+(register-ui-resource!
+ :render-drill-through
+ "ui://metabase/render-drill-through.html"
+ "agent:viz:mcp-ui:drill-through"
+ {:name          "Render Drill Through"
+  :description   "Interactive Metabase SDK visualization for a drill-through follow-up"
+  :prefersBorder true
+  :render-fn     (visualize-query-render-fn "render-drill-through")})
 
 (register-ui-tool!
  :visualize-query
@@ -353,7 +376,7 @@
                       :isError true})))})
 
 (register-ui-tool!
- :visualize-query
+ :render-drill-through
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
                     "Use this tool, not execute_query, when the user asks to show the result and "
