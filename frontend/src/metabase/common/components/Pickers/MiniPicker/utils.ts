@@ -260,8 +260,7 @@ export function getFolderAndHiddenFunctions(
 
     if (item.model === MiniPickerFolderModel.Schema) {
       // When the caller opts schemas into the pickable model set, schemas
-      // become terminal (fire `onChange`) instead of intermediate folders
-      // that only drill into tables.
+      // become terminal and don't drill into tables.
       return !modelSet.has("schema");
     }
 

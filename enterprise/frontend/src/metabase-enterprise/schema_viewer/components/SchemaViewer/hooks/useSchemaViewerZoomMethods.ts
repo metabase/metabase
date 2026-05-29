@@ -12,10 +12,8 @@ type PendingZoomRequest =
   | { kind: "node"; nodeId: string; retriesLeft: number };
 
 // When `setNodes` and `zoomToNode` fire in the same useEffect, the ReactFlow
-// store may not yet have the new node by the time the first rAF fires —
-// `instance.getNodes()` returns the previous set, the zoom is a no-op, and
-// the camera stays put. Retry across a few frames so the zoom lands once
-// the store has caught up.
+// store may not yet have the new node by the time the first rAF fires.
+// We retry across a few frames so the zoom lands once the store has caught up.
 const NODE_ZOOM_MAX_RETRIES = 8;
 
 type SchemaViewerInstance = ReactFlowInstance<
@@ -61,8 +59,7 @@ export function useSchemaViewerZoomMethods(
       return;
     }
     // Target node not yet in the ReactFlow store — try again next frame
-    // (up to NODE_ZOOM_MAX_RETRIES) so the camera still lands on it once
-    // the store sync catches up.
+    // so the camera still lands on it once the store sync catches up.
     if (pendingZoomRequest.retriesLeft > 0) {
       pendingZoomRequestRef.current = {
         ...pendingZoomRequest,

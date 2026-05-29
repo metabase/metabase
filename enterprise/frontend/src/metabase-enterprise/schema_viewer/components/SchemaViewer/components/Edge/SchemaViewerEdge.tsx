@@ -13,10 +13,8 @@ import type { SchemaViewerEdgeData, SchemaViewerFlowEdge } from "../../types";
 import { EdgeSymbol, type SymbolType } from "./EdgeSymbol";
 
 /**
- * Build an SVG path that loops from a source handle on the right side of a
- * table around to a target handle on the same table. The two endpoints share
- * an x coordinate (the right edge of the table); the path bows out to the
- * right by `SELF_REF_OFFSET` pixels.
+ * Builds an SVG path that loops from a source handle on the right side of a
+ * table around to a target handle on the same table.
  */
 const SELF_REF_OFFSET = 50;
 const SELF_REF_RADIUS = 8;

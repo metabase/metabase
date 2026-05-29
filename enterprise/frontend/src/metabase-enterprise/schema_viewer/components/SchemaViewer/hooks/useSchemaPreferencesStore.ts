@@ -16,7 +16,7 @@ type UseSchemaPreferencesStoreArgs = {
 
 type UseSchemaPreferencesStoreResult = {
   /**
-   * External focal table IDs for the current context — specifically
+   * External table IDs for the current context — specifically
    * tables from OTHER schemas that the user expanded into via FK click.
    * When a `schema` is set the backend returns all tables in that schema
    * automatically, so we never put schema-native tables in this set.
@@ -32,9 +32,8 @@ const EMPTY_IDS: readonly ConcreteTableId[] = [];
 /**
  * Owns per-context `schema_viewer` UserKeyValue restoration:
  *
- *  - `${databaseId}__${schema}` (per-context key): persisted set of "extra"
- *    focal table IDs — typically cross-schema tables the user expanded into
- *    via FK click. Restored on first visit to a context; written on each FK
+ *  - `${databaseId}__${schema}` key: persisted set of "extra"
+ *    table IDs. Restored on first visit to a context; written on each FK
  *    expansion.
  *
  * Initialization rules per context for the extra-tables set:
@@ -53,8 +52,8 @@ export function useSchemaPreferencesStore({
   const {
     // Use `currentValue` (RTK Query's `currentData`) rather than `value` so
     // synchronous restoration on context switch is not poisoned by the
-    // previous context's value. `value` is sticky across arg changes; the
-    // current* variant is `undefined` until the new subscription resolves.
+    // previous context's value. `value` is sticky across arg changes;
+    // `currentValue` is `undefined` until the new subscription resolves.
     currentValue: savedPrefs,
     setValue: setSavedPrefs,
     isLoading: isLoadingSavedPrefs,

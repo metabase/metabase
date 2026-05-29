@@ -1,5 +1,4 @@
 .card {
-  /* Using CSS variable for border color to allow color propagation to expand handle in FieldRow. */
   --node-border-color: var(--mb-color-border);
 
   position: relative;

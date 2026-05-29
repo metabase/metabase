@@ -72,10 +72,9 @@ export function mergeWithExistingPositions(
  *
  * Each pass scans the currently unplaced nodes and looks for the first
  * adjacency entry that points to an already placed neighbor. When one is found,
- * the node is positioned next to that neighbor on the preferred side, adjusted
- * to avoid collisions, then registered as placed so later nodes in the same or
- * next pass can anchor to it. Nodes without any placed neighbors are carried
- * forward. The loop stops once a full pass cannot place anything, leaving only
+ * the node is positioned next to that neighbor on the preferred side.
+ * Nodes without any placed neighbors are carried forward.
+ * The loop stops once a full pass cannot place anything, leaving only
  * nodes that are disconnected from the placed component.
  */
 function placeReachableAdditions(

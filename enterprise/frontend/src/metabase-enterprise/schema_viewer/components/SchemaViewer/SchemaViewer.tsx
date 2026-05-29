@@ -25,6 +25,7 @@ import type {
   ConcreteTableId,
   DatabaseId,
   ErdResponse,
+  SchemaName,
 } from "metabase-types/api";
 
 import S from "./SchemaViewer.module.css";
@@ -61,7 +62,7 @@ type SchemaViewerProps = {
   data: ErdResponse | undefined;
   isFetching: boolean;
   error: unknown;
-  contextKey: string | null;
+  contextKey: `${DatabaseId}__${SchemaName}` | null;
   focalTableId: ConcreteTableId | null;
   onExtraTableIdAdd: (tableId: ConcreteTableId) => void;
 };

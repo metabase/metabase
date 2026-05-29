@@ -71,13 +71,11 @@ export function SchemaViewerFieldRow({
 
   const handleClick = (event: React.MouseEvent) => {
     // Keep the click from bubbling up to the node, otherwise React Flow
-    // treats it as a node-click and clears all edge selection — which would
-    // wipe out the edge we're about to highlight just below.
+    // treats it as a node-click and clears all edge selection.
     event.stopPropagation();
     if (canExpand && field.fk_target_table_id != null) {
       // Pre-compute the edge IDs that will connect the FK field to its
-      // target field after expansion, so SchemaViewer can auto-highlight
-      // that edge once the new graph data arrives. We pass both possible
+      // target field after expansion to auto-highlight connecting edge. We pass both possible
       // orderings because the backend may put either field first in the
       // edge identifier.
       const candidateEdgeIds =
@@ -94,10 +92,7 @@ export function SchemaViewerFieldRow({
       });
       zoomToNode(targetNodeId);
 
-      // Also highlight the connecting edge — the same visual treatment
-      // the user would get from clicking the edge directly. We try both
-      // possible edge ID orderings (the backend's source/target convention
-      // for edge IDs isn't fixed) and select whichever exists.
+      // Same edge highlighting logic here.
       if (field.fk_target_field_id != null) {
         const candidateEdgeIds = new Set([
           getEdgeId(field.id, field.fk_target_field_id),
@@ -155,10 +150,7 @@ export function SchemaViewerFieldRow({
         </Box>
       )}
       {canExpand && !isExpanding && <Box className={S.expandIndicator} />}
-      {/* Handles are invisible but required for React Flow to draw edges.
-          Render them based on actual edge participation (not semantic_type)
-          so edges always find a matching handle even when backend metadata
-          doesn't tag the target field as type/PK. */}
+      {/* Handles are invisible but required for React Flow to draw edges. */}
       {isSource && (
         <Handle
           type="source"

@@ -35,9 +35,6 @@
   opacity: 0;
 }
 
-/* Indicator on expandable FK fields — signals the target table can be fetched.
-   Positioned so the circle's center sits on the table node's right border,
-   with half inside and half outside the card. */
 .expandIndicator {
   position: absolute;
   right: 0;

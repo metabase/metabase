@@ -18,9 +18,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
 }: SchemaViewerTableNodeProps) {
   const { selectedNodeId, selectNode, zoomToNode } = useSchemaViewerContext();
   // Any field on this node sitting at either end of the currently selected
-  // edge implies the node itself is connected to that edge — `useEdgeHandlers`
-  // already pre-computes the per-node set, so we don't need a React Flow
-  // store subscription here.
+  // edge implies the node itself is connected to that edge.
   const isConnectedToSelectedEdge = data.selectedFieldIds.size > 0;
   const isUserSelected = selectedNodeId === id;
 
@@ -30,8 +28,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
 
   const handleHeaderClick = useCallback(
     (event: React.MouseEvent) => {
-      // Prevent React Flow's default left-click node handling from clearing
-      // the edge selection we manage in SchemaViewer.
       event.stopPropagation();
       selectNode(id);
     },

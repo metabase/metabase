@@ -138,8 +138,6 @@ describe("SchemaViewerNodeSearch", () => {
     expect(input).not.toHaveFocus();
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
 
-    // useHotkeys listens at the document level — dispatch the event there
-    // rather than on a specific element so the handler picks it up.
     await userEvent.keyboard("f");
 
     expect(input).toHaveFocus();

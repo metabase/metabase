@@ -2,7 +2,7 @@
   width: 100%;
   height: 100%;
   min-height: 500px;
-  /* Value used by React Flow for its internal elements */
+  /* Value used by React Flow for its internal controls */
   --canvas-element-z-index: 5;
   --regular-edge-z-index: 0;
   --selected-edge-z-index: 1;
@@ -12,7 +12,7 @@
   :global(.react-flow__edges > svg) {
     z-index: var(--regular-edge-z-index);
   }
-  /* Class added by ReactFlow for selected edges */
+  /* Position selected edges higher to allow further clicks on selected edge */
   :global(.react-flow__edges > svg:has(> .react-flow__edge.selected)) {
     z-index: var(--selected-edge-z-index);
   }

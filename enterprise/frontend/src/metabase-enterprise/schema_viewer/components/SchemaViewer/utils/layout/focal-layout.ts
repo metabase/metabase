@@ -10,8 +10,7 @@ import type { LayoutEdge } from "./types";
 
 /**
  * Stacks direct focal neighbors vertically in a single column centered on the
- * focal node, preserving the neighbor iteration order. Mutates `canvas` so
- * subsequent placement steps see the new positions.
+ * focal node, preserving the neighbor iteration order.
  */
 function placeFocalNeighborColumn(
   neighborIds: Set<string>,
@@ -67,7 +66,6 @@ function placeFocalSideCluster(
   );
   const laidOutRest = layoutWithDagre(restNodes, restEdges);
 
-  // Bounding box of the laid-out side cluster (in its own Dagre coords).
   let restMinX = Infinity;
   let restMinY = Infinity;
   let restMaxY = -Infinity;
@@ -84,7 +82,6 @@ function placeFocalSideCluster(
     }
   }
 
-  // A wider-than-normal rank gap signals "separate cluster" visually.
   const dx = canvas.rightEdge + DAGRE_RANK_SEP_PX * 2 - restMinX;
   const dy = focalCenterY - (restMinY + restMaxY) / 2;
 
@@ -100,10 +97,9 @@ function placeFocalSideCluster(
  * Re-layouts the graph around a focal node without moving the focal node
  * itself, so the user's camera position remains meaningful. Direct incoming
  * neighbors are stacked in a centered column on the left, direct outgoing
- * neighbors are stacked on the right, and self-references stay attached to the
- * focal node. Everything outside that focal cluster is laid out with Dagre as
- * an independent side cluster, then translated to the right of the focal
- * cluster and vertically centered on the focal node.
+ * neighbors are stacked on the right.
+ * Everything outside that focal cluster is laid out with Dagre as
+ * an independent side cluster.
  */
 export function focusNodeLayout(
   focalId: string,
@@ -138,6 +134,5 @@ export function focusNodeLayout(
   const restNodes = nodes.filter((n) => !canvas.hasPlaced(n.id));
   placeFocalSideCluster(restNodes, edges, focalCenterY, canvas);
 
-  // Preserve original node order.
   return canvas.getPlacedOrOriginalNodesInOrder(nodes);
 }

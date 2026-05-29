@@ -12,8 +12,7 @@ export type SchemaViewerNodeData = ErdNode & {
   // also sits on the right of the same node.
   selfRefTargetFieldIds: Set<FieldId>;
   // Fields on this table that sit at either end of the currently selected
-  // edge. Pre-computed at edge-click time so the row component just reads
-  // a flag rather than re-deriving membership per render.
+  // edge. Pre-computed at edge-click.
   selectedFieldIds: Set<FieldId>;
 };
 export type SchemaViewerFlowNode = Node<SchemaViewerNodeData>;

@@ -21,11 +21,6 @@ type SchemaViewerContextValue = {
   ) => void;
   selectedNodeId: string | null;
   selectNode: (nodeId: string | null) => void;
-  /**
-   * Pan/zoom to a single node using the shared zoom rules (≥0.5 zoom, header
-   * pinned near the top). Coalesces with other zoom calls in the same tick
-   * — only the last request wins.
-   */
   zoomToNode: (nodeId: string) => void;
 };
 

@@ -54,8 +54,7 @@ export function SchemaPickerInput({
       models={["schema"]}
       onChange={handleChange}
       menuProps={{
-        // MiniPicker hard-codes Menu's onChange to its `onClose` (close-only).
-        // Override so clicking the trigger button toggles `opened` both ways.
+        // This allows to toggle menu by clicking the trigger button.
         onChange: setOpened,
         clickOutsideEvents: ["pointerdown", "touchstart"],
         position: "bottom-start",
