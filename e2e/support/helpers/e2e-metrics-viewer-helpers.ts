@@ -1,22 +1,26 @@
 export const MetricsViewer = {
   goToViewer: () => cy.visit("/explore"),
+  formulaInput: () => cy.findByTestId("metrics-formula-input"),
   searchInput: () => {
     // Click the right edge of the container to focus the CodeMirror input
     // without accidentally hitting a pill (which would trigger the swap-metric flow).
-    cy.findByTestId("metrics-formula-input").click("right");
+    MetricsViewer.formulaInput().click("right");
     return cy.findByTestId("metrics-viewer-search-input");
   },
-  searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
+  searchBarPills: () =>
+    cy.get(
+      "[data-testid='metrics-viewer-pill'], [data-testid='metrics-viewer-expression-pill']",
+    ),
   searchResults: () => cy.findByTestId("mini-picker"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
-  getDimensionPillContainer: () =>
-    cy.findByTestId("metrics-viewer-dimension-pill-container"),
+  getDimensionPillBarContainer: () =>
+    cy.findByTestId("metrics-viewer-dimension-pill-bar"),
   dimensionPickerSidebar: () =>
     cy.findByTestId("metrics-viewer-dimension-picker-sidebar"),
   getColumnPickerButton: () =>
-    MetricsViewer.getMerticControls().findByLabelText("Change column"),
+    MetricsViewer.getMetricControls().findByLabelText("Change column"),
   openDimensionPickerSidebar: () => {
     MetricsViewer.getColumnPickerButton().click();
     return MetricsViewer.dimensionPickerSidebar();
@@ -45,16 +49,10 @@ export const MetricsViewer = {
       cy.wrap($el).should("have.attr", "data-viz-ui-name", displayType);
     });
   },
-  getMerticControls: () => cy.findByTestId("metrics-viewer-controls"),
+  getMetricControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
-    MetricsViewer.getMerticControls()
+    MetricsViewer.getMetricControls()
       .findByRole("button", { name: display })
       .click(),
-  getLayoutControls: () => cy.findByTestId("metrics-viewer-layout-controls"),
-  getAllCards: () => cy.findAllByTestId("metrics-viewer-card"),
-  openMetricHomePage: (metricName: string) => {
-    MetricsViewer.searchBarPills().contains(metricName).rightclick();
-    cy.findByText(/Go to metric home page/).click();
-  },
   runButton: () => cy.findByTestId("run-expression-button"),
 };

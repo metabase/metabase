@@ -119,6 +119,10 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 // Test Helpers
 // ============================================================================
 
+const selectMetricSearchResult = (name: string) => {
+  H.MetricsViewer.searchResults().contains('[role="menuitem"]', name).click();
+};
+
 /**
  * Add a metric or measure to the explorer via the search panel
  */
@@ -127,31 +131,45 @@ const addMetric = (name: string, runExpression: boolean = true) => {
   H.MetricsViewer.searchInput().type(`{end}, ${name}`, {
     waitForAnimations: true,
   });
-  H.MetricsViewer.searchResults().findByText(name).click();
+  selectMetricSearchResult(name);
 
   if (runExpression) {
-    H.MetricsViewer.runButton().click();
+    runFormula();
   }
 };
 const addMetricMath = (
   expression: ({ metricName: string } | string)[],
   runExpression: boolean = true,
 ) => {
+  H.MetricsViewer.searchInput().then(($input) => {
+    const text = $input.text().trim();
+    if (text.length > 0 && !/[,+*/(-]$/.test(text)) {
+      cy.wrap($input).type("{end}, ", {
+        waitForAnimations: true,
+      });
+    }
+  });
+
   for (const item of expression) {
     if (typeof item === "string") {
-      H.MetricsViewer.searchInput().type(`{end}${item}`, {
+      const text = /^[+*/-]$/.test(item) ? ` ${item} ` : item;
+      H.MetricsViewer.searchInput().type(`{end}${text}`, {
         waitForAnimations: true,
       });
     } else {
       H.MetricsViewer.searchInput().type(`{end}${item.metricName}`, {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().findByText(item.metricName).click();
+      selectMetricSearchResult(item.metricName);
     }
   }
   if (runExpression) {
-    H.MetricsViewer.runButton().click();
+    runFormula();
   }
+};
+
+const runFormula = () => {
+  H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
 
 /**
@@ -225,6 +243,32 @@ const selectDimensionBreakout = (
   H.MetricsViewer.closeDimensionPickerSidebar();
 };
 
+const showColumnLabels = () => {
+  H.MetricsViewer.getMetricControls()
+    .findByLabelText("Column label options")
+    .click();
+  cy.findByRole("switch", { name: "Show column labels" }).click();
+};
+
+const addOrdersProductsExpression = () => {
+  addMetricMath([
+    { metricName: "Count of orders" },
+    "+",
+    { metricName: "Count of products" },
+  ]);
+  cy.wait("@dataset");
+};
+
+const openTimeDimensionConfiguration = () => {
+  H.MetricsViewer.dimensionPickerSidebar()
+    .findByRole("button", { name: "Time" })
+    .realHover();
+
+  H.MetricsViewer.dimensionPickerSidebar()
+    .findByRole("button", { name: "Configure Time" })
+    .click();
+};
+
 /**
  * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
  */
@@ -280,7 +324,7 @@ const assertPillColorsInChart = (pillIndex: number) => {
     for (const color of colors) {
       H.echartsContainer()
         .find(`path[fill="${color}"], path[stroke="${color}"]`)
-        .should("exist");
+        .should("be.visible");
     }
   });
 };
@@ -339,7 +383,9 @@ describe("scenarios > metrics > explorer", () => {
     it("should show empty state on first load", () => {
       H.MetricsViewer.goToViewer();
       cy.url().should("include", "/explore");
-      cy.findByRole("heading", { name: "Start exploring" }).should("exist");
+      cy.findByRole("heading", { name: "Start exploring" }).should(
+        "be.visible",
+      );
 
       addMetric("Count of products");
 
@@ -375,7 +421,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
 
-      cy.findByRole("heading", { name: "No results!" }).should("exist");
+      cy.findByRole("heading", { name: "No results!" }).should("be.visible");
     });
   });
 
@@ -420,26 +466,40 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should add metrics and measures from the entity picker", () => {
-      H.activateToken("pro-self-hosted");
-      createLibraryWithTable();
+      H.activateToken("pro-self-hosted").then(() => {
+        createLibraryWithTable();
+      });
       H.MetricsViewer.goToViewer();
 
       cy.log("Add a metric from the entity picker");
-      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchInput().type("Count", { waitForAnimations: true });
       H.MetricsViewer.searchResults().findByText("Browse all").click();
+      cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Our analytics", "Count of orders"] });
+      cy.findByTestId("metrics-viewer-search-input").should(
+        "contain.text",
+        "Count of orders",
+      );
 
       cy.log("Add a measure from the entity picker");
-      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchInput().type("{end}, Test", {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText("Browse all").click();
+      cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Library", "Data", "Orders", "Test Measure"] });
+      cy.findByTestId("metrics-viewer-search-input").should(
+        "contain.text",
+        "Test Measure",
+      );
 
-      H.MetricsViewer.runButton().click();
+      runFormula();
 
       verifyMetricCount(2);
 
-      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchInput().type("Sample", { waitForAnimations: true });
       H.MetricsViewer.searchResults().findByText("Browse all").click();
+      cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Databases", "Sample Database"] });
 
       cy.log("People is disabled because it doesn't have measures");
@@ -466,12 +526,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
 
       addMetric("Count of products", false);
-      H.MetricsViewer.searchResults().findByText("Count of orders").click();
-      H.MetricsViewer.searchResults()
-        .findByText("Count of orders over time")
-        .click();
-      H.MetricsViewer.searchResults().findByText("Orders model metric").click();
-      H.MetricsViewer.runButton().click();
+      selectMetricSearchResult("Count of orders");
+      selectMetricSearchResult("Count of orders over time");
+      selectMetricSearchResult("Orders model metric");
+      runFormula();
 
       cy.wait("@dataset");
       verifyMetricCount(4);
@@ -540,7 +598,7 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       H.MetricsViewer.searchBarPills()
-        .contains("[data-testid=metrics-viewer-search-pill]", "Count of orders")
+        .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length", 5);
@@ -594,7 +652,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Search pill should cap at 6 color indicators");
       H.MetricsViewer.searchBarPills()
-        .contains("[data-testid=metrics-viewer-search-pill]", "Count of orders")
+        .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length", 6);
@@ -772,7 +830,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Count of products", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      selectMetricSearchResult("Count of products");
       cy.wait("@getMetric");
 
       cy.findByTestId("run-expression-button").click();
@@ -849,6 +907,109 @@ describe("scenarios > metrics > explorer", () => {
     });
   });
 
+  it("should show an expression dimension pill with per-metric accordion", () => {
+    H.MetricsViewer.goToViewer();
+    cy.log("Create expression: Count of orders + Count of products");
+    addOrdersProductsExpression();
+
+    cy.log(
+      "Dimension pill bar should contain a selected expression dimension label",
+    );
+    showColumnLabels();
+    H.MetricsViewer.getDimensionPillBarContainer()
+      .should("be.visible")
+      .and("not.contain.text", "Select dimensions");
+
+    cy.log("Open the sidebar dimension picker");
+    H.MetricsViewer.openDimensionPickerSidebar();
+
+    cy.log(
+      "All fields should show accordion sections for each metric in the expression",
+    );
+    H.MetricsViewer.dimensionPickerSidebar().within(() => {
+      cy.findByRole("button", { name: "See all" }).click();
+      cy.findByRole("heading", { name: "All fields" }).should("be.visible");
+      cy.findByRole("button", { name: "Count of orders" })
+        .should("be.visible")
+        .and("have.attr", "aria-expanded", "true");
+      cy.findByRole("button", { name: "Count of products" })
+        .scrollIntoView()
+        .should("be.visible")
+        .and("have.attr", "aria-expanded", "false")
+        .click();
+      cy.findAllByRole("button", { name: "Category" }).should(
+        "have.length.at.least",
+        1,
+      );
+    });
+
+    cy.log(
+      "Configure the shared Time category and select a non-default dimension",
+    );
+    H.MetricsViewer.dimensionPickerSidebar()
+      .findByRole("button", { name: "Back" })
+      .click();
+    openTimeDimensionConfiguration();
+    H.MetricsViewer.dimensionPickerSidebar()
+      .findByLabelText("Select dimension for Count of orders")
+      .click();
+    cy.findByRole("option", { name: /Birth Date/ }).click();
+
+    cy.wait("@dataset");
+
+    cy.log("Expression dimension pill should now show 'Multiple dimensions'");
+    H.MetricsViewer.getDimensionPillBarContainer().should(
+      "contain.text",
+      "Multiple dimensions",
+    );
+  });
+
+  it("should preserve non-default expression dimensions after page reload", () => {
+    H.MetricsViewer.goToViewer();
+    cy.log(
+      "Create expression with only expression entity: Count of orders + Count of products",
+    );
+    addOrdersProductsExpression();
+    showColumnLabels();
+
+    cy.log("Pick a non-default dimension for one metric in the expression");
+    H.MetricsViewer.openDimensionPickerSidebar();
+    openTimeDimensionConfiguration();
+    H.MetricsViewer.dimensionPickerSidebar()
+      .findByLabelText("Select dimension for Count of orders")
+      .click();
+    cy.findByRole("option", { name: /Birth Date/ }).click();
+
+    cy.wait("@dataset");
+
+    cy.log("Verify the pill shows 'Multiple dimensions' (non-default state)");
+    H.MetricsViewer.getDimensionPillBarContainer().should(
+      "contain.text",
+      "Multiple dimensions",
+    );
+
+    cy.log("Reload the page and verify the dimension choice persists");
+    cy.reload();
+    cy.wait("@getMetric");
+    cy.wait("@dataset");
+
+    cy.log(
+      "Verify the per-metric dimension selections are restored after reload",
+    );
+    H.MetricsViewer.openDimensionPickerSidebar();
+    openTimeDimensionConfiguration();
+    H.MetricsViewer.dimensionPickerSidebar().within(() => {
+      cy.findByLabelText("Select dimension for Count of orders").should(
+        "have.value",
+        "Birth Date",
+      );
+      cy.findByLabelText("Select dimension for Count of products").should(
+        "have.value",
+        "Created At",
+      );
+    });
+  });
+
   // ============================================================================
   // Expression Custom Names
   // ============================================================================
@@ -858,6 +1019,7 @@ describe("scenarios > metrics > explorer", () => {
       interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@dataset");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
     });
 
@@ -895,7 +1057,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Legend should display the custom expression name");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findAllByText("My Custom Expression")
-          .should("exist")
+          .should("be.visible")
           .should("have.length", 2);
         cy.findByText(/Test Measure/).should("not.exist");
       });
@@ -906,7 +1068,7 @@ describe("scenarios > metrics > explorer", () => {
         .eq(4)
         .trigger("mousemove", { force: true });
       H.echartsTooltip().within(() => {
-        cy.findByText("My Custom Expression").should("exist");
+        cy.findByText("My Custom Expression").should("be.visible");
         cy.findByText(/Test Measure/).should("not.exist");
       });
     });
@@ -955,7 +1117,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByText("Temporary Name").should("not.exist");
         cy.findAllByText("Count of orders + Test Measure")
-          .should("exist")
+          .should("be.visible")
           .should("have.length", 2);
       });
 
@@ -968,7 +1130,7 @@ describe("scenarios > metrics > explorer", () => {
         .trigger("mousemove", { force: true });
       H.echartsTooltip().within(() => {
         cy.findByText("Temporary Name").should("not.exist");
-        cy.findByText("Count of orders + Test Measure").should("exist");
+        cy.findByText("Count of orders + Test Measure").should("be.visible");
       });
     });
 
@@ -1008,7 +1170,7 @@ describe("scenarios > metrics > explorer", () => {
         .eq(4)
         .trigger("mousemove", { force: true });
       H.echartsTooltip().within(() => {
-        cy.findByText("My Stable Name").should("exist");
+        cy.findByText("My Stable Name").should("be.visible");
         cy.findByText(/Test Measure/).should("not.exist");
       });
     });
@@ -1077,8 +1239,8 @@ describe("scenarios > metrics > explorer", () => {
         "{end}{backspace}{backspace}{backspace}{backspace} * Count of products",
         { waitForAnimations: true },
       );
-      H.MetricsViewer.searchResults().findByText("Count of products").click();
-      H.MetricsViewer.runButton().click();
+      selectMetricSearchResult("Count of products");
+      runFormula();
       cy.wait("@dataset");
 
       cy.log(
@@ -1116,6 +1278,9 @@ describe("scenarios > metrics > explorer", () => {
         .should("contain.text", "First Name");
 
       cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type("{end}, ", {
+        waitForAnimations: true,
+      });
       addMetricMath([
         { metricName: "Count of orders" },
         "+",
@@ -1149,7 +1314,7 @@ describe("scenarios > metrics > explorer", () => {
         "{home}{del}{del}{del}{del}{del}{del}{del}",
         { waitForAnimations: true },
       );
-      H.MetricsViewer.runButton().click();
+      runFormula();
       cy.wait("@dataset");
 
       cy.log(
@@ -1173,6 +1338,7 @@ describe("scenarios > metrics > explorer", () => {
       interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@dataset");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
     });
 
@@ -1229,15 +1395,15 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
 
       H.MetricsViewer.dimensionPickerSidebar().within(() => {
-        cy.findByRole("button", { name: "Address" }).should("exist");
-        cy.findByRole("button", { name: "City" }).should("exist");
+        cy.findByRole("button", { name: "Address" }).should("be.visible");
+        cy.findByRole("button", { name: "City" }).should("be.visible");
         cy.findByRole("button", { name: "City" }).click();
       });
       cy.wait("@dataset");
 
       H.MetricsViewer.dimensionPickerSidebar().within(() => {
-        cy.findByRole("button", { name: "Address" }).should("exist");
-        cy.findByRole("button", { name: "City" }).should("exist");
+        cy.findByRole("button", { name: "Address" }).should("be.visible");
+        cy.findByRole("button", { name: "City" }).should("be.visible");
       });
     });
 
@@ -1290,12 +1456,12 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should render column labels as static text", () => {
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByLabelText("Column label options")
         .click();
       cy.findByRole("switch", { name: "Show column labels" }).click();
 
-      H.MetricsViewer.getDimensionPillContainer().within(() => {
+      H.MetricsViewer.getDimensionPillBarContainer().within(() => {
         cy.findByText("Created At").should("be.visible").click();
         cy.findByRole("button").should("not.exist");
       });
@@ -1491,14 +1657,14 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("filter on a per tab level");
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All values/ })
         .click();
 
       H.popover().findByText("Doohickey").click();
 
       H.popover().findByRole("button", { name: "Add filter" }).click();
-      H.MetricsViewer.getMerticControls().findByRole("button", {
+      H.MetricsViewer.getMetricControls().findByRole("button", {
         name: /is Doohickey/,
       });
       H.MetricsViewer.getMetricVisualization().should(
@@ -1555,17 +1721,17 @@ describe("scenarios > metrics > explorer", () => {
         "Doohickey",
       );
       H.MetricsViewer.getMetricVisualization().should("contain.text", "Gizmo");
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All values/ })
-        .should("exist");
+        .should("be.visible");
 
       cy.log("navigating forward should re-apply changes");
       cy.log("re-apply the dimension filter");
       cy.go("forward");
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /is Doohickey/ })
-        .should("exist");
+        .should("be.visible");
       H.MetricsViewer.getMetricVisualization().should(
         "contain.text",
         "Doohickey",
@@ -1621,7 +1787,7 @@ describe("scenarios > metrics > explorer", () => {
         "have.length",
         73,
       );
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by month/i })
         .click();
       H.popover().findByText("Year").click();
@@ -1629,12 +1795,12 @@ describe("scenarios > metrics > explorer", () => {
         "have.length",
         8,
       );
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by year/i })
         .click();
       H.popover().findByText("Month").click();
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All time/i })
         .click();
 
@@ -1657,7 +1823,7 @@ describe("scenarios > metrics > explorer", () => {
       );
 
       cy.log("edit the dimension filter to change the date range");
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /February/i })
         .click();
       H.popover().within(() => {
@@ -1672,7 +1838,7 @@ describe("scenarios > metrics > explorer", () => {
         triggered_from: "dimension_filter",
       });
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /January/i })
         .click();
       H.popover().findByRole("button", { name: "Clear" }).click();
@@ -1704,7 +1870,7 @@ describe("scenarios > metrics > explorer", () => {
           expect(Object.keys(colorsBefore).length).to.be.greaterThan(0);
         });
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All time/i })
         .click();
       H.popover()
@@ -1745,15 +1911,14 @@ describe("scenarios > metrics > explorer", () => {
 
           cy.log("Chart series colors should match legend colors");
           for (const hex of legendHexColors) {
-            H.echartsContainer().find(`path[stroke="${hex}"]`).should("exist");
+            H.echartsContainer()
+              .find(`path[stroke="${hex}"]`)
+              .should("be.visible");
           }
 
           cy.log("Search pill color indicator should match legend count");
           H.MetricsViewer.searchBarPills()
-            .contains(
-              "[data-testid=metrics-viewer-search-pill]",
-              "Count of orders",
-            )
+            .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
             .findByTestId("color-indicator-container")
             .children()
             .should("have.length", legendHexColors.length);
@@ -1842,9 +2007,9 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should drill into more granular time dimensions on timeseries chart", () => {
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by month/ })
-        .should("exist");
+        .should("be.visible");
       // this is messy, but adding the metric math expression causes the viz to unmount and dispose the ECharts instance
       // if you click on the chart while it's being disposed, the click isn't handled properly
       cy.wait(1000);
@@ -1854,9 +2019,9 @@ describe("scenarios > metrics > explorer", () => {
         .click();
       H.popover().findByText("See this month by week").click();
 
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by week/ })
-        .should("exist");
+        .should("be.visible");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
         10,
@@ -1943,7 +2108,7 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
       });
-      H.MetricsViewer.getMerticControls()
+      H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All time/i })
         .click();
       H.popover().findByText("Previous 12 months").click();
@@ -1951,10 +2116,7 @@ describe("scenarios > metrics > explorer", () => {
       function assertMetricMath() {
         cy.log("breakout is applied");
         H.MetricsViewer.searchBarPills()
-          .contains(
-            "[data-testid=metrics-viewer-search-pill]",
-            "Count of orders",
-          )
+          .contains("[data-testid=metrics-viewer-pill]", "Count of orders")
           .findByTestId("color-indicator-container")
           .children()
           .should("have.length", 4);
@@ -1970,7 +2132,7 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.getAllFilterPills()
           .eq(1)
           .findByText("2")
-          .should("exist");
+          .should("be.visible");
 
         cy.log("dimension filter is applied");
         H.MetricsViewer.getMetricVisualizationDataPoints().should(
@@ -1991,7 +2153,7 @@ describe("scenarios > metrics > explorer", () => {
         waitForAnimations: true,
         delay: 100,
       });
-      H.MetricsViewer.runButton().click();
+      runFormula();
       assertMetricMath();
     });
 
@@ -2017,10 +2179,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type(` + ${NUMERIC_METRIC_NAME}`, {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
+      selectMetricSearchResult(NUMERIC_METRIC_NAME);
+      runFormula();
       cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log(
         "Append literal number 123 — typed without selecting from dropdown",
@@ -2029,14 +2191,14 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type(" + 123", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.runButton().click();
+      runFormula();
       cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
       addMetric("123");
       cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log("Verify final pill layout");
       H.MetricsViewer.searchBarPills().should("have.length", 3);

@@ -137,7 +137,7 @@ export function MetricPill({
                 ? t`Remove ${metric.name}`
                 : t`Remove metric`,
             }}
-            data-testid="metrics-viewer-search-pill"
+            data-testid="metrics-viewer-pill"
           >
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
