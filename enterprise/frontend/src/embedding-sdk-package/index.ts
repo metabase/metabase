@@ -68,6 +68,7 @@ export type {
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
+export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
@@ -201,6 +202,10 @@ export type {
   SchemaParameter,
   SchemaRow,
 } from "./hooks/public/data-schema";
+export type {
+  UseQuestionQueryOptions,
+  UseQuestionQueryResult,
+} from "./hooks/public/use-question-query";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
