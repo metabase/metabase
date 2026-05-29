@@ -20,7 +20,10 @@ import {
   Text,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
+import {
+  useCreateWorkspaceDatabaseMutation,
+  useLazyGetWorkspaceQuery,
+} from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
 
 import { trackWorkspaceDatabaseAdded } from "../../../../analytics";
@@ -100,6 +103,7 @@ function NewDatabaseForm({
   onClose,
 }: NewDatabaseFormProps) {
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
+  const [getWorkspace] = useLazyGetWorkspaceQuery();
 
   const initialValues: NewDatabaseFormValues = {
     database_id: availableDatabases.find(supportsWorkspaces)?.id ?? null,
@@ -120,6 +124,7 @@ function NewDatabaseForm({
       database_id: values.database_id,
       input_schemas: values.input_schemas,
     }).unwrap();
+    await getWorkspace(workspace.id).unwrap();
     trackWorkspaceDatabaseAdded({ workspaceId: workspace.id });
     onCreate(updated);
   };

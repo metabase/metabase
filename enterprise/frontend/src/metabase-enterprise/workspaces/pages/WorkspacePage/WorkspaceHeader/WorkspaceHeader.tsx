@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -15,7 +16,7 @@ import * as Urls from "metabase/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { useDeleteWorkspace } from "../../../hooks";
+import { DeleteWorkspaceModal } from "../../../components/DeleteWorkspaceModal";
 
 export type WorkspaceHeaderProps = {
   workspace: Workspace;
@@ -68,9 +69,8 @@ type WorkspaceHeaderMenuProps = {
 
 function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
   const dispatch = useDispatch();
-  const { handleDelete, modalContent } = useDeleteWorkspace({
-    onSuccess: () => dispatch(push(Urls.workspaces())),
-  });
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   return (
     <>
@@ -83,13 +83,21 @@ function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
         <Menu.Dropdown>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-            onClick={() => handleDelete(workspace)}
+            onClick={openModal}
           >
             {t`Delete`}
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      {modalContent}
+      <DeleteWorkspaceModal
+        workspace={workspace}
+        opened={modalOpened}
+        onDelete={() => {
+          closeModal();
+          dispatch(push(Urls.workspaces()));
+        }}
+        onClose={closeModal}
+      />
     </>
   );
 }
