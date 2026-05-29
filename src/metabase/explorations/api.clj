@@ -148,7 +148,7 @@
                :creator_id            api/*current-user-id*
                :collection_id         coll-id
                :exploration_thread_id thread-id})
-  (when (ai-summary/ai-summary-available?)
+  (when (ai-summary/current-user-can-create-ai-summary?)
     (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id)))
 
 (defn- positional-rows

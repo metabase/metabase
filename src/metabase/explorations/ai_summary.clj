@@ -34,6 +34,7 @@
   and exposes the `debug-*` REPL helpers. Shared chart-rendering and LLM-call
   infrastructure lives in [[metabase.explorations.ai-summary.common]]."
   (:require
+   [better-cond.core :as b]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -42,9 +43,14 @@
    [metabase.explorations.ai-summary.phase2 :as phase2]
    [metabase.explorations.groups :as groups]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.models.exploration-thread-dimension :as thread-dimension]
+   [metabase.explorations.models.exploration-thread-metric :as thread-metric]
+   [metabase.explorations.models.exploration-thread-timeline :as thread-timeline]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -65,12 +71,15 @@
   200)
 
 (defn- load-result-rows
-  "Returns `{exploration_query_id {:result_data bytes :chart_stats m :stored_result_id N
-   :metric_description s :chart_description s}}` for the given ids. `chart_stats` is the
-  cached deep-stats blob written by the runner alongside the EQR row; `result_data` is owned
-  by the linked `stored_result` row and joined in via a second select so the model's
-  chart_stats EDN transform still applies. Descriptions are LLM-generated during contextual
-  scoring (see [[metabase.explorations.task.runner]])."
+  "Returns `{exploration-query-id {:result-data bytes :chart-stats m :stored-result-id N
+   :metric-description s :chart-description s}}` (kebab-case — these are massaged in-memory
+   records, not raw appdb rows) for the given ids.
+
+  Two selects rather than one `:left-join`: the two columns we need carry per-model Toucan
+  transforms a raw join would bypass — `stored_result.result_data` is an *encrypted secret*
+  column (`mi/transform-secret-value`) and `exploration_query_result.chart_stats` is EDN. We
+  select each through its own model so both transforms run. Descriptions are LLM-generated
+  during contextual scoring (see [[metabase.explorations.task.runner]])."
   [query-ids]
   (when (seq query-ids)
     (let [eqr-rows (t2/select [:model/ExplorationQueryResult
@@ -85,83 +94,20 @@
       (into {}
             (map (fn [{:keys [exploration_query_id stored_result_id chart_stats
                               metric_description chart_description]}]
-                   [exploration_query_id {:result_data        (get sr-blobs stored_result_id)
-                                          :chart_stats        chart_stats
-                                          :stored_result_id   stored_result_id
-                                          :metric_description metric_description
-                                          :chart_description  chart_description}]))
+                   [exploration_query_id {:result-data        (get sr-blobs stored_result_id)
+                                          :chart-stats        chart_stats
+                                          :stored-result-id   stored_result_id
+                                          :metric-description metric_description
+                                          :chart-description  chart_description}]))
             eqr-rows))))
-
-(defn load-timeline-events
-  "Fetch every non-archived timeline event from each timeline the user selected
-  on this thread, grouped by timeline. The events themselves carry the bulk
-  of the analytical signal — names, descriptions, and timestamps tell the
-  model *what happened* around the time the data changed. Returns a vector of
-  `{:timeline-id :timeline-name :timeline-description :events [...]}` maps,
-  events sorted by timestamp ascending.
-
-  Shared with `metabase.explorations.query-plan` — both prompts need the same
-  timeline rendering."
-  [thread-id]
-  (let [rows (t2/query
-              {:select   [[:t.id :timeline_id]
-                          [:t.name :timeline_name]
-                          [:t.description :timeline_description]
-                          [:te.id :event_id]
-                          [:te.name :event_name]
-                          [:te.description :event_description]
-                          [:te.timestamp :event_timestamp]
-                          [:te.icon :event_icon]
-                          [:ett.position :position]]
-               :from     [[:exploration_thread_timeline :ett]]
-               :join     [[:timeline :t] [:= :t.id :ett.timeline_id]]
-               :left-join [[:timeline_event :te] [:and
-                                                  [:= :te.timeline_id :t.id]
-                                                  [:= :te.archived false]]]
-               :where    [:= :ett.exploration_thread_id thread-id]
-               :order-by [[:ett.position :asc] [:te.timestamp :asc]]})]
-    (->> rows
-         (group-by :timeline_id)
-         (sort-by (fn [[_ rs]] (:position (first rs))))
-         (mapv (fn [[_ tl-rows]]
-                 (let [head (first tl-rows)]
-                   {:timeline-id          (:timeline_id head)
-                    :timeline-name        (:timeline_name head)
-                    :timeline-description (:timeline_description head)
-                    :events (->> tl-rows
-                                 (keep (fn [r]
-                                         (when (:event_id r)
-                                           {:id          (:event_id r)
-                                            :name        (:event_name r)
-                                            :description (:event_description r)
-                                            :timestamp   (u.date/format (:event_timestamp r))
-                                            :icon        (:event_icon r)})))
-                                 (sort-by :timestamp)
-                                 vec)}))))))
 
 (defn- selection-context
   "Plain-text recap of metric / dimension / timeline names selected on the
   thread, used to remind the LLM what the user was looking at."
   [thread-id]
-  (let [metrics    (->> (t2/query
-                         {:select    [[:c.name :name]]
-                          :from      [[:exploration_thread_metric :m]]
-                          :left-join [[:report_card :c] [:= :c.id :m.card_id]]
-                          :where     [:= :m.exploration_thread_id thread-id]
-                          :order-by  [[:m.position :asc]]})
-                        (keep :name))
-        dimensions (->> (t2/select [:model/ExplorationThreadDimension :display_name :dimension_id]
-                                   :exploration_thread_id thread-id
-                                   {:order-by [[:position :asc]]})
-                        (map (fn [d] (or (:display_name d) (:dimension_id d))))
-                        (remove nil?))
-        timelines  (->> (t2/query
-                         {:select    [[:t.name :name]]
-                          :from      [[:exploration_thread_timeline :ett]]
-                          :left-join [[:timeline :t] [:= :t.id :ett.timeline_id]]
-                          :where     [:= :ett.exploration_thread_id thread-id]
-                          :order-by  [[:ett.position :asc]]})
-                        (keep :name))]
+  (let [metrics    (thread-metric/selected-names thread-id)
+        dimensions (thread-dimension/selected-names thread-id)
+        timelines  (thread-timeline/selected-names thread-id)]
     (cond-> []
       (seq metrics)    (conj (str "Metrics:    " (str/join ", " metrics)))
       (seq dimensions) (conj (str "Dimensions: " (str/join ", " dimensions)))
@@ -194,37 +140,35 @@
   {:type    "doc"
    :content [{:type    "heading"
               :attrs   {:level 2}
-              :content [{:type "text" :text "Analysis underway…"}]}
+              :content [{:type "text" :text (tru "Analysis underway…")}]}
              {:type    "paragraph"
               :content [{:type  "text"
-                         :text  (str "The " auto-doc-name " is generating. This page will update when it's ready.")
+                         :text  (tru "The {0} is generating. This page will update when it''s ready." auto-doc-name)
                          :marks [{:type "italic"}]}]}]})
 
-(defn ai-summary-available?
+(defn current-user-can-create-ai-summary?
   "True when AI Summary can be generated for the **current user**. Must be called with the creator
   bound as the current user so the permission/usage checks resolve correctly."
   []
   (metabot/llm-call-available? :permission/metabot-other-tools))
 
 (defn create-placeholder-doc!
-  "Insert a fresh `AI Summary` document on `thread-id` owned by
-  `creator-id`, populated with the `Analysis underway…` placeholder. The doc's
-  `collection_id` mirrors the parent Exploration's so perms stay aligned.
-  Caller must establish a current-user binding. The doc is created up-front
-  by the exploration POST endpoint so the FE sidebar shows it immediately;
-  the later `write-document!` in this namespace updates it in place."
+  "Insert a fresh `AI Summary` document on `thread-id` owned by `creator-id`, populated with the
+  `Analysis underway…` placeholder. `collection-id` should be the parent Exploration's collection
+  so the doc lands beside it and inherits the same permissions. Caller must establish a
+  current-user binding. The doc is created up-front by the exploration POST endpoint so the FE
+  sidebar shows it immediately; the later `write-document!` in this namespace updates it in place."
   [thread-id creator-id collection-id]
-  (let [doc (first
-             (t2/insert-returning-instances! :model/Document
-                                             {:name                  auto-doc-name
-                                              :document              (placeholder-pm-doc)
-                                              :content_type          prose-mirror/prose-mirror-content-type
-                                              :creator_id            creator-id
-                                              :collection_id         collection-id
-                                              :exploration_thread_id thread-id}))]
+  (u/prog1 (first
+            (t2/insert-returning-instances! :model/Document
+                                            {:name                  auto-doc-name
+                                             :document              (placeholder-pm-doc)
+                                             :content_type          prose-mirror/prose-mirror-content-type
+                                             :creator_id            creator-id
+                                             :collection_id         collection-id
+                                             :exploration_thread_id thread-id}))
     (t2/update! :model/ExplorationThread thread-id
-                {:ai_summary_document_id (:id doc)})
-    doc))
+                {:ai_summary_document_id (:id <>)})))
 
 (defn- find-placeholder-doc
   "Look up the AI Summary document for `thread-id`. Returns nil when
@@ -244,9 +188,14 @@
   no transcript has been written yet. Includes pool info, both phase prompts
   and attempts, the curation, the final document, and the outcome keyword."
   [thread-id]
-  (:ai_summary_transcript
-   (t2/select-one [:model/ExplorationThread :id :ai_summary_transcript]
-                  :id thread-id)))
+  (t2/select-one-fn :ai_summary_transcript :model/ExplorationThread :id thread-id))
+
+(defn- get-phases
+  "Apply `f` to each phase sub-map of a transcript, returning
+  `{:phase-1 (f phase-1) :phase-2 (f phase-2)}`."
+  [{:keys [phase-1 phase-2]} f]
+  {:phase-1 (f phase-1)
+   :phase-2 (f phase-2)})
 
 (defn- attempt-reasonings
   "Extract per-attempt reasoning entries from an attempts vector. Each entry is
@@ -259,20 +208,17 @@
       thinking happened without pretending the trace is there.
   Attempts with no reasoning content block at all are dropped entirely."
   [attempts]
-  (->> attempts
-       (keep (fn [{:keys [attempt trace]}]
-               (let [text (not-empty (:reasoning trace))
-                     ;; A reasoning content block was emitted iff `summarize-parts`
-                     ;; saw at least one `:type :reasoning` chunk in the raw parts
-                     ;; list. With readable thinking the text is also populated;
-                     ;; with opaque/encrypted thinking we only get the part with
-                     ;; an empty `:reasoning` field.
-                     had-reasoning-part? (some #(= :reasoning (:type %))
-                                               (:all trace))]
-                 (cond
-                   text                {:attempt attempt :reasoning text}
-                   had-reasoning-part? {:attempt attempt :opaque? true}))))
-       vec))
+  (u/keepv
+   (fn [{:keys [attempt trace]}]
+     (or (when-let [text (not-empty (:reasoning trace))]
+           {:attempt attempt :reasoning text})
+         ;; A reasoning content block was emitted iff `summarize-parts` saw at least one
+         ;; `:type :reasoning` chunk in the raw parts list. With readable thinking the text is
+         ;; also populated; with opaque/encrypted thinking we only get the part with an empty
+         ;; `:reasoning` field.
+         (when (some #(= :reasoning (:type %)) (:all trace))
+           {:attempt attempt :opaque? true})))
+   attempts))
 
 (defn debug-reasoning
   "Return the extended-thinking traces for `thread-id` as a map keyed by phase:
@@ -280,41 +226,41 @@
     :phase-2 [...]}`. Each entry includes the model's deliberation for that
   attempt. Empty vectors when thinking was disabled or no reasoning emitted."
   [thread-id]
-  (let [t (debug-transcript thread-id)]
-    {:phase-1 (attempt-reasonings (get-in t [:phase-1 :attempts]))
-     :phase-2 (attempt-reasonings (get-in t [:phase-2 :attempts]))}))
+  (-> (debug-transcript thread-id)
+      (get-phases :attempts)
+      (update-vals attempt-reasonings)))
 
 (defn debug-prompt
   "Return both phase prompts: `{:phase-1 \"...\" :phase-2 \"...\"}`. Phase-2 is
   nil when the run didn't reach Phase 2."
   [thread-id]
-  (let [t (debug-transcript thread-id)]
-    {:phase-1 (get-in t [:phase-1 :prompt])
-     :phase-2 (get-in t [:phase-2 :prompt])}))
+  (-> (debug-transcript thread-id)
+      (get-phases :prompt)))
 
 (defn debug-document
   "Return the ProseMirror document the analyst (Phase 2) produced, pre-chart-
   materialization. Nil when Phase 2 didn't succeed."
   [thread-id]
-  (get-in (debug-transcript thread-id) [:phase-2 :final-pm-doc]))
+  (-> thread-id debug-transcript :phase-2 :final-pm-doc))
 
 (defn debug-curation
   "Return the Phase-1 curation map: `{:top_tier [...] :awareness_tier [...]
   :rationale \"...\"}`. Nil when Phase 1 didn't succeed."
   [thread-id]
-  (get-in (debug-transcript thread-id) [:phase-1 :curation]))
+  (-> thread-id debug-transcript :phase-1 :curation))
 
 ;;; ----- Reasoning section rendering -----
 
 (defn- reasoning-paragraphs
   "Split a raw reasoning string on blank lines into prose-mirror paragraph nodes."
   [reasoning]
-  (->> (str/split reasoning #"\n\s*\n")
-       (map str/trim)
-       (remove str/blank?)
-       (mapv (fn [p]
-               {:type    "paragraph"
-                :content [{:type "text" :text p}]}))))
+  (into []
+        (comp (map str/trim)
+              (remove str/blank?)
+              (map (fn [p]
+                     {:type    "paragraph"
+                      :content [{:type "text" :text p}]})))
+        (str/split reasoning #"\n\s*\n")))
 
 (def ^:private opaque-thinking-blocks
   "Stub body for an attempt where extended thinking ran but the trace came
@@ -397,9 +343,27 @@
   (let [p1-reasonings (:reasonings phase-1)
         p2-reasonings (:reasonings phase-2)
         rationale     (:rationale phase-1)
-        anything? (or (seq p1-reasonings) (seq p2-reasonings) (seq rationale)
-                      (:prompt phase-1) (:prompt phase-2))]
-    (if-not anything?
+        p1-blocks (when (or (seq p1-reasonings) (seq rationale) (:prompt phase-1))
+                    (concat
+                     [{:type    "heading"
+                       :attrs   {:level 3}
+                       :content [{:type "text" :text "Phase 1 — Chart curation"}]}]
+                     (when (seq rationale)
+                       [{:type    "paragraph"
+                         :content [{:type  "text"
+                                    :text  "Curator's rationale: "
+                                    :marks [{:type "bold"}]}
+                                   {:type "text" :text rationale}]}])
+                     (reasonings-blocks p1-reasonings)
+                     (prompt-blocks (:prompt phase-1))))
+        p2-blocks (when (or (seq p2-reasonings) (:prompt phase-2))
+                    (concat
+                     [{:type    "heading"
+                       :attrs   {:level 3}
+                       :content [{:type "text" :text "Phase 2 — Analysis"}]}]
+                     (reasonings-blocks p2-reasonings)
+                     (prompt-blocks (:prompt phase-2))))]
+    (if-not (or (seq p1-blocks) (seq p2-blocks))
       pm-doc
       (let [intro [{:type    "heading"
                     :attrs   {:level 2}
@@ -408,26 +372,6 @@
                     :content [{:type  "text"
                                :text  "Debug — the model's extended-thinking trace used to generate this document."
                                :marks [{:type "italic"}]}]}]
-            p1-blocks (when (or (seq p1-reasonings) (seq rationale) (:prompt phase-1))
-                        (concat
-                         [{:type    "heading"
-                           :attrs   {:level 3}
-                           :content [{:type "text" :text "Phase 1 — Chart curation"}]}]
-                         (when (seq rationale)
-                           [{:type    "paragraph"
-                             :content [{:type  "text"
-                                        :text  "Curator's rationale: "
-                                        :marks [{:type "bold"}]}
-                                       {:type "text" :text rationale}]}])
-                         (reasonings-blocks p1-reasonings)
-                         (prompt-blocks (:prompt phase-1))))
-            p2-blocks (when (or (seq p2-reasonings) (:prompt phase-2))
-                        (concat
-                         [{:type    "heading"
-                           :attrs   {:level 3}
-                           :content [{:type "text" :text "Phase 2 — Analysis"}]}]
-                         (reasonings-blocks p2-reasonings)
-                         (prompt-blocks (:prompt phase-2))))
             extra (vec (concat intro p1-blocks p2-blocks (repl-helpers-blocks thread-id)))]
         (update pm-doc :content (fnil into []) extra)))))
 
@@ -455,38 +399,38 @@
                                         :content [{:type "text" :text e}]}]})
                           (or final-errors []))]
     {:type    "doc"
-     :content (cond-> [{:type    "heading"
-                        :attrs   {:level 2}
-                        :content [{:type "text" :text (str auto-doc-name " generation failed")}]}
-                       {:type    "paragraph"
-                        :content [{:type "text" :text "The failure happened in "}
-                                  {:type  "text"
-                                   :text  phase-label
-                                   :marks [{:type "bold"}]}
-                                  {:type "text" :text " after a repair retry."}]}
-                       {:type    "heading"
-                        :attrs   {:level 3}
-                        :content [{:type "text" :text "Validation errors"}]}
-                       (if (seq err-items)
-                         {:type "bulletList" :content err-items}
-                         {:type    "paragraph"
-                          :content [{:type "text" :text "(no specific errors captured — see transcript for details)"}]})]
-                detail
-                (conj {:type    "heading"
-                       :attrs   {:level 3}
-                       :content [{:type "text" :text "Details"}]}
+     :content (into []
+                    cat
+                    [[{:type    "heading"
+                       :attrs   {:level 2}
+                       :content [{:type "text" :text (str auto-doc-name " generation failed")}]}
                       {:type    "paragraph"
-                       :content [{:type "text" :text detail}]})
-
-                :always
-                (conj {:type    "heading"
+                       :content [{:type "text" :text "The failure happened in "}
+                                 {:type  "text"
+                                  :text  phase-label
+                                  :marks [{:type "bold"}]}
+                                 {:type "text" :text " after a repair retry."}]}
+                      {:type    "heading"
+                       :attrs   {:level 3}
+                       :content [{:type "text" :text "Validation errors"}]}
+                      (if (seq err-items)
+                        {:type "bulletList" :content err-items}
+                        {:type    "paragraph"
+                         :content [{:type "text" :text "(no specific errors captured — see transcript for details)"}]})]
+                     (when detail
+                       [{:type    "heading"
+                         :attrs   {:level 3}
+                         :content [{:type "text" :text "Details"}]}
+                        {:type    "paragraph"
+                         :content [{:type "text" :text detail}]}])
+                     [{:type    "heading"
                        :attrs   {:level 3}
                        :content [{:type "text" :text "Next steps"}]}
                       {:type    "paragraph"
                        :content [{:type "text"
                                   :text (str "Re-running may succeed if this was a transient issue. To debug, run "
                                              (format "(metabase.explorations.ai-summary/debug-transcript %d)" thread-id)
-                                             " in a Clojure REPL — the persisted transcript contains both phase prompts, every LLM response, validation errors, and the extended-thinking trace.")}]}))}))
+                                             " in a Clojure REPL — the persisted transcript contains both phase prompts, every LLM response, validation errors, and the extended-thinking trace.")}]}]])}))
 
 ;;; ----- Main entry point -----
 
@@ -509,26 +453,10 @@
                     :content [{:type    "paragraph"
                                :content [{:type  "text"
                                           :marks [{:type "italic"}]
-                                          :text  (str "Generated automatically by AI. It can miss context "
-                                                      "or get things wrong — read it over and trust your own "
-                                                      "judgment before sharing or acting on the findings.")}]}]}]
+                                          :text  (tru "Generated automatically by AI. It can miss context or get things wrong — read it over and trust your own judgment before sharing or acting on the findings.")}]}]}]
     (cond-> pm-doc
       (and (map? pm-doc) (sequential? (:content pm-doc)))
       (update :content (fn [content] (into [disclaimer] content))))))
-
-(defn- wrap-card-embeds-in-resize-nodes
-  "Walk the LLM-generated PM doc and wrap each top-level `cardEmbed` in a `resizeNode` so the
-  FE node-view inherits an explicit height (matching the structure produced by the user-facing
-  append endpoint). Without the wrapper, static cardEmbeds inside paragraphs collapse to 0
-  height because `.cardEmbed` is `height: 100%` of an unsized parent."
-  [pm-doc]
-  (letfn [(wrap [node]
-            (if (and (map? node) (= prose-mirror/card-embed-type (:type node)))
-              {:type "resizeNode" :attrs {:height 400} :content [node]}
-              node))]
-    (cond-> pm-doc
-      (and (map? pm-doc) (sequential? (:content pm-doc)))
-      (update :content (fn [content] (mapv wrap content))))))
 
 (defn- coerce-int
   "Tolerate string-valued ids (the LLM sometimes returns them as JSON strings)."
@@ -541,12 +469,24 @@
   (and (map? node) (= prose-mirror/card-embed-type (:type node))))
 
 (defn- card-embed-stored-result-id [node]
-  (let [attrs (:attrs node)]
-    (coerce-int (or (:stored_result_id attrs) (get attrs "stored_result_id")))))
+  (coerce-int (get-in node [:attrs :stored_result_id])))
 
 (defn- card-embed-id [node]
-  (let [attrs (:attrs node)]
-    (coerce-int (or (:id attrs) (get attrs "id")))))
+  (coerce-int (get-in node [:attrs :id])))
+
+(defn- wrap-card-embeds-in-resize-nodes
+  "Walk the LLM-generated PM doc and wrap each top-level `cardEmbed` in a `resizeNode` so the
+  FE node-view inherits an explicit height (matching the structure produced by the user-facing
+  append endpoint). Without the wrapper, static cardEmbeds inside paragraphs collapse to 0
+  height because `.cardEmbed` is `height: 100%` of an unsized parent."
+  [pm-doc]
+  (letfn [(wrap [node]
+            (if (card-embed? node)
+              {:type "resizeNode" :attrs {:height 400} :content [node]}
+              node))]
+    (cond-> pm-doc
+      (and (map? pm-doc) (sequential? (:content pm-doc)))
+      (update :content (fn [content] (mapv wrap content))))))
 
 (defn- materialize-cards-for-card-embeds
   "Walk every static `cardEmbed` in `pm-doc`, materialize a real `report_card` for each one
@@ -559,7 +499,8 @@
   (walk/postwalk
    (fn [node]
      (let [sr-id (when (card-embed? node) (card-embed-stored-result-id node))]
-       (if (and sr-id (nil? (card-embed-id node)))
+       (if (or (card-embed-id node) (not sr-id))
+         node
          (try
            (let [eq-id (eqr/exploration-query-id-for-stored-result sr-id)
                  {:keys [card-id primary-eq]} (eqr/create-ephemeral-card-for-exploration-queries!
@@ -571,8 +512,7 @@
            (catch Throwable e
              (log/warnf e "Failed to materialize Card for stored_result %d in document %d"
                         sr-id document-id)
-             node))
-         node)))
+             node)))))
    pm-doc))
 
 (defn- write-document!
@@ -636,14 +576,13 @@
            selections timelines preamble breakouts breakouts-by-rep
            curation-prompt p1-transcript p1-reasonings rationale
            top_tier awareness_tier]}]
-  (let [top-breakouts       (vec (keep breakouts-by-rep top_tier))
-        awareness-breakouts (vec (keep breakouts-by-rep awareness_tier))
-        categorical-top-ids (->> top-breakouts
-                                 (mapcat :variants)
-                                 (filter (fn [p]
-                                           (= :categorical (phase2/x-axis-kind (:cfg p)))))
-                                 (keep :stored-result-id)
-                                 set)
+  (let [top-breakouts       (u/keepv breakouts-by-rep top_tier)
+        awareness-breakouts (u/keepv breakouts-by-rep awareness_tier)
+        categorical-top-ids (into #{}
+                                  (comp (mapcat :variants)
+                                        (filter #(-> % :cfg phase2/x-axis-kind (= :categorical)))
+                                        (keep :stored-result-id))
+                                  top-breakouts)
         analysis-prompt   (phase2/build-analysis-prompt
                            {:thread-prompt       (:prompt thread)
                             :selections          selections
@@ -692,93 +631,129 @@
                                        (log/infof "Wrote AI Summary for thread %d to document %d"
                                                   thread-id doc-id)))))))
 
+(defn- finalize-phase-1-failure!
+  "Phase 1 couldn't be repaired: swap the placeholder for an error doc and record the
+  `:phase-1-failed` outcome. No Phase 2 is attempted."
+  [{:keys [placeholder-doc thread-id creator-id exploration-id preamble
+           p1 p1-transcript p1-reasonings curation-prompt]}]
+  (finalize-doc!
+   {:placeholder-doc   placeholder-doc
+    :pm-doc            (error-doc
+                        {:phase        :phase-1
+                         :thread-id    thread-id
+                         :final-errors (:final-errors p1)
+                         :detail       "Chart curation failed validation after a repair retry."})
+    :reasoning-ctx     {:phase-1   {:reasonings p1-reasonings
+                                    :rationale  (get-in p1 [:value :rationale])
+                                    :prompt     curation-prompt}
+                        :phase-2   {:reasonings []}
+                        :thread-id thread-id}
+    :creator-id        creator-id
+    :thread-id         thread-id
+    :exploration-id    exploration-id
+    :preamble          preamble
+    :outcome           :phase-1-failed
+    :transcript-extras {:phase-1 p1-transcript}
+    :log-fn            (fn [doc-id]
+                         (log/warnf "AI Summary for thread %d: Phase 1 failed; wrote error doc %d"
+                                    thread-id doc-id))}))
+
+(defn- run-curation-phase!
+  "Build the curation prompt and run Phase 1, returning the raw result plus the transcript /
+  reasoning derivatives the rest of the pipeline needs."
+  [{:keys [thread-id thread selections timelines breakouts breakouts-by-rep done-queries]}]
+  (let [curation-prompt (phase1/build-curation-prompt
+                         {:thread-prompt     (:prompt thread)
+                          :selections        selections
+                          :timelines         timelines
+                          :index-entries     breakouts
+                          :pool-size         (count breakouts)
+                          :total-chart-count (count done-queries)})
+        p1              (phase1/run-curation! thread-id curation-prompt (keys breakouts-by-rep))]
+    {:curation-prompt curation-prompt
+     :p1              p1
+     :p1-transcript   {:prompt       curation-prompt
+                       :attempts     (:attempts p1)
+                       :outcome      (:outcome p1)
+                       :curation     (:value p1)
+                       :final-errors (:final-errors p1)}
+     :p1-reasonings   (attempt-reasonings (:attempts p1))}))
+
+(defn- mid-run-skip!
+  "Map a mid-run `ExceptionInfo` — a usage limit crossed (or perms revoked) *between* the
+  pre-flight gate and a phase's actual LLM call — to the matching skip outcome. Anything
+  else is rethrown to bubble to the outer `try` in [[generate-ai-summary!]]."
+  [thread-id creator-id preamble e]
+  (case (:type (ex-data e))
+    :metabot/permission-denied
+    (do (log/infof "Skipping AI Summary for thread %d: creator %s lacks required metabot permissions"
+                   thread-id creator-id)
+        (save-transcript! thread-id (assoc preamble :outcome :skip-no-permission))
+        :skip-no-permission)
+
+    :metabot/usage-limit-reached
+    (do (log/infof "Skipping AI Summary for thread %d: AI usage limit reached (%s)"
+                   thread-id (ex-message e))
+        (save-transcript! thread-id (assoc preamble :outcome :skip-usage-limit))
+        :skip-usage-limit)
+
+    (throw e)))
+
 (defn- run-phases!
   "Inner body of [[generate-ai-summary!]]: runs Phase 1 + Phase 2 inside a
   `with-current-user creator-id` binding so the LLM calls see the creator's
-  metabot permissions / usage limits.
-
-  The `ExceptionInfo` catch is the mid-run safety net: a usage limit crossed (or perms
-  revoked) *between* the pre-flight gate and a phase's actual LLM call still makes
-  `metabase.metabot.self/call-llm-structured-with-trace` throw
-  `:metabot/permission-denied` / `:metabot/usage-limit-reached`, which we map to the
-  matching skip outcomes; any other exception bubbles to the outer `try` in
-  [[generate-ai-summary!]]."
+  metabot permissions / usage limits. The mid-run `ExceptionInfo` safety net routes a
+  perms/usage change to a skip via [[mid-run-skip!]]."
   [{:keys [thread-id thread creator-id coll-id done-queries prepped
            selections timelines preamble]}]
   (request/with-current-user creator-id
     (try
-      (let [placeholder-doc (or (find-placeholder-doc thread-id)
-                                (create-placeholder-doc! thread-id creator-id coll-id))
-            breakouts        (common/group-breakouts prepped)
-            breakouts-by-rep (into {} (map (juxt :rep-id identity)) breakouts)
-            breakout-ids     (mapv :rep-id breakouts)
-            curation-prompt (phase1/build-curation-prompt
-                             {:thread-prompt     (:prompt thread)
-                              :selections        selections
-                              :timelines         timelines
-                              :index-entries     breakouts
-                              :pool-size         (count breakouts)
-                              :total-chart-count (count done-queries)})
-            p1 (phase1/run-curation! thread-id curation-prompt breakout-ids)
-            p1-transcript {:prompt       curation-prompt
-                           :attempts     (:attempts p1)
-                           :outcome      (:outcome p1)
-                           :curation     (:value p1)
-                           :final-errors (:final-errors p1)}
-            p1-reasonings (attempt-reasonings (:attempts p1))]
-        (if (= :failed (:outcome p1))
-          (finalize-doc! {:placeholder-doc   placeholder-doc
-                          :pm-doc            (error-doc
-                                              {:phase        :phase-1
-                                               :thread-id    thread-id
-                                               :final-errors (:final-errors p1)
-                                               :detail       "Phase 1 (chart curation) failed validation after a repair retry. No Phase 2 was attempted."})
-                          :reasoning-ctx     {:phase-1   {:reasonings p1-reasonings
-                                                          :rationale  (get-in p1 [:value :rationale])
-                                                          :prompt     curation-prompt}
-                                              :phase-2   {:reasonings []}
-                                              :thread-id thread-id}
-                          :creator-id        creator-id
-                          :thread-id         thread-id
-                          :exploration-id    (:exploration_id thread)
-                          :preamble          preamble
-                          :outcome           :phase-1-failed
-                          :transcript-extras {:phase-1 p1-transcript}
-                          :log-fn            (fn [doc-id]
-                                               (log/warnf "AI Summary for thread %d: Phase 1 failed; wrote error doc %d"
-                                                          thread-id doc-id))})
-          (let [{:keys [top_tier awareness_tier rationale]} (:value p1)]
-            (run-phase-2! {:thread-id        thread-id
-                           :thread           thread
-                           :creator-id       creator-id
-                           :placeholder-doc  placeholder-doc
-                           :done-queries     done-queries
-                           :selections       selections
-                           :timelines        timelines
-                           :preamble         preamble
-                           :breakouts        breakouts
-                           :breakouts-by-rep breakouts-by-rep
-                           :curation-prompt  curation-prompt
-                           :p1-transcript    p1-transcript
-                           :p1-reasonings    p1-reasonings
-                           :rationale        rationale
-                           :top_tier         top_tier
-                           :awareness_tier   awareness_tier}))))
+      (b/cond
+        :let [placeholder-doc  (or (find-placeholder-doc thread-id)
+                                   (create-placeholder-doc! thread-id creator-id coll-id))
+              breakouts        (common/group-breakouts prepped)
+              breakouts-by-rep (u/index-by :rep-id breakouts)
+              {:keys [curation-prompt p1 p1-transcript p1-reasonings]}
+              (run-curation-phase! {:thread-id        thread-id
+                                    :thread           thread
+                                    :selections       selections
+                                    :timelines        timelines
+                                    :breakouts        breakouts
+                                    :breakouts-by-rep breakouts-by-rep
+                                    :done-queries     done-queries})]
+
+        (= :failed (:outcome p1))
+        (finalize-phase-1-failure! {:placeholder-doc placeholder-doc
+                                    :thread-id       thread-id
+                                    :creator-id      creator-id
+                                    :exploration-id  (:exploration_id thread)
+                                    :preamble        preamble
+                                    :p1              p1
+                                    :p1-transcript   p1-transcript
+                                    :p1-reasonings   p1-reasonings
+                                    :curation-prompt curation-prompt})
+
+        :let [{:keys [top_tier awareness_tier rationale]} (:value p1)]
+
+        :else
+        (run-phase-2! {:thread-id        thread-id
+                       :thread           thread
+                       :creator-id       creator-id
+                       :placeholder-doc  placeholder-doc
+                       :done-queries     done-queries
+                       :selections       selections
+                       :timelines        timelines
+                       :preamble         preamble
+                       :breakouts        breakouts
+                       :breakouts-by-rep breakouts-by-rep
+                       :curation-prompt  curation-prompt
+                       :p1-transcript    p1-transcript
+                       :p1-reasonings    p1-reasonings
+                       :rationale        rationale
+                       :top_tier         top_tier
+                       :awareness_tier   awareness_tier}))
       (catch ExceptionInfo e
-        (case (:type (ex-data e))
-          :metabot/permission-denied
-          (do (log/infof "Skipping AI Summary for thread %d: creator %s lacks required metabot permissions"
-                         thread-id creator-id)
-              (save-transcript! thread-id (assoc preamble :outcome :skip-no-permission))
-              :skip-no-permission)
-
-          :metabot/usage-limit-reached
-          (do (log/infof "Skipping AI Summary for thread %d: AI usage limit reached (%s)"
-                         thread-id (ex-message e))
-              (save-transcript! thread-id (assoc preamble :outcome :skip-usage-limit))
-              :skip-usage-limit)
-
-          (throw e))))))
+        (mid-run-skip! thread-id creator-id preamble e)))))
 
 (defn- prepare-pool
   "Load the Phase-1 curation pool for `thread-id`: select the done queries,
@@ -795,32 +770,21 @@
         ;; metric-balanced selection decides *which* charts survive the cap;
         ;; re-sort the survivors by `chart-rank-key` so the index reads best-first.
         pool-queries (->> (common/select-pool max-charts-in-pool done-queries)
-                          (sort-by common/chart-rank-key #(compare %2 %1))
+                          (sort-by common/chart-rank-key u/reverse-compare)
                           vec)
         result-rows  (load-result-rows (map :id pool-queries))
-        prepped      (vec (keep (fn [q]
-                                  (let [{:keys [result_data chart_stats stored_result_id
-                                                metric_description chart_description]}
-                                        (get result-rows (:id q))]
-                                    (common/prep-chart q
-                                                       {:result-data        result_data
-                                                        :chart-stats        chart_stats
-                                                        :stored-result-id   stored_result_id
-                                                        :metric-description metric_description
-                                                        :chart-description  chart_description})))
-                                pool-queries))
-        pool-ids     (mapv :exploration-query-id prepped)
-        selections   (selection-context thread-id)
-        timelines    (load-timeline-events thread-id)
+        prepped      (u/keepv (fn [q] (common/prep-chart q (get result-rows (:id q))))
+                              pool-queries)
+        timelines    (thread-timeline/load-timeline-events thread-id)
         preamble     (assoc (base-transcript thread-id)
                             :thread-prompt       (:prompt thread)
                             :total-chart-count   (count done-queries)
                             :charts-in-pool      (count prepped)
-                            :pool-chart-ids      pool-ids
+                            :pool-chart-ids      (mapv :exploration-query-id prepped)
                             :timelines           timelines)]
     {:done-queries done-queries
      :prepped      prepped
-     :selections   selections
+     :selections   (selection-context thread-id)
      :timelines    timelines
      :preamble     preamble}))
 
@@ -884,33 +848,42 @@
   couldn't be repaired, or `nil` on an uncaught throwable (logged but never thrown)."
   [thread-id]
   (try
-    (let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
-                                :id thread-id)]
-      (if (nil? thread)
-        (do (log/warnf "Thread %d not found" thread-id) nil)
-        (let [exploration (t2/select-one [:model/Exploration :creator_id :collection_id]
-                                         :id (:exploration_id thread))
-              creator-id  (:creator_id exploration)]
-          (if-let [reason (request/with-current-user creator-id
-                            (metabot/llm-call-unavailable-reason :permission/metabot-other-tools))]
-            (gate-closed-skip! thread-id (base-transcript thread-id) reason)
-            (let [{:keys [done-queries prepped selections timelines preamble]}
-                  (prepare-pool thread-id thread)]
-              (if (empty? prepped)
-                (skip-no-charts! thread-id preamble)
-                ;; The placeholder doc was created up-front by the exploration POST endpoint so
-                ;; the FE sidebar shows it the moment the exploration is created. Every branch
-                ;; in `run-phases!` (phase-1-failed, phase-2-failed, ok) swaps this doc's body
-                ;; in place — we never insert a second doc. For threads created before the
-                ;; endpoint started pre-creating it, `run-phases!` falls back to creating one.
-                (run-phases! {:thread-id     thread-id
-                              :thread        thread
-                              :creator-id    creator-id
-                              :coll-id       (:collection_id exploration)
-                              :done-queries  done-queries
-                              :prepped       prepped
-                              :selections    selections
-                              :timelines     timelines
-                              :preamble      preamble})))))))
+    (b/cond
+      :let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
+                                  :id thread-id)]
+
+      (nil? thread)
+      (do (log/warnf "Thread %d not found" thread-id) nil)
+
+      :let [exploration (t2/select-one [:model/Exploration :creator_id :collection_id]
+                                       :id (:exploration_id thread))
+            creator-id  (:creator_id exploration)
+            reason      (request/with-current-user creator-id
+                          (metabot/llm-call-unavailable-reason :permission/metabot-other-tools))]
+
+      reason
+      (gate-closed-skip! thread-id (base-transcript thread-id) reason)
+
+      :let [{:keys [done-queries prepped selections timelines preamble]}
+            (prepare-pool thread-id thread)]
+
+      (empty? prepped)
+      (skip-no-charts! thread-id preamble)
+
+      ;; The placeholder doc was created up-front by the exploration POST endpoint so the FE
+      ;; sidebar shows it the moment the exploration is created. Every branch in `run-phases!`
+      ;; (phase-1-failed, phase-2-failed, ok) swaps this doc's body in place — we never insert a
+      ;; second doc. For threads created before the endpoint started pre-creating it,
+      ;; `run-phases!` falls back to creating one.
+      :else
+      (run-phases! {:thread-id     thread-id
+                    :thread        thread
+                    :creator-id    creator-id
+                    :coll-id       (:collection_id exploration)
+                    :done-queries  done-queries
+                    :prepped       prepped
+                    :selections    selections
+                    :timelines     timelines
+                    :preamble      preamble}))
     (catch Throwable e
       (handle-uncaught-error! thread-id e))))

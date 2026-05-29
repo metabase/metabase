@@ -59,9 +59,9 @@
   "Run `thunk` with the conditions under which AI Summary are generated:
   AI features + Metabot enabled, an LLM provider configured, and the current user
   holding the metabot permission. Needed because a clean test instance has no
-  provider key (so `ai-summary-available?` is false by default) and, on instances
+  provider key (so `current-user-can-create-ai-summary?` is false by default) and, on instances
   with the `:ai-controls` feature, a fresh user lacks `:permission/metabot-other-tools`
-  (which `ai-summary-available?` now also requires) — in either case the placeholder
+  (which `current-user-can-create-ai-summary?` now also requires) — in either case the placeholder
   document would not be created."
   [thunk]
   (mt/with-temporary-setting-values [ai-features-enabled? true
