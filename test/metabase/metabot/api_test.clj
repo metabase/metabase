@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -39,7 +40,13 @@
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-      (with-redefs [config/is-dev? true]
+      ;; `:user_recently_viewed` is enriched server-side from the shared
+      ;; `recent_views` app-DB table (independent of the request `:context`),
+      ;; which this test's `with-model-cleanup` doesn't reset — so stub the
+      ;; recents source to keep that prompt-context sub-channel deterministically
+      ;; empty rather than depending on whatever :rasta last viewed.
+      (with-redefs [config/is-dev?            true
+                    activity-feed/get-recents (fn [& _] {:recents []})]
         (let [conversation-id    (str (random-uuid))
               question           {:role "user" :content "Test native streaming"}
               historical-message {:role "user" :content "previous message"}]
@@ -79,8 +86,10 @@
                           conv))
                   ;; Native agent stores parts in raw format. The user row's `:data`
                   ;; carries a second `prompt-context` block (a snapshot of the
-                  ;; enriched context the LLM saw at turn start) — the request body
-                  ;; passed `:context {}` so all sub-channels are empty.
+                  ;; enriched context the LLM saw at turn start). `:user_is_viewing`
+                  ;; and `:mentioned_refs` are empty because the request passed
+                  ;; `:context {}` with no mentions; `:user_recently_viewed` is empty
+                  ;; because the recents source is stubbed above.
                   (is (=? [{:total_tokens 0
                             :role         :user
                             :data         [{:role "user" :content (:content question)}
