@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -71,13 +72,13 @@
             (let [batch-result (sync-util/with-error-handling
                                 (format "Error fetching union distinct values for %s"
                                         (sync-util/name-for-logging table))
-                                 (field-values/run-distinct-batch table batch))
+                                 (distinct-batch/run-distinct-batch table batch))
                   acc'         (update acc :queries inc)]
               (if (instance? Throwable batch-result)
                 (update acc' :failed-fields into (map :id batch))
                 (update acc' :results into batch-result))))
           {:results {} :queries 0 :failed-fields #{}}
-          (partition-all field-values/*batch-size* fields)))
+          (partition-all distinct-batch/*batch-size* fields)))
 
 (defn- fetch-distinct-per-field
   "Portable per-field fallback for non-SQL drivers (e.g. Mongo). Returns the same shape as

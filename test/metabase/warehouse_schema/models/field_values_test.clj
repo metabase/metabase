@@ -13,6 +13,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -591,55 +592,55 @@
 
 (deftest decode-value-test
   (testing "nil passes through"
-    (is (nil? (#'field-values/decode-value :type/Text nil)))
-    (is (nil? (#'field-values/decode-value :type/Integer nil)))
-    (is (nil? (#'field-values/decode-value :type/Float nil))))
+    (is (nil? (#'distinct-batch/decode-value :type/Text nil)))
+    (is (nil? (#'distinct-batch/decode-value :type/Integer nil)))
+    (is (nil? (#'distinct-batch/decode-value :type/Float nil))))
   (testing "Text base-type → string passthrough"
-    (is (= "hello" (#'field-values/decode-value :type/Text "hello")))
-    (is (= "" (#'field-values/decode-value :type/Text ""))))
+    (is (= "hello" (#'distinct-batch/decode-value :type/Text "hello")))
+    (is (= "" (#'distinct-batch/decode-value :type/Text ""))))
   (testing "Integer base-type → Long"
-    (is (= 42 (#'field-values/decode-value :type/Integer "42")))
-    (is (= -1 (#'field-values/decode-value :type/Integer "-1"))))
+    (is (= 42 (#'distinct-batch/decode-value :type/Integer "42")))
+    (is (= -1 (#'distinct-batch/decode-value :type/Integer "-1"))))
   (testing "BigInteger overflow → BigInteger"
     (is (= 12345678901234567890N
-           (#'field-values/decode-value :type/Integer "12345678901234567890")))
+           (#'distinct-batch/decode-value :type/Integer "12345678901234567890")))
     (is (= 12345678901234567890N
-           (#'field-values/decode-value :type/BigInteger "12345678901234567890"))))
+           (#'distinct-batch/decode-value :type/BigInteger "12345678901234567890"))))
   (testing "Boolean accepts true/t/1 (case-insensitive)"
-    (is (true?  (#'field-values/decode-value :type/Boolean "true")))
-    (is (true?  (#'field-values/decode-value :type/Boolean "TRUE")))
-    (is (true?  (#'field-values/decode-value :type/Boolean "True")))
-    (is (true?  (#'field-values/decode-value :type/Boolean "t")))
-    (is (true?  (#'field-values/decode-value :type/Boolean "1")))
-    (is (false? (#'field-values/decode-value :type/Boolean "false")))
-    (is (false? (#'field-values/decode-value :type/Boolean "FALSE")))
-    (is (false? (#'field-values/decode-value :type/Boolean "f")))
-    (is (false? (#'field-values/decode-value :type/Boolean "0"))))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "true")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "TRUE")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "True")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "t")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "1")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "false")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "FALSE")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "f")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "0"))))
   (testing "Float base-type → Double"
-    (is (= 3.14   (#'field-values/decode-value :type/Float "3.14")))
-    (is (= -0.5   (#'field-values/decode-value :type/Float "-0.5")))
-    (is (= 0.0    (#'field-values/decode-value :type/Float "0")))
-    (is (= 1.0e10 (#'field-values/decode-value :type/Float "1.0E10"))))
+    (is (= 3.14   (#'distinct-batch/decode-value :type/Float "3.14")))
+    (is (= -0.5   (#'distinct-batch/decode-value :type/Float "-0.5")))
+    (is (= 0.0    (#'distinct-batch/decode-value :type/Float "0")))
+    (is (= 1.0e10 (#'distinct-batch/decode-value :type/Float "1.0E10"))))
   (testing "Decimal base-type → BigDecimal (Decimal isa Float, so must come first in the cond)"
-    (is (= 3.14M           (#'field-values/decode-value :type/Decimal "3.14")))
-    (is (= 0M              (#'field-values/decode-value :type/Decimal "0")))
-    (is (= 1234567890.123M (#'field-values/decode-value :type/Decimal "1234567890.123"))))
+    (is (= 3.14M           (#'distinct-batch/decode-value :type/Decimal "3.14")))
+    (is (= 0M              (#'distinct-batch/decode-value :type/Decimal "0")))
+    (is (= 1234567890.123M (#'distinct-batch/decode-value :type/Decimal "1234567890.123"))))
   (testing "Decimal-derived semantic types (e.g. :type/Currency) → BigDecimal"
-    (is (= 19.99M (#'field-values/decode-value :type/Currency "19.99"))))
+    (is (= 19.99M (#'distinct-batch/decode-value :type/Currency "19.99"))))
   (testing "Float-derived non-decimal types (e.g. :type/Coordinate) → Double"
-    (is (= 37.5 (#'field-values/decode-value :type/Coordinate "37.5"))))
+    (is (= 37.5 (#'distinct-batch/decode-value :type/Coordinate "37.5"))))
   (testing "Malformed numeric input → string passthrough via catch"
-    (is (= "n/a" (#'field-values/decode-value :type/Integer "n/a")))
-    (is (= "n/a" (#'field-values/decode-value :type/Float "n/a")))
-    (is (= "n/a" (#'field-values/decode-value :type/Decimal "n/a"))))
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Integer "n/a")))
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Float "n/a")))
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Decimal "n/a"))))
   (testing "Types we don't decode (already JSON-encoded as strings by mi/transform-json) → string passthrough"
-    (is (= "2024-01-15"          (#'field-values/decode-value :type/Date "2024-01-15")))
-    (is (= "2024-01-15T10:30:00" (#'field-values/decode-value :type/DateTime "2024-01-15T10:30:00")))
-    (is (= "10:30:00"            (#'field-values/decode-value :type/Time "10:30:00")))
-    (is (= "abc-def-1234"        (#'field-values/decode-value :type/UUID "abc-def-1234")))
-    (is (= "192.168.1.1"         (#'field-values/decode-value :type/IPAddress "192.168.1.1"))))
+    (is (= "2024-01-15"          (#'distinct-batch/decode-value :type/Date "2024-01-15")))
+    (is (= "2024-01-15T10:30:00" (#'distinct-batch/decode-value :type/DateTime "2024-01-15T10:30:00")))
+    (is (= "10:30:00"            (#'distinct-batch/decode-value :type/Time "10:30:00")))
+    (is (= "abc-def-1234"        (#'distinct-batch/decode-value :type/UUID "abc-def-1234")))
+    (is (= "192.168.1.1"         (#'distinct-batch/decode-value :type/IPAddress "192.168.1.1"))))
   (testing "Unknown base-type → string passthrough"
-    (is (= "anything" (#'field-values/decode-value :type/SomeMadeUpType "anything")))))
+    (is (= "anything" (#'distinct-batch/decode-value :type/SomeMadeUpType "anything")))))
 
 (deftest ^:mb/driver-tests run-distinct-batch-integration-test
   (testing "run-distinct-batch returns correct distinct values for each field"
@@ -648,7 +649,7 @@
         (let [table   (t2/select-one :model/Table :id (mt/id :people))
               fields  [(t2/select-one :model/Field :id (mt/id :people :state))
                        (t2/select-one :model/Field :id (mt/id :people :source))]
-              results (field-values/run-distinct-batch table fields)]
+              results (distinct-batch/run-distinct-batch table fields)]
           (is (map? results) "Returns a map keyed by field-id")
           (is (= (set (map :id fields)) (set (keys results))))
           (testing "people.state distinct values"
@@ -675,8 +676,8 @@
               float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
               expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
               per-field-results (into {} (map (fn [f] [(:id f) (expected-set f)])) (concat text-fields float-fields))
-              people-results    (field-values/run-distinct-batch people-table text-fields)
-              products-results  (field-values/run-distinct-batch products-table float-fields)
+              people-results    (distinct-batch/run-distinct-batch people-table text-fields)
+              products-results  (distinct-batch/run-distinct-batch products-table float-fields)
               union-results     (merge people-results products-results)]
           (doseq [field (concat text-fields float-fields)]
             (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
@@ -693,7 +694,7 @@
         (let [table        (t2/select-one :model/Table :id (mt/id :people))
               state-field  (t2/select-one :model/Field :id (mt/id :people :state))
               source-field (t2/select-one :model/Field :id (mt/id :people :source))
-              results      (field-values/run-distinct-batch table [state-field source-field])]
+              results      (distinct-batch/run-distinct-batch table [state-field source-field])]
           (testing "Result map is keyed by field-id with :values / :raw-count entries"
             (is (map? results))
             (is (= #{(:id state-field) (:id source-field)} (set (keys results)))))

@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -300,7 +301,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception. Mock the SQL-path fetcher
       ;; (run-distinct-batch) since that's what the H2 sync path will call.
-      (mt/with-dynamic-fn-redefs [field-values/run-distinct-batch (fn [& _] (throw (java.net.ConnectException.)))]
+      (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
@@ -390,7 +391,7 @@
 (deftest ^:mb/driver-tests ^:synchronized union-batching-test
   (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
     (mt/dataset test-data
-      (binding [field-values/*batch-size* 2]
+      (binding [distinct-batch/*batch-size* 2]
         (let [fields           (vec (t2/select :model/Field
                                                :table_id (mt/id :people)
                                                :active true
