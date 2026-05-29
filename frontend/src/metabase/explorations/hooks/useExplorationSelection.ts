@@ -220,6 +220,24 @@ export interface ExplorationSelection {
   ) => void;
 }
 
+/**
+ * Order a metric block's dimensions by `dimension_interestingness`
+ * (descending; null treated as 0). Returns a new array — never mutates
+ * the input. Ties keep their incoming order (stable). Both the rendered
+ * pills and the `CreateExplorationRequest` group read from
+ * `block.dimensions`, so sorting here keeps display and request
+ * consistent and matches the interestingness-desc order used by the
+ * Data palette's dimension list.
+ */
+function sortDimensionsByInterestingness(
+  dimensions: MetricDimension[],
+): MetricDimension[] {
+  return [...dimensions].sort(
+    (a, b) =>
+      (b.dimension_interestingness ?? 0) - (a.dimension_interestingness ?? 0),
+  );
+}
+
 function buildMetricBlock(
   metric: ExplorationMetric,
   dimensionsById: Map<DimensionId, MetricDimension>,
@@ -235,7 +253,7 @@ function buildMetricBlock(
     kind: "metric",
     id: metricBlockId(metric.id),
     metric,
-    dimensions,
+    dimensions: sortDimensionsByInterestingness(dimensions),
   };
 }
 
@@ -400,7 +418,13 @@ export function useExplorationSelection(): ExplorationSelection {
             return block;
           }
           changed = true;
-          return { ...block, dimensions: [...block.dimensions, dimension] };
+          return {
+            ...block,
+            dimensions: sortDimensionsByInterestingness([
+              ...block.dimensions,
+              dimension,
+            ]),
+          };
         });
         return changed ? next : prev;
       });

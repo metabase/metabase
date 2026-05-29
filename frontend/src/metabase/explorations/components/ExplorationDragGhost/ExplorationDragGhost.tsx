@@ -36,6 +36,22 @@ export function ExplorationDragGhost({ data }: ExplorationDragGhostProps) {
     );
   }
 
+  if (data.kind === "timeline") {
+    return (
+      <Paper className={S.ghost} bd="1px solid border" shadow="md" radius="md">
+        <Group gap="sm" wrap="nowrap" align="center" px="md" py="sm">
+          <Icon name="calendar" size={14} c="brand" />
+          <Text fw="bold" size="sm" lh="1.25" lineClamp={1}>
+            {data.payload.name}
+          </Text>
+          <Text className={S.kindBadge} component="span">
+            {t`timeline`}
+          </Text>
+        </Group>
+      </Paper>
+    );
+  }
+
   return (
     <Paper className={S.ghost} bd="1px solid border" shadow="md" radius="md">
       <Group gap="sm" wrap="nowrap" align="center" px="md" py="sm">

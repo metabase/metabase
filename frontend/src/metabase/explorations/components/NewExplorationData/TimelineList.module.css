@@ -23,3 +23,9 @@
 .timelineItemSelected {
   border-color: var(--mb-color-brand);
 }
+
+/* While a row is being dragged, dim the original in place — the
+   floating `ExplorationDragGhost` is what the cursor carries. */
+.timelineItemDragging {
+  opacity: 0.4;
+}

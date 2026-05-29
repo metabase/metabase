@@ -1,183 +1,135 @@
-import type { ExplorationMetric } from "metabase/explorations/types";
-import type { MetricDimension } from "metabase-types/api";
-import {
-  createMockMetric,
-  createMockMetricDimension,
-} from "metabase-types/api/mocks/metric";
+import { createMockMetricDimension } from "metabase-types/api/mocks/metric";
 
-import { groupDimensionsByCategory, removeMetricFromSelection } from "./utils";
+import { groupDimensionsByGroupSource } from "./utils";
 
-function makeDim(id: string): MetricDimension {
-  return createMockMetricDimension({ id, display_name: id });
-}
-
-function makeMetric(
-  id: number,
-  name: string,
-  dimension_ids: string[],
-): ExplorationMetric {
-  return createMockMetric({
-    id,
-    name,
-    dimension_ids,
-  }) as ExplorationMetric;
-}
-
-describe("removeMetricFromSelection", () => {
-  const dimA = makeDim("dim-a");
-  const dimB = makeDim("dim-b");
-  const dimShared = makeDim("dim-shared");
-
-  it("returns the inputs untouched (minus the dropped metric) when the metric isn't found", () => {
-    const metrics = [makeMetric(1, "Revenue", ["dim-a"])];
-    const dimensions = [dimA];
-    const result = removeMetricFromSelection(metrics, dimensions, 999);
-    expect(result.metrics).toEqual(metrics);
-    expect(result.dimensions).toBe(dimensions);
-  });
-
-  it("drops the metric and the dimensions only it used", () => {
-    const m1 = makeMetric(1, "Revenue", ["dim-a"]);
-    const m2 = makeMetric(2, "Churn", ["dim-b"]);
-    const result = removeMetricFromSelection([m1, m2], [dimA, dimB], 1);
-
-    expect(result.metrics.map((m) => m.id)).toEqual([2]);
-    expect(result.dimensions.map((d) => d.id)).toEqual(["dim-b"]);
-  });
-
-  it("keeps a dimension that the removed metric used IF another remaining metric still uses it", () => {
-    const m1 = makeMetric(1, "Revenue", ["dim-a", "dim-shared"]);
-    const m2 = makeMetric(2, "Churn", ["dim-b", "dim-shared"]);
-    const result = removeMetricFromSelection(
-      [m1, m2],
-      [dimA, dimB, dimShared],
-      1,
-    );
-
-    expect(result.metrics.map((m) => m.id)).toEqual([2]);
-    // dim-a is dropped (only m1 used it), dim-shared survives (m2 uses it),
-    // dim-b is untouched.
-    expect(result.dimensions.map((d) => d.id).sort()).toEqual(
-      ["dim-b", "dim-shared"].sort(),
-    );
-  });
-
-  it("preserves dimensions that the removed metric never used (e.g. user-added orphans)", () => {
-    const m1 = makeMetric(1, "Revenue", ["dim-a"]);
-    const orphan = makeDim("dim-orphan");
-    const result = removeMetricFromSelection([m1], [dimA, orphan], 1);
-
-    expect(result.metrics).toEqual([]);
-    // dim-a is dropped (it was used only by m1); dim-orphan is kept
-    // because m1 didn't list it in dimension_ids.
-    expect(result.dimensions.map((d) => d.id)).toEqual(["dim-orphan"]);
-  });
-
-  it("removing the only metric drops every dimension it used", () => {
-    const m1 = makeMetric(1, "Revenue", ["dim-a", "dim-shared"]);
-    const result = removeMetricFromSelection([m1], [dimA, dimShared], 1);
-
-    expect(result.metrics).toEqual([]);
-    expect(result.dimensions).toEqual([]);
-  });
-
-  it("returns the original `dimensions` reference when nothing was dropped", () => {
-    // Removing Churn (only uses dim-shared, which Revenue still uses)
-    // should not change the dimensions list — same reference returned so
-    // callers can skip a redundant setState.
-    const m1 = makeMetric(1, "Revenue", ["dim-shared"]);
-    const m2 = makeMetric(2, "Churn", ["dim-shared"]);
-    const dimensions = [dimShared];
-    const result = removeMetricFromSelection([m1, m2], dimensions, 2);
-
-    expect(result.metrics.map((m) => m.id)).toEqual([1]);
-    expect(result.dimensions).toBe(dimensions);
-  });
+const dimOrdersCreatedAt = createMockMetricDimension({
+  id: "orders.created_at",
+  display_name: "Created At",
+  group: {
+    id: "orders",
+    type: "main",
+    display_name: "Orders",
+  },
+  dimension_interestingness: 0.9,
 });
 
-describe("groupDimensionsByCategory", () => {
-  // The helper relies on type-checks (`isString`, `isCategory`, etc.)
-  // to bucket dimensions. The test mocks below default to
-  // `effective_type: "type/Text"` + `semantic_type: null`, which
-  // lands every dimension in the `category` bucket — perfect for
-  // isolating the sort behaviour from the bucketing logic.
-  function makeSourcedDim(
-    id: string,
-    display_name: string,
-    fieldId: number,
-    interestingness: number | null,
-  ): MetricDimension {
-    return createMockMetricDimension({
-      id,
-      display_name,
-      sources: [{ type: "field", "field-id": fieldId }],
-      dimension_interestingness: interestingness,
+const dimOrdersTotal = createMockMetricDimension({
+  id: "orders.total",
+  display_name: "Total",
+  group: {
+    id: "orders",
+    type: "main",
+    display_name: "Orders",
+  },
+  dimension_interestingness: 0.7,
+});
+
+const dimAccountsPlan = createMockMetricDimension({
+  id: "accounts.plan",
+  display_name: "Plan",
+  group: {
+    id: "accounts",
+    type: "connection",
+    display_name: "Accounts",
+  },
+  dimension_interestingness: 0.6,
+});
+
+const dimUngrouped = createMockMetricDimension({
+  id: "loose.thing",
+  display_name: "Thing",
+  dimension_interestingness: 0.3,
+});
+
+describe("groupDimensionsByGroupSource", () => {
+  it("returns an empty list when given no dimensions", () => {
+    expect(groupDimensionsByGroupSource([])).toEqual([]);
+  });
+
+  it("buckets dimensions by their `group.id` and labels sections with the group's display_name", () => {
+    const rows = groupDimensionsByGroupSource([
+      dimOrdersCreatedAt,
+      dimOrdersTotal,
+      dimAccountsPlan,
+    ]);
+
+    // Expect 2 sections: Orders (max 0.9) and Accounts (max 0.6).
+    // Sections are ordered by max interestingness desc, so Orders
+    // is first.
+    expect(
+      rows.map((r) => (r.type === "header" ? `# ${r.label}` : r.dimension.id)),
+    ).toEqual([
+      "# Orders",
+      "orders.created_at",
+      "orders.total",
+      "# Accounts",
+      "accounts.plan",
+    ]);
+  });
+
+  it("falls back to an 'Other' section for dimensions with no `group`", () => {
+    const rows = groupDimensionsByGroupSource([
+      dimOrdersCreatedAt,
+      dimUngrouped,
+    ]);
+
+    const headers = rows
+      .filter((r) => r.type === "header")
+      .map((r) => (r.type === "header" ? r.label : ""));
+    expect(headers).toEqual(["Orders", "Other"]);
+  });
+
+  it("preserves the within-section order of incoming dimensions", () => {
+    // Pass in deliberately reversed order; the in-section order
+    // should match the input, only the *section* order is by
+    // max interestingness.
+    const rows = groupDimensionsByGroupSource([
+      dimOrdersTotal,
+      dimOrdersCreatedAt,
+    ]);
+    const dims = rows
+      .filter((r) => r.type === "dimension")
+      .map((r) => (r.type === "dimension" ? r.dimension.id : ""));
+    expect(dims).toEqual(["orders.total", "orders.created_at"]);
+  });
+
+  it("orders sections by the max interestingness of their dimensions, not the average", () => {
+    // Orders has a polarized spread (0.95 + 0.1 → avg 0.525, max 0.95);
+    // Accounts is uniformly mid (0.6 + 0.6 → avg 0.6, max 0.6). Average
+    // ordering would put Accounts first; max ordering puts Orders first
+    // because it owns the single most interesting dimension.
+    const ordersHot = createMockMetricDimension({
+      id: "orders.hot",
+      group: { id: "orders", type: "main", display_name: "Orders" },
+      dimension_interestingness: 0.95,
     });
-  }
+    const ordersCold = createMockMetricDimension({
+      id: "orders.cold",
+      group: { id: "orders", type: "main", display_name: "Orders" },
+      dimension_interestingness: 0.1,
+    });
+    const accountsA = createMockMetricDimension({
+      id: "accounts.a",
+      group: { id: "accounts", type: "connection", display_name: "Accounts" },
+      dimension_interestingness: 0.6,
+    });
+    const accountsB = createMockMetricDimension({
+      id: "accounts.b",
+      group: { id: "accounts", type: "connection", display_name: "Accounts" },
+      dimension_interestingness: 0.6,
+    });
 
-  it("orders source-grouped pills within a category by descending dimension_interestingness", () => {
-    // All three land in the `category` bucket (default type/Text);
-    // their pill order should match interestingness desc.
-    const dimensions = [
-      makeSourcedDim("dim-low", "Low", 1, 0.1),
-      makeSourcedDim("dim-high", "High", 2, 0.9),
-      makeSourcedDim("dim-mid", "Mid", 3, 0.5),
-    ];
-
-    const [category] = groupDimensionsByCategory(dimensions);
-
-    expect(category.pillGroups.map((p) => p.name)).toEqual([
-      "High",
-      "Mid",
-      "Low",
+    const rows = groupDimensionsByGroupSource([
+      // Feed Accounts first to prove ordering isn't just input order.
+      accountsA,
+      accountsB,
+      ordersHot,
+      ordersCold,
     ]);
-  });
 
-  it("treats null / undefined dimension_interestingness as 0 and keeps input order among ties", () => {
-    const dimensions = [
-      makeSourcedDim("dim-1", "First", 1, null),
-      makeSourcedDim("dim-2", "Second", 2, null),
-      makeSourcedDim("dim-3", "Third", 3, 0.5),
-    ];
-
-    const [category] = groupDimensionsByCategory(dimensions);
-
-    // "Third" (0.5) wins. "First" + "Second" both score 0 — their
-    // relative order matches the input array order (Array.prototype
-    // .sort is stable in ES2019+).
-    expect(category.pillGroups.map((p) => p.name)).toEqual([
-      "Third",
-      "First",
-      "Second",
-    ]);
-  });
-
-  it("collapses same-source bucketings into a single pill, anchored by the most-interesting bucketing's position", () => {
-    // Two bucketings of source 1 (boring + interesting) and one of
-    // source 2 (mid). Expect source 1 to anchor at "interesting"
-    // (highest among its members) and the pill list to be ordered
-    // accordingly.
-    const dimensions = [
-      makeSourcedDim("dim-1a", "Source1 Low", 1, 0.1),
-      makeSourcedDim("dim-2", "Source2 Mid", 2, 0.5),
-      makeSourcedDim("dim-1b", "Source1 High", 1, 0.9),
-    ];
-
-    const [category] = groupDimensionsByCategory(dimensions);
-
-    expect(category.pillGroups).toHaveLength(2);
-    // Source 1's most-interesting bucketing (0.9) ranks first, then
-    // Source 2 (0.5).
-    expect(category.pillGroups[0].dimensions.map((d) => d.id)).toEqual([
-      "dim-1b",
-      "dim-1a",
-    ]);
-    expect(category.pillGroups[1].dimensions.map((d) => d.id)).toEqual([
-      "dim-2",
-    ]);
-  });
-
-  it("returns [] for an empty input", () => {
-    expect(groupDimensionsByCategory([])).toEqual([]);
+    const headers = rows
+      .filter((r) => r.type === "header")
+      .map((r) => (r.type === "header" ? r.label : ""));
+    expect(headers).toEqual(["Orders", "Accounts"]);
   });
 });

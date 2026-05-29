@@ -1,6 +1,6 @@
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { useCallback } from "react";
+import { type HTMLAttributes, useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -17,11 +17,13 @@ import type {
 import {
   RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
   RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
+  RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
   isExplorationDropAccepted,
   isMetricBlock,
 } from "metabase/explorations/hooks";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import { getDimensionIcon } from "metabase/metrics-viewer/utils/tabs";
 import { useDispatch } from "metabase/redux";
 import {
   Accordion,
@@ -37,6 +39,7 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import * as LibMetric from "metabase-lib/metric/core";
 import type {
   CreateExplorationRequest,
   DimensionId,
@@ -94,25 +97,21 @@ function blockToGroup(block: ExplorationBlock) {
   };
 }
 
-function buildCreateExplorationRequest(
+export function buildCreateExplorationRequest(
   name: string,
   prompt: string,
   blocks: ExplorationBlock[],
   timelines: Timeline[],
 ): CreateExplorationRequest {
   const trimmedPrompt = prompt.trim();
-  const groups = blocks.map(blockToGroup);
 
-  // Global timeline selection (the current model has timelines as a
-  // single top-level set, not per-block) is attached to the first
-  // group so the BE sees them at least once. When per-block timeline
-  // state lands, this collapses to writing each block's own ids.
-  if (groups.length > 0 && timelines.length > 0) {
-    groups[0] = {
-      ...groups[0],
-      timeline_ids: timelines.map((tl) => tl.id),
-    };
-  }
+  // The timeline selection is exploration-wide, not per-block, so we
+  // attach the same `timeline_ids` to every group the request carries.
+  const timelineIds = timelines.map((tl) => tl.id);
+  const groups = blocks.map((block) => ({
+    ...blockToGroup(block),
+    timeline_ids: timelineIds,
+  }));
 
   return {
     name,
@@ -132,6 +131,7 @@ export function NewExplorationData({
     removeBlock,
     removeDimensionFromMetricBlock,
     removeMetricFromDimensionBlock,
+    toggleTimeline,
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -210,8 +210,10 @@ export function NewExplorationData({
       gap={0}
       bg="background-secondary"
       flex={1}
-      p="md"
+      px="sm"
+      py="md"
       h="100%"
+      w="100%"
       onClick={handleBackgroundClick}
     >
       <Group justify="space-between" align="center" px="md" flex="none">
@@ -228,7 +230,7 @@ export function NewExplorationData({
             <Accordion
               multiple
               defaultValue={defaultExpandedIds}
-              chevronPosition="left"
+              chevronPosition="right"
               classNames={{
                 root: S.accordionRoot,
                 item: S.accordionItem,
@@ -276,6 +278,10 @@ export function NewExplorationData({
           </>
         )}
       </Box>
+      <SelectedTimelinesPanel
+        timelines={timelines}
+        onRemoveTimeline={toggleTimeline}
+      />
       <Button
         className={S.beginButton}
         flex="none"
@@ -324,7 +330,10 @@ function NewBlockDropZone({
   const activeData = dndContext.active?.data.current as
     | ExplorationDragData
     | undefined;
-  if (activeData == null) {
+  // Only metric/dimension drags can create a new block. Timelines are
+  // detached from the block model, so a timeline drag must not surface
+  // this "new research area" target.
+  if (activeData == null || activeData.kind === "timeline") {
     return null;
   }
   const wouldBeDuplicate =
@@ -351,6 +360,76 @@ function NewBlockDropZone({
   );
 }
 
+interface SelectedTimelinesPanelProps {
+  timelines: Timeline[];
+  onRemoveTimeline: (timeline: Timeline) => void;
+}
+
+/**
+ * The "Timelines" tray pinned above the "Begin research" button. Unlike
+ * metrics/dimensions, timelines are a flat, exploration-wide selection
+ * (not a per-block list), so they live in their own always-visible
+ * section rather than as accordion blocks.
+ *
+ * It doubles as a drop target: dragging a row from the Browse →
+ * Timelines panel onto this tray adds it (idempotently, via
+ * `addTimelinesById` in `useExplorationDnd`).
+ *
+ * Visibility rule: once any timeline is picked the tray stays visible
+ * (so the user can see/remove their selection). When nothing is picked
+ * yet it stays hidden *until* a timeline drag is in flight, at which
+ * point an empty drop target appears so the first timeline has
+ * somewhere to land — mirroring `NewBlockDropZone`'s drag-only target.
+ */
+function SelectedTimelinesPanel({
+  timelines,
+  onRemoveTimeline,
+}: SelectedTimelinesPanelProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
+  });
+  const dndContext = useDndContext();
+  const activeData = dndContext.active?.data.current as
+    | ExplorationDragData
+    | undefined;
+  const isTimelineDragInFlight = activeData?.kind === "timeline";
+  // Hooks above run unconditionally; bail out only after they've been
+  // called so the empty tray is hidden unless a timeline is being
+  // dragged in.
+  if (timelines.length === 0 && !isTimelineDragInFlight) {
+    return null;
+  }
+  return (
+    <Box flex="none" px="md" pt="md">
+      <Text mb="xs">{t`Timelines`}</Text>
+      <Box
+        ref={setNodeRef}
+        className={cx(S.timelinePanel, {
+          [S.timelinePanelDropTarget]: isTimelineDragInFlight && !isOver,
+          [S.timelinePanelDropOver]: isTimelineDragInFlight && isOver,
+        })}
+        p="sm"
+      >
+        {timelines.length === 0 ? (
+          <Text size="sm" c="text-secondary" ta="center">
+            {t`Drop here to add this timeline`}
+          </Text>
+        ) : (
+          <Group align="flex-start" gap="sm" wrap="wrap">
+            {timelines.map((timeline) => (
+              <PillItem
+                key={timeline.id}
+                label={timeline.name}
+                onRemove={() => onRemoveTimeline(timeline)}
+              />
+            ))}
+          </Group>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 interface ResearchPlanEmptyStateProps {
   onAddMetric: () => void;
   onAddDimension: () => void;
@@ -360,28 +439,34 @@ function ResearchPlanEmptyState({
   onAddMetric,
   onAddDimension,
 }: ResearchPlanEmptyStateProps) {
-  // The empty state is also a drop target. Any drag in flight is
-  // compatible — dropping a metric creates a metric block, dropping
-  // a dimension creates a dimension block — so we don't gate the
-  // `isActiveCompatible` on entity kind here.
+  // The empty state is a metric/dimension drop target only — dropping a
+  // metric creates a metric block, a dimension creates a dimension
+  // block. Timelines are completely detached from metrics/dimensions, so
+  // a timeline drag does NOT light this area up (it lands in the
+  // dedicated timelines tray instead). We treat only metric/dimension
+  // drags as "in flight" here.
   const { setNodeRef, isOver } = useDroppable({
     id: RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
   });
   const dndContext = useDndContext();
-  const isDragInFlight = dndContext.active != null;
+  const activeData = dndContext.active?.data.current as
+    | ExplorationDragData
+    | undefined;
+  const isBlockDragInFlight =
+    activeData != null && activeData.kind !== "timeline";
   return (
     <Stack
       ref={setNodeRef}
       className={cx(S.emptyState, {
-        [S.emptyStateDropTarget]: isDragInFlight && !isOver,
-        [S.emptyStateDropOver]: isDragInFlight && isOver,
+        [S.emptyStateDropTarget]: isBlockDragInFlight && !isOver,
+        [S.emptyStateDropOver]: isBlockDragInFlight && isOver,
       })}
       p="lg"
       gap="md"
       align="center"
     >
       <Text size="md" c="text-secondary" ta="center">
-        {isDragInFlight
+        {isBlockDragInFlight
           ? t`Drop here to start a new research area`
           : t`Pick a metric or a dimension from the Data palette — each one becomes its own research area here.`}
       </Text>
@@ -495,12 +580,20 @@ function MetricBlockItem({
     >
       <Box className={S.accordionControlRow}>
         <Accordion.Control>
-          <Box className={S.accordionLabelText}>
-            <Ellipsified>{block.metric.name}</Ellipsified>
-          </Box>
-          <Text className={S.blockKindBadge} component="span">
-            {t`metric`}
-          </Text>
+          <Icon
+            className={S.blockEntityIcon}
+            name="metric"
+            tooltip={t`Metric`}
+            size={14}
+            aria-label={t`Metric area`}
+          />
+          <Ellipsified>{block.metric.name}</Ellipsified>
+          <Icon
+            className={S.inlineChevron}
+            name="chevrondown"
+            size={12}
+            aria-hidden
+          />
         </Accordion.Control>
         <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
       </Box>
@@ -538,6 +631,9 @@ function MetricBlockItem({
                   <PillItem
                     key={dim.id}
                     label={formatDimensionLabel(dim)}
+                    data-interestingness={
+                      dim.dimension_interestingness || "null"
+                    }
                     onRemove={() => onRemoveDimension(dim.id)}
                   />
                 ))}
@@ -574,6 +670,13 @@ function DimensionBlockItem({
     block.id,
     "dimension",
   );
+  // Use the metrics-viewer's canonical dimension-icon mapping so the
+  // icon next to a dimension name in the Research plan reads the
+  // same as everywhere else in the product (calendar for dates,
+  // string for category, int for numeric, location for geo, etc.).
+  const dimensionIconName = getDimensionIcon(
+    LibMetric.fromMetricDimension(block.dimension),
+  );
   return (
     <Accordion.Item
       ref={setNodeRef}
@@ -589,14 +692,20 @@ function DimensionBlockItem({
     >
       <Box className={S.accordionControlRow}>
         <Accordion.Control>
-          <Box className={S.accordionLabelText}>
-            <Ellipsified>
-              {block.dimension.display_name ?? block.dimension.id}
-            </Ellipsified>
-          </Box>
-          <Text className={S.blockKindBadge} component="span">
-            {t`dimension`}
-          </Text>
+          <Icon
+            className={S.blockEntityIcon}
+            name={dimensionIconName}
+            tooltip={t`Dimension`}
+            size={14}
+            aria-label={t`Dimension area`}
+          />
+          <Ellipsified>{formatDimensionLabel(block.dimension)}</Ellipsified>
+          <Icon
+            className={S.inlineChevron}
+            name="chevrondown"
+            size={12}
+            aria-hidden
+          />
         </Accordion.Control>
         <BlockHeaderControls onRemoveBlock={onRemoveBlock} />
       </Box>
@@ -638,12 +747,12 @@ function DimensionBlockItem({
   );
 }
 
-interface PillItemProps {
+interface PillItemProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
   onRemove: () => void;
 }
 
-function PillItem({ label, onRemove }: PillItemProps) {
+function PillItem({ label, onRemove, ...rest }: PillItemProps) {
   return (
     <Pill
       withRemoveButton
@@ -662,6 +771,7 @@ function PillItem({ label, onRemove }: PillItemProps) {
         "aria-hidden": false,
         "aria-label": t`Remove`,
       }}
+      {...rest}
     >
       <Ellipsified>{label}</Ellipsified>
     </Pill>

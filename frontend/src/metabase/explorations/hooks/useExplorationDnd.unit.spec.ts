@@ -11,10 +11,12 @@ import type { ExplorationMetric } from "../types";
 import {
   RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
   RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
+  RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
   isExplorationDropAccepted,
   isNewBlockDroppableId,
   paletteDimensionDragId,
   paletteMetricDragId,
+  paletteTimelineDragId,
   useExplorationDnd,
 } from "./useExplorationDnd";
 import type { ExplorationSelection } from "./useExplorationSelection";
@@ -39,6 +41,11 @@ const churnMetric = {
   name: "Churn",
   dimension_ids: ["accounts.plan"],
 } as unknown as ExplorationMetric;
+
+const releasesTimeline = {
+  id: 7,
+  name: "Releases",
+} as any;
 
 function makeDragEvent(
   activeId: string,
@@ -65,6 +72,11 @@ describe("useExplorationDnd", () => {
       expect(isExplorationDropAccepted("dimension", "metric")).toBe(true);
       expect(isExplorationDropAccepted("metric", "metric")).toBe(false);
       expect(isExplorationDropAccepted("dimension", "dimension")).toBe(false);
+    });
+
+    it("never accepts a timeline drag onto a block", () => {
+      expect(isExplorationDropAccepted("metric", "timeline")).toBe(false);
+      expect(isExplorationDropAccepted("dimension", "timeline")).toBe(false);
     });
   });
 
@@ -268,6 +280,106 @@ describe("useExplorationDnd", () => {
       );
 
       expect(selection.toggleDimension).toHaveBeenCalledWith(dimPlan, context);
+      expect(selection.addMetric).not.toHaveBeenCalled();
+    });
+
+    it("routes a timeline drag onto the timeline target to addTimelinesById", () => {
+      const selection = makeMockSelection({
+        blocks: [mockMetricBlock(revenueMetric, [])],
+      });
+      const { handleDragEnd } = setupDnd(selection);
+
+      handleDragEnd(
+        makeDragEvent(
+          paletteTimelineDragId(releasesTimeline.id),
+          { kind: "timeline", payload: releasesTimeline },
+          RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
+        ),
+      );
+
+      expect(selection.addTimelinesById).toHaveBeenCalledWith([
+        releasesTimeline.id,
+      ]);
+      expect(selection.addMetric).not.toHaveBeenCalled();
+      expect(selection.toggleDimension).not.toHaveBeenCalled();
+    });
+
+    it("ignores a timeline drag dropped on a block", () => {
+      const selection = makeMockSelection({
+        blocks: [mockMetricBlock(revenueMetric, [])],
+      });
+      const { handleDragEnd } = setupDnd(selection);
+
+      handleDragEnd(
+        makeDragEvent(
+          paletteTimelineDragId(releasesTimeline.id),
+          { kind: "timeline", payload: releasesTimeline },
+          "metric:1",
+        ),
+      );
+
+      expect(selection.addTimelinesById).not.toHaveBeenCalled();
+      expect(selection.addDimensionToMetricBlock).not.toHaveBeenCalled();
+    });
+
+    it("ignores a timeline dropped on the empty-state target", () => {
+      // Timelines are detached from the block model — the empty-state
+      // placeholder is a metric/dimension-only target, so a timeline
+      // dropped there is a no-op (it lands on the timelines tray instead).
+      const selection = makeMockSelection({ blocks: [] });
+      const { handleDragEnd } = setupDnd(selection);
+
+      handleDragEnd(
+        makeDragEvent(
+          paletteTimelineDragId(releasesTimeline.id),
+          { kind: "timeline", payload: releasesTimeline },
+          RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
+        ),
+      );
+
+      expect(selection.addTimelinesById).not.toHaveBeenCalled();
+      expect(selection.addMetric).not.toHaveBeenCalled();
+      expect(selection.toggleDimension).not.toHaveBeenCalled();
+    });
+
+    it("ignores a timeline dropped on the trailing new-block target", () => {
+      const selection = makeMockSelection({
+        blocks: [mockMetricBlock(revenueMetric, [])],
+      });
+      const { handleDragEnd } = setupDnd(selection);
+
+      handleDragEnd(
+        makeDragEvent(
+          paletteTimelineDragId(releasesTimeline.id),
+          { kind: "timeline", payload: releasesTimeline },
+          RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID,
+        ),
+      );
+
+      expect(selection.addTimelinesById).not.toHaveBeenCalled();
+      expect(selection.addMetric).not.toHaveBeenCalled();
+      expect(selection.toggleDimension).not.toHaveBeenCalled();
+    });
+
+    it("ignores a metric drag dropped on the timeline target", () => {
+      const selection = makeMockSelection({
+        blocks: [mockMetricBlock(revenueMetric, [])],
+      });
+      const { handleDragEnd } = setupDnd(selection);
+
+      handleDragEnd(
+        makeDragEvent(
+          paletteMetricDragId(churnMetric.id),
+          {
+            kind: "metric",
+            payload: churnMetric,
+            context: { dimensionsById: new Map() },
+          },
+          RESEARCH_PLAN_TIMELINE_DROPPABLE_ID,
+        ),
+      );
+
+      expect(selection.addTimelinesById).not.toHaveBeenCalled();
       expect(selection.addMetric).not.toHaveBeenCalled();
     });
   });

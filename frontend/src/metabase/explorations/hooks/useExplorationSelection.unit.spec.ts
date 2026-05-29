@@ -84,6 +84,31 @@ describe("useExplorationSelection", () => {
       ]);
     });
 
+    it("orders the metric block's dimensions by interestingness descending", () => {
+      // Feed the dimensions in a deliberately unsorted order; the block
+      // should surface them most-interesting-first regardless of input
+      // or `dimension_ids` order. All three clear the interestingness
+      // threshold (0.8) so the filter keeps them and we're purely
+      // testing the sort.
+      const dimMid = makeDim("dim-mid", 0.85);
+      const dimHigh = makeDim("dim-high", 0.98);
+      const dimLow = makeDim("dim-low", 0.82);
+      const metric = makeMetric(1, ["dim-mid", "dim-high", "dim-low"]);
+      const dimensionsById = makeDimensionsById([dimMid, dimHigh, dimLow]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+
+      expect(result.current.dimensions.map((d) => d.id)).toEqual([
+        "dim-high",
+        "dim-mid",
+        "dim-low",
+      ]);
+    });
+
     it("is a no-op when the metric is already selected", () => {
       const dim = makeDim("dim-a", 0.9);
       const metric = makeMetric(1, ["dim-a"]);
@@ -219,9 +244,12 @@ describe("useExplorationSelection", () => {
   });
 
   describe("addDimensionToMetricBlock", () => {
-    it("appends a dimension to the metric block's body", () => {
-      const dimA = makeDim("dim-a", 0.9);
-      const dimB = makeDim("dim-b", 0.9);
+    it("appends a dimension and keeps the body sorted by interestingness", () => {
+      // The existing dimension is mid-interest; the added one is more
+      // interesting, so it should sort ahead of the existing pill rather
+      // than simply appending to the end.
+      const dimA = makeDim("dim-a", 0.5);
+      const dimB = makeDim("dim-b", 0.95);
       const metric = makeMetric(1, ["dim-a"]);
       const dimensionsById = makeDimensionsById([dimA, dimB]);
 
@@ -246,8 +274,8 @@ describe("useExplorationSelection", () => {
         throw new Error("expected metric block");
       }
       expect(blockAfter.dimensions.map((d) => d.id)).toEqual([
-        "dim-a",
         "dim-b",
+        "dim-a",
       ]);
     });
 

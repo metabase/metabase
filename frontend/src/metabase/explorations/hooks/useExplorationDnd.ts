@@ -2,7 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { useCallback } from "react";
 
 import type { ExplorationMetric } from "metabase/explorations/types";
-import type { MetricDimension } from "metabase-types/api";
+import type { MetricDimension, Timeline } from "metabase-types/api";
 
 import type {
   ExplorationSelection,
@@ -23,6 +23,15 @@ import type {
  */
 export const RESEARCH_PLAN_EMPTY_DROPPABLE_ID = "research-plan-empty";
 export const RESEARCH_PLAN_NEW_BLOCK_DROPPABLE_ID = "research-plan-new-block";
+
+/**
+ * Drop-target id for the "Selected timelines" list above the "Begin
+ * research" button. Dragging a timeline row from the Browse → Timelines
+ * panel onto this target adds it to the global timeline selection (the
+ * same effect as ticking the row's checkbox). Metric/dimension drags
+ * here are ignored — timelines are a separate, non-block selection.
+ */
+export const RESEARCH_PLAN_TIMELINE_DROPPABLE_ID = "research-plan-timelines";
 
 const NEW_BLOCK_DROPPABLE_IDS: ReadonlySet<string> = new Set([
   RESEARCH_PLAN_EMPTY_DROPPABLE_ID,
@@ -54,7 +63,7 @@ export function isNewBlockDroppableId(dropId: string | number): boolean {
  * primary dimension via drag — those flows belong to the picker
  * checkboxes).
  */
-export type ExplorationDragKind = "metric" | "dimension";
+export type ExplorationDragKind = "metric" | "dimension" | "timeline";
 
 export interface MetricDragData {
   kind: "metric";
@@ -80,7 +89,15 @@ export interface DimensionDragData {
   context: ToggleDimensionContext;
 }
 
-export type ExplorationDragData = MetricDragData | DimensionDragData;
+export interface TimelineDragData {
+  kind: "timeline";
+  payload: Timeline;
+}
+
+export type ExplorationDragData =
+  | MetricDragData
+  | DimensionDragData
+  | TimelineDragData;
 
 export function paletteMetricDragId(metricId: ExplorationMetric["id"]): string {
   return `palette:metric:${metricId}`;
@@ -88,6 +105,10 @@ export function paletteMetricDragId(metricId: ExplorationMetric["id"]): string {
 
 export function paletteDimensionDragId(dimensionId: string): string {
   return `palette:dim:${dimensionId}`;
+}
+
+export function paletteTimelineDragId(timelineId: Timeline["id"]): string {
+  return `palette:timeline:${timelineId}`;
 }
 
 export interface UseExplorationDndResult {
@@ -108,6 +129,7 @@ export function useExplorationDnd(
     addMetricToDimensionBlock,
     addMetric,
     toggleDimension,
+    addTimelinesById,
     blocks,
   } = selection;
 
@@ -119,6 +141,28 @@ export function useExplorationDnd(
       }
       const data = active.data.current as ExplorationDragData | undefined;
       if (data == null) {
+        return;
+      }
+
+      // Metric/dimension drags onto the timeline tray are meaningless —
+      // ignore them.
+      if (
+        over.id === RESEARCH_PLAN_TIMELINE_DROPPABLE_ID &&
+        data.kind !== "timeline"
+      ) {
+        return;
+      }
+
+      // A timeline is a separate, exploration-wide selection that's
+      // completely detached from the metric/dimension block model. It
+      // only lands on the dedicated timeline tray — which is always
+      // present (as a drop target) while a timeline drag is in flight.
+      // Dropped anywhere else (a block, the empty-state placeholder, the
+      // trailing new-block zone) it's a no-op.
+      if (data.kind === "timeline") {
+        if (over.id === RESEARCH_PLAN_TIMELINE_DROPPABLE_ID) {
+          addTimelinesById([data.payload.id]);
+        }
         return;
       }
 
@@ -153,6 +197,7 @@ export function useExplorationDnd(
       addMetricToDimensionBlock,
       addMetric,
       toggleDimension,
+      addTimelinesById,
       blocks,
     ],
   );

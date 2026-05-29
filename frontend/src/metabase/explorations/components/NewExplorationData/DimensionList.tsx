@@ -12,7 +12,7 @@ import { Box, Checkbox, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { DimensionId, MetricDimension } from "metabase-types/api";
 
 import S from "./ItemList.module.css";
-import { groupDimensionsBySemanticType } from "./utils";
+import { groupDimensionsByGroupSource } from "./utils";
 
 const DIMENSION_CARD_HEIGHT = 70;
 const DIMENSION_CARD_GAP = 8;
@@ -43,7 +43,7 @@ export function DimensionList({
   getDragContext,
 }: DimensionListProps) {
   const rows = useMemo(
-    () => groupDimensionsBySemanticType(dimensions),
+    () => groupDimensionsByGroupSource(dimensions),
     [dimensions],
   );
 
@@ -100,7 +100,7 @@ export function DimensionList({
                   width: "100%",
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                data-interestingness={row.averageInterestingness || "null"}
+                data-interestingness={row.maxInterestingness || "null"}
               >
                 {row.label}
               </Text>
@@ -162,8 +162,6 @@ function DraggableDimensionRow({
     [setNodeRef, measureRef],
   );
 
-  const sourceName = dimension.group?.display_name;
-
   return (
     <UnstyledButton
       ref={composedRef}
@@ -189,15 +187,13 @@ function DraggableDimensionRow({
         onPointerDown={(event) => event.stopPropagation()}
         aria-label={dimension.display_name}
       />
+      {/* No secondary source line: the section header above the row
+          already labels the source/table, so the row only needs the
+          field name. */}
       <Stack gap="xs" flex={1}>
         <Text fw="bold" lh="1.25" lineClamp={1}>
           {dimension.display_name}
         </Text>
-        {sourceName && (
-          <Text size="sm" lh="1rem" c="text-secondary" lineClamp={1}>
-            {sourceName}
-          </Text>
-        )}
       </Stack>
     </UnstyledButton>
   );

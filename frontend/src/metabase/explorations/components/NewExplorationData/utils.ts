@@ -1,136 +1,101 @@
 import { t } from "ttag";
 
-import type { ExplorationMetric } from "metabase/explorations/types";
-import * as LibMetric from "metabase-lib/metric/core";
-import { COORDINATE, LOCATION } from "metabase-lib/v1/types/constants";
-import {
-  isBoolean,
-  isCategory,
-  isDate,
-  isFieldType,
-  isNumeric,
-  isString,
-  isStringLike,
-} from "metabase-lib/v1/types/utils/isa";
-import type { DimensionId, MetricDimension } from "metabase-types/api";
-
-export type DimensionGroupKey =
-  | "date"
-  | "geolocation"
-  | "category"
-  | "number"
-  | "other";
+import type { MetricDimension } from "metabase-types/api";
 
 /**
- * Bucket a dimension into a coarse, user-facing semantic group.
- *
- * The buckets are deliberately coarser than `effective_type` / `semantic_type`
- * so the picker UI surfaces them with familiar labels ("Date", "Geolocation",
- * "Category", "Number") rather than the underlying type literals. Order
- * matters — we check the most specific signals first (date, geolocation)
- * before falling back to the broader buckets.
+ * Section key in the grouped dimension list: the dimension's source
+ * `group.id` (typically a stringified table id), or `null` when the
+ * dimension carries no group at all. We keep `null` as a first-class
+ * bucket so dimensions without a source still render in a dedicated
+ * "Other" section instead of mixing with a real source.
  */
-export function getDimensionGroupKey(
-  dimension: MetricDimension,
-): DimensionGroupKey {
-  if (isDate(dimension)) {
-    return "date";
-  }
-  if (isFieldType(LOCATION, dimension) || isFieldType(COORDINATE, dimension)) {
-    return "geolocation";
-  }
-  if (
-    isCategory(dimension) ||
-    isString(dimension) ||
-    isStringLike(dimension) ||
-    isBoolean(dimension)
-  ) {
-    return "category";
-  }
-  if (isNumeric(dimension)) {
-    return "number";
-  }
-  return "other";
-}
-
-export function getDimensionGroupLabel(key: DimensionGroupKey): string {
-  switch (key) {
-    case "date":
-      return t`Date`;
-    case "geolocation":
-      return t`Geolocation`;
-    case "category":
-      return t`Category`;
-    case "number":
-      return t`Number`;
-    case "other":
-      return t`Other`;
-  }
-}
+export type DimensionGroupSourceKey = string | null;
 
 export interface DimensionListHeaderRow {
   type: "header";
-  key: DimensionGroupKey;
+  key: DimensionGroupSourceKey;
+  /** Section title — the source's `group.display_name` (or "Other"). */
   label: string;
-  averageInterestingness: number;
+  /**
+   * The highest `dimension_interestingness` among the section's
+   * dimensions (null treated as 0). Sections are ordered by this value
+   * descending, so the section holding the single most interesting
+   * dimension always floats to the top.
+   */
+  maxInterestingness: number;
 }
 
 export interface DimensionListItemRow {
   type: "dimension";
-  key: DimensionGroupKey;
+  key: DimensionGroupSourceKey;
   dimension: MetricDimension;
 }
 
 export type DimensionListRow = DimensionListHeaderRow | DimensionListItemRow;
 
+function dimensionGroupSourceKey(
+  dimension: MetricDimension,
+): DimensionGroupSourceKey {
+  return dimension.group?.id != null ? String(dimension.group.id) : null;
+}
+
+function dimensionGroupSourceLabel(dimension: MetricDimension): string {
+  return dimension.group?.display_name ?? t`Other`;
+}
+
 /**
- * Group `dimensions` by coarse semantic type, ordering groups by their average
- * `dimension_interestingness` (descending; null is treated as 0). The relative
- * order of dimensions inside each group is preserved — callers should pass
- * dimensions already sorted by interestingness desc, which is what the
- * `/api/exploration/dimensions` endpoint returns.
+ * Group `dimensions` by their source — i.e., their `group.id` (table /
+ * source). Section headers are the source's `display_name`. Section
+ * order is by the *maximum* `dimension_interestingness` among each
+ * section's dimensions (descending; null is treated as 0), so the
+ * section containing the single most interesting dimension comes first.
+ * The relative order of dimensions inside each section is preserved —
+ * callers should pass dimensions already sorted by interestingness desc,
+ * which is what the `/api/exploration/dimensions` endpoint returns.
  *
- * The result is a flat `[header, ...dims, header, ...dims]` list ready to feed
- * a single virtualizer.
+ * The result is a flat `[header, ...dims, header, ...dims]` list ready
+ * to feed a single virtualizer.
+ *
+ * This replaces the earlier coarse-semantic-type bucketing — it
+ * matches how the metrics viewer's dimension picker (see
+ * `metabase/metrics-viewer/utils/dimension-picker.ts`) groups, so
+ * users see consistent source-based sections across the product.
  */
-export function groupDimensionsBySemanticType(
+export function groupDimensionsByGroupSource(
   dimensions: MetricDimension[],
 ): DimensionListRow[] {
   if (dimensions.length === 0) {
     return [];
   }
 
-  const buckets = new Map<DimensionGroupKey, MetricDimension[]>();
+  const buckets = new Map<DimensionGroupSourceKey, MetricDimension[]>();
+  const labels = new Map<DimensionGroupSourceKey, string>();
   for (const dimension of dimensions) {
-    const key = getDimensionGroupKey(dimension);
+    const key = dimensionGroupSourceKey(dimension);
     const list = buckets.get(key);
     if (list) {
       list.push(dimension);
     } else {
       buckets.set(key, [dimension]);
+      labels.set(key, dimensionGroupSourceLabel(dimension));
     }
   }
 
-  const averageInterestingness = (dims: MetricDimension[]) => {
-    if (dims.length === 0) {
-      return 0;
-    }
-    const sum = dims.reduce(
-      (acc, dim) => acc + (dim.dimension_interestingness ?? 0),
+  const maxInterestingness = (dims: MetricDimension[]) =>
+    dims.reduce(
+      (max, dim) => Math.max(max, dim.dimension_interestingness ?? 0),
       0,
     );
-    return sum / dims.length;
-  };
 
-  const averages = new Map<DimensionGroupKey, number>(
+  const maxima = new Map<DimensionGroupSourceKey, number>(
     [...buckets.entries()].map(([key, dims]) => [
       key,
-      averageInterestingness(dims),
+      maxInterestingness(dims),
     ]),
   );
 
   const orderedKeys = [...buckets.keys()].sort(
-    (a, b) => (averages.get(b) ?? 0) - (averages.get(a) ?? 0),
+    (a, b) => (maxima.get(b) ?? 0) - (maxima.get(a) ?? 0),
   );
 
   const rows: DimensionListRow[] = [];
@@ -138,111 +103,12 @@ export function groupDimensionsBySemanticType(
     rows.push({
       type: "header",
       key,
-      label: getDimensionGroupLabel(key),
-      averageInterestingness: averages.get(key) ?? 0,
+      label: labels.get(key) ?? t`Other`,
+      maxInterestingness: maxima.get(key) ?? 0,
     });
     for (const dimension of buckets.get(key) ?? []) {
       rows.push({ type: "dimension", key, dimension });
     }
   }
   return rows;
-}
-
-export function groupDimensionsBySource(
-  dimensions: MetricDimension[],
-): DimensionPillGroup[] {
-  const dimensionMetadatas = dimensions.map(LibMetric.fromMetricDimension);
-  const groupedDimensionMetadatas =
-    LibMetric.groupDimensionsBySource(dimensionMetadatas);
-
-  return groupedDimensionMetadatas.map((group) => {
-    const head = LibMetric.toMetricDimension(group[0]);
-    return {
-      id: head.id,
-      name: head.group?.display_name
-        ? `${head.group.display_name} → ${head.display_name}`
-        : head.display_name,
-      dimensions: group.map(LibMetric.toMetricDimension),
-    };
-  });
-}
-
-export interface DimensionPillGroup {
-  id: DimensionId;
-  name: string;
-  dimensions: MetricDimension[];
-}
-
-export interface DimensionCategoryGroup {
-  key: DimensionGroupKey;
-  label: string;
-  pillGroups: DimensionPillGroup[];
-}
-
-export function groupDimensionsByCategory(
-  dimensions: MetricDimension[],
-): DimensionCategoryGroup[] {
-  if (dimensions.length === 0) {
-    return [];
-  }
-
-  const sortedDimensions = [...dimensions].sort(
-    (a, b) =>
-      (b.dimension_interestingness ?? 0) - (a.dimension_interestingness ?? 0),
-  );
-
-  const buckets: Array<{
-    key: DimensionGroupKey;
-    label: string;
-    dimensions: MetricDimension[];
-  }> = [];
-  for (const row of groupDimensionsBySemanticType(sortedDimensions)) {
-    if (row.type === "header") {
-      buckets.push({
-        key: row.key,
-        label: getDimensionGroupLabel(row.key),
-        dimensions: [],
-      });
-    } else {
-      buckets[buckets.length - 1].dimensions.push(row.dimension);
-    }
-  }
-
-  return buckets.map(({ key, label, dimensions }) => ({
-    key,
-    label,
-    pillGroups: groupDimensionsBySource(dimensions),
-  }));
-}
-
-export function removeMetricFromSelection(
-  metrics: ExplorationMetric[],
-  dimensions: MetricDimension[],
-  metricId: ExplorationMetric["id"],
-): { metrics: ExplorationMetric[]; dimensions: MetricDimension[] } {
-  const removed = metrics.find((m) => m.id === metricId);
-  const nextMetrics = metrics.filter((m) => m.id !== metricId);
-
-  if (!removed) {
-    return { metrics: nextMetrics, dimensions };
-  }
-
-  const stillUsedDimIds = new Set<DimensionId>();
-  for (const m of nextMetrics) {
-    for (const id of m.dimension_ids) {
-      stillUsedDimIds.add(id);
-    }
-  }
-  const removedDimIds = new Set(removed.dimension_ids);
-  const nextDimensions = dimensions.filter(
-    (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
-  );
-
-  // Return the original reference when no dimensions were dropped so
-  // callers can cheaply skip a redundant `setDimensions` write.
-  return {
-    metrics: nextMetrics,
-    dimensions:
-      nextDimensions.length === dimensions.length ? dimensions : nextDimensions,
-  };
 }

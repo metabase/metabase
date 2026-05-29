@@ -1,8 +1,10 @@
+import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { getEventCount } from "metabase/common/utils/timelines";
+import { paletteTimelineDragId } from "metabase/explorations/hooks";
 import {
   Box,
   Checkbox,
@@ -73,41 +75,71 @@ export function TimelineList({
   return (
     <Box className={S.scrollContainer}>
       <Stack role="list" gap="sm">
-        {timelines.map((timeline) => {
-          const isSelected = selectedIds.has(timeline.id);
-          return (
-            <UnstyledButton
-              key={timeline.id}
-              role="listitem"
-              aria-pressed={isSelected}
-              className={cx(S.timelineItem, {
-                [S.timelineItemSelected]: isSelected,
-              })}
-              onClick={() => onToggle(timeline)}
-            >
-              <Checkbox
-                checked={isSelected}
-                onChange={() => onToggle(timeline)}
-                onClick={(event) => event.stopPropagation()}
-                aria-label={timeline.name}
-              />
-              <Stack gap="xs" flex={1}>
-                <Text fw="bold" lh="1.25" lineClamp={1}>
-                  {timeline.name}
-                </Text>
-                {timeline.description && (
-                  <Text size="sm" c="text-secondary" lineClamp={1}>
-                    {timeline.description}
-                  </Text>
-                )}
-              </Stack>
-              <Text size="sm" c="text-secondary">
-                {formatEventCount(getEventCount(timeline))}
-              </Text>
-            </UnstyledButton>
-          );
-        })}
+        {timelines.map((timeline) => (
+          <DraggableTimelineRow
+            key={timeline.id}
+            timeline={timeline}
+            isSelected={selectedIds.has(timeline.id)}
+            onToggle={onToggle}
+          />
+        ))}
       </Stack>
     </Box>
+  );
+}
+
+interface DraggableTimelineRowProps {
+  timeline: Timeline;
+  isSelected: boolean;
+  onToggle: (timeline: Timeline) => void;
+}
+
+function DraggableTimelineRow({
+  timeline,
+  isSelected,
+  onToggle,
+}: DraggableTimelineRowProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: paletteTimelineDragId(timeline.id),
+    data: {
+      kind: "timeline" as const,
+      payload: timeline,
+    },
+  });
+
+  return (
+    <UnstyledButton
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      role="listitem"
+      aria-pressed={isSelected}
+      className={cx(S.timelineItem, {
+        [S.timelineItemSelected]: isSelected,
+        [S.timelineItemDragging]: isDragging,
+      })}
+      onClick={() => onToggle(timeline)}
+    >
+      <Checkbox
+        checked={isSelected}
+        onChange={() => onToggle(timeline)}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        aria-label={timeline.name}
+      />
+      <Stack gap="xs" flex={1}>
+        <Text fw="bold" lh="1.25" lineClamp={1}>
+          {timeline.name}
+        </Text>
+        {timeline.description && (
+          <Text size="sm" c="text-secondary" lineClamp={1}>
+            {timeline.description}
+          </Text>
+        )}
+      </Stack>
+      <Text size="sm" c="text-secondary">
+        {formatEventCount(getEventCount(timeline))}
+      </Text>
+    </UnstyledButton>
   );
 }

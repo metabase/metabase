@@ -88,18 +88,16 @@ export function BrowseDimensionsPanel({
   }, [allGroups, activeMetricBlock]);
 
   // Group representative row: take the first dimension as the row's
-  // anchor so `DimensionList` can render one row per group.
+  // anchor so `DimensionList` can render one row per group. We keep
+  // the head's `group` (its source/table) intact so `DimensionList`
+  // can section by `group.id` — the row label is the bare field name
+  // (the source goes into the section header above the row).
   const groupRows = useMemo<MetricDimension[]>(
     () =>
-      visibleGroups.map((g) => {
-        const head = g.dimensions[0];
-        return {
-          ...head,
-          display_name: g.name,
-          dimension_interestingness: g.dimension_interestingness,
-          group: undefined,
-        };
-      }),
+      visibleGroups.map((g) => ({
+        ...g.dimensions[0],
+        dimension_interestingness: g.dimension_interestingness,
+      })),
     [visibleGroups],
   );
 

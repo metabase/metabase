@@ -39,6 +39,27 @@
   background: var(--mb-color-brand-lighter) !important;
 }
 
+/* "Selected timelines" tray above the Begin research button. It's a
+   persistent drop target, so it has an idle bordered look that gets
+   brighter while a timeline drag is in flight / hovering. */
+.timelinePanel {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-background-primary);
+  transition:
+    background 0.1s ease-in-out,
+    border-color 0.1s ease-in-out;
+}
+
+.timelinePanelDropTarget {
+  border-color: var(--mb-color-brand);
+}
+
+.timelinePanelDropOver {
+  border-color: var(--mb-color-brand) !important;
+  background: var(--mb-color-brand-lighter) !important;
+}
+
 .accordionRoot {
   background: transparent;
 }
@@ -119,27 +140,35 @@
   min-width: 0;
 }
 
-.accordionLabelText {
-  min-width: 0;
-  flex: 1;
-}
-
-.blockKindBadge {
-  color: var(--mb-color-text-secondary);
-  font-weight: var(--mantine-font-weight-normal);
-  font-size: var(--mantine-font-size-xs);
+/* Entity-type icon at the left of the block header (the badge-text
+   it replaced was a secondary "metric" / "dimension" string). */
+.blockEntityIcon {
+  color: var(--mb-color-brand);
   flex: none;
 }
 
+/* Mantine's built-in chevron is hidden — we render our own inside the
+   Accordion.Control (see `.inlineChevron`) so it sits right after the
+   title, not all the way to the right next to the Remove area button
+   (where users were accidentally clicking the close icon). */
 .accordionRoot .accordionChevron {
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  width: 1rem !important;
-  height: 1rem !important;
-  margin-left: 0 !important;
-  margin-right: var(--mantine-spacing-xs) !important;
+  display: none !important;
+}
+
+/* Our inline chevron — placed as a sibling of the title inside the
+   Accordion.Control, so it hugs the title and stays well away from
+   the remove icon. Rotates when the parent Accordion.Item is
+   expanded; Mantine stamps `data-state="active"` on the control
+   button when the item is open. */
+.inlineChevron {
   color: var(--mb-color-brand);
+  flex: none;
+  transition: transform 0.15s ease;
+}
+
+.accordionRoot .accordionControl[data-active] .inlineChevron,
+.accordionRoot .accordionControl[aria-expanded="true"] .inlineChevron {
+  transform: rotate(180deg);
 }
 
 .accordionRoot .accordionContent {

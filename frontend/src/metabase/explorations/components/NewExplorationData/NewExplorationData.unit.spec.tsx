@@ -10,12 +10,17 @@ import {
 } from "metabase/explorations/test-utils";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import type { Timeline } from "metabase-types/api";
+import { createMockTimeline } from "metabase-types/api/mocks";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 
-import { NewExplorationData } from "./NewExplorationData";
+import {
+  NewExplorationData,
+  buildCreateExplorationRequest,
+} from "./NewExplorationData";
 
 jest.mock("metabase/metabot/hooks", () => ({
   ...jest.requireActual("metabase/metabot/hooks"),
@@ -44,12 +49,15 @@ const churnMetric = createMockMetric({
   dimension_ids: [dimPlan.id],
 }) as ExplorationMetric;
 
-function setup({ blocks = [] }: { blocks?: ExplorationBlock[] } = {}) {
+function setup({
+  blocks = [],
+  timelines = [],
+}: { blocks?: ExplorationBlock[]; timelines?: Timeline[] } = {}) {
   jest.mocked(useMetabotAgent).mockReturnValue({
     messages: [],
   } as any);
 
-  const selection = makeMockSelection({ blocks });
+  const selection = makeMockSelection({ blocks, timelines });
   const navigation = makeMockNavigation();
 
   renderWithProviders(
@@ -255,6 +263,96 @@ describe("NewExplorationData (Research plan)", () => {
       await userEvent.click(screen.getByText("Research plan"));
 
       expect(navigation.clearActiveBlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("selected timelines tray", () => {
+    const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+
+    it("is hidden when nothing is selected", () => {
+      setup();
+
+      expect(screen.queryByText("Timelines")).not.toBeInTheDocument();
+    });
+
+    it("stays hidden when blocks exist but no timeline is picked and no timeline drag is in flight", () => {
+      // The empty tray is a drag-only target now (mirrors NewBlockDropZone).
+      // Tests render without a DndContext, so no drag is ever in flight and
+      // the empty tray returns null even when blocks are present.
+      setup({ blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])] });
+
+      expect(screen.queryByText("Timelines")).not.toBeInTheDocument();
+    });
+
+    it("renders a removable pill per selected timeline", () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+        timelines: [releasesTimeline],
+      });
+
+      expect(screen.getByText("Releases")).toBeInTheDocument();
+    });
+
+    it("shows the tray when only timelines are selected (no blocks)", () => {
+      setup({ timelines: [releasesTimeline] });
+
+      expect(screen.getByText("Timelines")).toBeInTheDocument();
+      expect(screen.getByText("Releases")).toBeInTheDocument();
+    });
+
+    it("clicking a timeline pill's Remove button calls toggleTimeline", async () => {
+      // Block has no dimensions so the only Remove pill is the timeline's.
+      const { selection } = setup({
+        blocks: [mockMetricBlock(revenueMetric, [])],
+        timelines: [releasesTimeline],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+      expect(selection.toggleTimeline).toHaveBeenCalledTimes(1);
+      expect(selection.toggleTimeline).toHaveBeenCalledWith(releasesTimeline);
+    });
+  });
+
+  describe("buildCreateExplorationRequest", () => {
+    const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+    const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
+
+    it("attaches the shared timeline_ids to every group", () => {
+      const request = buildCreateExplorationRequest(
+        "My exploration",
+        "",
+        [
+          mockMetricBlock(revenueMetric, [dimCreatedAt]),
+          mockDimensionBlock(dimPlan, [churnMetric]),
+        ],
+        [releasesTimeline, launchTimeline],
+      );
+
+      expect(request.groups).toHaveLength(2);
+      for (const group of request.groups) {
+        expect(group.timeline_ids).toEqual([7, 9]);
+      }
+    });
+
+    it("uses empty timeline_ids on every group when none are selected", () => {
+      const request = buildCreateExplorationRequest(
+        "My exploration",
+        "",
+        [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+        [],
+      );
+
+      expect(request.groups[0].timeline_ids).toEqual([]);
+    });
+
+    it("trims the prompt and falls back to null when blank", () => {
+      expect(
+        buildCreateExplorationRequest("n", "  hello  ", [], []).prompt,
+      ).toBe("hello");
+      expect(
+        buildCreateExplorationRequest("n", "   ", [], []).prompt,
+      ).toBeNull();
     });
   });
 
