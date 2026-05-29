@@ -220,6 +220,55 @@ describe("DataSelector", () => {
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
+  it("should auto-advance past a single schema that loads asynchronously", async () => {
+    // Reproduces a flake in the native editor's table picker for single-schema
+    // databases (e.g. Mongo): when the schema list arrives *after* the picker
+    // has already switched to the schema step, the lone schema must still be
+    // auto-selected so the user lands on the table list rather than getting
+    // stranded on the schema step.
+    const fetchDatabases = jest.fn();
+    const fetchSchemas = jest.fn();
+    const fetchSchemaTables = jest.fn();
+
+    const metadataWithoutTables = createMockMetadata({
+      databases: [createMockDatabase({ id: SAMPLE_DB_ID, tables: [] })],
+    });
+
+    const props = {
+      steps: ["SCHEMA", "TABLE"],
+      selectedDatabaseId: SAMPLE_DB_ID,
+      triggerElement: <div />,
+      isOpen: true,
+      fetchDatabases,
+      fetchSchemas,
+      fetchSchemaTables,
+    };
+
+    const { rerender } = render(
+      <DataSelector
+        {...props}
+        databases={[metadataWithoutTables.database(SAMPLE_DB_ID)]}
+        metadata={metadataWithoutTables}
+      />,
+    );
+
+    // entering the schema step triggers a schema fetch
+    await delay(1);
+    expect(fetchSchemas).toHaveBeenCalled();
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+
+    // the schema (and its tables) arrive asynchronously
+    rerender(
+      <DataSelector
+        {...props}
+        databases={[metadata.database(SAMPLE_DB_ID)]}
+        metadata={metadata}
+      />,
+    );
+
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+  });
+
   it("shouldn't fetch databases until it's opened", async () => {
     const fetchDatabases = jest.fn();
     render(
