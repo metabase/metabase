@@ -119,7 +119,7 @@ function migratePivotSetting(
 ): string[] {
   const columnNameByFieldRef = Object.fromEntries(
     columns.map((column) => [
-      JSON.stringify(getFieldRefForComparisonOrNull(column.field_ref)),
+      JSON.stringify(getFieldRefForComparison(column.field_ref)),
       column.name,
     ]),
   );
@@ -127,7 +127,9 @@ function migratePivotSetting(
   return fieldRefs
     .map(
       (fieldRef) =>
-        columnNameByFieldRef[getFieldRefForComparisonOrNull(fieldRef)],
+        columnNameByFieldRef[
+          JSON.stringify(getFieldRefForComparison(fieldRef))
+        ],
     )
     .filter(isNotNull);
 }
@@ -137,16 +139,12 @@ function migratePivotSetting(
   Sometimes it's present, sometimes it's not. New pivot settings use column
   names only and do not depend on field refs.
  */
-export function getFieldRefForComparison(fieldRef: DimensionReference) {
-  return isDimensionReferenceWithOptions(fieldRef)
-    ? getDimensionReferenceWithoutBaseType(fieldRef)
-    : fieldRef;
-}
-
-function getFieldRefForComparisonOrNull(
+export function getFieldRefForComparison(
   fieldRef: DimensionReference | null | undefined,
 ) {
-  return JSON.stringify(fieldRef ? getFieldRefForComparison(fieldRef) : null);
+  return fieldRef != null && isDimensionReferenceWithOptions(fieldRef)
+    ? getDimensionReferenceWithoutBaseType(fieldRef)
+    : fieldRef;
 }
 
 // Field ref-based visualization settings are considered legacy and are not used
