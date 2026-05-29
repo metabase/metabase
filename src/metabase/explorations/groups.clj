@@ -16,7 +16,9 @@
 
    `auto-groups` is a pure function over already-hydrated query rows plus a
    `{card_id -> metric-name}` map. No DB access. Future user-defined groups will layer
-   in alongside (`:type \"user\"`) without changing the response shape.")
+   in alongside (`:type \"user\"`) without changing the response shape."
+  (:require
+   [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,6 +34,15 @@
    scheme the FE routes on."
   [card-id dim-id]
   (str "auto:" card-id ":" dim-id))
+
+(defn chart-page-url
+  "Relative URL of a chart's leaf-group page in the exploration detail view. The group id
+   follows [[leaf-group-id]]; the route segment is percent-encoded to match the client's
+   `encodeURIComponent`. Used by both the document append endpoint and the AI summary
+   materializer to deep-link a static `cardEmbed`'s title back to its source chart."
+  [exploration-id card-id dimension-id]
+  (str "/question/research/" exploration-id
+       "/group/" (codec/url-encode (leaf-group-id card-id dimension-id))))
 
 (defn- leaf-group-name
   "Pick the display name for a leaf group: prefer the base (unsegmented) query's `:name`,

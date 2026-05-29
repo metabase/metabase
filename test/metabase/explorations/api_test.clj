@@ -1272,7 +1272,7 @@
 (deftest ^:parallel append-chart-page-url-test
   (testing "chart-page-url builds a research deep link with the leaf-group id percent-encoded"
     (is (= "/question/research/7/group/auto%3A42%3Aorders.created_at"
-           (#'explorations.api/chart-page-url 7 42 "orders.created_at")))
+           (explorations.groups/chart-page-url 7 42 "orders.created_at")))
     (testing "the encoded segment decodes back to the FE-routed leaf-group id"
       (is (= "auto:42:orders.created_at"
              (explorations.groups/leaf-group-id 42 "orders.created_at"))))))

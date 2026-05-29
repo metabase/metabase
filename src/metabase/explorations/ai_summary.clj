@@ -40,6 +40,7 @@
    [metabase.explorations.ai-summary.common :as common]
    [metabase.explorations.ai-summary.phase1 :as phase1]
    [metabase.explorations.ai-summary.phase2 :as phase2]
+   [metabase.explorations.groups :as groups]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
@@ -549,19 +550,24 @@
 
 (defn- materialize-cards-for-card-embeds
   "Walk every static `cardEmbed` in `pm-doc`, materialize a real `report_card` for each one
-  that doesn't already carry an `:id`, and rewrite the node to include the new card id. Each
+  that doesn't already carry an `:id`, and rewrite the node to include the new card id and a
+  `:chart_href` deep link back to the source chart's group page in the exploration view. Each
   static embed ends up with both ids set: `:id` for display/viz/dataset_query, and
-  `:stored_result_id` for the cached bytes. A failure on any single embed is logged but does
-  not abort — the doc still renders the other embeds; the broken one will 404 at read time."
-  [pm-doc {:keys [document-id collection-id creator]}]
+  `:stored_result_id` for the cached bytes. A failure on any single embed is logged but does not
+  abort — the doc still renders the other embeds; the broken one will 404 at read time."
+  [pm-doc {:keys [document-id collection-id creator exploration-id]}]
   (walk/postwalk
    (fn [node]
      (let [sr-id (when (card-embed? node) (card-embed-stored-result-id node))]
        (if (and sr-id (nil? (card-embed-id node)))
          (try
-           (let [card-id (eqr/create-card-for-stored-result!
-                          sr-id document-id collection-id creator)]
-             (assoc-in node [:attrs :id] card-id))
+           (let [eq-id (eqr/exploration-query-id-for-stored-result sr-id)
+                 {:keys [card-id primary-eq]} (eqr/create-ephemeral-card-for-exploration-queries!
+                                               [eq-id] document-id collection-id creator {})
+                 chart-href (groups/chart-page-url exploration-id (:card_id primary-eq) (:dimension_id primary-eq))]
+             (-> node
+                 (assoc-in [:attrs :id] card-id)
+                 (assoc-in [:attrs :chart_href] chart-href)))
            (catch Throwable e
              (log/warnf e "Failed to materialize Card for stored_result %d in document %d"
                         sr-id document-id)
@@ -575,13 +581,14 @@
   `stored_result_id`) materialize a `report_card` tied to this document and rewrite the embed
   to carry both ids; then wrap each embed in a `resizeNode` so the chart has an explicit height
   in the rendered doc. Returns `{:document-id ... :rendered-pm-doc ...}`."
-  [{:keys [doc pm-doc creator-id]}]
+  [{:keys [doc pm-doc creator-id exploration-id]}]
   (request/with-current-user creator-id
     (let [creator (t2/select-one [:model/User :id] :id creator-id)
           pm-doc  (-> pm-doc
-                      (materialize-cards-for-card-embeds {:document-id   (:id doc)
-                                                          :collection-id (:collection_id doc)
-                                                          :creator       creator})
+                      (materialize-cards-for-card-embeds {:document-id    (:id doc)
+                                                          :collection-id  (:collection_id doc)
+                                                          :creator        creator
+                                                          :exploration-id exploration-id})
                       wrap-card-embeds-in-resize-nodes)]
       (t2/update! :model/Document (:id doc)
                   {:document     pm-doc
@@ -607,12 +614,13 @@
   with the resulting document id, and return `outcome`. Shared by the
   phase-1-failed, phase-2-failed, and ok branches of [[run-phases!]]."
   [{:keys [placeholder-doc pm-doc reasoning-ctx creator-id thread-id
-           preamble outcome transcript-extras log-fn]}]
+           preamble outcome transcript-extras log-fn exploration-id]}]
   (let [pm-doc+ (append-reasoning-section pm-doc reasoning-ctx)
         {:keys [document-id rendered-pm-doc]}
-        (write-document! {:doc        placeholder-doc
-                          :pm-doc     pm-doc+
-                          :creator-id creator-id})]
+        (write-document! {:doc            placeholder-doc
+                          :pm-doc         pm-doc+
+                          :creator-id     creator-id
+                          :exploration-id exploration-id})]
     (save-transcript! thread-id
                       (merge preamble transcript-extras
                              {:outcome         outcome
@@ -662,6 +670,7 @@
                        :reasoning-ctx     reasoning-ctx
                        :creator-id        creator-id
                        :thread-id         thread-id
+                       :exploration-id    (:exploration_id thread)
                        :preamble          preamble
                        :transcript-extras {:phase-1 p1-transcript
                                            :phase-2 p2-transcript}}]
@@ -731,6 +740,7 @@
                                               :thread-id thread-id}
                           :creator-id        creator-id
                           :thread-id         thread-id
+                          :exploration-id    (:exploration_id thread)
                           :preamble          preamble
                           :outcome           :phase-1-failed
                           :transcript-extras {:phase-1 p1-transcript}

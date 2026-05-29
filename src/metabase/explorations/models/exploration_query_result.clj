@@ -66,16 +66,6 @@
                                      :exploration_query_id eq-id)]
     (t2/select-one :model/StoredResult :id sr-id)))
 
-(defn- promotion-card-name
-  "Pick a stable name for the promoted card. Falls back to the source card's name, then to a
-  generic placeholder — the document UI shows the cardEmbed's own `:name` attr anyway, so the
-  card name only matters as a backstop / for collection-level views (which won't list these
-  cards because `document_id` is set)."
-  [eq src-card]
-  (or (not-empty (:name eq))
-      (not-empty (:name src-card))
-      (format "Chart from exploration query %d" (:id eq))))
-
 (defn- deserialize-stored-result
   "Inverse of [[cache.impl/do-with-serialization]] for a stored_result's
   single-frame nippy+gzip blob. Returns nil for missing/unreadable bytes."
@@ -112,45 +102,16 @@
                                dim-name (assoc :graph.dimensions [dim-name])
                                met-name (assoc :graph.metrics    [met-name]))}))
 
-(defn create-card-for-stored-result!
-  "Materialise a single-snapshot `report_card` for an existing `stored-result-id` (one
-  ExplorationQueryResult row). Used by the AI summary flow when the LLM hands us a
-  `stored_result_id` reference without a card id — see
-  `metabase.explorations.ai-summary/materialize-card-embeds!`. The card carries the
-  legacy recomputed display / visualization_settings (`pick-display+viz-settings`) and the
-  source EQ's `dataset_query`.
+(defn exploration-query-id-for-stored-result
+  "Resolve the `exploration_query_id` that produced `stored-result-id` (via its EQR row), or nil
+  when no result row references the snapshot.
 
-  The exploration-append flow does NOT use this — it goes through
-  `create-ephemeral-card-for-exploration-queries!` which can combine multiple snapshots.
-
-  Returns the new `card_id`."
-  [stored-result-id document-id collection-id creator]
-  (let [sr           (t2/select-one :model/StoredResult :id stored-result-id)
-        eqr          (t2/select-one :model/ExplorationQueryResult :stored_result_id stored-result-id)
-        eq           (t2/select-one :model/ExplorationQuery :id (:exploration_query_id eqr))
-        src-card     (when-let [card-id (:card_id eq)]
-                       (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                      :id card-id))
-        qp-result    (deserialize-stored-result (:result_data sr))
-        chart-config (when qp-result
-                       (try (explorations.interestingness/qp-result->chart-config eq qp-result)
-                            (catch Throwable _ nil)))
-        viz          (pick-display+viz-settings eq src-card chart-config qp-result)
-        dataset-query (:dataset_query eq)]
-    (query-perms/check-run-permissions-for-query dataset-query)
-    (let [card-id (:id (queries/create-card!
-                        {:name                   (promotion-card-name eq src-card)
-                         :description            (:description src-card)
-                         :type                   :question
-                         :dashboard_id           nil
-                         :dataset_query          dataset-query
-                         :display                (:display viz)
-                         :visualization_settings (:visualization_settings viz)
-                         :document_id            document-id
-                         :collection_id          collection-id}
-                        creator))]
-      (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
-      card-id)))
+  Used by the AI summary materializer to map an LLM-emitted `stored_result_id` back to the EQ id
+  that [[create-ephemeral-card-for-exploration-queries!]] keys on; that call then returns the
+  resolved `:primary-eq` for building the chart deep link, so no second EQ fetch is needed here."
+  [stored-result-id]
+  (t2/select-one-fn :exploration_query_id :model/ExplorationQueryResult
+                    :stored_result_id stored-result-id))
 
 (defn- serialize-qp-result
   "Run `cache.impl/do-with-serialization` on a single in-memory qp-result and return the
@@ -224,8 +185,10 @@
   one per source stored_result, so GC of any source cascades through. For a single id, inserts
   the one row tying the card to the (reused) source snapshot.
 
-  Returns a map `{:card-id … :stored-result-id …}` — `stored-result-id` is the new composite
-  row for a combine, or the source snapshot id for a single-query embed."
+  Returns a map `{:card-id … :stored-result-id … :primary-eq …}` — `stored-result-id` is the
+  new composite row for a combine, or the source snapshot id for a single-query embed;
+  `primary-eq` is the first source `ExplorationQuery` (hydrated `:segment_name`), handed back so
+  callers can build the chart deep link without re-fetching it."
   [eq-ids document-id collection-id creator
    {:keys [display visualization-settings]}]
   (let [eq-results      (load-eq-results eq-ids)
@@ -275,4 +238,4 @@
           (when-not single?
             (doseq [{:keys [sr]} eq-results]
               (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
-          {:card-id card-id :stored-result-id stored-result-id})))))
+          {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))

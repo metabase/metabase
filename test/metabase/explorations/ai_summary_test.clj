@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary :as ai-summary]
+   [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
@@ -481,13 +482,17 @@
                 ;; Each cardEmbed the LLM picked materializes its own report_card attached to
                 ;; the document — display/viz/dataset_query live on the card; the cardEmbed
                 ;; node carries both `:id` (the new card) and `:stored_result_id` (the snapshot).
-                (let [cards     (t2/select :model/Card :document_id (:id doc))
-                      embed-ids (->> (tree-seq :content :content (:document doc))
-                                     (filter #(= "cardEmbed" (:type %)))
-                                     (map (comp :id :attrs)))]
+                (let [cards       (t2/select :model/Card :document_id (:id doc))
+                      embeds      (->> (tree-seq :content :content (:document doc))
+                                       (filter #(= "cardEmbed" (:type %))))
+                      embed-ids   (map (comp :id :attrs) embeds)
+                      embed-hrefs (map (comp :chart_href :attrs) embeds)]
                   (is (= 1 (count cards)) "one Card is materialized for the static cardEmbed")
                   (is (= [(:id (first cards))] embed-ids)
-                      "cardEmbed.attrs.id is the materialized card id"))))))))))
+                      "cardEmbed.attrs.id is the materialized card id")
+                  (is (= [(explorations.groups/chart-page-url (:id e) (:id card) "d1")]
+                         embed-hrefs)
+                      "cardEmbed.attrs.chart_href deep-links back to the source chart's group page"))))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

@@ -461,7 +461,7 @@
 (defn run-analysis!
   "Phase 2 entry point. `prompt` is the pre-rendered prompt string built by
   [[build-analysis-prompt]]; `categorical-chart-ids` is the set of
-  exploration_query_ids whose underlying chart has a categorical x-axis
+  stored_result_ids whose underlying chart has a categorical x-axis
   (used by [[validate-categorical-sorts]] to require a `sort` attr on every
   embed of those charts). Returns
   `{:value :attempts :outcome [:final-errors]}` where `:value` is the

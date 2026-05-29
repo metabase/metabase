@@ -21,7 +21,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -579,14 +578,6 @@
                                 :exploration_thread_id thread-id
                                 :archived false)))
 
-(defn- chart-page-url
-  "Relative URL of a chart's leaf-group page in the exploration detail view. The group id
-  follows [[metabase.explorations.groups/leaf-group-id]]; the route segment is
-  percent-encoded to match the client's `encodeURIComponent`."
-  [exploration-id card-id dimension-id]
-  (str "/question/research/" exploration-id
-       "/group/" (codec/url-encode (explorations.groups/leaf-group-id card-id dimension-id))))
-
 (defn- append-chart-nodes
   "Append a static `cardEmbed` node referencing `card-id` (the per-document materialized
   Card carrying display / visualization_settings / dataset_query) and `stored-result-id`
@@ -638,22 +629,21 @@
        [:display                 {:optional true} [:maybe :string]]
        [:visualization_settings  {:optional true} [:maybe :map]]]]
   (write-check-thread thread-id)
-  (let [doc      (get-thread-document-or-404 thread-id document-id)
-        first-eq (api/check-404 (t2/select-one :model/ExplorationQuery :id (first exploration_query_ids)))]
+  (let [doc (get-thread-document-or-404 thread-id document-id)]
     ;; Every requested EQ must exist and belong to this thread — validate in one query.
     (api/check-404 (= (count (distinct exploration_query_ids))
                       (t2/count :model/ExplorationQuery
                                 :id [:in exploration_query_ids]
                                 :exploration_thread_id thread-id)))
     (t2/with-transaction [_conn]
-      (let [{:keys [card-id stored-result-id]}
+      (let [{:keys [card-id stored-result-id primary-eq]}
             (eqr/create-ephemeral-card-for-exploration-queries!
              exploration_query_ids (:id doc) (:collection_id doc)
              @api/*current-user*
              {:display                display
               :visualization-settings visualization_settings})
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-            chart-href (chart-page-url exp-id (:card_id first-eq) (:dimension_id first-eq))
+            chart-href (explorations.groups/chart-page-url exp-id (:card_id primary-eq) (:dimension_id primary-eq))
             new-body   (append-chart-nodes (:document doc) card-id stored-result-id chart-href)]
         (t2/update! :model/Document (:id doc) {:document new-body})))
     (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
