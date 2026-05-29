@@ -1415,7 +1415,7 @@
                                                                    [(:schema test-table)])
                               (catch Exception e
                                 (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
-                                                     (:schema test-table) (ex-message e))
+                                                     (quote-schema (:schema test-table)) (ex-message e))
                                                 {:step :grant :table test-table} e)))))
                           (try
                             (driver/destroy-workspace-isolation! driver database workspace-with-details)
