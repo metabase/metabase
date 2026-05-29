@@ -123,6 +123,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- quote-schema [s] (sql.u/quote-name :postgres :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :postgres :field s))
+(defn- quote-table  [s] (sql.u/quote-name :postgres :table s))
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -1392,7 +1396,7 @@
   ;; Without the blank check, `format` stringifies nil to "null" and creates a schema
   ;; literally named "null" on the target DB.
   (when-not (str/blank? schema)
-    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
       (driver/execute-raw-queries! driver conn-spec sql))))
 
 (defmethod driver/extra-info :postgres
@@ -1461,11 +1465,9 @@
    between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
    own check via `SVV_SCHEMA_PRIVILEGES`)."
   [schema-name]
-  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC; workspace isolation cannot "
-                               "enforce input-schema read-only until this is revoked. Run:\n\n"
-                               "    REVOKE CREATE ON SCHEMA %s FROM PUBLIC;\n\n"
-                               "then retry workspace provisioning.")
-                          schema-name schema-name)
+  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC. This breaks workspace "
+                               "isolation. Run `REVOKE CREATE ON SCHEMA %s FROM PUBLIC` and retry.")
+                          schema-name (quote-schema schema-name))
                   {:status-code 412
                    :schema schema-name})))
 
@@ -1492,12 +1494,11 @@
 (defn raise-missing-usage-grant-option!
   "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition."
   [schema-name]
-  (throw (ex-info (format (str "User lacks USAGE WITH GRANT OPTION on schema \"%s\"; workspace "
-                               "provisioning cannot grant USAGE to the workspace user. Have the "
-                               "schema owner run:\n\n"
-                               "    GRANT USAGE ON SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
-                               "then retry workspace provisioning.")
-                          schema-name schema-name)
+  (throw (ex-info (format (str "Current user lacks USAGE WITH GRANT OPTION on schema \"%s\". "
+                               "Cannot grant USAGE to the workspace user. Have the schema owner "
+                               "run `GRANT USAGE ON SCHEMA %s TO CURRENT_USER WITH GRANT OPTION` "
+                               "and retry.")
+                          schema-name (quote-schema schema-name))
                   {:status-code 412
                    :schema      schema-name})))
 
@@ -1530,13 +1531,16 @@
   "Throw the standard ex-info for the SELECT-WITH-GRANT-OPTION pre-condition,
    naming the objects the current user cannot re-grant SELECT on."
   [schema-name objects]
-  (let [qualified (map #(format "\"%s\".\"%s\"" (:schema %) (:object %)) objects)]
-    (throw (ex-info (format (str "User lacks SELECT WITH GRANT OPTION on %d object(s) in schema "
-                                 "\"%s\": %s. Workspace provisioning cannot grant SELECT to the "
-                                 "workspace user on these objects. Have the object owner run:\n\n"
-                                 "    GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\" TO CURRENT_USER WITH GRANT OPTION;\n\n"
-                                 "then retry workspace provisioning.")
-                            (count objects) schema-name (str/join ", " qualified) schema-name)
+  (let [qualified (map #(str (quote-schema (:schema %)) "." (quote-table (:object %)))
+                       objects)]
+    (throw (ex-info (format (str "Current user lacks SELECT WITH GRANT OPTION on %d object(s) in "
+                                 "schema \"%s\": %s. Cannot grant SELECT to the workspace user. "
+                                 "Have the object owner run `GRANT SELECT ON ALL TABLES IN SCHEMA "
+                                 "%s TO CURRENT_USER WITH GRANT OPTION` and retry.")
+                            (count objects)
+                            schema-name
+                            (str/join ", " qualified)
+                            (quote-schema schema-name))
                     {:status-code 412
                      :schema      schema-name
                      :objects     (vec qualified)}))))
@@ -1576,14 +1580,15 @@
   "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
    naming the owner roles we cannot target with `FOR ROLE`."
   [schema-name owners]
-  (let [owner-names (map :owner owners)]
-    (throw (ex-info (format (str "Current user is not a member of %d role(s) that own objects in "
-                                 "schema \"%s\": %s. `ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\"` "
-                                 "cannot cover future objects created by these roles, so the "
-                                 "workspace user would lose access to new tables. Grant role "
-                                 "membership to the current user (e.g. `GRANT \"<owner>\" TO "
-                                 "CURRENT_USER`), then retry workspace provisioning.")
-                            (count owners) schema-name (str/join ", " owner-names) schema-name)
+  (let [owner-names (map :owner owners)
+        grants      (str/join " "
+                              (map #(format "GRANT %s TO CURRENT_USER;" (quote-field %))
+                                   owner-names))]
+    (throw (ex-info (format (str "Current user is not a member of %d role(s) owning objects in "
+                                 "schema \"%s\": %s. The workspace user would lose access to "
+                                 "future tables created by these roles. Grant role membership "
+                                 "with `%s` and retry.")
+                            (count owners) schema-name (str/join ", " owner-names) grants)
                     {:status-code 412
                      :schema      schema-name
                      :owners      (vec owner-names)}))))
@@ -1613,26 +1618,29 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}]
+  (let [schema-name   (driver.u/workspace-isolation-namespace-name workspace)
+        read-user     {:user     (driver.u/workspace-isolation-user-name workspace)
+                       :password (driver.u/random-workspace-password)}
+        quoted-schema (quote-schema schema-name)
+        quoted-user   (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Create user if not exists, otherwise update password
       ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
+                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
-                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
                        ;; grant schema access (CREATE to create tables, USAGE to access them)
                        ;; GRANT is idempotent in PostgreSQL
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
                        ;; grant all privileges on future tables created in this schema (by admin)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
+                               quoted-schema quoted-user)
                        ;; grant role membership to admin so DROP OWNED BY works during cleanup
-                       (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
+                       (format "GRANT %s TO CURRENT_USER" quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)
@@ -1643,14 +1651,16 @@
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name (:schema workspace)
-        username    (-> workspace :database_details :user)]
+  (let [schema-name   (:schema workspace)
+        username      (-> workspace :database_details :user)
+        quoted-schema (quote-schema schema-name)
+        quoted-user   (quote-field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
+        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)]
                       (user-exists? t-conn username)
-                      (into [(format "DROP OWNED BY \"%s\"" username)
-                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
+                      (into [(format "DROP OWNED BY %s" quoted-user)
+                             (format "DROP USER IF EXISTS %s" quoted-user)]))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
@@ -1661,13 +1671,14 @@
   and an ALTER DEFAULT PRIVILEGES covering future tables created by the granting
   role."
   [username schemas]
-  (let [qu             (sql.u/quote-name :postgres :field username)
+  (let [quoted-user    (quote-field username)
         source-schemas (set schemas)]
     (mapcat (fn [s]
-              (let [qs (sql.u/quote-name :postgres :schema s)]
-                [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
-                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" qs qu)
-                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
+              (let [quoted-schema (quote-schema s)]
+                [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+                         quoted-schema quoted-user)]))
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
