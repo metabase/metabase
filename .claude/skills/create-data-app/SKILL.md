@@ -1,36 +1,75 @@
 ---
 name: create-data-app
-description: Scaffold a new Metabase data-app development project — a small Vite preview environment plus a starter `index.js` bundle, with all conventions for plain-JS / React.createElement bundles and Embedding-SDK theming. Use when the user asks to start, create, scaffold, or set up a data-app or data-app bundle from scratch.
+description: Scaffold a new Metabase data-app development project — a Vite + React + JSX project with hot-reload preview against a live Metabase, plus a production build that emits a single uploadable bundle. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 ---
 
 # Create a Metabase Data App
 
-A Metabase **data-app** is a single hand-written JS file (`index.js`) that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The agent's job is to author that one file. This skill scaffolds a small dev project that gives you a local preview with real SDK rendering and hot-reload, plus a starter bundle that demonstrates every convention.
+A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. This skill scaffolds a proper Vite project: source code in `src/` (multiple `.jsx` files allowed and encouraged), a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `yarn build` producing a single `dist/index.js` to upload via Admin → Data apps.
 
 ## When to invoke this skill
 
-- "scaffold a new data app", "create a Metabase data app", "set up a data-app project"
-- The user mentions building a data app and there's no existing project structure
-- You're starting a fresh agent task that will produce a data-app bundle
+- "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
+- Starting a fresh agent task that will produce a data-app bundle.
 
-If a `public/index.js` already exists in the working directory, **don't re-scaffold** — edit the existing bundle instead.
+### Detecting an existing project
+
+Before writing any files, check whether the working directory already looks
+like a data-app project. Telltale signs:
+
+- `src/index.jsx` exists, **or**
+- `vite.config.ts` with a `name: "__customVizPlugin__"` entry, **or**
+- `package.json` whose `scripts` include `vite build` and depends on
+  `@metabase/embedding-sdk-react`.
+
+If any of these are present, **do not silently re-scaffold** — pause and ask
+the user:
+
+> "I see this looks like an existing data-app project. Should I keep working
+> in it (extend the current `src/`), or do you want me to scaffold a fresh
+> project somewhere else?"
+
+Only continue once the user has answered:
+
+- **"Keep working in this one"** → skip the file-writing steps below and
+  edit the existing `src/` files (typically `src/App.jsx` and
+  `src/components/`).
+- **"Scaffold fresh"** → ask for the target path, then write the files
+  there.
+
+Do not overwrite existing files without explicit confirmation.
 
 ## What gets created
 
 ```
-<project-root>/
+my-data-app/
 ├── package.json
 ├── vite.config.ts
-├── index.html
-├── preview.tsx          ← host shim that mimics what Metabase does in-host
-├── public/
-│   └── index.js         ← the data-app bundle — the ONLY file you edit going forward
-├── .env.local.example   ← copy to .env.local, fill in Metabase URL + API key
+├── tsconfig.json
+├── index.html                  ← Vite dev entry
+├── src/
+│   ├── index.jsx               ← PRODUCTION entry — exports the factory
+│   ├── dev.jsx                 ← DEV entry — sets up globals, mounts App
+│   ├── dev-globals.jsx         ← DEV-only: imports real SDK, populates globalThis
+│   ├── App.jsx                 ← top-level component (you edit this)
+│   └── components/             ← split components freely; multiple .jsx files OK
+│       └── …
+├── public/                     ← static assets if needed
+├── dist/                       ← produced by `yarn build` (gitignored)
+│   └── index.js                ← THE file to upload to Metabase
+├── .env.local.example
 ├── .gitignore
 └── README.md
 ```
 
-The preview imports `@metabase/embedding-sdk-react`, puts `React` + SDK components onto `globalThis`, fetches `/index.js` as text, evaluates it, and renders the returned component. The wiring mirrors how Metabase loads data apps in-host, so what you see locally is what users see post-upload.
+## Two modes, same source
+
+| | Source loaded | Output | Used for |
+|---|---|---|---|
+| **`yarn dev`** | `src/dev.jsx` (loads `dev-globals` then mounts `<App/>`) | http://localhost:5174 with HMR | Iterating visually against a real Metabase |
+| **`yarn build`** | `src/index.jsx` (exports factory) | `dist/index.js` (single IIFE) | Uploading to Metabase |
+
+`App.jsx` and everything in `src/components/` is shared between both modes. The split is only at the entry layer.
 
 ## Step 1 — Project files (write these verbatim)
 
@@ -41,8 +80,10 @@ The preview imports `@metabase/embedding-sdk-react`, puts `React` + SDK componen
   "name": "data-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "vite --port 5174"
+    "dev": "vite --port 5174",
+    "build": "vite build"
   },
   "dependencies": {
     "@metabase/embedding-sdk-react": "*",
@@ -59,37 +100,76 @@ The preview imports `@metabase/embedding-sdk-react`, puts `React` + SDK componen
 }
 ```
 
-Pin the `@metabase/embedding-sdk-react` version to match the target Metabase. `*` is fine for local dev.
+`@metabase/embedding-sdk-react` **must be at least v62** — earlier versions don't ship the component surface (`MetabaseProvider`, the question/dashboard components) the data-app contract depends on. Pin to the exact version matching your target Metabase when you commit (e.g. `"@metabase/embedding-sdk-react": "^62.0.0"`).
 
 ### `vite.config.ts`
 
 ```ts
 import { resolve } from "node:path";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+/**
+ * Two output shapes from one project:
+ *
+ *   yarn dev   → serves index.html with HMR; loads src/dev.jsx, which sets up
+ *                   globalThis endowments from the real SDK and renders <App/>.
+ *
+ *   yarn build → emits a single IIFE bundle at dist/index.js using lib mode.
+ *                   The bundle assigns its factory default export to
+ *                   globalThis.__customVizPlugin__ — the exact contract the
+ *                   Metabase host expects when it evaluates uploaded bundles.
+ *
+ * `react` is externalized so the bundle uses the host's React (the one
+ * Metabase endows on globalThis.React). That sharing is what makes hooks
+ * work across the sandbox/host boundary. `jsxRuntime: "classic"` compiles
+ * JSX to `React.createElement(...)` so we only need to externalize one
+ * package (react), not also react/jsx-runtime.
+ */
 export default defineConfig({
-  plugins: [
-    react(),
-    {
-      name: "watch-bundle",
-      configureServer(server) {
-        const bundle = resolve(__dirname, "public/index.js");
-        server.watcher.add(bundle);
-        server.watcher.on("change", (path) => {
-          if (path === bundle) {
-            // Vite's HMR doesn't watch /public; emit a manual full-reload.
-            server.ws.send({ type: "full-reload" });
-          }
-        });
-      },
+  plugins: [react({ jsxRuntime: "classic" })],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    lib: {
+      entry: resolve(__dirname, "src/index.jsx"),
+      formats: ["iife"],
+      fileName: () => "index.js",
+      name: "__customVizPlugin__",
     },
-  ],
+    rollupOptions: {
+      external: ["react"],
+      output: { globals: { react: "React" } },
+    },
+  },
   server: { port: 5174, host: "localhost" },
 });
 ```
 
-Vite normally doesn't watch `public/`. The tiny inline plugin watches `public/index.js` and triggers a full reload on save so the preview always reflects the latest bundle.
+### `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "strict": false
+  },
+  "include": ["src", "vite.config.ts"]
+}
+```
 
 ### `index.html`
 
@@ -99,7 +179,7 @@ Vite normally doesn't watch `public/`. The tiny inline plugin watches `public/in
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data App Preview</title>
+    <title>Data App Dev Preview</title>
     <style>
       html, body, #root { height: 100%; margin: 0; }
       body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
@@ -107,16 +187,32 @@ Vite normally doesn't watch `public/`. The tiny inline plugin watches `public/in
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/preview.tsx"></script>
+    <script type="module" src="/src/dev.jsx"></script>
   </body>
 </html>
 ```
 
-### `preview.tsx`
+### `src/index.jsx` — production entry
 
-```tsx
+```jsx
+import App from "./App";
+
+/**
+ * Production entry. Vite lib mode emits an IIFE whose return value is
+ * assigned to globalThis.__customVizPlugin__ (the `name` field in
+ * vite.config.ts). The Metabase host evaluates the bundle text, reads
+ * `__customVizPlugin__` back out, calls it with hostApi, and renders the
+ * returned `component` inside its own React tree.
+ */
+export default function factory(_hostApi) {
+  return { component: App };
+}
+```
+
+### `src/dev-globals.jsx` — dev-only endowment setup
+
+```jsx
 import * as React from "react";
-import { createRoot } from "react-dom/client";
 import {
   CollectionBrowser,
   CreateDashboardModal,
@@ -124,98 +220,110 @@ import {
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
-  type MetabaseAuthConfig,
   MetabaseProvider as SdkMetabaseProvider,
   MetabotQuestion,
   StaticDashboard,
   StaticQuestion,
 } from "@metabase/embedding-sdk-react";
 
-const authConfig: MetabaseAuthConfig = {
+/**
+ * In production, the Metabase host endows React + SDK components on
+ * globalThis before evaluating the bundle. In dev, this module mirrors
+ * that setup using the real SDK package, so the same App.jsx source
+ * works in both modes without #if dev/prod branches.
+ *
+ * MetabaseProvider is wrapped so the bundle's call
+ *   <MetabaseProvider theme={...}>…</MetabaseProvider>
+ * stays auth-agnostic — the authConfig is injected here from .env.local.
+ */
+const authConfig = {
   metabaseInstanceUrl: import.meta.env.VITE_MB_URL,
   apiKey: import.meta.env.VITE_MB_API_KEY,
 };
 
-function MetabaseProviderShim({
-  theme,
-  children,
-}: {
-  theme?: unknown;
-  children?: React.ReactNode;
-}) {
+function MetabaseProvider({ theme, children }) {
   return (
-    <SdkMetabaseProvider
-      authConfig={authConfig}
-      theme={theme as Parameters<typeof SdkMetabaseProvider>[0]["theme"]}
-    >
+    <SdkMetabaseProvider authConfig={authConfig} theme={theme}>
       {children}
     </SdkMetabaseProvider>
   );
 }
 
-const globals: Record<string, unknown> = {
-  React,
-  MetabaseProvider: MetabaseProviderShim,
-  InteractiveQuestion,
-  StaticQuestion,
-  CreateQuestion,
-  MetabotQuestion,
-  EditableDashboard,
-  InteractiveDashboard,
-  StaticDashboard,
-  CreateDashboardModal,
-  CollectionBrowser,
-};
-
-for (const [name, value] of Object.entries(globals)) {
-  (globalThis as unknown as Record<string, unknown>)[name] = value;
-}
-
-async function boot() {
-  const root = createRoot(document.getElementById("root")!);
-
-  if (!authConfig.metabaseInstanceUrl || !authConfig.apiKey) {
-    root.render(
-      <div style={{ padding: 24, fontFamily: "monospace" }}>
-        <h2>Missing env</h2>
-        <p>
-          Set <code>VITE_MB_URL</code> and <code>VITE_MB_API_KEY</code> in{" "}
-          <code>.env.local</code>, then restart.
-        </p>
-      </div>,
-    );
-    return;
-  }
-
-  const code = await fetch("/index.js", { cache: "no-store" }).then((r) =>
-    r.text(),
-  );
-  // eslint-disable-next-line no-new-func
-  new Function(code)();
-
-  const factory = (
-    globalThis as unknown as {
-      __customVizPlugin__?: (hostApi: Record<string, unknown>) => {
-        component: React.ComponentType<Record<string, unknown>>;
-      };
-    }
-  ).__customVizPlugin__;
-
-  if (typeof factory !== "function") {
-    root.render(
-      <pre>Bundle did not assign a function to __customVizPlugin__</pre>,
-    );
-    return;
-  }
-  const def = factory({});
-  const App = def.component;
-  root.render(<App />);
-}
-
-boot();
+globalThis.React = React;
+globalThis.MetabaseProvider = MetabaseProvider;
+globalThis.InteractiveQuestion = InteractiveQuestion;
+globalThis.StaticQuestion = StaticQuestion;
+globalThis.CreateQuestion = CreateQuestion;
+globalThis.MetabotQuestion = MetabotQuestion;
+globalThis.EditableDashboard = EditableDashboard;
+globalThis.InteractiveDashboard = InteractiveDashboard;
+globalThis.StaticDashboard = StaticDashboard;
+globalThis.CreateDashboardModal = CreateDashboardModal;
+globalThis.CollectionBrowser = CollectionBrowser;
 ```
 
-This shim mirrors what Metabase's in-host sandbox does — endow React + SDK components, evaluate the bundle, render. Locally it uses the real SDK with API-key auth.
+### `src/dev.jsx` — dev entry
+
+```jsx
+import "./dev-globals";
+
+import { createRoot } from "react-dom/client";
+
+import App from "./App";
+
+createRoot(document.getElementById("root")).render(<App />);
+```
+
+The `import "./dev-globals"` line is intentionally the first statement so all `globalThis.*` assignments run before `App.jsx` evaluates and reads them.
+
+### `src/App.jsx` — starter
+
+```jsx
+// SDK components are endowed on globalThis by the host in production and
+// by src/dev-globals.jsx in dev. Read them at module load time — when this
+// module evaluates, the endowments are already in place.
+const { MetabaseProvider, StaticQuestion } = globalThis;
+
+const sdkTheme = {
+  colors: {
+    brand: "#4D96FF",
+    "brand-hover": "#4D96FF",
+    positive: "#4D96FF",
+    charts: ["#4D96FF"],
+    // The SDK widget's surface — match the IMMEDIATE PARENT of the chart.
+    background: "white",
+    "background-secondary": "white",
+    // Text on the SDK surface — must contrast with `background`.
+    "text-primary": "#1f2937",
+    "text-secondary": "#4b5563",
+    "text-tertiary": "#6b7280",
+  },
+  fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
+};
+
+export default function App() {
+  return (
+    <MetabaseProvider theme={sdkTheme}>
+      <div style={{ minHeight: "100vh", background: "#f5f5f7" }}>
+        <header style={{ padding: 24 }}>
+          <h1 style={{ margin: 0 }}>Hello, data app</h1>
+          <p style={{ color: "#555" }}>Edit src/App.jsx to begin.</p>
+        </header>
+        <div style={{ margin: 24, padding: 16, background: "white", borderRadius: 12 }}>
+          <div style={{ height: 360, overflow: "hidden" }}>
+            <StaticQuestion
+              questionId={1}
+              withChartTypeSelector={false}
+              height="100%"
+              width="100%"
+            />
+          </div>
+        </div>
+      </div>
+    </MetabaseProvider>
+  );
+}
+```
 
 ### `.env.local.example`
 
@@ -238,314 +346,199 @@ dist
 ```md
 # data-app
 
-A hand-written Metabase data-app bundle. The single file the agent edits is
-**`public/index.js`** — plain JS, no JSX, no build step.
+A Metabase data-app authored as a Vite + React + JSX project.
 
-## Setup
+## Dev (HMR preview against a real Metabase)
 
 ```bash
-bun install
+yarn
 cp .env.local.example .env.local
-# fill in VITE_MB_URL and VITE_MB_API_KEY (Admin → API keys)
-bun run dev
+# fill VITE_MB_URL + VITE_MB_API_KEY (Admin → Authentication → API keys)
+yarn dev
 ```
 
 Open http://localhost:5174.
 
-## CORS
-
-The SDK on `:5174` calls Metabase on a different origin. In Admin →
-Embedding, add `http://localhost:5174` to the SDK origins allowlist.
-```
-
-## Step 2 — The starter `public/index.js`
-
-Write this as the initial bundle. It demonstrates every convention. Modify it (or replace it) to build the actual app.
-
-```js
-"use strict";
-// Data-app bundle. Plain JS, no JSX, no imports, no build step.
-// The host evaluates this text inside a Near Membrane sandbox and renders the
-// returned component inside its own React tree.
-//
-// Host-injected globals:
-//   - React               the host's React instance
-//   - MetabaseProvider    SDK provider — wrap the whole app once; pass `theme`
-//   - StaticQuestion      SDK static (non-drillable) question
-//   - InteractiveQuestion SDK drillable question
-(function () {
-  // Convenience helper for React.createElement. Read React from globalThis
-  // inside the function (lazy) — robust to endowment ordering, and the
-  // .apply(React, arguments) forwards `el(type, props, ...children)`
-  // identically to createElement's signature.
-  function el() {
-    var React = globalThis.React;
-    return React.createElement.apply(React, arguments);
-  }
-
-  function Hero(props) {
-    return el(
-      "header",
-      { style: { padding: 24, marginBottom: 16 } },
-      el("h1", { style: { margin: 0, fontSize: 28 } }, props.title),
-      el("p", { style: { margin: "4px 0 0", color: "#555" } }, props.subtitle),
-    );
-  }
-
-  function Chart(props) {
-    var StaticQuestion = globalThis.StaticQuestion;
-    return el(
-      "div",
-      {
-        style: {
-          background: "white",
-          border: "1px solid #eee",
-          borderRadius: 12,
-          padding: 16,
-          margin: 24,
-        },
-      },
-      el(
-        "div",
-        { style: { height: 360, overflow: "hidden" } },
-        el(StaticQuestion, {
-          questionId: props.questionId,
-          withChartTypeSelector: false,
-          // SDK components don't auto-fit their parent — pass explicit dims.
-          height: "100%",
-          width: "100%",
-        }),
-      ),
-    );
-  }
-
-  function App() {
-    var React = globalThis.React;
-    var MetabaseProvider = globalThis.MetabaseProvider;
-
-    // The theme is the SDK's contract. Tune fields the SDK consumes; match
-    // `background` / `text-primary` to the IMMEDIATE PARENT of the chart
-    // (here it's the white Chart card — so white bg + dark text).
-    var sdkTheme = {
-      colors: {
-        brand: "#4D96FF",
-        "brand-hover": "#4D96FF",
-        positive: "#4D96FF",
-        charts: ["#4D96FF"],
-        background: "white",
-        "background-secondary": "white",
-        "text-primary": "#1f2937",
-        "text-secondary": "#4b5563",
-        "text-tertiary": "#6b7280",
-      },
-      fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
-    };
-
-    return el(
-      MetabaseProvider,
-      { theme: sdkTheme },
-      el(
-        "div",
-        { style: { minHeight: "100vh", background: "#f5f5f7" } },
-        el(Hero, { title: "Hello, data app", subtitle: "Edit public/index.js to begin." }),
-        el(Chart, { questionId: 1 }),
-      ),
-    );
-  }
-
-  // Factory handshake. The host reads this back through an accessor pair and
-  // calls factory(hostApi), then renders def.component.
-  globalThis.__customVizPlugin__ = function factory(_hostApi) {
-    return { component: App };
-  };
-})();
-```
-
-## Step 3 — Install and run
+## Build (single bundle for upload)
 
 ```bash
-bun install   # or npm install
+yarn build
+# → dist/index.js
+```
+
+Upload `dist/index.js` via Metabase Admin → Data apps → Add.
+
+## CORS
+
+The SDK on `:5174` hits Metabase on a different origin. In
+Admin → Embedding → Embedded analytics SDK → CORS, add
+`http://localhost:5174`.
+```
+
+## Step 2 — Install + run
+
+```bash
+yarn
 cp .env.local.example .env.local
-# edit .env.local with the user's Metabase URL + API key
-bun run dev
+# fill in VITE_MB_URL + VITE_MB_API_KEY
+yarn dev      # preview at http://localhost:5174
+# …iterate on src/App.jsx and friends; HMR reloads on save…
+yarn build    # produces dist/index.js
 ```
 
-Open `http://localhost:5174`. Edit `public/index.js`; the page reloads on every save.
+## Source conventions
 
-## Bundle conventions — what every `index.js` MUST follow
+### 1. Write normal JSX.
 
-### 1. `"use strict";` and IIFE wrapper
+The source is plain ESM + JSX:
 
-```js
-"use strict";
-(function () {
-  // …everything…
-})();
-```
+```jsx
+// src/components/PokemonCard.jsx
+const { StaticQuestion } = globalThis;
 
-Bundle is evaluated as text — no module system. The IIFE keeps internal symbols private; strict mode catches typos.
-
-### 2. The `el` helper
-
-```js
-function el() {
-  var React = globalThis.React;
-  return React.createElement.apply(React, arguments);
+export default function PokemonCard({ pokemon }) {
+  return (
+    <article style={{ /* … */ }}>
+      <h3>{pokemon.name}</h3>
+      <StaticQuestion questionId={pokemon.questionId} height={300} width="100%" />
+    </article>
+  );
 }
 ```
 
-Critical properties:
+### 2. Multiple files are encouraged
 
-- **`globalThis.React` read inside the function (lazy)**. `React` is an endowment placed on the sandbox's globalThis by the host. Reading it eagerly at IIFE top would also work in practice, but lazy reads are robust to any ordering surprise and don't cost anything.
-- **`.apply(React, arguments)` forwards all args verbatim**. Same call signature as `createElement`:
-  - `el(type, props, ...children)` for DOM tags and components.
-  - `el("div", { style: { …inline styles… } }, …)` for native elements.
-  - `el(Component, propsObject)` for components without children.
-  - `el(Component, null, "text")` when children are primitives.
-- **Two letters**. The bundle is mostly `el(...)` calls; brevity matters.
+Split components, helpers, data into separate files in `src/`. Vite bundles everything in `src/` reachable from `src/index.jsx` into a single `dist/index.js` IIFE.
 
-Use `el` for *everything* that would be `<JSX>` in a normal app. Never write `React.createElement` directly in the bundle body — `el` is the convention readers expect.
-
-### 3. No JSX, no imports, no module syntax
-
-- No `import` / `export` — the bundle is evaluated via `new Function(code)()` in the preview and via the membrane in-host. Neither supports ES modules.
-- No JSX — there's no transpiler running over this file. `el(...)` is the only way to express React elements.
-- No top-level `await`.
-
-### 4. Function components only
-
-```js
-function MyComponent(props) {
-  var React = globalThis.React;
-  var s = React.useState(0);
-  // …
-  return el("div", null, "…");
-}
+```
+src/
+├── index.jsx
+├── App.jsx
+├── components/
+│   ├── Hero.jsx
+│   ├── PokemonCard.jsx
+│   └── TypePill.jsx
+├── data/
+│   └── pokemon.js
+└── theme.js
 ```
 
-- Function components, never class components.
-- Inside any function that uses hooks, capture `var React = globalThis.React;` at the top so `React.useState`, `React.useEffect`, etc. are reachable.
-- All stock hooks work — they dispatch through the host React reached via the membrane.
+### 3. Read SDK components from `globalThis`, NOT from `@metabase/embedding-sdk-react`
 
-### 5. `MetabaseProvider` wraps the root
+In source code, **never import from `@metabase/embedding-sdk-react`**. The SDK is bundled into the host page and exposed on `globalThis`. Importing the npm package would inline a second copy into your bundle — bigger output, broken contexts, separate Redux store.
 
-```js
-function App() {
-  var React = globalThis.React;
-  var MetabaseProvider = globalThis.MetabaseProvider;
-  return el(MetabaseProvider, { theme: sdkTheme }, /* …app tree… */);
-}
+```jsx
+// ✅ correct
+const { MetabaseProvider, StaticQuestion } = globalThis;
+
+// ❌ wrong — bundles a second SDK copy
+import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 ```
 
-- **Required**. SDK components (`StaticQuestion`, `InteractiveQuestion`) need the provider to find the SDK Redux store and the theme. Without `MetabaseProvider`, they render nothing or throw.
-- **One provider, at the root**. Nesting more `MetabaseProvider`s doesn't give you per-subtree themes — the SDK writes its CSS variables to a single `EnsureSingleInstance` slot. Recompute the theme at the App level when state changes (e.g., on selection) and the whole tree re-themes.
+Only `src/dev-globals.jsx` imports from the SDK package, and only for the dev-mode preview — `dev-globals.jsx` is never reached from `src/index.jsx`, so it's tree-shaken out of the production build.
 
-### 6. Factory at the very end
+### 4. `React` is in scope automatically
 
-```js
-globalThis.__customVizPlugin__ = function factory(_hostApi) {
+Vite's JSX classic runtime compiles `<div/>` to `React.createElement("div")`. The bundle externalizes `react` and maps it to `globalThis.React` (the host's React). You don't need to `import React from "react"` in every file — but doing so is harmless and matches normal React habits. **Do not** use `import { useState } from "react"` for hooks — pull them off the global React: `const { useState } = globalThis.React;`. (You can also `import React from "react"; const { useState } = React;` — same result.)
+
+### 5. Production entry exports the factory
+
+`src/index.jsx` is the production entry. It must `export default` a factory function returning `{ component }`:
+
+```jsx
+import App from "./App";
+
+export default function factory(_hostApi) {
   return { component: App };
-};
+}
 ```
 
-- Last statement before the IIFE closes.
-- Must return `{ component }` — the host invokes the factory once and renders `def.component` as a normal React component.
-- `hostApi` is reserved for future use (data API, asset URLs, etc.). Ignore it for now.
+Vite lib mode + `name: "__customVizPlugin__"` makes the bundle assign this factory to `globalThis.__customVizPlugin__`, which is the contract the Metabase host reads.
 
-## Theme rules
+## Theme rules (unchanged from the older convention)
 
-`MetabaseProvider`'s `theme` is the **only** way SDK component appearance changes. It is **not** a stylesheet for the bundle's own chrome.
-
-### Safe to set
+`MetabaseProvider`'s `theme` is the only way SDK component appearance changes. It is NOT a stylesheet for the bundle's own chrome.
 
 | Field | Purpose | Notes |
 |---|---|---|
 | `colors.brand`, `colors.brand-hover` | Accent for SDK widgets | Use the data app's primary color. |
-| `colors.charts` | Chart palette | Array of strings. **Use vivid brand-shade colors only**; never pale tints — palette index 1+ may render labels and pale-on-white is invisible. |
+| `colors.charts` | Chart palette | Array of strings. Use vivid brand-shade colors only; **never pale tints** — palette index 1+ may render labels and pale-on-white is invisible. |
 | `colors.positive` / `colors.negative` | Semantic indicators | |
 | `colors.background`, `colors.background-secondary` | SDK component surface | **MUST match the immediate parent container of the SDK component.** If the chart sits inside a white card, use `"white"`. If it sits on a tinted page, use that tint. |
-| `colors.text-primary`, `text-secondary`, `text-tertiary` | Text on SDK surfaces | **MUST contrast with `background`.** For white bg: use a dark text (`#1f2937`). For dark bg: use light text. The SDK's default `text-primary` resolves to near-white via `--mantine-color-text-primary-0`, so leaving it unset and putting the chart on a white card produces invisible white text. **Always set these explicitly when overriding background.** |
+| `colors.text-primary`, `text-secondary`, `text-tertiary` | Text on SDK surfaces | **MUST contrast with `background`.** For white bg: use `#1f2937` or similar dark color. The SDK's default `text-primary` resolves to ~white, so leaving it unset on a white surface produces invisible white text. **Always pair `background` and `text-primary` when overriding.** |
 | `fontFamily` | SDK widget typography | |
 
-### Anti-patterns
+**Never put page-chrome colors in the theme.** Style page chrome with inline `style={{ background: "#f5f5f7" }}` on your own `div`s.
 
-- **Don't put page-chrome colors in the theme.** The page's outer `background` is NOT what `colors.background` controls — that's the SDK widget background. Style page chrome with inline `style={{ background: '#f5f5f7' }}` on your own `div`s; keep the theme focused on what's inside the SDK widget.
-- **Don't include `selected.tint` (or any pale color) in `colors.charts`.** Pale chart palette colors render as labels and become unreadable on light backgrounds.
-- **Don't expect per-subtree theming.** Multiple `MetabaseProvider`s on the page fight for the single CSS-variable slot. If you want the look to change with state, recompute `sdkTheme` at the root.
-
-### Why the `text-primary` token is so easy to get wrong
-
-The SDK doc string for `text-primary` reads "Text color on dark elements." In practice the SDK pipes it into `--mantine-color-text-primary-0` and uses it as the primary text token everywhere — irrespective of background. The default value is near-white. So:
-
-- ✅ Dark background, leave `text-primary` unset → SDK default white text → legible.
-- ❌ Light background, leave `text-primary` unset → SDK default white text → invisible.
-- ✅ Light background, set `text-primary: "#1f2937"` → dark text → legible.
-
-Always pair `background` and `text-primary` in the theme.
+**Don't expect per-subtree theming.** Multiple `<MetabaseProvider>`s on the page fight for the single CSS-variable slot. If the look needs to change with state, recompute `sdkTheme` at the App level and re-render — the whole tree re-themes.
 
 ## Available endowments
 
-The host puts these on `globalThis` inside the sandbox before evaluating your bundle. Reach them via `globalThis.X` inside component bodies.
+Set on `globalThis` by the host in production and by `src/dev-globals.jsx` in dev.
 
 | Endowment | Purpose |
 |---|---|
-| `React` | The host's React instance. Use stock APIs. |
-| `MetabaseProvider` | Provider — wraps the root. Takes `{ theme, children }`. |
-| `StaticQuestion` | Non-drillable question. Props: `questionId` (required), `withChartTypeSelector?`, `height?`, `width?`. |
+| `React` | Host React. Use `globalThis.React.useState` etc. for hooks. |
+| `MetabaseProvider` | Wraps the root; takes `{ theme, children }`. |
+| `StaticQuestion` | Non-drillable question. Props include `questionId`, `withChartTypeSelector`, `height`, `width`. |
 | `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. |
-| `CreateQuestion` | UI for creating a new saved question. |
-| `MetabotQuestion` | Metabot-backed conversational question component. |
-| `StaticDashboard` | Read-only dashboard view. Props: `dashboardId` (required). |
-| `InteractiveDashboard` | Read-only dashboard with drill-throughs. Props: `dashboardId` (required). |
-| `EditableDashboard` | Full edit UI for a dashboard. Props: `dashboardId` (required). |
-| `CreateDashboardModal` | Modal for creating a new dashboard. |
-| `CollectionBrowser` | Tree view of collections. |
-| `__customVizPlugin__` | Accessor pair — assign your factory to it as the bundle's last statement. |
+| `CreateQuestion`, `MetabotQuestion` | More question variants. |
+| `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
+| `CreateDashboardModal` | Modal for new-dashboard flow. |
+| `CollectionBrowser` | Collection picker. |
 
-Anything else (`fetch`, `XMLHttpRequest`, `WebSocket`, etc.) may be blocked by the sandbox in production. **Never make direct network requests from the bundle.** Get data through SDK components only.
+Network APIs (`fetch`, `XMLHttpRequest`, `WebSocket`, etc.) are blocked by the sandbox in production. Never make direct network requests from the bundle — let the SDK components do the talking.
 
 ## SDK component sizing
 
-SDK components do NOT auto-fit their parent. You must give them explicit dimensions:
+SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
 
-```js
-el(
-  "div",
-  { style: { height: 360, overflow: "hidden" } },  // parent must define size
-  el(StaticQuestion, {
-    questionId: 1,
-    height: "100%",   // tell the SDK to fill the parent
-    width: "100%",
-  }),
-)
+```jsx
+<div style={{ height: 360, overflow: "hidden" }}>
+  <StaticQuestion
+    questionId={1}
+    height="100%"
+    width="100%"
+    withChartTypeSelector={false}
+  />
+</div>
 ```
 
-Without `height`/`width` props, the SDK component renders at its intrinsic size, which usually overflows the bundle's layout.
+Without `height`/`width`, the SDK component renders at its intrinsic size and overflows.
 
-## Dev workflow
+## Upload to Metabase
 
-1. Edit `public/index.js`.
-2. Save. Vite triggers a full reload of `http://localhost:5174`.
-3. Bundle is re-fetched as text, re-evaluated, App re-renders inside the preview's `MetabaseProvider`.
+1. `yarn build` → produces `dist/index.js`.
+2. Open Metabase → Admin → Data apps → **Add**.
+3. Pick a short `name` (used in `/data-app/<name>` URL) and a display name.
+4. Upload `dist/index.js`.
+5. The data app is now reachable at `/data-app/<name>`.
 
-The bundle never gets bundled, transpiled, or minified by Vite — it lives in `public/` and is served verbatim. Vite only owns the preview shell.
+To replace: delete the data app, upload again. Per-app replace endpoint isn't wired yet.
 
-## Common pitfalls and fixes
+## Common pitfalls
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Preview shows "Failed to fetch the user, the session might be invalid." | Wrong/missing API key, or CORS blocked. | Verify `curl -H "X-API-Key: $KEY" $URL/api/user/current` returns 200. Add `http://localhost:5174` to Metabase's SDK CORS origins. |
-| Chart renders but with invisible labels. | `text-primary` not set against a light `background`. | Set `text-primary: "#1f2937"` (or similar dark color) in the theme. |
+| Preview shows "Failed to fetch the user, the session might be invalid." | Wrong/missing API key, or CORS blocked. | Verify `curl -H "X-API-Key: $KEY" $URL/api/user/current`. Add `http://localhost:5174` to Metabase's SDK CORS origins. |
+| Chart renders but with invisible labels. | `text-primary` not set against a light `background`. | Set `text-primary: "#1f2937"` (or similar) in the theme. |
 | Chart overflows its container. | No `height`/`width` props on SDK component. | Pass `height="100%"` `width="100%"` and constrain the parent. |
-| `Bundle did not assign a function to __customVizPlugin__` in preview. | Forgot the factory assignment at end of IIFE. | Add `globalThis.__customVizPlugin__ = function (_hostApi) { return { component: App }; };` |
-| Hooks throw "Invalid hook call". | Component defined outside the function-component pattern, or React from globalThis not read. | Use plain `function MyComp(props) { var React = globalThis.React; … }`. |
-| `el` is not defined inside a component. | `el` is defined inside the IIFE but not pulled into closure. | `el` is in the IIFE's lexical scope, accessible from any inner function. Don't redeclare. |
+| "Invalid hook call" at runtime. | Imported hook from `react` and `react` wasn't externalized. | Check `vite.config.ts` has `external: ["react"]` + `globals: { react: "React" }`. Or grab hooks off `globalThis.React`. |
+| Bundle is huge (multi-MB). | Imported `@metabase/embedding-sdk-react` in `src/App.jsx` or another non-dev file. | Switch to `globalThis.X` lookups; SDK imports belong only in `src/dev-globals.jsx`. |
+| `dist/index.js` doesn't assign anything to `__customVizPlugin__`. | Lib mode `name` not set in vite.config. | Verify `lib.name: "__customVizPlugin__"` in `vite.config.ts`. |
+| Preview tab is blank, console says `MetabaseProvider is undefined`. | `src/App.jsx` runs before `src/dev-globals.jsx` evaluates. | Make sure `src/dev.jsx` does `import "./dev-globals"` BEFORE `import App from "./App"`. |
 
 ## Where to go next
 
-After scaffolding:
+Once the project files are in place (whether freshly scaffolded or detected
+as existing):
 
-1. Replace the starter `Hero` + `Chart` with the actual data app.
-2. Find real `questionId`s on the target Metabase (Admin → query the cards table, or eyeball URLs of existing saved questions).
-3. Iterate visually in the preview.
-4. When upload-to-Metabase exists, ship `public/index.js` through that flow.
+1. **Confirm what the data app should do.** If the user hasn't already
+   described the screen / charts / flow, ask before generating code.
+2**Write the app.** Edit `src/App.jsx` and split additional pieces into
+   `src/components/*.jsx` — Vite bundles all of `src/` reachable from
+   `src/index.jsx` into a single `dist/index.js`, so file count is free.
+3**Iterate in the preview** at `http://localhost:5174` (`yarn dev`). HMR
+   reloads on save.
+4**Ship.** Run `yarn build` to produce `dist/index.js`, then upload that
+   file via Admin → Data apps.
