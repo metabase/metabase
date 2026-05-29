@@ -18,6 +18,18 @@ export async function delay(duration: number) {
   });
 }
 
+/**
+ * Flushes pending microtasks/timers inside `act` so async effects (notably
+ * floating-ui's `computePosition().then(flushSync(setState))` triggered by
+ * Mantine popovers) settle before assertions. Use after opening a popover
+ * to avoid the "not wrapped in act" warning.
+ */
+export async function waitForFloatingPosition() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 const DEFAULT_BOUNDING_CLIENT_RECT: DOMRect = {
   height: 1,
   width: 1,

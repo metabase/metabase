@@ -82,18 +82,30 @@ export const ArchivedBulkActions = ({
   };
 
   const handleBulkDeletePermanently = async () => {
-    const actions = selected.filter(canDelete).map((item) => deleteItem(item));
-    Promise.all(actions).finally(unselect);
-    dispatch(
-      addUndo({
-        message: ngettext(
-          msgid`${selected.length} item has been permanently deleted.`,
-          `${selected.length} items have been permanently deleted.`,
-          selected.length,
-        ),
-        canDismiss: true,
-      }),
-    );
+    const itemsToDelete = selected.filter(canDelete);
+    try {
+      await Promise.all(
+        itemsToDelete.map((item) => deleteItem(item, { notify: false })),
+      );
+      dispatch(
+        addUndo({
+          message: ngettext(
+            msgid`${itemsToDelete.length} item has been permanently deleted.`,
+            `${itemsToDelete.length} items have been permanently deleted.`,
+            itemsToDelete.length,
+          ),
+          canDismiss: true,
+        }),
+      );
+    } catch {
+      dispatch(
+        addUndo({
+          message: t`There was an error permanently deleting these items.`,
+        }),
+      );
+    } finally {
+      unselect();
+    }
   };
 
   // move

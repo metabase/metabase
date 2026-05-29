@@ -58,7 +58,6 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
-import type { Deferred } from "metabase/utils/promise";
 import type {
   Card,
   CollectionItemModel,
@@ -488,15 +487,15 @@ export const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   },
 );
 
-// promise used for tracking a query execution in progress. when a query is started we capture this.
-export const cancelQueryDeferred = createReducer<Deferred<void> | null>(
+// AbortController used for tracking a query execution in progress. when a query is started we capture this.
+export const cancelQueryController = createReducer<AbortController | null>(
   null,
   (builder) => {
     builder
       .addCase<
         string,
-        { type: string; payload: { cancelQueryDeferred: Deferred<void> } }
-      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryDeferred)
+        { type: string; payload: { cancelQueryController: AbortController } }
+      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryController)
       .addCase(CANCEL_QUERY, () => null)
       .addCase(QUERY_COMPLETED, () => null)
       .addCase(QUERY_ERRORED, () => null);

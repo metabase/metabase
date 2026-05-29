@@ -4,8 +4,6 @@ import { useEffectOnce } from "react-use";
 
 import { useDispatch } from "metabase/redux";
 import { runQuestionQuery } from "metabase/services";
-import type { Deferred } from "metabase/utils/promise";
-import { defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
@@ -57,7 +55,7 @@ export function QuestionResultLoader({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const cancelDeferredRef = useRef<Deferred | null>(null);
+  const cancelControllerRef = useRef<AbortController | null>(null);
   const questionRef = useRef<Question | null | undefined>(question);
 
   const loadResult = useCallback(
@@ -74,7 +72,7 @@ export function QuestionResultLoader({
       }
 
       try {
-        cancelDeferredRef.current = defer();
+        cancelControllerRef.current = new AbortController();
 
         setLoading(true);
         setResults((prev) => (keepPrevious ? prev : null));
@@ -82,7 +80,7 @@ export function QuestionResultLoader({
 
         const queryResults = await runQuestionQuery(questionToLoad, {
           dispatch,
-          cancelDeferred: cancelDeferredRef.current,
+          signal: cancelControllerRef.current.signal,
           collectionPreview,
         });
 
@@ -109,7 +107,7 @@ export function QuestionResultLoader({
   const cancel = useCallback(() => {
     if (loading) {
       setLoading(false);
-      cancelDeferredRef.current?.resolve();
+      cancelControllerRef.current?.abort();
     }
   }, [loading]);
 

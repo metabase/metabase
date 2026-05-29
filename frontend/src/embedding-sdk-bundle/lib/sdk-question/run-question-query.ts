@@ -2,7 +2,6 @@ import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-gu
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import type { Dispatch } from "metabase/redux/store";
 import { runQuestionQuery } from "metabase/services";
-import type { Deferred } from "metabase/utils/promise";
 import { getSensibleDisplays } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -14,7 +13,7 @@ interface RunQuestionQueryParams {
   token: EntityToken | null | undefined;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
-  cancelDeferred?: Deferred;
+  signal?: AbortSignal;
   dispatch: Dispatch;
 }
 
@@ -27,7 +26,7 @@ export async function runQuestionQuerySdk(
     token,
     originalQuestion,
     parameterValues,
-    cancelDeferred,
+    signal,
     dispatch,
   } = params;
 
@@ -53,7 +52,7 @@ export async function runQuestionQuerySdk(
 
     queryResults = await runQuestionQuery(question, {
       dispatch,
-      cancelDeferred,
+      signal,
       ignoreCache: false,
       isDirty: isQueryDirty,
       token,
