@@ -121,6 +121,7 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
+            :schema-viewer                  false
             :workspaces                     false
             :writable_connection            true}
            (mt/with-temporary-setting-values [custom-viz-enabled true]

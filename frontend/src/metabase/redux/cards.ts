@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions-reducer";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/redux/entities/questions-reducer";
 import type { Dispatch } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
@@ -79,7 +79,7 @@ export const createQuestionCard =
       ? { dashboard_id, dashboard_tab_id }
       : { collection_id };
 
-    const card: Card = await entityCompatibleQuery(
+    const card: Card = await runRtkEndpoint(
       { ...rest, ...destination },
       dispatch,
       cardApi.endpoints.createCard,
@@ -99,7 +99,7 @@ export const createQuestionCard =
 export const updateQuestionCard =
   (request: object) =>
   async (dispatch: Dispatch): Promise<Card> => {
-    const card: Card = await entityCompatibleQuery(
+    const card: Card = await runRtkEndpoint(
       pickWritable(request),
       dispatch,
       cardApi.endpoints.updateCard,
