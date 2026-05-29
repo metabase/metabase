@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -314,3 +315,61 @@
       (is (= [["card" 2 "this card is aerie mon"]
               ["card" 1 "crow's fly card"]]
              (search-results :mine "card" {:current-user-id rasta}))))))
+
+(deftest library-test
+  (testing "Library-collection cards rank above non-library cards"
+    ;; Real Collections are needed in appdb so the `:root-collection-type` fn attr can resolve the
+    ;; top-level ancestor's `:type` from each row's `:collection_location` materialized path.
+    (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
+                   :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
+                   :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
+                   :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                   :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
+                   :model/Collection other     {:name "non-library"    :location "/"}]
+      (with-index-contents
+        [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
+         {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+         {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
+         {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+         {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
+          (testing "with positive :library weight, items inside library trees come first"
+            (is (= [true true true true true false false]
+                   (map in-library? (with-weights {:library 1} (search-results* "card"))))))
+          (testing "with negative :library weight, library items come last"
+            (is (= [false false true true true true true]
+                   (map in-library? (with-weights {:library -1} (search-results* "card")))))))))))
+
+(deftest ^:parallel data-layer-test
+  (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
+    (with-index-contents
+      [{:model "table" :id 1 :name "table no layer"}
+       {:model "table" :id 2 :name "table final"    :data_layer "final"}
+       {:model "table" :id 3 :name "table internal" :data_layer "internal"}
+       {:model "table" :id 4 :name "table hidden"   :data_layer "hidden"}]
+      (testing "final tables lead when only :data-layer/final is positive"
+        (is (= 2 (-> (with-weights {:data-layer 1 :data-layer/final 1}
+                       (search-results* "table"))
+                     first second))))
+      (testing "internal tables lead when only :data-layer/internal is positive"
+        (is (= 3 (-> (with-weights {:data-layer 1 :data-layer/internal 1}
+                       (search-results* "table"))
+                     first second))))
+      (testing "hidden tables lead when only :data-layer/hidden is positive"
+        (is (= 4 (-> (with-weights {:data-layer 1 :data-layer/hidden 1}
+                       (search-results* "table"))
+                     first second))))))
+  (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
+    (with-index-contents
+      [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
+       {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
+       {:model "table" :id 3 :name "foo table hidden"   :data_layer "hidden"}]
+      (is (= [1 2 3]
+             (->> (with-weights {:data-layer          33
+                                 :data-layer/final    1
+                                 :data-layer/internal 0.3
+                                 :data-layer/hidden   0.03}
+                    (search-results* "foo table"))
+                  (map second)))))))
