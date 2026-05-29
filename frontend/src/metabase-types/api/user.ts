@@ -1,7 +1,9 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { ConcreteTableId, SchemaName } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -194,6 +196,21 @@ export type UserKeyValue =
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "schema_viewer";
+      key: "last_database";
+      value: {
+        databaseId: DatabaseId;
+        schema?: SchemaName;
+      };
+    }
+  | {
+      namespace: "schema_viewer";
+      key: `${DatabaseId}__${SchemaName}`;
+      value: {
+        table_ids: ConcreteTableId[];
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

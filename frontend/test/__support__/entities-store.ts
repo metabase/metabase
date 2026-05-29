@@ -1,12 +1,8 @@
 import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import type { Action } from "redux-actions";
 
-import * as entities from "metabase/redux/entities";
-import {
-  type RequestsStateTree,
-  requestsReducer,
-} from "metabase/redux/requests";
+import { reducer as entitiesReducer } from "metabase/redux/entities";
+import { requestsReducer } from "metabase/redux/requests";
 import type { State } from "metabase/redux/store";
 
 /**
@@ -21,11 +17,8 @@ export function getStore(
   middleware: Middleware[] = [],
 ) {
   const reducer = combineReducers({
-    entities: entities.reducer,
-    requests: (
-      state: RequestsStateTree | undefined,
-      action: Action<undefined>,
-    ) => requestsReducer(entities.requestsReducer(state, action), action),
+    entities: entitiesReducer,
+    requests: requestsReducer,
     ...reducers,
   }) as unknown as Reducer<State>;
 
