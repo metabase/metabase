@@ -2,6 +2,7 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { substituteUrlTags } from "metabase/api/utils/substitute-url-tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
@@ -30,7 +31,6 @@ type RequestOptions = {
     data?: Record<string, unknown>;
     response?: Response;
   }) => Response | undefined;
-  raw: Record<string, boolean>;
   headers: Record<string, string>;
   retry: boolean;
   retryCount: number;
@@ -46,7 +46,6 @@ const DEFAULT_OPTIONS: RequestOptions = {
   hasBody: false,
   noEvent: false,
   transformResponse: ({ body }) => body as Response,
-  raw: {},
   headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
@@ -203,19 +202,7 @@ export class LegacyApi extends EventEmitter {
           ...middlewareResult.options,
         } as RequestOptions;
         const { data } = middlewareResult;
-        for (const tag of url.match(/:\w+/g) || []) {
-          const paramName = tag.slice(1);
-          let value = data[paramName];
-          delete data[paramName];
-          if (value === undefined) {
-            console.warn("Warning: calling", method, "without", tag);
-            value = "";
-          }
-          if (!options.raw || !options.raw[paramName]) {
-            value = encodeURIComponent(value as string);
-          }
-          url = url.replace(tag, value as string);
-        }
+        url = substituteUrlTags(url, data, method);
         // remove undefined
         for (const name in data) {
           if (data[name] === undefined) {

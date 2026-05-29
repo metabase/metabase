@@ -288,10 +288,8 @@ export const EmbedApi = {
 };
 
 export const AutoApi = {
-  dashboard: GET("/api/automagic-dashboards/:subPath", {
-    // this prevents the `subPath` parameter from being URL encoded
-    raw: { subPath: true },
-  }),
+  // `:subPath*` keeps slashes in subPath unencoded (multi-segment path).
+  dashboard: GET("/api/automagic-dashboards/:subPath*"),
 };
 
 export const ParameterApi = {
