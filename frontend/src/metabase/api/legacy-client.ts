@@ -93,7 +93,22 @@ export class NetworkError extends Error {
   }
 }
 
-export class LegacyApi extends EventEmitter {
+type ResponseErrorInfo = {
+  body: unknown;
+  status: number;
+  metabaseVersion: string | null;
+};
+
+type EventMap = {
+  // Per-status events. Listeners receive the request URL (with basename
+  // stripped so subscribers see the relative path).
+  [status: number]: [string];
+  // Fired for any non-2xx response. Payload includes the response body so
+  // callers can inspect the failure beyond just its status.
+  responseError: [ResponseErrorInfo];
+};
+
+export class LegacyApi extends EventEmitter<EventMap> {
   basename = "";
   apiKey = "";
   sessionToken: string | undefined;
@@ -402,7 +417,7 @@ export class LegacyApi extends EventEmitter {
             });
           }
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
         }
       };
@@ -485,7 +500,7 @@ export class LegacyApi extends EventEmitter {
           }
 
           if (!options.noEvent) {
-            this.emit(String(status), url);
+            this.emit(status, url);
           }
 
           if (status >= 200 && status <= 299) {
