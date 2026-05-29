@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -43,6 +44,7 @@ export const NotificationRunSummaryLog = ({
     }
     return runs?.map((run, index) => {
       const isFailing = run.status === "failing";
+      const hasError = isFailing && !!run.error;
       return (
         <Flex
           key={index}
@@ -52,10 +54,12 @@ export const NotificationRunSummaryLog = ({
           py="sm"
           gap="sm"
         >
-          <Text size="md" c="text-primary">
-            {formatRelativeDate(run.at)}
-          </Text>
-          <Tooltip label={run.error} disabled={!isFailing || !run.error}>
+          <Tooltip label={dayjs(run.at).fromNow()}>
+            <Text size="md" c="text-primary" component="span">
+              {formatRelativeDate(run.at)}
+            </Text>
+          </Tooltip>
+          <Tooltip label={run.error} disabled={!hasError}>
             <Badge
               color={isFailing ? "error" : undefined}
               variant={isFailing ? "light" : "outline"}
@@ -64,6 +68,7 @@ export const NotificationRunSummaryLog = ({
               fw="normal"
               c={isFailing ? undefined : "text-secondary"}
               bd={isFailing ? undefined : "1px solid var(--mb-color-border)"}
+              style={hasError ? { cursor: "pointer" } : undefined}
             >
               {isFailing ? t`Failed` : t`Successful`}
             </Badge>
