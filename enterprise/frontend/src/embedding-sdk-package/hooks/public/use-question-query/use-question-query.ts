@@ -9,9 +9,10 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 import type { InferSchema, QueryData, QuestionSchema } from "../data-schema";
-import { getSchemaId, mapQueryData } from "../data-schema";
+import { mapQueryData } from "../data-schema";
 
 export type UseQuestionQueryOptions = {
+  parameters?: SqlParameterValues;
   initialSqlParameters?: SqlParameterValues;
   enabled?: boolean;
 };
@@ -33,10 +34,14 @@ export type UseQuestionQueryResult<TQuestion = unknown> = {
  * @category useQuestionQuery
  */
 export const useQuestionQuery = <
-  TQuestion extends QuestionSchema | SdkQuestionId = SdkQuestionId,
+  TQuestion extends QuestionSchema | undefined = undefined,
 >(
-  question: TQuestion | null,
-  { initialSqlParameters, enabled = true }: UseQuestionQueryOptions = {},
+  questionId: SdkQuestionId | null,
+  {
+    parameters,
+    initialSqlParameters,
+    enabled = true,
+  }: UseQuestionQueryOptions = {},
 ): UseQuestionQueryResult<TQuestion> => {
   const {
     state: {
@@ -51,24 +56,24 @@ export const useQuestionQuery = <
   const queryQuestion =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryQuestion;
 
-  const questionId = getSchemaId(question) as SdkQuestionId | null;
-
   const [data, setData] =
     useState<UseQuestionQueryResult<TQuestion>["data"]>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  const sqlParameters = parameters ?? initialSqlParameters;
+
   const parameterKey = useMemo(
-    () => JSON.stringify(initialSqlParameters ?? {}),
-    [initialSqlParameters],
+    () => JSON.stringify(sqlParameters ?? {}),
+    [sqlParameters],
   );
 
-  const initialSqlParametersRef = useRef(initialSqlParameters);
+  const initialSqlParametersRef = useRef(sqlParameters);
 
   useEffect(() => {
-    initialSqlParametersRef.current = initialSqlParameters;
-  }, [initialSqlParameters, parameterKey]);
+    initialSqlParametersRef.current = sqlParameters;
+  }, [sqlParameters, parameterKey]);
 
   const refetch = useCallback(async () => {
     if (!enabled || questionId == null || !reduxStore || !queryQuestion) {

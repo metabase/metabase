@@ -29,12 +29,18 @@ const TEST_RESULT = {
   rows: [[1]],
 };
 
-const TEST_SCHEMA = {
-  id: TEST_QUESTION_ID,
-  name: "Orders",
-  columns: [{ name: "count", displayName: "Count", jsType: "number" }],
-  parameters: [],
-} as const;
+type TestSchema = {
+  readonly id: typeof TEST_QUESTION_ID;
+  readonly name: "Orders";
+  readonly columns: readonly [
+    {
+      readonly name: "count";
+      readonly displayName: "Count";
+      readonly jsType: "number";
+    },
+  ];
+  readonly parameters: readonly [];
+};
 
 type Equals<TLeft, TRight> =
   (<TValue>() => TValue extends TLeft ? 1 : 2) extends <
@@ -44,16 +50,15 @@ type Equals<TLeft, TRight> =
     : false;
 type Expect<TValue extends true> = TValue;
 type _QuestionRowIsInferred = Expect<
-  Equals<SchemaRow<typeof TEST_SCHEMA>, { count: number | null }>
+  Equals<SchemaRow<TestSchema>, { count: number | null }>
 >;
 
 describe("useQuestionQuery", () => {
   it("fetches question data when the SDK is initialized", async () => {
-    const queryQuestion = jest.fn(() =>
-      jest.fn().mockResolvedValue({
-        ...TEST_RESULT,
-      }),
-    );
+    const queryQuestionApi = jest.fn().mockResolvedValue({
+      ...TEST_RESULT,
+    });
+    const queryQuestion = jest.fn(() => queryQuestionApi);
 
     setup({ queryQuestion });
 
@@ -63,6 +68,10 @@ describe("useQuestionQuery", () => {
 
     expect(screen.getByTestId("first-row-value")).toHaveTextContent("1");
     expect(screen.getByTestId("first-raw-row-value")).toHaveTextContent("1");
+    expect(queryQuestionApi).toHaveBeenCalledWith({
+      questionId: TEST_QUESTION_ID,
+      initialSqlParameters: undefined,
+    });
     expect(queryQuestion).toHaveBeenCalledTimes(1);
   });
 
@@ -111,9 +120,7 @@ const TestComponent = ({
   questionId?: SdkQuestionId | null;
   enabled?: boolean;
 }) => {
-  const result = useQuestionQuery(questionId == null ? null : TEST_SCHEMA, {
-    enabled,
-  });
+  const result = useQuestionQuery<TestSchema>(questionId, { enabled });
 
   return (
     <div>
