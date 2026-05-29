@@ -56,7 +56,11 @@ export const MetabotManagedProviderLimitActions = ({
 
   if (!canConfigureAi) {
     return (
-      <Flex {...rest}>
+      <Flex
+        direction={inline ? "row" : "column"}
+        align={inline ? "center" : "start"}
+        {...rest}
+      >
         <Text c="text-secondary" fz="sm" lh="1rem">
           {t`Ask your admin to switch AI providers or start a paid subscription.`}
         </Text>

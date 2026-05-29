@@ -11,8 +11,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
-import { AIProviderConfigurationForm } from "metabase/metabot/components/AIProviderConfigurationForm";
-import type { MetabotApiKeyProvider } from "metabase/metabot/components/AIProviderConfigurationForm/utils";
+import {
+  AIProviderConfigurationForm,
+  type MetabotApiKeyProvider,
+} from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {

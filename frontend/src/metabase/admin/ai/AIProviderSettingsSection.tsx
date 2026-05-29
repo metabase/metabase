@@ -6,11 +6,11 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { skipToken, useGetMetabotSettingsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { AIProviderConfigurationForm } from "metabase/metabot/components/AIProviderConfigurationForm";
 import {
+  AIProviderConfigurationForm,
   getProviderOptions,
   parseProviderAndModel,
-} from "metabase/metabot/components/AIProviderConfigurationForm/utils";
+} from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Badge, Flex, Group } from "metabase/ui";
 
