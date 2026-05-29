@@ -140,7 +140,6 @@ export function useFormulaEditor({
     if (isFocused) {
       return;
     }
-    isCollapsingRef.current = false;
 
     let changed = false;
     const cleaned = formulaEntities.map((entry) => {
@@ -239,6 +238,7 @@ export function useFormulaEditor({
         entities.slice(0, entityIndex + 1),
         metricNamesRef.current,
       );
+      isCollapsingRef.current = false;
       pendingCaretPositionRef.current = text.length;
       pendingFocusRef.current = true;
       setIsFocused(true);
@@ -438,7 +438,7 @@ export function useFormulaEditor({
           from: metricFrom,
           to: metricTo,
           sourceId,
-          definition: null,
+          definition: definitionsRef.current[sourceId]?.definition ?? null,
         }),
       });
       editTextRef.current = view.state.doc.toString();
@@ -552,6 +552,7 @@ export function useFormulaEditor({
       ) {
         return;
       }
+      isCollapsingRef.current = false;
       const view = editorRef.current?.view;
       if (view) {
         view.focus();

@@ -202,6 +202,7 @@ const selectBreakout = (
  */
 const interceptDatasetQuery = () => {
   cy.intercept("POST", "/api/metric/dataset").as("dataset");
+  cy.intercept("POST", "/api/metric/breakout-values").as("breakoutValues");
 };
 
 /**
@@ -662,7 +663,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.log(
         "Expand formula editor and create expression with second metric instance",
       );
-      cy.findByTestId("metrics-formula-input").click();
       addMetricMath(
         [
           { metricName: "Count of orders" },
@@ -1346,7 +1346,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       H.MetricsViewer.openDimensionPickerSidebar().within(() => {
-        cy.findByRole("heading", { name: "Group by" }).should("be.visible");
+        cy.findByRole("heading", { name: "Break out by" }).should("be.visible");
         cy.findByLabelText("Search fields").should("be.visible");
         cy.findByRole("button", { name: "Time" }).should("be.visible");
         cy.findByRole("button", { name: "Category" }).should("be.visible");
@@ -1395,15 +1395,23 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
 
       H.MetricsViewer.dimensionPickerSidebar().within(() => {
-        cy.findByRole("button", { name: "Address" }).should("be.visible");
-        cy.findByRole("button", { name: "City" }).should("be.visible");
+        cy.findByRole("button", { name: "Address" })
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByRole("button", { name: "City" })
+          .scrollIntoView()
+          .should("be.visible");
         cy.findByRole("button", { name: "City" }).click();
       });
       cy.wait("@dataset");
 
       H.MetricsViewer.dimensionPickerSidebar().within(() => {
-        cy.findByRole("button", { name: "Address" }).should("be.visible");
-        cy.findByRole("button", { name: "City" }).should("be.visible");
+        cy.findByRole("button", { name: "Address" })
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByRole("button", { name: "City" })
+          .scrollIntoView()
+          .should("be.visible");
       });
     });
 
@@ -2084,6 +2092,7 @@ describe("scenarios > metrics > explorer", () => {
     it("should apply filters and dimensions to individual metric instances within expressions", () => {
       selectBreakout("Count of orders", "Category");
       cy.wait("@dataset");
+      cy.wait("@breakoutValues");
       addMetricMath([
         { metricName: "Count of orders" },
         "+",
@@ -2093,7 +2102,7 @@ describe("scenarios > metrics > explorer", () => {
 
       H.MetricsViewer.getFilterButton().click();
       H.popover().within(() => {
-        cy.findAllByText("Count of orders")
+        cy.findAllByRole("button", { name: /Count of orders/ })
           .should("have.length", 3)
           .eq(1)
           .click();
@@ -2103,7 +2112,9 @@ describe("scenarios > metrics > explorer", () => {
       });
       H.MetricsViewer.getFilterButton().click();
       H.popover().within(() => {
-        cy.findAllByText("Count of orders").eq(2).click();
+        cy.findAllByRole("button", { name: /Count of orders/ })
+          .eq(2)
+          .click();
         cy.findByText("Category").click();
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
@@ -2146,14 +2157,16 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("refresh and assert again");
       cy.reload();
+      cy.wait("@dataset");
+      cy.wait("@breakoutValues");
       assertMetricMath();
 
       cy.log("edit formula and assert again");
       H.MetricsViewer.searchInput().type("{end} + 0", {
         waitForAnimations: true,
-        delay: 100,
       });
       runFormula();
+      cy.wait("@dataset");
       assertMetricMath();
     });
 
@@ -2170,17 +2183,13 @@ describe("scenarios > metrics > explorer", () => {
         display: "scalar",
       });
 
-      cy.log("Add numeric metric '123' as standalone");
-      addMetric("123");
-      cy.wait("@dataset");
-
       cy.log("Sum metric '123' with itself — both selected from dropdown");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(` + ${NUMERIC_METRIC_NAME}`, {
-        waitForAnimations: true,
-      });
-      selectMetricSearchResult(NUMERIC_METRIC_NAME);
-      runFormula();
+      H.MetricsViewer.searchInput().clear();
+      addMetricMath([
+        { metricName: NUMERIC_METRIC_NAME },
+        "+",
+        { metricName: NUMERIC_METRIC_NAME },
+      ]);
       cy.wait("@dataset");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
@@ -2196,17 +2205,18 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
-      addMetric("123");
+      H.MetricsViewer.searchInput().type(`{end}, ${NUMERIC_METRIC_NAME}`, {
+        waitForAnimations: true,
+      });
+      selectMetricSearchResult(NUMERIC_METRIC_NAME);
+      runFormula();
       cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
 
       cy.log("Verify final pill layout");
-      H.MetricsViewer.searchBarPills().should("have.length", 3);
-      H.MetricsViewer.searchBarPills()
-        .eq(0)
-        .should("contain", "Count of orders");
-      H.MetricsViewer.searchBarPills().eq(1).should("contain", "123 + 123");
-      H.MetricsViewer.searchBarPills().eq(2).should("contain", "123");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      H.MetricsViewer.searchBarPills().eq(0).should("contain", "123 + 123");
+      H.MetricsViewer.searchBarPills().eq(1).should("contain", "123");
     });
   });
 });
