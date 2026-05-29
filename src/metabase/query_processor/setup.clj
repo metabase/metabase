@@ -209,12 +209,9 @@
   (fn [query]
     (let [done-ch (a/promise-chan)]
       (try
-        (if qp.pipeline/*canceled-chan*
-          (do (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
-              (f query))
-          (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-            (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
-            (f query)))
+        (binding [qp.pipeline/*canceled-chan* (or qp.pipeline/*canceled-chan* (a/promise-chan))]
+          (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan* done-ch)
+          (f query))
         (finally
           (a/put! done-ch ::query-finished))))))
 
