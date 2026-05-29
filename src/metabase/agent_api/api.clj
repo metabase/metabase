@@ -21,6 +21,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -641,20 +642,28 @@
    {:keys [query display description collection_id visualization_settings]
     question-name :name}
    :- ::create-question-request]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        card          (queries/create-card!
-                       {:name                   question-name
-                        :dataset_query          dataset-query
-                        :display                (keyword (or display "table"))
-                        :description            description
-                        :collection_id          collection_id
-                        :visualization_settings (or visualization_settings {})}
-                       {:id api/*current-user-id*})]
-    {:id            (:id card)
-     :name          (:name card)
-     :display       (name (:display card))
-     :collection_id (:collection_id card)
-     :description   (:description card)}))
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)]
+    ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
+    ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
+    ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
+    ;; user cannot run, and (b) plant the card in a collection they cannot write to.
+    ;; (REST also calls `check-if-card-can-be-saved`, which only fires for `card-type :metric`;
+    ;; this endpoint always creates a question, so we omit it.)
+    (query-perms/check-run-permissions-for-query dataset-query)
+    (api/create-check :model/Card {:collection_id collection_id})
+    (let [card (queries/create-card!
+                {:name                   question-name
+                 :dataset_query          dataset-query
+                 :display                (keyword (or display "table"))
+                 :description            description
+                 :collection_id          collection_id
+                 :visualization_settings (or visualization_settings {})}
+                {:id api/*current-user-id*})]
+      {:id            (:id card)
+       :name          (:name card)
+       :display       (name (:display card))
+       :collection_id (:collection_id card)
+       :description   (:description card)})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
