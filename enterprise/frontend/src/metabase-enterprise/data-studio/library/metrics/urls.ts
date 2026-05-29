@@ -8,4 +8,5 @@ export const dataStudioMetricUrls: MetricUrls = {
   dependencies: Urls.dataStudioMetricDependencies,
   history: Urls.dataStudioMetricHistory,
   database: (databaseId) => Urls.dataStudioData({ databaseId }),
+  table: (_databaseId, tableId) => Urls.dataStudioTable(tableId),
 };

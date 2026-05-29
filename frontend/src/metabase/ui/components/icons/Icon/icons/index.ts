@@ -154,6 +154,8 @@ import database_routing_component from "./database_routing.svg?component";
 import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
+import dependent_component from "./dependent.svg?component";
+import dependent_source from "./dependent.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -854,6 +856,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     dependencies: {
       component: dependencies_component,
       source: dependencies_source,
+    },
+    dependent: {
+      component: dependent_component,
+      source: dependent_source,
     },
     data_studio: {
       component: data_studio_component,
