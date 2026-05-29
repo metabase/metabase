@@ -8,8 +8,8 @@
 
 (defn- test-fake-features! [& {:keys [token-fn pubk-fn]}]
   (with-redefs
-    ;; due to the way premium embedding token is implemented, we need to provide a token and a public key,
-    ;; so we cannot set this with `mt/with-temporary-setting-values`.
+   ;; due to the way premium embedding token is implemented, we need to provide a token and a public key,
+   ;; so we cannot set this with `mt/with-temporary-setting-values`.
    [premium-features/premium-embedding-token (constantly (-> (io/resource "fake_ag_token.txt")
                                                              slurp
                                                              str/trim

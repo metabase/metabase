@@ -46,8 +46,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import type { Deferred } from "metabase/utils/promise";
-import { defer } from "metabase/utils/promise";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -288,7 +286,7 @@ export const fetchCardDataAction = createAsyncThunk<
        * and forth (#70534). When parameters differ (e.g. filter change), we fall through to the cancel-and-restart
        * path below.
        */
-      const inFlight = cardDataCancelDeferreds[`${dashcard.id},${card.id}`];
+      const inFlight = cardDataCancelControllers[`${dashcard.id},${card.id}`];
       if (
         inFlight &&
         _.isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
@@ -322,22 +320,17 @@ export const fetchCardDataAction = createAsyncThunk<
       }
     }, DASHBOARD_SLOW_TIMEOUT);
 
-    const deferred = defer();
+    const controller = new AbortController();
     setFetchCardDataCancel(
       card.id,
       dashcard.id,
-      deferred,
+      controller,
       getDatasetQueryParams(datasetQuery),
     );
 
-    let cancelled = false;
-    deferred.promise.then(() => {
-      cancelled = true;
-    });
-
     const metadata = getMetadata(getState());
     const queryOptions = {
-      cancelled: deferred.promise,
+      signal: controller.signal,
     };
 
     if (dashboardType === "public") {
@@ -385,7 +378,7 @@ export const fetchCardDataAction = createAsyncThunk<
           card,
           metadata,
           { ...datasetQuery, ignore_cache: ignoreCache },
-          deferred,
+          controller.signal,
         ),
       )) as Dataset | { error: unknown };
     } else {
@@ -415,7 +408,7 @@ export const fetchCardDataAction = createAsyncThunk<
             { forceRefetch: true },
           ),
         );
-        deferred.promise.then(() => queryAction.abort());
+        controller.signal.addEventListener("abort", () => queryAction.abort());
         try {
           result = (await fetchDataOrError(queryAction.unwrap())) as
             | Dataset
@@ -443,8 +436,8 @@ export const fetchCardDataAction = createAsyncThunk<
       }
     }
 
-    // If the request was not previously cancelled, then clear the defer for the card
-    if (!cancelled) {
+    // If the request was not previously cancelled, then clear the controller for the card
+    if (!controller.signal.aborted) {
       setFetchCardDataCancel(card.id, dashcard.id, null);
     }
     clearTimeout(slowCardTimer);
@@ -452,7 +445,7 @@ export const fetchCardDataAction = createAsyncThunk<
     return {
       dashcard_id: dashcard.id,
       card_id: card.id,
-      result: cancelled ? null : result,
+      result: controller.signal.aborted ? null : result,
       currentTime: performance.now(),
     };
   },
@@ -639,11 +632,11 @@ export const cancelFetchDashboardCardData = createThunkAction(
 );
 
 type InFlightEntry = {
-  deferred: Deferred;
+  controller: AbortController;
   queryParams: ReturnType<typeof getDatasetQueryParams>;
 };
 
-const cardDataCancelDeferreds: Record<
+const cardDataCancelControllers: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
   InFlightEntry | null
 > = {};
@@ -651,11 +644,11 @@ const cardDataCancelDeferreds: Record<
 function setFetchCardDataCancel(
   card_id: DashboardCard["card_id"],
   dashcard_id: DashCardId,
-  deferred: Deferred | null,
+  controller: AbortController | null,
   queryParams?: ReturnType<typeof getDatasetQueryParams>,
 ) {
-  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred
-    ? { deferred, queryParams: queryParams! }
+  cardDataCancelControllers[`${dashcard_id},${card_id}`] = controller
+    ? { controller, queryParams: queryParams! }
     : null;
 }
 
@@ -663,10 +656,10 @@ function setFetchCardDataCancel(
 export const cancelFetchCardData = createAction(
   CANCEL_FETCH_CARD_DATA,
   (card_id, dashcard_id) => {
-    const entry = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
+    const entry = cardDataCancelControllers[`${dashcard_id},${card_id}`];
     if (entry) {
-      entry.deferred.resolve();
-      cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
+      entry.controller.abort();
+      cardDataCancelControllers[`${dashcard_id},${card_id}`] = null;
     }
     return { payload: { dashcard_id, card_id } };
   },
@@ -697,7 +690,7 @@ const dashboardSchema = new schema.Entity("dashboard", {
   dashcards: [dashcardSchema],
 });
 
-let fetchDashboardCancellation: Deferred | null;
+let fetchDashboardCancellation: AbortController | null;
 
 export const fetchDashboard = createAsyncThunk(
   "metabase/dashboard/FETCH_DASHBOARD",
@@ -714,9 +707,9 @@ export const fetchDashboard = createAsyncThunk(
     { getState, dispatch, rejectWithValue },
   ) => {
     if (fetchDashboardCancellation) {
-      fetchDashboardCancellation.resolve();
+      fetchDashboardCancellation.abort();
     }
-    fetchDashboardCancellation = defer();
+    fetchDashboardCancellation = new AbortController();
 
     try {
       let entities;
@@ -740,7 +733,7 @@ export const fetchDashboard = createAsyncThunk(
       } else if (dashboardType === "public") {
         result = await PublicApi.dashboard(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
-          { cancelled: fetchDashboardCancellation.promise },
+          { signal: fetchDashboardCancellation.signal },
         );
         result = {
           ...result,
@@ -753,7 +746,7 @@ export const fetchDashboard = createAsyncThunk(
       } else if (dashboardType === "embed") {
         result = await EmbedApi.dashboard(
           { token: dashId, dashboard_load_id: dashboardLoadId },
-          { cancelled: fetchDashboardCancellation.promise },
+          { signal: fetchDashboardCancellation.signal },
         );
         result = {
           ...result,
@@ -769,7 +762,7 @@ export const fetchDashboard = createAsyncThunk(
         const [response] = await Promise.all([
           AutoApi.dashboard(
             { subPath, dashboard_load_id: dashboardLoadId },
-            { cancelled: fetchDashboardCancellation.promise },
+            { signal: fetchDashboardCancellation.signal },
           ),
           entityCompatibleQuery(
             {
@@ -802,7 +795,7 @@ export const fetchDashboard = createAsyncThunk(
         const [response] = await Promise.all([
           DashboardApi.get(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
-            { cancelled: fetchDashboardCancellation.promise },
+            { signal: fetchDashboardCancellation.signal },
           ),
           entityCompatibleQuery(
             { id: dashId, dashboard_load_id: dashboardLoadId },

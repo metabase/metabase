@@ -483,7 +483,7 @@
                                              {:field-name "access_note"
                                               :base-type  :type/Text}])
       (catch BigQueryException e
-       ;; Already exists, ignore
+        ;; Already exists, ignore
         (when-not (= (.getCode e) 409)
           (throw e))))))
 

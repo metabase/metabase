@@ -217,9 +217,8 @@
   [_segment]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
-  (cond-> (serdes/mbql-deps definition)
-    table_id (conj (serdes/table->path table_id))))
+(defmethod serdes/dependencies "Segment" [{:keys [definition]}]
+  (serdes/mbql-deps definition))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
   (let [table-path (-> segment :definition serdes/serialized-query-source-table)]

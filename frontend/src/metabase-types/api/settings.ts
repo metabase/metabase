@@ -551,6 +551,8 @@ interface PublicSettings {
   "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
+  "metaplow-tracking-enabled": boolean;
+  "metaplow-url": string | null;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
@@ -739,7 +741,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
-  "has-active-workspace": boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

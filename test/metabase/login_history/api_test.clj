@@ -44,7 +44,7 @@
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "52.206.149.9"}
-                               ;; this one shouldn't show up because it's from a different User
+                     ;; this one shouldn't show up because it's from a different User
                      :model/LoginHistory _    {:timestamp          #t "2021-03-17T19:00Z"
                                                :user_id            (mt/user->id :rasta)
                                                :device_id          device-id

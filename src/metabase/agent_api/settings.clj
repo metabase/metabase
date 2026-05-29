@@ -13,3 +13,11 @@
                     (setting/get-value-of-type :boolean :agent-api-enabled?))
   :export?    true
   :doc        false)
+
+(defsetting mcp-execute-sql-enabled
+  (deferred-tru "Whether the MCP `execute_sql` tool is available. Disable to remove the tool entirely; underlying native-query permissions still apply when enabled.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :export?    true
+  :doc        false)

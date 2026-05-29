@@ -126,7 +126,6 @@
         (is (= expected
                (normalize-tokens (params.parse/parse s)))
             (lib.util/format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
-
   (testing "Testing that invalid/unterminated template lib.parms.parse.types/clauses throw an exception"
     (doseq [invalid ["select * from foo [[where bar = {{baz}} "
                      "select * from foo [[where bar = {{baz]]"
@@ -142,7 +141,6 @@
   (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
     (doseq [[query result] [["{{{foo}}: -- {{bar}}}"
                              ["{" (param "foo") ": -- " (param "bar") "}"]]
-
                             ["{{{foo}}: \"/* {{bar}} */\"}"
                              ["{" (param "foo") ": \"/* " (param "bar") " */\"}"]]]]
       (is (= result (normalize-tokens (params.parse/parse query false)))))))

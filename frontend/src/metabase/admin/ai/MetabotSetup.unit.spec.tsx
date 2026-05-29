@@ -24,6 +24,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { MetabotSetup, MetabotSetupInner } from "./MetabotSetup";
@@ -116,7 +117,7 @@ type SetupOptions = {
   providerSettingEnvName?: string;
   apiKeySettingIsEnv?: boolean;
   apiKeySettingEnvName?: string;
-  isStoreUser?: boolean;
+  isAdmin?: boolean;
   anyStoreUserEmailAddress?: string;
   metabasePricePerUnit?: number;
   metabaseBillingPeriodMonths?: number;
@@ -147,8 +148,7 @@ async function setup({
   providerSettingEnvName = "LLM_METABOT_PROVIDER",
   apiKeySettingIsEnv = false,
   apiKeySettingEnvName = "LLM_ANTHROPIC_API_KEY",
-  isStoreUser = isHosted,
-  anyStoreUserEmailAddress = "store-admin@metabase.test",
+  isAdmin = false,
   metabasePricePerUnit = 3.75,
   metabaseBillingPeriodMonths = 1,
   metabotUsageQuotas = null,
@@ -201,11 +201,6 @@ async function setup({
     "token-features": createTokenFeatureFlags(tokenStatusFeatures),
     "token-status": createMockTokenStatus({
       features: tokenStatusFeatures,
-      "store-users": isStoreUser
-        ? [{ email: "user@metabase.test" }]
-        : anyStoreUserEmailAddress
-          ? [{ email: anyStoreUserEmailAddress }]
-          : [],
     }),
   });
 
@@ -382,7 +377,9 @@ async function setup({
     return 204;
   });
 
-  const storeInitialState = { settings };
+  const user = createMockUser({ is_superuser: isAdmin });
+
+  const storeInitialState = { settings, currentUser: user };
   const view = renderAsModal
     ? renderWithProviders(<MetabotSetupInner isModal onClose={onClose} />, {
         storeInitialState,
@@ -825,6 +822,7 @@ describe("MetabotSetup", () => {
   it("shows pricing details in a tooltip for the Metabase provider", async () => {
     await setup({
       isHosted: true,
+      isAdmin: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
       isConfigured: false,
     });
@@ -846,19 +844,19 @@ describe("MetabotSetup", () => {
     ).toHaveAttribute("href", "https://www.metabase.com/license/hosting");
   });
 
-  it("shows a contact-admin notice for non-store users on the Metabase provider", async () => {
+  it("shows a contact-admin notice for non-admin users on the Metabase provider", async () => {
     await setup({
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
       isConfigured: false,
-      isStoreUser: false,
+      isAdmin: false,
       anyStoreUserEmailAddress: "store-admin@metabase.test",
     });
 
     await selectProvider("Metabase");
     expect(
       await screen.findByText(
-        "Please ask a Metabase Store Admin (store-admin@metabase.test) of your organization to enable this for you.",
+        "Please ask an Admin user to enable this for you.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -873,7 +871,7 @@ describe("MetabotSetup", () => {
       isHosted: true,
       savedProviderValue: null,
       isConfigured: false,
-      isStoreUser: false,
+      isAdmin: false,
       tokenStatusFeatures: ["metabase-ai-managed"],
       updateResponse: {
         value: "metabase/anthropic/claude-sonnet-4-6",
@@ -926,7 +924,7 @@ describe("MetabotSetup", () => {
       isHosted: true,
       savedProviderValue: null,
       isConfigured: false,
-      isStoreUser: false,
+      isAdmin: false,
       tokenStatusFeatures: ["metabase-ai-managed"],
       updateResponse: {
         value: "metabase/anthropic/claude-sonnet-4-6",
@@ -968,7 +966,7 @@ describe("MetabotSetup", () => {
         isHosted: true,
         savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
         isConfigured: false,
-        isStoreUser: true,
+        isAdmin: true,
         tokenStatusFeatures: [],
         refreshedTokenStatusFeatures: ["metabase-ai-managed"],
         deferPurchaseCloudAddOnResponse: true,
@@ -1143,7 +1141,7 @@ describe("MetabotSetup", () => {
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
       isConfigured: false,
-      isStoreUser: true,
+      isAdmin: true,
       tokenStatusFeatures: [],
       refreshedTokenStatusFeatures: ["metabase-ai-managed"],
       deferPurchaseCloudAddOnResponse: true,

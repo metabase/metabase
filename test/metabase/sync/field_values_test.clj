@@ -30,7 +30,6 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
       (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
-
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -102,7 +101,6 @@
                                           :type         :advanced
                                           :hash_key     "random-key"
                                           :last_used_at (t/instant)})
-
           (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                  (sync-database!' "update-field-values" (data/db)))))
         (is (= [1 2 3 4] (venues-price-field-values)))))
@@ -129,30 +127,30 @@
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; expired linked-filter fieldvalues
+                                      ;; expired linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; valid sandbox fieldvalues
+                                      ;; valid sandbox fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; valid linked-filter fieldvalues
+                                      ;; valid linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; old full fieldvalues
+                                      ;; old full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; new full fieldvalues
+                                      ;; new full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at now
@@ -175,26 +173,22 @@
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
     (testing "... and it should also have some FieldValues"
       (is (= {:values                (one-off-dbs/range-str 50)
               :human_readable_values []
               :has_more_values       false}
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values :has_more_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
-
     ;; Manually add an advanced field values to test whether or not it got deleted later
     (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
                                     :type :advanced
                                     :hash_key "random-key"})
-
     (testing "We mark the field values as :has_more_values when it grows too big."
       ;; now insert enough bloobs to put us over the limit and re-sync.
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
       (testing "has_field_values stay auto-list."
         (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
       (testing "its FieldValues be limited."
         (is (=? {:values #(>= analyze/auto-list-cardinality-threshold (count %))
                  :has_more_values true}
@@ -210,13 +204,11 @@
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
     (testing "... and it should also have some FieldValues"
       (is (= {:values                [(str/join (repeat 50 "A"))]
               :human_readable_values []}
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
-
     (testing "If the total length of all values exceeded the length threshold, it should get stay as auto list but be limitted"
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 10 "B"))
                                           (str/join (repeat (+ 100 field-values/*total-max-length*) "X"))
@@ -224,7 +216,6 @@
       (testing "has_field_values should have been set to nil."
         (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
       (testing "Field values before the limit is reached are added"
         (is (=? {:has_more_values true
                  :values [(str/join (repeat 50 "A"))
@@ -277,7 +268,6 @@
       (testing "has_more_values should initially be false"
         (is (= false
                (t2/select-one-fn :has_more_values :model/FieldValues :field_id (mt/id :blueberries_consumed :str)))))
-
       (testing "insert a row with the value length exceeds our length limit\n"
         (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
         (testing "has_field_values shouldn't change and has_more_values should be true"

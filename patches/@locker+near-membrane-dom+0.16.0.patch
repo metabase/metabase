@@ -1,0 +1,140 @@
+diff --git a/node_modules/@locker/near-membrane-dom/dist/index.mjs.js b/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
+--- a/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
++++ b/node_modules/@locker/near-membrane-dom/dist/index.mjs.js
+@@ -107,7 +107,7 @@
+ const IFRAME_SANDBOX_ATTRIBUTE_VALUE = 'allow-same-origin allow-scripts';
+ const revoked = toSafeWeakSet(new WeakSetCtor());
+ const blueCreateHooksCallbackCache = toSafeWeakMap(new WeakMapCtor());
+-function createDetachableIframe(doc) {
++function createDetachableIframe(doc, iframeSrc) {
+   var _ReflectApply;
+   const iframe = ReflectApply(DocumentProtoCreateElement, doc, ['iframe']);
+   // It is impossible to test whether the NodeProtoLastChildGetter branch is
+@@ -116,6 +116,13 @@
+   const style = ReflectApply(HTMLElementProtoStyleGetter, iframe, []);
+   style.display = 'none';
+   ReflectApply(ElementProtoSetAttribute, iframe, ['sandbox', IFRAME_SANDBOX_ATTRIBUTE_VALUE]);
++  // Metabase patch: when `iframeSrc` is provided, load the iframe from that URL so
++  // its document carries the per-document CSP returned by the server (allowing
++  // `'unsafe-eval'` only inside the sandbox), instead of inheriting the parent's
++  // strict CSP via about:blank.
++  if (iframeSrc) {
++    ReflectApply(ElementProtoSetAttribute, iframe, ['src', iframeSrc]);
++  }
+   ReflectApply(NodeProtoAppendChild, parent, [iframe]);
+   return iframe;
+ }
+@@ -132,6 +139,9 @@
+     defaultPolicy,
+     endowments,
+     globalObjectShape,
++    // Metabase patch: when set, the iframe loads this URL instead of about:blank
++    // so the sandbox document gets its own per-document CSP.
++    iframeSrc,
+     instrumentation,
+     keepAlive = true,
+     liveTargetCallback,
+@@ -142,7 +152,8 @@
+   } = ObjectAssign({
+     __proto__: null
+   }, providedOptions);
+-  const iframe = createDetachableIframe(blueRefs.document);
++  const iframe = createDetachableIframe(blueRefs.document, iframeSrc);
++  const finishSetup = () => {
+   const redWindow = ReflectApply(HTMLIFrameElementProtoContentWindowGetter, iframe, []);
+   const shouldUseDefaultGlobalOwnKeys = typeof globalObjectShape !== 'object' || globalObjectShape === null;
+   const defaultGlobalOwnKeys = filterWindowKeys(getFilteredGlobalOwnKeys(redWindow, maxPerfMode));
+@@ -218,8 +229,14 @@
+     // Revoke the proxies of the redDocument and redWindow to prevent access.
+     revoked.add(redDocument);
+     revoked.add(redWindow);
+-    ReflectApply(DocumentProtoOpen, redDocument, []);
+-    ReflectApply(DocumentProtoClose, redDocument, []);
++    // Metabase patch: when an `iframeSrc` loaded a real document, skip the
++    // open/close dance. Those calls would tear down the loaded document and
++    // replace it with one whose CSP is inherited from the parent (about:blank
++    // semantics), defeating the whole point of per-iframe CSP.
++    if (!iframeSrc) {
++      ReflectApply(DocumentProtoOpen, redDocument, []);
++      ReflectApply(DocumentProtoClose, redDocument, []);
++    }
+   } else {
+     // istanbul ignore next: coverage never runs in old Chromium (<v86)
+     if (IS_OLD_CHROMIUM_BROWSER) {
+@@ -231,6 +248,22 @@
+     ReflectApply(ElementProtoRemove, iframe, []);
+   }
+   return env;
++  };
++  // Metabase patch: when `iframeSrc` is set, wait for the iframe to load before
++  // touching `contentWindow` so we read the realm of the loaded document (with
++  // its server-sent CSP) rather than the initial about:blank one. Existing
++  // callers without `iframeSrc` keep the synchronous return shape.
++  if (iframeSrc) {
++    return new Promise((resolve, reject) => {
++      iframe.addEventListener('load', () => {
++        try { resolve(finishSetup()); } catch (e) { reject(e); }
++      }, { once: true });
++      iframe.addEventListener('error', () => {
++        reject(new Error('Failed to load sandbox iframe at ' + iframeSrc));
++      }, { once: true });
++    });
++  }
++  return finishSetup();
+ }
+ function revokedProxyCallback(value) {
+   return revoked.has(value);
+diff --git a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
+--- a/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
++++ b/node_modules/@locker/near-membrane-dom/dist/index.mjs.d.ts
+@@ -4,6 +4,15 @@
+     defaultPolicy?: object;
+     endowments?: PropertyDescriptorMap;
+     globalObjectShape?: object;
++    /**
++     * Metabase patch: when set, the sandbox iframe loads this URL instead of
++     * about:blank. The loaded document keeps its server-sent CSP, which lets
++     * the sandbox carry a different (permissive) CSP from the parent page. When
++     * this option is supplied, `createIframeVirtualEnvironment` returns a
++     * Promise<VirtualEnvironment> so callers can await iframe `load` before
++     * accessing the realm.
++     */
++    iframeSrc?: string;
+     instrumentation?: Instrumentation;
+     keepAlive?: boolean;
+     liveTargetCallback?: LiveTargetCallback;
+@@ -11,6 +20,7 @@
+     protectDistortions?: boolean;
+     signSourceCallback?: SignSourceCallback;
+ }
++declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions: BrowserEnvironmentOptions & { iframeSrc: string }): Promise<VirtualEnvironment>;
+ declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions?: BrowserEnvironmentOptions): VirtualEnvironment;
+ export { createIframeVirtualEnvironment as default, BrowserEnvironmentOptions };
+ export type { Connector, DistortionCallback, Instrumentation, LiveTargetCallback } from '@locker/near-membrane-base';
+diff --git a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
+--- a/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
++++ b/node_modules/@locker/near-membrane-dom/dist/index.cjs.d.ts
+@@ -4,6 +4,15 @@
+     defaultPolicy?: object;
+     endowments?: PropertyDescriptorMap;
+     globalObjectShape?: object;
++    /**
++     * Metabase patch: when set, the sandbox iframe loads this URL instead of
++     * about:blank. The loaded document keeps its server-sent CSP, which lets
++     * the sandbox carry a different (permissive) CSP from the parent page. When
++     * this option is supplied, `createIframeVirtualEnvironment` returns a
++     * Promise<VirtualEnvironment> so callers can await iframe `load` before
++     * accessing the realm.
++     */
++    iframeSrc?: string;
+     instrumentation?: Instrumentation;
+     keepAlive?: boolean;
+     liveTargetCallback?: LiveTargetCallback;
+@@ -11,6 +20,7 @@
+     protectDistortions?: boolean;
+     signSourceCallback?: SignSourceCallback;
+ }
++declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions: BrowserEnvironmentOptions & { iframeSrc: string }): Promise<VirtualEnvironment>;
+ declare function createIframeVirtualEnvironment(globalObject: WindowProxy & typeof globalThis, providedOptions?: BrowserEnvironmentOptions): VirtualEnvironment;
+ export { createIframeVirtualEnvironment as default, BrowserEnvironmentOptions };
+ export type { Connector, DistortionCallback, Instrumentation, LiveTargetCallback } from '@locker/near-membrane-base';

@@ -36,13 +36,11 @@
            (#'params.values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}]))))
-
   (testing "Specified value, targeted by ID"
     (is (= "2"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "2"}]))))
-
   (testing "Multiple values with new operators"
     (is (= 20
            (#'params.values/value-for-tag
@@ -52,38 +50,31 @@
            (#'params.values/value-for-tag
             {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
             [{:type :number/=, :value ["20" "40"], :target [:variable [:template-tag "number_filter"]]}]))))
-
   (testing "Unspecified value"
     (is (= lib/parsed-param-no-value-placeholder
            (#'params.values/value-for-tag {:name "id", :display-name "ID", :type :text} nil))))
-
   (testing "Unspecified value when required"
     (is (thrown? Exception
                  (#'params.values/value-for-tag {:name "id", :display-name "ID", :required true, :type :text} nil))))
-
   (testing "Empty value when required"
     (is (thrown? Exception
                  (#'params.values/value-for-tag
                   {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
                   [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "Default used with unspecified value"
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil))))
-
   (testing "Default not used with empty value"
     (is (= lib/parsed-param-no-value-placeholder
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "Default used with empty value when required"
     (is (= "100"
            (#'params.values/value-for-tag
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-
   (testing "BigInteger value"
     (is (= 9223372036854775808
            (#'params.values/value-for-tag
@@ -893,7 +884,6 @@
                                           :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
                                           :display-name "CreatedAt"
                                           :widget-type  :date/all-options}}]
-
           (testing "with no parameters given, no value"
             (is (=? {"createdAt" {:field {:lib/type :metadata/column}
                                   :value lib/parsed-param-no-value-placeholder}}

@@ -10,13 +10,19 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,
+  createMockSingleSeries,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { getEventDimensions, getTimelineEventsForEvent } from "./events";
+import {
+  canBrush,
+  getEventDimensions,
+  getTimelineEventsForEvent,
+} from "./events";
 
 const CARD_ID = 107;
 
@@ -258,6 +264,90 @@ describe("getEventDimensions", () => {
     expect(dimensions).toEqual([
       { column: categoryColumn, value: "Doohickey" },
     ]);
+  });
+});
+
+describe("canBrush", () => {
+  const productIdColumn = createMockColumn({
+    name: "PRODUCT_ID",
+    display_name: "Product ID",
+    source: "breakout",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+
+  const sumSubtotalColumn = createMockColumn({
+    name: "sum",
+    display_name: "Sum of Subtotal",
+    source: "aggregation",
+    base_type: "type/Float",
+    effective_type: "type/Float",
+  });
+
+  const sumTotalColumn = createMockColumn({
+    name: "sum_2",
+    display_name: "Sum of Total",
+    source: "aggregation",
+    base_type: "type/Float",
+    effective_type: "type/Float",
+  });
+
+  const baseSettings: ComputedVisualizationSettings = {
+    "graph.x_axis.scale": "linear",
+  };
+
+  const onChangeCardAndRun = jest.fn();
+
+  // Reproduces UXW-3333 (metabase#71073): a scatter chart with aggregations on
+  // both axes ends up with `dimensionModel.column.source === "aggregation"`.
+  // The brush-to-filter handler can't safely filter an aggregation in the same
+  // stage that produces it (the resulting MBQL is rejected by the QP), so brush
+  // must be disabled in this configuration.
+  it("returns false when the x-axis dimension is an aggregation column (metabase#71073)", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: { cols: [sumSubtotalColumn, sumTotalColumn, productIdColumn] },
+        },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, sumSubtotalColumn, onChangeCardAndRun),
+    ).toBe(false);
+  });
+
+  it("returns true when the x-axis dimension is a breakout column", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: { cols: [productIdColumn, sumSubtotalColumn] } },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, productIdColumn, onChangeCardAndRun),
+    ).toBe(true);
+  });
+
+  // External `onBrush` consumers (e.g. MetricsViewer) handle the range
+  // themselves and never produce an aggregation-on-aggregation filter, so brush
+  // should remain enabled even when the x-axis dimension is an aggregation.
+  it("returns true for external onBrush even when the x-axis is an aggregation", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: { cols: [sumSubtotalColumn, sumTotalColumn, productIdColumn] },
+        },
+      ),
+    ];
+    const onBrush = jest.fn();
+
+    expect(
+      canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
+    ).toBe(true);
   });
 });
 

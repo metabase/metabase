@@ -8,12 +8,13 @@ import {
   datasetApi,
   fieldApi,
   segmentApi,
+  tableApi,
 } from "metabase/api";
-import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
-import { DatabaseSchema, FieldSchema } from "metabase/schema";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import { RevisionsApi } from "metabase/services";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -84,7 +85,7 @@ export const updateDatabase = (database) => async (dispatch) => {
   return result;
 };
 
-export const updateTable = (table) => {
+export const updateTable = (table) => async (dispatch) => {
   deprecated("metabase/redux/metadata updateTable");
   const slimTable = _.omit(
     table,
@@ -93,13 +94,18 @@ export const updateTable = (table) => {
     "aggregation_operators",
     "segments",
   );
-  return Tables.actions.update(slimTable);
+  const result = await entityCompatibleQuery(
+    slimTable,
+    dispatch,
+    tableApi.endpoints.updateTable,
+  );
+  dispatch(updateMetadata(result, TableSchema));
+  return result;
 };
 
-export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
+  return fetchTableMetadataAndForeignKeys({ id }, { reload });
 };
 
 export const updateFieldValues = (fieldId, fieldValuePairs) => (dispatch) => {

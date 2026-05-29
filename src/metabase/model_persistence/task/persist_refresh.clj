@@ -134,7 +134,7 @@
       (let [db-id->db    (m/index-by :id (t2/select :model/Database :id [:in (map :database_id deletables)]))
             unpersist-fn (fn []
                            (reduce (fn [stats persisted-info]
-                                   ;; Since this could be long running, double check state just before deleting
+                                     ;; Since this could be long running, double check state just before deleting
                                      (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
                                            card-info     (t2/select-one [:model/Card :archived :type :card_schema]
                                                                         :id (:card_id persisted-info))]
@@ -311,7 +311,6 @@
 (comment
   (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
         hours 1]
-
     (if (= 24 hours)
       (format "0 %d %d * * ? *" start-minute start-hour)
       (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
@@ -384,7 +383,7 @@
             (u/format-color :green "Persistence already present for model %d %s"
                             (:card_id persisted-info)
                             (.. trigger getKey getName)))))))
-         ;; other errors?
+;; other errors?
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."

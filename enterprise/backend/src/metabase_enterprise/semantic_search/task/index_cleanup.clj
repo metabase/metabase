@@ -188,7 +188,7 @@
                    (triggers/with-identity cleanup-trigger-key)
                    (triggers/start-now)
                    (triggers/with-schedule
-                  ;; Run daily at 3 AM
+                    ;; Run daily at 3 AM
                     (cron/cron-schedule "0 0 3 * * ? *")))]
       (task/schedule-task! job trigger))))
 

@@ -474,10 +474,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -743,7 +741,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 

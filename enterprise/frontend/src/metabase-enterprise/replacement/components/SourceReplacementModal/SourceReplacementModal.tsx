@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import type { SourceReplacementModalProps } from "metabase/plugins";
+import type {
+  SourceReplacementModalProps,
+  SourceReplacementTriggeredFrom,
+} from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
@@ -11,6 +14,8 @@ import {
 } from "metabase-enterprise/api";
 import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
 import type { SourceReplacementEntry } from "metabase-types/api";
+
+import { trackReplaceDataSourceConfirmed } from "../../analytics";
 
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
@@ -29,6 +34,7 @@ import {
 export function SourceReplacementModal({
   initialSource,
   initialTarget,
+  triggeredFrom,
   opened,
   onClose,
 }: SourceReplacementModalProps) {
@@ -39,6 +45,7 @@ export function SourceReplacementModal({
         <ModalContent
           initialSource={initialSource}
           initialTarget={initialTarget}
+          triggeredFrom={triggeredFrom}
           onClose={onClose}
         />
       </Modal.Content>
@@ -49,12 +56,14 @@ export function SourceReplacementModal({
 type ModalContentProps = {
   initialSource: SourceReplacementEntry | undefined;
   initialTarget: SourceReplacementEntry | undefined;
+  triggeredFrom: SourceReplacementTriggeredFrom;
   onClose: () => void;
 };
 
 function ModalContent({
   initialSource,
   initialTarget,
+  triggeredFrom,
   onClose,
 }: ModalContentProps) {
   const [sourceEntry, setSourceEntry] = useState(initialSource);
@@ -110,6 +119,7 @@ function ModalContent({
       confirmButtonText: getConfirmSubmitLabel(dependents.length),
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
+        trackReplaceDataSourceConfirmed({ triggeredFrom });
         await replaceSource({
           source_entity_id: sourceEntry.id,
           source_entity_type: sourceEntry.type,

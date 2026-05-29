@@ -61,10 +61,8 @@
            '(describe-temporal-unit :- :string
                                     ([]
                                      (describe-temporal-unit 1 nil))
-
                                     ([unit]
                                      (describe-temporal-unit 1 unit))
-
                                     ([n    :- :int
                                       unit :- [:maybe :keyword]]
                                      (str n \space (or unit :day)))))))))
@@ -228,7 +226,6 @@
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
-
              (macroexpand form)))
       (is (= [:=>
               [:cat :int :int [:* :int]]
@@ -267,7 +264,6 @@
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
-
              (macroexpand form)))
       (is (= [:=>
               [:cat :int :int [:* :any]]

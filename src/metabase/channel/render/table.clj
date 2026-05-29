@@ -124,7 +124,7 @@
   - Hiccup data structure for rendering HTML, or
   - Formatted value alone if not a valid numeric value"
   [val {:keys [min max]} col-styles]
-  (if-let [num (:num-value val)] ;; Assumes NumericWrapper
+  (if-let [num (and min max (:num-value val))] ;; Assumes NumericWrapper
     (let [is-neg?        (< num 0)
           has-neg?       (< min 0)
           normalized-max (clojure.core/max (abs min) (abs max))

@@ -554,7 +554,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail")
       .findAllByText("Fantastic Wool Shirt")
-      .should("have.length", 2)
+      .should("have.length", 3)
       .and("be.visible");
   });
 

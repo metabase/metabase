@@ -3,16 +3,13 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
 import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalidateTarget";
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Form, FormProvider } from "metabase/forms";
+import { FormProvider, FormSubmitButton } from "metabase/forms";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";
-
-import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
 /** Button that clears the cache of a particular object (the "target") */
 export const InvalidateNowButton = ({
@@ -67,42 +64,41 @@ const InvalidateNowFormBody = ({
     [targetModel],
   );
 
+  // Nested `<form>` would be invalid HTML; the parent `StrategyForm` owns the form element.
   return (
     <>
-      <Form>
-        <StyledInvalidateNowButton
-          onClick={(e) => {
-            confirmInvalidation();
-            e.preventDefault();
-            return false;
-          }}
-          disabled={wasFormRecentlyPending}
-          label={
-            <Group gap="sm">
-              <Icon c="danger" name="trash" />
-              <Text>{buttonText}</Text>
-            </Group>
-          }
-          activeLabel={
-            <Group gap="sm">
-              <Loader size="1rem" />
-              <Text>{c("Shown when a cache is being cleared")
-                .t`Clearing cache… `}</Text>
-            </Group>
-          }
-          successLabel={
-            <Group gap="sm">
-              <IconInButton name="check" c={"success"} />
-              <Text>{t`Cache cleared`}</Text>
-            </Group>
-          }
-          failedLabel={
-            <Text fw="bold" lh="1">
-              {t`Error`}
-            </Text>
-          }
-        />
-      </Form>
+      <FormSubmitButton
+        onClick={(e) => {
+          confirmInvalidation();
+          e.preventDefault();
+          return false;
+        }}
+        disabled={wasFormRecentlyPending}
+        variant="subtle"
+        c="error"
+        px="sm"
+        leftSection={<Icon name="trash" />}
+        label={buttonText}
+        activeLabel={
+          <Group gap="sm" align="center">
+            <Loader size="1rem" />
+            <Text>{c("Shown when a cache is being cleared")
+              .t`Clearing cache… `}</Text>
+          </Group>
+        }
+        successLabel={
+          <Group gap="sm" align="center">
+            <Icon name="check" c="success" />
+            <Text>{t`Cache cleared`}</Text>
+          </Group>
+        }
+        failedLabel={
+          <Text fw="bold" lh="1">
+            {t`Error`}
+          </Text>
+        }
+      />
+
       {confirmationModal}
     </>
   );

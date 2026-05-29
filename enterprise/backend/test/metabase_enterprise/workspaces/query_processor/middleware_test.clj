@@ -308,7 +308,6 @@
              (get result {:schema "public" :table "orders"})))
       (is (= {:schema "mb_iso" :table "users"}
              (get result {:schema "public" :table "users"})))))
-
   (testing "3-level remappings (BigQuery-style) preserve :db"
     ;; 3-slot specs translate to SQLGlot's `:catalog`+`:schema`+`:table` shape.
     ;; Our `:db` -> SQLGlot's `:catalog`; our `:schema` stays as `:schema`.
@@ -316,7 +315,6 @@
           result (#'ws.table-remapping/build-table-replacements remappings)]
       (is (= {:catalog "proj" :schema "ws_ds" :table "orders"}
              (get result {:catalog "proj" :schema "ds" :table "orders"})))))
-
   (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
     (let [remappings {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
           result (#'ws.table-remapping/build-table-replacements remappings)]
