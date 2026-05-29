@@ -92,12 +92,17 @@ function setup({
     }),
   );
 
-  const user = createMockUser({
-    is_superuser: role === "admin",
-    is_data_analyst: role === "analyst",
+  const state = createMockState({
+    currentUser: createMockUser({
+      is_superuser: role === "admin",
+      is_data_analyst: role === "analyst",
+    }),
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({ dependencies: true }),
+    }),
   });
-
-  const state = createMockState({ currentUser: user });
+  // Enable the dependencies plugin via real EE init (reads the mocked settings).
+  setupEnterprisePlugins();
 
   renderWithProviders(
     <Route
@@ -114,14 +119,6 @@ function setup({
 }
 
 describe("DescriptionSection", () => {
-  // Enable the dependencies plugin via real EE init.
-  beforeAll(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({ dependencies: true }),
-    });
-    setupEnterprisePlugins();
-  });
-
   it("renders the About heading and last-updated subline", async () => {
     setup();
     expect(screen.getByText("About")).toBeInTheDocument();
