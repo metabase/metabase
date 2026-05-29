@@ -61,6 +61,8 @@ export async function getResponseBody(response: Response): Promise<unknown> {
     // result or that _status error) or a non-JSON export read off the clone by a
     // transformResponse caller. We only ever need JSON here: parse in one pass,
     // and treat a parse failure as a successful non-JSON export.
+    //
+    // TODO: This is a bug. The server can return a json error at any time in the response, and that would silently fail here.
     try {
       return await response.json();
     } catch {
