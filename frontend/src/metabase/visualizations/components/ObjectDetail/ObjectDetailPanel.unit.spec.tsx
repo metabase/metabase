@@ -26,7 +26,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { ObjectDetailView } from "./ObjectDetailView";
+import { ObjectDetailPanel } from "./ObjectDetailPanel";
 import type { ObjectDetailProps } from "./types";
 
 const mockCard = createMockCard({
@@ -245,7 +245,7 @@ function setup(
   const fetchTableFks = jest.fn();
 
   renderWithProviders(
-    <ObjectDetailView
+    <ObjectDetailPanel
       data={testDataset}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
@@ -276,7 +276,7 @@ function setup(
   };
 }
 
-describe("ObjectDetailView", () => {
+describe("ObjectDetailPanel", () => {
   it("renders an object detail component", () => {
     setup({ question: mockQuestion });
 
