@@ -1465,11 +1465,12 @@
    between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
    own check via `SVV_SCHEMA_PRIVILEGES`)."
   [schema-name]
-  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC. This breaks workspace "
-                               "isolation. Run `REVOKE CREATE ON SCHEMA %s FROM PUBLIC` and retry.")
-                          schema-name (quote-schema schema-name))
-                  {:status-code 412
-                   :schema schema-name})))
+  (let [quoted-schema (quote-schema schema-name)]
+    (throw (ex-info (format (str "Schema %s grants CREATE to PUBLIC. This breaks workspace "
+                                 "isolation. Run `REVOKE CREATE ON SCHEMA %s FROM PUBLIC` and retry.")
+                            quoted-schema quoted-schema)
+                    {:status-code 412
+                     :schema schema-name}))))
 
 (defn assert-no-public-create-grant!
   "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
@@ -1494,13 +1495,14 @@
 (defn raise-missing-usage-grant-option!
   "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition."
   [schema-name]
-  (throw (ex-info (format (str "Current user lacks USAGE WITH GRANT OPTION on schema \"%s\". "
-                               "Cannot grant USAGE to the workspace user. Have the schema owner "
-                               "run `GRANT USAGE ON SCHEMA %s TO CURRENT_USER WITH GRANT OPTION` "
-                               "and retry.")
-                          schema-name (quote-schema schema-name))
-                  {:status-code 412
-                   :schema      schema-name})))
+  (let [quoted-schema (quote-schema schema-name)]
+    (throw (ex-info (format (str "Current user lacks USAGE WITH GRANT OPTION on schema %s. "
+                                 "Cannot grant USAGE to the workspace user. Have the schema owner "
+                                 "run `GRANT USAGE ON SCHEMA %s TO CURRENT_USER WITH GRANT OPTION` "
+                                 "and retry.")
+                            quoted-schema quoted-schema)
+                    {:status-code 412
+                     :schema      schema-name}))))
 
 (defn assert-has-usage-grant-option!
   "Throws when the current PostgreSQL user lacks `USAGE WITH GRANT OPTION` on
@@ -1531,16 +1533,17 @@
   "Throw the standard ex-info for the SELECT-WITH-GRANT-OPTION pre-condition,
    naming the objects the current user cannot re-grant SELECT on."
   [schema-name objects]
-  (let [qualified (map #(str (quote-schema (:schema %)) "." (quote-table (:object %)))
-                       objects)]
+  (let [qualified     (map #(str (quote-schema (:schema %)) "." (quote-table (:object %)))
+                           objects)
+        quoted-schema (quote-schema schema-name)]
     (throw (ex-info (format (str "Current user lacks SELECT WITH GRANT OPTION on %d object(s) in "
-                                 "schema \"%s\": %s. Cannot grant SELECT to the workspace user. "
+                                 "schema %s: %s. Cannot grant SELECT to the workspace user. "
                                  "Have the object owner run `GRANT SELECT ON ALL TABLES IN SCHEMA "
                                  "%s TO CURRENT_USER WITH GRANT OPTION` and retry.")
                             (count objects)
-                            schema-name
+                            quoted-schema
                             (str/join ", " qualified)
-                            (quote-schema schema-name))
+                            quoted-schema)
                     {:status-code 412
                      :schema      schema-name
                      :objects     (vec qualified)}))))
@@ -1580,15 +1583,16 @@
   "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
    naming the owner roles we cannot target with `FOR ROLE`."
   [schema-name owners]
-  (let [owner-names (map :owner owners)
-        grants      (str/join " "
-                              (map #(format "GRANT %s TO CURRENT_USER;" (quote-field %))
-                                   owner-names))]
+  (let [owner-names   (map :owner owners)
+        quoted-schema (quote-schema schema-name)
+        grants        (str/join " "
+                                (map #(format "GRANT %s TO CURRENT_USER;" (quote-field %))
+                                     owner-names))]
     (throw (ex-info (format (str "Current user is not a member of %d role(s) owning objects in "
-                                 "schema \"%s\": %s. The workspace user would lose access to "
+                                 "schema %s: %s. The workspace user would lose access to "
                                  "future tables created by these roles. Grant role membership "
                                  "with `%s` and retry.")
-                            (count owners) schema-name (str/join ", " owner-names) grants)
+                            (count owners) quoted-schema (str/join ", " owner-names) grants)
                     {:status-code 412
                      :schema      schema-name
                      :owners      (vec owner-names)}))))
