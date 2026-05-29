@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const [loadMetadata, { error, isFetching }] =
+  const [loadMetadata, { error, isFetching, isUninitialized }] =
     useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
 
@@ -35,12 +35,12 @@ export function useQueryMetadata(question: Question) {
 
   const metadataError =
     error ??
-    (!isFetching && !isSourceTableLoaded
+    (!isUninitialized && !isFetching && !isSourceTableLoaded
       ? t`The source database for this query is not available`
       : undefined);
 
   return {
-    isLoading: !isSourceTableLoaded && isFetching,
+    isLoading: !isSourceTableLoaded && (isFetching || isUninitialized),
     error: metadataError,
   };
 }
