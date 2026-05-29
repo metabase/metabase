@@ -93,12 +93,35 @@
                                         (.getColumnTypeName md i))
           :jdbc-type   (.getColumnType md i)})))))
 
-(defn- create-table-sql [table cols]
+(defn- fk-defs
+  "Return [{:fk-cols [...] :pk-table ... :pk-cols [...]}] for schema.table by
+  reading H2's imported (foreign) keys. SQLite only records FK relationships
+  when they are declared as FOREIGN KEY clauses in the CREATE TABLE DDL, and
+  Metabase's sync derives `fk_target_field_id` (and thus implicit joins) from
+  those declarations. Grouping on `fk_name` keeps composite keys intact."
+  [h2 schema table]
+  (with-open [conn (jdbc/get-connection h2)]
+    (->> (resultset-seq (.getImportedKeys (.getMetaData conn) nil schema table))
+         (group-by :fk_name)
+         vals
+         (mapv (fn [rows]
+                 (let [ordered (sort-by :key_seq rows)]
+                   {:fk-cols  (mapv :fkcolumn_name ordered)
+                    :pk-table (:pktable_name (first ordered))
+                    :pk-cols  (mapv :pkcolumn_name ordered)}))))))
+
+(defn- create-table-sql [table cols fks]
   (format "CREATE TABLE \"%s\" (%s)"
           table
           (str/join ", "
-                    (for [{:keys [name sqlite-type]} cols]
-                      (format "\"%s\" %s" name sqlite-type)))))
+                    (concat
+                     (for [{:keys [name sqlite-type]} cols]
+                       (format "\"%s\" %s" name sqlite-type))
+                     (for [{:keys [fk-cols pk-table pk-cols]} fks]
+                       (format "FOREIGN KEY (%s) REFERENCES \"%s\" (%s)"
+                               (str/join ", " (map #(format "\"%s\"" %) fk-cols))
+                               pk-table
+                               (str/join ", " (map #(format "\"%s\"" %) pk-cols))))))))
 
 (defn- insert-sql [table cols]
   (format "INSERT INTO \"%s\" (%s) VALUES (%s)"
@@ -124,7 +147,8 @@
 (defn- copy-table!
   [h2 sqlite schema table]
   (let [cols     (column-defs h2 schema table)
-        ddl      (create-table-sql table cols)
+        fks      (fk-defs h2 schema table)
+        ddl      (create-table-sql table cols fks)
         ins-sql  (insert-sql table cols)]
     (println "  Creating table" table "with" (count cols) "columns")
     (jdbc/execute! sqlite [ddl])
