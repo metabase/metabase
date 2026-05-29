@@ -362,7 +362,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

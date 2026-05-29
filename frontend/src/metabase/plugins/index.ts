@@ -16,6 +16,7 @@ export {
 export {
   PLUGIN_CACHING,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
@@ -39,6 +40,7 @@ export {
 export {
   PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
+  PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
@@ -110,6 +112,7 @@ export {
   type SourceReplacementButtonChildProps,
   type SourceReplacementButtonProps,
   type SourceReplacementModalProps,
+  type SourceReplacementTriggeredFrom,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {

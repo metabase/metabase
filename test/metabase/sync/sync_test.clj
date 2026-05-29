@@ -293,26 +293,22 @@
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv nil}
                 field-and-values)))
-
       (testing "After querying field values they are stored"
         (get-or-create-vals ["a" "b" "c"])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values false}}
                 (query-field-and-values))))
-
       (testing "After clearing and querying use long field values"
         (field-values/clear-field-values-for-field! field)
         (get-or-create-vals ["a" "b" "c" (apply str (map str (range 100000)))])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}
                 (query-field-and-values))))
-
       (testing "Querying again will use cache"
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}
                 (query-field-and-values))))
-
       (testing "New values come in after sync"
         (binding [*execute-response* (fn [_query respond] (respond {:cols [{:name "field"}]}
                                                                    (partition-all 1 ["d" "e" "f"])))]
@@ -320,7 +316,6 @@
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
-
       (testing "After setting to search it should stay search and sync removes field-values"
         (t2/update! :model/Field (:id field) {:has_field_values "search"})
         (sync/sync-database! db)

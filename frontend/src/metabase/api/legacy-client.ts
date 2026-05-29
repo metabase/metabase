@@ -38,8 +38,6 @@ type RequestOptions = {
   formData?: boolean;
   fetch?: boolean;
   bodyParamName?: string | null;
-  cancelled?: Promise<unknown>;
-  controller?: AbortController;
   signal?: AbortSignal;
 };
 
@@ -301,7 +299,10 @@ export class LegacyApi extends EventEmitter {
           (e as { status?: number }).status === 503 &&
           retryCount < maxAttempts
         ) {
-          await delay(retryDelays.pop() ?? 0);
+          await delay(retryDelays.pop() ?? 0, options.signal);
+          if (options.signal?.aborted) {
+            throw { isCancelled: true };
+          }
         } else {
           throw e;
         }
@@ -416,11 +417,16 @@ export class LegacyApi extends EventEmitter {
       };
       xhr.send(body);
 
-      if (options.cancelled) {
-        options.cancelled.then(() => {
+      if (options.signal) {
+        const onAbort = () => {
           isCancelled = true;
           xhr.abort();
-        });
+        };
+        if (options.signal.aborted) {
+          onAbort();
+        } else {
+          options.signal.addEventListener("abort", onAbort);
+        }
       }
     });
   }
@@ -433,24 +439,21 @@ export class LegacyApi extends EventEmitter {
     data: Record<string, unknown>,
     options: RequestOptions,
   ): Promise<unknown> {
-    const controller = options.controller || new AbortController();
-    const signal = controller.signal;
-    options.cancelled?.then(() => controller.abort());
-
+    // We bridge `options.signal` through a local controller (rather than
+    // handing it to `fetch` directly) so an already-aborted signal still gets
+    // its request dispatched: the request is sent this microtask, then the
+    // local controller aborts on the next. This matches XHR's `send()` →
+    // `abort()` semantics and keeps superseded-but-parked requests (e.g.
+    // through the embedding-SDK token refresh) going out.
+    const controller = new AbortController();
     const requestUrl = new URL(this.basename + url, location.origin);
     const request = new Request(requestUrl.href, {
       method,
       headers,
       body: requestBody,
-      signal,
+      signal: controller.signal,
     });
 
-    // Propagate aborts from an externally-supplied signal. If the signal is
-    // already aborted (e.g. cancelled while we were awaiting auth-refresh
-    // middleware), defer the propagation to the next microtask so the request
-    // still gets dispatched first — matching XHR's `send()` then-`abort()`
-    // semantics, where `xhr.send()` runs before the cancel handler is wired
-    // up. Otherwise the network never sees the request at all.
     if (options.signal) {
       if (options.signal.aborted) {
         queueMicrotask(() => controller.abort());
@@ -513,7 +516,7 @@ export class LegacyApi extends EventEmitter {
         });
       })
       .catch((error: unknown) => {
-        if (signal.aborted) {
+        if (options.signal?.aborted) {
           throw { isCancelled: true };
         }
         // A raw `fetch` rejection (e.g. the server dropped the connection)

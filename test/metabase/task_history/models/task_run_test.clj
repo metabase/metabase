@@ -128,7 +128,6 @@
           (task-history/with-task-history {:task "t2"} :ok))
         (task-history/complete-task-run! run-id)
         (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))))
-
     (testing "complete-task-run! derives :failed when any child failed"
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
@@ -207,7 +206,6 @@
             :done))
         (let [th (t2/select-one :model/TaskHistory :task task-name)]
           (is (some? (:run_id th)) "run_id is set"))))
-
     (testing "task history created outside with-task-run has nil run_id"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name}

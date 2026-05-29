@@ -32,7 +32,6 @@
         options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
                   (:body options) (update :body json/encode)
                   auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
-
     (try
       (let [{:keys [status body]} (request-fn url options)]
         (when (not= status 200)

@@ -38,13 +38,11 @@
                                        :filters      [[:= {}
                                                        [:field {} field-key]
                                                        "United States"]]}]}]
-
       (testing "sanity check: make sure COUNTRY has :type/Country semantic type"
         (testing `lib/returned-columns
           (let [[country _count] (lib/returned-columns query)]
             (is (=? {:semantic-type :type/Country}
                     country)))))
-
       (lib.drill-thru.tu/test-drill-variants-with-merged-args
        lib.drill-thru.tu/test-drill-application
        "single-stage query"
@@ -68,7 +66,6 @@
        "mutli-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned
@@ -124,7 +121,6 @@
        "multi-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned
@@ -230,7 +226,6 @@
        "multi-stage query"
        {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
         :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
-
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
          lib.drill-thru.tu/test-drill-not-returned

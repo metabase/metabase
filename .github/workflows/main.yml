@@ -19,8 +19,10 @@ jobs:
             core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
       - name: Send the issue ${{ github.event.issue.number }} to Slack
         id: slack
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
         with:
+          webhook: ${{ secrets.SLACK_FEATURE_REQUEST_TRIAGE_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "blocks": [
@@ -33,6 +35,3 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_FEATURE_REQUEST_TRIAGE_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

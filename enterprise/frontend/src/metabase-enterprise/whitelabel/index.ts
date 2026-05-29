@@ -1,5 +1,8 @@
+import { t } from "ttag";
+
 import {
   PLUGIN_APP_INIT_FUNCTIONS,
+  PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_SELECTORS,
@@ -19,7 +22,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import type { SettingKey } from "metabase-types/api";
 
-import { LandingPageWidget } from "./components/LandingPageWidget";
+import { LandingPageUrlField } from "./components/LandingPageUrlField";
 import LogoIcon from "./components/LogoIcon";
 import { WhiteLabelBrandingSettingsPage } from "./components/WhiteLabelBrandingSettingsPage";
 import { WhiteLabelConcealSettingsPage } from "./components/WhiteLabelConcealSettingsPage";
@@ -33,7 +36,10 @@ export function initializePlugin() {
     PLUGIN_LANDING_PAGE.getLandingPage = () =>
       // TODO: MetabaseSettings doesn't have EnterpriseSetting keys, so the type and mapping don't work
       MetabaseSettings.get("landing-page" as SettingKey) as string;
-    PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
+    PLUGIN_HOMEPAGE_SETTING.CustomUrlOption = {
+      label: t`Custom URL`,
+      Control: LandingPageUrlField,
+    };
 
     PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =
       WhiteLabelBrandingSettingsPage;

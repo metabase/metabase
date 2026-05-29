@@ -140,11 +140,9 @@
                                                   ;; now deleted, delete if was not previously
                                                   [:= nil :excluded.document_hash]
                                                   [:!= nil (keyword gate-table-name "document_hash")]
-
                                                   ;; was deleted (now has a value) - update
                                                   [:= nil (keyword gate-table-name "document_hash")]
                                                   true
-
                                                   ;; update if new value is different
                                                   :else
                                                   [:!= (keyword gate-table-name "document_hash") :excluded.document_hash]]]}}
@@ -170,14 +168,11 @@
         start-time          (u/start-timer)
         update-count        (gate-documents!* pgvector index-metadata gate-document-batch)
         write-duration-ms   (u/since-ms start-time)]
-
     (analytics/observe! :metabase-search/semantic-gate-write-ms write-duration-ms)
     (analytics/inc! :metabase-search/semantic-gate-write-documents input-bounded-count)
     (analytics/inc! :metabase-search/semantic-gate-write-modified update-count)
-
     (when (pos? update-count)
       (log/infof "Gated %d document updates in %.2f ms" update-count write-duration-ms))
-
     update-count))
 
 (def ^:private epoch-timestamp (->timestamp Instant/EPOCH))

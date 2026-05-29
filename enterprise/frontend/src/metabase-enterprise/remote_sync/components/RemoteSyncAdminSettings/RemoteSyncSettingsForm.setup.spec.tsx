@@ -50,6 +50,7 @@ const setupEndpoints = ({
   dirty = [] as any[],
   rootCollectionItems = [] as CollectionItem[],
   settingsError,
+  testConnectionError,
   envSettings = [],
   isDevInstance,
   upsellDismissed,
@@ -65,6 +66,7 @@ const setupEndpoints = ({
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
   settingsError?: { status: number; message: string };
+  testConnectionError?: { status: number; message: string };
   envSettings?: EnterpriseSettingKey[];
   isDevInstance?: boolean;
   upsellDismissed?: boolean;
@@ -97,6 +99,7 @@ const setupEndpoints = ({
     ...(settingsError && {
       settingsResponse: { error: settingsError },
     }),
+    ...(testConnectionError && { testConnectionError }),
   });
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -143,6 +146,7 @@ interface SetupOpts {
   rootCollectionItems?: CollectionItem[];
   variant?: RemoteSyncSettingsFormProps["variant"];
   settingsError?: { status: number; message: string };
+  testConnectionError?: { status: number; message: string };
   envSettings?: EnterpriseSettingKey[];
   isDevInstance?: boolean;
   upsellDismissed?: boolean;
@@ -161,6 +165,7 @@ export const setup = ({
   rootCollectionItems = [],
   variant,
   settingsError,
+  testConnectionError,
   envSettings = [],
   isDevInstance = false,
   upsellDismissed = false,
@@ -176,6 +181,7 @@ export const setup = ({
     dirty,
     rootCollectionItems,
     settingsError,
+    testConnectionError,
     envSettings,
     isDevInstance,
     upsellDismissed,
