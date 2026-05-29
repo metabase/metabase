@@ -97,7 +97,7 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
-    await changeInput(/Cache results for this many hours/, 24, 48);
+    await changeInput(/Cache duration/, 24, 48);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
@@ -186,7 +186,7 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
-    await changeInput(/Cache results for this many hours/, 24, 48);
+    await changeInput(/Cache duration/, 24, 48);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
