@@ -27,7 +27,6 @@
   ;; and blocks are independent of ordering.
   (mt/with-premium-features #{:transforms-basic :audit-app}
     (mt/with-prometheus-system! [_ system]
-
       (testing "mark-cancel-started-run! bumps {status=error} when DB writes throw"
         (prometheus/clear! :metabase-transforms/cancelation-requests)
         (mt/with-temp [:model/Transform    _t           {}
@@ -36,7 +35,6 @@
             (is (thrown? Exception (trc/mark-cancel-started-run! run-id))))
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))))
-
       (testing "mark-cancel-started-run! bumps {status=ok} on success and writes a row"
         (prometheus/clear! :metabase-transforms/cancelation-requests)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
@@ -45,7 +43,6 @@
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "ok"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-requests {:status "error"})))
           (is (some? (t2/select-one :model/TransformRunCancelation :run_id run-id)))))
-
       (testing "no cancel-chan registered: cancel-run! is a no-op with no completion metric"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
@@ -53,7 +50,6 @@
           (canceling/cancel-run! run (OffsetDateTime/now))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))
-
       (testing "cancel-run! with a registered channel: a throw inside the cancel path bumps {outcome=error}"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
@@ -64,7 +60,6 @@
               (is (thrown? Exception (canceling/cancel-run! run (OffsetDateTime/now)))))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
             (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"}))))))
-
       (testing "cancel-run! success path bumps {outcome=success} and records latency"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (prometheus/clear! :metabase-transforms/cancelation-latency-ms)
@@ -78,7 +73,6 @@
             (is (pos? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "success"}))))
             (is (zero? (:count (mt/metric-value system :metabase-transforms/cancelation-latency-ms {:outcome "error"}))))
             (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id id))))))
-
       (testing "cancel-old-transform-runs! sweep bumps {outcome=timeout} for stale canceling runs"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (prometheus/clear! :metabase-transforms/cancelation-latency-ms)
@@ -102,7 +96,6 @@
             (is (some? audit))
             (is (= "canceled" (get-in audit [:details :status])))
             (is (= "timeout"  (get-in audit [:details :outcome]))))))
-
       (testing "cancel-old-transform-runs! does not count rows already transitioned by another path"
         ;; Race guard: SELECT FOR UPDATE inside `cancel-old-canceling-runs!` returns only still-active rows,
         ;; so the sweep emits `outcome=timeout` only for rows it actually transitioned — never for runs that
@@ -123,7 +116,6 @@
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (= :canceled (t2/select-one-fn :status :model/TransformRun :id r1)))))
-
       (testing "cancel-old-transform-runs! bumps a single {outcome=error} when the transactional update throws"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
@@ -137,7 +129,6 @@
           ;; Aggregate error: we don't know per-row magnitude after a rollback, just that the sweep failed.
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))))
-
       (testing "telemetry failure in record-completion! does not double-count"
         (prometheus/clear! :metabase-transforms/cancelation-completed)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
