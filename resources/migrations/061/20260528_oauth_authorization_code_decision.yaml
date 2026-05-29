@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-05-28T00:00:00
+      author: bshepherdson
+      comment: Add decision tracking columns to oauth_authorization_code
+      changes:
+        - addColumn:
+            tableName: oauth_authorization_code
+            columns:
+              - column:
+                  name: decision
+                  type: varchar(20)
+                  remarks: "Authorization decision state: pending, authorized, or denied"
+                  defaultValue: pending
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decided_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the user authorized or denied the request
+                  constraints:
+                    nullable: true
