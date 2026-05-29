@@ -127,7 +127,6 @@
             (is (nil? (:email-smtp-username response)))
             (is (nil? (:email-smtp-password response)))
             (is (= 123 (:email-smtp-port response)))
-
             (is (nil? (setting/get-value-of-type :string :email-smtp-username)))
             (is (nil? (setting/get-value-of-type :string :email-smtp-password)))
             (is (= 123 (setting/get-value-of-type :integer :email-smtp-port)))))))))

@@ -122,7 +122,6 @@
                 :task_details {:id     1
                                :result 42}}
                (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))
-
     (testing "on-fail-info"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -164,7 +163,6 @@
                    {:level "warn",  :msg "warning message", :timestamp "1970-01-01T00:00:01Z", :fqns string?}
                    {:level "error", :msg "error message",   :timestamp "1970-01-01T00:00:01Z", :fqns string?}]
                   logs)))))
-
     (testing "logs are captured on failure"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -174,7 +172,6 @@
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :failed status))
           (is (=? [{:level "info", :msg "before exception", :timestamp string?, :fqns string?}] logs)))))
-
     (testing "exception details are captured in logs"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -188,7 +185,6 @@
                     :fqns      string?
                     :exception (mt/malli=? [:sequential string?])}]
                   logs)))))
-
     (testing "debug/trace are elided"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name}
@@ -197,7 +193,6 @@
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
           (is (=? [{:level "error"} {:level "fatal"}] logs)))))
-
     (testing "task with no logs"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name})

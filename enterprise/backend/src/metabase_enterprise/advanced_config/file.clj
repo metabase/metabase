@@ -278,6 +278,8 @@
          (when-not (premium-features/enable-config-text-file?)
            (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                            {}))))
+       (when (= section-name :workspace)
+         (premium-features/assert-has-feature :workspaces (tru "Workspaces")))
        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
        (advanced-config.file.i/initialize-section! section-name section-config))
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))

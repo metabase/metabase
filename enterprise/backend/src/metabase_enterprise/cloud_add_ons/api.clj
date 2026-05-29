@@ -27,8 +27,6 @@
   (deferred-tru "Can only access Store API for Metabase Cloud instances."))
 (def ^:private error-not-eligible
   (deferred-tru "Can only purchase add-ons for eligible subscriptions."))
-(def ^:private error-not-store-user
-  (deferred-tru "Only Metabase Store users can purchase add-ons."))
 (def ^:private error-terms-not-accepted
   (deferred-tru "Need to accept terms of service."))
 (def ^:private error-no-quantity
@@ -38,8 +36,6 @@
   {:status 400 :body error-not-hosted})
 (def ^:private response-not-eligible
   {:status 400 :body error-not-eligible})
-(def ^:private response-not-store-user
-  {:status 403 :body error-not-store-user})
 (def ^:private response-terms-not-accepted
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
 (def ^:private response-no-quantity
@@ -148,10 +144,6 @@
     (and (#{"python-execution" "transforms-advanced" "transforms-advanced-metered"} product-type)
          (premium-features/enable-python-transforms?))
     response-not-eligible
-
-    (not (contains? (set (map :email (:store-users (premium-features/token-status))))
-                    (:email @api/*current-user*)))
-    response-not-store-user
 
     :else
     (try

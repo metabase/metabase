@@ -1,6 +1,7 @@
-import { Questions } from "metabase/entities/questions";
 import { tablesReducer } from "metabase/entities/tables-reducer";
+import { cardCreated, cardUpdated } from "metabase/redux/cards";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { Card } from "metabase-types/api";
 
 describe("tablesReducer", () => {
   describe("saved questions virtual table sync", () => {
@@ -25,23 +26,11 @@ describe("tablesReducer", () => {
     }
 
     function getCreateAction(question: unknown) {
-      return {
-        type: Questions.actionTypes.CREATE,
-        payload: {
-          question,
-          object: question,
-        },
-      };
+      return cardCreated(question as Card);
     }
 
     function getUpdateAction(question: unknown) {
-      return {
-        type: Questions.actionTypes.UPDATE,
-        payload: {
-          question,
-          object: question,
-        },
-      };
+      return cardUpdated(question as Card);
     }
 
     it("should add saved question to tables state on CREATE", () => {

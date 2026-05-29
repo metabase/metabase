@@ -333,7 +333,6 @@
         (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
         (sso-settings/slack-connect-authentication-mode! "link-only")
         (is (= "link-only" (sso-settings/slack-connect-authentication-mode))))
-
       (testing "invalid values are rejected"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

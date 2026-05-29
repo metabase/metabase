@@ -12,13 +12,17 @@
   metabase-provider?
   provider-and-model->provider]
  [metabase.metabot.scope
+  agent-collection-create
   agent-dashboard-create
-  agent-metric-read
-  agent-question-create
+  agent-dashboard-update
+  agent-query
   agent-query-construct
   agent-query-execute
+  agent-question-create
+  agent-question-update
+  agent-resource-read
   agent-search
-  agent-table-read]
+  agent-sql-execute]
  [metabase.metabot.search-models
   entity-type->search-model
   search-model->entity-type])

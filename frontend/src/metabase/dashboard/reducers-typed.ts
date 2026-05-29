@@ -9,8 +9,8 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import {
   INITIALIZE,
   RESET,
@@ -432,7 +432,7 @@ export const dashcardData = createReducer(
         return dissocIn(state, [dashcardId, cardId]);
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
-        Questions.actionTypes.UPDATE,
+        CARD_UPDATED,
         (state, { payload: { object: card } }) => {
           if (card) {
             const { id } = card;

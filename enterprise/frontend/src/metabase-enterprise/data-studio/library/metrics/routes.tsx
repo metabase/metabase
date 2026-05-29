@@ -1,9 +1,8 @@
 import { IndexRoute, Route } from "react-router";
 
-import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
-import { DataStudioMetricCachingPage } from "./pages/DataStudioMetricCachingPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
 import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
@@ -26,9 +25,6 @@ export function getDataStudioMetricRoutes() {
         </Route>
       )}
       <Route path=":cardId/history" component={DataStudioMetricHistoryPage} />
-      {PLUGIN_CACHING.isGranularCachingEnabled() && (
-        <Route path=":cardId/caching" component={DataStudioMetricCachingPage} />
-      )}
     </Route>
   );
 }

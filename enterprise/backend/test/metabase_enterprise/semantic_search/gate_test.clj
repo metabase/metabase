@@ -49,7 +49,6 @@
               :document_hash (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc))))
               :updated_at    (:updated_at search-doc)}
              (sut search-doc t2)))
-
       (testing "uses default updated_at when search doc has none"
         (is (= t2
                (:updated_at (sut (dissoc search-doc :updated_at) t2))
@@ -104,7 +103,6 @@
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))
         sut            semantic.gate/gate-documents!]
-
     (with-open [_ (open-tables! pgvector index-metadata)]
       (testing "brand new index, writes accepted"
         (let [docs               [(version c1 t1) (version d1 t1)]
@@ -120,47 +118,36 @@
               (is (<= (inst-ms existing-timestamp)
                       gated_at
                       (inst-ms new-timestamp)))))))
-
       (testing "same doc a second time is ignored"
         (let [previous-state (get-gate-rows! pgvector index-metadata)]
           (is (= 0 (sut pgvector index-metadata [(version c1 t1) (version d1 t1)])))
           (is (= (map comparable-gate-row previous-state)
                  (map comparable-gate-row (get-gate-rows! pgvector index-metadata))))))
-
       (testing "if document has a newer timestamp, but the same content - not updated"
         (is (= 0 (sut pgvector index-metadata [(version c1 t2)]))))
-
       (testing "if document has an older timestamp and new content, not updated"
         (is (= 0 (sut pgvector index-metadata [(version c2 t0)]))))
-
       (testing "if document has same timestamp and new content, updated"
         (let [lower-bound (pg-clock-timestamp! pgvector)]
           (is (= 1 (sut pgvector index-metadata [(version c2 t1)])))
           (is (<= (inst-ms lower-bound)
                   (inst-ms (:gated_at (get-gate-row! pgvector index-metadata (:id (version c2 t1)))))))))
-
       (testing "if document has newer timestamp and new content, updated"
         (is (= 1 (sut pgvector index-metadata [(version c1 t2)]))))
-
       (testing "documents are not deleted if older"
         (let [previous-state (get-gate-rows! pgvector index-metadata)]
           (is (= 0 (sut pgvector index-metadata [(delete d1 t0)])))
           (is (= (map comparable-gate-row previous-state)
                  (map comparable-gate-row (get-gate-rows! pgvector index-metadata))))))
-
       (testing "documents are deleted if they have the same or newer timestamp"
         (is (= 1 (sut pgvector index-metadata [(delete d1 t1)])))
         (is (= 1 (sut pgvector index-metadata [(delete c1 t3)]))))
-
       (testing "documents are not deleted if already deleted, regardless of timestamp"
         (is (= 0 (sut pgvector index-metadata [(delete d1 t2)]))))
-
       (testing "documents are not undeleted if new write is older than the delete"
         (is (= 0 (sut pgvector index-metadata [(version d1 t0)]))))
-
       (testing "documents are undeleted if new write is newer than the delete"
         (is (= 1 (sut pgvector index-metadata [(version d1 t3)]))))
-
       (testing "last logical update is preferred if multiple submitted, regardless of order"
         (is (= 1 (sut pgvector index-metadata [(version c1 t2)
                                                (version c3 t3)
@@ -183,9 +170,7 @@
         delete          (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))
         gate!           semantic.gate/gate-documents!
         sut             semantic.gate/poll]
-
     (with-open [_ (open-tables! pgvector index-metadata)]
-
       (testing "empty gate table"
         (let [clock-lower-bound (inst-ms (pg-clock-timestamp! pgvector))
               poll-result       (sut pgvector index-metadata epoch-watermark)
@@ -196,25 +181,20 @@
             (is (not= epoch-watermark (semantic.gate/next-watermark epoch-watermark poll-result)))
             (is (<= (inst-ms (:poll-time poll-result)) (inst-ms (:poll-time next-poll-result))))
             (is (= [] (:update-candidates poll-result))))))
-
       (testing "from epoch happy path"
         (testing "add a doc, picked up"
           (gate! pgvector index-metadata [(version c2 t0)])
           (let [poll-result (sut pgvector index-metadata epoch-watermark)]
             (is (= {(:id (version c2 t0)) 1} (frequencies (map :id (:update-candidates poll-result)))))))
-
         (testing "add a new doc and delete, all 3 operations are picked up from epoch"
           (gate! pgvector index-metadata [(version c1 t0) (delete c3 t1)])
           (let [poll-result (sut pgvector index-metadata epoch-watermark)]
             (is (= (frequencies (map :id [(version c2 t0) (version c1 t0) (delete c3 t1)]))
                    (frequencies (map :id (:update-candidates poll-result)))))))
-
         (testing "limit works, will get the earlier record (c2 write)" ; note remains undefined within a timestamp
           (let [poll-result (sut pgvector index-metadata epoch-watermark :limit 1)]
             (is (= [(:id (version c2 t0))] (map :id (:update-candidates poll-result))))))
-
         (testing "watermark test"
-
           ;; assign unique gate timestamps to each record, so following assertions are deterministic
           (doseq [[t {:keys [id]}] (map vector
                                         [t0
@@ -227,7 +207,6 @@
                           :set    {:gated_at t}
                           :where  [:= :id id]}
                          :quoted true)))
-
           (let [[g1 g2 g3] (sort (map :gated_at (get-gate-rows! pgvector index-metadata)))
                 lag-tolerance  (Duration/ofSeconds 3)
                 poll-times     #(sort (map :gated_at (:update-candidates (sut pgvector index-metadata % :lag-tolerance lag-tolerance))))
@@ -256,20 +235,17 @@
                              :update-candidates [{:id "card_123" :document_hash "foo" :gated_at (ts "2025-01-01T12:30:00Z")}
                                                  {:id "dashboard_456" :document_hash nil :gated_at (ts "2025-01-01T12:45:00Z")}]}
           next-watermark    (semantic.gate/next-watermark initial-watermark poll-result)]
-
       (is (= (ts "2025-01-01T13:00:00Z") (:last-poll next-watermark)))
       (is (= {:gated_at      (ts "2025-01-01T12:45:00Z")
               :document_hash nil
               :id            "dashboard_456"}
              (:last-seen next-watermark)))))
-
   (testing "resume-watermark extracts watermark from metadata row"
     (let [metadata-row {:indexer_last_poll      (ts "2025-01-01T12:00:00Z")
                         :indexer_last_seen      (ts "2025-01-01T11:30:00Z")
                         :indexer_last_seen_id   "card_1"
                         :indexer_last_seen_hash "foo"}
           watermark    (semantic.gate/resume-watermark metadata-row)]
-
       (is (= (ts "2025-01-01T12:00:00Z") (:last-poll watermark)))
       (is (= {:id            "card_1"
               :document_hash "foo"
@@ -287,9 +263,7 @@
                         :last-seen {:id            "card_1"
                                     :document_hash "bar"
                                     :gated_at      (ts "2025-01-01T12:45:00Z")}}]
-
     (with-open [_ (open-tables! pgvector index-metadata)]
-
       (let [id1
             (semantic.index-metadata/record-new-index-table!
              pgvector
@@ -301,9 +275,7 @@
              pgvector
              index-metadata
              index2)]
-
         (semantic.gate/flush-watermark! pgvector index-metadata index2 watermark)
-
         (let [indexer-records
               (->> (jdbc/execute! pgvector
                                   (-> {:select [:id
