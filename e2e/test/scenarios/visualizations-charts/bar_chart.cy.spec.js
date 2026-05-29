@@ -1101,16 +1101,13 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.viewport(940, 800);
 
     const query = `
-      SELECT * FROM (
-        VALUES
-        ('Alnyba', 390000),
-        ('Bvsieginlri', 500000),
-        ('Cflonta', 700000),
-        ('Dgamruh', 50000),
-        ('Eitstrugb', 130000),
-        ('Farnotcs', 107000),
-        ('Gkro', 750000)
-      ) AS Data(LABEL, amount)
+      SELECT 'Alnyba' AS LABEL, 390000 AS amount
+      UNION ALL SELECT 'Bvsieginlri', 500000
+      UNION ALL SELECT 'Cflonta', 700000
+      UNION ALL SELECT 'Dgamruh', 50000
+      UNION ALL SELECT 'Eitstrugb', 130000
+      UNION ALL SELECT 'Farnotcs', 107000
+      UNION ALL SELECT 'Gkro', 750000
     `;
 
     H.visitQuestionAdhoc({

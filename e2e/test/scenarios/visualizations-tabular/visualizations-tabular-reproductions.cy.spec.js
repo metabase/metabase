@@ -313,18 +313,15 @@ describe("issue 21392", () => {
     type: "native",
     native: {
       query: `
-  WITH
-     L0   AS (SELECT c FROM (SELECT 1 UNION ALL SELECT 1) AS D(c)) -- 2^1
-    ,L1   AS (SELECT 1 AS c FROM L0 AS A CROSS JOIN L0 AS B)       -- 2^2
-    ,L2   AS (SELECT 1 AS c FROM L1 AS A CROSS JOIN L1 AS B)       -- 2^4
-    ,L3   AS (SELECT 1 AS c FROM L2 AS A CROSS JOIN L0 AS B)       -- 2^5
-
-  SELECT ROWNUM() id, DATEADD('DAY', ROWNUM(), CURRENT_DATE)::DATE date,
-  RAND() c00, RAND() c01, RAND() c02, RAND() c03, RAND() c04, RAND() c05, RAND() c06, RAND() c07, RAND() c08, RAND() c09,
-  RAND() c10, RAND() c11, RAND() c12, RAND() c13, RAND() c14, RAND() c15, RAND() c16, RAND() c17, RAND() c18, RAND() c19,
-  RAND() c20, RAND() c21, RAND() c22, RAND() c23, RAND() c24, RAND() c25, RAND() c26, RAND() c27, RAND() c28, RAND() c29,
-  RAND() c30, RAND() c31
-  FROM L3
+  WITH RECURSIVE t(n) AS (
+    SELECT 0 UNION ALL SELECT n + 1 FROM t WHERE n < 31  -- 32 rows
+  )
+  SELECT n id, date('now', '+' || n || ' days') date,
+  random() c00, random() c01, random() c02, random() c03, random() c04, random() c05, random() c06, random() c07, random() c08, random() c09,
+  random() c10, random() c11, random() c12, random() c13, random() c14, random() c15, random() c16, random() c17, random() c18, random() c19,
+  random() c20, random() c21, random() c22, random() c23, random() c24, random() c25, random() c26, random() c27, random() c28, random() c29,
+  random() c30, random() c31
+  FROM t
       `,
     },
     database: SAMPLE_DB_ID,
