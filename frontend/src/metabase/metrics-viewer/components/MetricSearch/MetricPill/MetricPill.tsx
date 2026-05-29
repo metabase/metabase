@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -25,6 +26,7 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
+  isDisabled?: boolean;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -35,6 +37,7 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
+  isDisabled,
   onSwap,
   onRemove,
   onSetBreakout,
@@ -137,7 +140,7 @@ export function MetricPill({
                 ? t`Remove ${metric.name}`
                 : t`Remove metric`,
             }}
-            data-testid="metrics-viewer-search-pill"
+            data-testid="metric-pill"
           >
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
@@ -145,12 +148,19 @@ export function MetricPill({
               ) : (
                 <>
                   <SourceColorIndicator
-                    colors={colors}
+                    colors={isDisabled ? undefined : colors}
+                    fallbackColor={
+                      isDisabled ? "var(--mb-color-icon-disabled)" : undefined
+                    }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"
                     }
                   />
-                  <span>{metric.name}</span>
+                  <span
+                    className={cx(S.metricPillText, isDisabled && S.disabled)}
+                  >
+                    {metric.name}
+                  </span>
                 </>
               )}
             </Flex>

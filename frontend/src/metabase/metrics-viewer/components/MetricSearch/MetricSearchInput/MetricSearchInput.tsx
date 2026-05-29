@@ -10,12 +10,17 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
 import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
+import {
+  computeMetricSlots,
+  findStandaloneSlot,
+} from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -35,6 +40,7 @@ import { useMetricNameTracking } from "./useMetricNameTracking";
 type MetricSearchInputProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
   onFormulaEntitiesChange: (
     entities: MetricsViewerFormulaEntity[],
     slotMapping?: Map<number, number>,
@@ -53,6 +59,7 @@ type MetricSearchInputProps = {
 export function MetricSearchInput({
   definitions,
   formulaEntities,
+  activeDimensionBreakout,
   onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
@@ -123,6 +130,10 @@ export function MetricSearchInput({
   );
 
   const isCollapsed = !isFocused && formulaEntities.length > 0;
+  const metricSlots = useMemo(
+    () => computeMetricSlots(formulaEntities),
+    [formulaEntities],
+  );
 
   return (
     <Flex
@@ -154,12 +165,21 @@ export function MetricSearchInput({
                   entry,
                   definitions,
                 );
+                const metricSlot = findStandaloneSlot(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  metricSlot != null &&
+                  activeDimensionBreakout.dimensionMapping[
+                    metricSlot.slotIndex
+                  ] == null;
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
+                      isDisabled={isDisabled}
                       onSwap={handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
