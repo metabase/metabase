@@ -87,12 +87,14 @@ See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
 
 ## Restrict image domains
 
-Off by default. When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
+When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
+
+By default, images from any domain are allowed.
 
 ## Allowed domains for images
 
-Domains that images can load from in dashboard text cards, entity descriptions (like question and dashboard descriptions), and custom visualizations, when the [Restrict image domains](#restrict-image-domains) setting is on. If that setting is off, this allowlist is not enforced and images from any domain are allowed.
+When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, and any domains listed here. 
 
-Leave this empty (the default) to only allow images hosted by your Metabase instance.
+Leave this input empty to only allow images hosted by your Metabase instance.
 
 Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.
