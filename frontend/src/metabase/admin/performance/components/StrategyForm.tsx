@@ -421,32 +421,38 @@ const ScheduleStrategyFormFields = ({
     [setFieldValue],
   );
 
+  // A malformed cron can't drive the Schedule UI, so show only the error.
+  if (!initialSchedule) {
+    return (
+      <LoadingAndErrorWrapper
+        error={t`Error: Cannot interpret schedule: ${scheduleInCronFormat}`}
+      />
+    );
+  }
+
   return (
     <>
-      <StrategyFormField
-        title={t`Cache invalidation schedule`}
-        subtitle={
+      {/* Not a StrategyFormField: its <label> would redirect title/subtitle
+          clicks to the first Select inside Schedule. */}
+      <Stack gap="sm">
+        <Stack gap="xs">
+          <Text fw="bold" fz="md" lh="1.25rem">
+            {t`Cache invalidation schedule`}
+          </Text>
           <Text fz="md" lh="1.25rem" c="text-secondary">
             {t`How often to invalidate cached results.`}
           </Text>
-        }
-      >
-        {initialSchedule ? (
-          <Schedule
-            cronString={scheduleInCronFormat || defaultCronSchedule}
-            scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-            onScheduleChange={onScheduleChange}
-            verb={c("A verb in the imperative mood").t`Invalidate`}
-            layout="horizontal"
-            timezone={timezone}
-            aria-label={t`Describe how often the cache should be invalidated`}
-          />
-        ) : (
-          <LoadingAndErrorWrapper
-            error={t`Error: Cannot interpret schedule: ${scheduleInCronFormat}`}
-          />
-        )}
-      </StrategyFormField>
+        </Stack>
+        <Schedule
+          cronString={scheduleInCronFormat || defaultCronSchedule}
+          scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+          onScheduleChange={onScheduleChange}
+          verb={c("A verb in the imperative mood").t`Invalidate`}
+          layout="horizontal"
+          timezone={timezone}
+          aria-label={t`Describe how often the cache should be invalidated`}
+        />
+      </Stack>
       {["question", "dashboard"].includes(targetModel) && (
         <PLUGIN_CACHING.PreemptiveCachingSwitch
           handleSwitchToggle={onSwitchToggle}
@@ -553,8 +559,11 @@ const StrategySelector = ({
         classNames={{ option: S.option }}
         renderOption={({ option }) => {
           const strategy = availableStrategies[option.value];
+          if (!strategy) {
+            return option.label;
+          }
           return (
-            <Stack gap={2}>
+            <Stack gap="xs">
               <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
               {strategy.description && (
                 <Text size="sm" c="text-secondary">
@@ -578,14 +587,15 @@ const TtlStrategyFormFields = () => (
           {t`Skip caching for queries that run faster than this.`}
         </Text>
       }
-      unit={t`seconds`}
+      unit={c("Unit suffix shown after the minimum query duration input")
+        .t`seconds`}
     >
       <PositiveNumberInput strategyType="ttl" name="min_duration_seconds" />
     </StrategyFormField>
     <StrategyFormField
       title={t`Multiplier`}
       subtitle={<MultiplierFieldSubtitle />}
-      unit={t`times`}
+      unit={c("Unit suffix shown after the cache multiplier input").t`times`}
     >
       <PositiveNumberInput strategyType="ttl" name="multiplier" />
     </StrategyFormField>
@@ -624,7 +634,7 @@ const DurationStrategyFormFields = ({
           {t`Cached results are refreshed after this period.`}
         </Text>
       }
-      unit={t`hours`}
+      unit={c("Unit suffix shown after the cache duration input").t`hours`}
     >
       <PositiveNumberInput strategyType="duration" name="duration" />
     </StrategyFormField>
