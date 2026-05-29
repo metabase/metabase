@@ -626,7 +626,7 @@
   [base-type ^String s]
   (cond
     (nil? s)                       nil
-    (isa? base-type :type/Boolean) (contains? #{"true" "t" "1"} s)
+    (isa? base-type :type/Boolean) (contains? #{"true" "t" "1"} (u/lower-case-en s))
     (isa? base-type :type/Integer) (try (Long/parseLong s)
                                         (catch NumberFormatException _
                                           (bigint s)))
@@ -638,7 +638,7 @@
   chance."
   [driver {:keys [schema name]}]
   (sql.qp/->honeysql driver
-                     (if (and schema (seq schema))
+                     (if (seq schema)
                        (h2x/identifier :table schema name)
                        (h2x/identifier :table name))))
 
@@ -658,16 +658,8 @@
   limited query as a subquery parenthesizes it; the outer arms then carry no LIMIT and union
   cleanly."
   [driver table field]
-  (let [tag       [:inline (:name field)]
-        cast-expr (cast-to-text-honeysql driver (:name field))
-        ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` — so HoneySQL
-        ;; treats it as a single table expression rather than parsing the identifier's own
-        ;; `[::identifier :table [...]]` vector as a `[table alias …]` spec.
-        ;;
-        ;; Only `cast-expr` goes in `GROUP BY`. `tag` is a constant in the SELECT list — a
-        ;; literal needs no GROUP BY entry, and Postgres specifically rejects a non-integer
-        ;; constant in GROUP BY ("non-integer constant in GROUP BY").
-        inner     {:select   [[tag :field_name]
+  (let [cast-expr (cast-to-text-honeysql driver (:name field))
+        inner     {:select   [[[:inline (:name field)] :field_name]
                               [cast-expr :value_out]]
                    :from     [[(table-honeysql driver table)]]
                    :group-by [cast-expr]}
