@@ -38,7 +38,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -59,6 +58,11 @@
 (def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
+
+(def ^:dynamic *distinct-limit*
+  "Per-column row cap for warehouse-side distinct-value fetches. Used by both the UNION ALL
+  per-arm `LIMIT` and by `persist-field-values!` to detect whether the warehouse hit that cap."
+  1000)
 
 (def ^:dynamic ^Integer *absolute-max-distinct-values-limit*
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
@@ -359,24 +363,6 @@
 ;;; |                                                    CRUD fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- limit-max-char-len-rff :- ::qp.schema/rff
-  "Returns a rff that will stop when the total character length of the values exceeds `max-char-len`."
-  [rff max-char-len]
-  (fn [metadata]
-    (let [rf         (rff metadata)
-          total-char (volatile! 0)]
-      (fn
-        ([]
-         (rf))
-        ([result]
-         (rf result))
-        ([result row]
-         (assert (= 1 (count row)))
-         (vswap! total-char + (count (str (first row))))
-         (if (> @total-char max-char-len)
-           (reduced (assoc result ::reached-char-len-limit true))
-           (rf result row)))))))
-
 (defn limit-values
   "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
   Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
@@ -405,41 +391,27 @@
 
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
 (mu/defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values
-  are past the threshold, this returns a subset of possible values values where the total length of all items is less
-  than [[*total-max-length*]]. It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned
-  values list is a subset of all possible values.
+  "Fetch raw distinct values for `field` from the warehouse, row-capped at
+  `*absolute-max-distinct-values-limit*`. Returns `{:values rows-as-1-tuples}`.
 
-  ;; (distinct-values (Field 1))
-  ;; ->  {:values          [[1], [2], [3]]
-          :has_more_values false}
-
-  (This function provides the values that normally get saved as a Field's FieldValues. You most likely should not be
-  using this directly in code outside of this namespace, unless it's for a very specific reason, such as certain cases
-  where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
+  Callers that persist these values via `persist-field-values!` get the char-length cap +
+  `:has_more_values` computation for free. Callers that need to surface values directly
+  (e.g. parameter widgets) should apply `take-by-length` + their own `:has_more_values`
+  derivation, as `parameters/field-values` does."
   [field :- [:or
              (ms/InstanceOf :model/Field)
              ::lib.schema.metadata/column]]
   (try
-    (let [field           (cond-> field
-                            (t2/model field) (lib-be/instance->metadata :metadata/column))
-          result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
-                           (:table-id field)
-                           (fn [query]
-                             (-> query
-                                 (lib/breakout field)
-                                 (lib/limit *absolute-max-distinct-values-limit*)))
-                           (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
-          distinct-values (-> result :data :rows)]
-      {:values          distinct-values
-       ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       :has_more_values (or (true? (::reached-char-len-limit result))
-                            ;; `distinct-values` is from a query
-                            ;; with limit = [[*absolute-max-distinct-values-limit*]].
-                            ;; So, if the returned `distinct-values` has length equal to that exact limit,
-                            ;; we assume the returned values is just a subset of what we have in DB.
-                            (= (count distinct-values)
-                               *absolute-max-distinct-values-limit*))})
+    (let [field  (cond-> field
+                   (t2/model field) (lib-be/instance->metadata :metadata/column))
+          result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                  (:table-id field)
+                  (fn [query]
+                    (-> query
+                        (lib/breakout field)
+                        (lib/limit *absolute-max-distinct-values-limit*)))
+                  qp.reducible/default-rff)]
+      {:values (-> result :data :rows)})
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))
@@ -495,19 +467,24 @@
              (partition-all *fv-select-batch-size* field-ids)))))
 
 (defn persist-field-values!
-  "Persist pre-fetched distinct values for a single field. Compares against `existing-fv` and
+  "Persist raw distinct values for a single field. Caller passes raw values fetched from the
+  warehouse; this function applies the in-memory cap via `limit-values`, detects whether the
+  warehouse-side row LIMIT fired (by counting raw values against `*distinct-limit*`), and
+  combines both signals into `:has_more_values`. Compares the result against `existing-fv` and
   creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
   `::fv-updated`, `::fv-created`, or `::fv-deleted`.
 
   - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
-  - `values`: the new collection of scalar distinct values for the field (already char-length
-    capped and sorted by the caller).
-  - `has_more_values`: boolean — whether `values` is known to be a subset of all possible values.
+  - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
 
   Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
-  deleted as a side effect of `clear-field-values-for-field!` when `values` is empty."
-  [field existing-fv values has_more_values]
-  (let [field-name (or (:name field) (:id field))]
+  deleted as a side effect of `clear-field-values-for-field!` when the capped value set is empty."
+  [field existing-fv raw-values]
+  (let [field-name      (or (:name field) (:id field))
+        row-cap-hit?    (>= (count raw-values) *distinct-limit*)
+        {values        :values
+         char-cap-hit? :has_more_values} (limit-values raw-values)
+        has-more-values (boolean (or row-cap-hit? char-cap-hit?))]
     (cond
       (empty? values)
       (do
@@ -519,14 +496,14 @@
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
         (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                  (constantly {:has_more_values       has_more_values
+                                  (constantly {:has_more_values       has-more-values
                                                :values                values
                                                :human_readable_values nil}))
         ::fv-created)
 
       ;; if existing FieldValues won't change, skip it
       (and (= (:values existing-fv) values)
-           (= (:has_more_values existing-fv) has_more_values))
+           (= (:has_more_values existing-fv) has-more-values))
       (do
         (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
         ::fv-skipped)
@@ -537,7 +514,7 @@
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
         (t2/update! :model/FieldValues (u/the-id existing-fv)
                     (m/remove-vals nil?
-                                   {:has_more_values       has_more_values
+                                   {:has_more_values       has-more-values
                                     :values                values
                                     :human_readable_values (fixup-human-readable-values existing-fv values)}))
         ::fv-updated))))
@@ -552,12 +529,11 @@
   Advanced FieldValues of the same `field`."
   [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
-    (let [existing-fv               (or field-values (get-latest-full-field-values (u/the-id field)))
-          {unwrapped-values :values
-           :keys [has_more_values]} (distinct-values field)
-          ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-          values                    (seq (map first unwrapped-values))]
-      (persist-field-values! field existing-fv values has_more_values))
+    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))
+          {rows :values} (distinct-values field)
+          ;; rows are 1-tuples — unwrap for storage.
+          raw-values  (seq (map first rows))]
+      (persist-field-values! field existing-fv raw-values))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
@@ -615,10 +591,6 @@
 (def ^:dynamic *batch-size*
   "Number of per-field arms unioned into one query. Keeps query text well under driver limits."
   50)
-
-(def ^:dynamic *distinct-limit*
-  "Per-column DISTINCT cap. Mirrors the limit used by the per-field path so semantics match."
-  1000)
 
 (defn- decode-value
   "Coerce a string value (from `CAST(... AS <text>)`) back to a native Clojure value using the
@@ -712,14 +684,10 @@
   (one per field)."
   [fields fvs-map results]
   (mapv (fn [field]
-          (let [field-id        (u/the-id field)
-                existing-fv     (get fvs-map field-id)
-                {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
-                {capped-values :values
-                 cap-hit?      :has_more_values} (limit-values values)
-                row-limit-hit?  (>= raw-count *distinct-limit*)
-                has-more-values (boolean (or cap-hit? row-limit-hit?))]
-            (persist-field-values! field existing-fv capped-values has-more-values)))
+          (let [field-id    (u/the-id field)
+                existing-fv (get fvs-map field-id)
+                raw-values  (get-in results [field-id :values] [])]
+            (persist-field-values! field existing-fv raw-values)))
         fields))
 
 (defn union-distinct-values

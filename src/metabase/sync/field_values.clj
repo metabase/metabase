@@ -81,18 +81,14 @@
           outcome-counts (if (or (nil? results) (instance? Throwable results))
                            (assoc empty-counts :errors n-fields)
                            (reduce (fn [counts field]
-                                     (let [field-id        (u/the-id field)
-                                           existing-fv     (get fvs-map field-id)
-                                           {:keys [values raw-count]} (get results field-id {:values [] :raw-count 0})
-                                           {capped-values :values
-                                            cap-hit?      :has_more_values} (field-values/limit-values values)
-                                           row-limit-hit?  (>= raw-count field-values/*distinct-limit*)
-                                           has-more-values (boolean (or cap-hit? row-limit-hit?))
-                                           result          (sync-util/with-error-handling
-                                                            (format "Error updating field values for %s"
-                                                                    (sync-util/name-for-logging field))
-                                                             (field-values/persist-field-values!
-                                                              field existing-fv capped-values has-more-values))]
+                                     (let [field-id    (u/the-id field)
+                                           existing-fv (get fvs-map field-id)
+                                           raw-values  (get-in results [field-id :values] [])
+                                           result      (sync-util/with-error-handling
+                                                        (format "Error updating field values for %s"
+                                                                (sync-util/name-for-logging field))
+                                                         (field-values/persist-field-values!
+                                                          field existing-fv raw-values))]
                                        (update-field-value-stats-count counts result)))
                                    empty-counts
                                    fields-to-sync))]

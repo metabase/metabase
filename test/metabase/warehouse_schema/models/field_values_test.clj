@@ -172,22 +172,11 @@
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
-    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
-            :has_more_values false}
+    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
            (distinct-field-values (mt/id :products :category)))))
   (testing "Correctly get distinct field values for non-text fields"
-    (is (= {:values [[1] [2] [3] [4] [5]]
-            :has_more_values false}
-           (distinct-field-values (mt/id :reviews :rating)))))
-  (testing "if the values of field exceeds max-char-len, return a subset of it (#2332)"
-    (binding [field-values/*total-max-length* 16]
-      (is (= {:values          [["Doohickey"] ["Gadget"]]
-              :has_more_values true}
-             (distinct-field-values (mt/id :products :category)))))
-    (binding [field-values/*total-max-length* 3]
-      (is (= {:values          [[1] [2] [3]]
-              :has_more_values true}
-             (distinct-field-values (mt/id :reviews :rating)))))))
+    (is (= {:values [[1] [2] [3] [4] [5]]}
+           (distinct-field-values (mt/id :reviews :rating))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [:model/Database    {database-id :id} {}
@@ -527,7 +516,7 @@
                    :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
                                                              :has_field_values :list}]
       (is (= ::field-values/fv-created
-             (field-values/persist-field-values! field nil ["a" "b"] false)))
+             (field-values/persist-field-values! field nil ["a" "b"])))
       (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
         (is (= ["a" "b"] (:values fv)))
         (is (false? (:has_more_values fv)))))))
@@ -540,7 +529,7 @@
                                                              :has_field_values :list}
                    :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a" "b"], :has_more_values false}]
       (is (= ::field-values/fv-skipped
-             (field-values/persist-field-values! field fv ["a" "b"] false))))))
+             (field-values/persist-field-values! field fv ["a" "b"]))))))
 
 (deftest persist-field-values!-updates-when-values-differ-test
   (testing "Different values → ::fv-updated and the row is rewritten"
@@ -550,29 +539,43 @@
                                                              :has_field_values :list}
                    :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
       (is (= ::field-values/fv-updated
-             (field-values/persist-field-values! field fv ["a" "b" "c"] false)))
+             (field-values/persist-field-values! field fv ["a" "b" "c"])))
       (is (= ["a" "b" "c"]
              (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))
 
-(deftest persist-field-values!-updates-when-has-more-changes-test
-  (testing "Same values but has_more_values flipped → ::fv-updated"
+(deftest persist-field-values!-updates-when-row-cap-hits-test
+  (testing "Raw count hits the warehouse row LIMIT → has_more_values flips to true → ::fv-updated"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
                    :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
                                                              :has_field_values :list}
-                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
-      (is (= ::field-values/fv-updated
-             (field-values/persist-field-values! field fv ["a"] true))))))
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a" "b"], :has_more_values false}]
+      (binding [field-values/*distinct-limit* 2]
+        (is (= ::field-values/fv-updated
+               (field-values/persist-field-values! field fv ["a" "b"])))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
+
+(deftest persist-field-values!-updates-when-char-cap-hits-test
+  (testing "Char-length cap fires inside limit-values → has_more_values flips to true → ::fv-updated"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["aaa"], :has_more_values false}]
+      (binding [field-values/*total-max-length* 4]
+        (is (= ::field-values/fv-updated
+               (field-values/persist-field-values! field fv ["aaa" "bbb" "ccc"])))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
 
 (deftest persist-field-values!-deletes-when-empty-test
-  (testing "Empty values → ::fv-deleted and the FieldValues row is removed"
+  (testing "Empty raw-values → ::fv-deleted and the FieldValues row is removed"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
                    :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
                                                              :has_field_values :list}
                    :model/FieldValues _  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
       (is (= ::field-values/fv-deleted
-             (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [] false)))
+             (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [])))
       (is (false? (t2/exists? :model/FieldValues :field_id field-id :type :full))))))
 
 ;;; ---------------------------------- UNION DISTINCT bulk path ----------------------------------
