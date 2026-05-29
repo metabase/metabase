@@ -1278,13 +1278,21 @@
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
-  ;; if required UUIDs are already calculated don't recalculate when we recurse.
-  (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
-    (cond
-      (mbql-ref? x)   (export-mbql-ref x)
-      (sequential? x) (mapv export-mbql x)
-      (map? x)        (export-mbql-map x)
-      :else           x)))
+  ;; Strip transient runtime keys (e.g. `:lib.convert/converted?` and `:lib/transformation-added-base-type`) that get
+  ;; added when a legacy query is normalized to MBQL 5 on read. Without this, whether a query happened to be stored as
+  ;; legacy MBQL or MBQL 5 in the app DB would leak into the serialized output, producing spurious git-sync diffs
+  ;; (GHY-3728). This is the same normalization applied before persisting a query to the app DB, so it's idempotent for
+  ;; queries that are already in serialized form.
+  (let [x (cond-> x
+            (and (map? x) (= :mbql/query (:lib/type x)))
+            lib/prepare-for-serialization)]
+    ;; if required UUIDs are already calculated don't recalculate when we recurse.
+    (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
+      (cond
+        (mbql-ref? x)   (export-mbql-ref x)
+        (sequential? x) (mapv export-mbql x)
+        (map? x)        (export-mbql-map x)
+        :else           x))))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
