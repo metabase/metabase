@@ -33,7 +33,7 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
           />
           <ToolsNavItem
             label={t`Tasks`}
-            path={Urls.adminToolsTasksBase()}
+            path={Urls.adminToolsTasks()}
             icon="clipboard"
             location={location}
           />

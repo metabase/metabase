@@ -24,6 +24,7 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
+   [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
@@ -61,6 +62,7 @@
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
+   :schema-viewer              (deferred-tru "Schema Viewer")
    :embedding                  (deferred-tru "Embedding")
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
@@ -120,6 +122,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)

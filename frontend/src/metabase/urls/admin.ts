@@ -167,11 +167,11 @@ export function adminToolsHelp() {
   return "/admin/tools/help";
 }
 
-export function adminToolsTasksBase() {
+export function adminToolsTasks() {
   return "/admin/tools/tasks";
 }
 export function adminToolsTasksList() {
-  return `${adminToolsTasksBase()}/list`;
+  return `${adminToolsTasks()}/list`;
 }
 
 export function adminToolsTaskDetails(taskId: number) {
@@ -179,7 +179,7 @@ export function adminToolsTaskDetails(taskId: number) {
 }
 
 export function adminToolsTasksRuns() {
-  return `${adminToolsTasksBase()}/runs`;
+  return `${adminToolsTasks()}/runs`;
 }
 
 export function adminToolsTaskRunDetails(runId: number) {
