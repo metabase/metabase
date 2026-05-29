@@ -197,6 +197,7 @@
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
+           metabase.analytics.proxy-api
            metabase.analytics.settings}
    :uses #{analytics-interface
            api
