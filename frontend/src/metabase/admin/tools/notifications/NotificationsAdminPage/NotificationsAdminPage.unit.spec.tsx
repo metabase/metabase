@@ -567,6 +567,24 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
+    it("points the run-history 'View all' links at the card runs, including today", async () => {
+      setup({ notifications: [notification1] });
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(await screen.findByTestId("notification-row-1"));
+      expect(await screen.findByText("Alert 1")).toBeInTheDocument();
+
+      const [viewAll] = screen.getAllByRole("link", { name: "View all" });
+      const href = viewAll.getAttribute("href") ?? "";
+      const params = new URLSearchParams(href.split("?")[1]);
+
+      expect(params.get("run-type")).toBe("alert");
+      expect(params.get("entity-type")).toBe("card");
+      expect(params.get("entity-id")).toBe("1");
+      expect(params.get("started-at")).toBe("past3months");
+      expect(params.get("include-today")).toBe("true");
+    });
+
     it("shows loaders in the history sections while the alert detail loads", async () => {
       setup({ notifications: [notification1], detailDelay: 10_000 });
       await waitForLoaderToBeRemoved();
