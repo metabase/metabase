@@ -1,0 +1,31 @@
+name: quality_attribution
+display_name: Quality Attribution
+description: JSON per-turn attribution of the conversation quality score.
+created_at: '2026-05-28T00:00:00.000000Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_messages
+database_type: text
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/SerializedJSON
+dimensions: []
+preview_display: false
+position: 9
+custom_position: 0
+database_position: 9
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_messages
+  model: Table
+- id: quality_attribution
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

@@ -335,6 +335,36 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   visibility_type: normal
+- base_type: type/Float
+  coercion_strategy: null
+  description: Conversation quality score.
+  display_name: Quality Score
+  effective_type: type/Float
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_conversations, quality_score]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_conversations, quality_score]
+  name: quality_score
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: 'Conversation quality score detailed breakdown JSON'
+  display_name: Quality Breakdown
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_conversations, quality_breakdown]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_conversations, quality_breakdown]
+  name: quality_breakdown
+  semantic_type: type/SerializedJSON
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings: null
 card_schema: 23
