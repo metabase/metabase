@@ -22,6 +22,8 @@ export const NotificationRunSummaryLog = ({
     runType: "alert",
     entityType: "card",
     entityId: cardId,
+    startedAt: "past3months",
+    includeToday: true,
   });
 
   const renderRuns = () => {

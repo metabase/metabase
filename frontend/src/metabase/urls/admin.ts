@@ -191,6 +191,7 @@ export function adminToolsTasksRunsFor(opts: {
   entityType: TaskRunEntityType;
   entityId: number;
   startedAt?: TaskRunDateFilterOption;
+  includeToday?: boolean;
 }) {
   const params: Record<string, string> = {
     "run-type": opts.runType,
@@ -199,6 +200,9 @@ export function adminToolsTasksRunsFor(opts: {
   };
   if (opts.startedAt) {
     params["started-at"] = opts.startedAt;
+  }
+  if (opts.includeToday) {
+    params["include-today"] = "true";
   }
   return `${adminToolsTasksRuns()}?${new URLSearchParams(params).toString()}`;
 }

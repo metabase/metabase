@@ -24,6 +24,7 @@ type UrlState = {
   "entity-id": number | null;
   status: TaskRunStatus | null;
   "started-at": TaskRunDateFilterOption | null;
+  "include-today": boolean;
 };
 
 export const urlStateConfig: UrlStateConfig<UrlState> = {
@@ -34,6 +35,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "entity-id": parseTaskRunEntityId(query["entity-id"]),
     status: parseTaskRunStatus(query.status),
     "started-at": parseTaskRunStartedAt(query["started-at"]),
+    "include-today": parseIncludeToday(query["include-today"]),
   }),
   serialize: ({
     page,
@@ -42,6 +44,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "entity-id": entityId,
     status,
     "started-at": startedAt,
+    "include-today": includeToday,
   }) => ({
     page: page === 0 ? undefined : String(page),
     "run-type": runType === null ? undefined : runType,
@@ -49,6 +52,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "entity-id": entityId === null ? undefined : String(entityId),
     status: status === null ? undefined : status,
     "started-at": startedAt === null ? undefined : startedAt,
+    "include-today": includeToday ? "true" : undefined,
   }),
 };
 
@@ -85,4 +89,8 @@ const parseTaskRunStatus = (param: QueryParam): UrlState["status"] => {
 const parseTaskRunStartedAt = (param: QueryParam): UrlState["started-at"] => {
   const value = getFirstParamValue(param);
   return value && guardTaskRunStartedAtRange(value) ? value : null;
+};
+
+const parseIncludeToday = (param: QueryParam): UrlState["include-today"] => {
+  return getFirstParamValue(param) === "true";
 };
