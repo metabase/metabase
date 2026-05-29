@@ -59,6 +59,10 @@ export function InfoPanelField({
             c="brand"
             disabled={isExpanding}
             onClick={onFetchExternal}
+            flex="1 1 auto"
+            lh={1}
+            h="100%"
+            style={{ overflow: "visible" }}
           >
             {fieldName}
           </UnstyledButton>

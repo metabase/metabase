@@ -1,6 +1,7 @@
 (ns metabase-enterprise.erd.erd-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -347,7 +348,7 @@
   (mt/with-premium-features #{:schema-viewer :library}
     (testing "published cross-schema FK targets keep target IDs when only readable via collection"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Collection {coll-id :id} {}
+        (mt/with-temp [:model/Collection {coll-id :id} {:type collection/library-data-collection-type}
                        :model/PermissionsGroup {gid :id} {}
                        :model/Database {db-id :id} {}
                        :model/Table {target-table-id :id} {:db_id db-id :name "target" :schema "other"
